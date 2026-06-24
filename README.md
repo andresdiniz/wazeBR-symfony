@@ -1,87 +1,94 @@
-# WazePortalBR — Symfony 7.2 + PHP 8.2
+# WazeBR — Symfony 7.4 / PHP 8.2
 
-> Reescrita completa do portal WazeBR em **Symfony 7.2** (LTS) com **PHP 8.2+**,
-> usando Doctrine ORM, Symfony Messenger, Symfony Scheduler, Symfony Security e Mailer.
-
-## Funcionalidades
-
-- 🚨 **Coleta de alertas Waze CCP** — substitui `wazejob.php`
-- 🚗 **Coleta de congestionamentos Waze** — substitui `wazejobtraficc.php`
-- 🌧️ **Integração CEMADEN** — substitui `dadoscemadem.php` e `hidrologicocemadem*.php`
-- 📊 **Dashboard interativo** com mapa Leaflet — substitui `index.php`
-- 🔔 **Notificações** em tempo real — substitui `worker_notifications.php`
-- 📧 **Relatório diário por e-mail** — substitui `send_daily_report.php`
-- 📁 **Exportação JSON/XML** — substitui `gerar_json.php` e `gerar_xml.php`
-- 🔐 **Autenticação completa** com reset de senha — substitui `login.php`, `logout.php`, `redefinir_senha.php`
-- 🌐 **API interna** (`/api/*`) e **API externa** pública (`/api/v1/*`) — substitui `api.php` e `api_externa.php`
-- 🩺 **Health check** — substitui `health_sys.php`
-- 🗑️ **Purge automático** — substitui `limpar_tabelas.php`
+Plataforma de monitoramento de trânsito, alertas e dados hidrológicos integrados com a API Waze Data For Cities e CEMADEN.
 
 ## Stack
 
-| Componente | Tecnologia |
-|---|---|
-| Framework | Symfony 7.2 LTS |
-| PHP | 8.2+ |
-| ORM | Doctrine ORM 3 |
-| Filas | Symfony Messenger + Redis |
-| Agendador | Symfony Scheduler |
-| Auth | Symfony Security |
-| Templates | Twig 3 |
-| E-mail | Symfony Mailer |
-| HTTP Client | Symfony HttpClient |
-| Cache | Redis (Predis) |
+- **PHP 8.2+**
+- **Symfony 7.4 LTS**
+- **Doctrine ORM 3.x**
+- **MySQL 8.0+**
+- **Twig 3.x**
+- **Leaflet.js** (mapas)
+- **Symfony Mailer** (relatórios e reset de senha)
+- **Symfony HttpClient** (integração com Waze e CEMADEN)
 
 ## Instalação
 
 ```bash
-# 1. Clonar e instalar dependências
-git clone https://github.com/andresdiniz/wazebr-symfony.git
-cd wazebr-symfony
+# 1. Clonar
+git clone https://github.com/andresdiniz/wazeBR-symfony.git
+cd wazeBR-symfony
+
+# 2. Instalar dependências
 composer install
 
-# 2. Configurar ambiente
+# 3. Configurar ambiente
 cp .env.example .env
-# editar .env com suas credenciais
+# Edite .env com suas credenciais
 
-# 3. Criar banco e rodar migrations
+# 4. Criar banco de dados e rodar migrations
 php bin/console doctrine:database:create
 php bin/console doctrine:migrations:migrate
 
-# 4. Iniciar servidor
-php bin/console server:start
+# 5. Criar primeiro usuário (via Doctrine Fixtures ou console)
+php bin/console doctrine:fixtures:load
 
-# 5. Iniciar workers (em processo separado)
-php bin/console messenger:consume async scheduler_default --time-limit=3600
+# 6. Iniciar servidor de desenvolvimento
+symfony server:start
+# ou
+php -S localhost:8000 -t public/
 ```
 
-## Comandos CLI
+## Comandos disponíveis
 
-```bash
-# Coleta manual de dados
-php bin/console waze:collect
-php bin/console waze:collect --only=alerts
-php bin/console waze:collect --only=cemaden --state=SP
+| Comando | Descrição |
+|---|---|
+| `waze:collect:alerts` | Coleta alertas da API Waze |
+| `waze:collect:traffic` | Coleta congestionamentos da API Waze |
+| `cemaden:collect [UF]` | Coleta dados do CEMADEN por estado |
+| `waze:notify:high-risk` | Gera notificações para alertas de alto risco |
+| `waze:report:daily` | Envia relatório diário por e-mail |
 
-# Purge de dados antigos
-php bin/console waze:purge --days=30
-php bin/console waze:purge --dry-run
-
-# Health check
-php bin/console waze:health
-```
+Ver `doc/cron-reference.md` para configuração completa de crontab.
 
 ## Estrutura
 
 ```
 src/
-├── Controller/       # AuthController, DashboardController, ApiController, ApiExternaController
-├── Entity/           # User, WazeAlert, WazeTrafficJam, CemadenData, Notification, ActivityLog
-├── Repository/       # Queries DQL otimizadas por domínio
-├── Service/          # WazeApiService, CemadenService, NotificationService, DashboardService
-├── Message/          # DTOs de mensagens para o Messenger
-├── MessageHandler/   # Handlers assíncronos por domínio
-├── Command/          # waze:collect, waze:purge, waze:health
-├── Scheduler/        # AppScheduler — todos os cron jobs centralizados
-└── EventSubscriber/  # LoginSubscriber — auditoria de acessos
+├── Controller/      AuthController, DashboardController, ApiController, ApiExternaController, HealthController
+├── Entity/          User, WazeAlert, WazeTrafficJam, CemadenData, Notification, ActivityLog
+├── Repository/      6 repositories com queries customizadas
+├── Service/         WazeApiService, CemadenService, NotificationService, DashboardService, HealthCheckService
+└── Command/         5 console commands
+config/
+migrations/      6 migrations (users → activity_log)
+templates/       Twig (base, auth, dashboard, mapas, CEMADEN)
+doc/             cron-reference.md
 ```
+
+## Variáveis de ambiente
+
+Ver `.env.example` para a lista completa. As principais:
+
+| Variável | Descrição |
+|---|---|
+| `DATABASE_URL` | DSN do banco MySQL |
+| `MAILER_DSN` | DSN SMTP |
+| `WAZE_API_URL` | URL da API Waze Data For Cities |
+| `WAZE_API_KEY` | Chave da API Waze |
+| `WAZE_BBOX` | Bounding box geográfica (`lat_min,lng_min,lat_max,lng_max`) |
+| `CEMADEN_API_URL` | URL da API CEMADEN |
+| `CEMADEN_API_KEY` | Chave da API CEMADEN |
+| `API_EXTERNA_TOKEN` | Token para acesso à API externa (`X-Api-Token`) |
+
+## Segurança
+
+- Autenticação via form\_login com CSRF protection
+- Reset de senha por e-mail com token temporário
+- API externa protegida por `X-Api-Token` no header
+- `.env` **não** é versionado (`.gitignore`)
+
+## Licença
+
+Proprietário — Todos os direitos reservados.

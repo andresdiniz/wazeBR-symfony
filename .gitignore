@@ -1,20 +1,30 @@
 ###> symfony ###
-/.env
 /.env.local
 /.env.local.php
 /.env.*.local
-/config/secrets/prod/prod.decrypt.private.php
+/config/secrets/prod/prod.decrypt.private.pem
 /public/bundles/
 /var/
 /vendor/
 ###< symfony ###
 
-###> phpunit ###
-/phpunit.xml
-.phpunit.result.cache
-###< phpunit ###
+###> doctrine ###
+/var/log/
+###< doctrine ###
 
-###> project ###
-/var/exports/
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs gerados localmente
 *.log
-###< project ###
+
+# Segredos — NUNCA versionar
+.env
+.env.prod
