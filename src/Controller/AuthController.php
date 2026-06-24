@@ -6,116 +6,118 @@ namespace App\Controller;
 
 use App\Entity\User;
 use App\Repository\UserRepository;
-use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Mailer\MailerInterface;
-use Symfony\Component\Mime\Email;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 
 class AuthController extends AbstractController
 {
-    #[Route('/login', name: 'app_login', methods: ['GET', 'POST'])]
-    public function login(AuthenticationUtils $authenticationUtils): Response
+    public function __construct(
+        private readonly UserRepository              $userRepository,
+        private readonly UserPasswordHasherInterface $hasher,
+    ) {}
+
+    #[Route('/login', name: 'auth_login')]
+    public function login(AuthenticationUtils $authUtils): Response
     {
         if ($this->getUser()) {
-            return $this->redirectToRoute('app_dashboard');
+            return $this->redirectToRoute('dashboard_index');
         }
 
         return $this->render('auth/login.html.twig', [
-            'error'         => $authenticationUtils->getLastAuthenticationError(),
-            'last_username' => $authenticationUtils->getLastUsername(),
+            'last_username' => $authUtils->getLastUsername(),
+            'error'         => $authUtils->getLastAuthenticationError(),
         ]);
     }
 
-    #[Route('/logout', name: 'app_logout')]
+    #[Route('/logout', name: 'auth_logout')]
     public function logout(): never
     {
-        throw new \LogicException('Este método é interceptado pelo firewall do Symfony.');
+        throw new \LogicException('Interceptado pelo firewall do Symfony.');
     }
 
-    #[Route('/redefinir-senha', name: 'app_reset_request', methods: ['GET', 'POST'])]
-    public function resetRequest(
-        Request                $request,
-        UserRepository         $userRepository,
-        MailerInterface        $mailer,
-        EntityManagerInterface $em,
-        string                 $appName,
-        string                 $senderEmail,
-    ): Response {
+    #[Route('/esqueci-senha', name: 'auth_forgot', methods: ['GET', 'POST'])]
+    public function forgot(Request $request): Response
+    {
+        $sent = false;
+
         if ($request->isMethod('POST')) {
-            $email = $request->request->getString('email');
-            $user  = $userRepository->findOneBy(['email' => $email]);
+            $email = (string) $request->request->get('email', '');
+            $user  = $this->userRepository->findOneBy(['email' => $email]);
 
             if ($user) {
-                $token = bin2hex(random_bytes(32));
-                // Armazenar token numa entidade PasswordResetToken é o ideal;
-                // aqui simplificamos usando uma session por compatibilidade inicial.
-                $request->getSession()->set('reset_token_' . $token, $user->getId());
-                $request->getSession()->set('reset_token_' . $token . '_exp', time() + 3600);
-
-                $link = $this->generateUrl('app_reset_password', ['token' => $token], \Symfony\Component\Routing\Generator\UrlGeneratorInterface::ABSOLUTE_URL);
-
-                $mail = (new Email())
-                    ->from($senderEmail)
-                    ->to($user->getEmail())
-                    ->subject("[{$appName}] Redefinição de senha")
-                    ->html("<p>Clique no link para redefinir sua senha (válido por 1 hora):</p><p><a href='{$link}'>{$link}</a></p>");
-
-                $mailer->send($mail);
+                $this->userRepository->generateResetToken($user);
+                // TODO: disparar Symfony Mailer com o token
             }
 
-            $this->addFlash('success', 'Se o e-mail estiver cadastrado, você receberá as instruções em breve.');
-            return $this->redirectToRoute('app_reset_request');
+            // Sempre mostra a mesma mensagem (evita enumeração de e-mails)
+            $sent = true;
         }
 
-        return $this->render('auth/reset_request.html.twig');
+        return $this->render('auth/forgot.html.twig', ['sent' => $sent]);
     }
 
-    #[Route('/redefinir-senha/{token}', name: 'app_reset_password', methods: ['GET', 'POST'])]
-    public function resetPassword(
-        string                      $token,
-        Request                     $request,
-        UserRepository              $userRepository,
-        UserPasswordHasherInterface $hasher,
-        EntityManagerInterface      $em,
-    ): Response {
-        $session = $request->getSession();
-        $userId  = $session->get('reset_token_' . $token);
-        $exp     = $session->get('reset_token_' . $token . '_exp', 0);
+    #[Route('/redefinir-senha/{token}', name: 'auth_reset', methods: ['GET', 'POST'])]
+    public function reset(string $token, Request $request): Response
+    {
+        $user = $this->userRepository->findByResetToken($token);
 
-        if (!$userId || time() > $exp) {
+        if (!$user || !$this->userRepository->isResetTokenValid($user)) {
             $this->addFlash('error', 'Link inválido ou expirado.');
-            return $this->redirectToRoute('app_reset_request');
-        }
-
-        $user = $userRepository->find($userId);
-        if (!$user) {
-            return $this->redirectToRoute('app_reset_request');
+            return $this->redirectToRoute('auth_forgot');
         }
 
         if ($request->isMethod('POST')) {
-            $password = $request->request->getString('password');
-            $confirm  = $request->request->getString('confirm');
+            $password = (string) $request->request->get('password', '');
+            $confirm  = (string) $request->request->get('confirm', '');
 
-            if ($password !== $confirm || strlen($password) < 8) {
-                $this->addFlash('error', 'As senhas não coincidem ou são muito curtas (mínimo 8 caracteres).');
-                return $this->redirectToRoute('app_reset_password', ['token' => $token]);
+            if (strlen($password) < 8) {
+                $this->addFlash('error', 'A senha deve ter ao menos 8 caracteres.');
+            } elseif ($password !== $confirm) {
+                $this->addFlash('error', 'As senhas não coincidem.');
+            } else {
+                $user->setPassword($this->hasher->hashPassword($user, $password));
+                $this->userRepository->clearResetToken($user);
+                $this->addFlash('success', 'Senha redefinida com sucesso. Faça login.');
+                return $this->redirectToRoute('auth_login');
             }
-
-            $user->setPassword($hasher->hashPassword($user, $password));
-            $em->flush();
-
-            $session->remove('reset_token_' . $token);
-            $session->remove('reset_token_' . $token . '_exp');
-
-            $this->addFlash('success', 'Senha redefinida com sucesso. Faça login.');
-            return $this->redirectToRoute('app_login');
         }
 
-        return $this->render('auth/reset_password.html.twig', ['token' => $token]);
+        return $this->render('auth/reset.html.twig', ['token' => $token]);
+    }
+
+    #[Route('/perfil', name: 'auth_profile')]
+    #[IsGranted('ROLE_USER')]
+    public function profile(Request $request): Response
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+
+        if ($request->isMethod('POST')) {
+            $name     = (string) $request->request->get('name', '');
+            $password = (string) $request->request->get('password', '');
+
+            if ($name) {
+                $user->setName($name);
+            }
+
+            if ($password) {
+                if (strlen($password) < 8) {
+                    $this->addFlash('error', 'A senha deve ter ao menos 8 caracteres.');
+                    return $this->redirectToRoute('auth_profile');
+                }
+                $user->setPassword($this->hasher->hashPassword($user, $password));
+            }
+
+            $this->userRepository->save($user);
+            $this->addFlash('success', 'Perfil atualizado.');
+            return $this->redirectToRoute('auth_profile');
+        }
+
+        return $this->render('auth/profile.html.twig', ['user' => $user]);
     }
 }

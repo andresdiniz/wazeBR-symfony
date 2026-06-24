@@ -1,7 +1,8 @@
 security:
     password_hashers:
         App\Entity\User:
-            algorithm: auto
+            algorithm: bcrypt
+            cost: 12
 
     providers:
         app_user_provider:
@@ -14,26 +15,37 @@ security:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
 
+        api_externa:
+            pattern: ^/api/externa
+            stateless: true
+            # Autenticação via TenantTokenListener (X-Api-Token)
+            # Não usa session — resolvido pelo EventListener
+
         main:
             lazy: true
             provider: app_user_provider
-            form_login:
-                login_path: app_login
-                check_path: app_login
-                default_target_path: app_dashboard
-                username_parameter: email
-                password_parameter: password
-                enable_csrf: true
+            custom_authenticators:
+                - App\Security\LoginFormAuthenticator
             logout:
-                path: app_logout
-                target: app_login
+                path: auth_logout
+                target: auth_login
+                invalidate_session: true
             remember_me:
                 secret: '%kernel.secret%'
-                lifetime: 604800
+                lifetime: 604800   # 7 dias
+                path: /
+            entry_point: App\Security\LoginFormAuthenticator
 
     access_control:
-        - { path: ^/login,           roles: PUBLIC_ACCESS }
-        - { path: ^/redefinir-senha, roles: PUBLIC_ACCESS }
-        - { path: ^/health,          roles: PUBLIC_ACCESS }
-        - { path: ^/api/externa,     roles: PUBLIC_ACCESS }
-        - { path: ^/,                roles: ROLE_USER }
+        - { path: ^/login,             roles: PUBLIC_ACCESS }
+        - { path: ^/esqueci-senha,     roles: PUBLIC_ACCESS }
+        - { path: ^/redefinir-senha,   roles: PUBLIC_ACCESS }
+        - { path: ^/api/externa,       roles: PUBLIC_ACCESS }
+        - { path: ^/health,            roles: PUBLIC_ACCESS }
+        - { path: ^/admin/partners,    roles: ROLE_SUPER_ADMIN }
+        - { path: ^/admin,             roles: ROLE_ADMIN }
+        - { path: ^/,                  roles: ROLE_USER }
+
+    role_hierarchy:
+        ROLE_ADMIN:       ROLE_USER
+        ROLE_SUPER_ADMIN: ROLE_ADMIN
