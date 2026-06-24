@@ -9,7 +9,6 @@ use App\Entity\Partner;
 use App\Repository\CemadenDataRepository;
 use App\Repository\PartnerRepository;
 use App\Service\TenantContext;
-use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -21,37 +20,39 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 #[AsCommand(
     name: 'app:cemaden:collect',
-    description: 'Coleta dados pluviométricos CEMADEN para todos os parceiros ativos.',
+    description: 'Coleta dados de chuva do CEMADEN para todos os parceiros ativos.',
 )]
 class CemadenCollectCommand extends Command
 {
-    private const BASE_URL = 'http://sjc.salvar.cemaden.gov.br/resources/graficos/interativo/getJson.php';
+    private const CEMADEN_URL = 'http://sjc.salvar.cemaden.gov.br/resources/graficos/interativo/getJson2.php';
 
     public function __construct(
-        private readonly PartnerRepository      $partnerRepository,
-        private readonly CemadenDataRepository  $cemadenRepository,
-        private readonly EntityManagerInterface $em,
-        private readonly HttpClientInterface    $httpClient,
-        private readonly TenantContext          $tenantContext,
-        private readonly LoggerInterface        $logger,
+        private readonly PartnerRepository    $partnerRepository,
+        private readonly CemadenDataRepository $cemadenRepo,
+        private readonly TenantContext        $tenantContext,
+        private readonly HttpClientInterface  $httpClient,
+        private readonly LoggerInterface      $logger,
     ) {
         parent::__construct();
     }
 
     protected function configure(): void
     {
-        $this->addOption('partner', 'p', InputOption::VALUE_OPTIONAL, 'Slug do parceiro específico');
+        $this
+            ->addOption('partner', 'p', InputOption::VALUE_OPTIONAL, 'Slug do parceiro')
+            ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Simula sem persistir');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $io = new SymfonyStyle($input, $output);
-        $io->title('Coleta CEMADEN — Multi-Tenant');
+        $io     = new SymfonyStyle($input, $output);
+        $dryRun = (bool) $input->getOption('dry-run');
+        $slug   = $input->getOption('partner');
 
-        $partnerSlug = $input->getOption('partner');
+        $io->title('WazeBR — Coleta CEMADEN');
 
-        $partners = $partnerSlug
-            ? array_filter($this->partnerRepository->findActivePartners(), fn ($p) => $p->getSlug() === $partnerSlug)
+        $partners = $slug
+            ? array_filter($this->partnerRepository->findActivePartners(), fn ($p) => $p->getSlug() === $slug)
             : $this->partnerRepository->findActivePartners();
 
         if (empty($partners)) {
@@ -61,80 +62,100 @@ class CemadenCollectCommand extends Command
 
         foreach ($partners as $partner) {
             $this->tenantContext->setPartner($partner);
-            $io->section("Parceiro: {$partner->getName()} [{$partner->getSlug()}]");
+            $io->section("[{$partner->getSlug()}] {$partner->getName()}");
 
             $states = $partner->getCemadenStates();
             if (empty($states)) {
-                $io->comment('Parceiro sem estados CEMADEN configurados. Pulando.');
+                $io->comment('Parceiro sem estados CEMADEN configurados — pulando.');
                 continue;
             }
 
+            $total = 0;
             foreach ($states as $state) {
                 try {
-                    $saved = $this->collectForState($state, $partner, $io);
-                    $io->text(" → {$state}: {$saved} estações salvas/atualizadas");
+                    $records = $this->fetchCemadenState($state);
+                    $count   = $this->persistRecords($partner, $records, $dryRun);
+                    $total  += $count;
+                    $io->writeln("  {$state}: {$count} estações" . ($dryRun ? ' (dry-run)' : ''));
+
+                    $this->logger->info('cemaden.collect.success', [
+                        'partner' => $partner->getSlug(),
+                        'state'   => $state,
+                        'count'   => $count,
+                    ]);
                 } catch (\Throwable $e) {
-                    $this->logger->error('Falha na coleta CEMADEN', [
+                    $io->error("Erro ao coletar {$state}: " . $e->getMessage());
+                    $this->logger->error('cemaden.collect.error', [
                         'partner' => $partner->getSlug(),
                         'state'   => $state,
                         'error'   => $e->getMessage(),
                     ]);
-                    $io->error("{$state}: {$e->getMessage()}");
                 }
             }
+
+            $io->success("Total: {$total} estações atualizadas.");
         }
 
-        $io->success('Coleta CEMADEN concluída.');
         return Command::SUCCESS;
     }
 
-    private function collectForState(string $state, Partner $partner, SymfonyStyle $io): int
+    private function fetchCemadenState(string $state): array
     {
-        $url = self::BASE_URL . '?uf=' . strtoupper($state);
-        $io->text("GET {$url}");
-
-        $response = $this->httpClient->request('GET', $url, [
-            'timeout' => 20,
-            'headers' => ['Accept' => 'application/json'],
+        $response = $this->httpClient->request('GET', self::CEMADEN_URL, [
+            'query'   => ['uf' => $state],
+            'timeout' => 30,
         ]);
 
-        $rows  = $response->toArray();
-        $saved = 0;
+        return $response->toArray();
+    }
 
-        foreach ($rows as $row) {
-            $stationCode = (string) ($row['codEstacao'] ?? '');
-            if (!$stationCode) continue;
+    private function persistRecords(Partner $partner, array $records, bool $dryRun): int
+    {
+        $count = 0;
+        $now   = new \DateTimeImmutable();
 
-            // Upsert: atualiza se já existe (dados recentes), insere se não existe
-            $existing = $this->cemadenRepository->findOneBy(['stationCode' => $stationCode, 'partner' => $partner]);
-            $entity   = $existing ?? new CemadenData();
+        foreach ($records as $raw) {
+            $code = (string) ($raw['codEstacao'] ?? $raw['codigo'] ?? '');
+            if (!$code) continue;
 
-            $entity
-                ->setPartner($partner)
-                ->setStationCode($stationCode)
-                ->setStationName((string) ($row['nomeEstacao'] ?? ''))
-                ->setMunicipality((string) ($row['municipio'] ?? ''))
-                ->setState(strtoupper((string) ($row['uf'] ?? $state)))
-                ->setLatitude((float) ($row['latitude'] ?? 0))
-                ->setLongitude((float) ($row['longitude'] ?? 0))
-                ->setAccumulatedRain((float) ($row['acc1hr'] ?? $row['acumulado'] ?? 0))
-                ->setAlertLevel($this->resolveAlertLevel((float) ($row['acc1hr'] ?? 0)))
-                ->setMeasuredAt(new \DateTimeImmutable());
+            $existing = $this->cemadenRepo->findOneBy(['stationCode' => $code, 'partner' => $partner]);
 
-            if (!$existing) {
-                $this->em->persist($entity);
+            $rain  = (float) ($raw['acc1hr'] ?? $raw['chuva'] ?? 0);
+            $level = $this->resolveAlertLevel($rain);
+
+            if ($existing) {
+                $existing->setAccumulatedRain($rain)
+                         ->setAlertLevel($level)
+                         ->setMeasuredAt($now);
+                if (!$dryRun) $this->cemadenRepo->save($existing, false);
+            } else {
+                $record = (new CemadenData())
+                    ->setPartner($partner)
+                    ->setStationCode($code)
+                    ->setStationName((string) ($raw['nomeEstacao'] ?? $raw['nome'] ?? $code))
+                    ->setMunicipality((string) ($raw['municipio'] ?? ''))
+                    ->setState((string) ($raw['uf'] ?? ''))
+                    ->setLatitude((float) ($raw['latitude'] ?? 0))
+                    ->setLongitude((float) ($raw['longitude'] ?? 0))
+                    ->setAccumulatedRain($rain)
+                    ->setAlertLevel($level)
+                    ->setMeasuredAt($now);
+
+                if (!$dryRun) $this->cemadenRepo->save($record, false);
             }
-
-            $saved++;
+            $count++;
         }
 
-        $this->em->flush();
-        return $saved;
+        if (!$dryRun && $count > 0) {
+            $this->cemadenRepo->getEntityManager()->flush();
+        }
+
+        return $count;
     }
 
     private function resolveAlertLevel(float $rain): string
     {
-        return match (true) {
+        return match(true) {
             $rain >= 50  => 'VERMELHO',
             $rain >= 30  => 'LARANJA',
             $rain >= 15  => 'AMARELO',

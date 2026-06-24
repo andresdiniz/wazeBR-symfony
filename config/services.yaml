@@ -1,12 +1,4 @@
 parameters:
-    app_name:          '%env(APP_NAME)%'
-    sender_email:      '%env(SENDER_EMAIL)%'
-    waze_api_url:      '%env(WAZE_API_URL)%'
-    waze_api_key:      '%env(WAZE_API_KEY)%'
-    waze_bbox:         '%env(WAZE_BBOX)%'
-    cemaden_api_url:   '%env(CEMADEN_API_URL)%'
-    cemaden_api_key:   '%env(CEMADEN_API_KEY)%'
-    api_externa_token: '%env(API_EXTERNA_TOKEN)%'
 
 services:
     _defaults:
@@ -20,31 +12,15 @@ services:
             - '../src/Entity/'
             - '../src/Kernel.php'
 
-    App\Service\WazeApiService:
+    # TenantContext como serviço compartilhado (shared: true é o default)
+    App\Service\TenantContext:
         arguments:
-            $apiUrl: '%waze_api_url%'
-            $apiKey: '%waze_api_key%'
-            $bbox:   '%waze_bbox%'
+            $security: '@security.helper'
+            $partnerRepository: '@App\Repository\PartnerRepository'
 
-    App\Service\CemadenService:
+    # HttpClient com timeout padrão para coleta
+    Symfony\Contracts\HttpClient\HttpClientInterface:
+        class: Symfony\Component\HttpClient\HttpClient
+        factory: ['Symfony\Component\HttpClient\HttpClient', 'create']
         arguments:
-            $apiUrl: '%cemaden_api_url%'
-            $apiKey: '%cemaden_api_key%'
-
-    App\Service\NotificationService:
-        arguments:
-            $appName:     '%app_name%'
-            $senderEmail: '%sender_email%'
-
-    App\Service\HealthCheckService:
-        arguments:
-            $connection: '@doctrine.dbal.default_connection'
-
-    App\Controller\AuthController:
-        arguments:
-            $appName:     '%app_name%'
-            $senderEmail: '%sender_email%'
-
-    App\Controller\ApiExternaController:
-        arguments:
-            $apiExternaToken: '%api_externa_token%'
+            - { timeout: 30, headers: { 'User-Agent': 'WazeBR-SaaS/1.0' } }
