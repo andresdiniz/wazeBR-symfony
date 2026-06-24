@@ -18,7 +18,6 @@ security:
     api_externa:
       pattern: ^/api/externa
       stateless: true
-      custom_authenticators: []
 
     main:
       lazy: true
