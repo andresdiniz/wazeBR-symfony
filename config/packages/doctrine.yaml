@@ -1,9 +1,6 @@
 doctrine:
     dbal:
         url: '%env(resolve:DATABASE_URL)%'
-        options:
-            1002: "SET NAMES utf8mb4"
-
         profiling_collect_backtrace: '%kernel.debug%'
         use_savepoints: true
 
@@ -16,6 +13,7 @@ doctrine:
         auto_mapping: true
         mappings:
             App:
+                type: attribute
                 is_bundle: false
                 dir: '%kernel.project_dir%/src/Entity'
                 prefix: 'App\Entity'

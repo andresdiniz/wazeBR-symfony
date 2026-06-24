@@ -1,8 +1,7 @@
 framework:
     secret: '%env(APP_SECRET)%'
-    http_method_override: false
+    http_method_override: true
     handle_all_throwables: true
-    csrf_protection: true
 
     session:
         handler_id: null
@@ -12,6 +11,8 @@ framework:
 
     php_errors:
         log: true
+
+    csrf_protection: true
 
 when@test:
     framework:
