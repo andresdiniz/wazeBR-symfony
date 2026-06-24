@@ -1,0 +1,36 @@
+{% extends 'base.html.twig' %}
+{% block title %}Notificações{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Notificações</h1>
+</div>
+
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Título</th>
+        <th>Lida</th>
+        <th>Data</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for notification in notifications %}
+      <tr class="{{ notification.isRead ? '' : 'row-unread' }}">
+        <td>{{ notification.title }}</td>
+        <td>{{ notification.isRead ? 'Sim' : 'Não' }}</td>
+        <td>{{ notification.createdAt|date('d/m/Y H:i') }}</td>
+        <td>
+          {% if not notification.isRead %}
+          <a href="{{ path('notification_mark_read', {id: notification.id}) }}" class="btn btn-sm">Marcar lida</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="empty-cell">Nenhuma notificação.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

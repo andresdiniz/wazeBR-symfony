@@ -1,0 +1,18 @@
+{% extends 'base.html.twig' %}
+{% block title %}Congestionamento #{{ jam.id }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <a href="{{ path('traffic_jam_index') }}" class="btn btn-ghost">&larr; Voltar</a>
+  <h1>Congestionamento #{{ jam.id }}</h1>
+</div>
+<div class="detail-card">
+  <dl>
+    <dt>Rua</dt><dd>{{ jam.street ?? '—' }}</dd>
+    <dt>Cidade</dt><dd>{{ jam.city ?? '—' }}</dd>
+    <dt>Nível</dt><dd>{{ jam.level ?? '—' }}</dd>
+    <dt>Velocidade</dt><dd>{{ jam.speedKmh is not null ? jam.speedKmh|number_format(1,',','.') ~ ' km/h' : '—' }}</dd>
+    <dt>Extensão</dt><dd>{{ jam.length is not null ? jam.length|number_format(0,',','.') ~ ' m' : '—' }}</dd>
+    <dt>Criado em</dt><dd>{{ jam.createdAt|date('d/m/Y H:i:s') }}</dd>
+  </dl>
+</div>
+{% endblock %}

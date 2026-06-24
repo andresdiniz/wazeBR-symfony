@@ -1,0 +1,54 @@
+{% extends 'base.html.twig' %}
+{% block title %}Alertas{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Alertas Waze</h1>
+</div>
+
+<form method="get" class="filter-bar">
+  <select name="type">
+    <option value="">Todos os tipos</option>
+    <option value="ACCIDENT" {% if type == 'ACCIDENT' %}selected{% endif %}>Acidente</option>
+    <option value="JAM" {% if type == 'JAM' %}selected{% endif %}>Congestionamento</option>
+    <option value="ROAD_CLOSED" {% if type == 'ROAD_CLOSED' %}selected{% endif %}>Via fechada</option>
+    <option value="HAZARD" {% if type == 'HAZARD' %}selected{% endif %}>Perigo</option>
+  </select>
+  <input type="text" name="city" value="{{ city }}" placeholder="Filtrar por cidade">
+  <button type="submit" class="btn btn-primary">Filtrar</button>
+</form>
+
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Tipo</th>
+        <th>Subtipo</th>
+        <th>Rua</th>
+        <th>Cidade</th>
+        <th>Confiança</th>
+        <th>Data</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for alert in alerts %}
+      <tr>
+        <td><span class="badge badge-warning">{{ alert.type }}</span></td>
+        <td>{{ alert.subtype ?? '—' }}</td>
+        <td>{{ alert.street ?? '—' }}</td>
+        <td>{{ alert.city ?? '—' }}</td>
+        <td>{{ alert.reliability ?? '—' }}</td>
+        <td>{{ alert.createdAt|date('d/m/Y H:i') }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="empty-cell">Nenhum alerta encontrado.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="pagination">
+  {% if page > 1 %}<a href="?page={{ page - 1 }}&type={{ type }}&city={{ city }}" class="btn btn-ghost">&laquo; Anterior</a>{% endif %}
+  <span>Página {{ page }}</span>
+  {% if alerts|length == 30 %}<a href="?page={{ page + 1 }}&type={{ type }}&city={{ city }}" class="btn btn-ghost">Próxima &raquo;</a>{% endif %}
+</div>
+{% endblock %}

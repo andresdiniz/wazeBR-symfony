@@ -1,0 +1,21 @@
+{% extends 'base.html.twig' %}
+{% block title %}Alerta #{{ alert.id }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <a href="{{ path('alert_index') }}" class="btn btn-ghost">&larr; Voltar</a>
+  <h1>Alerta #{{ alert.id }}</h1>
+</div>
+<div class="detail-card">
+  <dl>
+    <dt>Tipo</dt><dd>{{ alert.type }}</dd>
+    <dt>Subtipo</dt><dd>{{ alert.subtype ?? '—' }}</dd>
+    <dt>Rua</dt><dd>{{ alert.street ?? '—' }}</dd>
+    <dt>Cidade</dt><dd>{{ alert.city ?? '—' }}</dd>
+    <dt>País</dt><dd>{{ alert.country ?? '—' }}</dd>
+    <dt>Confiança</dt><dd>{{ alert.reliability ?? '—' }}</dd>
+    <dt>Latitude</dt><dd>{{ alert.lat ?? '—' }}</dd>
+    <dt>Longitude</dt><dd>{{ alert.lon ?? '—' }}</dd>
+    <dt>Criado em</dt><dd>{{ alert.createdAt|date('d/m/Y H:i:s') }}</dd>
+  </dl>
+</div>
+{% endblock %}

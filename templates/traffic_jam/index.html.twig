@@ -1,0 +1,53 @@
+{% extends 'base.html.twig' %}
+{% block title %}Congestionamentos{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Congestionamentos</h1>
+</div>
+
+<form method="get" class="filter-bar">
+  <select name="level">
+    <option value="0">Todos os níveis</option>
+    {% for l in 1..5 %}
+    <option value="{{ l }}" {% if minLevel == l %}selected{% endif %}>Nível {{ l }}+</option>
+    {% endfor %}
+  </select>
+  <input type="text" name="city" value="{{ city }}" placeholder="Filtrar por cidade">
+  <button type="submit" class="btn btn-primary">Filtrar</button>
+</form>
+
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Rua</th>
+        <th>Cidade</th>
+        <th>Nível</th>
+        <th>Velocidade (km/h)</th>
+        <th>Extensão (m)</th>
+        <th>Data</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for jam in jams %}
+      <tr>
+        <td>{{ jam.street ?? '—' }}</td>
+        <td>{{ jam.city ?? '—' }}</td>
+        <td><span class="badge badge-danger">{{ jam.level ?? '—' }}</span></td>
+        <td>{{ jam.speedKmh is not null ? jam.speedKmh|number_format(1, ',', '.') : '—' }}</td>
+        <td>{{ jam.length is not null ? jam.length|number_format(0, ',', '.') : '—' }}</td>
+        <td>{{ jam.createdAt|date('d/m/Y H:i') }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="empty-cell">Nenhum congestionamento encontrado.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="pagination">
+  {% if page > 1 %}<a href="?page={{ page - 1 }}&level={{ minLevel }}&city={{ city }}" class="btn btn-ghost">&laquo; Anterior</a>{% endif %}
+  <span>Página {{ page }}</span>
+  {% if jams|length == 30 %}<a href="?page={{ page + 1 }}&level={{ minLevel }}&city={{ city }}" class="btn btn-ghost">Próxima &raquo;</a>{% endif %}
+</div>
+{% endblock %}

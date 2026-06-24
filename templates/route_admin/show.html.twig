@@ -1,0 +1,32 @@
+{% extends 'base.html.twig' %}
+{% block title %}Rota: {{ route.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <a href="{{ path('route_admin_index') }}" class="btn btn-ghost">&larr; Voltar</a>
+  <h1>{{ route.name }}</h1>
+</div>
+<div class="detail-card">
+  <dl>
+    <dt>Descrição</dt><dd>{{ route.description ?? '—' }}</dd>
+    <dt>Ativa</dt><dd>{{ route.isActive ? 'Sim' : 'Não' }}</dd>
+    <dt>Criada em</dt><dd>{{ route.createdAt|date('d/m/Y H:i') }}</dd>
+  </dl>
+</div>
+<h2>Links da Rota</h2>
+<div class="table-wrapper">
+  <table>
+    <thead><tr><th>Nome</th><th>Tipo</th><th>Ativa</th></tr></thead>
+    <tbody>
+      {% for link in route.links %}
+      <tr>
+        <td>{{ link.name }}</td>
+        <td>{{ link.type }}</td>
+        <td>{{ link.isActive ? 'Sim' : 'Não' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3" class="empty-cell">Nenhum link cadastrado.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

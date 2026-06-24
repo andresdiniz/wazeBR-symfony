@@ -1,0 +1,42 @@
+{% extends 'base.html.twig' %}
+{% block title %}CEMADEN{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Dados CEMADEN</h1>
+</div>
+
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Estação</th>
+        <th>Município</th>
+        <th>Estado</th>
+        <th>Chuva Acumulada (mm)</th>
+        <th>Nível</th>
+        <th>Medido em</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in data %}
+      <tr>
+        <td>{{ item.stationCode ?? '—' }}</td>
+        <td>{{ item.municipality ?? '—' }}</td>
+        <td>{{ item.state ?? '—' }}</td>
+        <td>{{ item.accumulatedRain is not null ? item.accumulatedRain|number_format(1,',','.') : '—' }}</td>
+        <td>{{ item.alertLevel ?? '—' }}</td>
+        <td>{{ item.measuredAt|date('d/m/Y H:i') }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="empty-cell">Nenhum dado CEMADEN encontrado.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="pagination">
+  {% if page is defined and page > 1 %}<a href="?page={{ page - 1 }}" class="btn btn-ghost">&laquo; Anterior</a>{% endif %}
+  {% if page is defined %}<span>Página {{ page }}</span>{% endif %}
+  {% if data|length == 30 %}<a href="?page={{ (page ?? 1) + 1 }}" class="btn btn-ghost">Próxima &raquo;</a>{% endif %}
+</div>
+{% endblock %}
