@@ -26,7 +26,7 @@
   </form>
 </div>
 
-<h2 style="margin-top:2rem">Sub-rotas (links)</h2>
+<h2 style="margin-top:2rem">Sub-rotas ({{ route.routeLinks|length }})</h2>
 
 <div class="table-wrapper">
   <table>
@@ -38,7 +38,7 @@
       </tr>
     </thead>
     <tbody id="links-body">
-      {% for link in route.links %}
+      {% for link in route.routeLinks %}
       <tr id="link-row-{{ link.id }}">
         <td>{{ link.sortOrder }}</td>
         <td>{{ link.name }}</td>
