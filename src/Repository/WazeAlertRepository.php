@@ -36,7 +36,6 @@ class WazeAlertRepository extends ServiceEntityRepository
     public function findActiveByPartner(Partner $partner): array
     {
         $since = (new \DateTimeImmutable('-2 hours'))->getTimestamp() * 1000;
-
         return $this->createQueryBuilder('a')
             ->where('a.partner = :p')->setParameter('p', $partner)
             ->andWhere('a.pubMillis >= :since')->setParameter('since', $since)
@@ -44,12 +43,23 @@ class WazeAlertRepository extends ServiceEntityRepository
             ->getQuery()->getResult();
     }
 
+    public function findCriticalByPartner(Partner $partner, int $minReliability = 8): array
+    {
+        $since = (new \DateTimeImmutable('-1 hour'))->getTimestamp() * 1000;
+        return $this->createQueryBuilder('a')
+            ->where('a.partner = :p')->setParameter('p', $partner)
+            ->andWhere('a.reliability >= :rel')->setParameter('rel', $minReliability)
+            ->andWhere('a.pubMillis >= :since')->setParameter('since', $since)
+            ->orderBy('a.reliability', 'DESC')
+            ->getQuery()->getResult();
+    }
+
     public function findFilteredByPartner(
-        Partner  $partner,
-        ?string  $type    = null,
-        ?string  $city    = null,
-        int      $page    = 1,
-        int      $limit   = 30,
+        Partner $partner,
+        ?string $type  = null,
+        ?string $city  = null,
+        int     $page  = 1,
+        int     $limit = 30,
     ): array {
         $qb = $this->createQueryBuilder('a')
             ->where('a.partner = :p')->setParameter('p', $partner)
@@ -57,12 +67,8 @@ class WazeAlertRepository extends ServiceEntityRepository
             ->setFirstResult(($page - 1) * $limit)
             ->setMaxResults($limit);
 
-        if ($type) {
-            $qb->andWhere('a.type = :type')->setParameter('type', $type);
-        }
-        if ($city) {
-            $qb->andWhere('a.city LIKE :city')->setParameter('city', "%{$city}%");
-        }
+        if ($type) $qb->andWhere('a.type = :type')->setParameter('type', $type);
+        if ($city) $qb->andWhere('a.city LIKE :city')->setParameter('city', "%{$city}%");
 
         return $qb->getQuery()->getResult();
     }

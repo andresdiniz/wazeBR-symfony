@@ -1,40 +1,50 @@
 security:
-    password_hashers:
-        App\Entity\User:
-            algorithm: bcrypt
-            cost: 12
+  password_hashers:
+    App\Entity\User:
+      algorithm: bcrypt
+      cost: 12
 
-    providers:
-        app_user_provider:
-            entity:
-                class: App\Entity\User
-                property: email
+  providers:
+    app_user_provider:
+      entity:
+        class: App\Entity\User
+        property: email
 
-    firewalls:
-        dev:
-            pattern: ^/(_(profiler|wdt)|css|images|js)/
-            security: false
+  firewalls:
+    dev:
+      pattern: ^/(_(profiler|wdt)|css|images|js)/
+      security: false
 
-        main:
-            lazy: true
-            provider: app_user_provider
-            custom_authenticator: App\Security\LoginFormAuthenticator
-            logout:
-                path: security_logout
-                target: security_login
-            remember_me:
-                secret: '%kernel.secret%'
-                lifetime: 604800
-                always_remember_me: false
-            entry_point: App\Security\LoginFormAuthenticator
+    api_externa:
+      pattern: ^/api/externa
+      stateless: true
+      custom_authenticators: []
 
-    access_control:
-        - { path: ^/login,       roles: PUBLIC_ACCESS }
-        - { path: ^/senha,       roles: PUBLIC_ACCESS }
-        - { path: ^/api/externa, roles: PUBLIC_ACCESS }
-        - { path: ^/admin,       roles: ROLE_ADMIN }
-        - { path: ^/,            roles: ROLE_USER }
+    main:
+      lazy: true
+      provider: app_user_provider
+      form_login:
+        login_path: auth_login
+        check_path: auth_login
+        username_parameter: email
+        password_parameter: password
+        default_target_path: dashboard_index
+        enable_csrf: true
+      logout:
+        path: auth_logout
+        target: auth_login
+      remember_me:
+        secret: '%kernel.secret%'
+        lifetime: 604800
+        always_remember_me: false
 
-    role_hierarchy:
-        ROLE_ADMIN:       ROLE_USER
-        ROLE_SUPER_ADMIN: ROLE_ADMIN
+  access_control:
+    - { path: ^/login,          roles: PUBLIC_ACCESS }
+    - { path: ^/senha,          roles: PUBLIC_ACCESS }
+    - { path: ^/api/externa,    roles: PUBLIC_ACCESS }
+    - { path: ^/admin,          roles: ROLE_ADMIN }
+    - { path: ^/,               roles: ROLE_USER }
+
+  role_hierarchy:
+    ROLE_ADMIN:       ROLE_USER
+    ROLE_SUPER_ADMIN: ROLE_ADMIN

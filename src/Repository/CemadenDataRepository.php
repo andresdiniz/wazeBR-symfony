@@ -32,6 +32,17 @@ class CemadenDataRepository extends ServiceEntityRepository
             ->getQuery()->getResult();
     }
 
+    public function findByPartnerAndLevels(Partner $partner, array $levels): array
+    {
+        $since = new \DateTimeImmutable('-2 hours');
+        return $this->createQueryBuilder('c')
+            ->where('c.partner = :p')->setParameter('p', $partner)
+            ->andWhere('c.alertLevel IN (:levels)')->setParameter('levels', $levels)
+            ->andWhere('c.measuredAt >= :since')->setParameter('since', $since)
+            ->orderBy('c.accumulatedRain', 'DESC')
+            ->getQuery()->getResult();
+    }
+
     public function findFilteredByPartner(
         Partner $partner,
         ?string $alertLevel = null,
@@ -41,12 +52,8 @@ class CemadenDataRepository extends ServiceEntityRepository
             ->where('c.partner = :p')->setParameter('p', $partner)
             ->orderBy('c.accumulatedRain', 'DESC');
 
-        if ($alertLevel) {
-            $qb->andWhere('c.alertLevel = :level')->setParameter('level', strtoupper($alertLevel));
-        }
-        if ($state) {
-            $qb->andWhere('c.state = :state')->setParameter('state', strtoupper($state));
-        }
+        if ($alertLevel) $qb->andWhere('c.alertLevel = :level')->setParameter('level', strtoupper($alertLevel));
+        if ($state)      $qb->andWhere('c.state = :state')->setParameter('state', strtoupper($state));
 
         return $qb->getQuery()->getResult();
     }

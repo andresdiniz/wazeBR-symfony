@@ -9,7 +9,6 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: NotificationRepository::class)]
 #[ORM\Table(name: 'notifications')]
-#[ORM\HasLifecycleCallbacks]
 class Notification
 {
     #[ORM\Id]
@@ -17,43 +16,50 @@ class Notification
     #[ORM\Column]
     private ?int $id = null;
 
+    #[ORM\ManyToOne(targetEntity: Partner::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?Partner $partner = null;
+
     #[ORM\ManyToOne(targetEntity: User::class)]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private User $user;
 
+    /** waze_alert | cemaden | system */
     #[ORM\Column(length: 40)]
-    private string $type;
+    private string $type = 'system';
 
-    #[ORM\Column(length: 255)]
-    private string $title;
+    #[ORM\Column(length: 180)]
+    private string $title = '';
 
-    #[ORM\Column(type: 'text', nullable: true)]
-    private ?string $body = null;
+    #[ORM\Column(type: 'text')]
+    private string $body = '';
 
     #[ORM\Column]
     private bool $isRead = false;
 
-    #[ORM\Column(type: 'json', nullable: true)]
-    private ?array $payload = null;
+    /** Referência ao wazeId ou stationCode para dedup */
+    #[ORM\Column(length: 120, nullable: true)]
+    private ?string $referenceId = null;
 
-    #[ORM\Column(type: 'datetime_immutable')]
+    #[ORM\Column]
     private \DateTimeImmutable $createdAt;
 
-    #[ORM\PrePersist]
-    public function onPrePersist(): void { $this->createdAt = new \DateTimeImmutable(); }
+    public function __construct() { $this->createdAt = new \DateTimeImmutable(); }
 
     public function getId(): ?int { return $this->id; }
+    public function getPartner(): ?Partner { return $this->partner; }
+    public function setPartner(?Partner $p): static { $this->partner = $p; return $this; }
     public function getUser(): User { return $this->user; }
-    public function setUser(User $user): static { $this->user = $user; return $this; }
+    public function setUser(User $u): static { $this->user = $u; return $this; }
     public function getType(): string { return $this->type; }
-    public function setType(string $type): static { $this->type = $type; return $this; }
+    public function setType(string $t): static { $this->type = $t; return $this; }
     public function getTitle(): string { return $this->title; }
-    public function setTitle(string $title): static { $this->title = $title; return $this; }
-    public function getBody(): ?string { return $this->body; }
-    public function setBody(?string $body): static { $this->body = $body; return $this; }
+    public function setTitle(string $t): static { $this->title = $t; return $this; }
+    public function getBody(): string { return $this->body; }
+    public function setBody(string $b): static { $this->body = $b; return $this; }
     public function isRead(): bool { return $this->isRead; }
-    public function setIsRead(bool $isRead): static { $this->isRead = $isRead; return $this; }
-    public function getPayload(): ?array { return $this->payload; }
-    public function setPayload(?array $payload): static { $this->payload = $payload; return $this; }
+    public function markAsRead(): static { $this->isRead = true; return $this; }
+    public function getReferenceId(): ?string { return $this->referenceId; }
+    public function setReferenceId(?string $r): static { $this->referenceId = $r; return $this; }
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
 }
