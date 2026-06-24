@@ -1,5 +1,10 @@
 parameters:
-    app.api_externa_token: '%env(string:API_EXTERNA_TOKEN)%'
+    app.api_externa_token:  '%env(string:API_EXTERNA_TOKEN)%'
+    app.waze_api_url:       '%env(string:WAZE_API_URL)%'
+    app.waze_api_key:       '%env(string:WAZE_API_KEY)%'
+    app.waze_bbox:          '%env(string:WAZE_BBOX)%'
+    app.cemaden_api_url:    '%env(string:CEMADEN_API_URL)%'
+    app.cemaden_api_key:    '%env(string:CEMADEN_API_KEY)%'
 
 services:
     _defaults:
@@ -16,3 +21,14 @@ services:
     App\Controller\ApiExternaController:
         arguments:
             $apiExternaToken: '%app.api_externa_token%'
+
+    App\Service\WazeApiService:
+        arguments:
+            $apiUrl: '%app.waze_api_url%'
+            $apiKey: '%app.waze_api_key%'
+            $bbox:   '%app.waze_bbox%'
+
+    App\Service\CemadenService:
+        arguments:
+            $apiUrl: '%app.cemaden_api_url%'
+            $apiKey: '%app.cemaden_api_key%'
