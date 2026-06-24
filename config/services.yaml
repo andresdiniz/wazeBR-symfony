@@ -1,4 +1,5 @@
 parameters:
+    app.api_externa_token: '%env(string:API_EXTERNA_TOKEN)%'
 
 services:
     _defaults:
@@ -11,3 +12,7 @@ services:
             - '../src/DependencyInjection/'
             - '../src/Entity/'
             - '../src/Kernel.php'
+
+    App\Controller\ApiExternaController:
+        arguments:
+            $apiExternaToken: '%app.api_externa_token%'
