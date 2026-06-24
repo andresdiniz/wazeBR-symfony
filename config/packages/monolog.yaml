@@ -1,0 +1,53 @@
+monolog:
+    channels:
+        - waze
+        - cemaden
+
+when@prod:
+    monolog:
+        handlers:
+            main:
+                type:   fingers_crossed
+                action_level: error
+                handler: nested
+                excluded_http_codes: [404, 405]
+                buffer_size: 50
+            nested:
+                type:  rotating_file
+                path:  '%kernel.logs_dir%/%kernel.environment%.log'
+                level: debug
+                max_files: 14
+            waze:
+                type:  rotating_file
+                path:  '%kernel.logs_dir%/waze.log'
+                level: debug
+                max_files: 7
+                channels: [waze]
+            cemaden:
+                type:  rotating_file
+                path:  '%kernel.logs_dir%/cemaden.log'
+                level: debug
+                max_files: 7
+                channels: [cemaden]
+            console:
+                type:    console
+                process_psr_3_messages: false
+                channels: ['!event', '!doctrine']
+
+when@dev:
+    monolog:
+        handlers:
+            main:
+                type:  stream
+                path:  '%kernel.logs_dir%/%kernel.environment%.log'
+                level: debug
+            waze:
+                type:    stream
+                path:    '%kernel.logs_dir%/waze.log'
+                level:   debug
+                channels: [waze]
+            cemaden:
+                type:    stream
+                path:    '%kernel.logs_dir%/cemaden.log'
+                level:   debug
+                channels: [cemaden]

@@ -1,0 +1,50 @@
+parameters:
+    app_name:          '%env(APP_NAME)%'
+    sender_email:      '%env(SENDER_EMAIL)%'
+    waze_api_url:      '%env(WAZE_API_URL)%'
+    waze_api_key:      '%env(WAZE_API_KEY)%'
+    waze_bbox:         '%env(WAZE_BBOX)%'
+    cemaden_api_url:   '%env(CEMADEN_API_URL)%'
+    cemaden_api_key:   '%env(CEMADEN_API_KEY)%'
+    api_externa_token: '%env(API_EXTERNA_TOKEN)%'
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Entity/'
+            - '../src/Kernel.php'
+
+    App\Service\WazeApiService:
+        arguments:
+            $apiUrl: '%waze_api_url%'
+            $apiKey: '%waze_api_key%'
+            $bbox:   '%waze_bbox%'
+
+    App\Service\CemadenService:
+        arguments:
+            $apiUrl: '%cemaden_api_url%'
+            $apiKey: '%cemaden_api_key%'
+
+    App\Service\NotificationService:
+        arguments:
+            $appName:     '%app_name%'
+            $senderEmail: '%sender_email%'
+
+    App\Service\HealthCheckService:
+        arguments:
+            $connection: '@doctrine.dbal.default_connection'
+
+    App\Controller\AuthController:
+        arguments:
+            $appName:     '%app_name%'
+            $senderEmail: '%sender_email%'
+
+    App\Controller\ApiExternaController:
+        arguments:
+            $apiExternaToken: '%api_externa_token%'
