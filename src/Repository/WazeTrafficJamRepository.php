@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\Partner;
 use App\Entity\WazeTrafficJam;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -15,54 +16,69 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
         parent::__construct($registry, WazeTrafficJam::class);
     }
 
-    public function findRecentJams(int $hours = 2): array
+    public function countByPartner(Partner $partner): int
     {
-        $since = (int) ((time() - $hours * 3600) * 1000);
+        return (int) $this->createQueryBuilder('j')
+            ->select('COUNT(j.id)')
+            ->where('j.partner = :p')->setParameter('p', $partner)
+            ->getQuery()->getSingleScalarResult();
+    }
+
+    public function findRecentByPartner(Partner $partner, int $limit = 5): array
+    {
         return $this->createQueryBuilder('j')
-            ->where('j.pubMillis > :since')
-            ->setParameter('since', $since)
+            ->where('j.partner = :p')->setParameter('p', $partner)
+            ->orderBy('j.pubMillis', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()->getResult();
+    }
+
+    public function findActiveByPartner(Partner $partner): array
+    {
+        $since = (new \DateTimeImmutable('-2 hours'))->getTimestamp() * 1000;
+
+        return $this->createQueryBuilder('j')
+            ->where('j.partner = :p')->setParameter('p', $partner)
+            ->andWhere('j.pubMillis >= :since')->setParameter('since', $since)
             ->orderBy('j.level', 'DESC')
             ->getQuery()->getResult();
     }
 
-    public function findFiltered(int $hours = 2, ?string $city = null, ?int $level = null): array
-    {
-        $since = (int) ((time() - $hours * 3600) * 1000);
+    public function findFilteredByPartner(
+        Partner  $partner,
+        ?int     $minLevel = null,
+        ?string  $city     = null,
+        int      $page     = 1,
+        int      $limit    = 30,
+    ): array {
         $qb = $this->createQueryBuilder('j')
-            ->where('j.pubMillis > :since')
-            ->setParameter('since', $since);
+            ->where('j.partner = :p')->setParameter('p', $partner)
+            ->orderBy('j.level', 'DESC')
+            ->addOrderBy('j.pubMillis', 'DESC')
+            ->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit);
 
+        if ($minLevel !== null) {
+            $qb->andWhere('j.level >= :level')->setParameter('level', $minLevel);
+        }
         if ($city) {
             $qb->andWhere('j.city LIKE :city')->setParameter('city', "%{$city}%");
         }
-        if ($level !== null) {
-            $qb->andWhere('j.level >= :level')->setParameter('level', $level);
-        }
 
-        return $qb->orderBy('j.level', 'DESC')->getQuery()->getResult();
+        return $qb->getQuery()->getResult();
     }
 
-    public function countByDate(\DateTimeImmutable $date): int
+    public function findOneByPartner(int $id, Partner $partner): ?WazeTrafficJam
     {
-        $end = $date->modify('+1 day');
-        return (int) $this->createQueryBuilder('j')
-            ->select('COUNT(j.id)')
-            ->where('j.createdAt >= :start AND j.createdAt < :end')
-            ->setParameter('start', $date)
-            ->setParameter('end', $end)
-            ->getQuery()->getSingleScalarResult();
-    }
-
-    public function countGroupedByLevel(\DateTimeImmutable $date): array
-    {
-        $end = $date->modify('+1 day');
         return $this->createQueryBuilder('j')
-            ->select('j.level, COUNT(j.id) as total')
-            ->where('j.createdAt >= :start AND j.createdAt < :end')
-            ->setParameter('start', $date)
-            ->setParameter('end', $end)
-            ->groupBy('j.level')
-            ->orderBy('j.level', 'DESC')
-            ->getQuery()->getArrayResult();
+            ->where('j.id = :id')->setParameter('id', $id)
+            ->andWhere('j.partner = :p')->setParameter('p', $partner)
+            ->getQuery()->getOneOrNullResult();
+    }
+
+    public function save(WazeTrafficJam $jam, bool $flush = true): void
+    {
+        $this->getEntityManager()->persist($jam);
+        if ($flush) $this->getEntityManager()->flush();
     }
 }

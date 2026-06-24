@@ -19,8 +19,7 @@ class WazeRouteRepository extends ServiceEntityRepository
     public function findByPartner(Partner $partner, bool $activeOnly = true): array
     {
         $qb = $this->createQueryBuilder('r')
-            ->where('r.partner = :partner')
-            ->setParameter('partner', $partner)
+            ->where('r.partner = :p')->setParameter('p', $partner)
             ->orderBy('r.name', 'ASC');
 
         if ($activeOnly) {
@@ -28,6 +27,14 @@ class WazeRouteRepository extends ServiceEntityRepository
         }
 
         return $qb->getQuery()->getResult();
+    }
+
+    public function findOneByPartner(int $id, Partner $partner): ?WazeRoute
+    {
+        return $this->createQueryBuilder('r')
+            ->where('r.id = :id')->setParameter('id', $id)
+            ->andWhere('r.partner = :p')->setParameter('p', $partner)
+            ->getQuery()->getOneOrNullResult();
     }
 
     public function save(WazeRoute $route, bool $flush = true): void

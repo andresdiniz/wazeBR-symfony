@@ -42,6 +42,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $lastLoginAt = null;
 
+    /**
+     * Parceiro (tenant) ao qual este usuário pertence.
+     * Nullable: super admins globais não possuem parceiro.
+     */
+    #[ORM\ManyToOne(targetEntity: Partner::class, inversedBy: 'users')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?Partner $partner = null;
+
     #[ORM\PrePersist]
     public function onPrePersist(): void
     {
@@ -64,4 +72,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function getLastLoginAt(): ?\DateTimeImmutable { return $this->lastLoginAt; }
     public function setLastLoginAt(\DateTimeImmutable $lastLoginAt): static { $this->lastLoginAt = $lastLoginAt; return $this; }
     public function eraseCredentials(): void {}
+
+    public function getPartner(): ?Partner { return $this->partner; }
+    public function setPartner(?Partner $partner): static { $this->partner = $partner; return $this; }
+
+    /** Retorna true se o usuário é super admin global (sem parceiro vinculado). */
+    public function isSuperAdmin(): bool
+    {
+        return in_array('ROLE_SUPER_ADMIN', $this->getRoles(), true);
+    }
 }

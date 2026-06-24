@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\CemadenData;
+use App\Entity\Partner;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -15,26 +16,52 @@ class CemadenDataRepository extends ServiceEntityRepository
         parent::__construct($registry, CemadenData::class);
     }
 
-    public function findActiveAlerts(): array
+    public function countByPartner(Partner $partner): int
     {
-        $since = new \DateTimeImmutable('-6 hours');
+        return (int) $this->createQueryBuilder('c')
+            ->select('COUNT(c.id)')
+            ->where('c.partner = :p')->setParameter('p', $partner)
+            ->getQuery()->getSingleScalarResult();
+    }
+
+    public function findByPartner(Partner $partner): array
+    {
         return $this->createQueryBuilder('c')
-            ->where('c.measuredAt >= :since')
-            ->andWhere('c.alertLevel IS NOT NULL')
-            ->setParameter('since', $since)
-            ->orderBy('c.measuredAt', 'DESC')
+            ->where('c.partner = :p')->setParameter('p', $partner)
+            ->orderBy('c.accumulatedRain', 'DESC')
             ->getQuery()->getResult();
     }
 
-    public function countActiveAlerts(): int
+    public function findFilteredByPartner(
+        Partner $partner,
+        ?string $alertLevel = null,
+        ?string $state      = null,
+    ): array {
+        $qb = $this->createQueryBuilder('c')
+            ->where('c.partner = :p')->setParameter('p', $partner)
+            ->orderBy('c.accumulatedRain', 'DESC');
+
+        if ($alertLevel) {
+            $qb->andWhere('c.alertLevel = :level')->setParameter('level', strtoupper($alertLevel));
+        }
+        if ($state) {
+            $qb->andWhere('c.state = :state')->setParameter('state', strtoupper($state));
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
+    public function findOneByPartner(int $id, Partner $partner): ?CemadenData
     {
-        $since = new \DateTimeImmutable('-6 hours');
-        return (int) $this->createQueryBuilder('c')
-            ->select('COUNT(c.id)')
-            ->where('c.measuredAt >= :since')
-            ->andWhere('c.alertLevel IS NOT NULL AND c.alertLevel != :none')
-            ->setParameter('since', $since)
-            ->setParameter('none', 'VERDE')
-            ->getQuery()->getSingleScalarResult();
+        return $this->createQueryBuilder('c')
+            ->where('c.id = :id')->setParameter('id', $id)
+            ->andWhere('c.partner = :p')->setParameter('p', $partner)
+            ->getQuery()->getOneOrNullResult();
+    }
+
+    public function save(CemadenData $data, bool $flush = true): void
+    {
+        $this->getEntityManager()->persist($data);
+        if ($flush) $this->getEntityManager()->flush();
     }
 }
