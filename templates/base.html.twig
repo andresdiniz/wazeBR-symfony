@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}WazeBR{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap" rel="stylesheet">
+    <style>
+        :root,[data-theme="light"]{--color-bg:#f7f6f2;--color-surface:#f9f8f5;--color-surface-2:#fbfbf9;--color-border:#d4d1ca;--color-text:#28251d;--color-text-muted:#7a7974;--color-primary:#01696f;--color-primary-hover:#0c4e54;--color-error:#a12c7b;--color-success:#437a22;--color-warning:#964219;--color-divider:#dcd9d5;--shadow-md:0 4px 12px oklch(0.2 0.01 80/0.08);--radius-md:0.5rem;--radius-lg:0.75rem;--font-body:'Inter',sans-serif;--text-sm:clamp(0.875rem,0.8rem + 0.35vw,1rem);--text-base:clamp(1rem,0.95rem + 0.25vw,1.125rem);--text-lg:clamp(1.125rem,1rem + 0.75vw,1.5rem);--text-xl:clamp(1.5rem,1.2rem + 1.25vw,2.25rem)}
+        [data-theme="dark"]{--color-bg:#171614;--color-surface:#1c1b19;--color-surface-2:#201f1d;--color-border:#393836;--color-text:#cdccca;--color-text-muted:#797876;--color-primary:#4f98a3;--color-primary-hover:#227f8b;--color-error:#d163a7;--color-success:#6daa45;--color-warning:#bb653b;--color-divider:#262523;--shadow-md:0 4px 12px oklch(0 0 0/0.3)}
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        html{-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
+        body{min-height:100dvh;font-family:var(--font-body);font-size:var(--text-base);color:var(--color-text);background:var(--color-bg);display:flex;flex-direction:column}
+        a{color:var(--color-primary);text-decoration:none}a:hover{color:var(--color-primary-hover)}
+        img{display:block;max-width:100%;height:auto}
+        button{cursor:pointer;border:none;background:none;font:inherit;color:inherit}
+        .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.6rem 1.25rem;border-radius:var(--radius-md);font-size:var(--text-sm);font-weight:500;transition:background 180ms,color 180ms,box-shadow 180ms}
+        .btn-primary{background:var(--color-primary);color:#fff}.btn-primary:hover{background:var(--color-primary-hover)}
+        .btn-ghost{background:transparent;border:1px solid var(--color-border);color:var(--color-text)}.btn-ghost:hover{background:var(--color-surface-2)}
+        .container{max-width:1200px;margin-inline:auto;padding-inline:1.5rem}
+        /* Layout */
+        .layout{display:grid;grid-template-columns:240px 1fr;min-height:100dvh}
+        .sidebar{background:var(--color-surface);border-right:1px solid var(--color-border);padding:1.5rem 0;display:flex;flex-direction:column;gap:.25rem}
+        .sidebar-logo{padding:.5rem 1.5rem 1.25rem;font-weight:700;font-size:var(--text-lg);color:var(--color-text);border-bottom:1px solid var(--color-divider);margin-bottom:.5rem}
+        .sidebar a{display:flex;align-items:center;gap:.75rem;padding:.6rem 1.5rem;color:var(--color-text-muted);border-radius:0;font-size:var(--text-sm);transition:background 150ms,color 150ms}
+        .sidebar a:hover,.sidebar a.active{background:color-mix(in oklch,var(--color-primary) 10%,transparent);color:var(--color-primary)}
+        .main-content{overflow:auto;padding:2rem}
+        /* Cards */
+        .card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:1.5rem;box-shadow:var(--shadow-md)}
+        .kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-bottom:2rem}
+        .kpi{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:1.25rem}
+        .kpi-value{font-size:var(--text-xl);font-weight:700;color:var(--color-text);font-variant-numeric:tabular-nums}
+        .kpi-label{font-size:var(--text-sm);color:var(--color-text-muted);margin-top:.25rem}
+        /* Alerts */
+        .flash{padding:.75rem 1rem;border-radius:var(--radius-md);margin-bottom:1rem;font-size:var(--text-sm)}
+        .flash-success{background:color-mix(in oklch,var(--color-success) 15%,transparent);color:var(--color-success);border:1px solid color-mix(in oklch,var(--color-success) 30%,transparent)}
+        .flash-error{background:color-mix(in oklch,var(--color-error) 15%,transparent);color:var(--color-error);border:1px solid color-mix(in oklch,var(--color-error) 30%,transparent)}
+        /* Theme toggle */
+        .theme-toggle{margin-left:auto;padding:.4rem;border-radius:var(--radius-md);color:var(--color-text-muted)}
+        .theme-toggle:hover{background:var(--color-surface-2);color:var(--color-text)}
+        /* Topbar */
+        .topbar{display:flex;align-items:center;gap:1rem;margin-bottom:2rem;padding-bottom:1rem;border-bottom:1px solid var(--color-divider)}
+        .topbar h1{font-size:var(--text-lg);font-weight:600}
+        /* Table */
+        table{width:100%;border-collapse:collapse;font-size:var(--text-sm)}
+        th,td{padding:.6rem .75rem;text-align:left;border-bottom:1px solid var(--color-divider)}
+        th{color:var(--color-text-muted);font-weight:500}
+        /* Badge */
+        .badge{display:inline-block;padding:.2rem .6rem;border-radius:9999px;font-size:.75rem;font-weight:500}
+        .badge-danger{background:color-mix(in oklch,var(--color-error) 15%,transparent);color:var(--color-error)}
+        .badge-warning{background:color-mix(in oklch,var(--color-warning) 15%,transparent);color:var(--color-warning)}
+        .badge-success{background:color-mix(in oklch,var(--color-success) 15%,transparent);color:var(--color-success)}
+        /* Responsive */
+        @media(max-width:768px){.layout{grid-template-columns:1fr}.sidebar{display:none}.main-content{padding:1rem}}
+    </style>
+    {% block stylesheets %}{% endblock %}
+</head>
+<body>
+{% block body %}
+<div class="layout">
+    {% if app.user %}
+    <nav class="sidebar">
+        <div class="sidebar-logo">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2" style="display:inline;vertical-align:middle;margin-right:.4rem"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+            WazeBR
+        </div>
+        <a href="{{ path('app_dashboard') }}" {% if app.request.get('_route') == 'app_dashboard' %}class="active"{% endif %}>📊 Dashboard</a>
+        <a href="{{ path('app_map_alerts') }}"  {% if app.request.get('_route') == 'app_map_alerts' %}class="active"{% endif %}>🚨 Mapa Alertas</a>
+        <a href="{{ path('app_map_traffic') }}" {% if app.request.get('_route') == 'app_map_traffic' %}class="active"{% endif %}>🚗 Trânsito</a>
+        <a href="{{ path('app_cemaden') }}"     {% if app.request.get('_route') == 'app_cemaden' %}class="active"{% endif %}>🌧️ CEMADEN</a>
+        <a href="{{ path('app_logout') }}" style="margin-top:auto">🚪 Sair</a>
+    </nav>
+    {% endif %}
+    <main class="main-content">
+        {% for type, messages in app.flashes %}
+            {% for message in messages %}
+                <div class="flash flash-{{ type }}">{{ message }}</div>
+            {% endfor %}
+        {% endfor %}
+        {% block content %}{% endblock %}
+    </main>
+</div>
+{% endblock %}
+<script>
+(function(){
+    var t=document.querySelector('[data-theme-toggle]'),r=document.documentElement;
+    var d=localStorage&&localStorage.getItem('theme')||'dark';
+    r.setAttribute('data-theme',d);
+    if(t)t.addEventListener('click',function(){d=d==='dark'?'light':'dark';r.setAttribute('data-theme',d);try{localStorage.setItem('theme',d)}catch(e){}});
+})();
+</script>
+{% block javascripts %}{% endblock %}
+</body>
+</html>

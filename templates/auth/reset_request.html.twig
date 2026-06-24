@@ -1,0 +1,28 @@
+{% extends 'base.html.twig' %}
+{% block title %}Redefinir Senha — WazeBR{% endblock %}
+{% block body %}
+<style>
+.auth-wrap{min-height:100dvh;display:flex;align-items:center;justify-content:center;background:var(--color-bg)}
+.auth-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:2.5rem;width:100%;max-width:400px;box-shadow:var(--shadow-md)}
+.form-group{margin-bottom:1.25rem}
+.form-group label{display:block;font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:.4rem}
+.form-group input{width:100%;padding:.65rem .9rem;background:var(--color-bg);border:1px solid var(--color-border);border-radius:var(--radius-md);color:var(--color-text);font-size:var(--text-base);transition:border-color 150ms}
+.form-group input:focus{outline:none;border-color:var(--color-primary)}
+.btn-block{width:100%;justify-content:center;padding:.75rem}
+.auth-footer{text-align:center;margin-top:1rem;font-size:var(--text-sm);color:var(--color-text-muted)}
+</style>
+<div class="auth-wrap">
+    <div class="auth-card">
+        <h2 style="margin-bottom:1.5rem;font-size:var(--text-lg)">Redefinir Senha</h2>
+        <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:1.5rem">Informe seu e-mail e enviaremos um link para redefinir sua senha.</p>
+        <form method="post">
+            <div class="form-group">
+                <label for="email">E-mail</label>
+                <input type="email" id="email" name="email" required autofocus>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Enviar link</button>
+        </form>
+        <div class="auth-footer"><a href="{{ path('app_login') }}">← Voltar ao login</a></div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends 'base.html.twig' %}
+{% block title %}Mapa de Trânsito — WazeBR{% endblock %}
+{% block stylesheets %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endblock %}
+{% block content %}
+<div class="topbar">
+    <h1>🚗 Mapa de Congestionamentos</h1>
+    <form method="get" style="display:flex;gap:.5rem;align-items:center;margin-left:auto">
+        <select name="h" class="btn btn-ghost" style="padding:.4rem .7rem">
+            {% for h in [1,2,4,6,12] %}
+                <option value="{{ h }}" {% if hours == h %}selected{% endif %}>{{ h }}h</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-primary">Filtrar</button>
+    </form>
+</div>
+<div class="card" style="padding:0;overflow:hidden">
+    <div id="map" style="height:600px;width:100%"></div>
+</div>
+<p style="margin-top:.75rem;font-size:var(--text-sm);color:var(--color-text-muted)">{{ jams|length }} congestionamento(s) exibido(s)</p>
+{% endblock %}
+{% block javascripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const jams = {{ jams|map(j => {
+    lat: j.latitude,
+    lng: j.longitude,
+    street: j.street,
+    city: j.city,
+    level: j.level,
+    speed: j.speedKmh,
+    delay: j.delay,
+    line: j.line
+})|json_encode|raw }};
+
+const map = L.map('map').setView([-19.9, -43.9], 11);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
+
+const levelColor = l => l >= 5?'#e53e3e':l >= 3?'#dd6b20':l >= 1?'#ecc94b':'#48bb78';
+jams.forEach(j => {
+    if(j.line && j.line.length > 1) {
+        const pts = j.line.map(p => [p.y, p.x]);
+        L.polyline(pts, {color: levelColor(j.level), weight: 4, opacity: 0.8})
+         .bindPopup(`<strong>${j.street||'Sem nome'}</strong><br>${j.city||''}<br>Nível: ${j.level} | ${j.speed} km/h | Atraso: ${j.delay}s`)
+         .addTo(map);
+    }
+});
+</script>
+{% endblock %}

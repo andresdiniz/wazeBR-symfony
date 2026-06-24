@@ -1,0 +1,49 @@
+{% extends 'base.html.twig' %}
+{% block title %}Mapa de Alertas — WazeBR{% endblock %}
+{% block stylesheets %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endblock %}
+{% block content %}
+<div class="topbar">
+    <h1>🚨 Mapa de Alertas Waze</h1>
+    <form method="get" style="display:flex;gap:.5rem;align-items:center;margin-left:auto">
+        <select name="h" class="btn btn-ghost" style="padding:.4rem .7rem">
+            {% for h in [1,2,4,6,12] %}
+                <option value="{{ h }}" {% if hours == h %}selected{% endif %}>{{ h }}h</option>
+            {% endfor %}
+        </select>
+        <input name="city" type="text" value="{{ city }}" placeholder="Cidade..." style="padding:.4rem .7rem;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);color:var(--color-text);font-size:var(--text-sm)">
+        <button type="submit" class="btn btn-primary">Filtrar</button>
+    </form>
+</div>
+<div class="card" style="padding:0;overflow:hidden">
+    <div id="map" style="height:600px;width:100%"></div>
+</div>
+<p style="margin-top:.75rem;font-size:var(--text-sm);color:var(--color-text-muted)">{{ alerts|length }} alerta(s) exibido(s)</p>
+{% endblock %}
+{% block javascripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const alerts = {{ alerts|map(a => {
+    lat: a.latitude,
+    lng: a.longitude,
+    type: a.type,
+    subtype: a.subtype,
+    street: a.street,
+    city: a.city,
+    reliability: a.reliability
+})|json_encode|raw }};
+
+const map = L.map('map').setView([-19.9, -43.9], 11);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
+
+const colors = {ACCIDENT:'#e53e3e',JAM:'#dd6b20',ROAD_CLOSED:'#805ad5',HAZARD:'#d69e2e',DEFAULT:'#4f98a3'};
+alerts.forEach(a => {
+    const color = colors[a.type] || colors.DEFAULT;
+    L.circleMarker([a.lat, a.lng], {radius:7, color, fillColor:color, fillOpacity:0.8, weight:1.5})
+     .bindPopup(`<strong>${a.type}</strong>${a.subtype?' / '+a.subtype:''}<br>${a.street||''}<br>${a.city||''}<br>Confiança: ${a.reliability||'?'}`)
+     .addTo(map);
+});
+if(alerts.length) map.fitBounds(alerts.map(a=>[a.lat,a.lng]),{padding:[30,30]});
+</script>
+{% endblock %}

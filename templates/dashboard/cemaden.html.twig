@@ -1,0 +1,59 @@
+{% extends 'base.html.twig' %}
+{% block title %}CEMADEN — WazeBR{% endblock %}
+{% block stylesheets %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endblock %}
+{% block content %}
+<div class="topbar">
+    <h1>🌧️ Alertas CEMADEN</h1>
+    <span style="font-size:var(--text-sm);color:var(--color-text-muted)">{{ stations|length }} estação(ões) com alerta ativo</span>
+</div>
+<div class="card" style="padding:0;overflow:hidden;margin-bottom:1.5rem">
+    <div id="map" style="height:480px;width:100%"></div>
+</div>
+<div class="card">
+    <table>
+        <thead><tr><th>Estação</th><th>Município</th><th>Chuva (mm)</th><th>Nível</th><th>Medido em</th></tr></thead>
+        <tbody>
+        {% for s in stations %}
+            <tr>
+                <td>{{ s.stationName }}</td>
+                <td>{{ s.municipality }}/{{ s.state }}</td>
+                <td style="font-variant-numeric:tabular-nums">{{ s.accumulatedRain ?? '—' }}</td>
+                <td>
+                    {% set level = s.alertLevel %}
+                    {% if level == 'VERMELHO' %}<span class="badge badge-danger">🔴 Vermelho</span>
+                    {% elseif level == 'LARANJA' %}<span class="badge badge-warning">🟠 Laranja</span>
+                    {% elseif level == 'AMARELO' %}<span class="badge" style="background:color-mix(in oklch,#d69e2e 15%,transparent);color:#d69e2e">🟡 Amarelo</span>
+                    {% else %}<span class="badge badge-success">🟢 {{ level ?? 'Normal' }}</span>
+                    {% endif %}
+                </td>
+                <td style="color:var(--color-text-muted)">{{ s.measuredAt|date('d/m H:i') }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="5" style="text-align:center;color:var(--color-text-muted);padding:2rem">Nenhum alerta ativo no momento.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+{% block javascripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const stations = {{ stations|map(s => {
+    lat: s.latitude, lng: s.longitude,
+    name: s.stationName, city: s.municipality,
+    rain: s.accumulatedRain, level: s.alertLevel
+})|json_encode|raw }};
+const map = L.map('map').setView([-19.9,-43.9],9);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
+const lc={'VERMELHO':'#e53e3e','LARANJA':'#dd6b20','AMARELO':'#d69e2e','VERDE':'#48bb78'};
+stations.forEach(s=>{
+    const c=lc[s.level]||'#4f98a3';
+    L.circleMarker([s.lat,s.lng],{radius:8,color:c,fillColor:c,fillOpacity:.85,weight:1.5})
+     .bindPopup(`<strong>${s.name}</strong><br>${s.city}<br>Chuva: ${s.rain??'?'} mm<br>Nível: ${s.level??'Normal'}`)
+     .addTo(map);
+});
+if(stations.length)map.fitBounds(stations.map(s=>[s.lat,s.lng]),{padding:[30,30]});
+</script>
+{% endblock %}
