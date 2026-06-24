@@ -35,11 +35,28 @@ class DashboardController extends AbstractController
     {
         $partner = $this->tenantContext->requirePartner();
 
+        $alertCount   = $this->alertRepo->countByPartner($partner);
+        $jamCount     = $this->jamRepo->countByPartner($partner);
+        $cemadenCount = $this->cemadenRepo->countByPartner($partner);
+        $cityCount    = $this->cityRepo->countByPartner($partner);
+        $linkCount    = $this->linkRepo->countByPartner($partner);
+        $routeCount   = $this->routeRepo->countByPartner($partner);
+
         return $this->render('dashboard/index.html.twig', [
             'partner'      => $partner,
-            'alertCount'   => $this->alertRepo->countByPartner($partner),
-            'jamCount'     => $this->jamRepo->countByPartner($partner),
-            'cemadenCount' => $this->cemadenRepo->countByPartner($partner),
+            // array kpis esperado pelo template
+            'kpis' => [
+                'alerts'  => $alertCount,
+                'jams'    => $jamCount,
+                'cemaden' => $cemadenCount,
+                'cities'  => $cityCount,
+                'links'   => $linkCount,
+                'routes'  => $routeCount,
+            ],
+            // variáveis individuais mantidas para retrocompatibilidade
+            'alertCount'   => $alertCount,
+            'jamCount'     => $jamCount,
+            'cemadenCount' => $cemadenCount,
             'recentAlerts' => $this->alertRepo->findRecentByPartner($partner, 10),
             'recentJams'   => $this->jamRepo->findRecentByPartner($partner, 5),
             'cemadenData'  => $this->cemadenRepo->findByPartner($partner),
