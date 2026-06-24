@@ -17,7 +17,7 @@
         <th>Nome</th>
         <th>Descrição</th>
         <th>Ativa</th>
-        <th>Links</th>
+        <th>Sub-rotas</th>
         <th>Ações</th>
       </tr>
     </thead>
@@ -31,7 +31,7 @@
             {{ route.isActive ? 'Ativa' : 'Inativa' }}
           </span>
         </td>
-        <td>{{ route.links|length }}</td>
+        <td>{{ route.routeLinks|length }}</td>
         <td class="actions">
           <a href="{{ path('route_admin_show', {id: route.id}) }}" class="btn btn-sm">Ver</a>
           <form method="post" action="{{ path('route_admin_toggle', {id: route.id}) }}" style="display:inline">
