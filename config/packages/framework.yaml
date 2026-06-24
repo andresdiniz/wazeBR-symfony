@@ -14,6 +14,10 @@ framework:
 
     csrf_protection: true
 
+    # Symfony Scheduler — configurado aqui dentro (não existe namespace "scheduler:" separado)
+    scheduler:
+        enabled: true
+
 when@test:
     framework:
         test: true
