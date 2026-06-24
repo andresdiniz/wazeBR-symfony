@@ -1,0 +1,97 @@
+{% extends 'base.html.twig' %}
+{% block title %}Rota: {{ route.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <a href="{{ path('route_admin_index') }}" class="btn btn-ghost">&larr; Voltar</a>
+  <h1>{{ route.name }}</h1>
+  <span class="badge {{ route.isActive ? 'badge-success' : 'badge-neutral' }}">
+    {{ route.isActive ? 'Ativa' : 'Inativa' }}
+  </span>
+</div>
+
+{% for msg in app.flashes('success') %}
+  <div class="alert alert-success">{{ msg }}</div>
+{% endfor %}
+
+<div class="detail-card">
+  <dl>
+    <dt>Descrição</dt><dd>{{ route.description ?? '—' }}</dd>
+    <dt>Criada em</dt><dd>{{ route.createdAt|date('d/m/Y H:i') }}</dd>
+  </dl>
+  <form method="post" action="{{ path('route_admin_toggle', {id: route.id}) }}" style="margin-top:1rem">
+    <input type="hidden" name="_token" value="{{ csrf_token('toggle' ~ route.id) }}">
+    <button type="submit" class="btn {{ route.isActive ? 'btn-ghost' : 'btn-primary' }}">
+      {{ route.isActive ? 'Desativar Rota' : 'Ativar Rota' }}
+    </button>
+  </form>
+</div>
+
+<h2 style="margin-top:2rem">Sub-rotas (links)</h2>
+
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Ordem</th>
+        <th>Nome</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody id="links-body">
+      {% for link in route.links %}
+      <tr id="link-row-{{ link.id }}">
+        <td>{{ link.sortOrder }}</td>
+        <td>{{ link.name }}</td>
+        <td>
+          <button
+            class="btn btn-sm btn-ghost"
+            onclick="deleteLink({{ route.id }}, {{ link.id }})"
+          >Remover</button>
+        </td>
+      </tr>
+      {% else %}
+      <tr id="empty-row"><td colspan="3" class="empty-cell">Nenhuma sub-rota cadastrada.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="form-card" style="margin-top:1.5rem">
+  <h3>Adicionar Sub-rota</h3>
+  <form id="link-form">
+    <div class="form-group">
+      <label for="link-name">Nome</label>
+      <input type="text" id="link-name" class="form-control" required>
+    </div>
+    <div class="form-group">
+      <label for="link-coords">Coordenadas (JSON)</label>
+      <textarea id="link-coords" class="form-control" rows="3">[]</textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Adicionar</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+<script>
+const routeId = {{ route.id }};
+
+document.getElementById('link-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const body = new FormData();
+  body.append('name', document.getElementById('link-name').value);
+  body.append('coordinates', document.getElementById('link-coords').value);
+  const res = await fetch(`/admin/rotas/${routeId}/links`, { method: 'POST', body });
+  if (res.ok) { location.reload(); }
+  else { alert('Erro ao adicionar sub-rota.'); }
+});
+
+async function deleteLink(routeId, linkId) {
+  if (!confirm('Remover esta sub-rota?')) return;
+  const res = await fetch(`/admin/rotas/${routeId}/links/${linkId}`, { method: 'DELETE' });
+  if (res.ok) { document.getElementById('link-row-' + linkId)?.remove(); }
+  else { alert('Erro ao remover sub-rota.'); }
+}
+</script>
+{% endblock %}

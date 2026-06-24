@@ -1,0 +1,21 @@
+{% extends 'base.html.twig' %}
+{% block title %}Parceiro: {{ partner.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <a href="{{ path('partner_admin_index') }}" class="btn btn-ghost">&larr; Voltar</a>
+  <h1>{{ partner.name }}</h1>
+</div>
+<div class="detail-card">
+  <dl>
+    <dt>Slug</dt><dd><code>{{ partner.slug }}</code></dd>
+    <dt>Email</dt><dd>{{ partner.email ?? '—' }}</dd>
+    <dt>Token API</dt><dd><code>{{ partner.apiToken ?? '—' }}</code></dd>
+    <dt>BBox</dt><dd>{{ partner.bbox ?? '—' }}</dd>
+    <dt>Ativo</dt><dd>{{ partner.isActive ? 'Sim' : 'Não' }}</dd>
+    <dt>Criado em</dt><dd>{{ partner.createdAt|date('d/m/Y H:i') }}</dd>
+  </dl>
+  <div class="actions" style="margin-top:1rem">
+    <a href="{{ path('partner_admin_edit', {id: partner.id}) }}" class="btn btn-primary">Editar</a>
+  </div>
+</div>
+{% endblock %}

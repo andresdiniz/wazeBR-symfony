@@ -1,0 +1,51 @@
+{% extends 'base.html.twig' %}
+{% block title %}Rotas Monitoradas{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Rotas Monitoradas</h1>
+  <a href="{{ path('route_admin_new') }}" class="btn btn-primary">+ Nova Rota</a>
+</div>
+
+{% for msg in app.flashes('success') %}
+  <div class="alert alert-success">{{ msg }}</div>
+{% endfor %}
+
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Nome</th>
+        <th>Descrição</th>
+        <th>Ativa</th>
+        <th>Links</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for route in routes %}
+      <tr>
+        <td>{{ route.name }}</td>
+        <td>{{ route.description ?? '—' }}</td>
+        <td>
+          <span class="badge {{ route.isActive ? 'badge-success' : 'badge-neutral' }}">
+            {{ route.isActive ? 'Ativa' : 'Inativa' }}
+          </span>
+        </td>
+        <td>{{ route.links|length }}</td>
+        <td class="actions">
+          <a href="{{ path('route_admin_show', {id: route.id}) }}" class="btn btn-sm">Ver</a>
+          <form method="post" action="{{ path('route_admin_toggle', {id: route.id}) }}" style="display:inline">
+            <input type="hidden" name="_token" value="{{ csrf_token('toggle' ~ route.id) }}">
+            <button type="submit" class="btn btn-sm btn-ghost">
+              {{ route.isActive ? 'Desativar' : 'Ativar' }}
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="empty-cell">Nenhuma rota cadastrada.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

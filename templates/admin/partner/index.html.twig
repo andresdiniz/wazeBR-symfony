@@ -1,0 +1,46 @@
+{% extends 'base.html.twig' %}
+{% block title %}Parceiros{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Parceiros</h1>
+  <a href="{{ path('partner_admin_new') }}" class="btn btn-primary">+ Novo Parceiro</a>
+</div>
+
+{% for msg in app.flashes('success') %}
+  <div class="alert alert-success">{{ msg }}</div>
+{% endfor %}
+
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Nome</th>
+        <th>Slug</th>
+        <th>Email</th>
+        <th>Ativo</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for partner in partners %}
+      <tr>
+        <td>{{ partner.name }}</td>
+        <td><code>{{ partner.slug }}</code></td>
+        <td>{{ partner.email ?? '—' }}</td>
+        <td>
+          <span class="badge {{ partner.isActive ? 'badge-success' : 'badge-neutral' }}">
+            {{ partner.isActive ? 'Ativo' : 'Inativo' }}
+          </span>
+        </td>
+        <td class="actions">
+          <a href="{{ path('partner_admin_show', {id: partner.id}) }}" class="btn btn-sm">Ver</a>
+          <a href="{{ path('partner_admin_edit', {id: partner.id}) }}" class="btn btn-sm">Editar</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="empty-cell">Nenhum parceiro cadastrado.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
