@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Security;
 
 use App\Entity\User;
-use App\Repository\UserRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Core\Exception\CustomUserMessageAuthenticationException;
@@ -27,36 +27,34 @@ class LoginFormAuthenticator extends AbstractLoginFormAuthenticator
     use TargetPathTrait;
 
     public function __construct(
-        private readonly UserRepository        $userRepository,
-        private readonly UrlGeneratorInterface $urlGenerator,
+        private readonly RouterInterface        $router,
+        private readonly EntityManagerInterface $em,
     ) {}
 
     public function authenticate(Request $request): Passport
     {
-        $email    = (string) $request->request->get('email', '');
-        $password = (string) $request->request->get('password', '');
-
+        $email = (string) $request->request->get('email', '');
         $request->getSession()->set(SecurityRequestAttributes::LAST_USERNAME, $email);
 
         return new Passport(
             new UserBadge($email, function (string $identifier) {
-                $user = $this->userRepository->findOneBy(['email' => $identifier]);
+                $user = $this->em->getRepository(User::class)->findOneBy(['email' => $identifier]);
 
-                if (!$user instanceof User) {
-                    throw new CustomUserMessageAuthenticationException('E-mail ou senha inválidos.');
+                if (!$user) {
+                    throw new CustomUserMessageAuthenticationException('Email ou senha incorretos.');
                 }
 
                 if (!$user->isActive()) {
-                    throw new CustomUserMessageAuthenticationException('Sua conta está desativada. Entre em contato com o administrador.');
+                    throw new CustomUserMessageAuthenticationException('Usuário inativo. Contate o administrador.');
                 }
 
                 return $user;
             }),
-            new PasswordCredentials($password),
+            new PasswordCredentials((string) $request->request->get('password', '')),
             [
-                new CsrfTokenBadge('authenticate', $request->request->get('_csrf_token')),
+                new CsrfTokenBadge('authenticate', (string) $request->request->get('_csrf_token')),
                 new RememberMeBadge(),
-            ],
+            ]
         );
     }
 
@@ -64,19 +62,18 @@ class LoginFormAuthenticator extends AbstractLoginFormAuthenticator
     {
         /** @var User $user */
         $user = $token->getUser();
-
-        // Atualiza last_login_at
-        $this->userRepository->updateLastLogin($user);
+        $user->setLastLoginAt(new \DateTimeImmutable());
+        $this->em->flush();
 
         if ($targetPath = $this->getTargetPath($request->getSession(), $firewallName)) {
             return new RedirectResponse($targetPath);
         }
 
-        return new RedirectResponse($this->urlGenerator->generate('dashboard_index'));
+        return new RedirectResponse($this->router->generate('dashboard_index'));
     }
 
     protected function getLoginUrl(Request $request): string
     {
-        return $this->urlGenerator->generate('auth_login');
+        return $this->router->generate('security_login');
     }
 }
