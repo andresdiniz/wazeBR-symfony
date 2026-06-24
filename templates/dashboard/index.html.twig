@@ -1,77 +1,99 @@
 {% extends 'base.html.twig' %}
-{% block title %}Dashboard — WazeBR{% endblock %}
+{% block title %}Dashboard{% endblock %}
+
 {% block content %}
-<div class="topbar">
-    <h1>📊 Dashboard</h1>
-    <span style="font-size:var(--text-sm);color:var(--color-text-muted)">
-        Última coleta:
-        {% if summary.last_collection %}
-            {{ summary.last_collection|date('d/m/Y H:i') }}
-        {% else %}
-            Aguardando...
-        {% endif %}
-    </span>
-    <button class="theme-toggle" data-theme-toggle title="Alternar tema">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-    </button>
+<div class="page-header">
+  <h1 class="page-title">Dashboard</h1>
+  <p class="page-subtitle">Visão geral do monitoramento — {{ partner.name }}</p>
 </div>
 
+{# KPIs #}
 <div class="kpi-grid">
-    <div class="kpi">
-        <div class="kpi-value">{{ summary.alerts_today }}</div>
-        <div class="kpi-label">🚨 Alertas hoje</div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:oklch(from var(--color-warning) l c h/.12)">
+      <i data-lucide="triangle-alert" style="width:18px;height:18px;color:var(--color-warning)"></i>
     </div>
-    <div class="kpi">
-        <div class="kpi-value">{{ summary.jams_today }}</div>
-        <div class="kpi-label">🚗 Congestionamentos hoje</div>
+    <div class="kpi-label">Alertas</div>
+    <div class="kpi-value">{{ kpis.alerts|number_format(0, ',', '.') }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:oklch(from var(--color-orange) l c h/.12)">
+      <i data-lucide="traffic-cone" style="width:18px;height:18px;color:var(--color-orange)"></i>
     </div>
-    <div class="kpi">
-        <div class="kpi-value">{{ summary.cemaden_active }}</div>
-        <div class="kpi-label">🌧️ Alertas CEMADEN ativos</div>
+    <div class="kpi-label">Congestionamentos</div>
+    <div class="kpi-value">{{ kpis.jams|number_format(0, ',', '.') }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:oklch(from var(--color-primary) l c h/.12)">
+      <i data-lucide="cloud-rain" style="width:18px;height:18px;color:var(--color-primary)"></i>
     </div>
-    <div class="kpi">
-        <div class="kpi-value">{{ summary.unread_notifications }}</div>
-        <div class="kpi-label">🔔 Notificações não lidas</div>
-    </div>
+    <div class="kpi-label">Leituras CEMADEN</div>
+    <div class="kpi-value">{{ kpis.cemaden|number_format(0, ',', '.') }}</div>
+  </div>
 </div>
 
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
-    <div class="card">
-        <h2 style="font-size:var(--text-base);font-weight:600;margin-bottom:1rem">Alertas por Tipo (hoje)</h2>
-        {% if summary.alerts_by_type %}
-        <table>
-            <thead><tr><th>Tipo</th><th>Total</th></tr></thead>
-            <tbody>
-            {% for row in summary.alerts_by_type %}
-                <tr><td>{{ row.type }}</td><td style="font-variant-numeric:tabular-nums">{{ row.total }}</td></tr>
-            {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <p style="color:var(--color-text-muted);font-size:var(--text-sm)">Nenhum alerta coletado hoje.</p>
-        {% endif %}
-    </div>
+{# Recentes #}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6)">
 
-    <div class="card">
-        <h2 style="font-size:var(--text-base);font-weight:600;margin-bottom:1rem">Congestionamentos por Nível (hoje)</h2>
-        {% if summary.jams_by_level %}
-        <table>
-            <thead><tr><th>Nível</th><th>Total</th></tr></thead>
-            <tbody>
-            {% for row in summary.jams_by_level %}
-                <tr>
-                    <td>
-                        {% if row.level >= 4 %}<span class="badge badge-danger">{% elseif row.level >= 2 %}<span class="badge badge-warning">{% else %}<span class="badge badge-success">{% endif %}
-                        Nível {{ row.level }}</span>
-                    </td>
-                    <td style="font-variant-numeric:tabular-nums">{{ row.total }}</td>
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <p style="color:var(--color-text-muted);font-size:var(--text-sm)">Nenhum congestionamento hoje.</p>
-        {% endif %}
+  {# Alertas recentes #}
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Últimos alertas</span>
+      <a href="{{ path('alert_index') }}" class="btn btn-ghost btn-sm">Ver todos</a>
     </div>
+    {% if recentAlerts is empty %}
+      <div class="empty"><i data-lucide="check-circle"></i><h3>Sem alertas recentes</h3></div>
+    {% else %}
+      <table>
+        <thead><tr><th>Tipo</th><th>Local</th><th>Conf.</th></tr></thead>
+        <tbody>
+        {% for a in recentAlerts %}
+          <tr>
+            <td>
+              <span class="badge {{ a.type in ['ACCIDENT','HAZARD'] ? 'badge-red' : 'badge-orange' }}">
+                {{ a.type }}
+              </span>
+            </td>
+            <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+              {{ a.street ?? a.city ?? '—' }}
+            </td>
+            <td>{{ a.confidence }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </div>
+
+  {# Congestionamentos recentes #}
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Últimos congestionamentos</span>
+      <a href="{{ path('traffic_jam_index') }}" class="btn btn-ghost btn-sm">Ver todos</a>
+    </div>
+    {% if recentJams is empty %}
+      <div class="empty"><i data-lucide="check-circle"></i><h3>Sem congestionamentos</h3></div>
+    {% else %}
+      <table>
+        <thead><tr><th>Nível</th><th>Via</th><th>km/h</th></tr></thead>
+        <tbody>
+        {% for j in recentJams %}
+          <tr>
+            <td>
+              <span class="badge {{ j.level >= 4 ? 'badge-red' : (j.level >= 2 ? 'badge-orange' : 'badge-yellow') }}">
+                {{ j.level }}
+              </span>
+            </td>
+            <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+              {{ j.street ?? j.city ?? '—' }}
+            </td>
+            <td>{{ j.speedKmh|number_format(1, ',') }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </div>
+
 </div>
 {% endblock %}
