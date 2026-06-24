@@ -11,7 +11,6 @@ use App\Repository\PartnerRepository;
 use App\Repository\WazeAlertRepository;
 use App\Repository\WazeTrafficJamRepository;
 use App\Service\TenantContext;
-use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -21,42 +20,42 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 #[AsCommand(
-    name: 'app:waze:collect',
+    name: 'waze:collect',
     description: 'Coleta alertas e congestionamentos do Waze para todos os parceiros ativos.',
 )]
 class WazeCollectCommand extends Command
 {
-    private const WAZE_BASE_URL = 'https://www.waze.com/row-partnerhub-api/partners/11/waze-feeds';
+    private const WAZE_URL = 'https://www.waze.com/row-rtserver/webclient/GeobcRemote.ashx';
 
     public function __construct(
-        private readonly PartnerRepository       $partnerRepository,
-        private readonly WazeAlertRepository     $alertRepo,
+        private readonly PartnerRepository        $partnerRepo,
+        private readonly WazeAlertRepository      $alertRepo,
         private readonly WazeTrafficJamRepository $jamRepo,
-        private readonly TenantContext           $tenantContext,
-        private readonly HttpClientInterface     $httpClient,
-        private readonly LoggerInterface         $logger,
+        private readonly TenantContext            $tenantContext,
+        private readonly HttpClientInterface      $httpClient,
     ) {
         parent::__construct();
     }
 
     protected function configure(): void
     {
-        $this
-            ->addOption('partner', 'p', InputOption::VALUE_OPTIONAL, 'Slug do parceiro (omita para coletar todos)')
-            ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Simula a coleta sem persistir');
+        $this->addOption('partner', 'p', InputOption::VALUE_OPTIONAL,
+            'Slug do parceiro (omitir = todos os ativos)');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $io     = new SymfonyStyle($input, $output);
-        $dryRun = (bool) $input->getOption('dry-run');
-        $slug   = $input->getOption('partner');
+        $io = new SymfonyStyle($input, $output);
+        $io->title('Waze Collect — Multi-Tenant');
 
-        $io->title('WazeBR — Coleta de Alertas e Congestionamentos');
+        $slugFilter = $input->getOption('partner');
 
-        $partners = $slug
-            ? array_filter($this->partnerRepository->findActivePartners(), fn ($p) => $p->getSlug() === $slug)
-            : $this->partnerRepository->findActivePartners();
+        $partners = $slugFilter
+            ? array_filter(
+                $this->partnerRepo->findActivePartners(),
+                fn (Partner $p) => $p->getSlug() === $slugFilter,
+            )
+            : $this->partnerRepo->findActivePartners();
 
         if (empty($partners)) {
             $io->warning('Nenhum parceiro ativo encontrado.');
@@ -65,62 +64,52 @@ class WazeCollectCommand extends Command
 
         foreach ($partners as $partner) {
             $this->tenantContext->setPartner($partner);
-            $io->section("[{$partner->getSlug()}] {$partner->getName()}");
+            $io->section("Parceiro: {$partner->getName()} [{$partner->getSlug()}]");
+
+            if (!$partner->getBbox()) {
+                $io->warning('Bbox não configurada. Pulando.');
+                continue;
+            }
 
             try {
-                [$alerts, $jams] = $this->fetchWazeData($partner);
-
-                $alertCount = $this->persistAlerts($partner, $alerts, $dryRun);
-                $jamCount   = $this->persistJams($partner, $jams, $dryRun);
-
-                $io->success("Alertas: {$alertCount} | Congestionamentos: {$jamCount}" . ($dryRun ? ' (dry-run)' : ''));
-
-                $this->logger->info('waze.collect.success', [
-                    'partner'     => $partner->getSlug(),
-                    'alerts'      => $alertCount,
-                    'jams'        => $jamCount,
-                ]);
+                $data = $this->fetchWaze($partner->getBbox());
+                $alerts = $this->persistAlerts($partner, $data['alerts'] ?? []);
+                $jams   = $this->persistJams($partner, $data['jams'] ?? []);
+                $io->success("Alertas: {$alerts} novos | Jams: {$jams} novos");
             } catch (\Throwable $e) {
-                $io->error("Erro em [{$partner->getSlug()}]: " . $e->getMessage());
-                $this->logger->error('waze.collect.error', [
-                    'partner' => $partner->getSlug(),
-                    'error'   => $e->getMessage(),
-                ]);
+                $io->error("Erro [{$partner->getSlug()}]: " . $e->getMessage());
             }
         }
 
         return Command::SUCCESS;
     }
 
-    private function fetchWazeData(Partner $partner): array
+    private function fetchWaze(string $bbox): array
     {
-        $bbox = $partner->getBbox() ?? '';
+        [$latMin, $lngMin, $latMax, $lngMax] = explode(',', $bbox);
 
-        $url = self::WAZE_BASE_URL . '?' . http_build_query([
-            'types'  => 'alerts,traffic',
-            'format' => 'JSON',
-            'bbox'   => $bbox,
-        ]);
-
-        $response = $this->httpClient->request('GET', $url, [
+        $response = $this->httpClient->request('GET', self::WAZE_URL, [
+            'query' => [
+                'left'   => $lngMin,
+                'right'  => $lngMax,
+                'bottom' => $latMin,
+                'top'    => $latMax,
+                'ma'     => 600,
+                'mj'     => 300,
+                'mt'     => 0,
+                'types'  => 'alerts,traffic',
+            ],
             'timeout' => 30,
-            'headers' => ['Accept' => 'application/json'],
         ]);
 
-        $data = $response->toArray();
-
-        return [
-            $data['alerts']  ?? [],
-            $data['jams']    ?? [],
-        ];
+        return $response->toArray();
     }
 
-    private function persistAlerts(Partner $partner, array $alerts, bool $dryRun): int
+    private function persistAlerts(Partner $partner, array $rawAlerts): int
     {
         $count = 0;
-
-        foreach ($alerts as $raw) {
-            $wazeId = (string) ($raw['uuid'] ?? $raw['id'] ?? '');
+        foreach ($rawAlerts as $raw) {
+            $wazeId = $raw['uuid'] ?? null;
             if (!$wazeId) continue;
 
             $existing = $this->alertRepo->findOneBy(['wazeId' => $wazeId, 'partner' => $partner]);
@@ -129,7 +118,7 @@ class WazeCollectCommand extends Command
             $alert = (new WazeAlert())
                 ->setPartner($partner)
                 ->setWazeId($wazeId)
-                ->setType((string) ($raw['type'] ?? ''))
+                ->setType($raw['type'] ?? 'UNKNOWN')
                 ->setSubtype($raw['subtype'] ?? null)
                 ->setLatitude((float) ($raw['location']['y'] ?? 0))
                 ->setLongitude((float) ($raw['location']['x'] ?? 0))
@@ -139,27 +128,24 @@ class WazeCollectCommand extends Command
                 ->setReliability((int) ($raw['reliability'] ?? 0))
                 ->setConfidence((int) ($raw['confidence'] ?? 0))
                 ->setReportRating((int) ($raw['reportRating'] ?? 0))
-                ->setPubMillis((int) ($raw['pubMillis'] ?? (time() * 1000)));
+                ->setPubMillis((int) ($raw['pubMillis'] ?? 0));
 
-            if (!$dryRun) {
-                $this->alertRepo->save($alert, false);
-            }
+            $this->alertRepo->save($alert, false);
             $count++;
         }
 
-        if (!$dryRun && $count > 0) {
+        if ($count > 0) {
             $this->alertRepo->getEntityManager()->flush();
         }
 
         return $count;
     }
 
-    private function persistJams(Partner $partner, array $jams, bool $dryRun): int
+    private function persistJams(Partner $partner, array $rawJams): int
     {
         $count = 0;
-
-        foreach ($jams as $raw) {
-            $wazeId = (string) ($raw['uuid'] ?? $raw['id'] ?? '');
+        foreach ($rawJams as $raw) {
+            $wazeId = $raw['uuid'] ?? null;
             if (!$wazeId) continue;
 
             $existing = $this->jamRepo->findOneBy(['wazeId' => $wazeId, 'partner' => $partner]);
@@ -175,15 +161,13 @@ class WazeCollectCommand extends Command
                 ->setLength((float) ($raw['length'] ?? 0))
                 ->setDelay((int) ($raw['delay'] ?? 0))
                 ->setLine($raw['line'] ?? [])
-                ->setPubMillis((int) ($raw['pubMillis'] ?? (time() * 1000)));
+                ->setPubMillis((int) ($raw['pubMillis'] ?? 0));
 
-            if (!$dryRun) {
-                $this->jamRepo->save($jam, false);
-            }
+            $this->jamRepo->save($jam, false);
             $count++;
         }
 
-        if (!$dryRun && $count > 0) {
+        if ($count > 0) {
             $this->jamRepo->getEntityManager()->flush();
         }
 
