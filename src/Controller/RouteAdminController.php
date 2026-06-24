@@ -95,8 +95,9 @@ class RouteAdminController extends AbstractController
 
     // ─── Sub-rotas (links) ────────────────────────────────────────────────────
 
+    /** Renomeado de addLink() para createLink() — evita conflito com AbstractController::addLink() */
     #[Route('/{routeId}/links', name: 'link_new', methods: ['POST'])]
-    public function addLink(int $routeId, Request $request): JsonResponse
+    public function createLink(int $routeId, Request $request): JsonResponse
     {
         $partner = $this->tenantContext->requirePartner();
         $route   = $this->routeRepo->findOneByPartner($routeId, $partner);
