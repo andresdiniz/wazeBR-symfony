@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/congestionamentos', name: 'jam_')]
+#[Route('/congestionamentos', name: 'traffic_jam_')]
 #[IsGranted('ROLE_USER')]
 class TrafficJamController extends AbstractController
 {
