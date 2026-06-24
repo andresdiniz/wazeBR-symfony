@@ -8,12 +8,25 @@ use App\Entity\Trait\TenantAwareTrait;
 use App\Repository\MonitoredLinkRepository;
 use Doctrine\ORM\Mapping as ORM;
 
-/** Link externo monitorado por parceiro — incluindo feeds de alertas Waze */
+/**
+ * Link externo monitorado por parceiro.
+ *
+ * Types:
+ *   feed    → alertas Waze  (row-partnerhub-api/partners/{id}/waze-feeds/{uuid})
+ *   traffic → trafego TVT   (row-partnerhub-api/feeds-tvt/{uuid}?id={partnerId})
+ *   cemaden → feed CEMADEN
+ *   camera  → c\u00e2mera IP
+ *   sensor  → sensor IoT
+ *   generic → outros
+ */
 #[ORM\Entity(repositoryClass: MonitoredLinkRepository::class)]
 #[ORM\Table(name: 'monitored_links')]
 class MonitoredLink
 {
     use TenantAwareTrait;
+
+    /** Tipos v\u00e1lidos de MonitoredLink */
+    public const TYPES = ['feed', 'traffic', 'cemaden', 'camera', 'sensor', 'generic'];
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -26,27 +39,23 @@ class MonitoredLink
     #[ORM\Column(length: 500)]
     private string $url = '';
 
-    /** camera | sensor | feed | cemaden | generic */
     #[ORM\Column(length: 40)]
     private string $type = 'generic';
 
-    /** UUID do feed Waze extraído da URL (ex: 9bb3e551-76f2-4fc6-a32e-ad078a285f2e) */
+    /** UUID do feed Waze (alertas ou TVT) extra\u00eddo da URL */
     #[ORM\Column(length: 80, nullable: true)]
     private ?string $feedUuid = null;
 
-    /** ID do parceiro Waze extraído da URL (ex: 11682863520) */
+    /** ID do parceiro Waze extra\u00eddo da URL */
     #[ORM\Column(length: 40, nullable: true)]
     private ?string $wazePartnerId = null;
 
-    /** Timestamp da última coleta bem-sucedida */
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $lastFetchedAt = null;
 
-    /** Quantidade de alertas salvos na última coleta */
     #[ORM\Column(nullable: true)]
     private ?int $lastFetchCount = null;
 
-    /** Mensagem de erro da última coleta (null = sem erro) */
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $lastErrorMessage = null;
 
@@ -67,10 +76,17 @@ class MonitoredLink
     public function setUrl(string $u): static
     {
         $this->url = $u;
-        // Extrai automaticamente feedUuid e wazePartnerId da URL
+        // Alertas: /partners/{id}/waze-feeds/{uuid}
         if (preg_match('#/partners/(\d+)/waze-feeds/([0-9a-f-]{36})#i', $u, $m)) {
             $this->wazePartnerId = $m[1];
             $this->feedUuid      = $m[2];
+        }
+        // TVT: /feeds-tvt/{uuid}?id={partnerId}
+        elseif (preg_match('#/feeds-tvt/([0-9a-f-]{36})#i', $u, $m)) {
+            $this->feedUuid = $m[1];
+            if (preg_match('#[?&]id=(\d+)#', $u, $m2)) {
+                $this->wazePartnerId = $m2[1];
+            }
         }
         return $this;
     }
@@ -103,4 +119,17 @@ class MonitoredLink
     public function isActive(): bool { return $this->isActive; }
     public function setIsActive(bool $v): static { $this->isActive = $v; return $this; }
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
+
+    /** Label legivel do tipo para exibir no admin */
+    public function getTypeLabel(): string
+    {
+        return match ($this->type) {
+            'feed'    => '\ud83d\udea8 Alertas Waze',
+            'traffic' => '\ud83d\ude97 Tr\u00e1fego TVT',
+            'cemaden' => '\ud83c\udf27 CEMADEN',
+            'camera'  => '\ud83d\udcf7 C\u00e2mera',
+            'sensor'  => '\ud83d\udcf1 Sensor',
+            default   => '\ud83d\udd17 Gen\u00e9rico',
+        };
+    }
 }

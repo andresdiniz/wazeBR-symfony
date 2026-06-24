@@ -1,0 +1,136 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Links Monitorados{% endblock %}
+
+{% block body %}
+<div class="container py-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Links Monitorados</h1>
+        <a href="{{ path('admin_link_new') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Novo Link
+        </a>
+    </div>
+
+    {% for flash in app.flashes('success') %}
+        <div class="alert alert-success alert-dismissible fade show">
+            {{ flash }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+    {% for flash in app.flashes('error') %}
+        <div class="alert alert-danger alert-dismissible fade show">
+            {{ flash }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+
+    {% if by_partner is empty %}
+        <div class="alert alert-info">Nenhum link cadastrado ainda.</div>
+    {% else %}
+        {% for group in by_partner %}
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <strong>{{ group.partner ? group.partner.name : 'Sem parceiro' }}</strong>
+                    {% if group.partner %}
+                        <span class="badge bg-secondary">{{ group.partner.slug }}</span>
+                    {% endif %}
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Nome</th>
+                                <th>Tipo</th>
+                                <th>Feed UUID</th>
+                                <th>URL</th>
+                                <th class="text-center">\u00daLTIMA COLETA</th>
+                                <th class="text-center">REGISTROS</th>
+                                <th class="text-center">STATUS</th>
+                                <th class="text-center">A\u00c7\u00d5ES</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for link in group.links %}
+                            <tr class="{% if not link.isActive %}table-secondary text-muted{% endif %}">
+                                <td><strong>{{ link.name }}</strong></td>
+                                <td>
+                                    <span class="badge
+                                        {% if link.type == 'feed' %}bg-danger
+                                        {% elseif link.type == 'traffic' %}bg-warning text-dark
+                                        {% elseif link.type == 'cemaden' %}bg-primary
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ link.typeLabel }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <code class="small">{{ link.feedUuid ? link.feedUuid|slice(0,8) ~ '...' : '\u2014' }}</code>
+                                </td>
+                                <td class="text-truncate" style="max-width:220px">
+                                    <a href="{{ link.url }}" target="_blank" class="small text-decoration-none" title="{{ link.url }}">
+                                        {{ link.url|slice(0,60) }}{% if link.url|length > 60 %}...{% endif %}
+                                    </a>
+                                </td>
+                                <td class="text-center small">
+                                    {% if link.lastFetchedAt %}
+                                        <span title="{{ link.lastFetchedAt|date('d/m/Y H:i:s') }}">
+                                            {{ link.lastFetchedAt|date('H:i:s') }}
+                                        </span>
+                                        {% if link.lastErrorMessage %}
+                                            <br><span class="text-danger" title="{{ link.lastErrorMessage }}">\u274c erro</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">nunca</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if link.lastFetchCount is not null %}
+                                        <span class="badge bg-info text-dark">{{ link.lastFetchCount }}</span>
+                                    {% else %}
+                                        <span class="text-muted">\u2014</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if link.isActive %}
+                                        <span class="badge bg-success">Ativo</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Inativo</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center text-nowrap">
+                                    <a href="{{ path('admin_link_edit', {id: link.id}) }}"
+                                       class="btn btn-sm btn-outline-secondary" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+
+                                    <form method="post"
+                                          action="{{ path('admin_link_toggle', {id: link.id}) }}"
+                                          class="d-inline">
+                                        <button class="btn btn-sm {% if link.isActive %}btn-outline-warning{% else %}btn-outline-success{% endif %}"
+                                                title="{% if link.isActive %}Desativar{% else %}Ativar{% endif %}">
+                                            <i class="bi {% if link.isActive %}bi-pause{% else %}bi-play{% endif %}"></i>
+                                        </button>
+                                    </form>
+
+                                    <form method="post"
+                                          action="{{ path('admin_link_delete', {id: link.id}) }}"
+                                          class="d-inline"
+                                          onsubmit="return confirm('Excluir este link?')">
+                                        <input type="hidden" name="_token"
+                                               value="{{ csrf_token('delete_link_' ~ link.id) }}">
+                                        <button class="btn btn-sm btn-outline-danger" title="Excluir">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+</div>
+{% endblock %}

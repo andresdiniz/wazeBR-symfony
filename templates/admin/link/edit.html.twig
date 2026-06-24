@@ -1,0 +1,68 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Editar Link — {{ link.name }}{% endblock %}
+
+{% block body %}
+<div class="container py-4" style="max-width: 640px">
+
+    <h1 class="h4 mb-1">Editar Link</h1>
+    <p class="text-muted small mb-4">
+        Parceiro: <strong>{{ link.partner ? link.partner.name : 'sem parceiro' }}</strong>
+    </p>
+
+    {% for flash in app.flashes('error') %}
+        <div class="alert alert-danger">{{ flash }}</div>
+    {% endfor %}
+
+    <form method="post" action="{{ path('admin_link_edit', {id: link.id}) }}">
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Nome</label>
+            <input type="text" name="name" class="form-control"
+                   value="{{ link.name }}" required>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Tipo</label>
+            <select name="type" class="form-select" required>
+                {% for type in types %}
+                    <option value="{{ type }}" {% if type == link.type %}selected{% endif %}>
+                        {{ type }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold">URL</label>
+            <input type="url" name="url" class="form-control font-monospace"
+                   value="{{ link.url }}" required>
+            <div class="form-text">
+                {% if link.feedUuid %}
+                    Feed UUID detectado: <code>{{ link.feedUuid }}</code>
+                    {% if link.wazePartnerId %} &mdash; Partner ID: <code>{{ link.wazePartnerId }}</code>{% endif %}
+                {% else %}
+                    Nenhum UUID detectado na URL atual.
+                {% endif %}
+            </div>
+        </div>
+
+        {% if link.lastFetchedAt %}
+        <div class="alert alert-light border small">
+            <strong>\u00daltima coleta:</strong> {{ link.lastFetchedAt|date('d/m/Y H:i:s') }}
+            &mdash; {{ link.lastFetchCount ?? '?' }} registros<br>
+            {% if link.lastErrorMessage %}
+                <span class="text-danger">Erro: {{ link.lastErrorMessage }}</span>
+            {% else %}
+                <span class="text-success">\u2713 Sem erros</span>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary">Salvar</button>
+            <a href="{{ path('admin_link_index') }}" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

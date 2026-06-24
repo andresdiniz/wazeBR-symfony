@@ -9,6 +9,9 @@ use App\Entity\WazeTrafficJam;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
+/**
+ * @extends ServiceEntityRepository<WazeTrafficJam>
+ */
 class WazeTrafficJamRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
@@ -16,69 +19,34 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
         parent::__construct($registry, WazeTrafficJam::class);
     }
 
-    public function countByPartner(Partner $partner): int
+    public function save(WazeTrafficJam $entity, bool $flush = true): void
     {
-        return (int) $this->createQueryBuilder('j')
-            ->select('COUNT(j.id)')
-            ->where('j.partner = :p')->setParameter('p', $partner)
-            ->getQuery()->getSingleScalarResult();
+        $this->getEntityManager()->persist($entity);
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
     }
 
-    public function findRecentByPartner(Partner $partner, int $limit = 5): array
+    public function findByPartnerRecent(Partner $partner, int $limit = 100): array
     {
         return $this->createQueryBuilder('j')
-            ->where('j.partner = :p')->setParameter('p', $partner)
+            ->where('j.partner = :partner')
+            ->setParameter('partner', $partner)
             ->orderBy('j.pubMillis', 'DESC')
             ->setMaxResults($limit)
-            ->getQuery()->getResult();
+            ->getQuery()
+            ->getResult();
     }
 
-    public function findActiveByPartner(Partner $partner): array
-    {
-        $since = (new \DateTimeImmutable('-2 hours'))->getTimestamp() * 1000;
-
-        return $this->createQueryBuilder('j')
-            ->where('j.partner = :p')->setParameter('p', $partner)
-            ->andWhere('j.pubMillis >= :since')->setParameter('since', $since)
-            ->orderBy('j.level', 'DESC')
-            ->getQuery()->getResult();
-    }
-
-    public function findFilteredByPartner(
-        Partner  $partner,
-        ?int     $minLevel = null,
-        ?string  $city     = null,
-        int      $page     = 1,
-        int      $limit    = 30,
-    ): array {
-        $qb = $this->createQueryBuilder('j')
-            ->where('j.partner = :p')->setParameter('p', $partner)
-            ->orderBy('j.level', 'DESC')
-            ->addOrderBy('j.pubMillis', 'DESC')
-            ->setFirstResult(($page - 1) * $limit)
-            ->setMaxResults($limit);
-
-        if ($minLevel !== null) {
-            $qb->andWhere('j.level >= :level')->setParameter('level', $minLevel);
-        }
-        if ($city) {
-            $qb->andWhere('j.city LIKE :city')->setParameter('city', "%{$city}%");
-        }
-
-        return $qb->getQuery()->getResult();
-    }
-
-    public function findOneByPartner(int $id, Partner $partner): ?WazeTrafficJam
+    public function countByLevelForPartner(Partner $partner): array
     {
         return $this->createQueryBuilder('j')
-            ->where('j.id = :id')->setParameter('id', $id)
-            ->andWhere('j.partner = :p')->setParameter('p', $partner)
-            ->getQuery()->getOneOrNullResult();
-    }
-
-    public function save(WazeTrafficJam $jam, bool $flush = true): void
-    {
-        $this->getEntityManager()->persist($jam);
-        if ($flush) $this->getEntityManager()->flush();
+            ->select('j.level, COUNT(j.id) as total')
+            ->where('j.partner = :partner')
+            ->setParameter('partner', $partner)
+            ->groupBy('j.level')
+            ->orderBy('j.level', 'ASC')
+            ->getQuery()
+            ->getArrayResult();
     }
 }
