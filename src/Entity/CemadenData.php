@@ -17,6 +17,10 @@ class CemadenData
     #[ORM\Column]
     private ?int $id = null;
 
+    #[ORM\ManyToOne(targetEntity: Partner::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?Partner $partner = null;
+
     #[ORM\Column(length: 80)]
     private string $stationCode;
 
@@ -54,6 +58,8 @@ class CemadenData
     public function onPrePersist(): void { $this->createdAt = new \DateTimeImmutable(); }
 
     public function getId(): ?int { return $this->id; }
+    public function getPartner(): ?Partner { return $this->partner; }
+    public function setPartner(?Partner $partner): static { $this->partner = $partner; return $this; }
     public function getStationCode(): string { return $this->stationCode; }
     public function setStationCode(string $stationCode): static { $this->stationCode = $stationCode; return $this; }
     public function getStationName(): string { return $this->stationName; }

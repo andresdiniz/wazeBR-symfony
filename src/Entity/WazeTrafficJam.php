@@ -18,6 +18,10 @@ class WazeTrafficJam
     #[ORM\Column]
     private ?int $id = null;
 
+    #[ORM\ManyToOne(targetEntity: Partner::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?Partner $partner = null;
+
     #[ORM\Column(length: 50)]
     private string $wazeId;
 
@@ -52,6 +56,8 @@ class WazeTrafficJam
     public function onPrePersist(): void { $this->createdAt = new \DateTimeImmutable(); }
 
     public function getId(): ?int { return $this->id; }
+    public function getPartner(): ?Partner { return $this->partner; }
+    public function setPartner(?Partner $partner): static { $this->partner = $partner; return $this; }
     public function getWazeId(): string { return $this->wazeId; }
     public function setWazeId(string $wazeId): static { $this->wazeId = $wazeId; return $this; }
     public function getStreet(): ?string { return $this->street; }
