@@ -1,5 +1,0 @@
-# Symfony Scheduler \u2014 WazeBR
-# Nenhuma configura\u00e7\u00e3o extra necess\u00e1ria al\u00e9m de habilitar o bundle.
-# O schedule \u00e9 definido via #[AsSchedule] em App\Scheduler\WazeFeedSchedule.
-scheduler:
-    enabled: true
