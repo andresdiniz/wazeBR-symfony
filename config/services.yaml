@@ -5,11 +5,21 @@ parameters:
     app.waze_bbox:          '%env(string:WAZE_BBOX)%'
     app.cemaden_api_url:    '%env(string:CEMADEN_API_URL)%'
     app.cemaden_api_key:    '%env(string:CEMADEN_API_KEY)%'
+    app.app_name:           '%env(string:APP_NAME)%'
+    app.sender_email:       '%env(string:SENDER_EMAIL)%'
 
 services:
     _defaults:
         autowire: true
         autoconfigure: true
+        bind:
+            # Scalares injetados por nome de argumento em qualquer servico/controller
+            string $apiExternaToken: '%app.api_externa_token%'
+            string $apiUrl:          '%app.waze_api_url%'
+            string $apiKey:          '%app.waze_api_key%'
+            string $bbox:            '%app.waze_bbox%'
+            string $appName:         '%app.app_name%'
+            string $senderEmail:     '%app.sender_email%'
 
     App\:
         resource: '../src/'
@@ -18,16 +28,8 @@ services:
             - '../src/Entity/'
             - '../src/Kernel.php'
 
-    App\Controller\ApiExternaController:
-        arguments:
-            $apiExternaToken: '%app.api_externa_token%'
-
-    App\Service\WazeApiService:
-        arguments:
-            $apiUrl: '%app.waze_api_url%'
-            $apiKey: '%app.waze_api_key%'
-            $bbox:   '%app.waze_bbox%'
-
+    # CemadenService tem $apiUrl e $apiKey mas para a URL do CEMADEN (diferente do Waze)
+    # Por isso sobrescreve os binds globais apenas aqui
     App\Service\CemadenService:
         arguments:
             $apiUrl: '%app.cemaden_api_url%'
