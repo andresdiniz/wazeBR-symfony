@@ -6,7 +6,7 @@ namespace App;
 
 use Symfony\Component\Scheduler\Attribute\AsSchedule;
 use Symfony\Component\Scheduler\RecurringMessage;
-use Symfony\Component\Scheduler\Schedule;
+use Symfony\Component\Scheduler\Schedule as SymfonySchedule;
 use Symfony\Component\Scheduler\ScheduleProviderInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use App\Message\CollectWazeFeedMessage;
@@ -16,7 +16,6 @@ use App\Message\CollectWazeFeedMessage;
  *
  * Tarefas agendadas:
  *   - Coleta de alertas + jams do feed PartnerHub    → a cada 5 minutos
- *   - (futuramente) relatório diário, coleta CEMADEN, etc.
  *
  * Para rodar:
  *   php bin/console messenger:consume scheduler_default
@@ -25,17 +24,17 @@ use App\Message\CollectWazeFeedMessage;
  *   php bin/console app:waze:collect-feed --dry-run
  */
 #[AsSchedule]
-final class Schedule implements ScheduleProviderInterface
+final class MainSchedule implements ScheduleProviderInterface
 {
-    private ?Schedule $schedule = null;
+    private ?SymfonySchedule $schedule = null;
 
     public function __construct(
         private readonly CacheInterface $cache,
     ) {}
 
-    public function getSchedule(): Schedule
+    public function getSchedule(): SymfonySchedule
     {
-        return $this->schedule ??= (new Schedule())
+        return $this->schedule ??= (new SymfonySchedule())
             ->stateful($this->cache)
             ->add(
                 RecurringMessage::every('5 minutes', new CollectWazeFeedMessage()),
