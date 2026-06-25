@@ -77,18 +77,35 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
     /**
      * Retorna array de ['hour' => int(0-23), 'total' => int]
      * para as últimas 24 horas.
+     *
+     * Usa Native SQL pois DQL não suporta a função HOUR() nativamente.
      */
     public function countPerHourLast24h(Partner $partner): array
     {
-        return $this->createQueryBuilder('j')
-            ->select('HOUR(j.createdAt) AS hour, COUNT(j.id) AS total')
-            ->where('j.partner = :p')->setParameter('p', $partner)
-            ->andWhere('j.createdAt >= :since')
-            ->setParameter('since', new \DateTimeImmutable('-24 hours'))
-            ->groupBy('hour')
-            ->orderBy('hour', 'ASC')
-            ->getQuery()->getArrayResult();
+        $conn  = $this->getEntityManager()->getConnection();
+        $since = (new \DateTimeImmutable('-24 hours'))->format('Y-m-d H:i:s');
+
+        $sql = '
+            SELECT HOUR(j.created_at) AS hour, COUNT(j.id) AS total
+            FROM waze_traffic_jams j
+            WHERE j.partner_id = :partner_id
+              AND j.created_at >= :since
+            GROUP BY HOUR(j.created_at)
+            ORDER BY hour ASC
+        ';
+
+        $rows = $conn->executeQuery($sql, [
+            'partner_id' => $partner->getId(),
+            'since'      => $since,
+        ])->fetchAllAssociative();
+
+        return array_map(static fn(array $r) => [
+            'hour'  => (int) $r['hour'],
+            'total' => (int) $r['total'],
+        ], $rows);
     }
+
+    // ── mesmo método para alertas (WazeAlertRepository pode usar o mesmo padrão) ──
 
     // ── listagens ────────────────────────────────────────────────────
 
