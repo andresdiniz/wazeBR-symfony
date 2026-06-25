@@ -7,6 +7,35 @@ namespace App\Entity;
 use App\Repository\WazeAlertRepository;
 use Doctrine\ORM\Mapping as ORM;
 
+/**
+ * Alerta coletado do feed PartnerHub do Waze (format=1).
+ *
+ * Estrutura do JSON (alerts[]):
+ * {
+ *   "uuid": "string",
+ *   "type": "ACCIDENT|JAM|WEATHERHAZARD|HAZARD|MISC|CONSTRUCTION|ROAD_CLOSED",
+ *   "subtype": "string|null",
+ *   "street": "string|null",
+ *   "city": "string|null",
+ *   "country": "string",
+ *   "location": {"x": float, "y": float},
+ *   "pubMillis": int,
+ *   "reliability": int,
+ *   "confidence": int,
+ *   "reportRating": int,
+ *   "nThumbsUp": int,
+ *   "nComments": int,
+ *   "reportDescription": "string|null",
+ *   "magvar": int,
+ *   "roadType": int,
+ *   "additionalInfo": "string|null",
+ *   "comments": [],
+ *   "jamUuid": "string|null",
+ *   "inscale": bool,
+ *   "isJamUnifiedAlert": bool,
+ *   "reportByMunicipalityUser": bool
+ * }
+ */
 #[ORM\Entity(repositoryClass: WazeAlertRepository::class)]
 #[ORM\Table(name: 'waze_alerts')]
 #[ORM\UniqueConstraint(name: 'uq_waze_alert_uuid', columns: ['waze_id'])]
@@ -30,19 +59,23 @@ class WazeAlert
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?MonitoredLink $sourceLink = null;
 
-    /** UUID único do Waze — chave de deduplicação */
+    /** UUID único do Waze — chave de deduplicação (campo "uuid" no JSON) */
     #[ORM\Column(length: 80, unique: true)]
     private string $wazeId = '';
 
+    /** ACCIDENT, JAM, WEATHERHAZARD, HAZARD, MISC, CONSTRUCTION, ROAD_CLOSED */
     #[ORM\Column(length: 60)]
     private string $type = '';
 
+    /** Ex: ACCIDENT_MINOR, HAZARD_ON_ROAD_POT_HOLE, ROAD_CLOSED_CONSTRUCTION */
     #[ORM\Column(length: 60, nullable: true)]
     private ?string $subtype = null;
 
+    /** Latitude — campo "y" do objeto location */
     #[ORM\Column(type: 'decimal', precision: 10, scale: 7)]
     private float $latitude = 0.0;
 
+    /** Longitude — campo "x" do objeto location */
     #[ORM\Column(type: 'decimal', precision: 10, scale: 7)]
     private float $longitude = 0.0;
 
@@ -68,6 +101,10 @@ class WazeAlert
     #[ORM\Column(nullable: true)]
     private ?int $nThumbsUp = null;
 
+    /** Número de comentários no alerta */
+    #[ORM\Column(nullable: true)]
+    private ?int $nComments = null;
+
     /** Descrição livre do relato */
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $reportDescription = null;
@@ -87,6 +124,22 @@ class WazeAlert
     /** Comentários dos usuários (array JSON) */
     #[ORM\Column(type: 'json')]
     private array $comments = [];
+
+    /** UUID do jam associado a este alerta (campo "jamUuid") */
+    #[ORM\Column(length: 80, nullable: true)]
+    private ?string $jamUuid = null;
+
+    /** Alerta visível na escala atual do mapa (campo "inscale") */
+    #[ORM\Column(nullable: true)]
+    private ?bool $inscale = null;
+
+    /** Alerta unificado de jam (campo "isJamUnifiedAlert") */
+    #[ORM\Column(nullable: true)]
+    private ?bool $isJamUnifiedAlert = null;
+
+    /** Relato feito por usuário municipal (campo "reportByMunicipalityUser") */
+    #[ORM\Column(nullable: true)]
+    private ?bool $reportByMunicipalityUser = null;
 
     /** Timestamp de publicação no Waze (milissegundos) */
     #[ORM\Column(type: 'bigint')]
@@ -154,6 +207,9 @@ class WazeAlert
     public function getNThumbsUp(): ?int { return $this->nThumbsUp; }
     public function setNThumbsUp(?int $v): static { $this->nThumbsUp = $v; return $this; }
 
+    public function getNComments(): ?int { return $this->nComments; }
+    public function setNComments(?int $v): static { $this->nComments = $v; return $this; }
+
     public function getReportDescription(): ?string { return $this->reportDescription; }
     public function setReportDescription(?string $v): static { $this->reportDescription = $v; return $this; }
 
@@ -168,6 +224,18 @@ class WazeAlert
 
     public function getComments(): array { return $this->comments; }
     public function setComments(array $v): static { $this->comments = $v; return $this; }
+
+    public function getJamUuid(): ?string { return $this->jamUuid; }
+    public function setJamUuid(?string $v): static { $this->jamUuid = $v; return $this; }
+
+    public function getInscale(): ?bool { return $this->inscale; }
+    public function setInscale(?bool $v): static { $this->inscale = $v; return $this; }
+
+    public function getIsJamUnifiedAlert(): ?bool { return $this->isJamUnifiedAlert; }
+    public function setIsJamUnifiedAlert(?bool $v): static { $this->isJamUnifiedAlert = $v; return $this; }
+
+    public function getReportByMunicipalityUser(): ?bool { return $this->reportByMunicipalityUser; }
+    public function setReportByMunicipalityUser(?bool $v): static { $this->reportByMunicipalityUser = $v; return $this; }
 
     public function getPubMillis(): int { return $this->pubMillis; }
     public function setPubMillis(int $v): static { $this->pubMillis = $v; return $this; }

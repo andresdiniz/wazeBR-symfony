@@ -8,29 +8,31 @@ use App\Repository\WazeTrafficJamRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Congestionamento coletado do feed TVT do Waze.
+ * Congestionamento coletado do feed PartnerHub do Waze (format=1).
  *
- * Estrutura do JSON (feeds-tvt):
+ * Estrutura do JSON (jams[]):
  * {
- *   "jams": [{
- *     "uuid": "...",
- *     "street": "...",
- *     "city": "...",
- *     "country": "BR",
- *     "level": 3,
- *     "speedKMH": 12.5,
- *     "length": 450,
- *     "delay": 120,
- *     "type": "NONE",
- *     "turnType": "NONE",
- *     "roadType": 2,
- *     "segments": [],
- *     "line": [{"x":-43.9,"y":-19.9}, ...],
- *     "startNode": "Rua X",
- *     "endNode": "Rua Y",
- *     "causedBy": "uuid-do-alerta",
- *     "pubMillis": 1700000060000
- *   }]
+ *   "uuid": "string",
+ *   "street": "string|null",
+ *   "city": "string|null",
+ *   "country": "string",
+ *   "level": int,          // 0-5
+ *   "speedKMH": float,     // velocidade em km/h
+ *   "speed": float,        // velocidade em m/s
+ *   "length": int,         // comprimento em metros
+ *   "delay": int,          // atraso em segundos
+ *   "type": "string",      // NONE, JAM, SMALL_JAM...
+ *   "turnType": "string",
+ *   "roadType": int,
+ *   "startNode": "string|null",
+ *   "endNode": "string|null",
+ *   "causedBy": "string|null", // uuid do alerta causador
+ *   "blocking": bool,      // bloqueia a via completamente
+ *   "severity": int,
+ *   "id": int,             // ID numérico interno Waze
+ *   "line": [{"x": float, "y": float}],
+ *   "segments": [],
+ *   "pubMillis": int
  * }
  */
 #[ORM\Entity(repositoryClass: WazeTrafficJamRepository::class)]
@@ -51,14 +53,18 @@ class WazeTrafficJam
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?Partner $partner = null;
 
-    /** Link de feed TVT de onde este jam foi coletado */
+    /** Link de feed de onde este jam foi coletado */
     #[ORM\ManyToOne(targetEntity: MonitoredLink::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?MonitoredLink $sourceLink = null;
 
-    /** UUID único Waze — chave de deduplicação */
+    /** UUID único Waze — chave de deduplicação (campo "uuid" no JSON) */
     #[ORM\Column(length: 80, unique: true)]
     private string $wazeId = '';
+
+    /** ID numérico interno do Waze (campo "id" no JSON) */
+    #[ORM\Column(nullable: true)]
+    private ?int $wazeNumericId = null;
 
     #[ORM\Column(length: 120, nullable: true)]
     private ?string $street = null;
@@ -73,23 +79,27 @@ class WazeTrafficJam
     #[ORM\Column(nullable: true)]
     private ?int $level = null;
 
-    /** Velocidade média em km/h */
+    /** Velocidade média em km/h (campo "speedKMH") */
     #[ORM\Column(type: 'decimal', precision: 8, scale: 2, nullable: true)]
     private ?float $speedKmh = null;
 
-    /** Comprimento do jam em metros */
-    #[ORM\Column(type: 'decimal', precision: 10, scale: 2, nullable: true)]
-    private ?float $length = null;
+    /** Velocidade em m/s (campo "speed") */
+    #[ORM\Column(type: 'decimal', precision: 8, scale: 3, nullable: true)]
+    private ?float $speed = null;
 
-    /** Atraso estimado em segundos */
+    /** Comprimento do jam em metros (campo "length") */
+    #[ORM\Column(nullable: true)]
+    private ?int $length = null;
+
+    /** Atraso estimado em segundos (campo "delay") */
     #[ORM\Column(nullable: true)]
     private ?int $delay = null;
 
-    /** Tipo do jam (NONE, JAM, SMALL_JAM...) */
+    /** Tipo do jam (NONE, JAM, SMALL_JAM, LARGE_JAM, HUGE_JAM) */
     #[ORM\Column(length: 40, nullable: true)]
     private ?string $type = null;
 
-    /** Tipo de curva/conversão */
+    /** Tipo de curva/conversão (NONE, LEFT, RIGHT, UTURM, UTURN_L, UTURN_R) */
     #[ORM\Column(length: 40, nullable: true)]
     private ?string $turnType = null;
 
@@ -105,11 +115,19 @@ class WazeTrafficJam
     #[ORM\Column(length: 200, nullable: true)]
     private ?string $endNode = null;
 
-    /** UUID do alerta que causou o jam (causedBy) */
+    /** UUID do alerta que causou o jam (campo "causedBy") */
     #[ORM\Column(length: 80, nullable: true)]
     private ?string $causedBy = null;
 
-    /** Linha geográfica do jam — array de {x, y} */
+    /** Jam bloqueia a via completamente (campo "blocking") */
+    #[ORM\Column(nullable: true)]
+    private ?bool $blocking = null;
+
+    /** Severidade do jam (campo "severity") */
+    #[ORM\Column(nullable: true)]
+    private ?int $severity = null;
+
+    /** Linha geográfica do jam — array de {x: lon, y: lat} */
     #[ORM\Column(type: 'json')]
     private array $line = [];
 
@@ -150,6 +168,9 @@ class WazeTrafficJam
     public function getWazeId(): string { return $this->wazeId; }
     public function setWazeId(string $v): static { $this->wazeId = $v; return $this; }
 
+    public function getWazeNumericId(): ?int { return $this->wazeNumericId; }
+    public function setWazeNumericId(?int $v): static { $this->wazeNumericId = $v; return $this; }
+
     public function getStreet(): ?string { return $this->street; }
     public function setStreet(?string $v): static { $this->street = $v; return $this; }
 
@@ -165,8 +186,11 @@ class WazeTrafficJam
     public function getSpeedKmh(): ?float { return $this->speedKmh; }
     public function setSpeedKmh(?float $v): static { $this->speedKmh = $v; return $this; }
 
-    public function getLength(): ?float { return $this->length; }
-    public function setLength(?float $v): static { $this->length = $v; return $this; }
+    public function getSpeed(): ?float { return $this->speed; }
+    public function setSpeed(?float $v): static { $this->speed = $v; return $this; }
+
+    public function getLength(): ?int { return $this->length; }
+    public function setLength(?int $v): static { $this->length = $v; return $this; }
 
     public function getDelay(): ?int { return $this->delay; }
     public function setDelay(?int $v): static { $this->delay = $v; return $this; }
@@ -188,6 +212,12 @@ class WazeTrafficJam
 
     public function getCausedBy(): ?string { return $this->causedBy; }
     public function setCausedBy(?string $v): static { $this->causedBy = $v; return $this; }
+
+    public function getBlocking(): ?bool { return $this->blocking; }
+    public function setBlocking(?bool $v): static { $this->blocking = $v; return $this; }
+
+    public function getSeverity(): ?int { return $this->severity; }
+    public function setSeverity(?int $v): static { $this->severity = $v; return $this; }
 
     public function getLine(): array { return $this->line; }
     public function setLine(array $v): static { $this->line = $v; return $this; }
