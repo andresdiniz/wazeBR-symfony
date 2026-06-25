@@ -27,15 +27,48 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
         }
     }
 
-    public function findByPartnerRecent(Partner $partner, int $limit = 100): array
+    /** Contagem total de jams do parceiro */
+    public function countByPartner(Partner $partner): int
+    {
+        return (int) $this->createQueryBuilder('j')
+            ->select('COUNT(j.id)')
+            ->where('j.partner = :p')
+            ->setParameter('p', $partner)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /** Jams mais recentes do parceiro (usados no dashboard) */
+    public function findRecentByPartner(Partner $partner, int $limit = 10): array
     {
         return $this->createQueryBuilder('j')
-            ->where('j.partner = :partner')
-            ->setParameter('partner', $partner)
+            ->where('j.partner = :p')
+            ->setParameter('p', $partner)
             ->orderBy('j.pubMillis', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()
             ->getResult();
+    }
+
+    /** Jams publicados nas últimas 2 horas (usados no mapa) */
+    public function findActiveByPartner(Partner $partner): array
+    {
+        $since = (new \DateTimeImmutable('-2 hours'))->getTimestamp() * 1000;
+
+        return $this->createQueryBuilder('j')
+            ->where('j.partner = :p')
+            ->setParameter('p', $partner)
+            ->andWhere('j.pubMillis >= :since')
+            ->setParameter('since', $since)
+            ->orderBy('j.pubMillis', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** Alias de findRecentByPartner — mantido para retrocompatibilidade */
+    public function findByPartnerRecent(Partner $partner, int $limit = 100): array
+    {
+        return $this->findRecentByPartner($partner, $limit);
     }
 
     public function countByLevelForPartner(Partner $partner): array
