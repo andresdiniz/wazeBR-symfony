@@ -5,141 +5,161 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\MonitoredLink;
-use App\Entity\WazeTrafficJam;
-use App\Repository\WazeTrafficJamRepository;
+use App\Entity\WazeTvtRoute;
+use App\Entity\WazeTvtSnapshot;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
- * Coleta jams de tr\u00e1fego do feed TVT do Waze e persiste com upsert.
+ * Coleta o feed TVT do Waze e persiste como WazeTvtSnapshot + WazeTvtRoute.
  *
- * Formato da URL: https://www.waze.com/row-partnerhub-api/feeds-tvt/{uuid}?id={partnerId}
- *
- * JSON retornado:
+ * Estrutura real do JSON (verificada em 2026-06-25):
  * {
- *   "startTimeMillis": ...,
- *   "endTimeMillis": ...,
- *   "jams": [
+ *   "updateTime": 1782350463272,
+ *   "name": "Managed Area",
+ *   "areaName": "Managed Area",
+ *   "broadcasterId": "",
+ *   "isMetric": true,
+ *   "bbox": {"minX": -43.82, "maxX": -43.74, "minY": -20.71, "maxY": -20.61},
+ *   "usersOnJams": [{"jamLevel": 0, "wazersCount": 79}, ...],   // 5 níveis
+ *   "lengthOfJams": [{"jamLevel": 1, "jamLength": 0}, ...],     // 4 níveis
+ *   "irregularities": [],
+ *   "routes": [
  *     {
- *       "uuid": "...",        <- chave \u00fanica
- *       "street": "...",
- *       "city": "...",
- *       "country": "BR",
- *       "level": 3,           <- 0=livre .. 5=parado
- *       "speedKMH": 12.5,
- *       "length": 450,        <- metros
- *       "delay": 120,         <- segundos
- *       "type": "NONE",
- *       "turnType": "NONE",
- *       "roadType": 2,
- *       "startNode": "...",
- *       "endNode": "...",
- *       "causedBy": "uuid-alert",
- *       "line": [{"x":-43.9,"y":-19.9},...],
- *       "segments": [],
- *       "pubMillis": ...
- *     }
+ *       "id": "1734959326165",
+ *       "name": "Cachoeira Centro",
+ *       "type": "STATIC",
+ *       "fromName": "R. Antônio...",
+ *       "toName": "Av. Pref. ...",
+ *       "length": 3152,
+ *       "time": 522,
+ *       "historicTime": 457,
+ *       "jamLevel": 1,
+ *       "line": [{"x": -43.79, "y": -20.64}, ...],
+ *       "bbox": {"minX":..., ...},
+ *       "subRoutes": []
+ *     },
+ *     ...
  *   ]
  * }
  */
 class WazeTrafficFeedService
 {
     public function __construct(
-        private readonly HttpClientInterface      $httpClient,
-        private readonly EntityManagerInterface  $em,
-        private readonly WazeTrafficJamRepository $jamRepo,
-        private readonly LoggerInterface          $logger,
+        private readonly HttpClientInterface    $httpClient,
+        private readonly EntityManagerInterface $em,
+        private readonly LoggerInterface        $logger,
     ) {}
 
     /**
-     * Busca e salva jams de um feed TVT.
+     * Busca e persiste um snapshot completo do feed TVT.
      *
-     * @return int N\u00famero de jams novos/atualizados
-     */
+     * @return int Número de rotas salvas (principais + subRoutes)
+ */
     public function fetchAndPersist(MonitoredLink $link): int
     {
         $response = $this->httpClient->request('GET', $link->getUrl(), [
-            'timeout' => 15,
+            'timeout' => 20,
             'headers' => ['Accept' => 'application/json'],
         ]);
 
         $data = $response->toArray();
-        $jams = $data['jams'] ?? [];
 
-        if (!is_array($jams)) {
-            throw new \UnexpectedValueException('Campo "jams" ausente ou inv\u00e1lido no feed TVT.');
+        // Validação básica
+        if (!isset($data['routes']) || !is_array($data['routes'])) {
+            throw new \UnexpectedValueException(
+                sprintf(
+                    '[WazeTVT] Chave "routes" ausente no JSON. Chaves encontradas: %s',
+                    implode(', ', array_keys($data))
+                )
+            );
         }
-
-        $feedStartMillis = isset($data['startTimeMillis'])
-            ? (int) $data['startTimeMillis']
-            : null;
 
         $partner = $link->getPartner();
-        $count   = 0;
-        $batch   = 0;
 
-        foreach ($jams as $raw) {
-            $uuid = $raw['uuid'] ?? null;
-            if (!$uuid) continue;
+        // --- Criar snapshot ---
+        $snapshot = new WazeTvtSnapshot();
+        $snapshot
+            ->setPartner($partner)
+            ->setSourceLink($link)
+            ->setUpdateTime(isset($data['updateTime']) ? (int) $data['updateTime'] : null)
+            ->setFeedName($data['name'] ?? null)
+            ->setAreaName($data['areaName'] ?? null)
+            ->setBroadcasterId($data['broadcasterId'] ?? null)
+            ->setIsMetric((bool) ($data['isMetric'] ?? true))
+            ->setBbox($data['bbox'] ?? null)
+            ->setUsersOnJams($data['usersOnJams'] ?? [])
+            ->setLengthOfJams($data['lengthOfJams'] ?? [])
+            ->setIrregularities($data['irregularities'] ?? []);
 
-            $jam   = $this->jamRepo->findOneBy(['wazeId' => $uuid]);
-            $isNew = $jam === null;
+        // --- Normalizar rotas ---
+        $routeCount = 0;
 
-            if ($isNew) {
-                $jam = new WazeTrafficJam();
-                $jam->setWazeId($uuid);
-            }
-
-            $jam
-                ->setPartner($partner)
-                ->setSourceLink($link)
-                ->setStreet($this->trunc($raw['street'] ?? null, 120))
-                ->setCity($this->trunc($raw['city'] ?? null, 80))
-                ->setCountry($this->trunc($raw['country'] ?? null, 10))
-                ->setLevel(isset($raw['level']) ? (int) $raw['level'] : null)
-                ->setSpeedKmh(isset($raw['speedKMH']) ? (float) $raw['speedKMH'] : null)
-                ->setLength(isset($raw['length']) ? (float) $raw['length'] : null)
-                ->setDelay(isset($raw['delay']) ? (int) $raw['delay'] : null)
-                ->setType($raw['type'] ?? null)
-                ->setTurnType($raw['turnType'] ?? null)
-                ->setRoadType(isset($raw['roadType']) ? (int) $raw['roadType'] : null)
-                ->setStartNode($this->trunc($raw['startNode'] ?? null, 200))
-                ->setEndNode($this->trunc($raw['endNode'] ?? null, 200))
-                ->setCausedBy($this->trunc($raw['causedBy'] ?? null, 80))
-                ->setLine($raw['line'] ?? [])
-                ->setSegments($raw['segments'] ?? [])
-                ->setPubMillis((int) ($raw['pubMillis'] ?? 0))
-                ->setFeedStartMillis($feedStartMillis);
-
-            if ($isNew) {
-                $this->em->persist($jam);
-            }
-
-            $count++;
-            $batch++;
-
-            if ($batch >= 50) {
-                $this->em->flush();
-                $this->em->clear(WazeTrafficJam::class);
-                $batch = 0;
-            }
+        foreach ($data['routes'] as $rawRoute) {
+            $routeCount += $this->persistRoute($snapshot, $rawRoute, false, null);
         }
 
+        $snapshot->setRouteCount($routeCount);
+
+        $this->em->persist($snapshot);
         $this->em->flush();
 
-        $this->logger->info('[WazeTraffic] Feed coletado', [
-            'link'    => $link->getName(),
-            'partner' => $partner?->getSlug(),
-            'jams'    => $count,
+        $this->logger->info('[WazeTVT] Snapshot salvo', [
+            'link'       => $link->getName(),
+            'partner'    => $partner->getSlug(),
+            'routes'     => $routeCount,
+            'updateTime' => $data['updateTime'] ?? null,
+            'area'       => $data['areaName'] ?? null,
         ]);
 
-        return $count;
+        return $routeCount;
     }
 
-    private function trunc(?string $v, int $max): ?string
-    {
-        if ($v === null) return null;
-        return mb_strlen($v) > $max ? mb_substr($v, 0, $max) : $v;
+    /**
+     * Persiste uma rota (principal ou subRota) e suas subRoutes recursivamente.
+     *
+     * @return int Número de entidades WazeTvtRoute criadas
+     */
+    private function persistRoute(
+        WazeTvtSnapshot $snapshot,
+        array           $raw,
+        bool            $isSubRoute,
+        ?string         $parentWazeId
+    ): int {
+        $route = new WazeTvtRoute();
+        $route
+            ->setSnapshot($snapshot)
+            ->setWazeRouteId(isset($raw['id']) ? (string) $raw['id'] : null)
+            ->setIsSubRoute($isSubRoute)
+            ->setParentWazeId($parentWazeId)
+            ->setName($raw['name'] ?? null)
+            ->setType($raw['type'] ?? null)
+            ->setFromName($raw['fromName'] ?? null)
+            ->setToName($raw['toName'] ?? null)
+            ->setLength(isset($raw['length'])       ? (int)   $raw['length']       : null)
+            ->setTime(isset($raw['time'])           ? (int)   $raw['time']         : null)
+            ->setHistoricTime(isset($raw['historicTime']) ? (int) $raw['historicTime'] : null)
+            ->setJamLevel(isset($raw['jamLevel'])   ? (int)   $raw['jamLevel']     : null)
+            ->setLine($raw['line'] ?? [])
+            ->setBbox($raw['bbox'] ?? null)
+            ->setSubRoutesRaw($raw['subRoutes'] ?? []);
+
+        $this->em->persist($route);
+        $snapshot->addRoute($route);
+
+        $count = 1;
+
+        // Processar subRoutes recursivamente
+        foreach ($raw['subRoutes'] ?? [] as $subRaw) {
+            $count += $this->persistRoute(
+                $snapshot,
+                $subRaw,
+                true,
+                isset($raw['id']) ? (string) $raw['id'] : null
+            );
+        }
+
+        return $count;
     }
 }
