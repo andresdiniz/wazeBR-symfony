@@ -34,23 +34,34 @@ final class Version20260624_waze_traffic_jam_complete extends AbstractMigration
             MODIFY COLUMN line JSON NOT NULL DEFAULT (JSON_ARRAY())
         ');
 
-        $this->addSql('ALTER TABLE waze_traffic_jams
-            ADD CONSTRAINT IF NOT EXISTS fk_waze_jam_source_link
-            FOREIGN KEY (source_link_id) REFERENCES monitored_links(id) ON DELETE SET NULL
-        ');
+        // MariaDB não suporta ADD CONSTRAINT IF NOT EXISTS — verificar via information_schema
+        $fkExists = $this->connection->fetchOne(
+            "SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
+             WHERE CONSTRAINT_SCHEMA = DATABASE()
+               AND TABLE_NAME        = 'waze_traffic_jams'
+               AND CONSTRAINT_NAME  = 'fk_waze_jam_source_link'
+               AND CONSTRAINT_TYPE  = 'FOREIGN KEY'"
+        );
+
+        if (!$fkExists) {
+            $this->addSql('ALTER TABLE waze_traffic_jams
+                ADD CONSTRAINT fk_waze_jam_source_link
+                FOREIGN KEY (source_link_id) REFERENCES monitored_links(id) ON DELETE SET NULL
+            ');
+        }
 
         $this->addSql('
             ALTER TABLE waze_traffic_jams
             ADD UNIQUE INDEX IF NOT EXISTS uq_waze_jam_uuid (waze_id)
         ');
 
-        $this->addSql('
-            CREATE INDEX IF NOT EXISTS idx_jam_pubmillis ON waze_traffic_jams (pub_millis)
-        ');
+        $this->addSql(
+            'CREATE INDEX IF NOT EXISTS idx_jam_pubmillis ON waze_traffic_jams (pub_millis)'
+        );
 
-        $this->addSql('
-            CREATE INDEX IF NOT EXISTS idx_jam_partner_pub ON waze_traffic_jams (partner_id, pub_millis)
-        ');
+        $this->addSql(
+            'CREATE INDEX IF NOT EXISTS idx_jam_partner_pub ON waze_traffic_jams (partner_id, pub_millis)'
+        );
     }
 
     public function down(Schema $schema): void
