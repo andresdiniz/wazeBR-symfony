@@ -121,26 +121,22 @@
       {% endif %}
     </div>
 
-    {# Paginação — variável intermediária para evitar SyntaxError do Twig com ~ em chave de array #}
+    {# Paginação: usa app.request.query.all|merge({'page': p}) para preservar filtros #}
     {% if pages > 1 %}
-    {% set qs = app.request.queryString %}
+    {% set qparams = app.request.query.all %}
     <div class="pagination">
       {% if page > 1 %}
-        {% set prevPage = 'page=' ~ (page - 1) %}
-        <a href="?{{ qs|replace({'page=' ~ page: prevPage}) }}">‹</a>
+        <a href="?{{ qparams|merge({'page': page - 1})|url_encode }}">‹</a>
       {% endif %}
-      {% for p in max(1, page-2)..min(pages, page+2) %}
+      {% for p in max(1, page - 2)..min(pages, page + 2) %}
         {% if p == page %}
           <span class="current">{{ p }}</span>
         {% else %}
-          {% set targetPage = 'page=' ~ p %}
-          {% set currentPage = 'page=' ~ page %}
-          <a href="?{{ qs|replace({(currentPage): targetPage}) }}">{{ p }}</a>
+          <a href="?{{ qparams|merge({'page': p})|url_encode }}">{{ p }}</a>
         {% endif %}
       {% endfor %}
       {% if page < pages %}
-        {% set nextPage = 'page=' ~ (page + 1) %}
-        <a href="?{{ qs|replace({'page=' ~ page: nextPage}) }}">›</a>
+        <a href="?{{ qparams|merge({'page': page + 1})|url_encode }}">›</a>
       {% endif %}
     </div>
     {% endif %}
