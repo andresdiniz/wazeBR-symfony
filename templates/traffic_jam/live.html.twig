@@ -1,198 +1,222 @@
 {% extends 'base.html.twig' %}
-{% block title %}Congestionamentos ao Vivo{% endblock %}
+
+{% block title %}Congestionamentos Ao Vivo{% endblock %}
 
 {% block stylesheets %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-.live-shell{display:grid;grid-template-columns:300px 1fr;gap:var(--space-6);height:calc(100vh - var(--header-h,64px) - 160px)}
-.live-map{border-radius:var(--radius-lg);border:1px solid var(--color-border);overflow:hidden;height:100%;min-height:400px}
-.live-sidebar{display:flex;flex-direction:column;gap:var(--space-3);overflow-y:auto;padding-right:var(--space-1)}
-.jam-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-4);cursor:pointer;transition:box-shadow var(--transition-interactive),border-color var(--transition-interactive)}
-.jam-card:hover,.jam-card.active{box-shadow:var(--shadow-md);border-color:var(--color-primary)}
-.jam-card .street{font-size:var(--text-sm);font-weight:600}
-.jam-card .city{font-size:var(--text-xs);color:var(--color-text-muted)}
-.jam-card .pills{display:flex;flex-wrap:wrap;gap:4px;margin-top:var(--space-2)}
-.jam-card .pill{font-size:10px;padding:2px 7px;border-radius:20px;background:var(--color-surface-offset);color:var(--color-text-muted)}
-.level-badge{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px}
-.stat-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-3);margin-bottom:var(--space-5)}
-.kpi-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4)}
-.kpi-label{font-size:var(--text-xs);font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--color-text-muted);margin-bottom:var(--space-1)}
-.kpi-value{font-size:var(--text-xl);font-weight:700;font-variant-numeric:tabular-nums}
-.hours-toggle{display:flex;gap:var(--space-2);margin-bottom:var(--space-5)}
-.pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--color-error);animation:pulse 2s ease infinite}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.4)}}
-@media(max-width:900px){.live-shell{grid-template-columns:1fr;height:auto}.live-map{height:340px}.live-sidebar{max-height:60vh}.stat-kpis{grid-template-columns:1fr 1fr}}
+  .live-shell { display:grid; grid-template-columns:1fr 340px; gap:var(--space-6); height:calc(100vh - var(--header-h) - var(--space-16)); min-height:500px; }
+  @media(max-width:1100px){ .live-shell{ grid-template-columns:1fr; height:auto; } }
+  #live-map { border-radius:var(--radius-lg); border:1px solid var(--color-border); box-shadow:var(--shadow-md); height:100%; min-height:480px; }
+  .sidebar-panel { display:flex; flex-direction:column; gap:var(--space-4); overflow:hidden; }
+  .jam-list { overflow-y:auto; flex:1; }
+  .jam-item { padding:var(--space-3) var(--space-4); border-bottom:1px solid var(--color-divider); cursor:pointer; transition:background var(--transition); }
+  .jam-item:hover, .jam-item.highlighted { background:var(--color-surface-offset); }
+  .jam-item:last-child { border-bottom:none; }
+  .jam-item-street { font-weight:500; font-size:var(--text-sm); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .jam-item-meta { display:flex; align-items:center; gap:var(--space-2); margin-top:2px; }
+  .level-pip { display:inline-block; width:8px; height:8px; border-radius:50%; }
+  .pulse-dot { width:10px; height:10px; border-radius:50%; background:var(--color-error); animation:pulse 1.5s ease-in-out infinite; display:inline-block; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.4)} }
+  .stat-row { display:flex; justify-content:space-between; align-items:center; padding:var(--space-2) 0; border-bottom:1px solid var(--color-divider); font-size:var(--text-sm); }
+  .stat-row:last-child { border-bottom:none; }
+  .stat-val { font-weight:600; font-variant-numeric:tabular-nums; }
+  .hours-btn { padding:var(--space-1) var(--space-3); border-radius:var(--radius-md); font-size:var(--text-xs); font-weight:500; border:1px solid var(--color-border); color:var(--color-text-muted); }
+  .hours-btn.active { background:var(--color-primary); color:#fff; border-color:var(--color-primary); }
+  .hours-btn:hover:not(.active) { background:var(--color-surface-offset); }
 </style>
 {% endblock %}
 
 {% block content %}
-
-<div class="page-header" style="margin-bottom:var(--space-5)">
+<div class="page-header" style="margin-bottom:var(--space-4)">
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-3)">
-    <div>
-      <h1 class="page-title"><span class="pulse"></span>&nbsp; Congestionamentos ao vivo</h1>
-      <p class="page-subtitle">{{ partner.name }} &mdash; últimas {{ hours }}h &mdash; <strong>{{ total }}</strong> registros</p>
+    <div style="display:flex;align-items:center;gap:var(--space-3)">
+      <span class="pulse-dot"></span>
+      <h1 class="page-title" style="margin:0">Ao Vivo</h1>
+      <span style="font-size:var(--text-sm);color:var(--color-text-muted)">{{ total }} jam{{ total != 1 ? 's' }} · últimas {{ hours }}h</span>
     </div>
-    <div style="display:flex;gap:var(--space-3)">
-      <a href="{{ path('jam_index') }}" class="btn btn-ghost"><i data-lucide="history" style="width:14px;height:14px"></i> Histórico</a>
-      <button class="btn btn-ghost" onclick="location.reload()"><i data-lucide="refresh-cw" style="width:14px;height:14px"></i> Atualizar</button>
-    </div>
-  </div>
-</div>
-
-{# Janela de tempo #}
-<div class="hours-toggle">
-  {% for h in [1,3,6,12,24] %}
-    <a href="{{ path('jam_live', {hours: h}) }}" class="btn {{ hours == h ? 'btn-primary' : 'btn-ghost' }} btn-sm">{{ h }}h</a>
-  {% endfor %}
-</div>
-
-{# KPIs #}
-<div class="stat-kpis">
-  <div class="kpi-card">
-    <div class="kpi-label">Registros</div>
-    <div class="kpi-value">{{ total }}</div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-label">Vel. média</div>
-    <div class="kpi-value" style="color:{{ stats.avgSpeed < 15 ? 'var(--color-error)' : (stats.avgSpeed < 35 ? 'var(--color-warning)' : 'var(--color-success)') }}">
-      {{ stats.avgSpeed|number_format(1,',','.') }} <span style="font-size:var(--text-sm);font-weight:400">km/h</span>
-    </div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-label">Atraso médio</div>
-    <div class="kpi-value">
-      {% if stats.avgDelay >= 60 %}{{ (stats.avgDelay / 60)|round }} <span style="font-size:var(--text-sm);font-weight:400">min</span>
-      {% else %}{{ stats.avgDelay }} <span style="font-size:var(--text-sm);font-weight:400">s</span>{% endif %}
+    <div style="display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap">
+      {% for h in [1, 2, 3, 6, 12, 24] %}
+        <a href="{{ path('jam_live', {hours: h}) }}" class="hours-btn {{ hours == h ? 'active' }}">{{ h }}h</a>
+      {% endfor %}
+      <a href="{{ path('jam_index') }}" class="btn btn-ghost btn-sm" style="margin-left:var(--space-2)">
+        <i data-lucide="table-2" style="width:13px;height:13px"></i> Histórico
+      </a>
     </div>
   </div>
 </div>
 
-{% if jams is empty %}
-  <div class="empty">
-    <i data-lucide="check-circle"></i>
-    <h3>Nenhum congestionamento nas últimas {{ hours }}h</h3>
-    <p>O trânsito está fluindo bem no período selecionado.</p>
-  </div>
-{% else %}
 <div class="live-shell">
+  {# Mapa #}
+  <div id="live-map"></div>
 
-  {# Sidebar #}
-  <div class="live-sidebar">
-    {% for j in jams %}
-    {% set lv = j.level ?? 0 %}
-    {% set color = lv >= 5 ? '#a12c7b' : (lv >= 4 ? '#da3501' : (lv >= 3 ? '#da7101' : (lv >= 2 ? '#d19900' : '#437a22'))) %}
-    <div class="jam-card" data-id="{{ j.id }}" onclick="focusJam({{ j.id }})">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-2)">
-        <div style="flex:1">
-          <div class="street">{{ j.street ?? 'Via não identificada' }}</div>
-          {% if j.city %}<div class="city">{{ j.city }}</div>{% endif %}
+  {# Painel lateral #}
+  <div class="sidebar-panel">
+    {# Estatísticas #}
+    <div class="card">
+      <div class="card-header"><span class="card-title">Estatísticas</span></div>
+      <div class="card-body" style="padding:var(--space-3) var(--space-4)">
+        <div class="stat-row"><span>Total de jams</span><span class="stat-val">{{ total }}</span></div>
+        {% if stats is defined and stats %}
+        <div class="stat-row"><span>Vel. média</span><span class="stat-val">{{ stats.avgSpeed ? stats.avgSpeed|number_format(1) ~ ' km/h' : '—' }}</span></div>
+        <div class="stat-row"><span>Atraso médio</span><span class="stat-val">{{ stats.avgDelay ? stats.avgDelay|number_format(0) ~ 's' : '—' }}</span></div>
+        <div class="stat-row"><span>Extensão total</span><span class="stat-val">{{ stats.totalLength ? (stats.totalLength / 1000)|number_format(1) ~ ' km' : '—' }}</span></div>
+        {% endif %}
+        <div class="stat-row"><span>Bloqueados</span>
+          <span class="stat-val" style="color:var(--color-error)" id="count-blocking">—</span>
         </div>
-        <div style="font-size:var(--text-xl);font-weight:800;color:{{ color }};font-variant-numeric:tabular-nums;min-width:24px;text-align:right">{{ lv }}</div>
       </div>
-      <div class="pills">
-        {% if j.speedKmh is not null %}
-          <span class="pill">🞥 {{ j.speedKmh|number_format(1,',','.') }} km/h</span>
-        {% endif %}
-        {% if j.length %}
-          <span class="pill">📍 {{ (j.length/1000)|number_format(2,',','.') }} km</span>
-        {% endif %}
-        {% if j.delay %}
-          <span class="pill">⏱ {% if j.delay >= 60 %}{{ (j.delay/60)|round }}min{% else %}{{ j.delay }}s{% endif %}</span>
-        {% endif %}
-        {% if j.blocking %}
-          <span class="pill" style="background:var(--color-error-highlight);color:var(--color-error)">Bloqueado</span>
+    </div>
+
+    {# Lista de jams #}
+    <div class="card" style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+      <div class="card-header">
+        <span class="card-title">Jams ativos</span>
+        <span style="font-size:var(--text-xs);color:var(--color-text-muted)" id="last-updated"></span>
+      </div>
+      <div class="jam-list" id="jam-list">
+        {% if jams is empty %}
+          <div class="empty" style="padding:var(--space-8)">
+            <p>Nenhum congestionamento no período.</p>
+          </div>
+        {% else %}
+          {% for jam in jams %}
+          <div class="jam-item" data-jam-id="{{ jam.id }}" onclick="focusJam({{ jam.id }})">
+            <div class="jam-item-street">{{ jam.street ?: 'Via desconhecida' }}</div>
+            <div class="jam-item-meta">
+              <span class="level-pip" style="background:{{ jam.level >= 5 ? '#7b1fa2' : jam.level >= 4 ? '#f44336' : jam.level >= 2 ? '#ff9800' : '#4caf50' }}"></span>
+              <span style="font-size:var(--text-xs);color:var(--color-text-muted)">Nível {{ jam.level }}</span>
+              {% if jam.speedKmh is not null %}
+              <span style="font-size:var(--text-xs);color:var(--color-text-faint)">· {{ jam.speedKmh|number_format(0) }} km/h</span>
+              {% endif %}
+              {% if jam.blocking %}
+              <span style="font-size:10px;background:var(--color-error);color:#fff;padding:1px 4px;border-radius:2px">Bloq</span>
+              {% endif %}
+            </div>
+            <div style="font-size:var(--text-xs);color:var(--color-text-faint)">{{ jam.city ?: '' }}</div>
+          </div>
+          {% endfor %}
         {% endif %}
       </div>
     </div>
-    {% endfor %}
   </div>
-
-  {# Mapa #}
-  <div id="live-map" class="live-map"></div>
-
 </div>
-{% endif %}
 {% endblock %}
 
 {% block javascripts %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-(function(){
-  const jams = {{ jams|map(j => {
-    id:      j.id,
-    street:  j.street,
-    city:    j.city,
-    level:   j.level,
-    speedKmh: j.speedKmh,
-    length:  j.length,
-    delay:   j.delay,
-    blocking: j.blocking,
-    line:    j.line
-  })|json_encode|raw }};
+const LIVE_JAMS = {{ jams|map(j => {
+  id: j.id,
+  street: j.street,
+  city: j.city,
+  level: j.level,
+  speedKmh: j.speedKmh,
+  length: j.length,
+  delay: j.delay,
+  blocking: j.blocking,
+  line: j.line
+})|json_encode|raw }};
 
-  function levelColor(lv) {
-    if (lv >= 5) return '#a12c7b';
-    if (lv >= 4) return '#da3501';
-    if (lv >= 3) return '#da7101';
-    if (lv >= 2) return '#d19900';
-    return '#437a22';
+const LEVEL_COLOR = {0:'#4caf50',1:'#4caf50',2:'#ff9800',3:'#ff9800',4:'#f44336',5:'#7b1fa2'};
+const LEVEL_WEIGHT = {0:3,1:3,2:4,3:5,4:6,5:8};
+
+const map = L.map('live-map', { zoomControl:true });
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+  maxZoom: 19
+}).addTo(map);
+
+const layerMap = {};
+const allBounds = [];
+let blockingCount = 0;
+
+LIVE_JAMS.forEach(jam => {
+  if (!jam.line || !jam.line.length) return;
+  const coords = jam.line.map(p => [p.y, p.x]);
+  allBounds.push(...coords);
+  if (jam.blocking) blockingCount++;
+
+  const color = LEVEL_COLOR[jam.level] || '#999';
+  const weight = LEVEL_WEIGHT[jam.level] || 4;
+
+  // glow para jams bloqueados
+  if (jam.blocking) {
+    L.polyline(coords, { color:'#f44336', weight: weight + 8, opacity: 0.15 }).addTo(map);
+  }
+  // sombra
+  L.polyline(coords, { color:'#000', weight: weight + 4, opacity: 0.12 }).addTo(map);
+  // linha principal
+  const poly = L.polyline(coords, {
+    color, weight, opacity: 0.9,
+    lineJoin: 'round', lineCap: 'round'
+  }).addTo(map);
+
+  // marcadores de nível nos pontos médios
+  const mid = coords[Math.floor(coords.length / 2)];
+  if (jam.level >= 4) {
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="background:${color};color:#fff;font-size:10px;font-weight:700;width:20px;height:20px;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center">${jam.level}</div>`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10]
+    });
+    L.marker(mid, { icon, interactive: false }).addTo(map);
   }
 
-  const map = L.map('live-map');
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    {attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
+  const speedText = jam.speedKmh != null ? `${Math.round(jam.speedKmh)} km/h` : '—';
+  const delayText = jam.delay != null ? `${jam.delay}s` : '—';
+  const lenText = jam.length != null ? `${jam.length} m` : '—';
+  const blockTag = jam.blocking
+    ? '<div style="margin-top:6px;background:#f44336;color:#fff;padding:2px 6px;border-radius:3px;font-size:11px;display:inline-block">⛔ Via bloqueada</div>'
+    : '';
+  const levelLabel = ['Livre','Leve','Moderado','Pesado','Congestionado','Parado'][jam.level] || jam.level;
 
-  const polylines = {};
-  const layers = [];
+  poly.bindPopup(`
+    <div style="min-width:220px;font-family:Inter,sans-serif">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+        <div style="width:12px;height:12px;border-radius:50%;background:${color};flex-shrink:0"></div>
+        <div style="font-weight:700;font-size:13px">${jam.street || 'Via desconhecida'}</div>
+      </div>
+      <div style="font-size:11px;color:#888;margin-bottom:8px">${jam.city || ''}</div>
+      <table style="width:100%;font-size:12px;border-collapse:collapse">
+        <tr><td style="color:#888;padding:2px 4px 2px 0">Status</td><td style="font-weight:600;color:${color}">${levelLabel}</td></tr>
+        <tr><td style="color:#888;padding:2px 4px 2px 0">Velocidade</td><td>${speedText}</td></tr>
+        <tr><td style="color:#888;padding:2px 4px 2px 0">Extensão</td><td>${lenText}</td></tr>
+        <tr><td style="color:#888;padding:2px 4px 2px 0">Atraso</td><td>${delayText}</td></tr>
+      </table>
+      ${blockTag}
+      <div style="margin-top:8px;border-top:1px solid #eee;padding-top:6px">
+        <a href="/congestionamentos/${jam.id}" style="color:#01696f;font-size:12px;font-weight:500">Ver detalhes →</a>
+      </div>
+    </div>
+  `, { maxWidth: 280 });
 
-  jams.forEach(j => {
-    if (!j.line || !j.line.length) return;
-    const latlngs = j.line.map(p => [parseFloat(p.y), parseFloat(p.x)]);
-    const color = levelColor(j.level || 0);
-    const weight = Math.max(4, (j.level || 1) * 2);
-    const delay = j.delay
-      ? (j.delay >= 60 ? Math.ceil(j.delay/60)+'min' : j.delay+'s')
-      : '—';
-    const popup = `
-      <div style="min-width:190px;font-family:inherit">
-        <b style="font-size:13px;color:${color}">Nível ${j.level??'?'}/5</b>
-        ${j.blocking?'<span style="background:#a12c7b;color:#fff;border-radius:20px;padding:1px 7px;font-size:10px;margin-left:6px">Bloqueado</span>':''}
-        <div style="font-size:12px;font-weight:500;margin-top:4px">${j.street||'Via não identificada'}</div>
-        ${j.city?'<div style="font-size:11px;opacity:.6">'+j.city+'</div>':''}
-        <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
-          ${j.speedKmh!==null?'<span style="background:#f0f0f0;border-radius:20px;padding:2px 7px;font-size:10px">🞥 '+parseFloat(j.speedKmh).toFixed(1)+' km/h</span>':''}
-          ${j.length?'<span style="background:#f0f0f0;border-radius:20px;padding:2px 7px;font-size:10px">📍 '+(j.length/1000).toFixed(2)+' km</span>':''}
-          <span style="background:#f0f0f0;border-radius:20px;padding:2px 7px;font-size:10px">⏱ ${delay}</span>
-        </div>
-        <a href="/congestionamentos/${j.id}" style="display:block;margin-top:8px;font-size:11px;color:#01696f;text-decoration:none;font-weight:600">🔗 Ver detalhes completos</a>
-      </div>`;
-    const pl = L.polyline(latlngs, {color, weight, opacity:0.9, lineJoin:'round', lineCap:'round'})
-      .bindPopup(popup, {maxWidth:280});
-    pl.addTo(map);
-    polylines[j.id] = pl;
-    layers.push(pl);
-  });
+  layerMap[jam.id] = poly;
+});
 
-  if (layers.length) {
-    map.fitBounds(L.featureGroup(layers).getBounds().pad(0.1));
-  } else {
-    map.setView([-19.92,-43.94],11);
-  }
+document.getElementById('count-blocking').textContent = blockingCount;
 
-  window.focusJam = function(id) {
-    document.querySelectorAll('.jam-card').forEach(c => c.classList.remove('active'));
-    const card = document.querySelector('[data-id="'+id+'"]');
-    if (card) card.classList.add('active');
-    const pl = polylines[id];
-    if (pl) {
-      map.fitBounds(pl.getBounds().pad(0.2));
-      pl.openPopup();
-    }
-  };
+const now = new Date();
+document.getElementById('last-updated').textContent = 'Atualizado às ' + now.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
 
-  // auto-refresh 60s
-  setTimeout(() => location.reload(), 60000);
-})();
+if (allBounds.length) {
+  map.fitBounds(allBounds, { padding: [40, 40] });
+} else {
+  map.setView([-19.92, -43.94], 12);
+}
+
+window.focusJam = function(id) {
+  const poly = layerMap[id];
+  if (!poly) return;
+  map.fitBounds(poly.getBounds(), { padding:[80,80], maxZoom:17 });
+  poly.openPopup();
+  document.querySelectorAll('.jam-item').forEach(el => el.classList.remove('highlighted'));
+  const el = document.querySelector(`.jam-item[data-jam-id="${id}"]`);
+  if (el) { el.classList.add('highlighted'); el.scrollIntoView({ block:'nearest', behavior:'smooth' }); }
+};
+
+// Auto-refresh a cada 60s
+setTimeout(() => location.reload(), 60000);
 </script>
 {% endblock %}
