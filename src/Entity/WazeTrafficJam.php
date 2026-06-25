@@ -19,17 +19,17 @@ use Doctrine\ORM\Mapping as ORM;
  *   "level": int,          // 0-5
  *   "speedKMH": float,     // velocidade em km/h
  *   "speed": float,        // velocidade em m/s
- *   "length": int,         // comprimento em metros
+ *   "length": int|float,   // comprimento em metros (API pode retornar float ex: 450.0)
  *   "delay": int,          // atraso em segundos
  *   "type": "string",      // NONE, JAM, SMALL_JAM...
  *   "turnType": "string",
  *   "roadType": int,
  *   "startNode": "string|null",
  *   "endNode": "string|null",
- *   "causedBy": "string|null", // uuid do alerta causador
- *   "blocking": bool,      // bloqueia a via completamente
+ *   "causedBy": "string|null",
+ *   "blocking": bool,
  *   "severity": int,
- *   "id": int,             // ID numérico interno Waze
+ *   "id": int,
  *   "line": [{"x": float, "y": float}],
  *   "segments": [],
  *   "pubMillis": int
@@ -87,7 +87,7 @@ class WazeTrafficJam
     #[ORM\Column(type: 'decimal', precision: 8, scale: 3, nullable: true)]
     private ?float $speed = null;
 
-    /** Comprimento do jam em metros (campo "length") */
+    /** Comprimento do jam em metros (campo "length") — armazenado como int */
     #[ORM\Column(nullable: true)]
     private ?int $length = null;
 
@@ -99,7 +99,7 @@ class WazeTrafficJam
     #[ORM\Column(length: 40, nullable: true)]
     private ?string $type = null;
 
-    /** Tipo de curva/conversão (NONE, LEFT, RIGHT, UTURM, UTURN_L, UTURN_R) */
+    /** Tipo de curva/conversão */
     #[ORM\Column(length: 40, nullable: true)]
     private ?string $turnType = null;
 
@@ -190,7 +190,16 @@ class WazeTrafficJam
     public function setSpeed(?float $v): static { $this->speed = $v; return $this; }
 
     public function getLength(): ?int { return $this->length; }
-    public function setLength(?int $v): static { $this->length = $v; return $this; }
+
+    /**
+     * A API do Waze pode retornar length como float (ex: 450.0).
+     * Aceitamos int|float|null e armazenamos sempre como int.
+     */
+    public function setLength(int|float|null $v): static
+    {
+        $this->length = $v !== null ? (int) $v : null;
+        return $this;
+    }
 
     public function getDelay(): ?int { return $this->delay; }
     public function setDelay(?int $v): static { $this->delay = $v; return $this; }
