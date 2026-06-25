@@ -1,0 +1,73 @@
+# Traduções PT-BR para tipos e subtipos da API Waze
+# Uso: {{ 'waze.alert_type.' ~ alert.type|lower|replace({'-': '_'}) |trans({}, 'waze') }}
+
+alert_type:
+  accident:           Acidente
+  hazard:             Perigo na via
+  jam:                Congestionamento
+  road_closed:        Via fechada
+  weatherhazard:      Risco climático
+  construction:       Obra
+  police:             Polícia / Radar
+  misc:               Ocorrência diversa
+  unknown:            Desconhecido
+
+alert_subtype:
+  # ACCIDENT
+  accident_major:              Acidente grave
+  accident_minor:              Acidente leve
+  # HAZARD
+  hazard_on_road:              Objeto na pista
+  hazard_on_road_car_stopped:  Veículo parado na pista
+  hazard_on_road_construction: Obra na pista
+  hazard_on_road_emergency_vehicle: Veículo de emergência
+  hazard_on_road_ice:          Pista com gelo
+  hazard_on_road_lane_closed:  Faixa fechada
+  hazard_on_road_object:       Objeto caído
+  hazard_on_road_oil:          Derramamento de óleo
+  hazard_on_road_potholes:     Buracos na pista
+  hazard_on_road_road_kill:    Animal morto na pista
+  hazard_on_road_traffic_light_fault: Semáforo com defeito
+  hazard_on_shoulder:          Risco no acostamento
+  hazard_on_shoulder_animals:  Animais no acostamento
+  hazard_on_shoulder_car_stopped: Veículo parado no acostamento
+  hazard_on_shoulder_missing_sign: Sinalização ausente
+  hazard_weather:              Risco climático
+  hazard_weather_flood:        Alagamento
+  hazard_weather_fog:          Neblina
+  hazard_weather_freezing_rain: Chuva de granizo
+  hazard_weather_hail:         Granizo
+  hazard_weather_heavy_rain:   Chuva intensa
+  hazard_weather_heavy_snow:   Neve intensa
+  hazard_weather_hurricane:    Furacão
+  hazard_weather_monsoon:      Monção
+  hazard_weather_tornado:      Tornado
+  # JAM
+  jam_heavy_traffic:           Tráfego intenso
+  jam_light_traffic:           Tráfego leve
+  jam_moderate_traffic:        Tráfego moderado
+  jam_stand_still_traffic:     Trânsito parado
+  # ROAD_CLOSED
+  road_closed_construction:    Fechamento por obra
+  road_closed_event:           Fechamento por evento
+  road_closed_hazard:          Fechamento por perigo
+  # MISC
+  misc_illegal_parking:        Estacionamento irregular
+  misc_pothole:                Buraco na via
+  # POLICE
+  police_visible:              Polícia visível
+  police_hiding:               Radar oculto
+  # Vazio / não informado
+  '':                          Não informado
+
+jam_level:
+  0: Livre
+  1: Leve
+  2: Moderado
+  3: Pesado
+  4: Intenso
+  5: Parado
+
+jam_blocking:
+  true:  Bloqueada
+  false: Livre

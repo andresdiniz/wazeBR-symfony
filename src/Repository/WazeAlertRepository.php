@@ -9,6 +9,9 @@ use App\Entity\WazeAlert;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
+/**
+ * @extends ServiceEntityRepository<WazeAlert>
+ */
 class WazeAlertRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
@@ -24,66 +27,74 @@ class WazeAlertRepository extends ServiceEntityRepository
             ->getQuery()->getSingleScalarResult();
     }
 
+    public function countLast24hByPartner(Partner $partner): int
+    {
+        return (int) $this->createQueryBuilder('a')
+            ->select('COUNT(a.id)')
+            ->where('a.partner = :p')->setParameter('p', $partner)
+            ->andWhere('a.collectedAt >= :since')
+            ->setParameter('since', new \DateTimeImmutable('-24 hours'))
+            ->getQuery()->getSingleScalarResult();
+    }
+
     public function findRecentByPartner(Partner $partner, int $limit = 10): array
     {
         return $this->createQueryBuilder('a')
             ->where('a.partner = :p')->setParameter('p', $partner)
-            ->orderBy('a.pubMillis', 'DESC')
+            ->orderBy('a.collectedAt', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()->getResult();
     }
 
     public function findActiveByPartner(Partner $partner): array
     {
-        $since = (new \DateTimeImmutable('-2 hours'))->getTimestamp() * 1000;
         return $this->createQueryBuilder('a')
             ->where('a.partner = :p')->setParameter('p', $partner)
-            ->andWhere('a.pubMillis >= :since')->setParameter('since', $since)
-            ->orderBy('a.pubMillis', 'DESC')
+            ->orderBy('a.collectedAt', 'DESC')
+            ->setMaxResults(500)
             ->getQuery()->getResult();
     }
 
-    public function findCriticalByPartner(Partner $partner, int $minReliability = 8): array
-    {
-        $since = (new \DateTimeImmutable('-1 hour'))->getTimestamp() * 1000;
-        return $this->createQueryBuilder('a')
-            ->where('a.partner = :p')->setParameter('p', $partner)
-            ->andWhere('a.reliability >= :rel')->setParameter('rel', $minReliability)
-            ->andWhere('a.pubMillis >= :since')->setParameter('since', $since)
-            ->orderBy('a.reliability', 'DESC')
-            ->getQuery()->getResult();
-    }
-
-    public function findFilteredByPartner(
-        Partner $partner,
-        ?string $type  = null,
-        ?string $city  = null,
-        int     $page  = 1,
-        int     $limit = 30,
-    ): array {
-        $qb = $this->createQueryBuilder('a')
-            ->where('a.partner = :p')->setParameter('p', $partner)
-            ->orderBy('a.pubMillis', 'DESC')
-            ->setFirstResult(($page - 1) * $limit)
-            ->setMaxResults($limit);
-
-        if ($type) $qb->andWhere('a.type = :type')->setParameter('type', $type);
-        if ($city) $qb->andWhere('a.city LIKE :city')->setParameter('city', "%{$city}%");
-
-        return $qb->getQuery()->getResult();
-    }
-
-    public function findOneByPartner(int $id, Partner $partner): ?WazeAlert
+    /** Contagem por tipo de alerta: [['type' => 'ACCIDENT', 'total' => 42], ...] */
+    public function countGroupByType(Partner $partner): array
     {
         return $this->createQueryBuilder('a')
-            ->where('a.id = :id')->setParameter('id', $id)
-            ->andWhere('a.partner = :p')->setParameter('p', $partner)
-            ->getQuery()->getOneOrNullResult();
+            ->select('a.type, COUNT(a.id) AS total')
+            ->where('a.partner = :p')->setParameter('p', $partner)
+            ->groupBy('a.type')
+            ->orderBy('total', 'DESC')
+            ->getQuery()->getArrayResult();
     }
 
-    public function save(WazeAlert $alert, bool $flush = true): void
+    /** Top N subtipos: [['subtype' => 'HAZARD_ON_ROAD', 'total' => 15], ...] */
+    public function countGroupBySubtype(Partner $partner, int $limit = 8): array
     {
-        $this->getEntityManager()->persist($alert);
-        if ($flush) $this->getEntityManager()->flush();
+        return $this->createQueryBuilder('a')
+            ->select('a.subtype, COUNT(a.id) AS total')
+            ->where('a.partner = :p')->setParameter('p', $partner)
+            ->andWhere('a.subtype IS NOT NULL')
+            ->andWhere('a.subtype != :empty')->setParameter('empty', '')
+            ->groupBy('a.subtype')
+            ->orderBy('total', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()->getArrayResult();
+    }
+
+    /** Alertas por hora nas últimas 24h: array[0..23] => count */
+    public function countPerHourLast24h(Partner $partner): array
+    {
+        $rows = $this->createQueryBuilder('a')
+            ->select('HOUR(a.collectedAt) AS hr, COUNT(a.id) AS total')
+            ->where('a.partner = :p')->setParameter('p', $partner)
+            ->andWhere('a.collectedAt >= :since')
+            ->setParameter('since', new \DateTimeImmutable('-24 hours'))
+            ->groupBy('hr')
+            ->getQuery()->getArrayResult();
+
+        $map = array_fill(0, 24, 0);
+        foreach ($rows as $row) {
+            $map[(int) $row['hr']] = (int) $row['total'];
+        }
+        return $map;
     }
 }
