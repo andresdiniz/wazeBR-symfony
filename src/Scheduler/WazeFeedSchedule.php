@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Scheduler;
 
+use App\Scheduler\Message\CollectWazeFeedMessage;
 use App\Scheduler\Message\FetchWazeAlertsMessage;
 use App\Scheduler\Message\FetchWazeTrafficMessage;
 use Symfony\Component\Scheduler\Attribute\AsSchedule;
@@ -13,7 +14,12 @@ use Symfony\Component\Scheduler\ScheduleProviderInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 
 /**
- * Agenda a coleta de alertas E tr\u00e1fego Waze a cada 2 minutos.
+ * Scheduler central do WazeBR.
+ *
+ * Tarefas:
+ *   - FetchWazeAlertsMessage   → a cada 2 min (coleta bbox geográfica)
+ *   - FetchWazeTrafficMessage  → a cada 2 min (coleta TVT)
+ *   - CollectWazeFeedMessage   → a cada 5 min (coleta feed PartnerHub por MonitoredLink)
  *
  * Worker:
  *   php bin/console messenger:consume scheduler_waze_feed --time-limit=3600
@@ -28,10 +34,9 @@ class WazeFeedSchedule implements ScheduleProviderInterface
     public function getSchedule(): Schedule
     {
         return (new Schedule())
-            // Alertas a cada 2 minutos
             ->add(RecurringMessage::every('2 minutes', new FetchWazeAlertsMessage()))
-            // Tr\u00e1fego TVT a cada 2 minutos (offset de 30s para n\u00e3o bater junto)
             ->add(RecurringMessage::every('2 minutes', new FetchWazeTrafficMessage()))
+            ->add(RecurringMessage::every('5 minutes', new CollectWazeFeedMessage()))
             ->stateful($this->cache);
     }
 }
