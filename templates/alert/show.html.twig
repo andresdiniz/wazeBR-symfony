@@ -1,21 +1,403 @@
 {% extends 'base.html.twig' %}
 {% block title %}Alerta #{{ alert.id }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+.show-grid{
+  display:grid;
+  grid-template-columns:1fr 420px;
+  gap:var(--space-6);
+  align-items:start;
+}
+.detail-card{
+  background:var(--color-surface);
+  border:1px solid var(--color-border);
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-sm);
+  overflow:hidden;
+}
+.detail-section-title{
+  font-size:var(--text-xs);
+  font-weight:700;
+  letter-spacing:.07em;
+  text-transform:uppercase;
+  color:var(--color-text-muted);
+  padding:var(--space-3) var(--space-5);
+  background:var(--color-surface-offset);
+  border-bottom:1px solid var(--color-divider);
+}
+.detail-rows{
+  padding:var(--space-2) 0;
+}
+.detail-row{
+  display:flex;
+  align-items:flex-start;
+  gap:var(--space-4);
+  padding:var(--space-3) var(--space-5);
+  border-bottom:1px solid var(--color-divider);
+}
+.detail-row:last-child{border-bottom:none}
+.detail-label{
+  font-size:var(--text-xs);
+  font-weight:600;
+  color:var(--color-text-muted);
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  min-width:130px;
+  padding-top:2px;
+  flex-shrink:0;
+}
+.detail-value{
+  font-size:var(--text-sm);
+  color:var(--color-text);
+  word-break:break-word;
+}
+.meta-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:var(--space-1);
+  padding:var(--space-1) var(--space-3);
+  border-radius:var(--radius-full);
+  font-size:var(--text-xs);
+  font-weight:600;
+  background:var(--color-surface-offset);
+  color:var(--color-text-muted);
+}
+#alert-map{
+  height:340px;
+  width:100%;
+  border-radius:var(--radius-lg);
+  border:1px solid var(--color-border);
+  overflow:hidden;
+  margin-bottom:var(--space-6);
+}
+.tag-bool-true{color:var(--color-success);font-weight:600}
+.tag-bool-false{color:var(--color-text-faint)}
+.coord-link{
+  font-family:monospace;
+  font-size:var(--text-xs);
+  color:var(--color-primary);
+  text-decoration:none;
+}
+.coord-link:hover{text-decoration:underline}
+@media(max-width:860px){
+  .show-grid{grid-template-columns:1fr}
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="page-header">
-  <a href="{{ path('alert_index') }}" class="btn btn-ghost">&larr; Voltar</a>
-  <h1>Alerta #{{ alert.id }}</h1>
+
+{% set typeColors = {
+  'ACCIDENT':      'badge-red',
+  'HAZARD':        'badge-yellow',
+  'WEATHERHAZARD': 'badge-blue',
+  'JAM':           'badge-orange',
+  'ROAD_CLOSED':   'badge-gray',
+  'CONSTRUCTION':  'badge-green',
+  'POLICE':        'badge-teal',
+  'MISC':          'badge-purple'
+} %}
+{% set typeLabels = {
+  'ACCIDENT':      'Acidente',
+  'HAZARD':        'Perigo',
+  'WEATHERHAZARD': 'Risco Climático',
+  'JAM':           'Congestionamento',
+  'ROAD_CLOSED':   'Via Fechada',
+  'CONSTRUCTION':  'Obra',
+  'POLICE':        'Polícia/Radar',
+  'MISC':          'Diverso'
+} %}
+{% set roadTypes = {
+  1:'Rua local', 2:'Via primária', 3:'Rodovia', 4:'Via rápida', 5:'Freeway',
+  6:'Passagem múnicipal', 7:'Via secundária', 8:'Trilha / Caminho',
+  14:'Rua 4x4', 15:'Via de pedestres', 17:'Private road'
+} %}
+
+{# Cabeçalho #}
+<div style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-6);flex-wrap:wrap">
+  <a href="{{ path('alert_index') }}" class="btn btn-ghost btn-sm">
+    <i data-lucide="arrow-left" style="width:14px;height:14px"></i> Voltar
+  </a>
+  <div style="flex:1">
+    <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap">
+      <h1 class="page-title" style="margin:0">Alerta #{{ alert.id }}</h1>
+      <span class="badge {{ typeColors[alert.type] ?? 'badge-gray' }}">
+        {{ typeLabels[alert.type] ?? alert.type }}
+      </span>
+      {% if alert.subtype %}
+        <span class="badge badge-gray">{{ alert.subtype|replace({'_':' '})|title }}</span>
+      {% endif %}
+    </div>
+    <div style="margin-top:var(--space-2);display:flex;gap:var(--space-3);flex-wrap:wrap">
+      <span class="meta-pill"><i data-lucide="clock" style="width:11px;height:11px"></i> Publicado {{ alert.pubDate|date('d/m/Y H:i:s') }}</span>
+      <span class="meta-pill"><i data-lucide="database" style="width:11px;height:11px"></i> Coletado {{ alert.createdAt|date('d/m/Y H:i:s') }}</span>
+      {% if alert.confidence is not null %}
+        <span class="meta-pill {{ alert.confidence >= 7 ? 'badge-green' : (alert.confidence >= 4 ? 'badge-orange' : 'badge-red') }}">
+          <i data-lucide="shield" style="width:11px;height:11px"></i> Confiança {{ alert.confidence }}/10
+        </span>
+      {% endif %}
+    </div>
+  </div>
 </div>
-<div class="detail-card">
-  <dl>
-    <dt>Tipo</dt><dd>{{ alert.type }}</dd>
-    <dt>Subtipo</dt><dd>{{ alert.subtype ?? '—' }}</dd>
-    <dt>Rua</dt><dd>{{ alert.street ?? '—' }}</dd>
-    <dt>Cidade</dt><dd>{{ alert.city ?? '—' }}</dd>
-    <dt>País</dt><dd>{{ alert.country ?? '—' }}</dd>
-    <dt>Confiança</dt><dd>{{ alert.reliability ?? '—' }}</dd>
-    <dt>Latitude</dt><dd>{{ alert.lat ?? '—' }}</dd>
-    <dt>Longitude</dt><dd>{{ alert.lon ?? '—' }}</dd>
-    <dt>Criado em</dt><dd>{{ alert.createdAt|date('d/m/Y H:i:s') }}</dd>
-  </dl>
+
+{# Mapa #}
+<div id="alert-map"></div>
+
+{# Grid de detalhes #}
+<div class="show-grid">
+
+  {# Coluna principal: localização + dados do relato #}
+  <div style="display:flex;flex-direction:column;gap:var(--space-5)">
+
+    <div class="detail-card">
+      <div class="detail-section-title">Localização</div>
+      <div class="detail-rows">
+        <div class="detail-row">
+          <span class="detail-label">Via</span>
+          <span class="detail-value">{{ alert.street ?? '—' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Cidade</span>
+          <span class="detail-value">{{ alert.city ?? '—' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">País</span>
+          <span class="detail-value">{{ alert.country ?? '—' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Coordenadas</span>
+          <span class="detail-value">
+            {% if alert.latitude != 0 or alert.longitude != 0 %}
+              <a class="coord-link"
+                 href="https://www.google.com/maps?q={{ alert.latitude }},{{ alert.longitude }}"
+                 target="_blank" rel="noopener">
+                {{ alert.latitude|number_format(6,'.','') }},
+                {{ alert.longitude|number_format(6,'.','') }}
+                <i data-lucide="external-link" style="width:11px;height:11px;vertical-align:middle"></i>
+              </a>
+            {% else %}—{% endif %}
+          </span>
+        </div>
+        {% if alert.magvar is not null %}
+        <div class="detail-row">
+          <span class="detail-label">Direção (magvar)</span>
+          <span class="detail-value">{{ alert.magvar }}°</span>
+        </div>
+        {% endif %}
+        {% if alert.roadType is not null %}
+        <div class="detail-row">
+          <span class="detail-label">Tipo de Via</span>
+          <span class="detail-value">{{ roadTypes[alert.roadType] ?? 'Código ' ~ alert.roadType }}</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="detail-section-title">Dados do Relato</div>
+      <div class="detail-rows">
+        {% if alert.reportDescription %}
+        <div class="detail-row">
+          <span class="detail-label">Descrição</span>
+          <span class="detail-value" style="font-style:italic">"{{ alert.reportDescription }}"</span>
+        </div>
+        {% endif %}
+        <div class="detail-row">
+          <span class="detail-label">Confiabilidade</span>
+          <span class="detail-value">{{ alert.reliability ?? '—' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Confiança</span>
+          <span class="detail-value">{{ alert.confidence ?? '—' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Avaliação</span>
+          <span class="detail-value">{{ alert.reportRating ?? '—' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">👍 Thumbs up</span>
+          <span class="detail-value">{{ alert.nThumbsUp ?? '0' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Comentários</span>
+          <span class="detail-value">{{ alert.nComments ?? '0' }}</span>
+        </div>
+        {% if alert.additionalInfo %}
+        <div class="detail-row">
+          <span class="detail-label">Info adicional</span>
+          <span class="detail-value">{{ alert.additionalInfo }}</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if alert.comments is not empty %}
+    <div class="detail-card">
+      <div class="detail-section-title">Comentários dos usuários</div>
+      <div class="detail-rows">
+        {% for c in alert.comments %}
+        <div class="detail-row">
+          <span class="detail-value">{{ c.text ?? c|json_encode }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  {# Coluna lateral: metadados técnicos #}
+  <div style="display:flex;flex-direction:column;gap:var(--space-5)">
+
+    <div class="detail-card">
+      <div class="detail-section-title">Identificação</div>
+      <div class="detail-rows">
+        <div class="detail-row">
+          <span class="detail-label">ID interno</span>
+          <span class="detail-value">#{{ alert.id }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">UUID Waze</span>
+          <span class="detail-value" style="font-family:monospace;font-size:var(--text-xs);word-break:break-all">{{ alert.wazeId }}</span>
+        </div>
+        {% if alert.jamUuid %}
+        <div class="detail-row">
+          <span class="detail-label">Jam UUID</span>
+          <span class="detail-value" style="font-family:monospace;font-size:var(--text-xs);word-break:break-all">{{ alert.jamUuid }}</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="detail-section-title">Flags</div>
+      <div class="detail-rows">
+        <div class="detail-row">
+          <span class="detail-label">Inscale</span>
+          <span class="detail-value {{ alert.inscale ? 'tag-bool-true' : 'tag-bool-false' }}">
+            {{ alert.inscale ? 'Sim' : 'Não' }}
+          </span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Jam unificado</span>
+          <span class="detail-value {{ alert.isJamUnifiedAlert ? 'tag-bool-true' : 'tag-bool-false' }}">
+            {{ alert.isJamUnifiedAlert ? 'Sim' : 'Não' }}
+          </span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Usuário municipal</span>
+          <span class="detail-value {{ alert.reportByMunicipalityUser ? 'tag-bool-true' : 'tag-bool-false' }}">
+            {{ alert.reportByMunicipalityUser ? 'Sim' : 'Não' }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="detail-section-title">Timestamps</div>
+      <div class="detail-rows">
+        <div class="detail-row">
+          <span class="detail-label">Publicado (Waze)</span>
+          <span class="detail-value">{{ alert.pubDate|date('d/m/Y H:i:s') }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">pubMillis</span>
+          <span class="detail-value" style="font-family:monospace;font-size:var(--text-xs)">{{ alert.pubMillis }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Coletado em</span>
+          <span class="detail-value">{{ alert.createdAt|date('d/m/Y H:i:s') }}</span>
+        </div>
+        {% if alert.updatedAt %}
+        <div class="detail-row">
+          <span class="detail-label">Atualizado em</span>
+          <span class="detail-value">{{ alert.updatedAt|date('d/m/Y H:i:s') }}</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <a href="{{ path('alert_index') }}" class="btn btn-ghost" style="width:100%;justify-content:center">
+      <i data-lucide="list" style="width:14px;height:14px"></i> Ver todos os alertas
+    </a>
+
+  </div>
+
 </div>
+{% endblock %}
+
+{% block javascripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+  const lat = {{ alert.latitude }};
+  const lng = {{ alert.longitude }};
+  const type = {{ alert.type|json_encode|raw }};
+  const street = {{ (alert.street ?? '')|json_encode|raw }};
+  const city = {{ (alert.city ?? '')|json_encode|raw }};
+  const subtype = {{ (alert.subtype ?? '')|json_encode|raw }};
+  const conf = {{ alert.confidence ?? 'null' }};
+
+  const TYPE_COLOR = {
+    ACCIDENT:'#a12c7b', HAZARD:'#d19900', WEATHERHAZARD:'#006494',
+    JAM:'#da7101', ROAD_CLOSED:'#7a7974', CONSTRUCTION:'#437a22',
+    POLICE:'#01696f', MISC:'#7a39bb'
+  };
+  const TYPE_LABEL = {
+    ACCIDENT:'Acidente', HAZARD:'Perigo', WEATHERHAZARD:'Risco climático',
+    JAM:'Congestionamento', ROAD_CLOSED:'Via fechada', CONSTRUCTION:'Obra',
+    POLICE:'Polícia/Radar', MISC:'Diverso'
+  };
+
+  const map = L.map('alert-map', {zoomControl:true});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {attribution:'© OpenStreetMap contributors',maxZoom:19}).addTo(map);
+
+  if (lat !== 0 || lng !== 0) {
+    map.setView([lat, lng], 15);
+
+    const color = TYPE_COLOR[type] || '#7a7974';
+    const icon = L.divIcon({
+      html: `<div style="
+        width:18px;height:18px;border-radius:50%;
+        background:${color};border:3px solid #fff;
+        box-shadow:0 2px 8px rgba(0,0,0,.35);
+      "></div>`,
+      className:'',iconSize:[18,18],iconAnchor:[9,9]
+    });
+
+    const subtypeClean = subtype ? subtype.replace(/_/g,' ') : '';
+    const confLabel = conf !== null ? `<br><span style="opacity:.7">★ Confiança ${conf}/10</span>` : '';
+    const popup = `
+      <div style="min-width:180px">
+        <b style="font-size:13px">${TYPE_LABEL[type]||type}</b>
+        ${subtypeClean ? '<br><span style="opacity:.75;font-size:12px">'+subtypeClean+'</span>' : ''}
+        ${street ? '<br>'+street : ''}
+        ${city ? '<br><span style="opacity:.6">'+city+'</span>' : ''}
+        ${confLabel}
+      </div>`;
+
+    L.marker([lat, lng], {icon}).addTo(map)
+      .bindPopup(popup, {maxWidth:240})
+      .openPopup();
+
+    // Círculo de área
+    L.circle([lat, lng], {
+      radius: 80,
+      color: color,
+      fillColor: color,
+      fillOpacity: 0.08,
+      weight: 1.5,
+    }).addTo(map);
+  } else {
+    map.setView([-19.92, -43.94], 10);
+    document.getElementById('alert-map').insertAdjacentHTML(
+      'afterend',
+      '<p style="color:var(--color-text-muted);font-size:var(--text-xs);margin-top:-var(--space-4)">Coordenadas não disponíveis para este alerta.</p>'
+    );
+  }
+})();
+</script>
 {% endblock %}

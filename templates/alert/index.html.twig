@@ -10,25 +10,32 @@
   box-shadow:var(--shadow-sm);
 }
 .filter-row{display:flex;flex-wrap:wrap;gap:var(--space-3);align-items:flex-end}
-.filter-field{display:flex;flex-direction:column;gap:var(--space-1);min-width:150px;flex:1}
+.filter-field{display:flex;flex-direction:column;gap:var(--space-1);min-width:140px;flex:1}
 .filter-field label{font-size:var(--text-xs);font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--color-text-muted)}
 .total-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4)}
 .total-bar-text{font-size:var(--text-sm);color:var(--color-text-muted)}
-#alert-map{height:340px;border-radius:var(--radius-lg);border:1px solid var(--color-border);margin-bottom:var(--space-6);overflow:hidden}
-.type-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
-.btn-active{background:var(--color-primary)!important;color:#fff!important;border-color:var(--color-primary)!important}
+#alert-map{height:320px;border-radius:var(--radius-lg);border:1px solid var(--color-border);margin-bottom:var(--space-6);overflow:hidden}
+.leaflet-popup-content-wrapper{border-radius:10px!important;box-shadow:0 4px 20px rgba(0,0,0,.15)!important}
+.popup-inner{min-width:200px;font-family:inherit}
+.popup-inner .popup-type{font-size:13px;font-weight:700;margin-bottom:4px}
+.popup-inner .popup-sub{font-size:11px;opacity:.7;margin-bottom:6px}
+.popup-inner .popup-street{font-size:12px;font-weight:500}
+.popup-inner .popup-city{font-size:11px;opacity:.6}
+.popup-inner .popup-meta{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
+.popup-inner .pm{font-size:10px;background:#f0f0f0;border-radius:20px;padding:2px 7px}
+.popup-inner .popup-link{display:block;margin-top:8px;font-size:11px;color:#01696f;text-decoration:none;font-weight:600}
+.popup-inner .popup-link:hover{text-decoration:underline}
 @media(max-width:700px){.filter-row{flex-direction:column}}
 </style>
 {% endblock %}
 
 {% block content %}
 
-{# Mapa superior com alertas filtrados #}
 <div class="page-header" style="margin-bottom:var(--space-5)">
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-3)">
     <div>
       <h1 class="page-title">Alertas</h1>
-      <p class="page-subtitle">Histórico de alertas — {{ partner.name }}</p>
+      <p class="page-subtitle">Histórico de alertas &mdash; {{ partner.name }}</p>
     </div>
     <a href="{{ path('alert_live') }}" class="btn btn-primary">
       <i data-lucide="radio" style="width:14px;height:14px"></i> Ao vivo
@@ -49,7 +56,7 @@
         <select name="type" class="form-select" onchange="this.form.submit()">
           <option value="">Todos</option>
           {% for t in types %}
-            <option value="{{ t }}" {{ type == t ? 'selected' }}>{{ ('waze.alert_type.' ~ t|lower)|trans({}, 'waze') }}</option>
+            <option value="{{ t }}" {{ type == t ? 'selected' }}>{{ t|replace({'_':' '})|title }}</option>
           {% endfor %}
         </select>
       </div>
@@ -59,7 +66,7 @@
         <select name="subtype" class="form-select" onchange="this.form.submit()">
           <option value="">Todos</option>
           {% for s in subtypes %}
-            <option value="{{ s }}" {{ subtype == s ? 'selected' }}>{{ ('waze.alert_subtype.' ~ s|lower|replace({'-': '_', ' ': '_'}))|trans({}, 'waze') }}</option>
+            <option value="{{ s }}" {{ subtype == s ? 'selected' }}>{{ s|replace({'_':' '})|title }}</option>
           {% endfor %}
         </select>
       </div>
@@ -76,17 +83,23 @@
 
       <div class="filter-field">
         <label>De</label>
-        <input type="date" name="dateFrom" class="form-input" value="{{ dateFrom }}">
+        <input type="date" name="dateFrom" class="form-input" value="{{ dateFrom }}"
+               onchange="document.getElementById('filter-form').submit()">
       </div>
 
       <div class="filter-field">
         <label>Até</label>
-        <input type="date" name="dateTo" class="form-input" value="{{ dateTo }}">
+        <input type="date" name="dateTo" class="form-input" value="{{ dateTo }}"
+               onchange="document.getElementById('filter-form').submit()">
       </div>
 
       <div style="display:flex;gap:var(--space-2)">
-        <button type="submit" class="btn btn-primary"><i data-lucide="search" style="width:14px;height:14px"></i> Filtrar</button>
-        <a href="{{ path('alert_index') }}" class="btn btn-ghost"><i data-lucide="x" style="width:14px;height:14px"></i> Limpar</a>
+        <button type="submit" class="btn btn-primary">
+          <i data-lucide="search" style="width:14px;height:14px"></i> Filtrar
+        </button>
+        <a href="{{ path('alert_index') }}" class="btn btn-ghost">
+          <i data-lucide="x" style="width:14px;height:14px"></i>
+        </a>
       </div>
 
     </div>
@@ -96,12 +109,15 @@
 {# Barra de total #}
 <div class="total-bar">
   <span class="total-bar-text">
-    <strong>{{ total|number_format(0, ',', '.') }}</strong> alerta{{ total != 1 ? 's' }} encontrado{{ total != 1 ? 's' }}
+    <strong>{{ total|number_format(0, ',', '.') }}</strong>
+    alerta{{ total != 1 ? 's' }} encontrado{{ total != 1 ? 's' }}
     {% if type or subtype or city or dateFrom or dateTo %}
-      com os filtros aplicados
+      &mdash; filtro ativo
     {% endif %}
   </span>
-  <span class="total-bar-text">Página {{ page }} de {{ pages ?: 1 }}</span>
+  {% if pages > 1 %}
+    <span class="total-bar-text">Página {{ page }} de {{ pages }}</span>
+  {% endif %}
 </div>
 
 {# Tabela #}
@@ -120,47 +136,50 @@
           <th>Tipo</th>
           <th>Subtipo</th>
           <th>Via / Cidade</th>
-          <th>Conf.</th>
+          <th style="text-align:center">Conf.</th>
+          <th style="text-align:center">👍</th>
           <th>Publicado</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
       {% for a in alerts %}
-        {% set typeKey = a.type|lower %}
-        {% set subtypeKey = a.subtype|default('')|lower|replace({'-': '_', ' ': '_'}) %}
         <tr>
-          <td style="color:var(--color-text-muted);font-size:var(--text-xs)">{{ a.id }}</td>
+          <td style="color:var(--color-text-faint);font-size:var(--text-xs)">{{ a.id }}</td>
           <td>
             <span class="badge
               {% if a.type == 'ACCIDENT' %}badge-red
-              {% elseif a.type == 'HAZARD' or a.type == 'WEATHERHAZARD' %}badge-yellow
+              {% elseif a.type in ['HAZARD','WEATHERHAZARD'] %}badge-yellow
               {% elseif a.type == 'JAM' %}badge-orange
               {% elseif a.type == 'ROAD_CLOSED' %}badge-gray
+              {% elseif a.type == 'CONSTRUCTION' %}badge-green
               {% else %}badge-blue{% endif %}">
-              {{ ('waze.alert_type.' ~ typeKey)|trans({}, 'waze') }}
+              {{ a.type|replace({'_':' '})|title }}
             </span>
           </td>
           <td style="font-size:var(--text-xs);color:var(--color-text-muted)">
-            {% if subtypeKey %}
-              {{ ('waze.alert_subtype.' ~ subtypeKey)|trans({}, 'waze') }}
-            {% else %}—{% endif %}
+            {{ a.subtype ? a.subtype|replace({'_':' '})|title : '—' }}
           </td>
           <td>
-            <div style="font-size:var(--text-sm)">{{ a.street ?? '—' }}</div>
+            <div style="font-size:var(--text-sm);font-weight:500">{{ a.street ?? '—' }}</div>
             {% if a.city %}<div style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ a.city }}</div>{% endif %}
           </td>
-          <td>
+          <td style="text-align:center">
             {% set c = a.confidence %}
-            <span class="badge {{ c >= 7 ? 'badge-green' : (c >= 4 ? 'badge-orange' : 'badge-red') }}">
-              {{ c ?? '—' }}
-            </span>
+            {% if c is not null %}
+              <span class="badge {{ c >= 7 ? 'badge-green' : (c >= 4 ? 'badge-orange' : 'badge-red') }}">{{ c }}</span>
+            {% else %}—{% endif %}
+          </td>
+          <td style="text-align:center;font-size:var(--text-xs);color:var(--color-text-muted)">
+            {{ a.nThumbsUp ?? '—' }}
           </td>
           <td style="font-size:var(--text-xs);color:var(--color-text-muted);white-space:nowrap">
             {{ a.pubDate|date('d/m H:i') }}
           </td>
           <td>
-            <a href="{{ path('alert_show', {id: a.id}) }}" class="btn btn-ghost btn-sm">Ver</a>
+            <a href="{{ path('alert_show', {id: a.id}) }}" class="btn btn-ghost btn-sm">
+              <i data-lucide="eye" style="width:13px;height:13px"></i> Ver
+            </a>
           </td>
         </tr>
       {% endfor %}
@@ -172,7 +191,7 @@
     <div style="padding:var(--space-4) var(--space-5);border-top:1px solid var(--color-divider)">
       <div class="pagination">
         {% if page > 1 %}
-          <a href="?{{ app.request.query.all|merge({page: page - 1})|url_encode }}">‹ Anterior</a>
+          <a href="?{{ app.request.query.all|merge({page: page - 1})|url_encode }}">‹</a>
         {% endif %}
         {% for p in max(1, page-2)..min(pages, page+2) %}
           {% if p == page %}
@@ -182,11 +201,12 @@
           {% endif %}
         {% endfor %}
         {% if page < pages %}
-          <a href="?{{ app.request.query.all|merge({page: page + 1})|url_encode }}">Próxima ›</a>
+          <a href="?{{ app.request.query.all|merge({page: page + 1})|url_encode }}">›</a>
         {% endif %}
       </div>
     </div>
     {% endif %}
+
   {% endif %}
 </div>
 {% endblock %}
@@ -196,14 +216,16 @@
 <script>
 (function(){
   const alerts = {{ alerts|map(a => {
-    id: a.id,
-    lat: a.latitude,
-    lng: a.longitude,
-    type: a.type,
+    id:      a.id,
+    lat:     a.latitude,
+    lng:     a.longitude,
+    type:    a.type,
     subtype: a.subtype,
-    street: a.street,
-    city: a.city,
-    conf: a.confidence
+    street:  a.street,
+    city:    a.city,
+    conf:    a.confidence,
+    thumbs:  a.nThumbsUp,
+    pub:     a.pubDate|date('d/m/Y H:i')
   })|json_encode|raw }};
 
   const TYPE_COLOR = {
@@ -218,29 +240,44 @@
   };
 
   const map = L.map('alert-map', {zoomControl:true});
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution:'© OpenStreetMap',maxZoom:19
-  }).addTo(map);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
 
   const markers = [];
   alerts.forEach(a => {
-    if (!a.lat || !a.lng) return;
+    const lat = parseFloat(a.lat);
+    const lng = parseFloat(a.lng);
+    if (!lat && !lng) return;
     const color = TYPE_COLOR[a.type] || '#7a7974';
     const icon = L.divIcon({
-      html: `<div style="width:12px;height:12px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>`,
+      html:`<div style="width:12px;height:12px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);cursor:pointer"></div>`,
       className:'',iconSize:[12,12],iconAnchor:[6,6]
     });
-    const m = L.marker([a.lat, a.lng], {icon})
-      .bindPopup(`<b>${TYPE_LABEL[a.type]||a.type}</b><br>${a.subtype||''}<br>${a.street||''}${a.city?' — '+a.city:''}`);
+
+    const subtypeClean = a.subtype ? a.subtype.replace(/_/g,' ') : '';
+    const popup = `
+      <div class="popup-inner">
+        <div class="popup-type" style="color:${color}">${TYPE_LABEL[a.type]||a.type}</div>
+        ${subtypeClean?`<div class="popup-sub">${subtypeClean}</div>`:''}
+        <div class="popup-street">${a.street||'Via não identificada'}</div>
+        ${a.city?`<div class="popup-city">${a.city}</div>`:''}
+        <div class="popup-meta">
+          ${a.conf!==null?`<span class="pm">★ Conf. ${a.conf}</span>`:''}
+          ${a.thumbs?`<span class="pm">👍 ${a.thumbs}</span>`:''}
+          <span class="pm">🗓 ${a.pub}</span>
+        </div>
+        <a class="popup-link" href="/alertas/${a.id}">🔗 Ver detalhes completos</a>
+      </div>`;
+
+    const m = L.marker([lat, lng], {icon}).bindPopup(popup, {maxWidth:260});
     m.addTo(map);
     markers.push(m);
   });
 
   if (markers.length) {
-    const group = L.featureGroup(markers);
-    map.fitBounds(group.getBounds().pad(0.15));
+    map.fitBounds(L.featureGroup(markers).getBounds().pad(0.15));
   } else {
-    map.setView([-19.92, -43.94], 11); // BH fallback
+    map.setView([-19.92, -43.94], 10);
   }
 })();
 </script>
