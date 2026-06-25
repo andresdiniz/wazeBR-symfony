@@ -1,0 +1,198 @@
+{% extends 'base.html.twig' %}
+{% block title %}Congestionamentos ao Vivo{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+.live-shell{display:grid;grid-template-columns:300px 1fr;gap:var(--space-6);height:calc(100vh - var(--header-h,64px) - 160px)}
+.live-map{border-radius:var(--radius-lg);border:1px solid var(--color-border);overflow:hidden;height:100%;min-height:400px}
+.live-sidebar{display:flex;flex-direction:column;gap:var(--space-3);overflow-y:auto;padding-right:var(--space-1)}
+.jam-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-4);cursor:pointer;transition:box-shadow var(--transition-interactive),border-color var(--transition-interactive)}
+.jam-card:hover,.jam-card.active{box-shadow:var(--shadow-md);border-color:var(--color-primary)}
+.jam-card .street{font-size:var(--text-sm);font-weight:600}
+.jam-card .city{font-size:var(--text-xs);color:var(--color-text-muted)}
+.jam-card .pills{display:flex;flex-wrap:wrap;gap:4px;margin-top:var(--space-2)}
+.jam-card .pill{font-size:10px;padding:2px 7px;border-radius:20px;background:var(--color-surface-offset);color:var(--color-text-muted)}
+.level-badge{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px}
+.stat-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-3);margin-bottom:var(--space-5)}
+.kpi-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4)}
+.kpi-label{font-size:var(--text-xs);font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--color-text-muted);margin-bottom:var(--space-1)}
+.kpi-value{font-size:var(--text-xl);font-weight:700;font-variant-numeric:tabular-nums}
+.hours-toggle{display:flex;gap:var(--space-2);margin-bottom:var(--space-5)}
+.pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--color-error);animation:pulse 2s ease infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.4)}}
+@media(max-width:900px){.live-shell{grid-template-columns:1fr;height:auto}.live-map{height:340px}.live-sidebar{max-height:60vh}.stat-kpis{grid-template-columns:1fr 1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header" style="margin-bottom:var(--space-5)">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-3)">
+    <div>
+      <h1 class="page-title"><span class="pulse"></span>&nbsp; Congestionamentos ao vivo</h1>
+      <p class="page-subtitle">{{ partner.name }} &mdash; últimas {{ hours }}h &mdash; <strong>{{ total }}</strong> registros</p>
+    </div>
+    <div style="display:flex;gap:var(--space-3)">
+      <a href="{{ path('jam_index') }}" class="btn btn-ghost"><i data-lucide="history" style="width:14px;height:14px"></i> Histórico</a>
+      <button class="btn btn-ghost" onclick="location.reload()"><i data-lucide="refresh-cw" style="width:14px;height:14px"></i> Atualizar</button>
+    </div>
+  </div>
+</div>
+
+{# Janela de tempo #}
+<div class="hours-toggle">
+  {% for h in [1,3,6,12,24] %}
+    <a href="{{ path('jam_live', {hours: h}) }}" class="btn {{ hours == h ? 'btn-primary' : 'btn-ghost' }} btn-sm">{{ h }}h</a>
+  {% endfor %}
+</div>
+
+{# KPIs #}
+<div class="stat-kpis">
+  <div class="kpi-card">
+    <div class="kpi-label">Registros</div>
+    <div class="kpi-value">{{ total }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Vel. média</div>
+    <div class="kpi-value" style="color:{{ stats.avgSpeed < 15 ? 'var(--color-error)' : (stats.avgSpeed < 35 ? 'var(--color-warning)' : 'var(--color-success)') }}">
+      {{ stats.avgSpeed|number_format(1,',','.') }} <span style="font-size:var(--text-sm);font-weight:400">km/h</span>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Atraso médio</div>
+    <div class="kpi-value">
+      {% if stats.avgDelay >= 60 %}{{ (stats.avgDelay / 60)|round }} <span style="font-size:var(--text-sm);font-weight:400">min</span>
+      {% else %}{{ stats.avgDelay }} <span style="font-size:var(--text-sm);font-weight:400">s</span>{% endif %}
+    </div>
+  </div>
+</div>
+
+{% if jams is empty %}
+  <div class="empty">
+    <i data-lucide="check-circle"></i>
+    <h3>Nenhum congestionamento nas últimas {{ hours }}h</h3>
+    <p>O trânsito está fluindo bem no período selecionado.</p>
+  </div>
+{% else %}
+<div class="live-shell">
+
+  {# Sidebar #}
+  <div class="live-sidebar">
+    {% for j in jams %}
+    {% set lv = j.level ?? 0 %}
+    {% set color = lv >= 5 ? '#a12c7b' : (lv >= 4 ? '#da3501' : (lv >= 3 ? '#da7101' : (lv >= 2 ? '#d19900' : '#437a22'))) %}
+    <div class="jam-card" data-id="{{ j.id }}" onclick="focusJam({{ j.id }})">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-2)">
+        <div style="flex:1">
+          <div class="street">{{ j.street ?? 'Via não identificada' }}</div>
+          {% if j.city %}<div class="city">{{ j.city }}</div>{% endif %}
+        </div>
+        <div style="font-size:var(--text-xl);font-weight:800;color:{{ color }};font-variant-numeric:tabular-nums;min-width:24px;text-align:right">{{ lv }}</div>
+      </div>
+      <div class="pills">
+        {% if j.speedKmh is not null %}
+          <span class="pill">🞥 {{ j.speedKmh|number_format(1,',','.') }} km/h</span>
+        {% endif %}
+        {% if j.length %}
+          <span class="pill">📍 {{ (j.length/1000)|number_format(2,',','.') }} km</span>
+        {% endif %}
+        {% if j.delay %}
+          <span class="pill">⏱ {% if j.delay >= 60 %}{{ (j.delay/60)|round }}min{% else %}{{ j.delay }}s{% endif %}</span>
+        {% endif %}
+        {% if j.blocking %}
+          <span class="pill" style="background:var(--color-error-highlight);color:var(--color-error)">Bloqueado</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {# Mapa #}
+  <div id="live-map" class="live-map"></div>
+
+</div>
+{% endif %}
+{% endblock %}
+
+{% block javascripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+  const jams = {{ jams|map(j => {
+    id:      j.id,
+    street:  j.street,
+    city:    j.city,
+    level:   j.level,
+    speedKmh: j.speedKmh,
+    length:  j.length,
+    delay:   j.delay,
+    blocking: j.blocking,
+    line:    j.line
+  })|json_encode|raw }};
+
+  function levelColor(lv) {
+    if (lv >= 5) return '#a12c7b';
+    if (lv >= 4) return '#da3501';
+    if (lv >= 3) return '#da7101';
+    if (lv >= 2) return '#d19900';
+    return '#437a22';
+  }
+
+  const map = L.map('live-map');
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
+
+  const polylines = {};
+  const layers = [];
+
+  jams.forEach(j => {
+    if (!j.line || !j.line.length) return;
+    const latlngs = j.line.map(p => [parseFloat(p.y), parseFloat(p.x)]);
+    const color = levelColor(j.level || 0);
+    const weight = Math.max(4, (j.level || 1) * 2);
+    const delay = j.delay
+      ? (j.delay >= 60 ? Math.ceil(j.delay/60)+'min' : j.delay+'s')
+      : '—';
+    const popup = `
+      <div style="min-width:190px;font-family:inherit">
+        <b style="font-size:13px;color:${color}">Nível ${j.level??'?'}/5</b>
+        ${j.blocking?'<span style="background:#a12c7b;color:#fff;border-radius:20px;padding:1px 7px;font-size:10px;margin-left:6px">Bloqueado</span>':''}
+        <div style="font-size:12px;font-weight:500;margin-top:4px">${j.street||'Via não identificada'}</div>
+        ${j.city?'<div style="font-size:11px;opacity:.6">'+j.city+'</div>':''}
+        <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+          ${j.speedKmh!==null?'<span style="background:#f0f0f0;border-radius:20px;padding:2px 7px;font-size:10px">🞥 '+parseFloat(j.speedKmh).toFixed(1)+' km/h</span>':''}
+          ${j.length?'<span style="background:#f0f0f0;border-radius:20px;padding:2px 7px;font-size:10px">📍 '+(j.length/1000).toFixed(2)+' km</span>':''}
+          <span style="background:#f0f0f0;border-radius:20px;padding:2px 7px;font-size:10px">⏱ ${delay}</span>
+        </div>
+        <a href="/congestionamentos/${j.id}" style="display:block;margin-top:8px;font-size:11px;color:#01696f;text-decoration:none;font-weight:600">🔗 Ver detalhes completos</a>
+      </div>`;
+    const pl = L.polyline(latlngs, {color, weight, opacity:0.9, lineJoin:'round', lineCap:'round'})
+      .bindPopup(popup, {maxWidth:280});
+    pl.addTo(map);
+    polylines[j.id] = pl;
+    layers.push(pl);
+  });
+
+  if (layers.length) {
+    map.fitBounds(L.featureGroup(layers).getBounds().pad(0.1));
+  } else {
+    map.setView([-19.92,-43.94],11);
+  }
+
+  window.focusJam = function(id) {
+    document.querySelectorAll('.jam-card').forEach(c => c.classList.remove('active'));
+    const card = document.querySelector('[data-id="'+id+'"]');
+    if (card) card.classList.add('active');
+    const pl = polylines[id];
+    if (pl) {
+      map.fitBounds(pl.getBounds().pad(0.2));
+      pl.openPopup();
+    }
+  };
+
+  // auto-refresh 60s
+  setTimeout(() => location.reload(), 60000);
+})();
+</script>
+{% endblock %}

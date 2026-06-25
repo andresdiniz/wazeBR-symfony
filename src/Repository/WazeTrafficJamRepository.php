@@ -7,6 +7,7 @@ namespace App\Repository;
 use App\Entity\Partner;
 use App\Entity\WazeTrafficJam;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\Tools\Pagination\Paginator;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -19,12 +20,13 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
         parent::__construct($registry, WazeTrafficJam::class);
     }
 
+    // ── contagens ────────────────────────────────────────────────────
+
     public function countByPartner(Partner $partner): int
     {
         return (int) $this->createQueryBuilder('j')
             ->select('COUNT(j.id)')
-            ->where('j.partner = :p')
-            ->setParameter('p', $partner)
+            ->where('j.partner = :p')->setParameter('p', $partner)
             ->getQuery()->getSingleScalarResult();
     }
 
@@ -32,111 +34,132 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
     {
         return (int) $this->createQueryBuilder('j')
             ->select('COUNT(j.id)')
-            ->where('j.partner = :p')
-            ->setParameter('p', $partner)
+            ->where('j.partner = :p')->setParameter('p', $partner)
             ->andWhere('j.createdAt >= :since')
             ->setParameter('since', new \DateTimeImmutable('-24 hours'))
             ->getQuery()->getSingleScalarResult();
     }
 
-    public function findRecentByPartner(Partner $partner, int $limit = 5): array
+    // ── listagens ────────────────────────────────────────────────────
+
+    /**
+     * Histórico paginado com filtros.
+     *
+     * @return array{items: WazeTrafficJam[], total: int, pages: int}
+     */
+    public function findFilteredByPartner(
+        Partner  $partner,
+        ?int     $minLevel = null,
+        ?string  $city     = null,
+        ?string  $type     = null,
+        ?string  $dateFrom = null,
+        ?string  $dateTo   = null,
+        int      $page     = 1,
+        int      $limit    = 30,
+    ): array {
+        $qb = $this->createQueryBuilder('j')
+            ->where('j.partner = :p')->setParameter('p', $partner)
+            ->orderBy('j.pubMillis', 'DESC');
+
+        if ($minLevel !== null) {
+            $qb->andWhere('j.level >= :lv')->setParameter('lv', $minLevel);
+        }
+        if ($city) {
+            $qb->andWhere('j.city LIKE :city')->setParameter('city', '%'.$city.'%');
+        }
+        if ($type) {
+            $qb->andWhere('j.type = :type')->setParameter('type', $type);
+        }
+        if ($dateFrom) {
+            $qb->andWhere('j.createdAt >= :from')
+               ->setParameter('from', (new \DateTimeImmutable($dateFrom))->setTime(0, 0, 0));
+        }
+        if ($dateTo) {
+            $qb->andWhere('j.createdAt <= :to')
+               ->setParameter('to', (new \DateTimeImmutable($dateTo))->setTime(23, 59, 59));
+        }
+
+        $paginator = new Paginator($qb->setFirstResult(($page - 1) * $limit)->setMaxResults($limit));
+        $total     = count($paginator);
+
+        return [
+            'items' => iterator_to_array($paginator),
+            'total' => $total,
+            'pages' => (int) ceil($total / $limit),
+        ];
+    }
+
+    public function findOneByPartner(int $id, Partner $partner): ?WazeTrafficJam
     {
         return $this->createQueryBuilder('j')
-            ->where('j.partner = :p')
-            ->setParameter('p', $partner)
-            ->orderBy('j.createdAt', 'DESC')
-            ->setMaxResults($limit)
+            ->where('j.id = :id')->setParameter('id', $id)
+            ->andWhere('j.partner = :p')->setParameter('p', $partner)
+            ->getQuery()->getOneOrNullResult();
+    }
+
+    /** Jams das últimas N horas para o mapa ao vivo */
+    public function findLiveByPartner(Partner $partner, int $hours = 3): array
+    {
+        $sinceMs = (new \DateTimeImmutable("-{$hours} hours"))->getTimestamp() * 1000;
+
+        return $this->createQueryBuilder('j')
+            ->where('j.partner = :p')->setParameter('p', $partner)
+            ->andWhere('j.pubMillis >= :since')->setParameter('since', $sinceMs)
+            ->orderBy('j.level', 'DESC')
+            ->addOrderBy('j.pubMillis', 'DESC')
+            ->setMaxResults(1000)
             ->getQuery()->getResult();
     }
 
-    public function findActiveByPartner(Partner $partner): array
+    // ── valores distintos para filtros ───────────────────────────────────
+
+    public function findDistinctCities(Partner $partner): array
     {
-        return $this->createQueryBuilder('j')
-            ->where('j.partner = :p')
-            ->setParameter('p', $partner)
-            ->orderBy('j.createdAt', 'DESC')
-            ->setMaxResults(500)
-            ->getQuery()->getResult();
+        $rows = $this->createQueryBuilder('j')
+            ->select('DISTINCT j.city')
+            ->where('j.partner = :p')->setParameter('p', $partner)
+            ->andWhere('j.city IS NOT NULL')
+            ->orderBy('j.city', 'ASC')
+            ->getQuery()->getArrayResult();
+        return array_column($rows, 'city');
     }
 
-    /** Velocidade média (km/h) dos jams do parceiro */
-    public function avgSpeedKmhByPartner(Partner $partner): float
+    public function findDistinctTypes(Partner $partner): array
     {
-        $result = $this->createQueryBuilder('j')
-            ->select('AVG(j.speedKmh)')
-            ->where('j.partner = :p')
-            ->setParameter('p', $partner)
-            ->andWhere('j.speedKmh IS NOT NULL')
-            ->getQuery()->getSingleScalarResult();
-
-        return round((float) ($result ?? 0.0), 1);
+        $rows = $this->createQueryBuilder('j')
+            ->select('DISTINCT j.type')
+            ->where('j.partner = :p')->setParameter('p', $partner)
+            ->andWhere('j.type IS NOT NULL')
+            ->orderBy('j.type', 'ASC')
+            ->getQuery()->getArrayResult();
+        return array_column($rows, 'type');
     }
 
-    /** Atraso médio em segundos */
-    public function avgDelaySecsByPartner(Partner $partner): float
-    {
-        $result = $this->createQueryBuilder('j')
-            ->select('AVG(j.delay)')
-            ->where('j.partner = :p')
-            ->setParameter('p', $partner)
-            ->andWhere('j.delay IS NOT NULL')
-            ->getQuery()->getSingleScalarResult();
+    // ── agregações ───────────────────────────────────────────────────
 
-        return round((float) ($result ?? 0.0), 0);
-    }
-
-    /** Somatório do comprimento total dos jams em metros */
-    public function totalLengthMByPartner(Partner $partner): int
-    {
-        $result = $this->createQueryBuilder('j')
-            ->select('SUM(j.length)')
-            ->where('j.partner = :p')
-            ->setParameter('p', $partner)
-            ->andWhere('j.length IS NOT NULL')
-            ->getQuery()->getSingleScalarResult();
-
-        return (int) ($result ?? 0);
-    }
-
-    /** Contagem por nível de jam: [['level' => 3, 'total' => 12], ...] */
     public function countGroupByLevel(Partner $partner): array
     {
         return $this->createQueryBuilder('j')
             ->select('j.level, COUNT(j.id) AS total')
-            ->where('j.partner = :p')
-            ->setParameter('p', $partner)
-            ->andWhere('j.level IS NOT NULL')
+            ->where('j.partner = :p')->setParameter('p', $partner)
             ->groupBy('j.level')
-            ->orderBy('j.level', 'ASC')
+            ->orderBy('j.level', 'DESC')
             ->getQuery()->getArrayResult();
     }
 
-    /**
-     * Jams por hora nas últimas 24h usando pubMillis (timestamp Waze em ms).
-     * Retorna array[0..23] => count, indexado pela hora UTC.
-     */
-    public function countPerHourLast24h(Partner $partner): array
+    /** Atraso médio e comprimento médio dos jams ativos */
+    public function avgStats(Partner $partner, int $hours = 3): array
     {
-        $sinceMs = (new \DateTimeImmutable('-24 hours'))->getTimestamp() * 1000;
-
-        $conn = $this->getEntityManager()->getConnection();
-        $sql  = '
-            SELECT HOUR(FROM_UNIXTIME(pub_millis / 1000)) AS hr,
-                   COUNT(*) AS total
-            FROM waze_traffic_jams
-            WHERE partner_id = :pid
-              AND pub_millis >= :since
-            GROUP BY hr
-        ';
-        $rows = $conn->executeQuery($sql, [
-            'pid'   => $partner->getId(),
-            'since' => $sinceMs,
-        ])->fetchAllAssociative();
-
-        $map = array_fill(0, 24, 0);
-        foreach ($rows as $row) {
-            $map[(int) $row['hr']] = (int) $row['total'];
-        }
-        return $map;
+        $sinceMs = (new \DateTimeImmutable("-{$hours} hours"))->getTimestamp() * 1000;
+        $row = $this->createQueryBuilder('j')
+            ->select('AVG(j.delay) AS avgDelay, AVG(j.length) AS avgLength, AVG(j.speedKmh) AS avgSpeed')
+            ->where('j.partner = :p')->setParameter('p', $partner)
+            ->andWhere('j.pubMillis >= :since')->setParameter('since', $sinceMs)
+            ->getQuery()->getSingleResult();
+        return [
+            'avgDelay'  => round((float)($row['avgDelay'] ?? 0)),
+            'avgLength' => round((float)($row['avgLength'] ?? 0)),
+            'avgSpeed'  => round((float)($row['avgSpeed'] ?? 0), 1),
+        ];
     }
 }
