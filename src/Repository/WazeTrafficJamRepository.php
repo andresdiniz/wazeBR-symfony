@@ -147,19 +147,35 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
             ->getQuery()->getArrayResult();
     }
 
-    /** Atraso médio e comprimento médio dos jams ativos */
+    /**
+     * Estatísticas agregadas dos jams ativos nas últimas N horas.
+     *
+     * Retorna:
+     *   avgDelay    – atraso médio em segundos
+     *   avgLength   – comprimento médio em metros
+     *   avgSpeed    – velocidade média em km/h
+     *   totalLength – soma total dos comprimentos em metros
+     */
     public function avgStats(Partner $partner, int $hours = 3): array
     {
         $sinceMs = (new \DateTimeImmutable("-{$hours} hours"))->getTimestamp() * 1000;
+
         $row = $this->createQueryBuilder('j')
-            ->select('AVG(j.delay) AS avgDelay, AVG(j.length) AS avgLength, AVG(j.speedKmh) AS avgSpeed')
+            ->select(
+                'AVG(j.delay)    AS avgDelay',
+                'AVG(j.length)   AS avgLength',
+                'AVG(j.speedKmh) AS avgSpeed',
+                'SUM(j.length)   AS totalLength',
+            )
             ->where('j.partner = :p')->setParameter('p', $partner)
             ->andWhere('j.pubMillis >= :since')->setParameter('since', $sinceMs)
             ->getQuery()->getSingleResult();
+
         return [
-            'avgDelay'  => round((float)($row['avgDelay'] ?? 0)),
-            'avgLength' => round((float)($row['avgLength'] ?? 0)),
-            'avgSpeed'  => round((float)($row['avgSpeed'] ?? 0), 1),
+            'avgDelay'    => round((float)($row['avgDelay']    ?? 0)),
+            'avgLength'   => round((float)($row['avgLength']   ?? 0)),
+            'avgSpeed'    => round((float)($row['avgSpeed']    ?? 0), 1),
+            'totalLength' => round((float)($row['totalLength'] ?? 0)),
         ];
     }
 }
