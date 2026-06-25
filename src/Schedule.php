@@ -1,28 +1,44 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App;
 
 use Symfony\Component\Scheduler\Attribute\AsSchedule;
-use Symfony\Component\Scheduler\Schedule as SymfonySchedule;
+use Symfony\Component\Scheduler\RecurringMessage;
+use Symfony\Component\Scheduler\Schedule;
 use Symfony\Component\Scheduler\ScheduleProviderInterface;
 use Symfony\Contracts\Cache\CacheInterface;
+use App\Message\CollectWazeFeedMessage;
 
+/**
+ * Scheduler central do WazeBR.
+ *
+ * Tarefas agendadas:
+ *   - Coleta de alertas + jams do feed PartnerHub    → a cada 5 minutos
+ *   - (futuramente) relatório diário, coleta CEMADEN, etc.
+ *
+ * Para rodar:
+ *   php bin/console messenger:consume scheduler_default
+ *
+ * Para testar manualmente:
+ *   php bin/console app:waze:collect-feed --dry-run
+ */
 #[AsSchedule]
-class Schedule implements ScheduleProviderInterface
+final class Schedule implements ScheduleProviderInterface
 {
+    private ?Schedule $schedule = null;
+
     public function __construct(
-        private CacheInterface $cache,
-    ) {
-    }
+        private readonly CacheInterface $cache,
+    ) {}
 
-    public function getSchedule(): SymfonySchedule
+    public function getSchedule(): Schedule
     {
-        return (new SymfonySchedule())
-            ->stateful($this->cache) // ensure missed tasks are executed
-            ->processOnlyLastMissedRun(true) // ensure only last missed task is run
-
-            // add your own tasks here
-            // see https://symfony.com/doc/current/scheduler.html#attaching-recurring-messages-to-a-schedule
-        ;
+        return $this->schedule ??= (new Schedule())
+            ->stateful($this->cache)
+            ->add(
+                RecurringMessage::every('5 minutes', new CollectWazeFeedMessage()),
+            );
     }
 }
