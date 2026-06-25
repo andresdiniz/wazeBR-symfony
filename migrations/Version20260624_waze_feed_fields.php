@@ -42,22 +42,33 @@ final class Version20260624_waze_feed_fields extends AbstractMigration
             ADD COLUMN IF NOT EXISTS updated_at          DATETIME     DEFAULT NULL COMMENT "(DC2Type:datetime_immutable)"
         ');
 
-        // FK para MonitoredLink
-        $this->addSql('ALTER TABLE waze_alerts
-            ADD CONSTRAINT IF NOT EXISTS fk_waze_alert_source_link
-            FOREIGN KEY (source_link_id) REFERENCES monitored_links(id) ON DELETE SET NULL
-        ');
+        // FK para MonitoredLink — MariaDB nao suporta ADD CONSTRAINT IF NOT EXISTS
+        // Verificamos se a FK já existe antes de tentar criar
+        $fkExists = $this->connection->fetchOne(
+            "SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
+             WHERE CONSTRAINT_SCHEMA = DATABASE()
+               AND TABLE_NAME        = 'waze_alerts'
+               AND CONSTRAINT_NAME  = 'fk_waze_alert_source_link'
+               AND CONSTRAINT_TYPE  = 'FOREIGN KEY'"
+        );
 
-        // Unique constraint no wazeId (pode já existir — ignora se existir)
+        if (!$fkExists) {
+            $this->addSql('ALTER TABLE waze_alerts
+                ADD CONSTRAINT fk_waze_alert_source_link
+                FOREIGN KEY (source_link_id) REFERENCES monitored_links(id) ON DELETE SET NULL
+            ');
+        }
+
+        // Unique constraint no wazeId
         $this->addSql('
             ALTER TABLE waze_alerts
             ADD UNIQUE INDEX IF NOT EXISTS uq_waze_alert_uuid (waze_id)
         ');
 
-        // Índice composto partner + pubMillis para queries de dashboard
-        $this->addSql('
-            CREATE INDEX IF NOT EXISTS idx_partner_pub ON waze_alerts (partner_id, pub_millis)
-        ');
+        // Índice composto partner + pubMillis
+        $this->addSql(
+            'CREATE INDEX IF NOT EXISTS idx_partner_pub ON waze_alerts (partner_id, pub_millis)'
+        );
     }
 
     public function down(Schema $schema): void
