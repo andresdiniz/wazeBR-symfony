@@ -134,6 +134,9 @@
     .notif-item:last-child{border-bottom:none}
     .notif-item-title{font-weight:500;color:var(--color-text);margin-bottom:2px}
     .notif-item-body{color:var(--color-text-muted);font-size:var(--text-xs)}
+    /* —— Timezone: elemento <time data-utc> renderizado pelo JS —— */
+    time[data-utc]{font-variant-numeric:tabular-nums}
+    time[data-utc][data-fmt="relative"]{color:var(--color-text-muted);font-size:var(--text-xs)}
   </style>
   {% block stylesheets %}{% endblock %}
 </head>
@@ -233,23 +236,107 @@
 {% endblock %}
 
 <script>
-  (function(){
-    const t=document.querySelector('[data-theme-toggle]'),r=document.documentElement;
-    let d=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
-    r.setAttribute('data-theme',d);
-    if(t) t.addEventListener('click',()=>{ d=d==='dark'?'light':'dark'; r.setAttribute('data-theme',d); });
-  })();
-  if(typeof lucide!=='undefined') lucide.createIcons();
-  document.addEventListener('DOMContentLoaded',()=>{ if(typeof lucide!=='undefined') lucide.createIcons(); });
-  const notifBtn=document.getElementById('notif-btn');
-  const notifDrop=document.getElementById('notif-dropdown');
-  const notifBadge=document.getElementById('notif-badge');
-  const notifList=document.getElementById('notif-list');
-  const markAllBtn=document.getElementById('mark-all-read');
-  function loadNotifCount(){ fetch('/notificacoes/api/unread-count').then(r=>r.json()).then(d=>{ notifBadge.style.display=d.count>0?'block':'none'; }).catch(()=>{}); }
-  function loadNotifs(){ fetch('/notificacoes/api/unread').then(r=>r.json()).then(items=>{ if(!items.length){ notifList.innerHTML='<div class="empty" style="padding:var(--space-8)"><p>Tudo em dia!</p></div>'; return; } notifList.innerHTML=items.map(n=>`<div class="notif-item"><div class="notif-item-title">${n.title}</div><div class="notif-item-body">${n.body}</div></div>`).join(''); }).catch(()=>{}); }
-  if(notifBtn){ loadNotifCount(); setInterval(loadNotifCount,30000); notifBtn.addEventListener('click',()=>{ notifDrop.classList.toggle('open'); if(notifDrop.classList.contains('open')) loadNotifs(); }); document.addEventListener('click',e=>{ if(!notifBtn.contains(e.target)&&!notifDrop.contains(e.target)) notifDrop.classList.remove('open'); }); }
-  if(markAllBtn){ markAllBtn.addEventListener('click',()=>{ fetch('/notificacoes/api/mark-all-read',{method:'POST'}).then(()=>{ loadNotifCount(); loadNotifs(); }); }); }
+/* ── Tema ── */
+(function(){
+  const t=document.querySelector('[data-theme-toggle]'),r=document.documentElement;
+  let d=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+  r.setAttribute('data-theme',d);
+  if(t) t.addEventListener('click',()=>{ d=d==='dark'?'light':'dark'; r.setAttribute('data-theme',d); });
+})();
+if(typeof lucide!=='undefined') lucide.createIcons();
+document.addEventListener('DOMContentLoaded',()=>{ if(typeof lucide!=='undefined') lucide.createIcons(); });
+
+/* ── Timezone: renderiza <time data-utc="ISO"> no fuso do navegador ──
+ *
+ *  Uso nos templates Twig:
+ *
+ *  Formato completo (data + hora):
+ *    <time data-utc="{{ obj.createdAt|date('c') }}">{{ obj.createdAt|date('d/m/Y H:i') }}</time>
+ *
+ *  Só data:
+ *    <time data-utc="{{ obj.createdAt|date('c') }}" data-fmt="date">{{ obj.createdAt|date('d/m/Y') }}</time>
+ *
+ *  Só hora:
+ *    <time data-utc="{{ obj.createdAt|date('c') }}" data-fmt="time">{{ obj.createdAt|date('H:i') }}</time>
+ *
+ *  Relativo ("há 5 min"):
+ *    <time data-utc="{{ obj.createdAt|date('c') }}" data-fmt="relative">{{ obj.createdAt|date('d/m/Y H:i') }}</time>
+ *
+ *  O fallback visivel entre as tags é o que aparece se JS estiver desativado (UTC).
+ *  Com JS, o conteúdo é substituído pelo horário local do usuário automaticamente.
+ */
+(function(){
+  const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  const FMT_FULL = new Intl.DateTimeFormat('pt-BR',{
+    timeZone: TZ,
+    day:'2-digit', month:'2-digit', year:'numeric',
+    hour:'2-digit', minute:'2-digit'
+  });
+  const FMT_DATE = new Intl.DateTimeFormat('pt-BR',{
+    timeZone: TZ,
+    day:'2-digit', month:'2-digit', year:'numeric'
+  });
+  const FMT_TIME = new Intl.DateTimeFormat('pt-BR',{
+    timeZone: TZ,
+    hour:'2-digit', minute:'2-digit'
+  });
+
+  function relative(date) {
+    const diffMs = Date.now() - date.getTime();
+    const diffSec = Math.round(diffMs / 1000);
+    if (diffSec < 60)   return 'agora';
+    if (diffSec < 3600) return `há ${Math.floor(diffSec/60)} min`;
+    if (diffSec < 86400) return `há ${Math.floor(diffSec/3600)} h`;
+    const days = Math.floor(diffSec/86400);
+    if (days === 1) return 'ontem';
+    if (days < 7)  return `há ${days} dias`;
+    return FMT_DATE.format(date);
+  }
+
+  function renderTimes() {
+    document.querySelectorAll('time[data-utc]').forEach(el => {
+      const iso = el.getAttribute('data-utc');
+      if (!iso) return;
+      const date = new Date(iso);
+      if (isNaN(date)) return;
+      const fmt = el.getAttribute('data-fmt') || 'datetime';
+      switch (fmt) {
+        case 'date':     el.textContent = FMT_DATE.format(date); break;
+        case 'time':     el.textContent = FMT_TIME.format(date); break;
+        case 'relative': el.textContent = relative(date); el.title = FMT_FULL.format(date); break;
+        default:         el.textContent = FMT_FULL.format(date);
+      }
+      if (!el.title && fmt !== 'relative') el.title = FMT_FULL.format(date);
+    });
+  }
+
+  // Roda imediatamente + após DOMContentLoaded (para elementos renderizados tarde)
+  renderTimes();
+  document.addEventListener('DOMContentLoaded', renderTimes);
+
+  // Atualiza os "relativo" a cada 30s
+  setInterval(() => {
+    document.querySelectorAll('time[data-utc][data-fmt="relative"]').forEach(el => {
+      const date = new Date(el.getAttribute('data-utc'));
+      if (!isNaN(date)) el.textContent = relative(date);
+    });
+  }, 30000);
+
+  // Expoe para uso em JS inline dos templates
+  window.WazeTZ = { TZ, FMT_FULL, FMT_DATE, FMT_TIME, relative, renderTimes };
+})();
+
+/* ── Notificações ── */
+const notifBtn=document.getElementById('notif-btn');
+const notifDrop=document.getElementById('notif-dropdown');
+const notifBadge=document.getElementById('notif-badge');
+const notifList=document.getElementById('notif-list');
+const markAllBtn=document.getElementById('mark-all-read');
+function loadNotifCount(){ fetch('/notificacoes/api/unread-count').then(r=>r.json()).then(d=>{ notifBadge.style.display=d.count>0?'block':'none'; }).catch(()=>{}); }
+function loadNotifs(){ fetch('/notificacoes/api/unread').then(r=>r.json()).then(items=>{ if(!items.length){ notifList.innerHTML='<div class="empty" style="padding:var(--space-8)"><p>Tudo em dia!</p></div>'; return; } notifList.innerHTML=items.map(n=>`<div class="notif-item"><div class="notif-item-title">${n.title}</div><div class="notif-item-body">${n.body}</div></div>`).join(''); }).catch(()=>{}); }
+if(notifBtn){ loadNotifCount(); setInterval(loadNotifCount,30000); notifBtn.addEventListener('click',()=>{ notifDrop.classList.toggle('open'); if(notifDrop.classList.contains('open')) loadNotifs(); }); document.addEventListener('click',e=>{ if(!notifBtn.contains(e.target)&&!notifDrop.contains(e.target)) notifDrop.classList.remove('open'); }); }
+if(markAllBtn){ markAllBtn.addEventListener('click',()=>{ fetch('/notificacoes/api/mark-all-read',{method:'POST'}).then(()=>{ loadNotifCount(); loadNotifs(); }); }); }
 </script>
 {% block javascripts %}{% endblock %}
 </body>
