@@ -18,10 +18,6 @@
   .map-legend { display:flex; flex-wrap:wrap; gap:var(--space-3); padding:var(--space-3) var(--space-4); background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-md); margin-bottom:var(--space-4); font-size:var(--text-xs); }
   .legend-item { display:flex; align-items:center; gap:6px; color:var(--color-text-muted); }
   .legend-line { width:24px; height:4px; border-radius:2px; }
-  .tab-bar { display:flex; gap:var(--space-2); margin-bottom:var(--space-6); border-bottom:1px solid var(--color-border); }
-  .tab { padding:var(--space-2) var(--space-4); font-size:var(--text-sm); font-weight:500; color:var(--color-text-muted); border-bottom:2px solid transparent; margin-bottom:-1px; cursor:pointer; }
-  .tab.active { color:var(--color-primary); border-bottom-color:var(--color-primary); }
-  .tab:hover:not(.active) { color:var(--color-text); }
 </style>
 {% endblock %}
 
@@ -125,15 +121,27 @@
       {% endif %}
     </div>
 
-    {# Paginação #}
+    {# Paginação — variável intermediária para evitar SyntaxError do Twig com ~ em chave de array #}
     {% if pages > 1 %}
+    {% set qs = app.request.queryString %}
     <div class="pagination">
-      {% if page > 1 %}<a href="?page={{ page - 1 }}&{{ app.request.queryString|replace({'page='~page: ''}) }}">‹</a>{% endif %}
+      {% if page > 1 %}
+        {% set prevPage = 'page=' ~ (page - 1) %}
+        <a href="?{{ qs|replace({'page=' ~ page: prevPage}) }}">‹</a>
+      {% endif %}
       {% for p in max(1, page-2)..min(pages, page+2) %}
-        {% if p == page %}<span class="current">{{ p }}</span>
-        {% else %}<a href="?page={{ p }}&{{ app.request.queryString|replace({'page='~page: ''}) }}">{{ p }}</a>{% endif %}
+        {% if p == page %}
+          <span class="current">{{ p }}</span>
+        {% else %}
+          {% set targetPage = 'page=' ~ p %}
+          {% set currentPage = 'page=' ~ page %}
+          <a href="?{{ qs|replace({(currentPage): targetPage}) }}">{{ p }}</a>
+        {% endif %}
       {% endfor %}
-      {% if page < pages %}<a href="?page={{ page + 1 }}&{{ app.request.queryString|replace({'page='~page: ''}) }}">›</a>{% endif %}
+      {% if page < pages %}
+        {% set nextPage = 'page=' ~ (page + 1) %}
+        <a href="?{{ qs|replace({'page=' ~ page: nextPage}) }}">›</a>
+      {% endif %}
     </div>
     {% endif %}
   </div>
@@ -180,18 +188,12 @@ JAM_DATA.forEach(jam => {
   const color = LEVEL_COLOR[jam.level] || '#999';
   const weight = LEVEL_WEIGHT[jam.level] || 3;
 
-  // sombra
   L.polyline(coords, { color: '#000', weight: weight + 4, opacity: 0.12 }).addTo(map);
-  // linha principal
   const poly = L.polyline(coords, {
-    color,
-    weight,
-    opacity: 0.85,
-    lineJoin: 'round',
-    lineCap: 'round'
+    color, weight, opacity: 0.85,
+    lineJoin: 'round', lineCap: 'round'
   }).addTo(map);
 
-  // seta de direção animada
   const mid = coords[Math.floor(coords.length / 2)];
   const arrowIcon = L.divIcon({
     className: '',
