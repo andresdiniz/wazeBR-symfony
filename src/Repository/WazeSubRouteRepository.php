@@ -2,17 +2,17 @@
 
 namespace App\Repository;
 
-use App\Entity\WazeRoute;
+use App\Entity\WazeSubRoute;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
- * @extends ServiceEntityRepository<WazeRoute>
+ * @extends ServiceEntityRepository<WazeSubRoute>
  */
-class WazeRouteRepository extends ServiceEntityRepository
+class WazeSubRouteRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
     {
-        parent::__construct($registry, WazeRoute::class);
+        parent::__construct($registry, WazeSubRoute::class);
     }
 }
