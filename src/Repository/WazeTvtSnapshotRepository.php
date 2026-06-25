@@ -21,6 +21,32 @@ class WazeTvtSnapshotRepository extends ServiceEntityRepository
     }
 
     /**
+     * Conta o total de snapshots de um parceiro.
+     */
+    public function countByPartner(Partner $partner): int
+    {
+        return (int) $this->createQueryBuilder('s')
+            ->select('COUNT(s.id)')
+            ->where('s.partner = :partner')
+            ->setParameter('partner', $partner)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * Retorna todos os snapshots de um parceiro, do mais recente ao mais antigo.
+     */
+    public function findByPartner(Partner $partner): array
+    {
+        return $this->createQueryBuilder('s')
+            ->where('s.partner = :partner')
+            ->setParameter('partner', $partner)
+            ->orderBy('s.collectedAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * Último snapshot de um link monitorado.
      */
     public function findLatestByLink(MonitoredLink $link): ?WazeTvtSnapshot
