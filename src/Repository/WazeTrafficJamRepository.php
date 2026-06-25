@@ -23,7 +23,8 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
     {
         return (int) $this->createQueryBuilder('j')
             ->select('COUNT(j.id)')
-            ->where('j.partner = :p')->setParameter('p', $partner)
+            ->where('j.partner = :p')
+            ->setParameter('p', $partner)
             ->getQuery()->getSingleScalarResult();
     }
 
@@ -31,8 +32,9 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
     {
         return (int) $this->createQueryBuilder('j')
             ->select('COUNT(j.id)')
-            ->where('j.partner = :p')->setParameter('p', $partner)
-            ->andWhere('j.collectedAt >= :since')
+            ->where('j.partner = :p')
+            ->setParameter('p', $partner)
+            ->andWhere('j.createdAt >= :since')
             ->setParameter('since', new \DateTimeImmutable('-24 hours'))
             ->getQuery()->getSingleScalarResult();
     }
@@ -40,8 +42,9 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
     public function findRecentByPartner(Partner $partner, int $limit = 5): array
     {
         return $this->createQueryBuilder('j')
-            ->where('j.partner = :p')->setParameter('p', $partner)
-            ->orderBy('j.collectedAt', 'DESC')
+            ->where('j.partner = :p')
+            ->setParameter('p', $partner)
+            ->orderBy('j.createdAt', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()->getResult();
     }
@@ -49,8 +52,9 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
     public function findActiveByPartner(Partner $partner): array
     {
         return $this->createQueryBuilder('j')
-            ->where('j.partner = :p')->setParameter('p', $partner)
-            ->orderBy('j.collectedAt', 'DESC')
+            ->where('j.partner = :p')
+            ->setParameter('p', $partner)
+            ->orderBy('j.createdAt', 'DESC')
             ->setMaxResults(500)
             ->getQuery()->getResult();
     }
@@ -60,7 +64,8 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
     {
         $result = $this->createQueryBuilder('j')
             ->select('AVG(j.speedKmh)')
-            ->where('j.partner = :p')->setParameter('p', $partner)
+            ->where('j.partner = :p')
+            ->setParameter('p', $partner)
             ->andWhere('j.speedKmh IS NOT NULL')
             ->getQuery()->getSingleScalarResult();
 
@@ -72,7 +77,8 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
     {
         $result = $this->createQueryBuilder('j')
             ->select('AVG(j.delay)')
-            ->where('j.partner = :p')->setParameter('p', $partner)
+            ->where('j.partner = :p')
+            ->setParameter('p', $partner)
             ->andWhere('j.delay IS NOT NULL')
             ->getQuery()->getSingleScalarResult();
 
@@ -84,7 +90,8 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
     {
         $result = $this->createQueryBuilder('j')
             ->select('SUM(j.length)')
-            ->where('j.partner = :p')->setParameter('p', $partner)
+            ->where('j.partner = :p')
+            ->setParameter('p', $partner)
             ->andWhere('j.length IS NOT NULL')
             ->getQuery()->getSingleScalarResult();
 
@@ -96,23 +103,35 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
     {
         return $this->createQueryBuilder('j')
             ->select('j.level, COUNT(j.id) AS total')
-            ->where('j.partner = :p')->setParameter('p', $partner)
+            ->where('j.partner = :p')
+            ->setParameter('p', $partner)
             ->andWhere('j.level IS NOT NULL')
             ->groupBy('j.level')
             ->orderBy('j.level', 'ASC')
             ->getQuery()->getArrayResult();
     }
 
-    /** Jams por hora nas últimas 24h: array[0..23] => count */
+    /**
+     * Jams por hora nas últimas 24h usando pubMillis (timestamp Waze em ms).
+     * Retorna array[0..23] => count, indexado pela hora UTC.
+     */
     public function countPerHourLast24h(Partner $partner): array
     {
-        $rows = $this->createQueryBuilder('j')
-            ->select('HOUR(j.collectedAt) AS hr, COUNT(j.id) AS total')
-            ->where('j.partner = :p')->setParameter('p', $partner)
-            ->andWhere('j.collectedAt >= :since')
-            ->setParameter('since', new \DateTimeImmutable('-24 hours'))
-            ->groupBy('hr')
-            ->getQuery()->getArrayResult();
+        $sinceMs = (new \DateTimeImmutable('-24 hours'))->getTimestamp() * 1000;
+
+        $conn = $this->getEntityManager()->getConnection();
+        $sql  = '
+            SELECT HOUR(FROM_UNIXTIME(pub_millis / 1000)) AS hr,
+                   COUNT(*) AS total
+            FROM waze_traffic_jams
+            WHERE partner_id = :pid
+              AND pub_millis >= :since
+            GROUP BY hr
+        ';
+        $rows = $conn->executeQuery($sql, [
+            'pid'   => $partner->getId(),
+            'since' => $sinceMs,
+        ])->fetchAllAssociative();
 
         $map = array_fill(0, 24, 0);
         foreach ($rows as $row) {
