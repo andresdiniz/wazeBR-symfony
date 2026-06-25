@@ -167,18 +167,20 @@ class WazeTvtSnapshot
     }
 
     /**
-     * Retorna o total de usuários em jams (soma de todos os niveis).
+     * Retorna o total de usuários em jams (soma de todos os níveis).
+     * Cast explícito para int — array_sum() retorna float quando o array é vazio.
      */
     public function getTotalUsersOnJams(): int
     {
-        return array_sum(array_column($this->usersOnJams, 'wazersCount'));
+        return (int) array_sum(array_column($this->usersOnJams, 'wazersCount'));
     }
 
     /**
      * Retorna comprimento total de congestionamento em metros.
+     * Cast explícito para int — array_sum() retorna float quando o array é vazio.
      */
     public function getTotalJamLength(): int
     {
-        return array_sum(array_column($this->lengthOfJams, 'jamLength'));
+        return (int) array_sum(array_column($this->lengthOfJams, 'jamLength'));
     }
 }
