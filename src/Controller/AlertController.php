@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Repository\WazeAlertRepository;
 use App\Service\TenantContext;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -21,29 +22,85 @@ class AlertController extends AbstractController
         private readonly WazeAlertRepository $alertRepo,
     ) {}
 
+    /** Histórico de alertas com filtros e paginação */
     #[Route('', name: 'index')]
     public function index(Request $request): Response
     {
-        $partner = $this->tenantContext->requirePartner();
-        $type    = $request->query->get('type');
-        $city    = $request->query->get('city');
-        $page    = max(1, (int) $request->query->get('page', 1));
+        $partner  = $this->tenantContext->requirePartner();
+        $type     = $request->query->get('type') ?: null;
+        $subtype  = $request->query->get('subtype') ?: null;
+        $city     = $request->query->get('city') ?: null;
+        $dateFrom = $request->query->get('dateFrom') ?: null;
+        $dateTo   = $request->query->get('dateTo') ?: null;
+        $page     = max(1, (int) $request->query->get('page', 1));
 
-        $alerts = $this->alertRepo->findFilteredByPartner(
-            partner: $partner,
-            type: $type ?: null,
-            city: $city ?: null,
-            page: $page,
-            limit: 30,
+        $result = $this->alertRepo->findFilteredByPartner(
+            partner:  $partner,
+            type:     $type,
+            subtype:  $subtype,
+            city:     $city,
+            dateFrom: $dateFrom,
+            dateTo:   $dateTo,
+            page:     $page,
+            limit:    30,
         );
 
         return $this->render('alert/index.html.twig', [
-            'partner' => $partner,
-            'alerts'  => $alerts,
-            'type'    => $type,
-            'city'    => $city,
-            'page'    => $page,
+            'partner'  => $partner,
+            'alerts'   => $result['items'],
+            'total'    => $result['total'],
+            'pages'    => $result['pages'],
+            'page'     => $page,
+            'type'     => $type,
+            'subtype'  => $subtype,
+            'city'     => $city,
+            'dateFrom' => $dateFrom,
+            'dateTo'   => $dateTo,
+            'types'    => $this->alertRepo->findDistinctTypes($partner),
+            'subtypes' => $this->alertRepo->findDistinctSubtypes($partner, $type),
+            'cities'   => $this->alertRepo->findDistinctCities($partner),
         ]);
+    }
+
+    /** Alertas ao vivo agrupados por região — mapa interativo */
+    #[Route('/ao-vivo', name: 'live')]
+    public function live(Request $request): Response
+    {
+        $partner = $this->tenantContext->requirePartner();
+        $hours   = max(1, min(24, (int) $request->query->get('hours', 3)));
+        $regions = $this->alertRepo->findLiveGroupedByRegion($partner, $hours);
+        $alerts  = $this->alertRepo->findLiveByPartner($partner, $hours);
+
+        return $this->render('alert/live.html.twig', [
+            'partner' => $partner,
+            'regions' => $regions,
+            'alerts'  => $alerts,
+            'hours'   => $hours,
+            'total'   => array_sum(array_column($regions, 'count')),
+        ]);
+    }
+
+    /** API JSON para o mapa ao vivo (polling) */
+    #[Route('/api/live', name: 'api_live')]
+    public function apiLive(Request $request): JsonResponse
+    {
+        $partner = $this->tenantContext->requirePartner();
+        $hours   = max(1, min(24, (int) $request->query->get('hours', 3)));
+        $alerts  = $this->alertRepo->findLiveByPartner($partner, $hours);
+
+        $data = array_map(fn($a) => [
+            'id'      => $a->getId(),
+            'lat'     => (float) $a->getLatitude(),
+            'lng'     => (float) $a->getLongitude(),
+            'type'    => $a->getType(),
+            'subtype' => $a->getSubtype(),
+            'street'  => $a->getStreet(),
+            'city'    => $a->getCity(),
+            'conf'    => $a->getConfidence(),
+            'pub'     => $a->getPubMillis(),
+        ], $alerts);
+
+        return new JsonResponse($data);
     }
 
     #[Route('/{id}', name: 'show', requirements: ['id' => '\d+'])]

@@ -1,54 +1,247 @@
 {% extends 'base.html.twig' %}
 {% block title %}Alertas{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+.filter-card{
+  background:var(--color-surface);border:1px solid var(--color-border);
+  border-radius:var(--radius-lg);padding:var(--space-5);margin-bottom:var(--space-6);
+  box-shadow:var(--shadow-sm);
+}
+.filter-row{display:flex;flex-wrap:wrap;gap:var(--space-3);align-items:flex-end}
+.filter-field{display:flex;flex-direction:column;gap:var(--space-1);min-width:150px;flex:1}
+.filter-field label{font-size:var(--text-xs);font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--color-text-muted)}
+.total-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4)}
+.total-bar-text{font-size:var(--text-sm);color:var(--color-text-muted)}
+#alert-map{height:340px;border-radius:var(--radius-lg);border:1px solid var(--color-border);margin-bottom:var(--space-6);overflow:hidden}
+.type-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
+.btn-active{background:var(--color-primary)!important;color:#fff!important;border-color:var(--color-primary)!important}
+@media(max-width:700px){.filter-row{flex-direction:column}}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="page-header">
-  <h1>Alertas Waze</h1>
+
+{# Mapa superior com alertas filtrados #}
+<div class="page-header" style="margin-bottom:var(--space-5)">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-3)">
+    <div>
+      <h1 class="page-title">Alertas</h1>
+      <p class="page-subtitle">Histórico de alertas — {{ partner.name }}</p>
+    </div>
+    <a href="{{ path('alert_live') }}" class="btn btn-primary">
+      <i data-lucide="radio" style="width:14px;height:14px"></i> Ao vivo
+    </a>
+  </div>
 </div>
 
-<form method="get" class="filter-bar">
-  <select name="type">
-    <option value="">Todos os tipos</option>
-    <option value="ACCIDENT" {% if type == 'ACCIDENT' %}selected{% endif %}>Acidente</option>
-    <option value="JAM" {% if type == 'JAM' %}selected{% endif %}>Congestionamento</option>
-    <option value="ROAD_CLOSED" {% if type == 'ROAD_CLOSED' %}selected{% endif %}>Via fechada</option>
-    <option value="HAZARD" {% if type == 'HAZARD' %}selected{% endif %}>Perigo</option>
-  </select>
-  <input type="text" name="city" value="{{ city }}" placeholder="Filtrar por cidade">
-  <button type="submit" class="btn btn-primary">Filtrar</button>
-</form>
+{# Mapa #}
+<div id="alert-map"></div>
 
-<div class="table-wrapper">
-  <table>
-    <thead>
-      <tr>
-        <th>Tipo</th>
-        <th>Subtipo</th>
-        <th>Rua</th>
-        <th>Cidade</th>
-        <th>Confiança</th>
-        <th>Data</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for alert in alerts %}
-      <tr>
-        <td><span class="badge badge-warning">{{ alert.type }}</span></td>
-        <td>{{ alert.subtype ?? '—' }}</td>
-        <td>{{ alert.street ?? '—' }}</td>
-        <td>{{ alert.city ?? '—' }}</td>
-        <td>{{ alert.reliability ?? '—' }}</td>
-        <td>{{ alert.createdAt|date('d/m/Y H:i') }}</td>
-      </tr>
-      {% else %}
-      <tr><td colspan="6" class="empty-cell">Nenhum alerta encontrado.</td></tr>
+{# Filtros #}
+<div class="filter-card">
+  <form method="get" id="filter-form">
+    <div class="filter-row">
+
+      <div class="filter-field">
+        <label>Tipo</label>
+        <select name="type" class="form-select" onchange="this.form.submit()">
+          <option value="">Todos</option>
+          {% for t in types %}
+            <option value="{{ t }}" {{ type == t ? 'selected' }}>{{ ('waze.alert_type.' ~ t|lower)|trans({}, 'waze') }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <label>Subtipo</label>
+        <select name="subtype" class="form-select" onchange="this.form.submit()">
+          <option value="">Todos</option>
+          {% for s in subtypes %}
+            <option value="{{ s }}" {{ subtype == s ? 'selected' }}>{{ ('waze.alert_subtype.' ~ s|lower|replace({'-': '_', ' ': '_'}))|trans({}, 'waze') }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <label>Cidade</label>
+        <select name="city" class="form-select" onchange="this.form.submit()">
+          <option value="">Todas</option>
+          {% for c in cities %}
+            <option value="{{ c }}" {{ city == c ? 'selected' }}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <label>De</label>
+        <input type="date" name="dateFrom" class="form-input" value="{{ dateFrom }}">
+      </div>
+
+      <div class="filter-field">
+        <label>Até</label>
+        <input type="date" name="dateTo" class="form-input" value="{{ dateTo }}">
+      </div>
+
+      <div style="display:flex;gap:var(--space-2)">
+        <button type="submit" class="btn btn-primary"><i data-lucide="search" style="width:14px;height:14px"></i> Filtrar</button>
+        <a href="{{ path('alert_index') }}" class="btn btn-ghost"><i data-lucide="x" style="width:14px;height:14px"></i> Limpar</a>
+      </div>
+
+    </div>
+  </form>
+</div>
+
+{# Barra de total #}
+<div class="total-bar">
+  <span class="total-bar-text">
+    <strong>{{ total|number_format(0, ',', '.') }}</strong> alerta{{ total != 1 ? 's' }} encontrado{{ total != 1 ? 's' }}
+    {% if type or subtype or city or dateFrom or dateTo %}
+      com os filtros aplicados
+    {% endif %}
+  </span>
+  <span class="total-bar-text">Página {{ page }} de {{ pages ?: 1 }}</span>
+</div>
+
+{# Tabela #}
+<div class="card">
+  {% if alerts is empty %}
+    <div class="empty">
+      <i data-lucide="search-x"></i>
+      <h3>Nenhum alerta encontrado</h3>
+      <p>Tente ajustar os filtros para encontrar registros.</p>
+    </div>
+  {% else %}
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Tipo</th>
+          <th>Subtipo</th>
+          <th>Via / Cidade</th>
+          <th>Conf.</th>
+          <th>Publicado</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for a in alerts %}
+        {% set typeKey = a.type|lower %}
+        {% set subtypeKey = a.subtype|default('')|lower|replace({'-': '_', ' ': '_'}) %}
+        <tr>
+          <td style="color:var(--color-text-muted);font-size:var(--text-xs)">{{ a.id }}</td>
+          <td>
+            <span class="badge
+              {% if a.type == 'ACCIDENT' %}badge-red
+              {% elseif a.type == 'HAZARD' or a.type == 'WEATHERHAZARD' %}badge-yellow
+              {% elseif a.type == 'JAM' %}badge-orange
+              {% elseif a.type == 'ROAD_CLOSED' %}badge-gray
+              {% else %}badge-blue{% endif %}">
+              {{ ('waze.alert_type.' ~ typeKey)|trans({}, 'waze') }}
+            </span>
+          </td>
+          <td style="font-size:var(--text-xs);color:var(--color-text-muted)">
+            {% if subtypeKey %}
+              {{ ('waze.alert_subtype.' ~ subtypeKey)|trans({}, 'waze') }}
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            <div style="font-size:var(--text-sm)">{{ a.street ?? '—' }}</div>
+            {% if a.city %}<div style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ a.city }}</div>{% endif %}
+          </td>
+          <td>
+            {% set c = a.confidence %}
+            <span class="badge {{ c >= 7 ? 'badge-green' : (c >= 4 ? 'badge-orange' : 'badge-red') }}">
+              {{ c ?? '—' }}
+            </span>
+          </td>
+          <td style="font-size:var(--text-xs);color:var(--color-text-muted);white-space:nowrap">
+            {{ a.pubDate|date('d/m H:i') }}
+          </td>
+          <td>
+            <a href="{{ path('alert_show', {id: a.id}) }}" class="btn btn-ghost btn-sm">Ver</a>
+          </td>
+        </tr>
       {% endfor %}
-    </tbody>
-  </table>
-</div>
+      </tbody>
+    </table>
 
-<div class="pagination">
-  {% if page > 1 %}<a href="?page={{ page - 1 }}&type={{ type }}&city={{ city }}" class="btn btn-ghost">&laquo; Anterior</a>{% endif %}
-  <span>Página {{ page }}</span>
-  {% if alerts|length == 30 %}<a href="?page={{ page + 1 }}&type={{ type }}&city={{ city }}" class="btn btn-ghost">Próxima &raquo;</a>{% endif %}
+    {# Paginação #}
+    {% if pages > 1 %}
+    <div style="padding:var(--space-4) var(--space-5);border-top:1px solid var(--color-divider)">
+      <div class="pagination">
+        {% if page > 1 %}
+          <a href="?{{ app.request.query.all|merge({page: page - 1})|url_encode }}">‹ Anterior</a>
+        {% endif %}
+        {% for p in max(1, page-2)..min(pages, page+2) %}
+          {% if p == page %}
+            <span class="current">{{ p }}</span>
+          {% else %}
+            <a href="?{{ app.request.query.all|merge({page: p})|url_encode }}">{{ p }}</a>
+          {% endif %}
+        {% endfor %}
+        {% if page < pages %}
+          <a href="?{{ app.request.query.all|merge({page: page + 1})|url_encode }}">Próxima ›</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  {% endif %}
 </div>
+{% endblock %}
+
+{% block javascripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+  const alerts = {{ alerts|map(a => {
+    id: a.id,
+    lat: a.latitude,
+    lng: a.longitude,
+    type: a.type,
+    subtype: a.subtype,
+    street: a.street,
+    city: a.city,
+    conf: a.confidence
+  })|json_encode|raw }};
+
+  const TYPE_COLOR = {
+    ACCIDENT:'#a12c7b', HAZARD:'#d19900', WEATHERHAZARD:'#006494',
+    JAM:'#da7101', ROAD_CLOSED:'#7a7974', CONSTRUCTION:'#437a22',
+    POLICE:'#01696f', MISC:'#7a39bb'
+  };
+  const TYPE_LABEL = {
+    ACCIDENT:'Acidente', HAZARD:'Perigo', WEATHERHAZARD:'Risco climático',
+    JAM:'Congestionamento', ROAD_CLOSED:'Via fechada', CONSTRUCTION:'Obra',
+    POLICE:'Polícia/Radar', MISC:'Diverso'
+  };
+
+  const map = L.map('alert-map', {zoomControl:true});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution:'© OpenStreetMap',maxZoom:19
+  }).addTo(map);
+
+  const markers = [];
+  alerts.forEach(a => {
+    if (!a.lat || !a.lng) return;
+    const color = TYPE_COLOR[a.type] || '#7a7974';
+    const icon = L.divIcon({
+      html: `<div style="width:12px;height:12px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>`,
+      className:'',iconSize:[12,12],iconAnchor:[6,6]
+    });
+    const m = L.marker([a.lat, a.lng], {icon})
+      .bindPopup(`<b>${TYPE_LABEL[a.type]||a.type}</b><br>${a.subtype||''}<br>${a.street||''}${a.city?' — '+a.city:''}`);
+    m.addTo(map);
+    markers.push(m);
+  });
+
+  if (markers.length) {
+    const group = L.featureGroup(markers);
+    map.fitBounds(group.getBounds().pad(0.15));
+  } else {
+    map.setView([-19.92, -43.94], 11); // BH fallback
+  }
+})();
+</script>
 {% endblock %}
