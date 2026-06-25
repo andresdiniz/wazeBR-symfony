@@ -6,12 +6,10 @@ namespace App\Command;
 
 use App\Entity\MonitoredLink;
 use App\Entity\Partner;
-use App\Entity\WazeCount;
-use App\Entity\WazeRoute;
-use App\Entity\WazeSubRoute;
+use App\Entity\WazeTvtRoute;
+use App\Entity\WazeTvtSnapshot;
 use App\Repository\MonitoredLinkRepository;
 use App\Repository\PartnerRepository;
-use App\Repository\WazeRouteRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -22,54 +20,46 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
- * Coleta rotas, sub-rotas e contagens de usuários do feed Waze TVT (feeds-tvt).
+ * Coleta rotas e metadados do feed Waze TVT (feeds-tvt).
  *
  * URL do feed (type='tvt' em MonitoredLink):
  *   https://www.waze.com/row-partnerhub-api/feeds-tvt/{uuid}?id={monitorId}
  *
  * Estrutura do JSON retornado:
  *   {
- *     "usersOnJams": [
- *       { "wazersCount": 193, "jamLevel": 0 },
- *       { "wazersCount": 0,   "jamLevel": 1 },
- *       ...
- *     ],
+ *     "updateTime": 1782350463272,
+ *     "name": "Managed Area",
+ *     "areaName": "Managed Area",
+ *     "broadcasterId": "",
+ *     "isMetric": true,
+ *     "bbox": { "minX":..., "maxX":..., "minY":..., "maxY":... },
+ *     "usersOnJams": [ { "jamLevel": 0, "wazersCount": 79 }, ... ],
+ *     "lengthOfJams": [ { "jamLevel": 1, "jamLength": 0 }, ... ],
+ *     "irregularities": [...],
  *     "routes": [
  *       {
- *         "id": "1762938283029",   // string ou ausente
- *         "name": "Rota 2",
- *         "fromName": "Av. Monsenhor Moreira",
- *         "toName": "R. Valério Eugênio",
+ *         "id": "1734959326165",
+ *         "name": "Cachoeira Centro",
  *         "type": "STATIC",
- *         "time": 132,
- *         "historicTime": 104,
- *         "length": 209,
- *         "jamLevel": 3,
- *         "line": [ {"x": -43.80, "y": -20.65}, ... ],
- *         "bbox": { "minY": ..., "minX": ..., "maxY": ..., "maxX": ... },
- *         "alternateRoute": { ... },   // opcional
- *         "subRoutes": [
- *           {
- *             "fromName": "Av. Monsenhor Moreira",
- *             "toName": "R. Valério Eugênio",
- *             "time": 45,
- *             "historicTime": 32,
- *             "length": 49,
- *             "jamLevel": 0,
- *             "line": [ ... ],
- *             "bbox": { ... }
- *           },
- *           ...
- *         ]
+ *         "fromName": "...",
+ *         "toName": "...",
+ *         "length": 3152,
+ *         "time": 522,
+ *         "historicTime": 457,
+ *         "jamLevel": 1,
+ *         "line": [ {"x": -43.79, "y": -20.64}, ... ],
+ *         "bbox": { ... },
+ *         "subRoutes": [ { ...mesmo schema... } ]
  *       },
  *       ...
  *     ]
  *   }
  *
- * ESTRATÉGIA DE DEDUPLICAÇÃO:
- *   - WazeRoute: por (wazeId + partner). Rotas sem "id" são sempre inseridas.
- *   - WazeCount: sem deduplicação — é um snapshot por coleta (série temporal).
- *   - WazeSubRoute: removidas e reinseridas a cada coleta da rota pai (mutable).
+ * ESTRATÉGIA:
+ *   - Cada coleta gera um novo WazeTvtSnapshot (série temporal, nunca atualiza).
+ *   - Cada rota principal vira um WazeTvtRoute (isSubRoute=false).
+ *   - Cada subRota vira um WazeTvtRoute (isSubRoute=true, parentWazeId preenchido).
+ *   - O JSON bruto das subRoutes é salvo em subRoutesRaw da rota pai.
  */
 #[AsCommand(
     name: 'app:waze:collect-tvt',
@@ -80,7 +70,6 @@ class WazeCollectTvtCommand extends Command
     public function __construct(
         private readonly PartnerRepository       $partnerRepo,
         private readonly MonitoredLinkRepository $linkRepo,
-        private readonly WazeRouteRepository     $routeRepo,
         private readonly EntityManagerInterface  $em,
         private readonly HttpClientInterface     $httpClient,
     ) {
@@ -119,8 +108,7 @@ class WazeCollectTvtCommand extends Command
             return Command::SUCCESS;
         }
 
-        $totalRoutes = 0;
-        $totalCounts = 0;
+        $totalSnapshots = 0;
 
         foreach ($partners as $partner) {
             $io->section("Parceiro: {$partner->getName()} [{$partner->getSlug()}]");
@@ -151,66 +139,60 @@ class WazeCollectTvtCommand extends Command
                     continue;
                 }
 
-                $rawRoutes      = $data['routes']      ?? [];
-                $rawUsersOnJams = $data['usersOnJams'] ?? [];
+                $rawRoutes = $data['routes'] ?? [];
 
                 if ($dryRun) {
                     $io->writeln(sprintf(
-                        '  DRY-RUN: %d rotas, %d níveis de contagem encontrados.',
+                        '  DRY-RUN: %d rota(s) encontrada(s).',
                         count($rawRoutes),
-                        count($rawUsersOnJams),
                     ));
-
                     foreach ($rawRoutes as $i => $r) {
                         $io->writeln(sprintf(
                             '    Rota %d: id=%s | name=%s | jamLevel=%s | subRoutes=%d',
                             $i + 1,
-                            $r['id']      ?? '(sem id)',
-                            $r['name']    ?? '(sem nome)',
+                            $r['id']       ?? '(sem id)',
+                            $r['name']     ?? '(sem nome)',
                             $r['jamLevel'] ?? '?',
                             count($r['subRoutes'] ?? []),
                         ));
                     }
 
                     $io->writeln('  usersOnJams:');
-                    foreach ($rawUsersOnJams as $u) {
+                    foreach (($data['usersOnJams'] ?? []) as $u) {
                         $io->writeln(sprintf(
-                            '    jamLevel=%d → %s usuários',
-                            $u['jamLevel']    ?? '?',
-                            $u['wazersCount'] ?? '?',
+                            '    jamLevel=%d → %d usuários',
+                            $u['jamLevel']    ?? 0,
+                            $u['wazersCount'] ?? 0,
                         ));
                     }
-
                     continue;
                 }
 
-                $now = new \DateTime();
-
-                $routes = $this->persistRoutes($partner, $rawRoutes, $now);
-                $counts = $this->persistCount($rawUsersOnJams, $now);
-
-                $link->markSuccess($routes + $counts);
+                $snapshot = $this->buildSnapshot($partner, $link, $data);
+                $this->em->persist($snapshot);
                 $this->em->flush();
 
-                $totalRoutes += $routes;
-                $totalCounts += $counts;
+                $link->markSuccess(count($rawRoutes));
+                $this->em->flush();
+
+                $totalSnapshots++;
 
                 $io->writeln(sprintf(
-                    '  ✓ Rotas: <info>%d novas/atualizadas</info> | Contagens: <info>%d snapshot(s)</info>',
-                    $routes,
-                    $counts,
+                    '  ✓ Snapshot salvo: <info>%d rota(s)</info>, <info>%d usuário(s) em jams</info>.',
+                    $snapshot->getRouteCount(),
+                    $snapshot->getTotalUsersOnJams(),
                 ));
             }
         }
 
         if (!$dryRun) {
-            $io->success("Total salvo — Rotas: {$totalRoutes} | Snapshots de contagem: {$totalCounts}");
+            $io->success("Total salvo — Snapshots: {$totalSnapshots}");
         }
 
         return Command::SUCCESS;
     }
 
-    // ── HTTP ─────────────────────────────────────────────────────────────────
+    // ── HTTP ─────────────────────────────────────────────────────────────────────
 
     private function fetchFeed(string $url): array
     {
@@ -230,111 +212,64 @@ class WazeCollectTvtCommand extends Command
         return $response->toArray();
     }
 
-    // ── Persistência — Rotas ──────────────────────────────────────────────────
+    // ── Builder do Snapshot ───────────────────────────────────────────────────────
 
-    /**
-     * Insere ou atualiza WazeRoute e reinicia seus WazeSubRoutes.
-     *
-     * Deduplicação:
-     *  - Se a rota tem "id" (wazeId) já existente para o parceiro → atualiza os campos e
-     *    remove+reinserece as subRoutes (os dados de tempo mudam a cada coleta).
-     *  - Se a rota NÃO tem "id" → insere sempre como novo snapshot.
-     */
-    private function persistRoutes(Partner $partner, array $rawRoutes, \DateTime $now): int
-    {
-        $count = 0;
+    private function buildSnapshot(
+        Partner       $partner,
+        MonitoredLink $link,
+        array         $data,
+    ): WazeTvtSnapshot {
+        $rawRoutes = $data['routes'] ?? [];
 
-        foreach ($rawRoutes as $raw) {
-            $wazeId = isset($raw['id']) ? (string) $raw['id'] : null;
+        $snapshot = (new WazeTvtSnapshot())
+            ->setPartner($partner)
+            ->setSourceLink($link)
+            ->setUpdateTime(isset($data['updateTime']) ? (int) $data['updateTime'] : null)
+            ->setFeedName($data['name']     ?? null)
+            ->setAreaName($data['areaName'] ?? null)
+            ->setBroadcasterId($data['broadcasterId'] ?? null)
+            ->setIsMetric((bool) ($data['isMetric'] ?? true))
+            ->setBbox($data['bbox'] ?? null)
+            ->setUsersOnJams($data['usersOnJams']   ?? [])
+            ->setLengthOfJams($data['lengthOfJams'] ?? [])
+            ->setIrregularities($data['irregularities'] ?? [])
+            ->setRouteCount(count($rawRoutes));
 
-            // Tenta recuperar rota existente (só quando há wazeId)
-            $route = null;
-            if ($wazeId !== null) {
-                $route = $this->routeRepo->findOneBy(['wazeId' => $wazeId]);
+        foreach ($rawRoutes as $rawRoute) {
+            $parentWazeId = isset($rawRoute['id']) ? (string) $rawRoute['id'] : null;
+
+            // Rota principal
+            $route = $this->hydrateRoute($rawRoute, isSubRoute: false, parentWazeId: null);
+            $snapshot->addRoute($route);
+
+            // SubRoutes (mesmo schema, achatadas com flag isSubRoute=true)
+            foreach (($rawRoute['subRoutes'] ?? []) as $rawSub) {
+                $sub = $this->hydrateRoute($rawSub, isSubRoute: true, parentWazeId: $parentWazeId);
+                $snapshot->addRoute($sub);
             }
-
-            if ($route === null) {
-                $route = new WazeRoute();
-                $route->setWazeId($wazeId);
-            }
-
-            // ── Hidrata campos da rota ──────────────────────────────────────
-            $route
-                ->setName(isset($raw['name']) ? mb_substr((string) $raw['name'], 0, 255) : null)
-                ->setFromName(isset($raw['fromName']) ? mb_substr((string) $raw['fromName'], 0, 255) : null)
-                ->setToName(isset($raw['toName']) ? mb_substr((string) $raw['toName'], 0, 255) : null)
-                ->setType(isset($raw['type']) ? mb_substr((string) $raw['type'], 0, 30) : null)
-                ->setTime(isset($raw['time']) ? (int) $raw['time'] : null)
-                ->setHistoricTime(isset($raw['historicTime']) ? (int) $raw['historicTime'] : null)
-                ->setLength(isset($raw['length']) ? (int) $raw['length'] : null)
-                ->setJamLevel(isset($raw['jamLevel']) ? (int) $raw['jamLevel'] : null)
-                ->setLine($raw['line'] ?? null)
-                ->setBbox($raw['bbox'] ?? null)
-                ->setAlternateRoute($raw['alternateRoute'] ?? null)
-                ->setCollectedAt($now);
-
-            // ── Reinicia subRoutes ──────────────────────────────────────────
-            // Remove todas as subRoutes existentes (orphanRemoval=true garante o DELETE)
-            foreach ($route->getSubRoutes() as $old) {
-                $route->removeSubRoute($old);
-            }
-
-            // Insere subRoutes da coleta atual
-            foreach (($raw['subRoutes'] ?? []) as $sortOrder => $rawSub) {
-                $sub = $this->hydrateSubRoute($rawSub, $sortOrder);
-                $route->addSubRoute($sub);
-            }
-
-            $this->em->persist($route);
-            $count++;
         }
 
-        if ($count > 0) {
-            $this->em->flush();
-        }
-
-        return $count;
+        return $snapshot;
     }
 
-    // ── Hidratador de SubRoute ────────────────────────────────────────────────
+    // ── Hidratador de WazeTvtRoute ────────────────────────────────────────────────
 
-    private function hydrateSubRoute(array $raw, int $sortOrder): WazeSubRoute
+    private function hydrateRoute(array $raw, bool $isSubRoute, ?string $parentWazeId): WazeTvtRoute
     {
-        $sub = new WazeSubRoute();
-
-        $sub
-            ->setFromName(isset($raw['fromName']) ? mb_substr((string) $raw['fromName'], 0, 255) : null)
-            ->setToName(isset($raw['toName']) ? mb_substr((string) $raw['toName'], 0, 255) : null)
-            ->setTime(isset($raw['time']) ? (int) $raw['time'] : null)
+        return (new WazeTvtRoute())
+            ->setWazeRouteId(isset($raw['id']) ? (string) $raw['id'] : null)
+            ->setIsSubRoute($isSubRoute)
+            ->setParentWazeId($parentWazeId)
+            ->setName($raw['name']     ?? null)
+            ->setType($raw['type']     ?? null)
+            ->setFromName($raw['fromName'] ?? null)
+            ->setToName($raw['toName']   ?? null)
+            ->setLength(isset($raw['length'])       ? (int) $raw['length']       : null)
+            ->setTime(isset($raw['time'])           ? (int) $raw['time']         : null)
             ->setHistoricTime(isset($raw['historicTime']) ? (int) $raw['historicTime'] : null)
-            ->setLength(isset($raw['length']) ? (int) $raw['length'] : null)
-            ->setJamLevel(isset($raw['jamLevel']) ? (int) $raw['jamLevel'] : null)
-            ->setLine($raw['line'] ?? null)
+            ->setJamLevel(isset($raw['jamLevel'])   ? (int) $raw['jamLevel']     : null)
+            ->setLine($raw['line'] ?? [])
             ->setBbox($raw['bbox'] ?? null)
-            ->setSortOrder($sortOrder);
-
-        return $sub;
-    }
-
-    // ── Persistência — WazeCount (snapshot) ───────────────────────────────────
-
-    /**
-     * Sempre insere um novo snapshot de WazeCount — é uma série temporal,
-     * nunca atualiza um registro existente.
-     */
-    private function persistCount(array $rawUsersOnJams, \DateTime $now): int
-    {
-        if (empty($rawUsersOnJams)) {
-            return 0;
-        }
-
-        $count = (new WazeCount())
-            ->setCollectedAt($now)
-            ->hydrateFromApiArray($rawUsersOnJams);
-
-        $this->em->persist($count);
-        $this->em->flush();
-
-        return 1;
+            ->setSubRoutesRaw($raw['subRoutes'] ?? []);
     }
 }
