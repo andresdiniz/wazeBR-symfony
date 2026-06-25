@@ -40,7 +40,73 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
             ->getQuery()->getSingleScalarResult();
     }
 
+    // ── agregações simples (usadas pelo DashboardController) ─────────
+
+    public function avgSpeedKmhByPartner(Partner $partner): float
+    {
+        $val = $this->createQueryBuilder('j')
+            ->select('AVG(j.speedKmh)')
+            ->where('j.partner = :p')->setParameter('p', $partner)
+            ->getQuery()->getSingleScalarResult();
+
+        return round((float)($val ?? 0), 1);
+    }
+
+    public function avgDelaySecsByPartner(Partner $partner): float
+    {
+        $val = $this->createQueryBuilder('j')
+            ->select('AVG(j.delay)')
+            ->where('j.partner = :p')->setParameter('p', $partner)
+            ->getQuery()->getSingleScalarResult();
+
+        return round((float)($val ?? 0));
+    }
+
+    public function totalLengthMByPartner(Partner $partner): float
+    {
+        $val = $this->createQueryBuilder('j')
+            ->select('SUM(j.length)')
+            ->where('j.partner = :p')->setParameter('p', $partner)
+            ->getQuery()->getSingleScalarResult();
+
+        return round((float)($val ?? 0));
+    }
+
+    // ── por hora (gráfico 24 h) ───────────────────────────────────────
+
+    /**
+     * Retorna array de ['hour' => int(0-23), 'total' => int]
+     * para as últimas 24 horas.
+     */
+    public function countPerHourLast24h(Partner $partner): array
+    {
+        return $this->createQueryBuilder('j')
+            ->select('HOUR(j.createdAt) AS hour, COUNT(j.id) AS total')
+            ->where('j.partner = :p')->setParameter('p', $partner)
+            ->andWhere('j.createdAt >= :since')
+            ->setParameter('since', new \DateTimeImmutable('-24 hours'))
+            ->groupBy('hour')
+            ->orderBy('hour', 'ASC')
+            ->getQuery()->getArrayResult();
+    }
+
     // ── listagens ────────────────────────────────────────────────────
+
+    /** Jams mais recentes (para o painel do dashboard). */
+    public function findRecentByPartner(Partner $partner, int $limit = 10): array
+    {
+        return $this->createQueryBuilder('j')
+            ->where('j.partner = :p')->setParameter('p', $partner)
+            ->orderBy('j.pubMillis', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()->getResult();
+    }
+
+    /** Jams "ativos" = das últimas 3 horas (para o mapa). */
+    public function findActiveByPartner(Partner $partner, int $hours = 3): array
+    {
+        return $this->findLiveByPartner($partner, $hours);
+    }
 
     /**
      * Histórico paginado com filtros.
