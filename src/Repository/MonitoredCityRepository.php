@@ -23,7 +23,7 @@ class MonitoredCityRepository extends ServiceEntityRepository
             ->andWhere('c.isActive = true')
             ->setParameter('partner', $partner)
             ->orderBy('c.state', 'ASC')
-            ->addOrderBy('c.city', 'ASC')
+            ->addOrderBy('c.name', 'ASC')   // campo correto: $name, nao $city
             ->getQuery()->getResult();
     }
 
