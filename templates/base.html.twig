@@ -209,9 +209,6 @@
     {% if is_granted('ROLE_ADMIN') %}
     <div class="nav-section">
       <div class="nav-label">Administração</div>
-      <a href="{{ path('tvt_route_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'tvt_route' ? 'active' }}">
-        <i data-lucide="map-pin"></i> Rotas TVT
-      </a>
       <a href="{{ path('notification_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'notification' ? 'active' }}">
         <i data-lucide="bell"></i> Notificações
       </a>
