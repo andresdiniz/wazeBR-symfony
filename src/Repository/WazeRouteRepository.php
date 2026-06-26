@@ -35,6 +35,20 @@ class WazeRouteRepository extends ServiceEntityRepository
         return $qb->getQuery()->getResult();
     }
 
+    public function countByPartner(Partner $partner, bool $activeOnly = true): int
+    {
+        $qb = $this->createQueryBuilder('r')
+            ->select('COUNT(r.id)')
+            ->where('r.partner = :partner')
+            ->setParameter('partner', $partner);
+
+        if ($activeOnly) {
+            $qb->andWhere('r.isActive = true');
+        }
+
+        return (int) $qb->getQuery()->getSingleScalarResult();
+    }
+
     public function findOneByPartner(int $id, Partner $partner): ?WazeRoute
     {
         return $this->createQueryBuilder('r')
