@@ -1,0 +1,64 @@
+{% extends 'base.html.twig' %}
+{% block title %}Rotas{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-4)">
+  <div>
+    <h1 class="page-title">Rotas monitoradas</h1>
+    <p class="page-subtitle">{{ routes|length }} rota{{ routes|length != 1 ? 's' }} cadastrada{{ routes|length != 1 ? 's' }}</p>
+  </div>
+  <a href="{{ path('route_admin_new') }}" class="btn btn-primary">
+    <i data-lucide="plus" style="width:15px;height:15px"></i> Nova rota
+  </a>
+</div>
+
+{% if routes is empty %}
+  <div class="empty">
+    <i data-lucide="route" style="width:40px;height:40px"></i>
+    <h3>Nenhuma rota cadastrada</h3>
+    <p>Crie a primeira rota para começar o monitoramento.</p>
+    <a href="{{ path('route_admin_new') }}" class="btn btn-primary" style="margin-top:var(--space-4)">Nova rota</a>
+  </div>
+{% else %}
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Descrição</th>
+          <th>Sub-rotas</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for route in routes %}
+        <tr>
+          <td><strong>{{ route.name }}</strong></td>
+          <td style="color:var(--color-text-muted)">{{ route.description ?? '—' }}</td>
+          <td style="font-variant-numeric:tabular-nums">{{ route.links|length }}</td>
+          <td>
+            {% if route.active %}
+              <span class="badge badge-green"><i data-lucide="check" style="width:10px;height:10px"></i> Ativa</span>
+            {% else %}
+              <span class="badge badge-gray">Inativa</span>
+            {% endif %}
+          </td>
+          <td style="text-align:right;white-space:nowrap;display:flex;gap:var(--space-2);justify-content:flex-end">
+            <a href="{{ path('route_admin_show', {id: route.id}) }}" class="btn btn-ghost btn-sm">
+              <i data-lucide="eye" style="width:13px;height:13px"></i> Ver
+            </a>
+            <form method="post" action="{{ path('route_admin_toggle', {id: route.id}) }}" style="display:inline">
+              <button type="submit" class="btn btn-ghost btn-sm">
+                <i data-lucide="{{ route.active ? 'pause' : 'play' }}" style="width:13px;height:13px"></i>
+                {{ route.active ? 'Desativar' : 'Ativar' }}
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
+{% endblock %}
