@@ -27,7 +27,7 @@ class TvtRouteController extends AbstractController
     public function index(Request $request): Response
     {
         $partner  = $this->tenantContext->requirePartner();
-        $jamFilter = $request->query->get('jam'); // null | 0..5
+        $jamFilter = $request->query->get('jam');
 
         $routes   = $this->routeRepo->findTvtByPartner(
             $partner,
@@ -36,12 +36,10 @@ class TvtRouteController extends AbstractController
 
         $lastSnapshot = $this->snapshotRepo->findLatestByPartner($partner);
 
-        // ── KPIs ────────────────────────────────────────────────────────────
         $total   = count($routes);
         $levels  = [0 => 0, 1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0];
         $totalDelaySec  = 0;
         $routesWithDelay = 0;
-        $avgSpeedKmh     = null;
 
         foreach ($routes as $r) {
             $lv = $r->getJamLevel() ?? 0;
@@ -54,8 +52,6 @@ class TvtRouteController extends AbstractController
         }
 
         $avgDelaySec = $routesWithDelay > 0 ? (int) ($totalDelaySec / $routesWithDelay) : 0;
-
-        // Congestionadas = jamLevel >= 3
         $congested = ($levels[3] ?? 0) + ($levels[4] ?? 0) + ($levels[5] ?? 0);
 
         return $this->render('tvt_route/index.html.twig', [

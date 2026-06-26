@@ -5,40 +5,27 @@
 {% block stylesheets %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 <style>
-  /* ── Jam level badge colors ─────────────────────── */
   .jam-0{background:oklch(from var(--color-success) l c h/.12);color:var(--color-success)}
   .jam-1{background:oklch(from var(--color-gold) l c h/.12);color:var(--color-gold)}
   .jam-2{background:oklch(from var(--color-orange) l c h/.15);color:var(--color-orange)}
   .jam-3{background:oklch(from var(--color-error) l c h/.12);color:var(--color-error)}
   .jam-4{background:oklch(from var(--color-error) l c h/.2);color:var(--color-error)}
   .jam-5{background:var(--color-error);color:#fff}
-
-  /* ── KPI bar de níveis ──────────────────────────── */
   .level-bar{display:flex;height:8px;border-radius:var(--radius-full);overflow:hidden;gap:2px;margin-top:var(--space-3)}
   .level-seg{height:100%;border-radius:2px;transition:width .4s ease}
   .ls-0{background:var(--color-success)}
   .ls-1{background:var(--color-gold)}
   .ls-2{background:var(--color-orange)}
   .ls-3,.ls-4,.ls-5{background:var(--color-error)}
-
-  /* ── Mapa ───────────────────────────────────────── */
   #tvt-map{height:460px;border-radius:var(--radius-lg);z-index:1;border:1px solid var(--color-border)}
-
-  /* ── Filtro chips ───────────────────────────────── */
   .chip-group{display:flex;flex-wrap:wrap;gap:var(--space-2)}
   .chip{display:inline-flex;align-items:center;gap:4px;padding:4px var(--space-3);border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:600;border:1px solid var(--color-border);color:var(--color-text-muted);background:var(--color-surface);transition:all var(--transition)}
   .chip:hover{background:var(--color-surface-offset);color:var(--color-text)}
   .chip.active{background:var(--color-primary);color:#fff;border-color:var(--color-primary)}
-
-  /* ── Tabela: coluna de delay ────────────────────── */
   .delay-pos{color:var(--color-error)}
   .delay-neg{color:var(--color-success)}
   .delay-zero{color:var(--color-text-faint)}
-
-  /* ── Row highlight ao clicar ────────────────────── */
   tr.row-selected td{background:oklch(from var(--color-primary) l c h/.06)}
-
-  /* ── Tooltip do mapa ────────────────────────────── */
   .leaflet-popup-content-wrapper{border-radius:var(--radius-md)!important;box-shadow:var(--shadow-lg)!important;font-family:var(--font-body)!important;font-size:var(--text-xs)!important}
 </style>
 {% endblock %}
@@ -50,9 +37,9 @@
     <div class="page-subtitle">
       Snapshot mais recente
       {% if lastSnapshot %}
-        — coletado <time data-utc="{{ lastSnapshot.collectedAt|date('c') }}" data-fmt="relative">{{ lastSnapshot.collectedAt|date('d/m/Y H:i') }}</time>
+        &mdash; coletado <time data-utc="{{ lastSnapshot.collectedAt|date('c') }}" data-fmt="relative">{{ lastSnapshot.collectedAt|date('d/m/Y H:i') }}</time>
       {% else %}
-        — nenhum snapshot encontrado
+        &mdash; nenhum snapshot encontrado
       {% endif %}
     </div>
   </div>
@@ -61,9 +48,7 @@
   </a>
 </div>
 
-{# ── KPIs ──────────────────────────────────────────────────────── #}
 <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))">
-
   <div class="kpi-card">
     <div class="kpi-icon" style="background:oklch(from var(--color-primary) l c h/.1);color:var(--color-primary)">
       <i data-lucide="route" style="width:20px;height:20px"></i>
@@ -71,42 +56,34 @@
     <div class="kpi-label">Total de Rotas</div>
     <div class="kpi-value">{{ kpi.total }}</div>
   </div>
-
   <div class="kpi-card">
     <div class="kpi-icon" style="background:oklch(from var(--color-error) l c h/.1);color:var(--color-error)">
       <i data-lucide="traffic-cone" style="width:20px;height:20px"></i>
     </div>
-    <div class="kpi-label">Congestionadas (≥3)</div>
+    <div class="kpi-label">Congestionadas (&ge;3)</div>
     <div class="kpi-value">{{ kpi.congested }}</div>
   </div>
-
   <div class="kpi-card">
     <div class="kpi-icon" style="background:oklch(from var(--color-success) l c h/.1);color:var(--color-success)">
       <i data-lucide="check-circle" style="width:20px;height:20px"></i>
     </div>
-    <div class="kpi-label">Livres (nível 0)</div>
+    <div class="kpi-label">Livres (n&iacute;vel 0)</div>
     <div class="kpi-value">{{ kpi.levels[0] ?? 0 }}</div>
   </div>
-
   <div class="kpi-card">
     <div class="kpi-icon" style="background:oklch(from var(--color-gold) l c h/.1);color:var(--color-gold)">
       <i data-lucide="clock" style="width:20px;height:20px"></i>
     </div>
-    <div class="kpi-label">Atraso Médio</div>
+    <div class="kpi-label">Atraso M&eacute;dio</div>
     <div class="kpi-value">
-      {% if kpi.avgDelaySec == 0 %}
-        —
-      {% elseif kpi.avgDelaySec < 60 %}
-        {{ kpi.avgDelaySec }}s
-      {% else %}
-        {{ (kpi.avgDelaySec / 60)|round(1) }} min
+      {% if kpi.avgDelaySec == 0 %}&mdash;
+      {% elseif kpi.avgDelaySec < 60 %}{{ kpi.avgDelaySec }}s
+      {% else %}{{ (kpi.avgDelaySec / 60)|round(1) }} min
       {% endif %}
     </div>
   </div>
-
-  {# Barra de distribuição de níveis #}
   <div class="kpi-card" style="grid-column:span 2">
-    <div class="kpi-label">Distribuição por Nível de Jam</div>
+    <div class="kpi-label">Distribui&ccedil;&atilde;o por N&iacute;vel de Jam</div>
     <div style="display:flex;flex-wrap:wrap;gap:var(--space-3);margin-top:var(--space-2);font-size:var(--text-xs)">
       {% set labels = {0:'Livre',1:'Lento',2:'Moderado',3:'Pesado',4:'Muito pesado',5:'Parado'} %}
       {% for lv, cnt in kpi.levels %}
@@ -114,19 +91,17 @@
       {% endfor %}
     </div>
     {% if kpi.total > 0 %}
-    <div class="level-bar" style="margin-top:var(--space-3)">
+    <div class="level-bar">
       {% for lv, cnt in kpi.levels %}
         {% if cnt > 0 %}
-          <div class="level-seg ls-{{ lv }}" style="width:{{ (cnt / kpi.total * 100)|round(1) }}%" title="Nível {{ lv }}: {{ cnt }}"></div>
+          <div class="level-seg ls-{{ lv }}" style="width:{{ (cnt / kpi.total * 100)|round(1) }}%" title="N&iacute;vel {{ lv }}: {{ cnt }}"></div>
         {% endif %}
       {% endfor %}
     </div>
     {% endif %}
   </div>
-
 </div>
 
-{# ── Mapa ───────────────────────────────────────────────────────── #}
 <div class="card" style="margin-bottom:var(--space-6)">
   <div class="card-header">
     <span class="card-title"><i data-lucide="map" style="width:14px;height:14px;display:inline"></i> Mapa de Rotas</span>
@@ -137,26 +112,24 @@
   </div>
 </div>
 
-{# ── Filtro ─────────────────────────────────────────────────────── #}
 <div style="margin-bottom:var(--space-4);display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap">
   <div class="chip-group">
     <a href="{{ path('tvt_route_index') }}" class="chip {{ jamFilter is null or jamFilter == '' ? 'active' }}">Todos</a>
-    <a href="{{ path('tvt_route_index', {jam: 0}) }}" class="chip {{ jamFilter == '0' ? 'active' }}">🟢 Livre</a>
-    <a href="{{ path('tvt_route_index', {jam: 1}) }}" class="chip {{ jamFilter == '1' ? 'active' }}">🟡 Lento</a>
-    <a href="{{ path('tvt_route_index', {jam: 2}) }}" class="chip {{ jamFilter == '2' ? 'active' }}">🟠 Moderado</a>
-    <a href="{{ path('tvt_route_index', {jam: 3}) }}" class="chip {{ jamFilter == '3' ? 'active' }}">🔴 Pesado</a>
-    <a href="{{ path('tvt_route_index', {jam: 4}) }}" class="chip {{ jamFilter == '4' ? 'active' }}">🔴 Muito Pesado</a>
-    <a href="{{ path('tvt_route_index', {jam: 5}) }}" class="chip {{ jamFilter == '5' ? 'active' }}">⛔ Parado</a>
+    <a href="{{ path('tvt_route_index', {jam: 0}) }}" class="chip {{ jamFilter == '0' ? 'active' }}">&#x1F7E2; Livre</a>
+    <a href="{{ path('tvt_route_index', {jam: 1}) }}" class="chip {{ jamFilter == '1' ? 'active' }}">&#x1F7E1; Lento</a>
+    <a href="{{ path('tvt_route_index', {jam: 2}) }}" class="chip {{ jamFilter == '2' ? 'active' }}">&#x1F7E0; Moderado</a>
+    <a href="{{ path('tvt_route_index', {jam: 3}) }}" class="chip {{ jamFilter == '3' ? 'active' }}">&#x1F534; Pesado</a>
+    <a href="{{ path('tvt_route_index', {jam: 4}) }}" class="chip {{ jamFilter == '4' ? 'active' }}">&#x1F534; Muito Pesado</a>
+    <a href="{{ path('tvt_route_index', {jam: 5}) }}" class="chip {{ jamFilter == '5' ? 'active' }}">&#x26D4; Parado</a>
   </div>
   <span style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ routes|length }} rota(s)</span>
 </div>
 
-{# ── Tabela ─────────────────────────────────────────────────────── #}
 {% if routes is empty %}
   <div class="empty">
     <i data-lucide="route" style="width:40px;height:40px"></i>
     <h3>Nenhuma rota encontrada</h3>
-    <p>Aguarde a próxima coleta do feed TVT ou remova os filtros.</p>
+    <p>Aguarde a pr&oacute;xima coleta do feed TVT ou remova os filtros.</p>
   </div>
 {% else %}
 <div class="card">
@@ -168,11 +141,11 @@
       <thead>
         <tr>
           <th>Nome</th>
-          <th>Origem → Destino</th>
+          <th>Origem &rarr; Destino</th>
           <th>Jam</th>
           <th style="text-align:right">Ext. (m)</th>
           <th style="text-align:right">Atual</th>
-          <th style="text-align:right">Histórico</th>
+          <th style="text-align:right">Hist&oacute;rico</th>
           <th style="text-align:right">Atraso</th>
           <th>Tipo</th>
           <th>ID Waze</th>
@@ -181,42 +154,32 @@
       <tbody>
       {% for r in routes %}
         {% set delay = r.delaySeconds %}
-        <tr class="route-row" data-waze-id="{{ r.wazeRouteId }}"
-            style="cursor:pointer"
-            title="Clique para focar no mapa">
-          <td style="font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
-              title="{{ r.name }}">{{ r.name ?? '—' }}</td>
-          <td style="font-size:var(--text-xs);color:var(--color-text-muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
-              title="{{ r.fromName }} → {{ r.toName }}">
-            {{ r.fromName ?? '—' }} → {{ r.toName ?? '—' }}
+        <tr class="route-row" data-waze-id="{{ r.wazeRouteId }}" style="cursor:pointer">
+          <td style="font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ r.name }}">{{ r.name ?? '&mdash;' }}</td>
+          <td style="font-size:var(--text-xs);color:var(--color-text-muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ r.fromName }} &rarr; {{ r.toName }}">
+            {{ r.fromName ?? '&mdash;' }} &rarr; {{ r.toName ?? '&mdash;' }}
           </td>
-          <td>
-            <span class="badge jam-{{ r.jamLevel ?? 0 }}">
-              {{ r.jamLevelLabel }}
-            </span>
-          </td>
-          <td style="text-align:right">{{ r.length ?? '—' }}</td>
+          <td><span class="badge jam-{{ r.jamLevel ?? 0 }}">{{ r.jamLevelLabel }}</span></td>
+          <td style="text-align:right">{{ r.length ?? '&mdash;' }}</td>
           <td style="text-align:right">
             {% if r.time is not null %}
-              {% if r.time < 60 %}{{ r.time }}s
-              {% else %}{{ (r.time / 60)|round(1) }} min{% endif %}
-            {% else %}—{% endif %}
+              {% if r.time < 60 %}{{ r.time }}s{% else %}{{ (r.time / 60)|round(1) }} min{% endif %}
+            {% else %}&mdash;{% endif %}
           </td>
           <td style="text-align:right;color:var(--color-text-muted)">
             {% if r.historicTime is not null %}
-              {% if r.historicTime < 60 %}{{ r.historicTime }}s
-              {% else %}{{ (r.historicTime / 60)|round(1) }} min{% endif %}
-            {% else %}—{% endif %}
+              {% if r.historicTime < 60 %}{{ r.historicTime }}s{% else %}{{ (r.historicTime / 60)|round(1) }} min{% endif %}
+            {% else %}&mdash;{% endif %}
           </td>
           <td style="text-align:right" class="{% if delay is not null %}{% if delay > 0 %}delay-pos{% elseif delay < 0 %}delay-neg{% else %}delay-zero{% endif %}{% endif %}">
-            {% if delay is null %}—
+            {% if delay is null %}&mdash;
             {% elseif delay == 0 %}0s
             {% elseif delay > 0 %}+{{ delay < 60 ? delay ~ 's' : (delay/60)|round(1) ~ ' min' }}
             {% else %}{{ delay < -60 ? (delay/60)|round(1) ~ ' min' : delay ~ 's' }}{% endif %}
           </td>
-          <td><span class="badge badge-gray" style="font-size:10px">{{ r.type ?? '—' }}</span></td>
+          <td><span class="badge badge-gray" style="font-size:10px">{{ r.type ?? '&mdash;' }}</span></td>
           <td style="font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-text-faint)">
-            {{ r.wazeRouteId ? r.wazeRouteId|slice(0,12) ~ '…' : '—' }}
+            {{ r.wazeRouteId ? r.wazeRouteId|slice(0,12) ~ '&hellip;' : '&mdash;' }}
           </td>
         </tr>
       {% endfor %}
@@ -231,7 +194,6 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN/WLs=" crossorigin=""></script>
 <script>
 (function () {
-  /* ── dados das rotas via JSON embutido ── */
   const ROUTES = [
   {% for r in routes %}
     {% if r.line|length > 1 %}
@@ -247,36 +209,32 @@
   {% endfor %}
   ];
 
-  /* ── cores por jam ── */
-  const JAM_COLOR = ['#437a22','#d19900','#da7101','#a12c7b','#a12c7b','#7b0000'];
+  const JAM_COLOR  = ['#437a22','#d19900','#da7101','#a12c7b','#a12c7b','#7b0000'];
   const JAM_WEIGHT = [3, 3, 4, 5, 5, 6];
 
-  /* ── inicializa mapa ── */
   const map = L.map('tvt-map', { zoomControl: true });
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
-    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
   }).addTo(map);
 
-  /* ── polilinas ── */
-  const polylines = {}; // wazeId → L.Polyline
+  const polylines = {};
   const bounds = [];
 
   ROUTES.forEach(function (r) {
     if (!r.line || r.line.length < 2) return;
-    // feed TVT: x = lon, y = lat
     const latlngs = r.line.map(function (p) { return [p.y, p.x]; });
-    const color   = JAM_COLOR[r.jam] || '#888';
+    const color   = JAM_COLOR[r.jam]  || '#888';
     const weight  = JAM_WEIGHT[r.jam] || 3;
 
     const poly = L.polyline(latlngs, { color: color, weight: weight, opacity: 0.85 })
       .addTo(map)
       .bindPopup(function () {
-        const delayStr = r.delay === null ? '—'
+        const delayStr = r.delay === null ? '&mdash;'
           : r.delay === 0 ? '0 s'
           : r.delay > 0 ? '+' + (r.delay < 60 ? r.delay + ' s' : (r.delay/60).toFixed(1) + ' min')
           : (r.delay < -60 ? (r.delay/60).toFixed(1) : r.delay) + ' min';
-        return '<strong>' + (r.name || '—') + '</strong><br>'
+        return '<strong>' + (r.name || '&mdash;') + '</strong><br>'
           + '<span style="font-size:11px;color:#666">Jam: ' + r.label + ' | Atraso: ' + delayStr + '</span>';
       });
 
@@ -285,9 +243,8 @@
   });
 
   if (bounds.length) map.fitBounds(bounds, { padding: [20, 20] });
-  else map.setView([-19.92, -43.94], 12); // BH fallback
+  else map.setView([-19.92, -43.94], 12);
 
-  /* ── clique na linha da tabela → foca no mapa ── */
   document.querySelectorAll('.route-row').forEach(function (tr) {
     tr.addEventListener('click', function () {
       const wid = tr.getAttribute('data-waze-id');
@@ -300,7 +257,6 @@
     });
   });
 
-  /* ── clique na polilinha → destaca linha da tabela ── */
   Object.entries(polylines).forEach(function ([wid, poly]) {
     poly.on('click', function () {
       document.querySelectorAll('.route-row').forEach(function (r) { r.classList.remove('row-selected'); });
@@ -312,7 +268,6 @@
     });
   });
 
-  /* ── recria ícones lucide após carregamento ── */
   if (typeof lucide !== 'undefined') lucide.createIcons();
 })();
 </script>

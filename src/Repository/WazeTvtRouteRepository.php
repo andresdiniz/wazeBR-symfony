@@ -20,9 +20,6 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
         parent::__construct($registry, WazeTvtRoute::class);
     }
 
-    /**
-     * Conta wazeRouteIds únicos das rotas principais do parceiro.
-     */
     public function countByPartner(Partner $partner): int
     {
         return (int) $this->createQueryBuilder('r')
@@ -35,13 +32,8 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
             ->getSingleScalarResult();
     }
 
-    /**
-     * Rotas principais do snapshot mais recente do parceiro.
-     * Filtra opcionalmente por jamLevel exato.
-     */
     public function findTvtByPartner(Partner $partner, ?int $jamLevel = null): array
     {
-        // Busca o snapshot mais recente do parceiro
         $latestSnapshotId = $this->getEntityManager()->createQueryBuilder()
             ->select('MAX(ls.id)')
             ->from(WazeTvtSnapshot::class, 'ls')
@@ -68,9 +60,6 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
         return $qb->getQuery()->getResult();
     }
 
-    /**
-     * Rotas de um snapshot específico, apenas rotas principais.
-     */
     public function findMainRoutesBySnapshot(WazeTvtSnapshot $snapshot): array
     {
         return $this->createQueryBuilder('r')
@@ -83,9 +72,6 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    /**
-     * Rotas com congestionamento pesado (jamLevel >= minLevel).
-     */
     public function findHeavyJamRoutes(int $minLevel = 3): array
     {
         return $this->createQueryBuilder('r')
@@ -100,9 +86,6 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    /**
-     * Rotas principais dos snapshots mais recentes do parceiro (múltiplos snapshots).
-     */
     public function findRecentByPartner(Partner $partner, int $limit = 20): array
     {
         return $this->createQueryBuilder('r')
