@@ -3,11 +3,12 @@
 {% block content %}
 <div class="page-header">
   <h1 class="page-title">Configurações do Sistema</h1>
-  <div class="page-subtitle">Intervalos de coleta e atualização de dados</div>
+  <div class="page-subtitle">Intervalos de coleta, atualização de dados e chaves de API</div>
 </div>
 
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6);max-width:900px">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6);max-width:960px">
 
+  {# ===== WAZE ALERTAS ===== #}
   <div class="card">
     <div class="card-header"><span class="card-title"><i data-lucide="triangle-alert" style="width:14px;height:14px;display:inline"></i> Alertas Waze</span></div>
     <div style="padding:var(--space-6)">
@@ -24,6 +25,7 @@
     </div>
   </div>
 
+  {# ===== CONGESTIONAMENTOS ===== #}
   <div class="card">
     <div class="card-header"><span class="card-title"><i data-lucide="traffic-cone" style="width:14px;height:14px;display:inline"></i> Congestionamentos</span></div>
     <div style="padding:var(--space-6)">
@@ -40,6 +42,7 @@
     </div>
   </div>
 
+  {# ===== CEMADEN ===== #}
   <div class="card">
     <div class="card-header"><span class="card-title"><i data-lucide="cloud-rain" style="width:14px;height:14px;display:inline"></i> CEMADEN</span></div>
     <div style="padding:var(--space-6)">
@@ -56,6 +59,7 @@
     </div>
   </div>
 
+  {# ===== ROTAS TVT ===== #}
   <div class="card">
     <div class="card-header"><span class="card-title"><i data-lucide="route" style="width:14px;height:14px;display:inline"></i> Rotas TVT</span></div>
     <div style="padding:var(--space-6)">
@@ -72,24 +76,98 @@
     </div>
   </div>
 
-  <div class="card" style="grid-column:span 2">
-    <div class="card-header"><span class="card-title"><i data-lucide="cloud" style="width:14px;height:14px;display:inline"></i> Clima (Open-Meteo)</span></div>
+  {# ===== WEATHERAPI ===== #}
+  <div class="card" style="grid-column:span 2;border-left:3px solid var(--color-primary)">
+    <div class="card-header">
+      <span class="card-title">
+        <i data-lucide="cloud-sun" style="width:14px;height:14px;display:inline"></i>
+        Clima — WeatherAPI.com
+      </span>
+      <a href="https://www.weatherapi.com/signup.aspx" target="_blank" rel="noopener"
+         class="btn btn-ghost btn-sm" style="font-size:var(--text-xs)">
+        <i data-lucide="external-link" style="width:11px;height:11px"></i> Criar chave grátis
+      </a>
+    </div>
     <div style="padding:var(--space-6)">
-      <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-4)">
-        O clima é buscado via <strong>Open-Meteo</strong> — API gratuita, sem necessidade de chave. A busca é feita sob demanda pelo usuário na tela de Cidades. Nenhuma configuração necessária.
+      <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-5)">
+        O clima é buscado via <strong>WeatherAPI.com</strong> — plano gratuito com até 1 milhão de requisições/mês.
+        A busca é por demanda na tela de Cidades, respeitando o parceiro de cada cidade.
+        <a href="https://www.weatherapi.com/docs/" target="_blank" rel="noopener" style="color:var(--color-primary)">Ver documentação →</a>
       </p>
-      <form method="post" action="{{ path('admin_settings_save') }}">
-        <input type="hidden" name="key" value="weather_cache_minutes">
-        <div class="form-group" style="max-width:280px">
-          <label class="form-label">Cache da resposta (minutos)</label>
-          <input class="form-control" type="number" name="value" min="5" max="120"
-            value="{{ settings['weather_cache_minutes'] ?? 30 }}">
-          <span class="form-hint">Evita chamadas repetidas para a mesma cidade.</span>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6)">
+
+        <form method="post" action="{{ path('admin_settings_save') }}">
+          <input type="hidden" name="key" value="weatherapi_key">
+          <div class="form-group">
+            <label class="form-label">Chave da API (API Key)</label>
+            <div style="position:relative">
+              <input class="form-control" type="password" id="weatherapi_key_input" name="value"
+                autocomplete="off"
+                placeholder="Cole aqui sua chave…"
+                value="{{ settings['weatherapi_key'] ?? '' }}"
+                style="padding-right:var(--space-10)">
+              <button type="button" id="toggle-key-vis"
+                style="position:absolute;right:var(--space-3);top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--color-text-muted)"
+                aria-label="Mostrar/ocultar chave">
+                <i data-lucide="eye" style="width:14px;height:14px"></i>
+              </button>
+            </div>
+            <span class="form-hint">
+              {% if settings['weatherapi_key'] is defined and settings['weatherapi_key'] is not empty %}
+                <span style="color:var(--color-success)"><i data-lucide="check-circle" style="width:11px;height:11px;display:inline"></i> Chave configurada</span>
+              {% else %}
+                <span style="color:var(--color-warning)">Nenhuma chave configurada. Obtenha em weatherapi.com</span>
+              {% endif %}
+            </span>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm">Salvar Chave</button>
+        </form>
+
+        <div>
+          <form method="post" action="{{ path('admin_settings_save') }}" style="margin-bottom:var(--space-4)">
+            <input type="hidden" name="key" value="weather_cache_minutes">
+            <div class="form-group">
+              <label class="form-label">Cache da resposta (minutos)</label>
+              <input class="form-control" type="number" name="value" min="5" max="120"
+                value="{{ settings['weather_cache_minutes'] ?? 30 }}">
+              <span class="form-hint">Evita chamadas repetidas para a mesma cidade. Padrão: 30 min.</span>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Salvar</button>
+          </form>
+
+          <div class="card" style="background:var(--color-surface-offset);border:none">
+            <div style="padding:var(--space-4)">
+              <p style="font-size:var(--text-xs);color:var(--color-text-muted);font-weight:600;margin-bottom:var(--space-2)">Plano gratuito inclui:</p>
+              <ul style="font-size:var(--text-xs);color:var(--color-text-muted);list-style:none;display:flex;flex-direction:column;gap:var(--space-1)">
+                <li><i data-lucide="check" style="width:11px;height:11px;display:inline;color:var(--color-success)"></i> Clima atual em tempo real</li>
+                <li><i data-lucide="check" style="width:11px;height:11px;display:inline;color:var(--color-success)"></i> Previsão 3 dias</li>
+                <li><i data-lucide="check" style="width:11px;height:11px;display:inline;color:var(--color-success)"></i> 1 milhão req/mês</li>
+                <li><i data-lucide="check" style="width:11px;height:11px;display:inline;color:var(--color-success)"></i> Sem cartão de crédito</li>
+              </ul>
+            </div>
+          </div>
         </div>
-        <button type="submit" class="btn btn-primary btn-sm">Salvar</button>
-      </form>
+      </div>
     </div>
   </div>
 
 </div>
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+<script>
+// Toggle visibilidade da chave API
+const inp = document.getElementById('weatherapi_key_input');
+const tog = document.getElementById('toggle-key-vis');
+if (inp && tog) {
+  tog.addEventListener('click', () => {
+    const show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    tog.innerHTML = show
+      ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+      : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  });
+}
+</script>
 {% endblock %}
