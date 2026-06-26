@@ -4,98 +4,173 @@
 <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-4)">
   <div>
     <h1 class="page-title">Cidades Monitoradas</h1>
-    <div class="page-subtitle">Cidades para busca de clima e monitoramento</div>
+    <div class="page-subtitle">Cidades para busca de clima e monitoramento — agrupadas por parceiro</div>
   </div>
   <a href="{{ path('admin_city_new') }}" class="btn btn-primary">
     <i data-lucide="plus" style="width:14px;height:14px"></i> Nova Cidade
   </a>
 </div>
 
-<div class="card">
-  <div style="overflow-x:auto">
-    <table>
-      <thead>
-        <tr>
-          <th>Cidade</th>
-          <th>Estado</th>
-          <th>Parceiro</th>
-          <th>Clima Atual</th>
-          <th>Status</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-      {% for city in cities %}
-        <tr style="opacity:{{ city.isActive ? 1 : 0.55 }}">
-          <td style="font-weight:500">{{ city.name }}</td>
-          <td><span class="badge badge-gray">{{ city.state }}</span></td>
-          <td style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ city.partner.name }}</td>
-          <td>
-            <button class="btn btn-ghost btn-sm fetch-weather"
-              data-city="{{ city.name|e('html_attr') }}"
-              data-state="{{ city.state|e('html_attr') }}"
-              style="font-size:var(--text-xs)">
-              <i data-lucide="cloud" style="width:12px;height:12px"></i> Ver clima
-            </button>
-            <span class="weather-result" style="font-size:var(--text-xs);color:var(--color-text-muted);margin-left:var(--space-2)"></span>
-          </td>
-          <td>
-            {% if city.isActive %}
-              <span class="badge" style="background:oklch(from var(--color-success) l c h/.12);color:var(--color-success)">Ativa</span>
-            {% else %}
-              <span class="badge badge-gray">Inativa</span>
-            {% endif %}
-          </td>
-          <td style="display:flex;gap:var(--space-2);white-space:nowrap">
-            <a href="{{ path('admin_city_edit', {id: city.id}) }}" class="btn btn-ghost btn-sm">
-              <i data-lucide="pencil" style="width:12px;height:12px"></i>
-            </a>
-            <form method="post" action="{{ path('admin_city_toggle', {id: city.id}) }}">
-              <button class="btn btn-ghost btn-sm" title="{{ city.isActive ? 'Desativar' : 'Ativar' }}">
-                <i data-lucide="{{ city.isActive ? 'pause' : 'play' }}" style="width:12px;height:12px"></i>
-              </button>
-            </form>
-            <form method="post" action="{{ path('admin_city_delete', {id: city.id}) }}" onsubmit="return confirm('Excluir cidade?')">
-              <input type="hidden" name="_token" value="{{ csrf_token('del_city_' ~ city.id) }}">
-              <button class="btn btn-sm" style="color:var(--color-error);border-color:oklch(from var(--color-error) l c h/.3)">
-                <i data-lucide="trash-2" style="width:12px;height:12px"></i>
-              </button>
-            </form>
-          </td>
-        </tr>
-      {% else %}
-        <tr><td colspan="6" style="text-align:center;padding:var(--space-16);color:var(--color-text-muted)">
-          Nenhuma cidade cadastrada. <a href="{{ path('admin_city_new') }}" style="color:var(--color-primary)">Adicionar</a>
-        </td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
+{# Aviso se WeatherAPI key não configurada #}
+{% if not weatherApiKey %}
+  <div class="flash flash-warning" style="margin-bottom:var(--space-4)">
+    <i data-lucide="triangle-alert" style="width:14px;height:14px"></i>
+    Chave da WeatherAPI não configurada. Acesse
+    <a href="{{ path('admin_settings_index') }}" style="color:inherit;font-weight:600">Configurações</a>
+    para adicionar sua chave gratuita em
+    <a href="https://www.weatherapi.com/signup.aspx" target="_blank" rel="noopener" style="color:inherit;font-weight:600">weatherapi.com</a>.
   </div>
-</div>
+{% endif %}
+
+{# Agrupar por parceiro #}
+{% set by_partner = {} %}
+{% for city in cities %}
+  {% set key = city.partner.slug %}
+  {% if by_partner[key] is not defined %}
+    {% set by_partner = by_partner|merge({(key): {partner: city.partner, cities: []}}) %}
+  {% endif %}
+  {% set by_partner = by_partner|merge({(key): by_partner[key]|merge({cities: by_partner[key].cities|merge([city])})}) %}
+{% endfor %}
+
+{% if by_partner is empty %}
+  <div class="empty">
+    <i data-lucide="map-pin" style="width:40px;height:40px"></i>
+    <h3>Nenhuma cidade cadastrada</h3>
+    <p>Adicione cidades para monitoramento de clima e alertas.</p>
+    <a href="{{ path('admin_city_new') }}" class="btn btn-primary">Nova Cidade</a>
+  </div>
+{% else %}
+  {% for slug, group in by_partner %}
+    <div class="card" style="margin-bottom:var(--space-6)">
+      <div class="card-header">
+        <div style="display:flex;align-items:center;gap:var(--space-3)">
+          <i data-lucide="building-2" style="width:16px;height:16px;color:var(--color-text-muted)"></i>
+          <span class="card-title">{{ group.partner.name }}</span>
+          <span class="badge badge-gray">{{ slug }}</span>
+        </div>
+        <span style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ group.cities|length }} cidade(s)</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Cidade</th>
+              <th>UF</th>
+              <th>Clima Atual</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for city in group.cities %}
+            <tr style="opacity:{{ city.isActive ? 1 : 0.55 }}">
+              <td style="font-weight:500">{{ city.name }}</td>
+              <td><span class="badge badge-gray">{{ city.state }}</span></td>
+              <td>
+                {% if weatherApiKey %}
+                  <button class="btn btn-ghost btn-sm fetch-weather"
+                    data-city="{{ city.name|e('html_attr') }}"
+                    data-state="{{ city.state|e('html_attr') }}"
+                    data-partner="{{ city.partner.slug|e('html_attr') }}"
+                    style="font-size:var(--text-xs)">
+                    <i data-lucide="cloud" style="width:12px;height:12px"></i> Ver clima
+                  </button>
+                  <span class="weather-result" style="font-size:var(--text-xs);color:var(--color-text-muted);margin-left:var(--space-2)"></span>
+                {% else %}
+                  <span style="font-size:var(--text-xs);color:var(--color-text-faint)">— sem chave API —</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if city.isActive %}
+                  <span class="badge" style="background:oklch(from var(--color-success) l c h/.12);color:var(--color-success)">Ativa</span>
+                {% else %}
+                  <span class="badge badge-gray">Inativa</span>
+                {% endif %}
+              </td>
+              <td style="display:flex;gap:var(--space-2);white-space:nowrap">
+                <a href="{{ path('admin_city_edit', {id: city.id}) }}" class="btn btn-ghost btn-sm" title="Editar">
+                  <i data-lucide="pencil" style="width:12px;height:12px"></i>
+                </a>
+                <form method="post" action="{{ path('admin_city_toggle', {id: city.id}) }}">
+                  <button class="btn btn-ghost btn-sm" title="{{ city.isActive ? 'Desativar' : 'Ativar' }}">
+                    <i data-lucide="{{ city.isActive ? 'pause' : 'play' }}" style="width:12px;height:12px"></i>
+                  </button>
+                </form>
+                <form method="post" action="{{ path('admin_city_delete', {id: city.id}) }}" onsubmit="return confirm('Excluir cidade?')">
+                  <input type="hidden" name="_token" value="{{ csrf_token('del_city_' ~ city.id) }}">
+                  <button class="btn btn-sm" style="color:var(--color-error);border-color:oklch(from var(--color-error) l c h/.3)" title="Excluir">
+                    <i data-lucide="trash-2" style="width:12px;height:12px"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endfor %}
+{% endif %}
 {% endblock %}
+
 {% block javascripts %}
+{{ parent() }}
 <script>
+// WeatherAPI.com — plano gratuito (1M req/mês), chave configurada no servidor
+// A chave é passada via data-attribute do body para não ficar em JS inline hardcoded
+const WEATHER_API_KEY = {{ weatherApiKey|json_encode|raw }};
+
+// Cache em memória por sessão (cidade+UF → resultado)
+const wxCache = new Map();
+
 document.querySelectorAll('.fetch-weather').forEach(btn => {
   btn.addEventListener('click', async () => {
-    const city  = btn.dataset.city;
-    const state = btn.dataset.state;
-    const out   = btn.nextElementSibling;
+    const city    = btn.dataset.city;
+    const state   = btn.dataset.state;
+    const partner = btn.dataset.partner;
+    const out     = btn.nextElementSibling;
+    const cacheKey = `${city}-${state}-${partner}`;
+
+    if (wxCache.has(cacheKey)) {
+      out.textContent = wxCache.get(cacheKey);
+      return;
+    }
+
+    btn.disabled = true;
     out.textContent = 'Buscando…';
+
     try {
-      // Geocodifica cidade via Open-Meteo Geocoding API (grátis, sem key)
-      const geo = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city+' '+state)}&count=1&language=pt&format=json`);
-      const gd  = await geo.json();
-      if (!gd.results?.length) { out.textContent = 'Cidade não encontrada'; return; }
-      const { latitude, longitude, name } = gd.results[0];
-      // Busca clima atual
-      const wx = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weathercode,windspeed_10m,precipitation&timezone=auto&forecast_days=1`);
-      const wd = await wx.json();
-      const cur = wd.current;
-      const codes = {0:'Céu limpo',1:'Quase limpo',2:'Parcialmente nublado',3:'Nublado',45:'Névoa',48:'Névoa com geada',51:'Garoa leve',53:'Garoa moderada',55:'Garoa intensa',61:'Chuva leve',63:'Chuva moderada',65:'Chuva forte',71:'Neve leve',73:'Neve moderada',75:'Neve forte',80:'Pancadas leves',81:'Pancadas moderadas',82:'Pancadas fortes',95:'Trovoada',96:'Trovoada c/ granizo',99:'Trovoada forte c/ granizo'};
-      const desc = codes[cur.weathercode] ?? `Código ${cur.weathercode}`;
-      out.textContent = `${name}: ${cur.temperature_2m}°C — ${desc} — Vento ${cur.windspeed_10m} km/h — Chuva ${cur.precipitation} mm`;
-    } catch(e) {
+      // WeatherAPI.com — endpoint atual (grátis)
+      // q aceita "Cidade, BR" — localiza pelo nome + país
+      const q = encodeURIComponent(`${city}, BR`);
+      const res = await fetch(
+        `https://api.weatherapi.com/v1/current.json?key=${WEATHER_API_KEY}&q=${q}&lang=pt`
+      );
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        out.textContent = err?.error?.message ?? `Erro ${res.status}`;
+        btn.disabled = false;
+        return;
+      }
+
+      const data     = await res.json();
+      const cur      = data.current;
+      const loc      = data.location;
+      const temp     = cur.temp_c;
+      const feels    = cur.feelslike_c;
+      const cond     = cur.condition.text;
+      const humidity = cur.humidity;
+      const wind     = cur.wind_kph;
+      const precip   = cur.precip_mm;
+
+      const result = `${loc.name}/${loc.region}: ${temp}°C (sensação ${feels}°C) — ${cond} — Umid ${humidity}% — Vento ${wind} km/h — Chuva ${precip} mm`;
+      wxCache.set(cacheKey, result);
+      out.textContent = result;
+    } catch (e) {
       out.textContent = 'Erro ao buscar clima';
+    } finally {
+      btn.disabled = false;
     }
   });
 });
