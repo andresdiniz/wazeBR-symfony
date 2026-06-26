@@ -24,21 +24,8 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 /**
  * Coleta alertas e congestionamentos do feed Waze PartnerHub.
  *
- * URL do feed (type='feed' em MonitoredLink):
+ * URL do feed (feedFormat=1 em MonitoredLink):
  *   https://www.waze.com/row-partnerhub-api/partners/{partnerId}/waze-feeds/{uuid}?format=1
- *
- * Estrutura do JSON retornado:
- *   {
- *     "alerts": [ { uuid, type, subtype, pubMillis, location:{x,y}, street, city,
- *                   country, roadType, reliability, confidence, reportRating,
- *                   nThumbsUp, magvar, reportByMunicipalityUser } ],
- *     "jams":   [ { id, uuid, line:[{x,y}], speed, speedKMH, length, delay, level,
- *                   segments, endNode, street, city, country, roadType,
- *                   pubMillis, turnType, blockingAlertUuid? } ],
- *     "startTime", "endTime", "startTimeMillis", "endTimeMillis"
- *   }
- *
- * NOTA: uuid dos jams é um inteiro (bigint) no JSON — convertemos para string.
  */
 #[AsCommand(
     name: 'app:waze:collect-feed',
@@ -95,29 +82,27 @@ class WazeCollectFeedCommand extends Command
         foreach ($partners as $partner) {
             $io->section("Parceiro: {$partner->getName()} [{$partner->getSlug()}]");
 
+            // feedFormat=1 => feeds Waze PartnerHub (alertas + jams)
             /** @var MonitoredLink[] $links */
             $links = $this->linkRepo->findBy([
-                'partner'  => $partner,
-                'type'     => 'feed',
-                'isActive' => true,
+                'partner'    => $partner,
+                'feedFormat' => MonitoredLinkRepository::FORMAT_WAZE,
+                'isActive'   => true,
             ]);
 
             if (empty($links)) {
-                $io->warning('Nenhum link de feed ativo. Cadastre um MonitoredLink do tipo "feed".');
+                $io->warning('Nenhum link de feed ativo (feedFormat=1). Cadastre um MonitoredLink.');
                 continue;
             }
 
             foreach ($links as $link) {
-                $io->writeln("  → [{$link->getName()}] {$link->getUrl()}");
+                $label = $link->getLabel() ?? $link->getUrl();
+                $io->writeln("  → [{$label}] {$link->getUrl()}");
 
                 try {
                     $data = $this->fetchFeed($link->getUrl());
                 } catch (\Throwable $e) {
-                    $io->error("  ✗ Erro ao buscar feed: " . $e->getMessage());
-                    if (!$dryRun) {
-                        $link->markError($e->getMessage());
-                        $this->em->flush();
-                    }
+                    $io->error('  ✗ Erro ao buscar feed: ' . $e->getMessage());
                     continue;
                 }
 
@@ -135,7 +120,7 @@ class WazeCollectFeedCommand extends Command
                 $alerts = $this->persistAlerts($partner, $link, $data['alerts'] ?? [], $feedStart);
                 $jams   = $this->persistJams($partner, $link, $data['jams'] ?? [], $feedStart);
 
-                $link->markSuccess($alerts + $jams);
+                $link->setLastCollectedAt(new \DateTimeImmutable());
                 $this->em->flush();
 
                 $totalAlerts += $alerts;
@@ -187,13 +172,11 @@ class WazeCollectFeedCommand extends Command
         $count = 0;
 
         foreach ($rawAlerts as $raw) {
-            // O campo identificador nos alertas é 'uuid' (string)
             $wazeId = (string) ($raw['uuid'] ?? '');
             if ($wazeId === '') {
                 continue;
             }
 
-            // Deduplicação: mesmo UUID para o mesmo parceiro
             if ($this->alertRepo->findOneBy(['wazeId' => $wazeId, 'partner' => $partner])) {
                 continue;
             }
@@ -206,15 +189,15 @@ class WazeCollectFeedCommand extends Command
                 ->setSubtype((string) ($raw['subtype'] ?? '') ?: null)
                 ->setLatitude((float) ($raw['location']['y'] ?? 0.0))
                 ->setLongitude((float) ($raw['location']['x'] ?? 0.0))
-                ->setStreet(isset($raw['street']) ? mb_substr((string) $raw['street'], 0, 120) : null)
-                ->setCity(isset($raw['city'])   ? mb_substr((string) $raw['city'],   0, 80)  : null)
-                ->setCountry(isset($raw['country']) ? mb_substr((string) $raw['country'], 0, 10) : null)
-                ->setRoadType(isset($raw['roadType']) ? (int) $raw['roadType'] : null)
+                ->setStreet(isset($raw['street'])       ? mb_substr((string) $raw['street'],  0, 120) : null)
+                ->setCity(isset($raw['city'])           ? mb_substr((string) $raw['city'],    0, 80)  : null)
+                ->setCountry(isset($raw['country'])     ? mb_substr((string) $raw['country'], 0, 10)  : null)
+                ->setRoadType(isset($raw['roadType'])   ? (int) $raw['roadType']   : null)
                 ->setReliability(isset($raw['reliability']) ? (int) $raw['reliability'] : null)
-                ->setConfidence(isset($raw['confidence'])  ? (int) $raw['confidence']  : null)
+                ->setConfidence(isset($raw['confidence'])   ? (int) $raw['confidence']  : null)
                 ->setReportRating(isset($raw['reportRating']) ? (int) $raw['reportRating'] : null)
                 ->setNThumbsUp(isset($raw['nThumbsUp']) ? (int) $raw['nThumbsUp'] : null)
-                ->setMagvar(isset($raw['magvar']) ? (int) $raw['magvar'] : null)
+                ->setMagvar(isset($raw['magvar'])       ? (int) $raw['magvar']     : null)
                 ->setPubMillis((int) ($raw['pubMillis'] ?? 0))
                 ->setFeedStartMillis($feedStart);
 
@@ -240,7 +223,6 @@ class WazeCollectFeedCommand extends Command
         $count = 0;
 
         foreach ($rawJams as $raw) {
-            // Nos jams do partnerhub o campo 'uuid' é um INTEIRO bigint — cast para string
             $wazeId = (string) ($raw['uuid'] ?? $raw['id'] ?? '');
             if ($wazeId === '') {
                 continue;
@@ -254,19 +236,18 @@ class WazeCollectFeedCommand extends Command
                 ->setPartner($partner)
                 ->setSourceLink($link)
                 ->setWazeId($wazeId)
-                ->setStreet(isset($raw['street']) ? mb_substr((string) $raw['street'], 0, 120) : null)
-                ->setCity(isset($raw['city'])   ? mb_substr((string) $raw['city'],   0, 80)  : null)
-                ->setCountry(isset($raw['country']) ? mb_substr((string) $raw['country'], 0, 10) : null)
+                ->setStreet(isset($raw['street'])   ? mb_substr((string) $raw['street'],  0, 120) : null)
+                ->setCity(isset($raw['city'])       ? mb_substr((string) $raw['city'],    0, 80)  : null)
+                ->setCountry(isset($raw['country']) ? mb_substr((string) $raw['country'], 0, 10)  : null)
                 ->setRoadType(isset($raw['roadType']) ? (int) $raw['roadType'] : null)
-                ->setLevel(isset($raw['level']) ? (int) $raw['level'] : null)
+                ->setLevel(isset($raw['level'])     ? (int)   $raw['level']   : null)
                 ->setSpeedKmh(isset($raw['speedKMH']) ? (float) $raw['speedKMH'] : null)
-                ->setLength(isset($raw['length']) ? (float) $raw['length'] : null)
-                ->setDelay(isset($raw['delay'])   ? (int)   $raw['delay']   : null)
-                ->setTurnType(isset($raw['turnType']) ? mb_substr((string) $raw['turnType'], 0, 40) : null)
-                ->setEndNode(isset($raw['endNode']) ? mb_substr((string) $raw['endNode'], 0, 200) : null)
+                ->setLength(isset($raw['length'])   ? (float) $raw['length']   : null)
+                ->setDelay(isset($raw['delay'])     ? (int)   $raw['delay']   : null)
+                ->setTurnType(isset($raw['turnType']) ? mb_substr((string) $raw['turnType'], 0, 40)  : null)
+                ->setEndNode(isset($raw['endNode'])   ? mb_substr((string) $raw['endNode'],  0, 200) : null)
                 ->setLine($raw['line'] ?? [])
                 ->setSegments($raw['segments'] ?? [])
-                // blockingAlertUuid é o UUID do alerta que causou o fechamento de via
                 ->setCausedBy(isset($raw['blockingAlertUuid']) ? (string) $raw['blockingAlertUuid'] : null)
                 ->setPubMillis((int) ($raw['pubMillis'] ?? 0))
                 ->setFeedStartMillis($feedStart);

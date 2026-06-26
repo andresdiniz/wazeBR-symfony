@@ -22,48 +22,12 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 /**
  * Coleta rotas e metadados do feed Waze TVT (feeds-tvt).
  *
- * URL do feed (type='tvt' em MonitoredLink):
+ * URL do feed (feedFormat=2 em MonitoredLink):
  *   https://www.waze.com/row-partnerhub-api/feeds-tvt/{uuid}?id={monitorId}
- *
- * Estrutura do JSON retornado:
- *   {
- *     "updateTime": 1782350463272,
- *     "name": "Managed Area",
- *     "areaName": "Managed Area",
- *     "broadcasterId": "",
- *     "isMetric": true,
- *     "bbox": { "minX":..., "maxX":..., "minY":..., "maxY":... },
- *     "usersOnJams": [ { "jamLevel": 0, "wazersCount": 79 }, ... ],
- *     "lengthOfJams": [ { "jamLevel": 1, "jamLength": 0 }, ... ],
- *     "irregularities": [...],
- *     "routes": [
- *       {
- *         "id": "1734959326165",
- *         "name": "Cachoeira Centro",
- *         "type": "STATIC",
- *         "fromName": "...",
- *         "toName": "...",
- *         "length": 3152,
- *         "time": 522,
- *         "historicTime": 457,
- *         "jamLevel": 1,
- *         "line": [ {"x": -43.79, "y": -20.64}, ... ],
- *         "bbox": { ... },
- *         "subRoutes": [ { ...mesmo schema... } ]
- *       },
- *       ...
- *     ]
- *   }
- *
- * ESTRATÉGIA:
- *   - Cada coleta gera um novo WazeTvtSnapshot (série temporal, nunca atualiza).
- *   - Cada rota principal vira um WazeTvtRoute (isSubRoute=false).
- *   - Cada subRota vira um WazeTvtRoute (isSubRoute=true, parentWazeId preenchido).
- *   - O JSON bruto das subRoutes é salvo em subRoutesRaw da rota pai.
  */
 #[AsCommand(
     name: 'app:waze:collect-tvt',
-    description: 'Coleta rotas e contagens do feed TVT Waze para todos os links ativos do tipo "tvt".',
+    description: 'Coleta rotas e contagens do feed TVT Waze para todos os links ativos (feedFormat=2).',
 )]
 class WazeCollectTvtCommand extends Command
 {
@@ -113,29 +77,27 @@ class WazeCollectTvtCommand extends Command
         foreach ($partners as $partner) {
             $io->section("Parceiro: {$partner->getName()} [{$partner->getSlug()}]");
 
+            // feedFormat=2 => feeds TVT
             /** @var MonitoredLink[] $links */
             $links = $this->linkRepo->findBy([
-                'partner'  => $partner,
-                'type'     => 'tvt',
-                'isActive' => true,
+                'partner'    => $partner,
+                'feedFormat' => MonitoredLinkRepository::FORMAT_TRAFFIC,
+                'isActive'   => true,
             ]);
 
             if (empty($links)) {
-                $io->warning('Nenhum link TVT ativo. Cadastre um MonitoredLink do tipo "tvt".');
+                $io->warning('Nenhum link TVT ativo (feedFormat=2). Cadastre um MonitoredLink.');
                 continue;
             }
 
             foreach ($links as $link) {
-                $io->writeln("  → [{$link->getName()}] {$link->getUrl()}");
+                $label = $link->getLabel() ?? $link->getUrl();
+                $io->writeln("  → [{$label}] {$link->getUrl()}");
 
                 try {
                     $data = $this->fetchFeed($link->getUrl());
                 } catch (\Throwable $e) {
                     $io->error('  ✗ Erro ao buscar feed TVT: ' . $e->getMessage());
-                    if (!$dryRun) {
-                        $link->markError($e->getMessage());
-                        $this->em->flush();
-                    }
                     continue;
                 }
 
@@ -156,7 +118,6 @@ class WazeCollectTvtCommand extends Command
                             count($r['subRoutes'] ?? []),
                         ));
                     }
-
                     $io->writeln('  usersOnJams:');
                     foreach (($data['usersOnJams'] ?? []) as $u) {
                         $io->writeln(sprintf(
@@ -170,9 +131,8 @@ class WazeCollectTvtCommand extends Command
 
                 $snapshot = $this->buildSnapshot($partner, $link, $data);
                 $this->em->persist($snapshot);
-                $this->em->flush();
 
-                $link->markSuccess(count($rawRoutes));
+                $link->setLastCollectedAt(new \DateTimeImmutable());
                 $this->em->flush();
 
                 $totalSnapshots++;
@@ -238,11 +198,9 @@ class WazeCollectTvtCommand extends Command
         foreach ($rawRoutes as $rawRoute) {
             $parentWazeId = isset($rawRoute['id']) ? (string) $rawRoute['id'] : null;
 
-            // Rota principal
             $route = $this->hydrateRoute($rawRoute, isSubRoute: false, parentWazeId: null);
             $snapshot->addRoute($route);
 
-            // SubRoutes (mesmo schema, achatadas com flag isSubRoute=true)
             foreach (($rawRoute['subRoutes'] ?? []) as $rawSub) {
                 $sub = $this->hydrateRoute($rawSub, isSubRoute: true, parentWazeId: $parentWazeId);
                 $snapshot->addRoute($sub);
@@ -264,10 +222,10 @@ class WazeCollectTvtCommand extends Command
             ->setType($raw['type']     ?? null)
             ->setFromName($raw['fromName'] ?? null)
             ->setToName($raw['toName']   ?? null)
-            ->setLength(isset($raw['length'])       ? (int) $raw['length']       : null)
-            ->setTime(isset($raw['time'])           ? (int) $raw['time']         : null)
+            ->setLength(isset($raw['length'])           ? (int) $raw['length']       : null)
+            ->setTime(isset($raw['time'])               ? (int) $raw['time']         : null)
             ->setHistoricTime(isset($raw['historicTime']) ? (int) $raw['historicTime'] : null)
-            ->setJamLevel(isset($raw['jamLevel'])   ? (int) $raw['jamLevel']     : null)
+            ->setJamLevel(isset($raw['jamLevel'])       ? (int) $raw['jamLevel']     : null)
             ->setLine($raw['line'] ?? [])
             ->setBbox($raw['bbox'] ?? null)
             ->setSubRoutesRaw($raw['subRoutes'] ?? []);
