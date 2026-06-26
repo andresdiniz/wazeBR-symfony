@@ -25,7 +25,9 @@
         <td>{{ item.state ?? '—' }}</td>
         <td>{{ item.accumulatedRain is not null ? item.accumulatedRain|number_format(1,',','.') : '—' }}</td>
         <td>{{ item.alertLevel ?? '—' }}</td>
-        <td>{{ item.measuredAt|date('d/m/Y H:i') }}</td>
+        <td>
+          <time data-utc="{{ item.measuredAt|date('c') }}" data-fmt="datetime">{{ item.measuredAt|date('d/m/Y H:i') }}</time>
+        </td>
       </tr>
       {% else %}
       <tr><td colspan="6" class="empty-cell">Nenhum dado CEMADEN encontrado.</td></tr>

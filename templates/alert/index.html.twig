@@ -1,172 +1,88 @@
 {% extends 'base.html.twig' %}
 {% block title %}Alertas{% endblock %}
-
-{% block stylesheets %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<style>
-.filter-card{
-  background:var(--color-surface);border:1px solid var(--color-border);
-  border-radius:var(--radius-lg);padding:var(--space-5);margin-bottom:var(--space-6);
-  box-shadow:var(--shadow-sm);
-}
-.filter-row{display:flex;flex-wrap:wrap;gap:var(--space-3);align-items:flex-end}
-.filter-field{display:flex;flex-direction:column;gap:var(--space-1);min-width:140px;flex:1}
-.filter-field label{font-size:var(--text-xs);font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--color-text-muted)}
-.total-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4)}
-.total-bar-text{font-size:var(--text-sm);color:var(--color-text-muted)}
-#alert-map{height:320px;border-radius:var(--radius-lg);border:1px solid var(--color-border);margin-bottom:var(--space-6);overflow:hidden}
-.leaflet-popup-content-wrapper{border-radius:10px!important;box-shadow:0 4px 20px rgba(0,0,0,.15)!important}
-.popup-inner{min-width:200px;font-family:inherit}
-.popup-inner .popup-type{font-size:13px;font-weight:700;margin-bottom:4px}
-.popup-inner .popup-sub{font-size:11px;opacity:.7;margin-bottom:6px}
-.popup-inner .popup-street{font-size:12px;font-weight:500}
-.popup-inner .popup-city{font-size:11px;opacity:.6}
-.popup-inner .popup-meta{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
-.popup-inner .pm{font-size:10px;background:#f0f0f0;border-radius:20px;padding:2px 7px}
-.popup-inner .popup-link{display:block;margin-top:8px;font-size:11px;color:#01696f;text-decoration:none;font-weight:600}
-.popup-inner .popup-link:hover{text-decoration:underline}
-@media(max-width:700px){.filter-row{flex-direction:column}}
-</style>
-{% endblock %}
-
 {% block content %}
-
-<div class="page-header" style="margin-bottom:var(--space-5)">
-  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-3)">
-    <div>
-      <h1 class="page-title">Alertas</h1>
-      <p class="page-subtitle">Histórico de alertas &mdash; {{ partner.name }}</p>
-    </div>
-    <a href="{{ path('alert_live') }}" class="btn btn-primary">
-      <i data-lucide="radio" style="width:14px;height:14px"></i> Ao vivo
-    </a>
+<div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-4)">
+  <div>
+    <h1 class="page-title">Alertas Waze</h1>
+    <p class="page-subtitle">{{ total|number_format(0, ',', '.') }} alerta(s) encontrado(s)</p>
   </div>
 </div>
 
-{# Mapa #}
-<div id="alert-map"></div>
-
 {# Filtros #}
-<div class="filter-card">
-  <form method="get" id="filter-form">
-    <div class="filter-row">
-
-      <div class="filter-field">
-        <label>Tipo</label>
-        <select name="type" class="form-select" onchange="this.form.submit()">
+<div class="card" style="margin-bottom:var(--space-6)">
+  <div class="card-body">
+    <form method="get" style="display:flex;flex-wrap:wrap;gap:var(--space-4);align-items:flex-end">
+      <div class="form-group" style="margin:0;flex:1;min-width:140px">
+        <label class="form-label">Tipo</label>
+        <select name="type" class="form-input form-select">
           <option value="">Todos</option>
           {% for t in types %}
-            <option value="{{ t }}" {{ type == t ? 'selected' }}>{{ t|replace({'_':' '})|title }}</option>
+            <option value="{{ t }}" {{ type == t ? 'selected' : '' }}>{{ t }}</option>
           {% endfor %}
         </select>
       </div>
-
-      <div class="filter-field">
-        <label>Subtipo</label>
-        <select name="subtype" class="form-select" onchange="this.form.submit()">
-          <option value="">Todos</option>
-          {% for s in subtypes %}
-            <option value="{{ s }}" {{ subtype == s ? 'selected' }}>{{ s|replace({'_':' '})|title }}</option>
-          {% endfor %}
-        </select>
+      <div class="form-group" style="margin:0;flex:1;min-width:140px">
+        <label class="form-label">Subtipo</label>
+        <input type="text" name="subtype" class="form-input" value="{{ subtype }}" placeholder="ex: HAZARD_ON_ROAD">
       </div>
-
-      <div class="filter-field">
-        <label>Cidade</label>
-        <select name="city" class="form-select" onchange="this.form.submit()">
-          <option value="">Todas</option>
-          {% for c in cities %}
-            <option value="{{ c }}" {{ city == c ? 'selected' }}>{{ c }}</option>
-          {% endfor %}
-        </select>
+      <div class="form-group" style="margin:0;flex:1;min-width:140px">
+        <label class="form-label">Cidade</label>
+        <input type="text" name="city" class="form-input" value="{{ city }}" placeholder="ex: Belo Horizonte">
       </div>
-
-      <div class="filter-field">
-        <label>De</label>
+      <div class="form-group" style="margin:0;flex:1;min-width:130px">
+        <label class="form-label">De (UTC)</label>
         <input type="date" name="dateFrom" class="form-input" value="{{ dateFrom }}"
-               onchange="document.getElementById('filter-form').submit()">
+               title="Filtro por data UTC — a conversão para seu fuso é feita na exibição">
       </div>
-
-      <div class="filter-field">
-        <label>Até</label>
+      <div class="form-group" style="margin:0;flex:1;min-width:130px">
+        <label class="form-label">Até (UTC)</label>
         <input type="date" name="dateTo" class="form-input" value="{{ dateTo }}"
-               onchange="document.getElementById('filter-form').submit()">
+               title="Filtro por data UTC">
       </div>
-
-      <div style="display:flex;gap:var(--space-2)">
-        <button type="submit" class="btn btn-primary">
-          <i data-lucide="search" style="width:14px;height:14px"></i> Filtrar
-        </button>
-        <a href="{{ path('alert_index') }}" class="btn btn-ghost">
-          <i data-lucide="x" style="width:14px;height:14px"></i>
-        </a>
-      </div>
-
-    </div>
-  </form>
+      <button type="submit" class="btn btn-primary">Filtrar</button>
+      <a href="{{ path('alert_index') }}" class="btn btn-ghost">Limpar</a>
+    </form>
+  </div>
 </div>
 
-{# Barra de total #}
-<div class="total-bar">
-  <span class="total-bar-text">
-    <strong>{{ total|number_format(0, ',', '.') }}</strong>
-    alerta{{ total != 1 ? 's' }} encontrado{{ total != 1 ? 's' }}
-    {% if type or subtype or city or dateFrom or dateTo %}
-      &mdash; filtro ativo
-    {% endif %}
-  </span>
-  {% if pages > 1 %}
-    <span class="total-bar-text">Página {{ page }} de {{ pages }}</span>
-  {% endif %}
+{% if alerts is empty %}
+  <div class="card"><div class="card-body" style="text-align:center;padding:var(--space-16);color:var(--color-text-muted)">Nenhum alerta encontrado.</div></div>
+{% else %}
+
+{# Mapa #}
+<div class="card" style="margin-bottom:var(--space-6)">
+  <div class="card-header"><span class="card-title">Mapa de alertas</span></div>
+  <div id="alert-map" style="height:380px;border-radius:0 0 var(--radius-lg) var(--radius-lg)"></div>
 </div>
 
 {# Tabela #}
 <div class="card">
-  {% if alerts is empty %}
-    <div class="empty">
-      <i data-lucide="search-x"></i>
-      <h3>Nenhum alerta encontrado</h3>
-      <p>Tente ajustar os filtros para encontrar registros.</p>
-    </div>
-  {% else %}
+  <div class="card-header">
+    <span class="card-title">Lista de alertas</span>
+    <span style="font-size:var(--text-xs);color:var(--color-text-muted)">Página {{ page }} de {{ pages }}</span>
+  </div>
+  <div style="overflow-x:auto">
     <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Tipo</th>
-          <th>Subtipo</th>
-          <th>Via / Cidade</th>
-          <th style="text-align:center">Conf.</th>
-          <th style="text-align:center">👍</th>
-          <th>Publicado</th>
-          <th></th>
-        </tr>
-      </thead>
+      <thead><tr>
+        <th>Tipo</th>
+        <th>Subtipo</th>
+        <th>Via</th>
+        <th>Cidade</th>
+        <th style="text-align:center">Conf.</th>
+        <th style="text-align:center">👍</th>
+        <th>Publicado</th>
+        <th></th>
+      </tr></thead>
       <tbody>
       {% for a in alerts %}
         <tr>
-          <td style="color:var(--color-text-faint);font-size:var(--text-xs)">{{ a.id }}</td>
-          <td>
-            <span class="badge
-              {% if a.type == 'ACCIDENT' %}badge-red
-              {% elseif a.type in ['HAZARD','WEATHERHAZARD'] %}badge-yellow
-              {% elseif a.type == 'JAM' %}badge-orange
-              {% elseif a.type == 'ROAD_CLOSED' %}badge-gray
-              {% elseif a.type == 'CONSTRUCTION' %}badge-green
-              {% else %}badge-blue{% endif %}">
-              {{ a.type|replace({'_':' '})|title }}
-            </span>
-          </td>
-          <td style="font-size:var(--text-xs);color:var(--color-text-muted)">
-            {{ a.subtype ? a.subtype|replace({'_':' '})|title : '—' }}
-          </td>
-          <td>
-            <div style="font-size:var(--text-sm);font-weight:500">{{ a.street ?? '—' }}</div>
-            {% if a.city %}<div style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ a.city }}</div>{% endif %}
-          </td>
-          <td style="text-align:center">
-            {% set c = a.confidence %}
-            {% if c is not null %}
+          <td><span class="badge badge-{{ a.type == 'ACCIDENT' ? 'red' : (a.type == 'JAM' ? 'orange' : (a.type == 'HAZARD' ? 'yellow' : 'gray')) }}">{{ a.type }}</span></td>
+          <td style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ a.subtype ?? '—' }}</td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ a.street ?? '—' }}</td>
+          <td style="font-size:var(--text-xs)">{{ a.city ?? '—' }}</td>
+          <td style="text-align:center;font-size:var(--text-xs)">
+            {% if a.confidence is not null %}
+              {% set c = a.confidence %}
               <span class="badge {{ c >= 7 ? 'badge-green' : (c >= 4 ? 'badge-orange' : 'badge-red') }}">{{ c }}</span>
             {% else %}—{% endif %}
           </td>
@@ -174,7 +90,7 @@
             {{ a.nThumbsUp ?? '—' }}
           </td>
           <td style="font-size:var(--text-xs);color:var(--color-text-muted);white-space:nowrap">
-            {{ a.pubDate|date('d/m H:i') }}
+            <time data-utc="{{ a.pubDate|date('c') }}" data-fmt="datetime">{{ a.pubDate|date('d/m H:i') }}</time>
           </td>
           <td>
             <a href="{{ path('alert_show', {id: a.id}) }}" class="btn btn-ghost btn-sm">
@@ -191,7 +107,7 @@
     <div style="padding:var(--space-4) var(--space-5);border-top:1px solid var(--color-divider)">
       <div class="pagination">
         {% if page > 1 %}
-          <a href="?{{ app.request.query.all|merge({page: page - 1})|url_encode }}">‹</a>
+          <a href="?{{ app.request.query.all|merge({page: page - 1})|url_encode }}">&#8249;</a>
         {% endif %}
         {% for p in max(1, page-2)..min(pages, page+2) %}
           {% if p == page %}
@@ -201,7 +117,7 @@
           {% endif %}
         {% endfor %}
         {% if page < pages %}
-          <a href="?{{ app.request.query.all|merge({page: page + 1})|url_encode }}">›</a>
+          <a href="?{{ app.request.query.all|merge({page: page + 1})|url_encode }}">&#8250;</a>
         {% endif %}
       </div>
     </div>
@@ -215,6 +131,9 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function(){
+  const TZ  = WazeTZ.TZ;
+  const FMT = WazeTZ.FMT_FULL;
+
   const alerts = {{ alerts|map(a => {
     id:      a.id,
     lat:     a.latitude,
@@ -225,7 +144,7 @@
     city:    a.city,
     conf:    a.confidence,
     thumbs:  a.nThumbsUp,
-    pub:     a.pubDate|date('d/m/Y H:i')
+    pubIso:  a.pubDate|date('c')
   })|json_encode|raw }};
 
   const TYPE_COLOR = {
@@ -255,6 +174,7 @@
     });
 
     const subtypeClean = a.subtype ? a.subtype.replace(/_/g,' ') : '';
+    const pubFormatted = a.pubIso ? FMT.format(new Date(a.pubIso)) : '—';
     const popup = `
       <div class="popup-inner">
         <div class="popup-type" style="color:${color}">${TYPE_LABEL[a.type]||a.type}</div>
@@ -264,7 +184,7 @@
         <div class="popup-meta">
           ${a.conf!==null?`<span class="pm">★ Conf. ${a.conf}</span>`:''}
           ${a.thumbs?`<span class="pm">👍 ${a.thumbs}</span>`:''}
-          <span class="pm">🗓 ${a.pub}</span>
+          <span class="pm">📅 ${pubFormatted}</span>
         </div>
         <a class="popup-link" href="/alertas/${a.id}">🔗 Ver detalhes completos</a>
       </div>`;
