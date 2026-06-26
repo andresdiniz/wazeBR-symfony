@@ -21,8 +21,22 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
     }
 
     /**
+     * Conta wazeRouteIds únicos das rotas principais do parceiro.
+     */
+    public function countByPartner(Partner $partner): int
+    {
+        return (int) $this->createQueryBuilder('r')
+            ->select('COUNT(DISTINCT r.wazeRouteId)')
+            ->join('r.snapshot', 's')
+            ->where('s.partner = :partner')
+            ->andWhere('r.isSubRoute = false')
+            ->setParameter('partner', $partner)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
      * Rotas principais dos snapshots mais recentes do parceiro.
-     * WazeTvtSnapshot tem partner diretamente — sem passar por sourceLink.
      */
     public function findRecentByPartner(Partner $partner, int $limit = 20): array
     {
@@ -36,21 +50,6 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
             ->setMaxResults($limit)
             ->getQuery()
             ->getResult();
-    }
-
-    /**
-     * Conta routeIds únicos das rotas principais do parceiro.
-     */
-    public function countByPartner(Partner $partner): int
-    {
-        return (int) $this->createQueryBuilder('r')
-            ->select('COUNT(DISTINCT r.routeId)')
-            ->join('r.snapshot', 's')
-            ->where('s.partner = :partner')
-            ->andWhere('r.isSubRoute = false')
-            ->setParameter('partner', $partner)
-            ->getQuery()
-            ->getSingleScalarResult();
     }
 
     /**
