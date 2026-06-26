@@ -17,7 +17,7 @@ class WazeRoute
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(targetEntity: Partner::class)]
+    #[ORM\ManyToOne(targetEntity: Partner::class, inversedBy: 'routes')]
     #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
     private ?Partner $partner = null;
 
@@ -97,14 +97,25 @@ class WazeRoute
     private ?\DateTimeInterface $collectedAt = null;
 
     /**
+     * Sub-rotas (WazeSubRoute) associadas a esta rota.
+     *
      * @var Collection<int, WazeSubRoute>
      */
     #[ORM\OneToMany(targetEntity: WazeSubRoute::class, mappedBy: 'route', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $subRoutes;
 
+    /**
+     * Trechos/links (WazeRouteLink) associados a esta rota.
+     *
+     * @var Collection<int, WazeRouteLink>
+     */
+    #[ORM\OneToMany(targetEntity: WazeRouteLink::class, mappedBy: 'route', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $routeLinks;
+
     public function __construct()
     {
-        $this->subRoutes = new ArrayCollection();
+        $this->subRoutes  = new ArrayCollection();
+        $this->routeLinks = new ArrayCollection();
     }
 
     public function getId(): ?int { return $this->id; }
@@ -160,9 +171,7 @@ class WazeRoute
     public function getCollectedAt(): ?\DateTimeInterface { return $this->collectedAt; }
     public function setCollectedAt(?\DateTimeInterface $collectedAt): static { $this->collectedAt = $collectedAt; return $this; }
 
-    /**
-     * @return Collection<int, WazeSubRoute>
-     */
+    /** @return Collection<int, WazeSubRoute> */
     public function getSubRoutes(): Collection { return $this->subRoutes; }
 
     public function addSubRoute(WazeSubRoute $subRoute): static
@@ -180,6 +189,26 @@ class WazeRoute
             if ($subRoute->getRoute() === $this) {
                 $subRoute->setRoute(null);
             }
+        }
+        return $this;
+    }
+
+    /** @return Collection<int, WazeRouteLink> */
+    public function getRouteLinks(): Collection { return $this->routeLinks; }
+
+    public function addRouteLink(WazeRouteLink $routeLink): static
+    {
+        if (!$this->routeLinks->contains($routeLink)) {
+            $this->routeLinks->add($routeLink);
+            $routeLink->setRoute($this);
+        }
+        return $this;
+    }
+
+    public function removeRouteLink(WazeRouteLink $routeLink): static
+    {
+        if ($this->routeLinks->removeElement($routeLink)) {
+            // WazeRouteLink#route é nullable: false, não zeramos
         }
         return $this;
     }

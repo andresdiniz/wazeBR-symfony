@@ -17,7 +17,7 @@ class CemadenData
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(targetEntity: Partner::class)]
+    #[ORM\ManyToOne(targetEntity: Partner::class, inversedBy: 'cemadenData')]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?Partner $partner = null;
 
@@ -33,17 +33,33 @@ class CemadenData
     #[ORM\Column(length: 2)]
     private string $state;
 
+    /**
+     * DECIMAL(10,7) — Doctrine retorna string do DBAL; armazenamos como string.
+     * Use getLatitude() para obter float.
+     */
     #[ORM\Column(type: 'decimal', precision: 10, scale: 7)]
-    private float $latitude;
+    private string $latitude = '0.0000000';
 
+    /**
+     * DECIMAL(10,7) — Doctrine retorna string do DBAL; armazenamos como string.
+     * Use getLongitude() para obter float.
+     */
     #[ORM\Column(type: 'decimal', precision: 10, scale: 7)]
-    private float $longitude;
+    private string $longitude = '0.0000000';
 
+    /**
+     * DECIMAL(8,2) — Doctrine retorna string do DBAL; armazenamos como string.
+     * Use getAccumulatedRain() para obter float|null.
+     */
     #[ORM\Column(type: 'decimal', precision: 8, scale: 2, nullable: true)]
-    private ?float $accumulatedRain = null;
+    private ?string $accumulatedRain = null;
 
+    /**
+     * DECIMAL(8,2) — Doctrine retorna string do DBAL; armazenamos como string.
+     * Use getWaterLevel() para obter float|null.
+     */
     #[ORM\Column(type: 'decimal', precision: 8, scale: 2, nullable: true)]
-    private ?float $waterLevel = null;
+    private ?string $waterLevel = null;
 
     #[ORM\Column(length: 20, nullable: true)]
     private ?string $alertLevel = null;
@@ -68,14 +84,19 @@ class CemadenData
     public function setMunicipality(string $municipality): static { $this->municipality = $municipality; return $this; }
     public function getState(): string { return $this->state; }
     public function setState(string $state): static { $this->state = $state; return $this; }
-    public function getLatitude(): float { return $this->latitude; }
-    public function setLatitude(float $latitude): static { $this->latitude = $latitude; return $this; }
-    public function getLongitude(): float { return $this->longitude; }
-    public function setLongitude(float $longitude): static { $this->longitude = $longitude; return $this; }
-    public function getAccumulatedRain(): ?float { return $this->accumulatedRain; }
-    public function setAccumulatedRain(?float $rain): static { $this->accumulatedRain = $rain; return $this; }
-    public function getWaterLevel(): ?float { return $this->waterLevel; }
-    public function setWaterLevel(?float $level): static { $this->waterLevel = $level; return $this; }
+
+    public function getLatitude(): float { return (float) $this->latitude; }
+    public function setLatitude(float|string $latitude): static { $this->latitude = (string) $latitude; return $this; }
+
+    public function getLongitude(): float { return (float) $this->longitude; }
+    public function setLongitude(float|string $longitude): static { $this->longitude = (string) $longitude; return $this; }
+
+    public function getAccumulatedRain(): ?float { return $this->accumulatedRain !== null ? (float) $this->accumulatedRain : null; }
+    public function setAccumulatedRain(float|string|null $rain): static { $this->accumulatedRain = $rain !== null ? (string) $rain : null; return $this; }
+
+    public function getWaterLevel(): ?float { return $this->waterLevel !== null ? (float) $this->waterLevel : null; }
+    public function setWaterLevel(float|string|null $level): static { $this->waterLevel = $level !== null ? (string) $level : null; return $this; }
+
     public function getAlertLevel(): ?string { return $this->alertLevel; }
     public function setAlertLevel(?string $alertLevel): static { $this->alertLevel = $alertLevel; return $this; }
     public function getMeasuredAt(): \DateTimeImmutable { return $this->measuredAt; }

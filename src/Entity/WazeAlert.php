@@ -50,7 +50,7 @@ class WazeAlert
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(targetEntity: Partner::class)]
+    #[ORM\ManyToOne(targetEntity: Partner::class, inversedBy: 'alerts')]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?Partner $partner = null;
 
@@ -71,13 +71,19 @@ class WazeAlert
     #[ORM\Column(length: 60, nullable: true)]
     private ?string $subtype = null;
 
-    /** Latitude — campo "y" do objeto location */
+    /**
+     * Latitude — campo "y" do objeto location.
+     * Armazenado como DECIMAL(10,7); Doctrine retorna string do DBAL.
+     */
     #[ORM\Column(type: 'decimal', precision: 10, scale: 7)]
-    private float $latitude = 0.0;
+    private string $latitude = '0.0000000';
 
-    /** Longitude — campo "x" do objeto location */
+    /**
+     * Longitude — campo "x" do objeto location.
+     * Armazenado como DECIMAL(10,7); Doctrine retorna string do DBAL.
+     */
     #[ORM\Column(type: 'decimal', precision: 10, scale: 7)]
-    private float $longitude = 0.0;
+    private string $longitude = '0.0000000';
 
     #[ORM\Column(length: 120, nullable: true)]
     private ?string $street = null;
@@ -180,11 +186,13 @@ class WazeAlert
     public function getSubtype(): ?string { return $this->subtype; }
     public function setSubtype(?string $v): static { $this->subtype = $v; return $this; }
 
-    public function getLatitude(): float { return $this->latitude; }
-    public function setLatitude(float $v): static { $this->latitude = $v; return $this; }
+    /** Retorna latitude como float (faz cast da string DBAL) */
+    public function getLatitude(): float { return (float) $this->latitude; }
+    public function setLatitude(float|string $v): static { $this->latitude = (string) $v; return $this; }
 
-    public function getLongitude(): float { return $this->longitude; }
-    public function setLongitude(float $v): static { $this->longitude = $v; return $this; }
+    /** Retorna longitude como float (faz cast da string DBAL) */
+    public function getLongitude(): float { return (float) $this->longitude; }
+    public function setLongitude(float|string $v): static { $this->longitude = (string) $v; return $this; }
 
     public function getStreet(): ?string { return $this->street; }
     public function setStreet(?string $v): static { $this->street = $v; return $this; }

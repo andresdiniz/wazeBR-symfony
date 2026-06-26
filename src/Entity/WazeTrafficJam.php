@@ -49,7 +49,7 @@ class WazeTrafficJam
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(targetEntity: Partner::class)]
+    #[ORM\ManyToOne(targetEntity: Partner::class, inversedBy: 'trafficJams')]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?Partner $partner = null;
 
@@ -79,13 +79,19 @@ class WazeTrafficJam
     #[ORM\Column(nullable: true)]
     private ?int $level = null;
 
-    /** Velocidade média em km/h (campo "speedKMH") */
+    /**
+     * Velocidade média em km/h (campo "speedKMH").
+     * DECIMAL(8,2) — Doctrine retorna string do DBAL; armazenamos como string.
+     */
     #[ORM\Column(type: 'decimal', precision: 8, scale: 2, nullable: true)]
-    private ?float $speedKmh = null;
+    private ?string $speedKmh = null;
 
-    /** Velocidade em m/s (campo "speed") */
+    /**
+     * Velocidade em m/s (campo "speed").
+     * DECIMAL(8,3) — Doctrine retorna string do DBAL; armazenamos como string.
+     */
     #[ORM\Column(type: 'decimal', precision: 8, scale: 3, nullable: true)]
-    private ?float $speed = null;
+    private ?string $speed = null;
 
     /** Comprimento do jam em metros (campo "length") — armazenado como int */
     #[ORM\Column(nullable: true)]
@@ -183,11 +189,13 @@ class WazeTrafficJam
     public function getLevel(): ?int { return $this->level; }
     public function setLevel(?int $v): static { $this->level = $v; return $this; }
 
-    public function getSpeedKmh(): ?float { return $this->speedKmh; }
-    public function setSpeedKmh(?float $v): static { $this->speedKmh = $v; return $this; }
+    /** Retorna velocidade em km/h como float */
+    public function getSpeedKmh(): ?float { return $this->speedKmh !== null ? (float) $this->speedKmh : null; }
+    public function setSpeedKmh(float|string|null $v): static { $this->speedKmh = $v !== null ? (string) $v : null; return $this; }
 
-    public function getSpeed(): ?float { return $this->speed; }
-    public function setSpeed(?float $v): static { $this->speed = $v; return $this; }
+    /** Retorna velocidade em m/s como float */
+    public function getSpeed(): ?float { return $this->speed !== null ? (float) $this->speed : null; }
+    public function setSpeed(float|string|null $v): static { $this->speed = $v !== null ? (string) $v : null; return $this; }
 
     public function getLength(): ?int { return $this->length; }
 
