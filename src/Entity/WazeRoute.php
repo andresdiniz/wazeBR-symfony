@@ -17,6 +17,10 @@ class WazeRoute
     #[ORM\Column]
     private ?int $id = null;
 
+    #[ORM\ManyToOne(targetEntity: Partner::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
+    private ?Partner $partner = null;
+
     /**
      * ID string da rota vindo do Waze (ex: "1762938283029")
      */
@@ -80,6 +84,15 @@ class WazeRoute
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $alternateRoute = null;
 
+    #[ORM\Column(nullable: true)]
+    private ?bool $isActive = true;
+
+    #[ORM\Column(length: 1000, nullable: true)]
+    private ?string $description = null;
+
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $coordinates = null;
+
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
     private ?\DateTimeInterface $collectedAt = null;
 
@@ -95,6 +108,9 @@ class WazeRoute
     }
 
     public function getId(): ?int { return $this->id; }
+
+    public function getPartner(): ?Partner { return $this->partner; }
+    public function setPartner(?Partner $partner): static { $this->partner = $partner; return $this; }
 
     public function getWazeId(): ?string { return $this->wazeId; }
     public function setWazeId(?string $wazeId): static { $this->wazeId = $wazeId; return $this; }
@@ -131,6 +147,15 @@ class WazeRoute
 
     public function getAlternateRoute(): ?array { return $this->alternateRoute; }
     public function setAlternateRoute(?array $alternateRoute): static { $this->alternateRoute = $alternateRoute; return $this; }
+
+    public function isActive(): ?bool { return $this->isActive; }
+    public function setIsActive(?bool $isActive): static { $this->isActive = $isActive; return $this; }
+
+    public function getDescription(): ?string { return $this->description; }
+    public function setDescription(?string $description): static { $this->description = $description; return $this; }
+
+    public function getCoordinates(): ?array { return $this->coordinates; }
+    public function setCoordinates(?array $coordinates): static { $this->coordinates = $coordinates; return $this; }
 
     public function getCollectedAt(): ?\DateTimeInterface { return $this->collectedAt; }
     public function setCollectedAt(?\DateTimeInterface $collectedAt): static { $this->collectedAt = $collectedAt; return $this; }
