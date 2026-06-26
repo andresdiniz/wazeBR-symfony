@@ -20,7 +20,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
  * Rotas base: /admin/links
  */
 #[Route('/admin/links', name: 'admin_link_')]
-#[IsGranted('ROLE_SUPER_ADMIN')]
+#[IsGranted('ROLE_ADMIN')]
 class MonitoredLinkAdminController extends AbstractController
 {
     public function __construct(
@@ -35,7 +35,6 @@ class MonitoredLinkAdminController extends AbstractController
     {
         $links = $this->linkRepo->findAll();
 
-        // Agrupa por parceiro para exibir na view
         $byPartner = [];
         foreach ($links as $link) {
             $pid = $link->getPartner()?->getId() ?? 0;
@@ -48,7 +47,7 @@ class MonitoredLinkAdminController extends AbstractController
         ]);
     }
 
-    /** Formul\u00e1rio de cria\u00e7\u00e3o de link */
+    /** Formulário de criação de link */
     #[Route('/new', name: 'new', methods: ['GET', 'POST'])]
     public function new(Request $request): Response
     {
@@ -59,23 +58,22 @@ class MonitoredLinkAdminController extends AbstractController
             $partner   = $this->partnerRepo->find($partnerId);
 
             if (!$partner) {
-                $this->addFlash('error', 'Parceiro n\u00e3o encontrado.');
+                $this->addFlash('error', 'Parceiro não encontrado.');
                 return $this->redirectToRoute('admin_link_new');
             }
 
             $type = $request->request->get('type', 'generic');
             if (!in_array($type, MonitoredLink::TYPES, true)) {
-                $this->addFlash('error', 'Tipo inv\u00e1lido.');
+                $this->addFlash('error', 'Tipo inválido.');
                 return $this->redirectToRoute('admin_link_new');
             }
 
             $link = (new MonitoredLink())
                 ->setName((string) $request->request->get('name'))
-                ->setUrl((string) $request->request->get('url'))   // setUrl extrai uuid automaticamente
+                ->setUrl((string) $request->request->get('url'))
                 ->setType($type)
                 ->setIsActive(true);
 
-            // Injeta parceiro via TenantAwareTrait
             $link->setPartner($partner);
 
             $this->em->persist($link);
@@ -101,7 +99,7 @@ class MonitoredLinkAdminController extends AbstractController
         if ($request->isMethod('POST')) {
             $type = $request->request->get('type', $link->getType());
             if (!in_array($type, MonitoredLink::TYPES, true)) {
-                $this->addFlash('error', 'Tipo inv\u00e1lido.');
+                $this->addFlash('error', 'Tipo inválido.');
                 return $this->redirectToRoute('admin_link_edit', ['id' => $link->getId()]);
             }
 
@@ -140,12 +138,13 @@ class MonitoredLinkAdminController extends AbstractController
     public function delete(MonitoredLink $link, Request $request): Response
     {
         if (!$this->isCsrfTokenValid('delete_link_' . $link->getId(), $request->request->get('_token'))) {
-            $this->addFlash('error', 'Token CSRF inv\u00e1lido.');
+            $this->addFlash('error', 'Token CSRF inválido.');
             return $this->redirectToRoute('admin_link_index');
         }
 
         $name = $link->getName();
-        $this->linkRepo->remove($link);
+        $this->em->remove($link);
+        $this->em->flush();
 
         $this->addFlash('success', "Link '{$name}' removido.");
         return $this->redirectToRoute('admin_link_index');

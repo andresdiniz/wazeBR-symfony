@@ -11,73 +11,56 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-/**
- * Gerencia configurações do sistema armazenadas em uma tabela key/value simples.
- * Também expõe a chave WeatherAPI para o template de cidades.
- *
- * Tabela esperada (crie via migration se não existir):
- *   CREATE TABLE IF NOT EXISTS system_settings (
- *     `key` VARCHAR(80) PRIMARY KEY,
- *     `value` TEXT NOT NULL DEFAULT ''
- *   );
- */
 #[Route('/admin/settings', name: 'admin_settings_')]
-#[IsGranted('ROLE_SUPER_ADMIN')]
+#[IsGranted('ROLE_ADMIN')]
 class SettingsAdminController extends AbstractController
 {
-    public function __construct(
-        private readonly Connection $db,
-    ) {}
+    public function __construct(private readonly Connection $db) {}
 
-    /** Lista todas as configurações */
-    #[Route('', name: 'index', methods: ['GET'])]
-    public function index(): Response
+    private function getSetting(string $key, string $default = ''): string
     {
-        return $this->render('admin/settings/index.html.twig', [
-            'settings'      => $this->loadSettings(),
-            'weatherApiKey' => $this->getWeatherApiKey(),
-        ]);
-    }
-
-    /** Salva uma configuração (key/value via POST) */
-    #[Route('/save', name: 'save', methods: ['POST'])]
-    public function save(Request $request): Response
-    {
-        $key   = trim((string) $request->request->get('key', ''));
-        $value = trim((string) $request->request->get('value', ''));
-
-        if (!$key) {
-            $this->addFlash('error', 'Chave inválida.');
-            return $this->redirectToRoute('admin_settings_index');
+        try {
+            $val = $this->db->fetchOne('SELECT value FROM system_settings WHERE `key` = ?', [$key]);
+            return $val !== false ? (string) $val : $default;
+        } catch (\Throwable) {
+            return $default;
         }
-
-        $this->upsert($key, $value);
-        $this->addFlash('success', "Configuração '{$key}' salva.");
-
-        return $this->redirectToRoute('admin_settings_index');
     }
 
-    // ─── helpers ──────────────────────────────────────────────────────────────
+    private function setSetting(string $key, string $value): void
+    {
+        $exists = $this->db->fetchOne('SELECT 1 FROM system_settings WHERE `key` = ?', [$key]);
+        if ($exists) {
+            $this->db->update('system_settings', ['value' => $value], ['key' => $key]);
+        } else {
+            $this->db->insert('system_settings', ['key' => $key, 'value' => $value]);
+        }
+    }
 
     public function getWeatherApiKey(): string
     {
-        return $this->db->fetchOne(
-            "SELECT `value` FROM system_settings WHERE `key` = 'weatherapi_key'"
-        ) ?: '';
+        return $this->getSetting('weather_api_key');
     }
 
-    private function loadSettings(): array
+    #[Route('', name: 'index', methods: ['GET', 'POST'])]
+    public function index(Request $request): Response
     {
-        $rows = $this->db->fetchAllKeyValue('SELECT `key`, `value` FROM system_settings');
-        return $rows ?: [];
-    }
+        if ($request->isMethod('POST')) {
+            foreach (['weather_api_key', 'waze_refresh_interval', 'cemaden_refresh_interval', 'weather_cache_minutes'] as $key) {
+                $val = $request->request->get($key, '');
+                if ($val !== '') {
+                    $this->setSetting($key, $val);
+                }
+            }
+            $this->addFlash('success', 'Configurações salvas.');
+            return $this->redirectToRoute('admin_settings_index');
+        }
 
-    private function upsert(string $key, string $value): void
-    {
-        $this->db->executeStatement(
-            'INSERT INTO system_settings (`key`, `value`) VALUES (:k, :v)
-             ON DUPLICATE KEY UPDATE `value` = :v',
-            ['k' => $key, 'v' => $value]
-        );
+        return $this->render('admin/settings/index.html.twig', [
+            'weather_api_key'           => $this->getSetting('weather_api_key'),
+            'waze_refresh_interval'     => $this->getSetting('waze_refresh_interval', '60'),
+            'cemaden_refresh_interval'  => $this->getSetting('cemaden_refresh_interval', '300'),
+            'weather_cache_minutes'     => $this->getSetting('weather_cache_minutes', '10'),
+        ]);
     }
 }

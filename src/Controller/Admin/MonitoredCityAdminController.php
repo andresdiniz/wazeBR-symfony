@@ -19,7 +19,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
  * Cidades são vinculadas a um parceiro e usadas para busca de clima via WeatherAPI.
  */
 #[Route('/admin/cities', name: 'admin_city_')]
-#[IsGranted('ROLE_SUPER_ADMIN')]
+#[IsGranted('ROLE_ADMIN')]
 class MonitoredCityAdminController extends AbstractController
 {
     public function __construct(
