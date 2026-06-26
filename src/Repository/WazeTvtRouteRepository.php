@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\Partner;
 use App\Entity\WazeTvtRoute;
 use App\Entity\WazeTvtSnapshot;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
@@ -20,7 +21,43 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
     }
 
     /**
-     * Rotas de um snapshot específico, apenas rotas principais (não subRoutes).
+     * Rotas principais do snapshot mais recente do parceiro.
+     */
+    public function findRecentByPartner(Partner $partner, int $limit = 20): array
+    {
+        return $this->createQueryBuilder('r')
+            ->join('r.snapshot', 's')
+            ->join('s.monitoredLink', 'ml')
+            ->where('ml.partner = :partner')
+            ->andWhere('ml.isActive = true')
+            ->andWhere('r.isSubRoute = false')
+            ->setParameter('partner', $partner)
+            ->orderBy('s.collectedAt', 'DESC')
+            ->addOrderBy('r.jamLevel', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Conta rotas principais (não subRoutes) dos links ativos do parceiro.
+     */
+    public function countByPartner(Partner $partner): int
+    {
+        return (int) $this->createQueryBuilder('r')
+            ->select('COUNT(DISTINCT r.routeId)')
+            ->join('r.snapshot', 's')
+            ->join('s.monitoredLink', 'ml')
+            ->where('ml.partner = :partner')
+            ->andWhere('ml.isActive = true')
+            ->andWhere('r.isSubRoute = false')
+            ->setParameter('partner', $partner)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * Rotas de um snapshot específico, apenas rotas principais.
      */
     public function findMainRoutesBySnapshot(WazeTvtSnapshot $snapshot): array
     {
@@ -35,7 +72,7 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
     }
 
     /**
-     * Rotas com congestionamento pesado (jamLevel >= 3) no snapshot mais recente de cada link.
+     * Rotas com congestionamento pesado (jamLevel >= minLevel).
      */
     public function findHeavyJamRoutes(int $minLevel = 3): array
     {
