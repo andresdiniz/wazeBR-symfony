@@ -1,7 +1,5 @@
 framework:
     messenger:
-        # Transporte síncrono para desenvolvimento local.
-        # Em produção, troque 'sync' por 'doctrine' ou 'redis'.
         transports:
             async:
                 dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
@@ -14,7 +12,9 @@ framework:
                     multiplier: 2
                     max_delay: 0
 
-            # Transporte dedicado ao Scheduler Waze
+            # Transporte do Symfony Scheduler
+            # DSN = symfony://scheduler_{nome_do_AsSchedule}
+            # WazeFeedSchedule usa #[AsSchedule('main')] => symfony://scheduler_main
             # Worker: php bin/console messenger:consume scheduler_waze_feed --time-limit=3600 -vv
             scheduler_waze_feed:
                 dsn: 'symfony://scheduler_main'
