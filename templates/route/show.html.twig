@@ -1,12 +1,12 @@
 {% extends 'base.html.twig' %}
-{% block title %}{{ route.name }}{% endblock %}
+{% block title %}{{ route.name ?? 'Rota' }}{% endblock %}
 
 {% block stylesheets %}
 <style>
   .hist-table td { font-size: var(--text-xs); padding: var(--space-2) var(--space-3); }
   .hist-table th { font-size: var(--text-xs); padding: var(--space-2) var(--space-3); }
   .jam-dot { display:inline-block; width:10px; height:10px; border-radius:var(--radius-full); margin-right:4px; }
-  .chart-wrap { position:relative; height:160px; }
+  .chart-wrap { position:relative; height:200px; }
   .tab-bar { display:flex; gap:var(--space-1); border-bottom:1px solid var(--color-border); margin-bottom:var(--space-5); }
   .tab-btn { padding:var(--space-2) var(--space-4); font-size:var(--text-sm); color:var(--color-text-muted); border-bottom:2px solid transparent; cursor:pointer; background:none; border-left:none; border-right:none; border-top:none; }
   .tab-btn.active { color:var(--color-primary); border-bottom-color:var(--color-primary); font-weight:600; }
@@ -16,98 +16,104 @@
 {% endblock %}
 
 {% block content %}
+{% set jc   = ['badge-green','badge-yellow','badge-orange','badge-red','badge-red'] %}
+{% set jl   = ['Livre','Lento','Moderado','Pesado','Parado'] %}
+{% set jdot = ['#437a22','#d19900','#da7101','#a12c7b','#a12c7b'] %}
+
 <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-4)">
   <div style="display:flex;align-items:center;gap:var(--space-4)">
     <a href="{{ path('route_admin_index') }}" class="icon-btn"><i data-lucide="arrow-left"></i></a>
     <div>
-      <h1 class="page-title">{{ route.name }}</h1>
-      <p class="page-subtitle">{{ route.description ?? 'Sem descrição' }}</p>
+      <h1 class="page-title">{{ route.name ?? 'Rota sem nome' }}</h1>
+      <p class="page-subtitle">
+        {% if route.fromName %}{{ route.fromName }} → {{ route.toName }}{% else %}{{ route.description ?? 'Sem descrição' }}{% endif %}
+      </p>
     </div>
   </div>
-  <div style="display:flex;gap:var(--space-2)">
-    {% if route.active %}
-      <span class="badge badge-green"><i data-lucide="check" style="width:10px;height:10px"></i> Ativa</span>
+  <div style="display:flex;gap:var(--space-2);align-items:center">
+    {% if route.isActive %}
+      <span class="badge badge-green">Ativa</span>
     {% else %}
       <span class="badge badge-gray">Inativa</span>
     {% endif %}
     <form method="post" action="{{ path('route_admin_toggle', {id: route.id}) }}" style="display:inline">
       <button type="submit" class="btn btn-ghost btn-sm">
-        <i data-lucide="{{ route.active ? 'pause' : 'play' }}" style="width:13px;height:13px"></i>
-        {{ route.active ? 'Desativar' : 'Ativar' }}
+        <i data-lucide="{{ route.isActive ? 'pause' : 'play' }}" style="width:13px;height:13px"></i>
+        {{ route.isActive ? 'Desativar' : 'Ativar' }}
       </button>
     </form>
   </div>
 </div>
 
-{# ─ KPIs do último snapshot ─ #}
+{# ─ KPIs: dados atuais da rota (campo direto da entity) + último snapshot ─ #}
 {% set last = snapshots|first %}
 <div class="kpi-grid" style="margin-bottom:var(--space-6)">
   <div class="kpi-card">
     <div class="kpi-label">Tempo atual</div>
-    <div class="kpi-value" id="kpi-time">
-      {% if last %}{{ (last.time / 60)|round(1) }} min{% else %}—{% endif %}
+    <div class="kpi-value">
+      {% if route.time is not null %}{{ (route.time / 60)|round(1) }} min{% else %}—{% endif %}
     </div>
   </div>
   <div class="kpi-card">
     <div class="kpi-label">Tempo histórico</div>
     <div class="kpi-value">
-      {% if last %}{{ (last.historicTime / 60)|round(1) }} min{% else %}—{% endif %}
+      {% if route.historicTime is not null %}{{ (route.historicTime / 60)|round(1) }} min{% else %}—{% endif %}
     </div>
   </div>
   <div class="kpi-card">
     <div class="kpi-label">Extensão</div>
     <div class="kpi-value">
-      {% if last %}{{ (last.length / 1000)|round(2) }} km{% else %}—{% endif %}
+      {% if route.length is not null %}{{ (route.length / 1000)|round(2) }} km{% else %}—{% endif %}
     </div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-label">Nível congestionamento</div>
+    <div class="kpi-label">Congestionamento</div>
     <div class="kpi-value">
-      {% if last is not null and last.jamLevel is not null %}
-        {% set jc = ['badge-green','badge-yellow','badge-orange','badge-red','badge-red'] %}
-        {% set jl = ['Livre','Lento','Moderado','Pesado','Parado'] %}
-        <span class="badge {{ jc[last.jamLevel] }}">{{ jl[last.jamLevel] }}</span>
-      {% else %}
-        —
-      {% endif %}
+      {% if route.jamLevel is not null %}
+        <span class="badge {{ jc[route.jamLevel] }}">{{ jl[route.jamLevel] }}</span>
+      {% else %}—{% endif %}
     </div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-label">Última busca</div>
+    <div class="kpi-label">Última coleta</div>
     <div class="kpi-value" style="font-size:var(--text-sm)">
-      {% if last %}
-        <time data-utc="{{ last.collectedAt|date('Y-m-d\\TH:i:s\\Z') }}" data-fmt="relative"></time>
-      {% else %}
-        Sem dados
-      {% endif %}
+      {% if route.collectedAt %}
+        <time data-utc="{{ route.collectedAt|date('Y-m-d\\TH:i:s\\Z') }}" data-fmt="relative"></time>
+      {% else %}Sem dados{% endif %}
     </div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-label">Total snapshots</div>
+    <div class="kpi-label">Snapshots salvos</div>
     <div class="kpi-value">{{ snapshots|length }}</div>
   </div>
 </div>
 
 {# ─ Tabs ─ #}
 <div class="tab-bar">
-  <button class="tab-btn active" data-tab="history"><i data-lucide="history" style="width:13px;height:13px;vertical-align:middle;margin-right:4px"></i>Histórico</button>
-  <button class="tab-btn" data-tab="chart"><i data-lucide="chart-line" style="width:13px;height:13px;vertical-align:middle;margin-right:4px"></i>Gráfico</button>
-  <button class="tab-btn" data-tab="links"><i data-lucide="link" style="width:13px;height:13px;vertical-align:middle;margin-right:4px"></i>Sub-rotas ({{ route.links|length }})</button>
+  <button class="tab-btn active" data-tab="history">
+    <i data-lucide="history" style="width:13px;height:13px;vertical-align:middle;margin-right:4px"></i>Histórico
+  </button>
+  <button class="tab-btn" data-tab="chart">
+    <i data-lucide="trending-up" style="width:13px;height:13px;vertical-align:middle;margin-right:4px"></i>Gráfico
+  </button>
+  <button class="tab-btn" data-tab="links">
+    <i data-lucide="link" style="width:13px;height:13px;vertical-align:middle;margin-right:4px"></i>Sub-rotas ({{ route.routeLinks|length }})
+  </button>
 </div>
 
-{# ─ Tab: Histórico ─ #}
+{# Tab: Histórico #}
 <div id="tab-history" class="tab-panel active">
   {% if snapshots is empty %}
     <div class="empty">
       <i data-lucide="database" style="width:36px;height:36px"></i>
       <h3>Nenhum dado coletado ainda</h3>
-      <p>Os dados aparecerão aqui após a primeira busca automática.</p>
+      <p>Os snapshots aparecerão aqui após cada busca automática.</p>
     </div>
   {% else %}
     <div class="card">
       <div class="card-header">
         <span class="card-title">Registro de buscas</span>
-        <span style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ snapshots|length }} registros (mais recentes primeiro)</span>
+        <span style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ snapshots|length }} registros — mais recentes primeiro</span>
       </div>
       <div style="overflow-x:auto">
         <table class="hist-table">
@@ -121,9 +127,6 @@
             </tr>
           </thead>
           <tbody>
-            {% set jc = ['badge-green','badge-yellow','badge-orange','badge-red','badge-red'] %}
-            {% set jl = ['Livre','Lento','Moderado','Pesado','Parado'] %}
-            {% set jdot = ['#437a22','#d19900','#da7101','#a12c7b','#a12c7b'] %}
             {% for s in snapshots %}
             <tr>
               <td>
@@ -157,11 +160,11 @@
   {% endif %}
 </div>
 
-{# ─ Tab: Gráfico ─ #}
+{# Tab: Gráfico #}
 <div id="tab-chart" class="tab-panel">
   {% if snapshots|length < 2 %}
     <div class="empty">
-      <i data-lucide="chart-line" style="width:36px;height:36px"></i>
+      <i data-lucide="trending-up" style="width:36px;height:36px"></i>
       <h3>Dados insuficientes</h3>
       <p>São necessários ao menos 2 registros para exibir o gráfico.</p>
     </div>
@@ -177,24 +180,20 @@
     <script>
     window.__routeSnapshots = [
       {% for s in snapshots|reverse %}
-      {
-        t: "{{ s.collectedAt|date('Y-m-d\\TH:i:s\\Z') }}",
-        time: {{ s.time is not null ? (s.time / 60)|round(2) : 'null' }},
-        hist: {{ s.historicTime is not null ? (s.historicTime / 60)|round(2) : 'null' }}
-      }{{ not loop.last ? ',' }}
+      { t:"{{ s.collectedAt|date('Y-m-d\\TH:i:s\\Z') }}", time:{{ s.time is not null ? (s.time/60)|round(2) : 'null' }}, hist:{{ s.historicTime is not null ? (s.historicTime/60)|round(2) : 'null' }} }{{ not loop.last ? ',' }}
       {% endfor %}
     ];
     </script>
   {% endif %}
 </div>
 
-{# ─ Tab: Sub-rotas ─ #}
+{# Tab: Sub-rotas #}
 <div id="tab-links" class="tab-panel">
-  {% if route.links is empty %}
+  {% if route.routeLinks is empty %}
     <div class="empty">
       <i data-lucide="link" style="width:36px;height:36px"></i>
       <h3>Nenhuma sub-rota</h3>
-      <p>Sub-rotas são segmentos da rota principal.</p>
+      <p>Sub-rotas são os segmentos que compõem a rota principal.</p>
     </div>
   {% else %}
     <div class="card">
@@ -203,7 +202,7 @@
           <tr><th>#</th><th>Nome</th><th>Ordem</th></tr>
         </thead>
         <tbody>
-          {% for link in route.links %}
+          {% for link in route.routeLinks %}
           <tr>
             <td style="color:var(--color-text-muted)">{{ link.id }}</td>
             <td>{{ link.name }}</td>
@@ -222,80 +221,50 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  /* ─ Tabs ─ */
+  /* Tabs */
   document.querySelectorAll('.tab-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
-      const target = btn.dataset.tab;
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
-      document.getElementById('tab-' + target).classList.add('active');
-      if (target === 'chart') initChart();
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      if (btn.dataset.tab === 'chart') initChart();
     });
   });
 
-  /* ─ Gráfico ─ */
+  /* Gráfico */
   let chartInited = false;
   function initChart() {
     if (chartInited) return;
     const data = window.__routeSnapshots;
     if (!data || data.length < 2) return;
     chartInited = true;
-
-    const labels = data.map(function(s) {
-      const d = new Date(s.t);
-      return d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
-    });
-
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     const gridColor = isDark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.06)';
     const textColor = isDark ? '#797876' : '#7a7974';
-
+    const labels = data.map(s => {
+      const d = new Date(s.t);
+      return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) + ' ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    });
     new Chart(document.getElementById('chart-route'), {
       type: 'line',
       data: {
-        labels: labels,
+        labels,
         datasets: [
-          {
-            label: 'Tempo atual (min)',
-            data: data.map(s => s.time),
-            borderColor: '#01696f',
-            backgroundColor: 'rgba(1,105,111,.12)',
-            tension: .35,
-            fill: true,
-            pointRadius: 3,
-            pointHoverRadius: 5,
-            spanGaps: true
-          },
-          {
-            label: 'Tempo histórico (min)',
-            data: data.map(s => s.hist),
-            borderColor: '#da7101',
-            backgroundColor: 'rgba(218,113,1,.08)',
-            tension: .35,
-            fill: false,
-            borderDash: [5,4],
-            pointRadius: 2,
-            pointHoverRadius: 4,
-            spanGaps: true
-          }
+          { label:'Tempo atual (min)', data:data.map(s=>s.time), borderColor:'#01696f', backgroundColor:'rgba(1,105,111,.12)', tension:.35, fill:true, pointRadius:3, spanGaps:true },
+          { label:'Tempo histórico (min)', data:data.map(s=>s.hist), borderColor:'#da7101', backgroundColor:'rgba(218,113,1,.08)', tension:.35, fill:false, borderDash:[5,4], pointRadius:2, spanGaps:true }
         ]
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: { labels: { color: textColor, font: { size: 11 } } },
-          tooltip: {
-            callbacks: {
-              label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y !== null ? ctx.parsed.y.toFixed(1) + ' min' : '—')
-            }
-          }
+        responsive:true, maintainAspectRatio:false,
+        interaction:{ mode:'index', intersect:false },
+        plugins:{
+          legend:{ labels:{ color:textColor, font:{size:11} } },
+          tooltip:{ callbacks:{ label:ctx => ctx.dataset.label+': '+(ctx.parsed.y!==null ? ctx.parsed.y.toFixed(1)+' min' : '—') } }
         },
-        scales: {
-          x: { ticks: { color: textColor, font: { size: 10 }, maxTicksLimit: 8 }, grid: { color: gridColor } },
-          y: { ticks: { color: textColor, font: { size: 10 }, callback: v => v + ' min' }, grid: { color: gridColor } }
+        scales:{
+          x:{ ticks:{ color:textColor, font:{size:10}, maxTicksLimit:10 }, grid:{ color:gridColor } },
+          y:{ ticks:{ color:textColor, font:{size:10}, callback:v=>v+' min' }, grid:{ color:gridColor } }
         }
       }
     });

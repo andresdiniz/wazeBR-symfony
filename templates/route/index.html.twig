@@ -25,35 +25,54 @@
       <thead>
         <tr>
           <th>Nome</th>
-          <th>Descrição</th>
-          <th>Sub-rotas</th>
+          <th>De / Para</th>
+          <th>Tempo atual</th>
+          <th>Nível</th>
+          <th>Links</th>
           <th>Status</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
+        {% set jc = ['badge-green','badge-yellow','badge-orange','badge-red','badge-red'] %}
+        {% set jl = ['Livre','Lento','Moderado','Pesado','Parado'] %}
         {% for route in routes %}
         <tr>
-          <td><strong>{{ route.name }}</strong></td>
-          <td style="color:var(--color-text-muted)">{{ route.description ?? '—' }}</td>
-          <td style="font-variant-numeric:tabular-nums">{{ route.links|length }}</td>
+          <td><strong>{{ route.name ?? '—' }}</strong></td>
+          <td style="color:var(--color-text-muted);font-size:var(--text-xs)">
+            {{ route.fromName ?? '' }}{% if route.fromName and route.toName %} → {% endif %}{{ route.toName ?? '' }}
+            {% if not route.fromName and not route.toName %}—{% endif %}
+          </td>
+          <td style="font-variant-numeric:tabular-nums">
+            {% if route.time is not null %}{{ (route.time / 60)|round(1) }} min{% else %}—{% endif %}
+          </td>
           <td>
-            {% if route.active %}
-              <span class="badge badge-green"><i data-lucide="check" style="width:10px;height:10px"></i> Ativa</span>
+            {% if route.jamLevel is not null %}
+              <span class="badge {{ jc[route.jamLevel] }}">{{ jl[route.jamLevel] }}</span>
+            {% else %}
+              <span style="color:var(--color-text-faint)">—</span>
+            {% endif %}
+          </td>
+          <td style="font-variant-numeric:tabular-nums">{{ route.routeLinks|length }}</td>
+          <td>
+            {% if route.isActive %}
+              <span class="badge badge-green">Ativa</span>
             {% else %}
               <span class="badge badge-gray">Inativa</span>
             {% endif %}
           </td>
-          <td style="text-align:right;white-space:nowrap;display:flex;gap:var(--space-2);justify-content:flex-end">
-            <a href="{{ path('route_admin_show', {id: route.id}) }}" class="btn btn-ghost btn-sm">
-              <i data-lucide="eye" style="width:13px;height:13px"></i> Ver
-            </a>
-            <form method="post" action="{{ path('route_admin_toggle', {id: route.id}) }}" style="display:inline">
-              <button type="submit" class="btn btn-ghost btn-sm">
-                <i data-lucide="{{ route.active ? 'pause' : 'play' }}" style="width:13px;height:13px"></i>
-                {{ route.active ? 'Desativar' : 'Ativar' }}
-              </button>
-            </form>
+          <td style="text-align:right;white-space:nowrap">
+            <div style="display:flex;gap:var(--space-2);justify-content:flex-end">
+              <a href="{{ path('route_admin_show', {id: route.id}) }}" class="btn btn-ghost btn-sm">
+                <i data-lucide="eye" style="width:13px;height:13px"></i> Ver
+              </a>
+              <form method="post" action="{{ path('route_admin_toggle', {id: route.id}) }}" style="display:inline">
+                <button type="submit" class="btn btn-ghost btn-sm">
+                  <i data-lucide="{{ route.isActive ? 'pause' : 'play' }}" style="width:13px;height:13px"></i>
+                  {{ route.isActive ? 'Desativar' : 'Ativar' }}
+                </button>
+              </form>
+            </div>
           </td>
         </tr>
         {% endfor %}
