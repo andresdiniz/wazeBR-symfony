@@ -207,6 +207,9 @@
       <a href="{{ path('route_admin_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'route_admin' ? 'active' }}">
         <i data-lucide="route"></i> Rotas
       </a>
+      <a href="{{ path('tvt_route_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'tvt_route' ? 'active' }}">
+        <i data-lucide="map-pin"></i> Rotas TVT
+      </a>
       <a href="{{ path('notification_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'notification' ? 'active' }}">
         <i data-lucide="bell"></i> Notificações
       </a>
