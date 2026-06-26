@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Scheduler;
 
 use App\Scheduler\Message\CollectWazeFeedMessage;
+use App\Scheduler\Message\CollectWazeTvtMessage;
 use App\Scheduler\Message\FetchWazeAlertsMessage;
 use App\Scheduler\Message\FetchWazeTrafficMessage;
 use Symfony\Component\Scheduler\Attribute\AsSchedule;
@@ -16,15 +17,16 @@ use Symfony\Contracts\Cache\CacheInterface;
 /**
  * Scheduler central do WazeBR.
  *
- * Tarefas:
- *   - FetchWazeAlertsMessage   → a cada 2 min (coleta bbox geográfica)
- *   - FetchWazeTrafficMessage  → a cada 2 min (coleta TVT)
- *   - CollectWazeFeedMessage   → a cada 5 min (coleta feed PartnerHub por MonitoredLink)
+ * Tarefas agendadas:
+ *   - FetchWazeAlertsMessage  → a cada 5 min  (coleta alertas via feed PartnerHub)
+ *   - FetchWazeTrafficMessage → a cada 5 min  (coleta jams via feed PartnerHub)
+ *   - CollectWazeFeedMessage  → a cada 5 min  (PartnerHub — fallback via Command)
+ *   - CollectWazeTvtMessage   → a cada 5 min  (TVT — fallback via Command)
  *
- * Worker:
- *   php bin/console messenger:consume scheduler_waze_feed --time-limit=3600
+ * Iniciar o worker:
+ *   php bin/console messenger:consume scheduler_waze_feed --time-limit=3600 -vv
  */
-#[AsSchedule('waze_feed')]
+#[AsSchedule('main')]
 class WazeFeedSchedule implements ScheduleProviderInterface
 {
     public function __construct(
@@ -34,9 +36,10 @@ class WazeFeedSchedule implements ScheduleProviderInterface
     public function getSchedule(): Schedule
     {
         return (new Schedule())
-            ->add(RecurringMessage::every('2 minutes', new FetchWazeAlertsMessage()))
-            ->add(RecurringMessage::every('2 minutes', new FetchWazeTrafficMessage()))
+            ->add(RecurringMessage::every('5 minutes', new FetchWazeAlertsMessage()))
+            ->add(RecurringMessage::every('5 minutes', new FetchWazeTrafficMessage()))
             ->add(RecurringMessage::every('5 minutes', new CollectWazeFeedMessage()))
+            ->add(RecurringMessage::every('5 minutes', new CollectWazeTvtMessage()))
             ->stateful($this->cache);
     }
 }

@@ -12,7 +12,8 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
- * Processa FetchWazeAlertsMessage: itera todos os feeds ativos e coleta alertas.
+ * Processa FetchWazeAlertsMessage:
+ * itera todos os feeds Waze ativos (feedFormat=1) e persiste alertas/jams.
  */
 #[AsMessageHandler]
 final class FetchWazeAlertsHandler
@@ -33,7 +34,6 @@ final class FetchWazeAlertsHandler
             return;
         }
 
-        // Filtra por parceiro se a mensagem especificar
         if ($message->partnerSlug !== null) {
             $links = array_filter(
                 $links,
@@ -45,28 +45,29 @@ final class FetchWazeAlertsHandler
         $totalErrors = 0;
 
         foreach ($links as $link) {
+            $label = $link->getLabel() ?? $link->getUrl();
+
             try {
                 $count = $this->feedService->fetchAndPersist($link);
-                $link->markSuccess($count);
+
+                $link->setLastCollectedAt(new \DateTimeImmutable());
                 $this->em->flush();
 
                 $totalSaved += $count;
 
                 $this->logger->info('[WazeScheduler] Feed coletado', [
-                    'link'    => $link->getName(),
+                    'link'    => $label,
                     'partner' => $link->getPartner()?->getSlug(),
-                    'alerts'  => $count,
+                    'saved'   => $count,
                 ]);
 
             } catch (\Throwable $e) {
                 $totalErrors++;
-                $link->markError($e->getMessage());
-                $this->em->flush();
 
                 $this->logger->error('[WazeScheduler] Erro ao coletar feed', [
-                    'link'      => $link->getName(),
-                    'partner'   => $link->getPartner()?->getSlug(),
-                    'error'     => $e->getMessage(),
+                    'link'    => $label,
+                    'partner' => $link->getPartner()?->getSlug(),
+                    'error'   => $e->getMessage(),
                 ]);
             }
         }

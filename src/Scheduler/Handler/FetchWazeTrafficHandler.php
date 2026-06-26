@@ -11,6 +11,10 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
+/**
+ * Processa FetchWazeTrafficMessage:
+ * itera todos os feeds TVT ativos (feedFormat=2) e persiste snapshots.
+ */
 #[AsMessageHandler]
 final class FetchWazeTrafficHandler
 {
@@ -41,26 +45,29 @@ final class FetchWazeTrafficHandler
         $totalErrors = 0;
 
         foreach ($links as $link) {
+            $label = $link->getLabel() ?? $link->getUrl();
+
             try {
                 $count = $this->trafficService->fetchAndPersist($link);
-                $link->markSuccess($count);
+
+                $link->setLastCollectedAt(new \DateTimeImmutable());
                 $this->em->flush();
+
                 $totalSaved += $count;
 
                 $this->logger->info('[WazeTrafficScheduler] TVT coletado', [
-                    'link'    => $link->getName(),
+                    'link'    => $label,
                     'partner' => $link->getPartner()?->getSlug(),
-                    'jams'    => $count,
+                    'saved'   => $count,
                 ]);
 
             } catch (\Throwable $e) {
                 $totalErrors++;
-                $link->markError($e->getMessage());
-                $this->em->flush();
 
                 $this->logger->error('[WazeTrafficScheduler] Erro TVT', [
-                    'link'  => $link->getName(),
-                    'error' => $e->getMessage(),
+                    'link'    => $label,
+                    'partner' => $link->getPartner()?->getSlug(),
+                    'error'   => $e->getMessage(),
                 ]);
             }
         }
