@@ -1,6 +1,12 @@
 {% extends 'base.html.twig' %}
 {% block title %}Histórico — {{ latest.name ?? wazeRouteId }}{% endblock %}
 
+{# Prepara variáveis escapadas para uso no bloco JS #}
+{% set jsFromName = latest.fromName ? latest.fromName|e('js') : 'Início' %}
+{% set jsToName   = latest.toName   ? latest.toName|e('js')   : 'Fim' %}
+{% set jsJamLevel = latest.jamLevel ?? 0 %}
+{% set jsLine     = latest.line is not null ? latest.line|json_encode|raw : 'null' %}
+
 {% block stylesheets %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
@@ -125,10 +131,10 @@
     jam:  r.jamLevel
   })|json_encode|raw }};
 
-  const ordered  = [...raw].reverse();
-  const labels   = ordered.map(r => FMT.format(new Date(r.t)));
-  const times    = ordered.map(r => r.time !== null ? +(r.time/60).toFixed(1) : null);
-  const hists    = ordered.map(r => r.hist !== null ? +(r.hist/60).toFixed(1) : null);
+  const ordered = [...raw].reverse();
+  const labels  = ordered.map(r => FMT.format(new Date(r.t)));
+  const times   = ordered.map(r => r.time !== null ? +(r.time/60).toFixed(1) : null);
+  const hists   = ordered.map(r => r.hist !== null ? +(r.hist/60).toFixed(1) : null);
 
   new Chart(document.getElementById('chart-history'), {
     type: 'line',
@@ -150,9 +156,9 @@
     }
   });
 
-  // --- Mapa Leaflet com o trajeto da rota ---
-  const routeLine = {{ latest.line is defined and latest.line is not null ? latest.line|json_encode|raw : 'null' }};
-  const mapEl = document.getElementById('history-map');
+  // --- Mapa Leaflet ---
+  const routeLine = {{ jsLine }};
+  const mapEl    = document.getElementById('history-map');
 
   if (routeLine && routeLine.length && mapEl) {
     const map = L.map('history-map', { zoomControl: true, scrollWheelZoom: false });
@@ -161,21 +167,19 @@
     }).addTo(map);
 
     const jamColors = ['#437a22','#d19900','#da7101','#a12c7b','#a13544','#dc2626'];
-    const color     = jamColors[{{ latest.jamLevel ?? 0 }}] ?? '#888';
+    const color     = jamColors[{{ jsJamLevel }}] ?? '#888';
     const latlngs   = routeLine.map(p => [p.y, p.x]);
+    const pl        = L.polyline(latlngs, { color, weight: 5, opacity: 0.85 }).addTo(map);
 
-    const pl = L.polyline(latlngs, { color, weight: 5, opacity: 0.85 }).addTo(map);
-
-    // Marcadores início e fim
     if (latlngs.length >= 2) {
-      const iconOpts = (label, bg) => L.divIcon({
+      const mkIcon = (label, bg) => L.divIcon({
         html: `<div style="background:${bg};color:#fff;font-size:10px;font-weight:700;padding:3px 7px;border-radius:12px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3)">${label}</div>`,
         className: '', iconAnchor: [0, 0]
       });
-      L.marker(latlngs[0], { icon: iconOpts('Início', '#01696f') })
-        .bindPopup('{{ latest.fromName|e('js') ?? 'Início' }}').addTo(map);
-      L.marker(latlngs[latlngs.length - 1], { icon: iconOpts('Fim', '#a12c7b') })
-        .bindPopup('{{ latest.toName|e('js') ?? 'Fim' }}').addTo(map);
+      L.marker(latlngs[0], { icon: mkIcon('Início', '#01696f') })
+        .bindPopup('{{ jsFromName }}').addTo(map);
+      L.marker(latlngs[latlngs.length - 1], { icon: mkIcon('Fim', '#a12c7b') })
+        .bindPopup('{{ jsToName }}').addTo(map);
     }
 
     map.fitBounds(pl.getBounds(), { padding: [20, 20] });
