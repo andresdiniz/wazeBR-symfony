@@ -9,43 +9,39 @@
 </div>
 <div class="card" style="max-width:580px">
   <div style="padding:var(--space-6)">
+    <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-5)">
+      O código da estação pode ser consultado no
+      <a href="http://www.cemaden.gov.br/mapainterativo/" target="_blank" rel="noopener" style="color:var(--color-primary)">mapa interativo do CEMADEN</a>.
+    </p>
     <form method="post">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
-        <div class="form-group">
-          <label class="form-label" for="code">Código da Estação</label>
-          <input class="form-control" id="code" name="code" required placeholder="ex: 310620901A">
+        <div class="form-group" style="grid-column:span 1">
+          <label class="form-label" for="cod_estacao">Código da Estação</label>
+          <input class="form-control" id="cod_estacao" name="cod_estacao" required placeholder="ex: 310620901A">
+          <span class="form-hint">Código único do CEMADEN</span>
         </div>
         <div class="form-group">
-          <label class="form-label" for="state">UF</label>
-          <input class="form-control" id="state" name="state" maxlength="2" required placeholder="MG">
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="station_name">Nome da Estação</label>
-        <input class="form-control" id="station_name" name="station_name" required placeholder="ex: São Paulo - Bom Retiro">
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="municipality">Município</label>
-        <input class="form-control" id="municipality" name="municipality" required placeholder="ex: Belo Horizonte">
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
-        <div class="form-group">
-          <label class="form-label" for="lat">Latitude</label>
-          <input class="form-control" id="lat" name="latitude" type="number" step="0.0000001" required placeholder="-19.9167">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="lng">Longitude</label>
-          <input class="form-control" id="lng" name="longitude" type="number" step="0.0000001" required placeholder="-43.9345">
+          <label class="form-label" for="uf">UF</label>
+          <input class="form-control" id="uf" name="uf" maxlength="2" required placeholder="MG">
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label" for="partner_id">Parceiro (opcional)</label>
-        <select class="form-control" id="partner_id" name="partner_id">
-          <option value="">Nenhum / Global</option>
+        <label class="form-label" for="nome">Nome da Estação</label>
+        <input class="form-control" id="nome" name="nome" required placeholder="ex: Belo Horizonte - Bom Retiro">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="municipio">Município</label>
+        <input class="form-control" id="municipio" name="municipio" required placeholder="ex: Belo Horizonte">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="partner_slug">Parceiro</label>
+        <select class="form-control" id="partner_slug" name="partner_slug" required>
+          <option value="">Selecione…</option>
           {% for p in partners %}
-            <option value="{{ p.id }}">{{ p.name }}</option>
+            <option value="{{ p.slug }}">{{ p.name }} ({{ p.slug }})</option>
           {% endfor %}
         </select>
+        <span class="form-hint">A estação será visível apenas para este parceiro</span>
       </div>
       <button type="submit" class="btn btn-primary" style="width:100%">Criar Estação</button>
     </form>
