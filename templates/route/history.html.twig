@@ -1,0 +1,130 @@
+{% extends 'base.html.twig' %}
+{% block title %}Histórico — {{ latest.name ?? wazeRouteId }}{% endblock %}
+
+{% block stylesheets %}
+<style>
+  .jam-0{background:oklch(from var(--color-success) l c h/.12);color:var(--color-success)}
+  .jam-1{background:oklch(from var(--color-gold) l c h/.12);color:var(--color-gold)}
+  .jam-2{background:oklch(from var(--color-orange) l c h/.15);color:var(--color-orange)}
+  .jam-3{background:oklch(from var(--color-error) l c h/.12);color:var(--color-error)}
+  .jam-4{background:oklch(from var(--color-error) l c h/.2);color:var(--color-error)}
+  .jam-5{background:var(--color-error);color:#fff}
+  .delay-pos{color:var(--color-error)}
+  .delay-neg{color:var(--color-success)}
+  .delay-zero{color:var(--color-text-faint)}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap">
+  <a href="{{ path('route_admin_index') }}" class="btn btn-ghost btn-sm">
+    <i data-lucide="arrow-left" style="width:14px;height:14px"></i> Voltar
+  </a>
+  <div>
+    <h1 class="page-title">{{ latest.name ?? 'Rota' }}</h1>
+    <div class="page-subtitle">{{ latest.fromName ?? '' }}{% if latest.fromName and latest.toName %} &rarr; {% endif %}{{ latest.toName ?? '' }} &mdash; {{ history|length }} registro(s)</div>
+  </div>
+</div>
+
+<div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));margin-bottom:var(--space-6)">
+  <div class="kpi-card">
+    <div class="kpi-label">Jam atual</div>
+    <div class="kpi-value"><span class="badge jam-{{ latest.jamLevel ?? 0 }}">{{ latest.jamLevelLabel }}</span></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Tempo atual</div>
+    <div class="kpi-value">{% if latest.time is not null %}{{ (latest.time/60)|round(1) }} min{% else %}&mdash;{% endif %}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Tempo hist&oacute;rico</div>
+    <div class="kpi-value" style="color:var(--color-text-muted)">{% if latest.historicTime is not null %}{{ (latest.historicTime/60)|round(1) }} min{% else %}&mdash;{% endif %}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Extens&atilde;o</div>
+    <div class="kpi-value">{{ latest.length ? (latest.length/1000)|round(2) ~ ' km' : '&mdash;' }}</div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:var(--space-6)">
+  <div class="card-header"><span class="card-title">Evolução temporal</span></div>
+  <div style="padding:var(--space-4)">
+    <canvas id="chart-history" height="80"></canvas>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><span class="card-title">Registros</span></div>
+  <div style="overflow-x:auto">
+    <table>
+      <thead>
+        <tr>
+          <th>Coletado em</th>
+          <th>Jam</th>
+          <th style="text-align:right">Atual</th>
+          <th style="text-align:right">Hist&oacute;rico</th>
+          <th style="text-align:right">Atraso</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in history %}
+        {% set delay = r.delaySeconds %}
+        <tr>
+          <td style="font-variant-numeric:tabular-nums;font-size:var(--text-xs)">{{ r.snapshot.collectedAt|date('d/m/Y H:i') }}</td>
+          <td><span class="badge jam-{{ r.jamLevel ?? 0 }}">{{ r.jamLevelLabel }}</span></td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums">
+            {% if r.time is not null %}{{ (r.time/60)|round(1) }} min{% else %}&mdash;{% endif %}
+          </td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--color-text-muted)">
+            {% if r.historicTime is not null %}{{ (r.historicTime/60)|round(1) }} min{% else %}&mdash;{% endif %}
+          </td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums" class="{% if delay is not null %}{% if delay > 0 %}delay-pos{% elseif delay < 0 %}delay-neg{% else %}delay-zero{% endif %}{% endif %}">
+            {% if delay is null %}&mdash;
+            {% elseif delay == 0 %}0s
+            {% elseif delay > 0 %}+{{ delay < 60 ? delay ~ 's' : (delay/60)|round(1) ~ ' min' }}
+            {% else %}{{ delay < -60 ? (delay/60)|round(1) ~ ' min' : delay ~ 's' }}{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+(function(){
+  const raw = {{ history|map(r => {
+    t: r.snapshot.collectedAt|date('Y-m-d H:i'),
+    time: r.time,
+    hist: r.historicTime,
+    jam:  r.jamLevel
+  })|json_encode|raw }};
+
+  const labels = raw.map(r => r.t).reverse();
+  const times  = raw.map(r => r.time !== null ? +(r.time/60).toFixed(1) : null).reverse();
+  const hists  = raw.map(r => r.hist !== null ? +(r.hist/60).toFixed(1) : null).reverse();
+
+  new Chart(document.getElementById('chart-history'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Tempo atual (min)', data: times, borderColor: '#a12c7b', backgroundColor: 'oklch(0.5 0.2 330 / 0.08)', tension: 0.3, fill: true, pointRadius: 2 },
+        { label: 'Histórico (min)',   data: hists, borderColor: '#437a22', borderDash: [4,3], tension: 0.3, pointRadius: 2 }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        x: { ticks: { maxTicksLimit: 12, maxRotation: 45 } },
+        y: { beginAtZero: true, title: { display: true, text: 'minutos' } }
+      }
+    }
+  });
+})();
+</script>
+{% endblock %}

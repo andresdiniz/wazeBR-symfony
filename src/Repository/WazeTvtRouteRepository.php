@@ -32,6 +32,7 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
             ->getSingleScalarResult();
     }
 
+    /** Rotas do snapshot mais recente, filtráveis por jamLevel */
     public function findTvtByPartner(Partner $partner, ?int $jamLevel = null): array
     {
         $latestSnapshotId = $this->getEntityManager()->createQueryBuilder()
@@ -58,6 +59,25 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
         }
 
         return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * Série histórica de uma rota TVT específica (por wazeRouteId),
+     * do mais recente para o mais antigo, limitada a $limit registros.
+     */
+    public function findHistoryByWazeId(Partner $partner, string $wazeRouteId, int $limit = 100): array
+    {
+        return $this->createQueryBuilder('r')
+            ->join('r.snapshot', 's')
+            ->where('s.partner = :partner')
+            ->andWhere('r.wazeRouteId = :wid')
+            ->andWhere('r.isSubRoute = false')
+            ->setParameter('partner', $partner)
+            ->setParameter('wid', $wazeRouteId)
+            ->orderBy('s.collectedAt', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
     }
 
     public function findMainRoutesBySnapshot(WazeTvtSnapshot $snapshot): array
