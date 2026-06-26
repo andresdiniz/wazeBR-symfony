@@ -8,6 +8,7 @@ use App\Entity\WazeRoute;
 use App\Entity\WazeRouteLink;
 use App\Repository\WazeRouteLinkRepository;
 use App\Repository\WazeRouteRepository;
+use App\Repository\WazeRouteSnapshotRepository;
 use App\Service\TenantContext;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -21,9 +22,10 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class RouteAdminController extends AbstractController
 {
     public function __construct(
-        private readonly TenantContext           $tenantContext,
-        private readonly WazeRouteRepository     $routeRepo,
-        private readonly WazeRouteLinkRepository $linkRepo,
+        private readonly TenantContext                 $tenantContext,
+        private readonly WazeRouteRepository           $routeRepo,
+        private readonly WazeRouteLinkRepository       $linkRepo,
+        private readonly WazeRouteSnapshotRepository   $snapshotRepo,
     ) {}
 
     // ─── Rotas ────────────────────────────────────────────────────────────────
@@ -63,16 +65,19 @@ class RouteAdminController extends AbstractController
     #[Route('/{id}', name: 'show', requirements: ['id' => '\\d+'])]
     public function show(int $id): Response
     {
-        $partner = $this->tenantContext->requirePartner();
-        $route   = $this->routeRepo->findOneByPartner($id, $partner);
+        $partner   = $this->tenantContext->requirePartner();
+        $route     = $this->routeRepo->findOneByPartner($id, $partner);
 
         if (!$route) {
             throw $this->createNotFoundException('Rota não encontrada.');
         }
 
+        $snapshots = $this->snapshotRepo->findLatestByRoute($route, 200);
+
         return $this->render('route/show.html.twig', [
-            'partner' => $partner,
-            'route'   => $route,
+            'partner'   => $partner,
+            'route'     => $route,
+            'snapshots' => $snapshots,
         ]);
     }
 
