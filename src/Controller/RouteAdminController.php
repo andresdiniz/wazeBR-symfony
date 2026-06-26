@@ -16,7 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/admin/rotas', name: 'route_admin_')]
+#[Route('/rotas', name: 'route_admin_')]
 #[IsGranted('ROLE_ADMIN')]
 class RouteAdminController extends AbstractController
 {
@@ -33,7 +33,7 @@ class RouteAdminController extends AbstractController
     {
         $partner = $this->tenantContext->requirePartner();
 
-        return $this->render('admin/route/index.html.twig', [
+        return $this->render('route/index.html.twig', [
             'partner' => $partner,
             'routes'  => $this->routeRepo->findByPartner($partner, activeOnly: false),
         ]);
@@ -57,10 +57,10 @@ class RouteAdminController extends AbstractController
             return $this->redirectToRoute('route_admin_show', ['id' => $route->getId()]);
         }
 
-        return $this->render('admin/route/new.html.twig', ['partner' => $partner]);
+        return $this->render('route/new.html.twig', ['partner' => $partner]);
     }
 
-    #[Route('/{id}', name: 'show', requirements: ['id' => '\d+'])]
+    #[Route('/{id}', name: 'show', requirements: ['id' => '\\d+'])]
     public function show(int $id): Response
     {
         $partner = $this->tenantContext->requirePartner();
@@ -70,7 +70,7 @@ class RouteAdminController extends AbstractController
             throw $this->createNotFoundException('Rota não encontrada.');
         }
 
-        return $this->render('admin/route/show.html.twig', [
+        return $this->render('route/show.html.twig', [
             'partner' => $partner,
             'route'   => $route,
         ]);
@@ -95,7 +95,6 @@ class RouteAdminController extends AbstractController
 
     // ─── Sub-rotas (links) ────────────────────────────────────────────────────
 
-    /** Renomeado de addLink() para createLink() — evita conflito com AbstractController::addLink() */
     #[Route('/{routeId}/links', name: 'link_new', methods: ['POST'])]
     public function createLink(int $routeId, Request $request): JsonResponse
     {

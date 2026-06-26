@@ -197,6 +197,11 @@
       <a href="{{ path('jam_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'jam' ? 'active' }}">
         <i data-lucide="traffic-cone"></i> Congestionamentos
       </a>
+      {% if is_granted('ROLE_ADMIN') %}
+      <a href="{{ path('route_admin_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'route_admin' ? 'active' }}">
+        <i data-lucide="route"></i> Rotas
+      </a>
+      {% endif %}
       <a href="{{ path('cemaden_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'cemaden' ? 'active' }}">
         <i data-lucide="cloud-rain"></i> CEMADEN
       </a>
@@ -204,9 +209,6 @@
     {% if is_granted('ROLE_ADMIN') %}
     <div class="nav-section">
       <div class="nav-label">Administração</div>
-      <a href="{{ path('route_admin_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'route_admin' ? 'active' }}">
-        <i data-lucide="route"></i> Rotas
-      </a>
       <a href="{{ path('tvt_route_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'tvt_route' ? 'active' }}">
         <i data-lucide="map-pin"></i> Rotas TVT
       </a>
@@ -249,22 +251,7 @@ if(typeof lucide!=='undefined') lucide.createIcons();
 document.addEventListener('DOMContentLoaded',()=>{ if(typeof lucide!=='undefined') lucide.createIcons(); });
 
 {% verbatim %}
-/* ── Timezone: renderiza <time data-utc="ISO"> no fuso do navegador ──
- *
- *  Uso nos templates Twig (copie e cole nos seus templates):
- *
- *  Formato completo (data + hora):
- *    <time data-utc="{{ obj.createdAt|date('c') }}">{{ obj.createdAt|date('d/m/Y H:i') }}</time>
- *
- *  So data:
- *    <time data-utc="{{ obj.createdAt|date('c') }}" data-fmt="date">{{ obj.createdAt|date('d/m/Y') }}</time>
- *
- *  So hora:
- *    <time data-utc="{{ obj.createdAt|date('c') }}" data-fmt="time">{{ obj.createdAt|date('H:i') }}</time>
- *
- *  Relativo ("ha 5 min"):
- *    <time data-utc="{{ obj.createdAt|date('c') }}" data-fmt="relative">{{ obj.createdAt|date('d/m/Y H:i') }}</time>
- */
+/* ── Timezone ── */
 {% endverbatim %}
 (function(){
   const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
