@@ -26,72 +26,45 @@
   </form>
 </div>
 
-<h2 style="margin-top:2rem">Sub-rotas ({{ route.routeLinks|length }})</h2>
+<h2 style="margin-top:2rem">Sub-rotas ({{ route.subRoutes|length }})</h2>
 
 <div class="table-wrapper">
   <table>
     <thead>
       <tr>
-        <th>Ordem</th>
-        <th>Nome</th>
-        <th>Ações</th>
+        <th>De</th>
+        <th>Para</th>
+        <th>Tempo (s)</th>
+        <th>Tempo Hist. (s)</th>
+        <th>Extensão (m)</th>
+        <th>Congestionamento</th>
       </tr>
     </thead>
-    <tbody id="links-body">
-      {% for link in route.routeLinks %}
-      <tr id="link-row-{{ link.id }}">
-        <td>{{ link.sortOrder }}</td>
-        <td>{{ link.name }}</td>
+    <tbody>
+      {% for sub in route.subRoutes %}
+      <tr>
+        <td>{{ sub.fromName ?? '—' }}</td>
+        <td>{{ sub.toName ?? '—' }}</td>
+        <td>{{ sub.time ?? '—' }}</td>
+        <td>{{ sub.historicTime ?? '—' }}</td>
+        <td>{{ sub.length ?? '—' }}</td>
         <td>
-          <button
-            class="btn btn-sm btn-ghost"
-            onclick="deleteLink({{ route.id }}, {{ link.id }})"
-          >Remover</button>
+          {% if sub.jamLevel is not null %}
+            <span class="badge
+              {% if sub.jamLevel == 0 %}badge-success
+              {% elseif sub.jamLevel <= 2 %}badge-warning
+              {% else %}badge-danger{% endif %}">
+              {{ sub.jamLevel }}
+            </span>
+          {% else %}
+            —
+          {% endif %}
         </td>
       </tr>
       {% else %}
-      <tr id="empty-row"><td colspan="3" class="empty-cell">Nenhuma sub-rota cadastrada.</td></tr>
+      <tr><td colspan="6" class="empty-cell">Nenhuma sub-rota coletada ainda. Rode <code>app:waze:collect-tvt</code> para popular.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
-
-<div class="form-card" style="margin-top:1.5rem">
-  <h3>Adicionar Sub-rota</h3>
-  <form id="link-form">
-    <div class="form-group">
-      <label for="link-name">Nome</label>
-      <input type="text" id="link-name" class="form-control" required>
-    </div>
-    <div class="form-group">
-      <label for="link-coords">Coordenadas (JSON)</label>
-      <textarea id="link-coords" class="form-control" rows="3">[]</textarea>
-    </div>
-    <button type="submit" class="btn btn-primary">Adicionar</button>
-  </form>
-</div>
-{% endblock %}
-
-{% block javascripts %}
-{{ parent() }}
-<script>
-const routeId = {{ route.id }};
-
-document.getElementById('link-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const body = new FormData();
-  body.append('name', document.getElementById('link-name').value);
-  body.append('coordinates', document.getElementById('link-coords').value);
-  const res = await fetch(`/admin/rotas/${routeId}/links`, { method: 'POST', body });
-  if (res.ok) { location.reload(); }
-  else { alert('Erro ao adicionar sub-rota.'); }
-});
-
-async function deleteLink(routeId, linkId) {
-  if (!confirm('Remover esta sub-rota?')) return;
-  const res = await fetch(`/admin/rotas/${routeId}/links/${linkId}`, { method: 'DELETE' });
-  if (res.ok) { document.getElementById('link-row-' + linkId)?.remove(); }
-  else { alert('Erro ao remover sub-rota.'); }
-}
-</script>
 {% endblock %}
