@@ -9,7 +9,6 @@ use App\Entity\Partner;
 use App\Entity\WazeAlert;
 use App\Entity\WazeTrafficJam;
 use App\Repository\MonitoredLinkRepository;
-use App\Repository\PartnerRepository;
 use App\Repository\WazeAlertRepository;
 use App\Repository\WazeTrafficJamRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -22,19 +21,18 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
- * Coleta alertas e congestionamentos do feed Waze PartnerHub.
+ * Coleta alertas e congestionamentos do feed Waze PartnerHub (feedFormat=1).
  *
- * URL do feed (feedFormat=1 em MonitoredLink):
+ * URL esperada no MonitoredLink:
  *   https://www.waze.com/row-partnerhub-api/partners/{partnerId}/waze-feeds/{uuid}?format=1
  */
 #[AsCommand(
     name: 'app:waze:collect-feed',
-    description: 'Coleta alertas e jams do feed PartnerHub Waze para todos os links ativos.',
+    description: 'Coleta alertas e jams do feed PartnerHub Waze para todos os links ativos (feedFormat=1).',
 )]
 class WazeCollectFeedCommand extends Command
 {
     public function __construct(
-        private readonly PartnerRepository        $partnerRepo,
         private readonly MonitoredLinkRepository  $linkRepo,
         private readonly WazeAlertRepository      $alertRepo,
         private readonly WazeTrafficJamRepository $jamRepo,
@@ -47,8 +45,6 @@ class WazeCollectFeedCommand extends Command
     protected function configure(): void
     {
         $this
-            ->addOption('partner', 'p', InputOption::VALUE_OPTIONAL,
-                'Slug do parceiro — omitir para processar todos os ativos')
             ->addOption('dry-run', null, InputOption::VALUE_NONE,
                 'Busca e exibe o JSON sem persistir nada');
     }
@@ -57,81 +53,62 @@ class WazeCollectFeedCommand extends Command
     {
         $io     = new SymfonyStyle($input, $output);
         $dryRun = (bool) $input->getOption('dry-run');
-        $slug   = $input->getOption('partner');
 
         $io->title('Waze Collect Feed — PartnerHub');
         if ($dryRun) {
             $io->note('Modo DRY-RUN: nenhum dado será persistido.');
         }
 
-        $partners = $slug
-            ? array_filter(
-                $this->partnerRepo->findActivePartners(),
-                fn (Partner $p) => $p->getSlug() === $slug,
-            )
-            : $this->partnerRepo->findActivePartners();
+        /** @var MonitoredLink[] $links */
+        $links = $this->linkRepo->findActiveWazeFeeds();
 
-        if (empty($partners)) {
-            $io->warning('Nenhum parceiro ativo encontrado.');
+        if (empty($links)) {
+            $io->warning('Nenhum link de feed Waze ativo (feedFormat=1). Cadastre um MonitoredLink.');
             return Command::SUCCESS;
         }
 
         $totalAlerts = 0;
         $totalJams   = 0;
 
-        foreach ($partners as $partner) {
-            $io->section("Parceiro: {$partner->getName()} [{$partner->getSlug()}]");
+        foreach ($links as $link) {
+            $partner = $link->getPartner();
+            $label   = $link->getLabel() ?? $link->getUrl();
 
-            // feedFormat=1 => feeds Waze PartnerHub (alertas + jams)
-            /** @var MonitoredLink[] $links */
-            $links = $this->linkRepo->findBy([
-                'partner'    => $partner,
-                'feedFormat' => MonitoredLinkRepository::FORMAT_WAZE,
-                'isActive'   => true,
-            ]);
+            $io->section("Parceiro: {$partner->getName()} [{$partner->getSlug()}] — {$label}");
+            $io->writeln('  URL: ' . $link->getUrl());
 
-            if (empty($links)) {
-                $io->warning('Nenhum link de feed ativo (feedFormat=1). Cadastre um MonitoredLink.');
+            try {
+                $data = $this->fetchFeed($link->getUrl());
+            } catch (\Throwable $e) {
+                $io->error('Erro ao buscar feed: ' . $e->getMessage());
                 continue;
             }
 
-            foreach ($links as $link) {
-                $label = $link->getLabel() ?? $link->getUrl();
-                $io->writeln("  → [{$label}] {$link->getUrl()}");
-
-                try {
-                    $data = $this->fetchFeed($link->getUrl());
-                } catch (\Throwable $e) {
-                    $io->error('  ✗ Erro ao buscar feed: ' . $e->getMessage());
-                    continue;
-                }
-
-                if ($dryRun) {
-                    $io->writeln(sprintf(
-                        '  DRY-RUN: %d alertas, %d jams encontrados.',
-                        count($data['alerts'] ?? []),
-                        count($data['jams'] ?? []),
-                    ));
-                    continue;
-                }
-
-                $feedStart = isset($data['startTimeMillis']) ? (int) $data['startTimeMillis'] : null;
-
-                $alerts = $this->persistAlerts($partner, $link, $data['alerts'] ?? [], $feedStart);
-                $jams   = $this->persistJams($partner, $link, $data['jams'] ?? [], $feedStart);
-
-                $link->setLastCollectedAt(new \DateTimeImmutable());
-                $this->em->flush();
-
-                $totalAlerts += $alerts;
-                $totalJams   += $jams;
-
+            if ($dryRun) {
                 $io->writeln(sprintf(
-                    '  ✓ Alertas: <info>%d novos</info> | Jams: <info>%d novos</info>',
-                    $alerts,
-                    $jams,
+                    '  DRY-RUN: %d alertas, %d jams encontrados.',
+                    count($data['alerts'] ?? []),
+                    count($data['jams'] ?? []),
                 ));
+                continue;
             }
+
+            $feedStart = isset($data['startTimeMillis']) ? (int) $data['startTimeMillis'] : null;
+
+            $alerts = $this->persistAlerts($partner, $link, $data['alerts'] ?? [], $feedStart);
+            $jams   = $this->persistJams($partner, $link, $data['jams'] ?? [], $feedStart);
+
+            $link->setLastCollectedAt(new \DateTimeImmutable());
+            $this->em->flush();
+
+            $totalAlerts += $alerts;
+            $totalJams   += $jams;
+
+            $io->writeln(sprintf(
+                '  ✓ Alertas: <info>%d novos</info> | Jams: <info>%d novos</info>',
+                $alerts,
+                $jams,
+            ));
         }
 
         if (!$dryRun) {
@@ -141,7 +118,7 @@ class WazeCollectFeedCommand extends Command
         return Command::SUCCESS;
     }
 
-    // ── HTTP ─────────────────────────────────────────────────────────────────
+    // ── HTTP ──────────────────────────────────────────────────────────────────
 
     private function fetchFeed(string $url): array
     {

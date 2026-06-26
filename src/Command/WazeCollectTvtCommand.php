@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Entity\MonitoredLink;
-use App\Entity\Partner;
 use App\Entity\WazeTvtRoute;
 use App\Entity\WazeTvtSnapshot;
 use App\Repository\MonitoredLinkRepository;
-use App\Repository\PartnerRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -20,19 +18,18 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
- * Coleta rotas e metadados do feed Waze TVT (feeds-tvt).
+ * Coleta rotas do feed Waze TVT (feedFormat=2).
  *
- * URL do feed (feedFormat=2 em MonitoredLink):
+ * URL esperada no MonitoredLink:
  *   https://www.waze.com/row-partnerhub-api/feeds-tvt/{uuid}?id={monitorId}
  */
 #[AsCommand(
     name: 'app:waze:collect-tvt',
-    description: 'Coleta rotas e contagens do feed TVT Waze para todos os links ativos (feedFormat=2).',
+    description: 'Coleta snapshots de rotas do feed TVT Waze para todos os links ativos (feedFormat=2).',
 )]
 class WazeCollectTvtCommand extends Command
 {
     public function __construct(
-        private readonly PartnerRepository       $partnerRepo,
         private readonly MonitoredLinkRepository $linkRepo,
         private readonly EntityManagerInterface  $em,
         private readonly HttpClientInterface     $httpClient,
@@ -43,8 +40,6 @@ class WazeCollectTvtCommand extends Command
     protected function configure(): void
     {
         $this
-            ->addOption('partner', 'p', InputOption::VALUE_OPTIONAL,
-                'Slug do parceiro — omitir para processar todos os ativos')
             ->addOption('dry-run', null, InputOption::VALUE_NONE,
                 'Busca e exibe o JSON sem persistir nada');
     }
@@ -53,96 +48,77 @@ class WazeCollectTvtCommand extends Command
     {
         $io     = new SymfonyStyle($input, $output);
         $dryRun = (bool) $input->getOption('dry-run');
-        $slug   = $input->getOption('partner');
 
         $io->title('Waze Collect TVT — feeds-tvt');
         if ($dryRun) {
             $io->note('Modo DRY-RUN: nenhum dado será persistido.');
         }
 
-        $partners = $slug
-            ? array_filter(
-                $this->partnerRepo->findActivePartners(),
-                fn (Partner $p) => $p->getSlug() === $slug,
-            )
-            : $this->partnerRepo->findActivePartners();
+        /** @var MonitoredLink[] $links */
+        $links = $this->linkRepo->findActiveTrafficFeeds();
 
-        if (empty($partners)) {
-            $io->warning('Nenhum parceiro ativo encontrado.');
+        if (empty($links)) {
+            $io->warning('Nenhum link TVT ativo (feedFormat=2). Cadastre um MonitoredLink.');
             return Command::SUCCESS;
         }
 
         $totalSnapshots = 0;
 
-        foreach ($partners as $partner) {
-            $io->section("Parceiro: {$partner->getName()} [{$partner->getSlug()}]");
+        foreach ($links as $link) {
+            $partner = $link->getPartner();
+            $label   = $link->getLabel() ?? $link->getUrl();
 
-            // feedFormat=2 => feeds TVT
-            /** @var MonitoredLink[] $links */
-            $links = $this->linkRepo->findBy([
-                'partner'    => $partner,
-                'feedFormat' => MonitoredLinkRepository::FORMAT_TRAFFIC,
-                'isActive'   => true,
-            ]);
+            $io->section("Parceiro: {$partner->getName()} [{$partner->getSlug()}] — {$label}");
+            $io->writeln('  URL: ' . $link->getUrl());
 
-            if (empty($links)) {
-                $io->warning('Nenhum link TVT ativo (feedFormat=2). Cadastre um MonitoredLink.');
+            try {
+                $data = $this->fetchFeed($link->getUrl());
+            } catch (\Throwable $e) {
+                $io->error('Erro ao buscar feed TVT: ' . $e->getMessage());
                 continue;
             }
 
-            foreach ($links as $link) {
-                $label = $link->getLabel() ?? $link->getUrl();
-                $io->writeln("  → [{$label}] {$link->getUrl()}");
+            $rawRoutes = $data['routes'] ?? [];
 
-                try {
-                    $data = $this->fetchFeed($link->getUrl());
-                } catch (\Throwable $e) {
-                    $io->error('  ✗ Erro ao buscar feed TVT: ' . $e->getMessage());
-                    continue;
-                }
-
-                $rawRoutes = $data['routes'] ?? [];
-
-                if ($dryRun) {
-                    $io->writeln(sprintf(
-                        '  DRY-RUN: %d rota(s) encontrada(s).',
-                        count($rawRoutes),
-                    ));
-                    foreach ($rawRoutes as $i => $r) {
-                        $io->writeln(sprintf(
-                            '    Rota %d: id=%s | name=%s | jamLevel=%s | subRoutes=%d',
-                            $i + 1,
-                            $r['id']       ?? '(sem id)',
-                            $r['name']     ?? '(sem nome)',
-                            $r['jamLevel'] ?? '?',
-                            count($r['subRoutes'] ?? []),
-                        ));
-                    }
-                    $io->writeln('  usersOnJams:');
-                    foreach (($data['usersOnJams'] ?? []) as $u) {
-                        $io->writeln(sprintf(
-                            '    jamLevel=%d → %d usuários',
-                            $u['jamLevel']    ?? 0,
-                            $u['wazersCount'] ?? 0,
-                        ));
-                    }
-                    continue;
-                }
-
-                $snapshot = $this->buildSnapshot($partner, $link, $data);
-                $this->em->persist($snapshot);
-
-                $link->setLastCollectedAt(new \DateTimeImmutable());
-                $this->em->flush();
-
-                $totalSnapshots++;
-
+            if ($dryRun) {
                 $io->writeln(sprintf(
-                    '  ✓ Snapshot salvo: <info>%d rota(s)</info>, <info>%d usuário(s) em jams</info>.',
-                    $snapshot->getRouteCount(),
-                    $snapshot->getTotalUsersOnJams(),
+                    '  DRY-RUN: %d rota(s) encontrada(s).',
+                    count($rawRoutes),
                 ));
+                foreach ($rawRoutes as $i => $r) {
+                    $io->writeln(sprintf(
+                        '    Rota %d: id=%s | name=%s | jamLevel=%s | subRoutes=%d',
+                        $i + 1,
+                        $r['id']       ?? '(sem id)',
+                        $r['name']     ?? '(sem nome)',
+                        $r['jamLevel'] ?? '?',
+                        count($r['subRoutes'] ?? []),
+                    ));
+                }
+                $io->writeln('  usersOnJams:');
+                foreach (($data['usersOnJams'] ?? []) as $u) {
+                    $io->writeln(sprintf(
+                        '    jamLevel=%d → %d usuários',
+                        $u['jamLevel']    ?? 0,
+                        $u['wazersCount'] ?? 0,
+                    ));
+                }
+                continue;
             }
+
+            $snapshot = $this->buildSnapshot($link, $data);
+            $this->em->persist($snapshot);
+
+            $link->setLastCollectedAt(new \DateTimeImmutable());
+            $this->em->flush();
+
+            $totalSnapshots++;
+
+            $io->writeln(sprintf(
+                '  ✓ Snapshot salvo: <info>%d rota(s)</info>, <info>%d usuário(s) em jams</info>.',
+                $snapshot->getRouteCount(),
+                $snapshot->getTotalUsersOnJams(),
+            ));
         }
 
         if (!$dryRun) {
@@ -152,7 +128,7 @@ class WazeCollectTvtCommand extends Command
         return Command::SUCCESS;
     }
 
-    // ── HTTP ─────────────────────────────────────────────────────────────────────
+    // ── HTTP ──────────────────────────────────────────────────────────────────
 
     private function fetchFeed(string $url): array
     {
@@ -172,17 +148,14 @@ class WazeCollectTvtCommand extends Command
         return $response->toArray();
     }
 
-    // ── Builder do Snapshot ───────────────────────────────────────────────────────
+    // ── Builder do Snapshot ───────────────────────────────────────────────────
 
-    private function buildSnapshot(
-        Partner       $partner,
-        MonitoredLink $link,
-        array         $data,
-    ): WazeTvtSnapshot {
+    private function buildSnapshot(MonitoredLink $link, array $data): WazeTvtSnapshot
+    {
         $rawRoutes = $data['routes'] ?? [];
 
         $snapshot = (new WazeTvtSnapshot())
-            ->setPartner($partner)
+            ->setPartner($link->getPartner())
             ->setSourceLink($link)
             ->setUpdateTime(isset($data['updateTime']) ? (int) $data['updateTime'] : null)
             ->setFeedName($data['name']     ?? null)
@@ -198,19 +171,17 @@ class WazeCollectTvtCommand extends Command
         foreach ($rawRoutes as $rawRoute) {
             $parentWazeId = isset($rawRoute['id']) ? (string) $rawRoute['id'] : null;
 
-            $route = $this->hydrateRoute($rawRoute, isSubRoute: false, parentWazeId: null);
-            $snapshot->addRoute($route);
+            $snapshot->addRoute($this->hydrateRoute($rawRoute, false, null));
 
             foreach (($rawRoute['subRoutes'] ?? []) as $rawSub) {
-                $sub = $this->hydrateRoute($rawSub, isSubRoute: true, parentWazeId: $parentWazeId);
-                $snapshot->addRoute($sub);
+                $snapshot->addRoute($this->hydrateRoute($rawSub, true, $parentWazeId));
             }
         }
 
         return $snapshot;
     }
 
-    // ── Hidratador de WazeTvtRoute ────────────────────────────────────────────────
+    // ── Hidratador de WazeTvtRoute ────────────────────────────────────────────
 
     private function hydrateRoute(array $raw, bool $isSubRoute, ?string $parentWazeId): WazeTvtRoute
     {
