@@ -1,3 +1,3 @@
 <?php
-// ARQUIVO REMOVIDO — use: php bin/console app:waze:collect-feed
-// Este arquivo será deletado no próximo cleanup de migração.
+declare(strict_types=1);
+// Removido — use: php bin/console app:waze:collect-feed
