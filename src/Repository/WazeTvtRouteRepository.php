@@ -36,20 +36,36 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
     }
 
     /**
-     * Rotas principais dos snapshots mais recentes do parceiro.
+     * Rotas principais do snapshot mais recente do parceiro.
+     * Filtra opcionalmente por jamLevel exato.
      */
-    public function findRecentByPartner(Partner $partner, int $limit = 20): array
+    public function findTvtByPartner(Partner $partner, ?int $jamLevel = null): array
     {
-        return $this->createQueryBuilder('r')
-            ->join('r.snapshot', 's')
-            ->where('s.partner = :partner')
-            ->andWhere('r.isSubRoute = false')
-            ->setParameter('partner', $partner)
-            ->orderBy('s.collectedAt', 'DESC')
-            ->addOrderBy('r.jamLevel', 'DESC')
-            ->setMaxResults($limit)
+        // Busca o snapshot mais recente do parceiro
+        $latestSnapshotId = $this->getEntityManager()->createQueryBuilder()
+            ->select('MAX(ls.id)')
+            ->from(WazeTvtSnapshot::class, 'ls')
+            ->where('ls.partner = :partner')
             ->getQuery()
-            ->getResult();
+            ->setParameter('partner', $partner)
+            ->getSingleScalarResult();
+
+        if (!$latestSnapshotId) {
+            return [];
+        }
+
+        $qb = $this->createQueryBuilder('r')
+            ->where('r.snapshot = :snapId')
+            ->andWhere('r.isSubRoute = false')
+            ->setParameter('snapId', $latestSnapshotId)
+            ->orderBy('r.jamLevel', 'DESC')
+            ->addOrderBy('r.name', 'ASC');
+
+        if ($jamLevel !== null) {
+            $qb->andWhere('r.jamLevel = :jl')->setParameter('jl', $jamLevel);
+        }
+
+        return $qb->getQuery()->getResult();
     }
 
     /**
@@ -80,6 +96,23 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
             ->orderBy('r.jamLevel', 'DESC')
             ->addOrderBy('s.collectedAt', 'DESC')
             ->setMaxResults(100)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Rotas principais dos snapshots mais recentes do parceiro (múltiplos snapshots).
+     */
+    public function findRecentByPartner(Partner $partner, int $limit = 20): array
+    {
+        return $this->createQueryBuilder('r')
+            ->join('r.snapshot', 's')
+            ->where('s.partner = :partner')
+            ->andWhere('r.isSubRoute = false')
+            ->setParameter('partner', $partner)
+            ->orderBy('s.collectedAt', 'DESC')
+            ->addOrderBy('r.jamLevel', 'DESC')
+            ->setMaxResults($limit)
             ->getQuery()
             ->getResult();
     }
