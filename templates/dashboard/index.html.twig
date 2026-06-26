@@ -3,7 +3,7 @@
 
 {% block stylesheets %}
 <style>
-/* ── KPI row ───────────────────────────────────────────────── */
+/* ── KPI row ──────────────────────────────────────────────────────── */
 .kpi-grid-main{
   display:grid;
   grid-template-columns:repeat(auto-fill,minmax(190px,1fr));
@@ -44,7 +44,7 @@
 .kpi-sub{
   font-size:var(--text-xs);color:var(--color-text-faint);
 }
-/* ── Charts grid ───────────────────────────────────────────── */
+/* ── Charts grid ────────────────────────────────────────────── */
 .charts-grid{
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -73,13 +73,13 @@
   padding:var(--space-4) var(--space-5);
   position:relative;
 }
-/* ── Tables row ─────────────────────────────────────────────── */
+/* ── Tables row ─────────────────────────────────────────────────── */
 .tables-grid{
   display:grid;
   grid-template-columns:1fr 1fr;
   gap:var(--space-6);
 }
-/* ── Level bar inline ───────────────────────────────────────── */
+/* ── Level bar inline ───────────────────────────────────────────── */
 .level-bar-wrap{
   display:flex;align-items:center;gap:var(--space-2);
 }
@@ -101,13 +101,13 @@
 
 {% block content %}
 
-{# ══ Cabeçalho ══════════════════════════════════════════════════════════ #}
+{# ══ Cabeçalho ════════════════════════════════════════════════════════════════════════ #}
 <div class="page-header">
   <h1 class="page-title">Dashboard</h1>
   <p class="page-subtitle">Visão geral do monitoramento — {{ partner.name }}</p>
 </div>
 
-{# ══ KPIs principais ═════════════════════════════════════════════════════ #}
+{# ══ KPIs principais ═══════════════════════════════════════════════════════════════════════ #}
 <div class="kpi-grid-main">
 
   <div class="kpi-card-main">
@@ -187,18 +187,18 @@
   <div class="kpi-card-main">
     <div class="kpi-accent-bar" style="background:var(--color-success)"></div>
     <div class="kpi-row">
-      <span class="kpi-label-main">Links monitorados</span>
+      <span class="kpi-label-main">Rotas monitoradas</span>
       <div class="kpi-icon-wrap" style="background:oklch(from var(--color-success) l c h/.12)">
-        <i data-lucide="link" style="width:16px;height:16px;color:var(--color-success)"></i>
+        <i data-lucide="map" style="width:16px;height:16px;color:var(--color-success)"></i>
       </div>
     </div>
-    <div class="kpi-value-main">{{ kpis.links|number_format(0,',','.') }}</div>
-    <div class="kpi-sub">{{ kpis.routes|number_format(0,',','.') }} snapshots TVT</div>
+    <div class="kpi-value-main">{{ kpis.routes|number_format(0,',','.') }}</div>
+    <div class="kpi-sub">{{ kpis.links|number_format(0,',','.') }} links monitorados</div>
   </div>
 
 </div>
 
-{# ══ Gráficos ════════════════════════════════════════════════════════════ #}
+{# ══ Gráficos ════════════════════════════════════════════════════════════════════════════ #}
 <div class="charts-grid">
 
   {# Linha — alertas + jams por hora (24h) #}
@@ -242,7 +242,7 @@
 
 </div>
 
-{# ══ Top subtipos (barra horizontal) ════════════════════════════════════ #}
+{# ══ Top subtipos (barra horizontal) ════════════════════════════════════════════════════ #}
 {% if alertsBySubtype is not empty %}
 <div class="chart-card" style="margin-bottom:var(--space-6)">
   <div class="chart-card-header">
@@ -257,7 +257,7 @@
 </div>
 {% endif %}
 
-{# ══ Tabelas recentes ════════════════════════════════════════════════════ #}
+{# ══ Tabelas recentes ════════════════════════════════════════════════════════════════════════ #}
 <div class="tables-grid">
 
   {# Alertas recentes #}
@@ -366,7 +366,7 @@
 (function(){
   'use strict';
 
-  // ── Dados vindos do Symfony ────────────────────────────────
+  // ── Dados vindos do Symfony ─────────────────────────────────────────
   const alertsPerHour = {{ alertsPerHour|json_encode|raw }};
   const jamsPerHour   = {{ jamsPerHour|json_encode|raw }};
 
@@ -374,7 +374,7 @@
   const jamsByLevel   = {{ jamsByLevel|json_encode|raw }};
   const alertsBySub   = {{ alertsBySubtype|json_encode|raw }};
 
-  // ── Traduções JS ───────────────────────────────────────────
+  // ── Traduções JS ───────────────────────────────────────────────
   const TYPE_LABELS = {
     ACCIDENT:'Acidente', HAZARD:'Perigo na via', JAM:'Congestionamento',
     ROAD_CLOSED:'Via fechada', WEATHERHAZARD:'Risco climático',
@@ -396,7 +396,7 @@
   const LEVEL_LABELS = ['Livre','Leve','Moderado','Pesado','Intenso','Parado'];
   const label = (map, key) => map[key] || key;
 
-  // ── Tema dinâmico ──────────────────────────────────────────
+  // ── Tema dinâmico ──────────────────────────────────────────────────
   const root = getComputedStyle(document.documentElement);
   const cv = (v) => root.getPropertyValue(v).trim();
   const COLORS = {
@@ -420,13 +420,12 @@
     drawBorder: false,
   };
 
-  // ── helpers de hora ────────────────────────────────────────
+  // ── helpers de hora ───────────────────────────────────────────────
   const now = new Date();
   const hours = Array.from({length:24}, (_, i) => {
     const h = (now.getHours() - 23 + i + 24) % 24;
     return h.toString().padStart(2,'0') + 'h';
   });
-  // reordena alertsPerHour / jamsPerHour de acordo
   function reorderPerHour(arr) {
     const base = now.getHours();
     const out = [];
@@ -434,7 +433,7 @@
     return out;
   }
 
-  // ── 1. Gráfico de linha — ocorrências por hora ─────────────
+  // ── 1. Gráfico de linha — ocorrências por hora ─────────────────
   new Chart(document.getElementById('chartHourly'), {
     type: 'line',
     data: {
@@ -469,7 +468,7 @@
     }
   });
 
-  // ── 2. Rosca — alertas por tipo ────────────────────────────
+  // ── 2. Rosca — alertas por tipo ─────────────────────────────
   const typeColors = [COLORS.warning, COLORS.orange, COLORS.error, COLORS.primary, COLORS.gold, COLORS.success, COLORS.muted, '#7a39bb'];
   new Chart(document.getElementById('chartAlertType'), {
     type: 'doughnut',
@@ -491,7 +490,7 @@
     }
   });
 
-  // ── 3. Barras — jams por nível ─────────────────────────────
+  // ── 3. Barras — jams por nível ───────────────────────────────
   const levelPalette = ['#6daa45','#6daa45','#da7101','#da7101','#a12c7b','#a12c7b'];
   new Chart(document.getElementById('chartJamLevel'), {
     type: 'bar',
@@ -515,7 +514,7 @@
     }
   });
 
-  // ── 4. Barras horizontais — top subtipos ───────────────────
+  // ── 4. Barras horizontais — top subtipos ───────────────────────
   const subtypeCanvas = document.getElementById('chartSubtype');
   if (subtypeCanvas && alertsBySub.length) {
     new Chart(subtypeCanvas, {
