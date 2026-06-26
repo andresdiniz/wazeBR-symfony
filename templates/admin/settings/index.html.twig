@@ -1,0 +1,95 @@
+{% extends 'base.html.twig' %}
+{% block title %}Configurações{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Configurações do Sistema</h1>
+  <div class="page-subtitle">Intervalos de coleta e atualização de dados</div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6);max-width:900px">
+
+  <div class="card">
+    <div class="card-header"><span class="card-title"><i data-lucide="triangle-alert" style="width:14px;height:14px;display:inline"></i> Alertas Waze</span></div>
+    <div style="padding:var(--space-6)">
+      <form method="post" action="{{ path('admin_settings_save') }}">
+        <input type="hidden" name="key" value="waze_alerts_interval">
+        <div class="form-group">
+          <label class="form-label">Intervalo de coleta (segundos)</label>
+          <input class="form-control" type="number" name="value" min="30" max="3600"
+            value="{{ settings['waze_alerts_interval'] ?? 60 }}">
+          <span class="form-hint">Padrão: 60s. Mínimo: 30s.</span>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Salvar</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title"><i data-lucide="traffic-cone" style="width:14px;height:14px;display:inline"></i> Congestionamentos</span></div>
+    <div style="padding:var(--space-6)">
+      <form method="post" action="{{ path('admin_settings_save') }}">
+        <input type="hidden" name="key" value="waze_jams_interval">
+        <div class="form-group">
+          <label class="form-label">Intervalo de coleta (segundos)</label>
+          <input class="form-control" type="number" name="value" min="30" max="3600"
+            value="{{ settings['waze_jams_interval'] ?? 60 }}">
+          <span class="form-hint">Padrão: 60s.</span>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Salvar</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title"><i data-lucide="cloud-rain" style="width:14px;height:14px;display:inline"></i> CEMADEN</span></div>
+    <div style="padding:var(--space-6)">
+      <form method="post" action="{{ path('admin_settings_save') }}">
+        <input type="hidden" name="key" value="cemaden_interval">
+        <div class="form-group">
+          <label class="form-label">Intervalo de coleta (segundos)</label>
+          <input class="form-control" type="number" name="value" min="300" max="7200"
+            value="{{ settings['cemaden_interval'] ?? 900 }}">
+          <span class="form-hint">Padrão: 900s (15 min). API pública: respeite limites.</span>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Salvar</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title"><i data-lucide="route" style="width:14px;height:14px;display:inline"></i> Rotas TVT</span></div>
+    <div style="padding:var(--space-6)">
+      <form method="post" action="{{ path('admin_settings_save') }}">
+        <input type="hidden" name="key" value="tvt_interval">
+        <div class="form-group">
+          <label class="form-label">Intervalo de coleta (segundos)</label>
+          <input class="form-control" type="number" name="value" min="60" max="3600"
+            value="{{ settings['tvt_interval'] ?? 120 }}">
+          <span class="form-hint">Padrão: 120s.</span>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Salvar</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card" style="grid-column:span 2">
+    <div class="card-header"><span class="card-title"><i data-lucide="cloud" style="width:14px;height:14px;display:inline"></i> Clima (Open-Meteo)</span></div>
+    <div style="padding:var(--space-6)">
+      <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-4)">
+        O clima é buscado via <strong>Open-Meteo</strong> — API gratuita, sem necessidade de chave. A busca é feita sob demanda pelo usuário na tela de Cidades. Nenhuma configuração necessária.
+      </p>
+      <form method="post" action="{{ path('admin_settings_save') }}">
+        <input type="hidden" name="key" value="weather_cache_minutes">
+        <div class="form-group" style="max-width:280px">
+          <label class="form-label">Cache da resposta (minutos)</label>
+          <input class="form-control" type="number" name="value" min="5" max="120"
+            value="{{ settings['weather_cache_minutes'] ?? 30 }}">
+          <span class="form-hint">Evita chamadas repetidas para a mesma cidade.</span>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Salvar</button>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

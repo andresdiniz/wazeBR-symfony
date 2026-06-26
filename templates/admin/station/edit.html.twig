@@ -1,0 +1,45 @@
+{% extends 'base.html.twig' %}
+{% block title %}Editar Estação{% endblock %}
+{% block content %}
+<div class="page-header" style="display:flex;align-items:center;gap:var(--space-4)">
+  <a href="{{ path('admin_station_index') }}" class="btn btn-ghost btn-sm">
+    <i data-lucide="arrow-left" style="width:14px;height:14px"></i> Voltar
+  </a>
+  <h1 class="page-title">Editar Estação</h1>
+</div>
+<div class="card" style="max-width:580px">
+  <div style="padding:var(--space-6)">
+    <form method="post">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+        <div class="form-group">
+          <label class="form-label">Código</label>
+          <input class="form-control" name="code" required value="{{ station.stationCode }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">UF</label>
+          <input class="form-control" name="state" maxlength="2" required value="{{ station.state }}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nome</label>
+        <input class="form-control" name="station_name" required value="{{ station.stationName }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Município</label>
+        <input class="form-control" name="municipality" required value="{{ station.municipality }}">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+        <div class="form-group">
+          <label class="form-label">Latitude</label>
+          <input class="form-control" name="latitude" type="number" step="0.0000001" required value="{{ station.latitude }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Longitude</label>
+          <input class="form-control" name="longitude" type="number" step="0.0000001" required value="{{ station.longitude }}">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%">Salvar</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

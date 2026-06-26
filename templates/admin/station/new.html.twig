@@ -1,0 +1,54 @@
+{% extends 'base.html.twig' %}
+{% block title %}Nova Estação CEMADEN{% endblock %}
+{% block content %}
+<div class="page-header" style="display:flex;align-items:center;gap:var(--space-4)">
+  <a href="{{ path('admin_station_index') }}" class="btn btn-ghost btn-sm">
+    <i data-lucide="arrow-left" style="width:14px;height:14px"></i> Voltar
+  </a>
+  <h1 class="page-title">Nova Estação CEMADEN</h1>
+</div>
+<div class="card" style="max-width:580px">
+  <div style="padding:var(--space-6)">
+    <form method="post">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+        <div class="form-group">
+          <label class="form-label" for="code">Código da Estação</label>
+          <input class="form-control" id="code" name="code" required placeholder="ex: 310620901A">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="state">UF</label>
+          <input class="form-control" id="state" name="state" maxlength="2" required placeholder="MG">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="station_name">Nome da Estação</label>
+        <input class="form-control" id="station_name" name="station_name" required placeholder="ex: São Paulo - Bom Retiro">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="municipality">Município</label>
+        <input class="form-control" id="municipality" name="municipality" required placeholder="ex: Belo Horizonte">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+        <div class="form-group">
+          <label class="form-label" for="lat">Latitude</label>
+          <input class="form-control" id="lat" name="latitude" type="number" step="0.0000001" required placeholder="-19.9167">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="lng">Longitude</label>
+          <input class="form-control" id="lng" name="longitude" type="number" step="0.0000001" required placeholder="-43.9345">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="partner_id">Parceiro (opcional)</label>
+        <select class="form-control" id="partner_id" name="partner_id">
+          <option value="">Nenhum / Global</option>
+          {% for p in partners %}
+            <option value="{{ p.id }}">{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%">Criar Estação</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

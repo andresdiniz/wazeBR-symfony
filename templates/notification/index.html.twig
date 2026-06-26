@@ -1,36 +1,51 @@
 {% extends 'base.html.twig' %}
 {% block title %}Notificações{% endblock %}
 {% block content %}
-<div class="page-header">
-  <h1>Notificações</h1>
+<div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-4)">
+  <div>
+    <h1 class="page-title">Notificações</h1>
+    <div class="page-subtitle">Alertas e avisos do sistema</div>
+  </div>
 </div>
 
-<div class="table-wrapper">
-  <table>
-    <thead>
-      <tr>
-        <th>Título</th>
-        <th>Lida</th>
-        <th>Data</th>
-        <th>Ações</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for notification in notifications %}
-      <tr class="{{ notification.isRead ? '' : 'row-unread' }}">
-        <td>{{ notification.title }}</td>
-        <td>{{ notification.isRead ? 'Sim' : 'Não' }}</td>
-        <td>{{ notification.createdAt|date('d/m/Y H:i') }}</td>
-        <td>
-          {% if not notification.isRead %}
-          <a href="{{ path('notification_mark_read', {id: notification.id}) }}" class="btn btn-sm">Marcar lida</a>
-          {% endif %}
-        </td>
-      </tr>
+<div class="card">
+  <div style="overflow-x:auto">
+    <table>
+      <thead>
+        <tr>
+          <th>Título</th>
+          <th>Mensagem</th>
+          <th>Lida</th>
+          <th>Data</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for n in notifications %}
+        <tr style="{% if not n.isRead %}background:oklch(from var(--color-primary) l c h/.04){% endif %}">
+          <td style="font-weight:{% if not n.isRead %}600{% else %}400{% endif %}">{{ n.title }}</td>
+          <td style="color:var(--color-text-muted);font-size:var(--text-xs);max-width:300px">{{ n.body ?? '' }}</td>
+          <td>
+            {% if n.isRead %}
+              <span class="badge badge-gray">Lida</span>
+            {% else %}
+              <span class="badge" style="background:oklch(from var(--color-primary) l c h/.15);color:var(--color-primary)">Nova</span>
+            {% endif %}
+          </td>
+          <td style="font-variant-numeric:tabular-nums;font-size:var(--text-xs)">
+            <time data-utc="{{ n.createdAt|date('c') }}" data-fmt="datetime">{{ n.createdAt|date('d/m/Y H:i') }}</time>
+          </td>
+          <td>
+            {% if not n.isRead %}
+              <a href="{{ path('notification_mark_read', {id: n.id}) }}" class="btn btn-ghost btn-sm">Marcar lida</a>
+            {% endif %}
+          </td>
+        </tr>
       {% else %}
-      <tr><td colspan="4" class="empty-cell">Nenhuma notificação.</td></tr>
+        <tr><td colspan="5" style="text-align:center;padding:var(--space-16);color:var(--color-text-muted)">Nenhuma notificação.</td></tr>
       {% endfor %}
-    </tbody>
-  </table>
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}
