@@ -1,35 +1,87 @@
 {% extends 'base.html.twig' %}
-{% block title %}Histórico — {{ routeName }}{% endblock %}
+{% block title %}Histórico — {{ latest.name ?? wazeRouteId }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  .jam-0{background:oklch(from var(--color-success) l c h/.12);color:var(--color-success)}
+  .jam-1{background:oklch(from var(--color-gold) l c h/.12);color:var(--color-gold)}
+  .jam-2{background:oklch(from var(--color-orange) l c h/.15);color:var(--color-orange)}
+  .jam-3{background:oklch(from var(--color-error) l c h/.12);color:var(--color-error)}
+  .jam-4{background:oklch(from var(--color-error) l c h/.2);color:var(--color-error)}
+  .jam-5{background:var(--color-error);color:#fff}
+  .delay-pos{color:var(--color-error)}
+  .delay-neg{color:var(--color-success)}
+  .delay-zero{color:var(--color-text-faint)}
+  .viz-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6);margin-bottom:var(--space-6)}
+  @media(max-width:768px){.viz-grid{grid-template-columns:1fr}}
+  #history-map{height:340px;border-radius:var(--radius-lg);z-index:1;border:1px solid var(--color-border)}
+  .leaflet-popup-content-wrapper{border-radius:var(--radius-md)!important;box-shadow:var(--shadow-lg)!important;font-family:var(--font-body)!important;font-size:var(--text-xs)!important}
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-4)">
+<div class="page-header" style="display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap">
+  <a href="{{ path('route_admin_index') }}" class="btn btn-ghost btn-sm">
+    <i data-lucide="arrow-left" style="width:14px;height:14px"></i> Voltar
+  </a>
   <div>
-    <a href="{{ path('route_admin_index') }}" style="font-size:var(--text-sm);color:var(--color-text-muted);display:inline-flex;align-items:center;gap:4px;margin-bottom:var(--space-2)">
-      <i data-lucide="arrow-left" style="width:14px;height:14px"></i> Voltar
-    </a>
-    <h1 class="page-title">{{ routeName }}</h1>
-    <p class="page-subtitle">Histórico de snapshots &mdash; últimos {{ history|length }} registros</p>
+    <h1 class="page-title">{{ latest.name ?? 'Rota' }}</h1>
+    <div class="page-subtitle">{{ latest.fromName ?? '' }}{% if latest.fromName and latest.toName %} &rarr; {% endif %}{{ latest.toName ?? '' }} &mdash; {{ history|length }} registro(s)</div>
   </div>
 </div>
 
-{# Gráfico #}
-<div class="card" style="margin-bottom:var(--space-6)">
-  <div class="card-header"><span class="card-title">Evolução do tempo de percurso</span></div>
-  <div class="card-body"><canvas id="chart-history" style="max-height:320px"></canvas></div>
+<div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));margin-bottom:var(--space-6)">
+  <div class="kpi-card">
+    <div class="kpi-label">Jam atual</div>
+    <div class="kpi-value"><span class="badge jam-{{ latest.jamLevel ?? 0 }}">{{ latest.jamLevelLabel }}</span></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Tempo atual</div>
+    <div class="kpi-value">{% if latest.time is not null %}{{ (latest.time/60)|round(1) }} min{% else %}&mdash;{% endif %}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Tempo hist&oacute;rico</div>
+    <div class="kpi-value" style="color:var(--color-text-muted)">{% if latest.historicTime is not null %}{{ (latest.historicTime/60)|round(1) }} min{% else %}&mdash;{% endif %}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Extens&atilde;o</div>
+    <div class="kpi-value">{{ latest.length ? (latest.length/1000)|round(2) ~ ' km' : '&mdash;' }}</div>
+  </div>
 </div>
 
-{# Tabela #}
+{# Gráfico + Mapa lado a lado #}
+<div class="viz-grid">
+  <div class="card">
+    <div class="card-header"><span class="card-title">Evolução temporal</span></div>
+    <div style="padding:var(--space-4)">
+      <canvas id="chart-history" height="120"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i data-lucide="map" style="width:14px;height:14px;display:inline"></i> Trajeto da rota</span>
+    </div>
+    <div style="padding:var(--space-4)">
+      <div id="history-map"></div>
+    </div>
+  </div>
+</div>
+
 <div class="card">
   <div class="card-header"><span class="card-title">Registros</span></div>
   <div style="overflow-x:auto">
     <table>
-      <thead><tr>
-        <th>Coletado em</th>
-        <th>Jam</th>
-        <th style="text-align:right">Tempo atual</th>
-        <th style="text-align:right">Histórico</th>
-        <th style="text-align:right">Atraso</th>
-      </tr></thead>
+      <thead>
+        <tr>
+          <th>Coletado em</th>
+          <th>Jam</th>
+          <th style="text-align:right">Atual</th>
+          <th style="text-align:right">Hist&oacute;rico</th>
+          <th style="text-align:right">Atraso</th>
+        </tr>
+      </thead>
       <tbody>
       {% for r in history %}
         {% set delay = r.delaySeconds %}
@@ -60,21 +112,23 @@
 
 {% block javascripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function(){
-  const FMT = WazeTZ.FMT_DATE; // dd/mm/yyyy no fuso do usuário
+  const tz  = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const FMT = new Intl.DateTimeFormat('pt-BR', { timeZone: tz, day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
 
   const raw = {{ history|map(r => {
-    iso:  r.snapshot.collectedAt|date('c'),
+    t:    r.snapshot.collectedAt|date('c'),
     time: r.time,
     hist: r.historicTime,
     jam:  r.jamLevel
   })|json_encode|raw }};
 
-  const sorted  = [...raw].reverse();
-  const labels  = sorted.map(r => FMT.format(new Date(r.iso)));
-  const times   = sorted.map(r => r.time  !== null ? +(r.time /60).toFixed(1) : null);
-  const hists   = sorted.map(r => r.hist  !== null ? +(r.hist /60).toFixed(1) : null);
+  const ordered  = [...raw].reverse();
+  const labels   = ordered.map(r => FMT.format(new Date(r.t)));
+  const times    = ordered.map(r => r.time !== null ? +(r.time/60).toFixed(1) : null);
+  const hists    = ordered.map(r => r.hist !== null ? +(r.hist/60).toFixed(1) : null);
 
   new Chart(document.getElementById('chart-history'), {
     type: 'line',
@@ -90,10 +144,51 @@
       interaction: { mode: 'index', intersect: false },
       plugins: { legend: { position: 'top' } },
       scales: {
-        x: { ticks: { maxTicksLimit: 12, maxRotation: 45 } },
+        x: { ticks: { maxTicksLimit: 10, maxRotation: 45 } },
         y: { beginAtZero: true, title: { display: true, text: 'minutos' } }
       }
     }
+  });
+
+  // --- Mapa Leaflet com o trajeto da rota ---
+  const routeLine = {{ latest.line is defined and latest.line is not null ? latest.line|json_encode|raw : 'null' }};
+  const mapEl = document.getElementById('history-map');
+
+  if (routeLine && routeLine.length && mapEl) {
+    const map = L.map('history-map', { zoomControl: true, scrollWheelZoom: false });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors', maxZoom: 18
+    }).addTo(map);
+
+    const jamColors = ['#437a22','#d19900','#da7101','#a12c7b','#a13544','#dc2626'];
+    const color     = jamColors[{{ latest.jamLevel ?? 0 }}] ?? '#888';
+    const latlngs   = routeLine.map(p => [p.y, p.x]);
+
+    const pl = L.polyline(latlngs, { color, weight: 5, opacity: 0.85 }).addTo(map);
+
+    // Marcadores início e fim
+    if (latlngs.length >= 2) {
+      const iconOpts = (label, bg) => L.divIcon({
+        html: `<div style="background:${bg};color:#fff;font-size:10px;font-weight:700;padding:3px 7px;border-radius:12px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3)">${label}</div>`,
+        className: '', iconAnchor: [0, 0]
+      });
+      L.marker(latlngs[0], { icon: iconOpts('Início', '#01696f') })
+        .bindPopup('{{ latest.fromName|e('js') ?? 'Início' }}').addTo(map);
+      L.marker(latlngs[latlngs.length - 1], { icon: iconOpts('Fim', '#a12c7b') })
+        .bindPopup('{{ latest.toName|e('js') ?? 'Fim' }}').addTo(map);
+    }
+
+    map.fitBounds(pl.getBounds(), { padding: [20, 20] });
+  } else if (mapEl) {
+    mapEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--color-text-muted);font-size:var(--text-sm)">Geometria da rota não disponível</div>';
+  }
+
+  // Datas no fuso do usuário
+  document.querySelectorAll('time[data-utc][data-fmt]').forEach(el => {
+    try {
+      const d = new Date(el.dataset.utc);
+      if (el.dataset.fmt === 'datetime') el.textContent = FMT.format(d);
+    } catch(e) {}
   });
 })();
 </script>
