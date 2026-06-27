@@ -121,28 +121,28 @@
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function(){
-  const tz  = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const FMT = new Intl.DateTimeFormat('pt-BR', { timeZone: tz, day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+  var tz  = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  var FMT = new Intl.DateTimeFormat('pt-BR', { timeZone: tz, day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
 
-  const raw = {{ history|map(r => {
+  var raw = {{ history|map(r => {
     t:    r.snapshot.collectedAt|date('c'),
     time: r.time,
     hist: r.historicTime,
     jam:  r.jamLevel
   })|json_encode|raw }};
 
-  const ordered = [...raw].reverse();
-  const labels  = ordered.map(r => FMT.format(new Date(r.t)));
-  const times   = ordered.map(r => r.time !== null ? +(r.time/60).toFixed(1) : null);
-  const hists   = ordered.map(r => r.hist !== null ? +(r.hist/60).toFixed(1) : null);
+  var ordered = raw.slice().reverse();
+  var labels  = ordered.map(function(r){ return FMT.format(new Date(r.t)); });
+  var times   = ordered.map(function(r){ return r.time !== null ? +(r.time/60).toFixed(1) : null; });
+  var hists   = ordered.map(function(r){ return r.hist !== null ? +(r.hist/60).toFixed(1) : null; });
 
   new Chart(document.getElementById('chart-history'), {
     type: 'line',
     data: {
-      labels,
+      labels: labels,
       datasets: [
         { label: 'Tempo atual (min)', data: times, borderColor: '#a12c7b', backgroundColor: 'oklch(0.5 0.2 330 / 0.08)', tension: 0.3, fill: true, pointRadius: 2 },
-        { label: 'Histórico (min)',   data: hists, borderColor: '#437a22', borderDash: [4,3], tension: 0.3, pointRadius: 2 }
+        { label: 'Hist\u00f3rico (min)',   data: hists, borderColor: '#437a22', borderDash: [4,3], tension: 0.3, pointRadius: 2 }
       ]
     },
     options: {
@@ -157,26 +157,29 @@
   });
 
   // --- Mapa Leaflet ---
-  const routeLine = {{ jsLine }};
-  const mapEl    = document.getElementById('history-map');
+  var routeLine = {{ jsLine }};
+  var mapEl     = document.getElementById('history-map');
 
   if (routeLine && routeLine.length && mapEl) {
-    const map = L.map('history-map', { zoomControl: true, scrollWheelZoom: false });
+    var map = L.map('history-map', { zoomControl: true, scrollWheelZoom: false });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors', maxZoom: 18
+      attribution: '\u00a9 OpenStreetMap contributors', maxZoom: 18
     }).addTo(map);
 
-    const jamColors = ['#437a22','#d19900','#da7101','#a12c7b','#a13544','#dc2626'];
-    const color     = jamColors[{{ jsJamLevel }}] ?? '#888';
-    const latlngs   = routeLine.map(p => [p.y, p.x]);
-    const pl        = L.polyline(latlngs, { color, weight: 5, opacity: 0.85 }).addTo(map);
+    var jamColors = ['#437a22','#d19900','#da7101','#a12c7b','#a13544','#dc2626'];
+    var color     = jamColors[{{ jsJamLevel }}] || '#888';
+    var latlngs   = routeLine.map(function(p){ return [p.y, p.x]; });
+    var pl        = L.polyline(latlngs, { color: color, weight: 5, opacity: 0.85 }).addTo(map);
 
     if (latlngs.length >= 2) {
-      const mkIcon = (label, bg) => L.divIcon({
-        html: `<div style="background:${bg};color:#fff;font-size:10px;font-weight:700;padding:3px 7px;border-radius:12px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3)">${label}</div>`,
-        className: '', iconAnchor: [0, 0]
-      });
-      L.marker(latlngs[0], { icon: mkIcon('Início', '#01696f') })
+      var mkIcon = function(label, bg) {
+        return L.divIcon({
+          html: '<div style="background:' + bg + ';color:#fff;font-size:10px;font-weight:700;padding:3px 7px;border-radius:12px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3)">' + label + '</div>',
+          className: '',
+          iconAnchor: [0, 0]
+        });
+      };
+      L.marker(latlngs[0], { icon: mkIcon('In\u00edcio', '#01696f') })
         .bindPopup('{{ jsFromName }}').addTo(map);
       L.marker(latlngs[latlngs.length - 1], { icon: mkIcon('Fim', '#a12c7b') })
         .bindPopup('{{ jsToName }}').addTo(map);
@@ -184,13 +187,13 @@
 
     map.fitBounds(pl.getBounds(), { padding: [20, 20] });
   } else if (mapEl) {
-    mapEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--color-text-muted);font-size:var(--text-sm)">Geometria da rota não disponível</div>';
+    mapEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--color-text-muted);font-size:var(--text-sm)">Geometria da rota n\u00e3o dispon\u00edvel</div>';
   }
 
   // Datas no fuso do usuário
-  document.querySelectorAll('time[data-utc][data-fmt]').forEach(el => {
+  document.querySelectorAll('time[data-utc][data-fmt]').forEach(function(el) {
     try {
-      const d = new Date(el.dataset.utc);
+      var d = new Date(el.dataset.utc);
       if (el.dataset.fmt === 'datetime') el.textContent = FMT.format(d);
     } catch(e) {}
   });
