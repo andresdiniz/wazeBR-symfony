@@ -6,6 +6,7 @@ namespace App\Controller\Admin;
 
 use App\Entity\MonitoredLink;
 use App\Entity\Partner;
+use App\Enum\LinkType;
 use App\Repository\MonitoredLinkRepository;
 use App\Repository\PartnerRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -62,16 +63,20 @@ class MonitoredLinkAdminController extends AbstractController
                 return $this->redirectToRoute('admin_link_new');
             }
 
-            $type = $request->request->get('type', 'generic');
-            if (!in_array($type, MonitoredLink::TYPES, true)) {
+            $linkTypeValue = $request->request->get('link_type', LinkType::WazeFeed->value);
+            $linkType = LinkType::tryFrom($linkTypeValue);
+            if ($linkType === null) {
                 $this->addFlash('error', 'Tipo inválido.');
                 return $this->redirectToRoute('admin_link_new');
             }
 
+            $feedFormat = (int) $request->request->get('feed_format', 1);
+
             $link = (new MonitoredLink())
-                ->setName((string) $request->request->get('name'))
+                ->setLabel((string) $request->request->get('label'))
                 ->setUrl((string) $request->request->get('url'))
-                ->setType($type)
+                ->setLinkType($linkType)
+                ->setFeedFormat($feedFormat)
                 ->setIsActive(true);
 
             $link->setPartner($partner);
@@ -80,15 +85,15 @@ class MonitoredLinkAdminController extends AbstractController
             $this->em->flush();
 
             $this->addFlash('success',
-                "Link '{$link->getName()}' ({$link->getTypeLabel()}) criado para {$partner->getName()}."
+                "Link '{$link->getLabel()}' ({$linkType->label()}) criado para {$partner->getName()}."
             );
 
             return $this->redirectToRoute('admin_link_index');
         }
 
         return $this->render('admin/link/new.html.twig', [
-            'partners' => $partners,
-            'types'    => MonitoredLink::TYPES,
+            'partners'   => $partners,
+            'link_types' => LinkType::cases(),
         ]);
     }
 
@@ -97,26 +102,30 @@ class MonitoredLinkAdminController extends AbstractController
     public function edit(MonitoredLink $link, Request $request): Response
     {
         if ($request->isMethod('POST')) {
-            $type = $request->request->get('type', $link->getType());
-            if (!in_array($type, MonitoredLink::TYPES, true)) {
+            $linkTypeValue = $request->request->get('link_type', $link->getLinkType()->value);
+            $linkType = LinkType::tryFrom($linkTypeValue);
+            if ($linkType === null) {
                 $this->addFlash('error', 'Tipo inválido.');
                 return $this->redirectToRoute('admin_link_edit', ['id' => $link->getId()]);
             }
 
+            $feedFormat = (int) $request->request->get('feed_format', $link->getFeedFormat());
+
             $link
-                ->setName((string) $request->request->get('name'))
+                ->setLabel((string) $request->request->get('label'))
                 ->setUrl((string) $request->request->get('url'))
-                ->setType($type);
+                ->setLinkType($linkType)
+                ->setFeedFormat($feedFormat);
 
             $this->em->flush();
 
-            $this->addFlash('success', "Link '{$link->getName()}' atualizado.");
+            $this->addFlash('success', "Link '{$link->getLabel()}' atualizado.");
             return $this->redirectToRoute('admin_link_index');
         }
 
         return $this->render('admin/link/edit.html.twig', [
-            'link'  => $link,
-            'types' => MonitoredLink::TYPES,
+            'link'       => $link,
+            'link_types' => LinkType::cases(),
         ]);
     }
 
@@ -128,7 +137,7 @@ class MonitoredLinkAdminController extends AbstractController
         $this->em->flush();
 
         $status = $link->isActive() ? 'ativado' : 'desativado';
-        $this->addFlash('success', "Link '{$link->getName()}' {$status}.");
+        $this->addFlash('success', "Link '{$link->getLabel()}' {$status}.");
 
         return $this->redirectToRoute('admin_link_index');
     }
@@ -142,11 +151,11 @@ class MonitoredLinkAdminController extends AbstractController
             return $this->redirectToRoute('admin_link_index');
         }
 
-        $name = $link->getName();
+        $label = $link->getLabel() ?? $link->getUrl();
         $this->em->remove($link);
         $this->em->flush();
 
-        $this->addFlash('success', "Link '{$name}' removido.");
+        $this->addFlash('success', "Link '{$label}' removido.");
         return $this->redirectToRoute('admin_link_index');
     }
 }
