@@ -19,6 +19,41 @@ class WazeRouteRepository extends ServiceEntityRepository
     }
 
     /**
+     * Todas as rotas ativas (com coordenadas from/to definidas).
+     *
+     * @return WazeRoute[]
+     */
+    public function findAllActive(): array
+    {
+        return $this->createQueryBuilder('r')
+            ->leftJoin('r.partner', 'p')
+            ->where('r.isActive = true')
+            ->andWhere('r.coordinates IS NOT NULL')
+            ->orderBy('p.name', 'ASC')
+            ->addOrderBy('r.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Rotas ativas de um parceiro filtrado por slug.
+     *
+     * @return WazeRoute[]
+     */
+    public function findActiveByPartnerSlug(string $slug): array
+    {
+        return $this->createQueryBuilder('r')
+            ->join('r.partner', 'p')
+            ->where('r.isActive = true')
+            ->andWhere('p.slug = :slug')
+            ->andWhere('r.coordinates IS NOT NULL')
+            ->setParameter('slug', $slug)
+            ->orderBy('r.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * @return WazeRoute[]
      */
     public function findByPartner(Partner $partner, bool $activeOnly = true): array
