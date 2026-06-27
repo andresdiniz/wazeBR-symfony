@@ -1,5 +1,57 @@
 {% extends 'base.html.twig' %}
 {% block title %}Alertas{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  /* Garante que o card do mapa não corte as camadas do Leaflet */
+  #map-card { overflow: visible; }
+  #alert-map { height: 420px; border-radius: 0 0 var(--radius-lg) var(--radius-lg); z-index: 0; }
+
+  /* Popup do mapa */
+  .leaflet-popup-content-wrapper { border-radius: var(--radius-md); box-shadow: var(--shadow-md); font-family: var(--font-body); }
+  .popup-inner { font-size: 13px; line-height: 1.5; min-width: 180px; }
+  .popup-type  { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+  .popup-sub   { font-size: 11px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+  .popup-street{ font-weight: 500; margin-bottom: 2px; }
+  .popup-city  { font-size: 12px; color: var(--color-text-muted); margin-bottom: 6px; }
+  .popup-meta  { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--color-text-muted); margin-bottom: 8px; }
+  .popup-link  { display: inline-block; font-size: 12px; color: var(--color-primary); text-decoration: none; font-weight: 500; }
+  .popup-link:hover { text-decoration: underline; }
+
+  /* Badges coloridos */
+  .badge-red    { background: oklch(from var(--color-error)   l c h / .12); color: var(--color-error);   }
+  .badge-orange { background: oklch(from var(--color-orange)  l c h / .12); color: var(--color-orange);  }
+  .badge-yellow { background: oklch(from var(--color-warning) l c h / .12); color: var(--color-warning); }
+  .badge-green  { background: oklch(from var(--color-success) l c h / .12); color: var(--color-success); }
+
+  /* Paginação */
+  .pagination { display: flex; align-items: center; gap: var(--space-1); }
+  .pagination a, .pagination span {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: var(--radius-md);
+    font-size: var(--text-sm); border: 1px solid var(--color-border);
+    color: var(--color-text-muted); text-decoration: none;
+    transition: all var(--transition);
+  }
+  .pagination a:hover { background: var(--color-surface-offset); color: var(--color-text); }
+  .pagination .current { background: var(--color-primary); color: #fff; border-color: var(--color-primary); font-weight: 600; }
+
+  /* form-input e form-select (alias de form-control) */
+  .form-input, .form-select {
+    width: 100%; padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm); border: 1px solid var(--color-border);
+    border-radius: var(--radius-md); background: var(--color-surface-2);
+    color: var(--color-text); transition: border-color var(--transition), box-shadow var(--transition);
+  }
+  .form-input:focus, .form-select:focus {
+    outline: none; border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px oklch(from var(--color-primary) l c h / .15);
+  }
+  .card-body { padding: var(--space-4) var(--space-5); }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-4)">
   <div>
@@ -14,7 +66,7 @@
     <form method="get" style="display:flex;flex-wrap:wrap;gap:var(--space-4);align-items:flex-end">
       <div class="form-group" style="margin:0;flex:1;min-width:140px">
         <label class="form-label">Tipo</label>
-        <select name="type" class="form-input form-select">
+        <select name="type" class="form-select">
           <option value="">Todos</option>
           {% for t in types %}
             <option value="{{ t }}" {{ type == t ? 'selected' : '' }}>{{ t }}</option>
@@ -46,13 +98,17 @@
 </div>
 
 {% if alerts is empty %}
-  <div class="card"><div class="card-body" style="text-align:center;padding:var(--space-16);color:var(--color-text-muted)">Nenhum alerta encontrado.</div></div>
+  <div class="card">
+    <div class="card-body" style="text-align:center;padding:var(--space-16);color:var(--color-text-muted)">
+      Nenhum alerta encontrado.
+    </div>
+  </div>
 {% else %}
 
-{# Mapa #}
-<div class="card" style="margin-bottom:var(--space-6)">
+{# Mapa — overflow:visible para o Leaflet não ser cortado pelo card #}
+<div class="card" id="map-card" style="margin-bottom:var(--space-6);overflow:visible">
   <div class="card-header"><span class="card-title">Mapa de alertas</span></div>
-  <div id="alert-map" style="height:380px;border-radius:0 0 var(--radius-lg) var(--radius-lg)"></div>
+  <div id="alert-map"></div>
 </div>
 
 {# Tabela #}
@@ -87,7 +143,7 @@
             {% else %}—{% endif %}
           </td>
           <td style="text-align:center;font-size:var(--text-xs);color:var(--color-text-muted)">
-            {{ a.nThumbsUp ?? '—' }}
+            {{ a.nThumbsUp ?? 0 }}
           </td>
           <td style="font-size:var(--text-xs);color:var(--color-text-muted);white-space:nowrap">
             <time data-utc="{{ a.pubDate|date('c') }}" data-fmt="datetime">{{ a.pubDate|date('d/m H:i') }}</time>
@@ -101,37 +157,37 @@
       {% endfor %}
       </tbody>
     </table>
+  </div>{# /overflow-x:auto #}
 
-    {# Paginação #}
-    {% if pages > 1 %}
-    <div style="padding:var(--space-4) var(--space-5);border-top:1px solid var(--color-divider)">
-      <div class="pagination">
-        {% if page > 1 %}
-          <a href="?{{ app.request.query.all|merge({page: page - 1})|url_encode }}">&#8249;</a>
+  {# Paginação #}
+  {% if pages > 1 %}
+  <div style="padding:var(--space-4) var(--space-5);border-top:1px solid var(--color-divider)">
+    <div class="pagination">
+      {% if page > 1 %}
+        <a href="?{{ app.request.query.all|merge({page: page - 1})|url_encode }}">&#8249;</a>
+      {% endif %}
+      {% for p in max(1, page-2)..min(pages, page+2) %}
+        {% if p == page %}
+          <span class="current">{{ p }}</span>
+        {% else %}
+          <a href="?{{ app.request.query.all|merge({page: p})|url_encode }}">{{ p }}</a>
         {% endif %}
-        {% for p in max(1, page-2)..min(pages, page+2) %}
-          {% if p == page %}
-            <span class="current">{{ p }}</span>
-          {% else %}
-            <a href="?{{ app.request.query.all|merge({page: p})|url_encode }}">{{ p }}</a>
-          {% endif %}
-        {% endfor %}
-        {% if page < pages %}
-          <a href="?{{ app.request.query.all|merge({page: page + 1})|url_encode }}">&#8250;</a>
-        {% endif %}
-      </div>
+      {% endfor %}
+      {% if page < pages %}
+        <a href="?{{ app.request.query.all|merge({page: page + 1})|url_encode }}">&#8250;</a>
+      {% endif %}
     </div>
-    {% endif %}
-
+  </div>
   {% endif %}
-</div>
+
+</div>{# /card tabela #}
+{% endif %}
 {% endblock %}
 
 {% block javascripts %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function(){
-  const TZ  = WazeTZ.TZ;
   const FMT = WazeTZ.FMT_FULL;
 
   const alerts = {{ alerts|map(a => {
@@ -153,43 +209,42 @@
     POLICE:'#01696f', MISC:'#7a39bb'
   };
   const TYPE_LABEL = {
-    ACCIDENT:'Acidente', HAZARD:'Perigo', WEATHERHAZARD:'Risco climático',
+    ACCIDENT:'Acidente', HAZARD:'Perigo', WEATHERHAZARD:'Risco clim\u00e1tico',
     JAM:'Congestionamento', ROAD_CLOSED:'Via fechada', CONSTRUCTION:'Obra',
-    POLICE:'Polícia/Radar', MISC:'Diverso'
+    POLICE:'Pol\u00edcia/Radar', MISC:'Diverso'
   };
 
   const map = L.map('alert-map', {zoomControl:true});
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    {attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
+    {attribution:'\u00a9 OpenStreetMap',maxZoom:19}).addTo(map);
 
   const markers = [];
-  alerts.forEach(a => {
+  alerts.forEach(function(a) {
     const lat = parseFloat(a.lat);
     const lng = parseFloat(a.lng);
-    if (!lat && !lng) return;
+    if (isNaN(lat) || isNaN(lng)) return;
     const color = TYPE_COLOR[a.type] || '#7a7974';
     const icon = L.divIcon({
-      html:`<div style="width:12px;height:12px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);cursor:pointer"></div>`,
-      className:'',iconSize:[12,12],iconAnchor:[6,6]
+      html: '<div style="width:12px;height:12px;border-radius:50%;background:' + color + ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>',
+      className: '', iconSize: [12, 12], iconAnchor: [6, 6]
     });
 
-    const subtypeClean = a.subtype ? a.subtype.replace(/_/g,' ') : '';
-    const pubFormatted = a.pubIso ? FMT.format(new Date(a.pubIso)) : '—';
-    const popup = `
-      <div class="popup-inner">
-        <div class="popup-type" style="color:${color}">${TYPE_LABEL[a.type]||a.type}</div>
-        ${subtypeClean?`<div class="popup-sub">${subtypeClean}</div>`:''}
-        <div class="popup-street">${a.street||'Via não identificada'}</div>
-        ${a.city?`<div class="popup-city">${a.city}</div>`:''}
-        <div class="popup-meta">
-          ${a.conf!==null?`<span class="pm">★ Conf. ${a.conf}</span>`:''}
-          ${a.thumbs?`<span class="pm">👍 ${a.thumbs}</span>`:''}
-          <span class="pm">📅 ${pubFormatted}</span>
-        </div>
-        <a class="popup-link" href="/alertas/${a.id}">🔗 Ver detalhes completos</a>
-      </div>`;
+    const subtypeClean = a.subtype ? a.subtype.replace(/_/g, ' ') : '';
+    const pubFormatted = a.pubIso ? FMT.format(new Date(a.pubIso)) : '\u2014';
+    const popup = '<div class="popup-inner">'
+      + '<div class="popup-type" style="color:' + color + '">' + (TYPE_LABEL[a.type] || a.type) + '</div>'
+      + (subtypeClean ? '<div class="popup-sub">' + subtypeClean + '</div>' : '')
+      + '<div class="popup-street">' + (a.street || 'Via n\u00e3o identificada') + '</div>'
+      + (a.city ? '<div class="popup-city">' + a.city + '</div>' : '')
+      + '<div class="popup-meta">'
+      + (a.conf !== null ? '<span class="pm">&#9733; Conf. ' + a.conf + '</span>' : '')
+      + (a.thumbs ? '<span class="pm">&#128077; ' + a.thumbs + '</span>' : '')
+      + '<span class="pm">&#128197; ' + pubFormatted + '</span>'
+      + '</div>'
+      + '<a class="popup-link" href="/alertas/' + a.id + '">&#128279; Ver detalhes</a>'
+      + '</div>';
 
-    const m = L.marker([lat, lng], {icon}).bindPopup(popup, {maxWidth:260});
+    const m = L.marker([lat, lng], {icon: icon}).bindPopup(popup, {maxWidth: 260});
     m.addTo(map);
     markers.push(m);
   });
@@ -199,6 +254,9 @@
   } else {
     map.setView([-19.92, -43.94], 10);
   }
+
+  /* Força resize caso o mapa tenha sido inicializado antes do layout estabilizar */
+  setTimeout(function() { map.invalidateSize(); }, 200);
 })();
 </script>
 {% endblock %}
