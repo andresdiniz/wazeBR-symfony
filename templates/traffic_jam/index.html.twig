@@ -5,19 +5,150 @@
 {% block stylesheets %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-  .jam-layout { display: grid; grid-template-columns: 1fr 380px; gap: var(--space-6); align-items: start; }
-  @media(max-width:1100px){ .jam-layout { grid-template-columns: 1fr; } }
-  #hist-map { height: 520px; border-radius: var(--radius-lg); border: 1px solid var(--color-border); box-shadow: var(--shadow-md); }
-  .level-bar { display:flex; align-items:center; gap:6px; }
-  .level-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  /* Layout mapa + lista */
+  .jam-layout {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: var(--space-6);
+    align-items: start;
+  }
+  @media(max-width:1200px){ .jam-layout { grid-template-columns: 1fr 340px; } }
+  @media(max-width:960px)  { .jam-layout { grid-template-columns: 1fr; } }
+
+  /* Mapa */
+  #hist-map {
+    height: 560px;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    border: none;
+  }
+
+  /* Legenda */
+  .map-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-4);
+    font-size: var(--text-xs);
+  }
+  .legend-item { display:flex; align-items:center; gap:6px; color:var(--color-text-muted); }
+  .legend-line  { width:24px; height:4px; border-radius:2px; }
+
+  /* Dots de nível */
+  .level-bar { display:flex; align-items:center; gap:5px; }
+  .level-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
   .level-0,.level-1 { background:#4caf50; }
   .level-2,.level-3 { background:#ff9800; }
-  .level-4 { background:#f44336; }
-  .level-5 { background:#7b1fa2; }
-  .speed-chip { font-family:var(--font-mono); font-size:var(--text-xs); background:var(--color-surface-offset); padding:2px 6px; border-radius:var(--radius-sm); }
-  .map-legend { display:flex; flex-wrap:wrap; gap:var(--space-3); padding:var(--space-3) var(--space-4); background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-md); margin-bottom:var(--space-4); font-size:var(--text-xs); }
-  .legend-item { display:flex; align-items:center; gap:6px; color:var(--color-text-muted); }
-  .legend-line { width:24px; height:4px; border-radius:2px; }
+  .level-4          { background:#f44336; }
+  .level-5          { background:#7b1fa2; }
+
+  /* Chip de velocidade */
+  .speed-chip {
+    font-family: monospace;
+    font-size: var(--text-xs);
+    background: var(--color-surface-offset);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+  }
+
+  /* Lista: colunas com largura controlada */
+  .jam-table { width:100%; border-collapse:collapse; table-layout:fixed; }
+  .jam-table th, .jam-table td { padding: var(--space-2) var(--space-3); vertical-align: middle; }
+  .jam-table th {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    border-bottom: 1px solid var(--color-divider);
+    background: var(--color-surface-offset);
+  }
+  .jam-table td { border-bottom: 1px solid var(--color-divider); font-size: var(--text-sm); }
+  .jam-table tr:last-child td { border-bottom: none; }
+  .jam-table tr[data-jam-id]:hover td { background: oklch(from var(--color-primary) l c h / 0.05); cursor: pointer; }
+
+  /* Larguras das colunas */
+  .col-via   { width: auto; }
+  .col-nivel { width: 52px; text-align:center; }
+  .col-vel   { width: 72px; text-align:right; }
+  .col-ext   { width: 68px; text-align:right; }
+  .col-acao  { width: 48px; text-align:center; }
+
+  /* Truncamento só na Via */
+  .via-name {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+    display: block;
+  }
+  .via-city {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+    display: block;
+  }
+
+  /* Filtros */
+  .filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    align-items: center;
+    margin-bottom: var(--space-6);
+  }
+  .form-select, .form-input {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-2);
+    color: var(--color-text);
+    transition: border-color var(--transition-interactive), box-shadow var(--transition-interactive);
+  }
+  .form-select:focus, .form-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px oklch(from var(--color-primary) l c h / .15);
+  }
+
+  /* Paginação */
+  .pagination {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    margin-top: var(--space-4);
+  }
+  .pagination a, .pagination span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px; height: 32px;
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    text-decoration: none;
+    transition: all var(--transition-interactive);
+  }
+  .pagination a:hover { background: var(--color-surface-offset); color: var(--color-text); }
+  .pagination .current {
+    background: var(--color-primary);
+    color: #fff;
+    border-color: var(--color-primary);
+    font-weight: 600;
+  }
+
+  /* Row highlight ao focar pelo mapa */
+  tr.jam-focused td { background: oklch(from var(--color-primary) l c h / 0.10) !important; }
 </style>
 {% endblock %}
 
@@ -28,16 +159,14 @@
       <h1 class="page-title">Congestionamentos</h1>
       <p class="page-subtitle">{{ total }} registro{{ total != 1 ? 's' }} encontrado{{ total != 1 ? 's' }}</p>
     </div>
-    <div style="display:flex;gap:var(--space-2)">
-      <a href="{{ path('jam_live') }}" class="btn btn-primary">
-        <i data-lucide="radio" style="width:14px;height:14px"></i> Ao Vivo
-      </a>
-    </div>
+    <a href="{{ path('jam_live') }}" class="btn btn-primary">
+      <i data-lucide="radio" style="width:14px;height:14px"></i> Ao Vivo
+    </a>
   </div>
 </div>
 
 {# Filtros #}
-<form method="get" class="filter-bar" style="margin-bottom:var(--space-6)">
+<form method="get" class="filter-bar">
   <select name="minLevel" class="form-select" style="width:auto">
     <option value="">Qualquer nível</option>
     {% for l in 0..5 %}
@@ -50,12 +179,15 @@
     {% for c in cities %}<option value="{{ c }}" {{ city == c ? 'selected' }}>{{ c }}</option>{% endfor %}
   </select>
   {% endif %}
-  <input type="date" name="dateFrom" class="form-input" style="width:auto" value="{{ dateFrom }}" placeholder="De">
-  <input type="date" name="dateTo" class="form-input" style="width:auto" value="{{ dateTo }}" placeholder="Até">
-  <button type="submit" class="btn btn-primary btn-sm"><i data-lucide="search" style="width:13px;height:13px"></i> Filtrar</button>
+  <input type="date" name="dateFrom" class="form-input" style="width:auto" value="{{ dateFrom }}">
+  <input type="date" name="dateTo"   class="form-input" style="width:auto" value="{{ dateTo }}">
+  <button type="submit" class="btn btn-primary btn-sm">
+    <i data-lucide="search" style="width:13px;height:13px"></i> Filtrar
+  </button>
   <a href="{{ path('jam_index') }}" class="btn btn-ghost btn-sm">Limpar</a>
 </form>
 
+{# Legenda #}
 <div class="map-legend">
   <div class="legend-item"><div class="legend-line" style="background:#4caf50"></div> Livre (0-1)</div>
   <div class="legend-item"><div class="legend-line" style="background:#ff9800"></div> Moderado (2-3)</div>
@@ -64,15 +196,14 @@
 </div>
 
 <div class="jam-layout">
+
   {# Mapa #}
-  <div>
-    <div class="card" style="overflow:visible;margin-bottom:var(--space-6)">
-      <div class="card-header">
-        <span class="card-title"><i data-lucide="map" style="width:14px;height:14px;display:inline"></i> Mapa do Histórico</span>
-        <span style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ total }} jam{{ total != 1 ? 's' }} filtrado{{ total != 1 ? 's' }}</span>
-      </div>
-      <div id="hist-map"></div>
+  <div class="card" style="overflow:visible">
+    <div class="card-header">
+      <span class="card-title"><i data-lucide="map" style="width:14px;height:14px;display:inline"></i> Mapa do Histórico</span>
+      <span style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ total }} jam{{ total != 1 ? 's' }} filtrado{{ total != 1 ? 's' }}</span>
     </div>
+    <div id="hist-map"></div>
   </div>
 
   {# Lista #}
@@ -80,39 +211,44 @@
     <div class="card">
       <div class="card-header"><span class="card-title">Lista</span></div>
       {% if jams is empty %}
-        <div class="empty" style="padding:var(--space-10)">
+        <div style="text-align:center;padding:var(--space-10);color:var(--color-text-muted)">
           <i data-lucide="traffic-cone" style="width:36px;height:36px;color:var(--color-text-faint);margin-bottom:var(--space-3)"></i>
-          <h3>Nenhum congestionamento</h3>
-          <p>Ajuste os filtros para ver resultados.</p>
+          <p>Nenhum congestionamento. Ajuste os filtros.</p>
         </div>
       {% else %}
       <div style="overflow-x:auto">
-        <table>
+        <table class="jam-table">
           <thead>
             <tr>
-              <th>Via</th>
-              <th>Nível</th>
-              <th>Vel.</th>
-              <th>Ext.</th>
-              <th></th>
+              <th class="col-via">Via</th>
+              <th class="col-nivel">Nível</th>
+              <th class="col-vel">Vel.</th>
+              <th class="col-ext">Ext.</th>
+              <th class="col-acao"></th>
             </tr>
           </thead>
           <tbody>
             {% for jam in jams %}
-            <tr style="cursor:pointer" data-jam-id="{{ jam.id }}" onclick="focusJam({{ jam.id }})">
-              <td>
-                <div style="font-weight:500;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ jam.street ?: '—' }}</div>
-                <div style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ jam.city ?: '—' }}</div>
+            <tr data-jam-id="{{ jam.id }}" onclick="focusJam({{ jam.id }})">
+              <td class="col-via">
+                <span class="via-name">{{ jam.street ?: '—' }}</span>
+                <span class="via-city">{{ jam.city ?: '—' }}</span>
               </td>
-              <td>
-                <div class="level-bar">
+              <td class="col-nivel">
+                <div class="level-bar" style="justify-content:center">
                   <div class="level-dot level-{{ jam.level }}"></div>
                   <span>{{ jam.level }}</span>
                 </div>
               </td>
-              <td><span class="speed-chip">{{ jam.speedKmh ? jam.speedKmh|number_format(0) ~ ' km/h' : '—' }}</span></td>
-              <td style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ jam.length ? jam.length ~ ' m' : '—' }}</td>
-              <td><a href="{{ path('jam_show', {id: jam.id}) }}" class="btn btn-ghost btn-sm" onclick="event.stopPropagation()">Ver</a></td>
+              <td class="col-vel">
+                <span class="speed-chip">{{ jam.speedKMH is not null ? jam.speedKMH|number_format(0) ~ ' km/h' : '—' }}</span>
+              </td>
+              <td class="col-ext" style="color:var(--color-text-muted)">
+                {{ jam.length ? jam.length ~ ' m' : '—' }}
+              </td>
+              <td class="col-acao">
+                <a href="{{ path('jam_show', {id: jam.id}) }}" class="btn btn-ghost btn-sm" onclick="event.stopPropagation()">Ver</a>
+              </td>
             </tr>
             {% endfor %}
           </tbody>
@@ -121,12 +257,11 @@
       {% endif %}
     </div>
 
-    {# Paginação: usa app.request.query.all|merge({'page': p}) para preservar filtros #}
     {% if pages > 1 %}
     {% set qparams = app.request.query.all %}
     <div class="pagination">
       {% if page > 1 %}
-        <a href="?{{ qparams|merge({'page': page - 1})|url_encode }}">‹</a>
+        <a href="?{{ qparams|merge({'page': page - 1})|url_encode }}">&#8249;</a>
       {% endif %}
       {% for p in max(1, page - 2)..min(pages, page + 2) %}
         {% if p == page %}
@@ -136,11 +271,12 @@
         {% endif %}
       {% endfor %}
       {% if page < pages %}
-        <a href="?{{ qparams|merge({'page': page + 1})|url_encode }}">›</a>
+        <a href="?{{ qparams|merge({'page': page + 1})|url_encode }}">&#8250;</a>
       {% endif %}
     </div>
     {% endif %}
   </div>
+
 </div>
 {% endblock %}
 
@@ -148,98 +284,92 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const JAM_DATA = [
-  {% for jam in jams %}
-  {% if jam.line %}
-  {
+  {% for jam in jams %}{% if jam.line %}{
     id: {{ jam.id }},
     street: {{ jam.street|json_encode|raw }},
     city: {{ jam.city|json_encode|raw }},
     level: {{ jam.level }},
-    speedKmh: {{ jam.speedKmh ?? 'null' }},
+    speedKmh: {{ jam.speedKMH ?? 'null' }},
     length: {{ jam.length ?? 'null' }},
     delay: {{ jam.delay ?? 'null' }},
     blocking: {{ jam.blocking ? 'true' : 'false' }},
     line: {{ jam.line|json_encode|raw }}
-  }{{ not loop.last ? ',' }}
-  {% endif %}
-  {% endfor %}
+  }{{ not loop.last ? ',' }}{% endif %}{% endfor %}
 ];
 
-const LEVEL_COLOR = { 0:'#4caf50',1:'#4caf50',2:'#ff9800',3:'#ff9800',4:'#f44336',5:'#7b1fa2' };
-const LEVEL_WEIGHT = { 0:3,1:3,2:4,3:4,4:5,5:6 };
+const LEVEL_COLOR  = {0:'#4caf50',1:'#4caf50',2:'#ff9800',3:'#ff9800',4:'#f44336',5:'#7b1fa2'};
+const LEVEL_WEIGHT = {0:3,1:3,2:4,3:4,4:5,5:6};
 
-const map = L.map('hist-map', { zoomControl: true, attributionControl: true });
+const map = L.map('hist-map', {zoomControl:true});
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+  attribution: '\u00a9 <a href="https://openstreetmap.org">OpenStreetMap</a>',
   maxZoom: 19
 }).addTo(map);
 
 const layerMap = {};
 const allBounds = [];
 
-JAM_DATA.forEach(jam => {
+JAM_DATA.forEach(function(jam) {
   if (!jam.line || !jam.line.length) return;
-  const coords = jam.line.map(p => [p.y, p.x]);
-  allBounds.push(...coords);
-  const color = LEVEL_COLOR[jam.level] || '#999';
+  const coords = jam.line.map(function(p){ return [p.y, p.x]; });
+  allBounds.push.apply(allBounds, coords);
+  const color  = LEVEL_COLOR[jam.level]  || '#999';
   const weight = LEVEL_WEIGHT[jam.level] || 3;
 
-  L.polyline(coords, { color: '#000', weight: weight + 4, opacity: 0.12 }).addTo(map);
-  const poly = L.polyline(coords, {
-    color, weight, opacity: 0.85,
-    lineJoin: 'round', lineCap: 'round'
-  }).addTo(map);
+  L.polyline(coords, {color:'#000', weight:weight+4, opacity:0.10}).addTo(map);
+  const poly = L.polyline(coords, {color:color, weight:weight, opacity:0.85, lineJoin:'round', lineCap:'round'}).addTo(map);
 
   const mid = coords[Math.floor(coords.length / 2)];
-  const arrowIcon = L.divIcon({
-    className: '',
-    html: `<div style="width:16px;height:16px;background:${color};border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;">
-             <svg width="8" height="8" viewBox="0 0 8 8" fill="white"><path d="M4 1L7 7H1z"/></svg>
-           </div>`,
-    iconSize: [16, 16],
-    iconAnchor: [8, 8]
-  });
-  L.marker(mid, { icon: arrowIcon, interactive: false }).addTo(map);
+  L.marker(mid, {
+    icon: L.divIcon({
+      className: '',
+      html: '<div style="width:14px;height:14px;background:' + color + ';border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>',
+      iconSize:[14,14], iconAnchor:[7,7]
+    }),
+    interactive: false
+  }).addTo(map);
 
-  const speedText = jam.speedKmh != null ? `${Math.round(jam.speedKmh)} km/h` : '—';
-  const lengthText = jam.length != null ? `${jam.length} m` : '—';
-  const delayText = jam.delay != null ? `${jam.delay}s` : '—';
-  const blockTag = jam.blocking ? '<span style="background:#f44336;color:#fff;padding:1px 5px;border-radius:3px;font-size:11px">Bloqueado</span>' : '';
+  const speedText  = jam.speedKmh  != null ? Math.round(jam.speedKmh)  + ' km/h' : '\u2014';
+  const lengthText = jam.length    != null ? jam.length + ' m'                   : '\u2014';
+  const delayText  = jam.delay     != null ? jam.delay  + 's'                    : '\u2014';
+  const blockTag   = jam.blocking  ? '<span style="background:#f44336;color:#fff;padding:1px 5px;border-radius:3px;font-size:11px">Bloqueado</span>' : '';
 
-  poly.bindPopup(`
-    <div style="min-width:200px;font-family:Inter,sans-serif">
-      <div style="font-weight:700;font-size:13px;margin-bottom:4px">${jam.street || 'Via desconhecida'}</div>
-      <div style="font-size:11px;color:#666;margin-bottom:8px">${jam.city || ''}</div>
-      <table style="width:100%;font-size:12px;border-collapse:collapse">
-        <tr><td style="color:#888;padding:2px 0">Nível</td><td style="font-weight:600;color:${color}">${jam.level}/5</td></tr>
-        <tr><td style="color:#888;padding:2px 0">Velocidade</td><td>${speedText}</td></tr>
-        <tr><td style="color:#888;padding:2px 0">Extensão</td><td>${lengthText}</td></tr>
-        <tr><td style="color:#888;padding:2px 0">Atraso</td><td>${delayText}</td></tr>
-      </table>
-      ${blockTag}
-      <div style="margin-top:8px">
-        <a href="/congestionamentos/${jam.id}" style="color:#01696f;font-size:12px;font-weight:500">Ver detalhes →</a>
-      </div>
-    </div>
-  `, { maxWidth: 260 });
+  poly.bindPopup(
+    '<div style="min-width:200px">'
+    + '<div style="font-weight:700;font-size:13px;margin-bottom:4px">' + (jam.street || 'Via desconhecida') + '</div>'
+    + '<div style="font-size:11px;color:#888;margin-bottom:8px">' + (jam.city || '') + '</div>'
+    + '<table style="width:100%;font-size:12px;border-collapse:collapse">'
+    + '<tr><td style="color:#888;padding:2px 0">N\u00edvel</td><td style="font-weight:600;color:' + color + '">' + jam.level + '/5</td></tr>'
+    + '<tr><td style="color:#888;padding:2px 0">Velocidade</td><td>' + speedText  + '</td></tr>'
+    + '<tr><td style="color:#888;padding:2px 0">Extens\u00e3o</td><td>' + lengthText + '</td></tr>'
+    + '<tr><td style="color:#888;padding:2px 0">Atraso</td><td>'     + delayText  + '</td></tr>'
+    + '</table>' + blockTag
+    + '<div style="margin-top:8px"><a href="/congestionamentos/' + jam.id + '" style="color:var(--color-primary);font-size:12px;font-weight:500">Ver detalhes \u2192</a></div>'
+    + '</div>',
+    {maxWidth: 260}
+  );
 
   layerMap[jam.id] = poly;
 });
 
 if (allBounds.length) {
-  map.fitBounds(allBounds, { padding: [40, 40] });
+  map.fitBounds(allBounds, {padding:[40,40]});
 } else {
   map.setView([-19.92, -43.94], 12);
 }
+setTimeout(function(){ map.invalidateSize(); }, 200);
 
 window.focusJam = function(id) {
   const poly = layerMap[id];
-  if (!poly) return;
-  map.fitBounds(poly.getBounds(), { padding: [60, 60], maxZoom: 16 });
-  poly.openPopup();
-  document.querySelectorAll('tr[data-jam-id]').forEach(r => r.style.background = '');
-  const row = document.querySelector(`tr[data-jam-id="${id}"]`);
-  if (row) { row.style.background = 'oklch(from var(--color-primary) l c h / 0.08)'; row.scrollIntoView({ block: 'nearest' }); }
+  if (poly) {
+    map.fitBounds(poly.getBounds(), {padding:[60,60], maxZoom:16});
+    poly.openPopup();
+  }
+  document.querySelectorAll('tr[data-jam-id]').forEach(function(r){
+    r.classList.remove('jam-focused');
+  });
+  const row = document.querySelector('tr[data-jam-id="' + id + '"]');
+  if (row) { row.classList.add('jam-focused'); row.scrollIntoView({block:'nearest'}); }
 };
 </script>
 {% endblock %}
