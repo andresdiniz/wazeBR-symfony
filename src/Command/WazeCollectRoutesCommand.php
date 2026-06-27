@@ -7,6 +7,7 @@ namespace App\Command;
 use App\Entity\MonitoredLink;
 use App\Entity\WazeRoute;
 use App\Entity\WazeRouteSnapshot;
+use App\Entity\WazeSubRoute;
 use App\Repository\MonitoredLinkRepository;
 use App\Repository\WazeRouteRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -24,6 +25,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * Modo 1 — TVT (MonitoredLink link_type=waze_tvt):
  *   Itera os MonitoredLink com link_type=waze_tvt, chama o feed TVT,
  *   cria/atualiza WazeRoute pelo wazeId+partner (upsert) e salva snapshot.
+ *   As subRoutes de cada rota são salvas em waze_sub_routes (WazeSubRoute).
  *
  * Modo 2 — Routing API (WazeRoute com coordinates):
  *   Itera WazeRoute ativas com coordinates preenchido e consulta
@@ -106,13 +108,14 @@ class WazeCollectRoutesCommand extends Command
 
                     if ($dryRun) {
                         $io->writeln(sprintf(
-                            '  DRY-RUN: id=%s | name=%s | time=%s | historicTime=%s | length=%s | jamLevel=%s',
+                            '  DRY-RUN: id=%s | name=%s | time=%s | historicTime=%s | length=%s | jamLevel=%s | subRoutes=%d',
                             $wazeId ?? '?',
                             $name   ?? '?',
                             $rawRoute['time']         ?? '?',
                             $rawRoute['historicTime']  ?? '?',
                             $rawRoute['length']        ?? '?',
                             $rawRoute['jamLevel']      ?? '?',
+                            count($rawRoute['subRoutes'] ?? []),
                         ));
                         $ok++;
                         continue;
@@ -156,6 +159,28 @@ class WazeCollectRoutesCommand extends Command
                         $route->setBbox($rawRoute['bbox']);
                     }
 
+                    // ── Sincroniza subRoutes em waze_sub_routes ──────────────
+                    // Remove todas as sub-rotas anteriores (orphanRemoval cuida do DELETE)
+                    foreach ($route->getSubRoutes() as $old) {
+                        $route->removeSubRoute($old);
+                    }
+
+                    foreach (($rawRoute['subRoutes'] ?? []) as $sortOrder => $rawSub) {
+                        $sub = (new WazeSubRoute())
+                            ->setFromName($rawSub['fromName'] ?? null)
+                            ->setToName($rawSub['toName']     ?? null)
+                            ->setTime(isset($rawSub['time'])               ? (int) $rawSub['time']         : null)
+                            ->setHistoricTime(isset($rawSub['historicTime']) ? (int) $rawSub['historicTime'] : null)
+                            ->setLength(isset($rawSub['length'])           ? (int) $rawSub['length']       : null)
+                            ->setJamLevel(isset($rawSub['jamLevel'])       ? (int) $rawSub['jamLevel']     : null)
+                            ->setLine($rawSub['line'] ?? null)
+                            ->setBbox($rawSub['bbox'] ?? null)
+                            ->setSortOrder($sortOrder);
+
+                        $route->addSubRoute($sub);
+                    }
+                    // ────────────────────────────────────────────────────────
+
                     $this->em->persist($route);
                     $this->em->flush(); // flush para garantir que $route->getId() esteja preenchido
 
@@ -173,10 +198,11 @@ class WazeCollectRoutesCommand extends Command
                         : null;
 
                     $io->writeln(sprintf(
-                        '  ✓ [TVT] id=<info>%s</info> | %s | time=<info>%ds</info> | historic=<info>%ds</info> | jam=<info>%s</info>%s',
+                        '  ✓ [TVT] id=<info>%s</info> | %s | time=<info>%ds</info> | historic=<info>%ds</info> | jam=<info>%s</info> | sub=<info>%d</info>%s',
                         $wazeId ?? '?',
                         $name   ?? '(sem nome)',
                         $time ?? 0, $historicTime ?? 0, $jamLevel ?? '?',
+                        count($rawRoute['subRoutes'] ?? []),
                         $delay !== null ? " | atraso=<comment>{$delay}min</comment>" : '',
                     ));
 
