@@ -5,7 +5,13 @@
 {% set jsFromName = latest.fromName ? latest.fromName|e('js') : 'Início' %}
 {% set jsToName   = latest.toName   ? latest.toName|e('js')   : 'Fim' %}
 {% set jsJamLevel = latest.jamLevel ?? 0 %}
-{% set jsLine     = latest.line is not null ? latest.line|json_encode|raw : 'null' %}
+{% set jsLine     = latest.line is not null ? latest.line|json_encode : 'null' %}
+{% set jsHistory  = history|map(r => {
+  t:    r.snapshot.collectedAt|date('c'),
+  time: r.time,
+  hist: r.historicTime,
+  jam:  r.jamLevel
+})|json_encode %}
 
 {% block stylesheets %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
@@ -27,6 +33,16 @@
 {% endblock %}
 
 {% block content %}
+{# Dados JSON isolados em data-attributes — sem risco de & vazar para o JS #}
+<div id="js-data"
+  data-history="{{ jsHistory|e('html_attr') }}"
+  data-line="{{ jsLine|e('html_attr') }}"
+  data-jam-level="{{ jsJamLevel }}"
+  data-from="{{ jsFromName|e('html_attr') }}"
+  data-to="{{ jsToName|e('html_attr') }}"
+  style="display:none"
+></div>
+
 <div class="page-header" style="display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap">
   <a href="{{ path('route_admin_index') }}" class="btn btn-ghost btn-sm">
     <i data-lucide="arrow-left" style="width:14px;height:14px"></i> Voltar
@@ -56,7 +72,6 @@
   </div>
 </div>
 
-{# Gráfico + Mapa lado a lado #}
 <div class="viz-grid">
   <div class="card">
     <div class="card-header"><span class="card-title">Evolução temporal</span></div>
@@ -64,7 +79,6 @@
       <canvas id="chart-history" height="120"></canvas>
     </div>
   </div>
-
   <div class="card">
     <div class="card-header">
       <span class="card-title"><i data-lucide="map" style="width:14px;height:14px;display:inline"></i> Trajeto da rota</span>
@@ -121,15 +135,16 @@
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function(){
+  // Lê dados do data-attribute — zero risco de entidades HTML no JS
+  var ds        = document.getElementById('js-data').dataset;
+  var raw       = JSON.parse(ds.history);
+  var routeLine = JSON.parse(ds.line);
+  var jamLevel  = parseInt(ds.jamLevel, 10) || 0;
+  var fromName  = ds.from;
+  var toName    = ds.to;
+
   var tz  = Intl.DateTimeFormat().resolvedOptions().timeZone;
   var FMT = new Intl.DateTimeFormat('pt-BR', { timeZone: tz, day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
-
-  var raw = {{ history|map(r => {
-    t:    r.snapshot.collectedAt|date('c'),
-    time: r.time,
-    hist: r.historicTime,
-    jam:  r.jamLevel
-  })|json_encode|raw }};
 
   var ordered = raw.slice().reverse();
   var labels  = ordered.map(function(r){ return FMT.format(new Date(r.t)); });
@@ -142,7 +157,7 @@
       labels: labels,
       datasets: [
         { label: 'Tempo atual (min)', data: times, borderColor: '#a12c7b', backgroundColor: 'oklch(0.5 0.2 330 / 0.08)', tension: 0.3, fill: true, pointRadius: 2 },
-        { label: 'Hist\u00f3rico (min)',   data: hists, borderColor: '#437a22', borderDash: [4,3], tension: 0.3, pointRadius: 2 }
+        { label: 'Hist\u00f3rico (min)', data: hists, borderColor: '#437a22', borderDash: [4,3], tension: 0.3, pointRadius: 2 }
       ]
     },
     options: {
@@ -157,8 +172,7 @@
   });
 
   // --- Mapa Leaflet ---
-  var routeLine = {{ jsLine }};
-  var mapEl     = document.getElementById('history-map');
+  var mapEl = document.getElementById('history-map');
 
   if (routeLine && routeLine.length && mapEl) {
     var map = L.map('history-map', { zoomControl: true, scrollWheelZoom: false });
@@ -167,7 +181,7 @@
     }).addTo(map);
 
     var jamColors = ['#437a22','#d19900','#da7101','#a12c7b','#a13544','#dc2626'];
-    var color     = jamColors[{{ jsJamLevel }}] || '#888';
+    var color     = jamColors[jamLevel] || '#888';
     var latlngs   = routeLine.map(function(p){ return [p.y, p.x]; });
     var pl        = L.polyline(latlngs, { color: color, weight: 5, opacity: 0.85 }).addTo(map);
 
@@ -180,9 +194,9 @@
         });
       };
       L.marker(latlngs[0], { icon: mkIcon('In\u00edcio', '#01696f') })
-        .bindPopup('{{ jsFromName }}').addTo(map);
+        .bindPopup(fromName).addTo(map);
       L.marker(latlngs[latlngs.length - 1], { icon: mkIcon('Fim', '#a12c7b') })
-        .bindPopup('{{ jsToName }}').addTo(map);
+        .bindPopup(toName).addTo(map);
     }
 
     map.fitBounds(pl.getBounds(), { padding: [20, 20] });
