@@ -11,6 +11,10 @@ use Doctrine\ORM\Mapping as ORM;
 /**
  * Histórico de velocidade/tempo de uma rota de tráfego.
  * Equivale à tabela historic_routes do wazejobtraficc.php.
+ *
+ * Campos brutos (time, historicTime, length, jamLevel) espelham
+ * exatamente o payload da API Waze para reprodutibilidade.
+ * Os campos calculados (avgSpeed) são derivados deles.
  */
 #[ORM\Entity(repositoryClass: WazeRouteSnapshotRepository::class)]
 #[ORM\Table(name: 'waze_route_snapshots')]
@@ -27,13 +31,29 @@ class WazeRouteSnapshot
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private WazeRoute $route;
 
-    /** Velocidade média calculada (km/h) */
+    /** Tempo de percurso atual em segundos (payload: time) */
+    #[ORM\Column(nullable: true)]
+    private ?int $time = null;
+
+    /** Tempo histórico em segundos (payload: historicTime) */
+    #[ORM\Column(nullable: true)]
+    private ?int $historicTime = null;
+
+    /** Comprimento em metros (payload: length) */
+    #[ORM\Column(nullable: true)]
+    private ?int $length = null;
+
+    /** Nível de congestionamento 0-5 (payload: jamLevel) */
+    #[ORM\Column(nullable: true)]
+    private ?int $jamLevel = null;
+
+    /** Velocidade média calculada em km/h */
     #[ORM\Column(type: Types::FLOAT, nullable: true)]
     private ?float $avgSpeed = null;
 
-    /** Tempo de percurso em segundos */
-    #[ORM\Column(nullable: true)]
-    private ?int $avgTime = null;
+    /** Velocidade histórica calculada em km/h */
+    #[ORM\Column(type: Types::FLOAT, nullable: true)]
+    private ?float $historicSpeed = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $collectedAt;
@@ -48,11 +68,23 @@ class WazeRouteSnapshot
     public function getRoute(): WazeRoute { return $this->route; }
     public function setRoute(WazeRoute $r): static { $this->route = $r; return $this; }
 
+    public function getTime(): ?int { return $this->time; }
+    public function setTime(?int $v): static { $this->time = $v; return $this; }
+
+    public function getHistoricTime(): ?int { return $this->historicTime; }
+    public function setHistoricTime(?int $v): static { $this->historicTime = $v; return $this; }
+
+    public function getLength(): ?int { return $this->length; }
+    public function setLength(?int $v): static { $this->length = $v; return $this; }
+
+    public function getJamLevel(): ?int { return $this->jamLevel; }
+    public function setJamLevel(?int $v): static { $this->jamLevel = $v; return $this; }
+
     public function getAvgSpeed(): ?float { return $this->avgSpeed; }
     public function setAvgSpeed(?float $v): static { $this->avgSpeed = $v; return $this; }
 
-    public function getAvgTime(): ?int { return $this->avgTime; }
-    public function setAvgTime(?int $v): static { $this->avgTime = $v; return $this; }
+    public function getHistoricSpeed(): ?float { return $this->historicSpeed; }
+    public function setHistoricSpeed(?float $v): static { $this->historicSpeed = $v; return $this; }
 
     public function getCollectedAt(): \DateTimeImmutable { return $this->collectedAt; }
     public function setCollectedAt(\DateTimeImmutable $v): static { $this->collectedAt = $v; return $this; }
