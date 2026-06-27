@@ -110,7 +110,7 @@ class WazeFeedService
         $this->em->flush();
 
         $this->logger->info('[WazeFeed] Feed coletado', [
-            'link'    => $link->getName(),
+            'link'    => $link->getLabel() ?? $link->getUrl(),
             'url'     => $link->getUrl(),
             'partner' => $partner?->getSlug(),
             'alerts'  => $count,

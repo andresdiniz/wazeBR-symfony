@@ -113,7 +113,7 @@ class WazeTrafficFeedService
             $route->setWazeId($wazeId);
         }
 
-        [$avgSpeed, $avgTime, $historicSpeed] = $this->calcSpeeds(
+        [$avgSpeed, $time, $historicSpeed] = $this->calcSpeeds(
             $raw['length']      ?? 0,
             $raw['time']        ?? 0,
             $raw['historicTime'] ?? 0
@@ -136,7 +136,7 @@ class WazeTrafficFeedService
         $this->em->persist($route);
 
         // Snapshot histórico (sempre insert)
-        $this->insertRouteSnapshot($route, $avgSpeed, $avgTime, $now);
+        $this->insertRouteSnapshot($route, $avgSpeed, $time, $historicSpeed, $raw, $now);
 
         // Sub-rotas: apagar antigas e recriar
         foreach ($route->getSubRoutes() as $old) {
@@ -148,13 +148,23 @@ class WazeTrafficFeedService
         }
     }
 
-    private function insertRouteSnapshot(WazeRoute $route, float $avgSpeed, float $avgTime, \DateTimeImmutable $now): void
-    {
+    private function insertRouteSnapshot(
+        WazeRoute $route,
+        float $avgSpeed,
+        int $time,
+        float $historicSpeed,
+        array $raw,
+        \DateTimeImmutable $now
+    ): void {
         $snapshot = new WazeRouteSnapshot();
         $snapshot
             ->setRoute($route)
+            ->setTime($time)
+            ->setHistoricTime((int) ($raw['historicTime'] ?? 0))
+            ->setLength((int) ($raw['length'] ?? 0))
+            ->setJamLevel((int) ($raw['jamLevel'] ?? 0))
             ->setAvgSpeed($avgSpeed)
-            ->setAvgTime((int) $avgTime)
+            ->setHistoricSpeed($historicSpeed)
             ->setCollectedAt($now);
 
         $this->em->persist($snapshot);
@@ -275,17 +285,17 @@ class WazeTrafficFeedService
     /**
      * Calcula velocidades médias a partir de comprimento e tempos.
      *
-     * @return array{float, float, float}  [avgSpeed, avgTime, historicSpeed]  (km/h, s, km/h)
+     * @return array{float, int, float}  [avgSpeed, time, historicSpeed]  (km/h, s, km/h)
      */
     private function calcSpeeds(int|float $length, int|float $time, int|float $historicTime): array
     {
-        $length      = max(1, (float) $length);
-        $time        = max(1, (float) $time);
+        $length       = max(1, (float) $length);
+        $time         = max(1, (float) $time);
         $historicTime = max(1, (float) $historicTime);
 
         $avgSpeed      = ($length / 1000) / ($time / 3600);         // km/h
         $historicSpeed = ($length / 1000) / ($historicTime / 3600); // km/h
 
-        return [$avgSpeed, $time, $historicSpeed];
+        return [$avgSpeed, (int) $time, $historicSpeed];
     }
 }
