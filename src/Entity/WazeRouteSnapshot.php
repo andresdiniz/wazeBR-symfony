@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\WazeRouteSnapshotRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -46,9 +48,16 @@ class WazeRouteSnapshot
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $collectedAt;
 
+    /**
+     * Sub-rotas (trechos) coletadas neste snapshot.
+     */
+    #[ORM\OneToMany(targetEntity: WazeSubRoute::class, mappedBy: 'routeSnapshot', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $subRoutes;
+
     public function __construct()
     {
         $this->collectedAt = new \DateTimeImmutable();
+        $this->subRoutes   = new ArrayCollection();
     }
 
     // ─── Getters / Setters ────────────────────────────────────────────────────
@@ -72,4 +81,26 @@ class WazeRouteSnapshot
 
     public function getCollectedAt(): \DateTimeImmutable { return $this->collectedAt; }
     public function setCollectedAt(\DateTimeImmutable $collectedAt): static { $this->collectedAt = $collectedAt; return $this; }
+
+    /** @return Collection<int, WazeSubRoute> */
+    public function getSubRoutes(): Collection { return $this->subRoutes; }
+
+    public function addSubRoute(WazeSubRoute $subRoute): static
+    {
+        if (!$this->subRoutes->contains($subRoute)) {
+            $this->subRoutes->add($subRoute);
+            $subRoute->setRouteSnapshot($this);
+        }
+        return $this;
+    }
+
+    public function removeSubRoute(WazeSubRoute $subRoute): static
+    {
+        if ($this->subRoutes->removeElement($subRoute)) {
+            if ($subRoute->getRouteSnapshot() === $this) {
+                $subRoute->setRouteSnapshot(null);
+            }
+        }
+        return $this;
+    }
 }

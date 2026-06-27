@@ -187,10 +187,12 @@
 {% block javascripts %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-(function(){
-  const FMT = WazeTZ.FMT_FULL;
+// Aguarda o DOM (e o WazeTZ definido no base.html.twig) estar pronto
+document.addEventListener('DOMContentLoaded', function() {
 
-  const alerts = {{ alerts|map(a => {
+  var FMT = WazeTZ.FMT_FULL;
+
+  var alerts = {{ alerts|map(a => {
     id:      a.id,
     lat:     a.latitude,
     lng:     a.longitude,
@@ -203,35 +205,38 @@
     pubIso:  a.pubDate|date('c')
   })|json_encode|raw }};
 
-  const TYPE_COLOR = {
+  var TYPE_COLOR = {
     ACCIDENT:'#a12c7b', HAZARD:'#d19900', WEATHERHAZARD:'#006494',
     JAM:'#da7101', ROAD_CLOSED:'#7a7974', CONSTRUCTION:'#437a22',
     POLICE:'#01696f', MISC:'#7a39bb'
   };
-  const TYPE_LABEL = {
+  var TYPE_LABEL = {
     ACCIDENT:'Acidente', HAZARD:'Perigo', WEATHERHAZARD:'Risco clim\u00e1tico',
     JAM:'Congestionamento', ROAD_CLOSED:'Via fechada', CONSTRUCTION:'Obra',
     POLICE:'Pol\u00edcia/Radar', MISC:'Diverso'
   };
 
-  const map = L.map('alert-map', {zoomControl:true});
+  var mapEl = document.getElementById('alert-map');
+  if (!mapEl) { return; }
+
+  var map = L.map('alert-map', {zoomControl:true});
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     {attribution:'\u00a9 OpenStreetMap',maxZoom:19}).addTo(map);
 
-  const markers = [];
+  var markers = [];
   alerts.forEach(function(a) {
-    const lat = parseFloat(a.lat);
-    const lng = parseFloat(a.lng);
+    var lat = parseFloat(a.lat);
+    var lng = parseFloat(a.lng);
     if (isNaN(lat) || isNaN(lng)) return;
-    const color = TYPE_COLOR[a.type] || '#7a7974';
-    const icon = L.divIcon({
+    var color = TYPE_COLOR[a.type] || '#7a7974';
+    var icon = L.divIcon({
       html: '<div style="width:12px;height:12px;border-radius:50%;background:' + color + ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>',
       className: '', iconSize: [12, 12], iconAnchor: [6, 6]
     });
 
-    const subtypeClean = a.subtype ? a.subtype.replace(/_/g, ' ') : '';
-    const pubFormatted = a.pubIso ? FMT.format(new Date(a.pubIso)) : '\u2014';
-    const popup = '<div class="popup-inner">'
+    var subtypeClean = a.subtype ? a.subtype.replace(/_/g, ' ') : '';
+    var pubFormatted = a.pubIso ? FMT.format(new Date(a.pubIso)) : '\u2014';
+    var popup = '<div class="popup-inner">'
       + '<div class="popup-type" style="color:' + color + '">' + (TYPE_LABEL[a.type] || a.type) + '</div>'
       + (subtypeClean ? '<div class="popup-sub">' + subtypeClean + '</div>' : '')
       + '<div class="popup-street">' + (a.street || 'Via n\u00e3o identificada') + '</div>'
@@ -244,7 +249,7 @@
       + '<a class="popup-link" href="/alertas/' + a.id + '">&#128279; Ver detalhes</a>'
       + '</div>';
 
-    const m = L.marker([lat, lng], {icon: icon}).bindPopup(popup, {maxWidth: 260});
+    var m = L.marker([lat, lng], {icon: icon}).bindPopup(popup, {maxWidth: 260});
     m.addTo(map);
     markers.push(m);
   });
@@ -257,6 +262,7 @@
 
   /* Força resize caso o mapa tenha sido inicializado antes do layout estabilizar */
   setTimeout(function() { map.invalidateSize(); }, 200);
-})();
+
+}); // fim DOMContentLoaded
 </script>
 {% endblock %}
