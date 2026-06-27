@@ -1,7 +1,6 @@
 {% extends 'base.html.twig' %}
 {% block title %}Histórico — {{ latest.name ?? wazeRouteId }}{% endblock %}
 
-{# Prepara variáveis escapadas para uso no bloco JS #}
 {% set jsFromName = latest.fromName ? latest.fromName|e('js') : 'Início' %}
 {% set jsToName   = latest.toName   ? latest.toName|e('js')   : 'Fim' %}
 {% set jsJamLevel = latest.jamLevel ?? 0 %}
@@ -33,7 +32,6 @@
 {% endblock %}
 
 {% block content %}
-{# Dados JSON isolados em data-attributes — sem risco de & vazar para o JS #}
 <div id="js-data"
   data-history="{{ jsHistory|e('html_attr') }}"
   data-line="{{ jsLine|e('html_attr') }}"
@@ -135,7 +133,6 @@
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function(){
-  // Lê dados do data-attribute — zero risco de entidades HTML no JS
   var ds        = document.getElementById('js-data').dataset;
   var raw       = JSON.parse(ds.history);
   var routeLine = JSON.parse(ds.line);
@@ -186,25 +183,45 @@
     var pl        = L.polyline(latlngs, { color: color, weight: 5, opacity: 0.85 }).addTo(map);
 
     if (latlngs.length >= 2) {
-      var mkIcon = function(label, bg) {
+      /**
+       * Pin SVG: círculo com ponta para baixo.
+       * iconSize:   [largura, altura total do SVG]
+       * iconAnchor: [metade da largura, altura total] → ancora a ponta na coordenada exata
+       */
+      var mkPin = function(letter, bg, label) {
+        var w = 28, h = 36;
+        var svg =
+          '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 28 36">' +
+            '<path d="M14 0 C6.268 0 0 6.268 0 14 C0 22 14 36 14 36 C14 36 28 22 28 14 C28 6.268 21.732 0 14 0 Z"' +
+            ' fill="' + bg + '" stroke="rgba(0,0,0,0.25)" stroke-width="1"/>' +
+            '<text x="14" y="19" text-anchor="middle" dominant-baseline="middle"' +
+            ' font-family="system-ui,sans-serif" font-size="13" font-weight="700" fill="#fff">' +
+            letter +
+            '</text>' +
+          '</svg>';
         return L.divIcon({
-          html: '<div style="background:' + bg + ';color:#fff;font-size:10px;font-weight:700;padding:3px 7px;border-radius:12px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3)">' + label + '</div>',
+          html: svg,
           className: '',
-          iconAnchor: [0, 0]
+          iconSize:   [w, h],
+          iconAnchor: [w / 2, h],
+          popupAnchor:[0, -h]
         });
       };
-      L.marker(latlngs[0], { icon: mkIcon('In\u00edcio', '#01696f') })
-        .bindPopup(fromName).addTo(map);
-      L.marker(latlngs[latlngs.length - 1], { icon: mkIcon('Fim', '#a12c7b') })
-        .bindPopup(toName).addTo(map);
+
+      L.marker(latlngs[0], { icon: mkPin('A', '#01696f', fromName) })
+        .bindTooltip(fromName, { permanent: false, direction: 'top' })
+        .addTo(map);
+
+      L.marker(latlngs[latlngs.length - 1], { icon: mkPin('B', '#a12c7b', toName) })
+        .bindTooltip(toName, { permanent: false, direction: 'top' })
+        .addTo(map);
     }
 
-    map.fitBounds(pl.getBounds(), { padding: [20, 20] });
+    map.fitBounds(pl.getBounds(), { padding: [28, 28] });
   } else if (mapEl) {
     mapEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--color-text-muted);font-size:var(--text-sm)">Geometria da rota n\u00e3o dispon\u00edvel</div>';
   }
 
-  // Datas no fuso do usuário
   document.querySelectorAll('time[data-utc][data-fmt]').forEach(function(el) {
     try {
       var d = new Date(el.dataset.utc);
