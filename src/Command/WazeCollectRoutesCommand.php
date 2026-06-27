@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Entity\MonitoredLink;
+use App\Entity\WazeIrregularity;
 use App\Entity\WazeRoute;
 use App\Entity\WazeRouteSnapshot;
 use App\Entity\WazeSubRoute;
 use App\Repository\MonitoredLinkRepository;
+use App\Repository\WazeIrregularityRepository;
 use App\Repository\WazeRouteRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -22,14 +24,15 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 /**
  * Coleta dados atuais das rotas Waze e salva WazeRouteSnapshot.
  *
- * Modo 1 — TVT (MonitoredLink link_type=waze_tvt):
- *   Itera os MonitoredLink com link_type=waze_tvt, chama o feed TVT,
- *   cria/atualiza WazeRoute pelo wazeId+partner (upsert) e salva snapshot.
- *   As subRoutes de cada rota são salvas em waze_sub_routes (WazeSubRoute).
+ * Modo TVT (MonitoredLink link_type=waze_tvt):
+ *   - Itera os MonitoredLink waze_tvt ativos
+ *   - Upsert WazeRoute por (wazeId + partner)
+ *   - Salva WazeRouteSnapshot (histórico imutável)
+ *   - Sincroniza WazeSubRoute com campos leadAlert e avgSpeed
+ *   - Upsert WazeIrregularity por (wazeId + sourceLink); desativa as ausentes
  *
- * Modo 2 — Routing API (WazeRoute com coordinates):
- *   Itera WazeRoute ativas com coordinates preenchido e consulta
- *   a API de roteamento do Waze.
+ * Modo Routing API (WazeRoute com coordinates):
+ *   - Consulta a API de roteamento do Waze
  */
 #[AsCommand(
     name: 'app:waze:collect-routes',
@@ -40,10 +43,11 @@ class WazeCollectRoutesCommand extends Command
     private const ROUTING_URL = 'https://www.waze.com/row-RoutingManager/routingRequest';
 
     public function __construct(
-        private readonly WazeRouteRepository    $routeRepo,
-        private readonly MonitoredLinkRepository $linkRepo,
-        private readonly EntityManagerInterface  $em,
-        private readonly HttpClientInterface     $httpClient,
+        private readonly WazeRouteRepository        $routeRepo,
+        private readonly MonitoredLinkRepository    $linkRepo,
+        private readonly WazeIrregularityRepository $irregularityRepo,
+        private readonly EntityManagerInterface     $em,
+        private readonly HttpClientInterface        $httpClient,
     ) {
         parent::__construct();
     }
@@ -69,7 +73,7 @@ class WazeCollectRoutesCommand extends Command
         $ok     = 0;
         $errors = 0;
 
-        // ── MODO TVT: itera MonitoredLink waze_tvt ──────────────────────────
+        // ── MODO TVT ────────────────────────────────────────────────────────
         /** @var MonitoredLink[] $tvtLinks */
         $tvtLinks = $this->linkRepo->findActiveWazeTvtLinks();
 
@@ -77,10 +81,9 @@ class WazeCollectRoutesCommand extends Command
             $io->section('Modo TVT — feeds-tvt');
 
             foreach ($tvtLinks as $link) {
-                $partnerName = $link->getPartner()?->getName() ?? '—';
                 $partnerObj  = $link->getPartner();
+                $partnerName = $partnerObj?->getName() ?? '—';
 
-                // Filtro por parceiro se passado via opção
                 if ($partnerSlug && $partnerObj?->getSlug() !== $partnerSlug) {
                     continue;
                 }
@@ -95,118 +98,224 @@ class WazeCollectRoutesCommand extends Command
                     continue;
                 }
 
+                // ── 1. usersOnJams ────────────────────────────────────────
+                // Já persistido pelo WazeCollectFeedCommand / WazeCount —
+                // aqui apenas logamos para auditoria sem duplicar.
+                if (!empty($data['usersOnJams'])) {
+                    $io->writeln(sprintf(
+                        '  usersOnJams: %d níveis encontrados',
+                        count($data['usersOnJams'])
+                    ));
+                }
+
+                // ── 2. Rotas ──────────────────────────────────────────────
                 $rawRoutes = $data['routes'] ?? [];
 
                 if (empty($rawRoutes)) {
                     $io->warning('Nenhuma rota no feed TVT.');
-                    continue;
+                } else {
+                    foreach ($rawRoutes as $rawRoute) {
+                        $wazeId = isset($rawRoute['id']) ? (string) $rawRoute['id'] : null;
+                        $name   = $rawRoute['name'] ?? null;
+
+                        // Calcular velocidades
+                        $length      = max(1, (int) ($rawRoute['length']      ?? 1));
+                        $time        = max(1, (int) ($rawRoute['time']        ?? 1));
+                        $historicT   = max(1, (int) ($rawRoute['historicTime'] ?? 1));
+                        $avgSpeed     = round(($length / 1000) / ($time      / 3600), 2);
+                        $historicSpeed= round(($length / 1000) / ($historicT / 3600), 2);
+
+                        if ($dryRun) {
+                            $io->writeln(sprintf(
+                                '  DRY-RUN: id=%s | %s | time=%s | historicTime=%s | jam=%s | avgSpeed=%s km/h | sub=%d | irr=%d',
+                                $wazeId ?? '?', $name ?? '?',
+                                $rawRoute['time'] ?? '?', $rawRoute['historicTime'] ?? '?',
+                                $rawRoute['jamLevel'] ?? '?', $avgSpeed,
+                                count($rawRoute['subRoutes'] ?? []),
+                                count($data['irregularities'] ?? []),
+                            ));
+                            $ok++;
+                            continue;
+                        }
+
+                        // Upsert WazeRoute
+                        $route = $wazeId && $partnerObj
+                            ? $this->em->getRepository(WazeRoute::class)->findOneBy([
+                                'wazeId'  => $wazeId,
+                                'partner' => $partnerObj,
+                            ])
+                            : null;
+
+                        if ($route === null) {
+                            $route = (new WazeRoute())
+                                ->setPartner($partnerObj)
+                                ->setWazeId($wazeId)
+                                ->setIsActive(true);
+                        }
+
+                        $rawTime = isset($rawRoute['time'])         ? (int) $rawRoute['time']         : null;
+                        $rawHist = isset($rawRoute['historicTime']) ? (int) $rawRoute['historicTime'] : null;
+                        $rawLen  = isset($rawRoute['length'])       ? (int) $rawRoute['length']       : null;
+                        $rawJam  = isset($rawRoute['jamLevel'])     ? (int) $rawRoute['jamLevel']     : null;
+
+                        $route
+                            ->setName($rawRoute['name']     ?? $route->getName())
+                            ->setFromName($rawRoute['fromName'] ?? $route->getFromName())
+                            ->setToName($rawRoute['toName']   ?? $route->getToName())
+                            ->setType($rawRoute['type']       ?? $route->getType())
+                            ->setTime($rawTime)
+                            ->setHistoricTime($rawHist)
+                            ->setLength($rawLen)
+                            ->setJamLevel($rawJam)
+                            ->setCollectedAt(new \DateTime());
+
+                        if (!empty($rawRoute['line'])) {
+                            $route->setLine($rawRoute['line']);
+                        }
+                        if (!empty($rawRoute['bbox'])) {
+                            $route->setBbox($rawRoute['bbox']);
+                        }
+
+                        // ── Sincroniza subRoutes (orphanRemoval) ──────────
+                        foreach ($route->getSubRoutes() as $old) {
+                            $route->removeSubRoute($old);
+                        }
+
+                        foreach (($rawRoute['subRoutes'] ?? []) as $sortOrder => $rawSub) {
+                            $subLen  = max(1, (int) ($rawSub['length']      ?? 1));
+                            $subTime = max(1, (int) ($rawSub['time']        ?? 1));
+                            $subHist = max(1, (int) ($rawSub['historicTime'] ?? 1));
+
+                            $leadAlert = $rawSub['leadAlert'] ?? null;
+
+                            $sub = (new WazeSubRoute())
+                                ->setFromName($rawSub['fromName'] ?? null)
+                                ->setToName($rawSub['toName']    ?? null)
+                                ->setTime($subTime)
+                                ->setHistoricTime($subHist)
+                                ->setLength($subLen)
+                                ->setJamLevel(isset($rawSub['jamLevel']) ? (int) $rawSub['jamLevel'] : null)
+                                ->setAvgSpeed(round(($subLen / 1000) / ($subTime / 3600), 2))
+                                ->setHistoricSpeed(round(($subLen / 1000) / ($subHist / 3600), 2))
+                                ->setLine($rawSub['line'] ?? null)
+                                ->setBbox($rawSub['bbox'] ?? null)
+                                ->setSortOrder($sortOrder)
+                                // lead alert
+                                ->setLeadAlertId($leadAlert['id']               ?? null)
+                                ->setLeadAlertType($leadAlert['type']            ?? null)
+                                ->setLeadAlertSubType($leadAlert['subType']      ?? null)
+                                ->setLeadAlertPosition(isset($leadAlert['position']) ? (array) $leadAlert['position'] : null)
+                                ->setLeadAlertNumComments($leadAlert['numComments']          ?? null)
+                                ->setLeadAlertNumThumbsUp($leadAlert['numThumbsUp']          ?? null)
+                                ->setLeadAlertNumNotThereReports($leadAlert['numNotThereReports'] ?? null)
+                                ->setLeadAlertStreet($leadAlert['street']        ?? null);
+
+                            $route->addSubRoute($sub);
+                        }
+
+                        $this->em->persist($route);
+                        $this->em->flush();
+
+                        // WazeRouteSnapshot (histórico imutável)
+                        $snapshot = (new WazeRouteSnapshot())
+                            ->setRoute($route)
+                            ->setTime($rawTime)
+                            ->setHistoricTime($rawHist)
+                            ->setLength($rawLen)
+                            ->setJamLevel($rawJam);
+
+                        $this->em->persist($snapshot);
+
+                        $delay = ($rawTime !== null && $rawHist !== null && $rawHist > 0)
+                            ? round(($rawTime - $rawHist) / 60, 1)
+                            : null;
+
+                        $io->writeln(sprintf(
+                            '  ✓ [TVT] id=<info>%s</info> | %s | time=<info>%ds</info> | historic=<info>%ds</info> | jam=<info>%s</info> | speed=<info>%s km/h</info> | sub=<info>%d</info>%s',
+                            $wazeId ?? '?', $name ?? '(sem nome)',
+                            $rawTime ?? 0, $rawHist ?? 0, $rawJam ?? '?',
+                            $avgSpeed,
+                            count($rawRoute['subRoutes'] ?? []),
+                            $delay !== null ? " | atraso=<comment>{$delay}min</comment>" : '',
+                        ));
+
+                        $ok++;
+                    }
+
+                    $this->em->flush();
                 }
 
-                foreach ($rawRoutes as $rawRoute) {
-                    $wazeId = isset($rawRoute['id']) ? (string) $rawRoute['id'] : null;
-                    $name   = $rawRoute['name'] ?? null;
+                // ── 3. Irregularidades ────────────────────────────────────
+                $rawIrregularities = $data['irregularities'] ?? [];
 
-                    if ($dryRun) {
+                if (!$dryRun) {
+                    // Desativa tudo que veio antes para este link
+                    $existing = $this->irregularityRepo->findActiveByLink($link);
+                    foreach ($existing as $irr) {
+                        $irr->setIsActive(false);
+                    }
+                    $this->em->flush();
+
+                    foreach ($rawIrregularities as $rawIrr) {
+                        $irrWazeId = isset($rawIrr['id']) ? (string) $rawIrr['id'] : null;
+
+                        // Upsert por (wazeId + sourceLink)
+                        $irr = $irrWazeId
+                            ? $this->em->getRepository(WazeIrregularity::class)->findOneBy([
+                                'wazeId'     => $irrWazeId,
+                                'sourceLink' => $link,
+                            ])
+                            : null;
+
+                        if ($irr === null) {
+                            $irr = (new WazeIrregularity())
+                                ->setWazeId($irrWazeId)
+                                ->setPartner($partnerObj)
+                                ->setSourceLink($link);
+                        }
+
+                        $irrLen  = max(1, (int) ($rawIrr['length']      ?? 1));
+                        $irrTime = max(1, (int) ($rawIrr['time']        ?? 1));
+                        $irrHist = max(1, (int) ($rawIrr['historicTime'] ?? 1));
+                        $leadAlert = $rawIrr['leadAlert'] ?? null;
+
+                        $irr
+                            ->setName($rawIrr['name']         ?? null)
+                            ->setFromName($rawIrr['fromName'] ?? null)
+                            ->setToName($rawIrr['toName']     ?? null)
+                            ->setLength($irrLen)
+                            ->setTime($irrTime)
+                            ->setHistoricTime($irrHist)
+                            ->setJamLevel(isset($rawIrr['jamLevel']) ? (int) $rawIrr['jamLevel'] : null)
+                            ->setAvgSpeed(round(($irrLen / 1000) / ($irrTime / 3600), 2))
+                            ->setHistoricSpeed(round(($irrLen / 1000) / ($irrHist / 3600), 2))
+                            ->setBbox($rawIrr['bbox'] ?? null)
+                            ->setLine($rawIrr['line'] ?? null)
+                            ->setIsActive(true)
+                            ->setCollectedAt(new \DateTimeImmutable())
+                            // lead alert
+                            ->setLeadAlertId($leadAlert['id']            ?? null)
+                            ->setLeadAlertType($leadAlert['type']         ?? null)
+                            ->setLeadAlertSubType($leadAlert['subType']   ?? null)
+                            ->setLeadAlertPosition(isset($leadAlert['position']) ? (array) $leadAlert['position'] : null)
+                            ->setLeadAlertNumComments($leadAlert['numComments']        ?? null)
+                            ->setLeadAlertCity($leadAlert['city']                      ?? null)
+                            ->setLeadAlertExternalImageId($leadAlert['externalImageId'] ?? null)
+                            ->setLeadAlertNumThumbsUp($leadAlert['numThumbsUp']         ?? null)
+                            ->setLeadAlertStreet($leadAlert['street']                  ?? null)
+                            ->setLeadAlertNumNotThereReports($leadAlert['numNotThereReports'] ?? null);
+
+                        $this->em->persist($irr);
+                    }
+
+                    $this->em->flush();
+
+                    if (!empty($rawIrregularities)) {
                         $io->writeln(sprintf(
-                            '  DRY-RUN: id=%s | name=%s | time=%s | historicTime=%s | length=%s | jamLevel=%s | subRoutes=%d',
-                            $wazeId ?? '?',
-                            $name   ?? '?',
-                            $rawRoute['time']         ?? '?',
-                            $rawRoute['historicTime']  ?? '?',
-                            $rawRoute['length']        ?? '?',
-                            $rawRoute['jamLevel']      ?? '?',
-                            count($rawRoute['subRoutes'] ?? []),
+                            '  ✓ [IRR] %d irregularidade(s) sincronizada(s)',
+                            count($rawIrregularities)
                         ));
-                        $ok++;
-                        continue;
                     }
-
-                    // Upsert: busca pelo wazeId + partner, cria se não existir
-                    $route = $wazeId && $partnerObj
-                        ? $this->em->getRepository(WazeRoute::class)->findOneBy([
-                            'wazeId'  => $wazeId,
-                            'partner' => $partnerObj,
-                        ])
-                        : null;
-
-                    if ($route === null) {
-                        $route = (new WazeRoute())
-                            ->setPartner($partnerObj)
-                            ->setWazeId($wazeId)
-                            ->setIsActive(true);
-                    }
-
-                    $time         = isset($rawRoute['time'])         ? (int) $rawRoute['time']         : null;
-                    $historicTime = isset($rawRoute['historicTime']) ? (int) $rawRoute['historicTime'] : null;
-                    $length       = isset($rawRoute['length'])       ? (int) $rawRoute['length']       : null;
-                    $jamLevel     = isset($rawRoute['jamLevel'])     ? (int) $rawRoute['jamLevel']     : null;
-
-                    $route
-                        ->setName($rawRoute['name']       ?? $route->getName())
-                        ->setFromName($rawRoute['fromName'] ?? $route->getFromName())
-                        ->setToName($rawRoute['toName']   ?? $route->getToName())
-                        ->setType($rawRoute['type']       ?? $route->getType())
-                        ->setTime($time)
-                        ->setHistoricTime($historicTime)
-                        ->setLength($length)
-                        ->setJamLevel($jamLevel)
-                        ->setCollectedAt(new \DateTime());
-
-                    if (!empty($rawRoute['line'])) {
-                        $route->setLine($rawRoute['line']);
-                    }
-                    if (!empty($rawRoute['bbox'])) {
-                        $route->setBbox($rawRoute['bbox']);
-                    }
-
-                    // ── Sincroniza subRoutes em waze_sub_routes ──────────────
-                    // Remove todas as sub-rotas anteriores (orphanRemoval cuida do DELETE)
-                    foreach ($route->getSubRoutes() as $old) {
-                        $route->removeSubRoute($old);
-                    }
-
-                    foreach (($rawRoute['subRoutes'] ?? []) as $sortOrder => $rawSub) {
-                        $sub = (new WazeSubRoute())
-                            ->setFromName($rawSub['fromName'] ?? null)
-                            ->setToName($rawSub['toName']     ?? null)
-                            ->setTime(isset($rawSub['time'])               ? (int) $rawSub['time']         : null)
-                            ->setHistoricTime(isset($rawSub['historicTime']) ? (int) $rawSub['historicTime'] : null)
-                            ->setLength(isset($rawSub['length'])           ? (int) $rawSub['length']       : null)
-                            ->setJamLevel(isset($rawSub['jamLevel'])       ? (int) $rawSub['jamLevel']     : null)
-                            ->setLine($rawSub['line'] ?? null)
-                            ->setBbox($rawSub['bbox'] ?? null)
-                            ->setSortOrder($sortOrder);
-
-                        $route->addSubRoute($sub);
-                    }
-                    // ────────────────────────────────────────────────────────
-
-                    $this->em->persist($route);
-                    $this->em->flush(); // flush para garantir que $route->getId() esteja preenchido
-
-                    $snapshot = (new WazeRouteSnapshot())
-                        ->setRoute($route)
-                        ->setTime($time)
-                        ->setHistoricTime($historicTime)
-                        ->setLength($length)
-                        ->setJamLevel($jamLevel);
-
-                    $this->em->persist($snapshot);
-
-                    $delay = ($time !== null && $historicTime !== null && $historicTime > 0)
-                        ? round(($time - $historicTime) / 60, 1)
-                        : null;
-
-                    $io->writeln(sprintf(
-                        '  ✓ [TVT] id=<info>%s</info> | %s | time=<info>%ds</info> | historic=<info>%ds</info> | jam=<info>%s</info> | sub=<info>%d</info>%s',
-                        $wazeId ?? '?',
-                        $name   ?? '(sem nome)',
-                        $time ?? 0, $historicTime ?? 0, $jamLevel ?? '?',
-                        count($rawRoute['subRoutes'] ?? []),
-                        $delay !== null ? " | atraso=<comment>{$delay}min</comment>" : '',
-                    ));
-
-                    $ok++;
                 }
 
                 if (!$dryRun) {
@@ -216,12 +325,11 @@ class WazeCollectRoutesCommand extends Command
             }
         }
 
-        // ── MODO ROUTING API: WazeRoute com coordinates ────────────────────
+        // ── MODO ROUTING API ────────────────────────────────────────────────
         $routingRoutes = $partnerSlug
             ? $this->routeRepo->findActiveByPartnerSlug($partnerSlug)
             : $this->routeRepo->findAllActive();
 
-        // Filtra apenas as que têm coordinates (modo Routing)
         $routingRoutes = array_filter(
             $routingRoutes,
             fn(WazeRoute $r) => !empty($r->getCoordinates())
@@ -238,7 +346,7 @@ class WazeCollectRoutesCommand extends Command
 
                 $coords = $this->resolveCoordinates($route);
                 if ($coords === null) {
-                    $io->warning('Coordenadas inválidas (from/to ausentes). Pulando.');
+                    $io->warning('Coordenadas inválidas. Pulando.');
                     $errors++;
                     continue;
                 }
@@ -254,30 +362,30 @@ class WazeCollectRoutesCommand extends Command
                 $routeData = $data['alternatives'][0]['response'] ?? $data['response'] ?? null;
 
                 if ($routeData === null) {
-                    $io->warning('Resposta inesperada da API (sem response). Pulando.');
+                    $io->warning('Resposta inesperada da API. Pulando.');
                     $errors++;
                     continue;
                 }
 
-                $time         = isset($routeData['totalRouteTime'])  ? (int) $routeData['totalRouteTime']  : null;
-                $historicTime = isset($routeData['totalRoutTime'])    ? (int) $routeData['totalRoutTime']    : null;
-                $length       = isset($routeData['totalRouteLength']) ? (int) $routeData['totalRouteLength'] : null;
-                $jamLevel     = isset($routeData['jamLevel'])         ? (int) $routeData['jamLevel']         : null;
+                $rawTime = isset($routeData['totalRouteTime'])  ? (int) $routeData['totalRouteTime']  : null;
+                $rawHist = isset($routeData['totalRoutTime'])   ? (int) $routeData['totalRoutTime']   : null;
+                $rawLen  = isset($routeData['totalRouteLength'])? (int) $routeData['totalRouteLength']: null;
+                $rawJam  = isset($routeData['jamLevel'])        ? (int) $routeData['jamLevel']        : null;
 
                 if ($dryRun) {
                     $io->writeln(sprintf(
-                        '  DRY-RUN [Routing]: time=%ss | historicTime=%ss | length=%sm | jamLevel=%s',
-                        $time ?? '?', $historicTime ?? '?', $length ?? '?', $jamLevel ?? '?',
+                        '  DRY-RUN [Routing]: time=%ss | historicTime=%ss | length=%sm | jam=%s',
+                        $rawTime ?? '?', $rawHist ?? '?', $rawLen ?? '?', $rawJam ?? '?',
                     ));
                     $ok++;
                     continue;
                 }
 
                 $route
-                    ->setTime($time)
-                    ->setHistoricTime($historicTime)
-                    ->setLength($length)
-                    ->setJamLevel($jamLevel)
+                    ->setTime($rawTime)
+                    ->setHistoricTime($rawHist)
+                    ->setLength($rawLen)
+                    ->setJamLevel($rawJam)
                     ->setCollectedAt(new \DateTime());
 
                 if (!empty($routeData['line'])) {
@@ -286,21 +394,21 @@ class WazeCollectRoutesCommand extends Command
 
                 $snapshot = (new WazeRouteSnapshot())
                     ->setRoute($route)
-                    ->setTime($time)
-                    ->setHistoricTime($historicTime)
-                    ->setLength($length)
-                    ->setJamLevel($jamLevel);
+                    ->setTime($rawTime)
+                    ->setHistoricTime($rawHist)
+                    ->setLength($rawLen)
+                    ->setJamLevel($rawJam);
 
                 $this->em->persist($snapshot);
                 $this->em->flush();
 
-                $delay = ($time !== null && $historicTime !== null && $historicTime > 0)
-                    ? round(($time - $historicTime) / 60, 1)
+                $delay = ($rawTime !== null && $rawHist !== null && $rawHist > 0)
+                    ? round(($rawTime - $rawHist) / 60, 1)
                     : null;
 
                 $io->writeln(sprintf(
                     '  ✓ [Routing] time=<info>%ds</info> | historic=<info>%ds</info> | length=<info>%dm</info> | jam=<info>%s</info>%s',
-                    $time ?? 0, $historicTime ?? 0, $length ?? 0, $jamLevel ?? '?',
+                    $rawTime ?? 0, $rawHist ?? 0, $rawLen ?? 0, $rawJam ?? '?',
                     $delay !== null ? " | atraso=<comment>{$delay}min</comment>" : '',
                 ));
 
@@ -318,7 +426,7 @@ class WazeCollectRoutesCommand extends Command
         return Command::SUCCESS;
     }
 
-    // ── HTTP helpers ────────────────────────────────────────────────────
+    // ── HTTP helpers ──────────────────────────────────────────────────────
 
     private function fetchJson(string $url): array
     {
@@ -331,9 +439,8 @@ class WazeCollectRoutesCommand extends Command
             ],
         ]);
 
-        $status = $response->getStatusCode();
-        if ($status !== 200) {
-            throw new \RuntimeException("HTTP {$status} ao acessar {$url}");
+        if ($response->getStatusCode() !== 200) {
+            throw new \RuntimeException("HTTP {$response->getStatusCode()} ao acessar {$url}");
         }
 
         return $response->toArray();
