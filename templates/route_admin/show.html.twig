@@ -1,32 +1,22 @@
 {% extends 'base.html.twig' %}
-{% block title %}Rota: {{ route.name }}{% endblock %}
+{% block title %}Rota #{{ route.id }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <a href="{{ path('route_admin_index') }}" class="btn btn-ghost">&larr; Voltar</a>
-  <h1>{{ route.name }}</h1>
+  <h1 class="page-title">Rota #{{ route.id }}</h1>
+  <a href="{{ path('route_admin_index') }}" class="btn btn-ghost btn-sm">Voltar</a>
 </div>
-<div class="detail-card">
-  <dl>
-    <dt>Descrição</dt><dd>{{ route.description ?? '—' }}</dd>
-    <dt>Ativa</dt><dd>{{ route.isActive ? 'Sim' : 'Não' }}</dd>
-    <dt>Criada em</dt><dd>{{ route.createdAt|date('d/m/Y H:i') }}</dd>
-  </dl>
-</div>
-<h2>Links da Rota</h2>
-<div class="table-wrapper">
-  <table>
-    <thead><tr><th>Nome</th><th>Tipo</th><th>Ativa</th></tr></thead>
-    <tbody>
-      {% for link in route.links %}
-      <tr>
-        <td>{{ link.name }}</td>
-        <td>{{ link.type }}</td>
-        <td>{{ link.isActive ? 'Sim' : 'Não' }}</td>
-      </tr>
-      {% else %}
-      <tr><td colspan="3" class="empty-cell">Nenhum link cadastrado.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+
+<div class="card">
+  <div class="card-body">
+    <dl style="display:grid;grid-template-columns:max-content 1fr;gap:var(--space-2) var(--space-6)">
+      <dt>Nome</dt><dd>{{ route.name }}</dd>
+      <dt>Origem</dt><dd>{{ route.origin }}</dd>
+      <dt>Destino</dt><dd>{{ route.destination }}</dd>
+      <dt>Criada em</dt><dd><time data-utc="{{ route.createdAt|date('c') }}" data-fmt="datetime">{{ route.createdAt|date('d/m/Y H:i') }}</time></dd>
+      {% if route.updatedAt %}
+        <dt>Atualizada em</dt><dd><time data-utc="{{ route.updatedAt|date('c') }}" data-fmt="datetime">{{ route.updatedAt|date('d/m/Y H:i') }}</time></dd>
+      {% endif %}
+    </dl>
+  </div>
 </div>
 {% endblock %}

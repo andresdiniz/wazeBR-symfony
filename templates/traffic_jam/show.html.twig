@@ -4,61 +4,107 @@
 {% block stylesheets %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-.show-grid{display:grid;grid-template-columns:1fr 380px;gap:var(--space-6);align-items:start}
-.detail-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);overflow:hidden}
-.detail-section-title{font-size:var(--text-xs);font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--color-text-muted);padding:var(--space-3) var(--space-5);background:var(--color-surface-offset);border-bottom:1px solid var(--color-divider)}
-.detail-rows{padding:var(--space-2) 0}
-.detail-row{display:flex;align-items:flex-start;gap:var(--space-4);padding:var(--space-3) var(--space-5);border-bottom:1px solid var(--color-divider)}
-.detail-row:last-child{border-bottom:none}
-.detail-label{font-size:var(--text-xs);font-weight:600;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.04em;min-width:130px;padding-top:2px;flex-shrink:0}
-.detail-value{font-size:var(--text-sm);color:var(--color-text);word-break:break-word}
-#jam-map{height:340px;width:100%;border-radius:var(--radius-lg);border:1px solid var(--color-border);overflow:hidden;margin-bottom:var(--space-6)}
-.level-visual{display:flex;gap:3px;align-items:center}
-.lv-box{width:14px;height:14px;border-radius:3px}
-@media(max-width:860px){.show-grid{grid-template-columns:1fr}}
+.show-grid{
+  display:grid;
+  grid-template-columns:1fr 380px;
+  gap:var(--space-6);
+  align-items:start;
+}
+.detail-card{
+  background:var(--color-surface);
+  border:1px solid var(--color-border);
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-sm);
+  overflow:hidden;
+}
+.detail-section-title{
+  font-size:var(--text-xs);
+  font-weight:700;
+  letter-spacing:.07em;
+  text-transform:uppercase;
+  color:var(--color-text-muted);
+  padding:var(--space-3) var(--space-5);
+  background:var(--color-surface-offset);
+  border-bottom:1px solid var(--color-divider);
+}
+.detail-rows{ padding:var(--space-2) 0; }
+.detail-row{
+  display:flex;
+  align-items:flex-start;
+  gap:var(--space-4);
+  padding:var(--space-3) var(--space-5);
+  border-bottom:1px solid var(--color-divider);
+}
+.detail-row:last-child{ border-bottom:none }
+.detail-label{
+  font-size:var(--text-xs);
+  font-weight:600;
+  color:var(--color-text-muted);
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  min-width:130px;
+  padding-top:2px;
+  flex-shrink:0;
+}
+.detail-value{
+  font-size:var(--text-sm);
+  color:var(--color-text);
+  word-break:break-word;
+}
+.meta-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:var(--space-1);
+  padding:var(--space-1) var(--space-3);
+  border-radius:var(--radius-full);
+  font-size:var(--text-xs);
+  font-weight:600;
+  background:var(--color-surface-offset);
+  color:var(--color-text-muted);
+}
+#jam-map{
+  height:340px;
+  width:100%;
+  border-radius:var(--radius-lg);
+  border:1px solid var(--color-border);
+  margin-bottom:var(--space-6);
+}
+.seg-bar{
+  height:6px;
+  border-radius:var(--radius-full);
+  background:var(--color-orange);
+  margin-top:var(--space-1);
+}
+@media(max-width:860px){ .show-grid{grid-template-columns:1fr} }
 </style>
 {% endblock %}
 
 {% block content %}
-
-{% set lv = jam.level ?? 0 %}
-{% set lvColor = lv >= 5 ? '#a12c7b' : (lv >= 4 ? '#da3501' : (lv >= 3 ? '#da7101' : (lv >= 2 ? '#d19900' : '#437a22'))) %}
-{% set roadTypes = {1:'Rua local',2:'Via primária',3:'Rodovia',4:'Via rápida',5:'Freeway',6:'Via municipal',7:'Via secundária',8:'Trilha/Caminho',14:'Rua 4x4',15:'Via de pedestres',17:'Private road'} %}
-
 <div style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-6);flex-wrap:wrap">
-  <a href="{{ path('jam_index') }}" class="btn btn-ghost btn-sm">
+  <a href="{{ path('traffic_jam_index') }}" class="btn btn-ghost btn-sm">
     <i data-lucide="arrow-left" style="width:14px;height:14px"></i> Voltar
   </a>
   <div style="flex:1">
-    <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap">
-      <h1 class="page-title" style="margin:0">Congestionamento #{{ jam.id }}</h1>
-      <div class="level-visual">
-        {% for i in 1..5 %}
-          <div class="lv-box" style="background:{{ i <= lv ? lvColor : 'var(--color-surface-dynamic)' }}"></div>
-        {% endfor %}
-        <span style="margin-left:6px;font-size:var(--text-sm);font-weight:700;color:{{ lvColor }}">Nível {{ lv }}/5</span>
-      </div>
-      {% if jam.blocking %}<span class="badge badge-red">Bloqueado</span>{% endif %}
-    </div>
+    <h1 class="page-title" style="margin:0">Congestionamento #{{ jam.id }}</h1>
     <div style="margin-top:var(--space-2);display:flex;gap:var(--space-3);flex-wrap:wrap">
-      <span style="font-size:var(--text-xs);color:var(--color-text-muted)">
-        <i data-lucide="clock" style="width:11px;height:11px"></i> {{ jam.pubDate|date('d/m/Y H:i:s') }}
+      <span class="meta-pill">
+        <i data-lucide="clock" style="width:11px;height:11px"></i>
+        <time data-utc="{{ jam.pubDate|date('c') }}" data-fmt="datetime">{{ jam.pubDate|date('d/m/Y H:i:s') }}</time>
       </span>
-      {% if jam.speedKmh is not null %}
-        <span style="font-size:var(--text-xs);font-weight:600;color:{{ jam.speedKmh < 10 ? 'var(--color-error)' : (jam.speedKmh < 30 ? 'var(--color-warning)' : 'var(--color-success)') }}">
-          🞥 {{ jam.speedKmh|number_format(1,',','.') }} km/h
-        </span>
+      {% if jam.speedKMH is not null %}
+        <span class="meta-pill">🚗 {{ jam.speedKMH }} km/h</span>
       {% endif %}
-      {% if jam.length %}
-        <span style="font-size:var(--text-xs);color:var(--color-text-muted)">
-          📍 {{ (jam.length/1000)|number_format(2,',','.') }} km
-        </span>
+      {% if jam.length is not null %}
+        <span class="meta-pill">📏 {{ (jam.length / 1000)|number_format(1, ',') }} km</span>
+      {% endif %}
+      {% if jam.delay is not null %}
+        <span class="meta-pill">⏱ +{{ jam.delay }}s</span>
       {% endif %}
     </div>
   </div>
 </div>
 
-{# Mapa com polyline #}
+{# Mapa #}
 <div id="jam-map"></div>
 
 <div class="show-grid">
@@ -68,106 +114,48 @@
       <div class="detail-section-title">Localização</div>
       <div class="detail-rows">
         <div class="detail-row"><span class="detail-label">Via</span><span class="detail-value">{{ jam.street ?? '—' }}</span></div>
-        <div class="detail-row"><span class="detail-label">Início</span><span class="detail-value">{{ jam.startNode ?? '—' }}</span></div>
-        <div class="detail-row"><span class="detail-label">Fim</span><span class="detail-value">{{ jam.endNode ?? '—' }}</span></div>
         <div class="detail-row"><span class="detail-label">Cidade</span><span class="detail-value">{{ jam.city ?? '—' }}</span></div>
         <div class="detail-row"><span class="detail-label">País</span><span class="detail-value">{{ jam.country ?? '—' }}</span></div>
-        {% if jam.roadType is not null %}
-        <div class="detail-row"><span class="detail-label">Tipo de via</span><span class="detail-value">{{ roadTypes[jam.roadType] ?? 'Cód. ' ~ jam.roadType }}</span></div>
-        {% endif %}
-        <div class="detail-row">
-          <span class="detail-label">Pontos da rota</span>
-          <span class="detail-value">{{ jam.line|length }} pontos</span>
-        </div>
       </div>
     </div>
 
     <div class="detail-card">
       <div class="detail-section-title">Tráfego</div>
       <div class="detail-rows">
-        <div class="detail-row">
-          <span class="detail-label">Nível</span>
-          <span class="detail-value">
-            <div class="level-visual">
-              {% for i in 1..5 %}
-                <div class="lv-box" style="background:{{ i <= lv ? lvColor : 'var(--color-surface-dynamic)' }}"></div>
-              {% endfor %}
-              <span style="margin-left:6px;font-weight:700;color:{{ lvColor }}">{{ lv }}/5</span>
-            </div>
-          </span>
-        </div>
-        <div class="detail-row"><span class="detail-label">Severidade</span><span class="detail-value">{{ jam.severity ?? '—' }}</span></div>
-        <div class="detail-row">
-          <span class="detail-label">Velocidade</span>
-          <span class="detail-value">
-            {% if jam.speedKmh is not null %}
-              <span style="font-weight:600;color:{{ jam.speedKmh < 10 ? 'var(--color-error)' : (jam.speedKmh < 30 ? 'var(--color-warning)' : 'var(--color-success)') }}">
-                {{ jam.speedKmh|number_format(1,',','.') }} km/h
-              </span>
-              {% if jam.speed is not null %}
-                <span style="color:var(--color-text-muted);font-size:var(--text-xs)"> ({{ jam.speed|number_format(2,',','.') }} m/s)</span>
-              {% endif %}
-            {% else %}—{% endif %}
-          </span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Extensão</span>
-          <span class="detail-value">{% if jam.length %}{{ (jam.length/1000)|number_format(2,',','.') }} km ({{ jam.length }} m){% else %}—{% endif %}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Atraso</span>
-          <span class="detail-value">
-            {% if jam.delay %}
-              {{ jam.delay }}s
-              {% if jam.delay >= 60 %} &mdash; {{ (jam.delay/60)|round }} min{% endif %}
-            {% else %}—{% endif %}
-          </span>
-        </div>
-        <div class="detail-row"><span class="detail-label">Tipo</span><span class="detail-value">{{ jam.type ? jam.type|replace({'_':' '})|title : '—' }}</span></div>
-        <div class="detail-row"><span class="detail-label">Curva/Conversão</span><span class="detail-value">{{ jam.turnType ? jam.turnType|replace({'_':' '})|title : '—' }}</span></div>
-        <div class="detail-row">
-          <span class="detail-label">Via bloqueada</span>
-          <span class="detail-value" style="font-weight:600;color:{{ jam.blocking ? 'var(--color-error)' : 'var(--color-success)' }}">
-            {{ jam.blocking ? 'Sim — bloqueada' : 'Não' }}
-          </span>
-        </div>
+        <div class="detail-row"><span class="detail-label">Velocidade</span><span class="detail-value">{{ jam.speedKMH is not null ? jam.speedKMH ~ ' km/h' : '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Velocidade (m/s)</span><span class="detail-value">{{ jam.speed is not null ? jam.speed|number_format(1,',') ~ ' m/s' : '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Comprimento</span><span class="detail-value">{{ jam.length is not null ? (jam.length / 1000)|number_format(1,',') ~ ' km (' ~ jam.length ~ ' m)' : '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Atraso</span><span class="detail-value">{{ jam.delay is not null ? jam.delay ~ 's' : '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Nível</span><span class="detail-value">{{ jam.level is not null ? jam.level ~ '/5' : '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Tipo de via</span><span class="detail-value">{{ jam.roadType is not null ? jam.roadType : '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Causa</span><span class="detail-value">{{ jam.causeType ?? '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Bloqueio</span><span class="detail-value">{{ jam.blocking ? 'Sim' : 'Não' }}</span></div>
       </div>
     </div>
 
   </div>
 
-  {# Coluna lateral #}
   <div style="display:flex;flex-direction:column;gap:var(--space-5)">
 
     <div class="detail-card">
       <div class="detail-section-title">Identificação</div>
       <div class="detail-rows">
         <div class="detail-row"><span class="detail-label">ID interno</span><span class="detail-value">#{{ jam.id }}</span></div>
-        <div class="detail-row"><span class="detail-label">UUID Waze</span><span class="detail-value" style="font-family:monospace;font-size:var(--text-xs);word-break:break-all">{{ jam.wazeId }}</span></div>
-        {% if jam.wazeNumericId %}
-          <div class="detail-row"><span class="detail-label">ID numérico</span><span class="detail-value" style="font-family:monospace">{{ jam.wazeNumericId }}</span></div>
-        {% endif %}
-        {% if jam.causedBy %}
-          <div class="detail-row"><span class="detail-label">Causado por</span><span class="detail-value" style="font-family:monospace;font-size:var(--text-xs);word-break:break-all">{{ jam.causedBy }}</span></div>
-        {% endif %}
+        <div class="detail-row"><span class="detail-label">UUID Waze</span><span class="detail-value" style="font-family:monospace;font-size:var(--text-xs);word-break:break-all">{{ jam.wazeId ?? '—' }}</span></div>
       </div>
     </div>
 
     <div class="detail-card">
       <div class="detail-section-title">Timestamps</div>
       <div class="detail-rows">
-        <div class="detail-row"><span class="detail-label">Publicado (Waze)</span><span class="detail-value">{{ jam.pubDate|date('d/m/Y H:i:s') }}</span></div>
+        <div class="detail-row"><span class="detail-label">Publicado (Waze)</span><span class="detail-value"><time data-utc="{{ jam.pubDate|date('c') }}" data-fmt="datetime">{{ jam.pubDate|date('d/m/Y H:i:s') }}</time></span></div>
         <div class="detail-row"><span class="detail-label">pubMillis</span><span class="detail-value" style="font-family:monospace;font-size:var(--text-xs)">{{ jam.pubMillis }}</span></div>
-        <div class="detail-row"><span class="detail-label">Coletado em</span><span class="detail-value">{{ jam.createdAt|date('d/m/Y H:i:s') }}</span></div>
+        <div class="detail-row"><span class="detail-label">Coletado em</span><span class="detail-value"><time data-utc="{{ jam.createdAt|date('c') }}" data-fmt="datetime">{{ jam.createdAt|date('d/m/Y H:i:s') }}</time></span></div>
         {% if jam.updatedAt %}
-          <div class="detail-row"><span class="detail-label">Atualizado em</span><span class="detail-value">{{ jam.updatedAt|date('d/m/Y H:i:s') }}</span></div>
+          <div class="detail-row"><span class="detail-label">Atualizado em</span><span class="detail-value"><time data-utc="{{ jam.updatedAt|date('c') }}" data-fmt="datetime">{{ jam.updatedAt|date('d/m/Y H:i:s') }}</time></span></div>
         {% endif %}
       </div>
     </div>
-
-    <a href="{{ path('jam_index') }}" class="btn btn-ghost" style="width:100%;justify-content:center">
-      <i data-lucide="list" style="width:14px;height:14px"></i> Ver todos os congestionamentos
-    </a>
 
   </div>
 </div>
@@ -178,62 +166,16 @@
 <script>
 (function(){
   const line = {{ jam.line|json_encode|raw }};
-  const level = {{ jam.level ?? 0 }};
-  const street = {{ (jam.street ?? '')|json_encode|raw }};
-  const city = {{ (jam.city ?? '')|json_encode|raw }};
-  const speedKmh = {{ jam.speedKmh ?? 'null' }};
-  const blocking = {{ jam.blocking ? 'true' : 'false' }};
-
-  function levelColor(lv) {
-    if (lv >= 5) return '#a12c7b';
-    if (lv >= 4) return '#da3501';
-    if (lv >= 3) return '#da7101';
-    if (lv >= 2) return '#d19900';
-    return '#437a22';
-  }
-  const color = levelColor(level);
+  if (!line || !line.length) return;
 
   const map = L.map('jam-map');
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    {attribution:'© OpenStreetMap contributors',maxZoom:19}).addTo(map);
+    {attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
 
-  if (line && line.length) {
-    const latlngs = line.map(p => [parseFloat(p.y), parseFloat(p.x)]);
-    const weight = Math.max(6, level * 2.5);
-
-    // sombra da polyline
-    L.polyline(latlngs, {color:'#000', weight: weight+3, opacity:0.08}).addTo(map);
-
-    const pl = L.polyline(latlngs, {
-      color, weight, opacity:0.9, lineJoin:'round', lineCap:'round'
-    }).addTo(map);
-
-    // marcadores de início e fim
-    const start = latlngs[0];
-    const end   = latlngs[latlngs.length - 1];
-    const dotIcon = (bg) => L.divIcon({
-      html:`<div style="width:14px;height:14px;border-radius:50%;background:${bg};border:3px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.4)"></div>`,
-      className:'',iconSize:[14,14],iconAnchor:[7,7]
-    });
-    L.marker(start, {icon: dotIcon('#437a22')}).addTo(map).bindTooltip('Início');
-    L.marker(end,   {icon: dotIcon(color)}).addTo(map).bindTooltip('Fim');
-
-    map.fitBounds(pl.getBounds().pad(0.15));
-
-    pl.bindPopup(`
-      <div style="min-width:160px">
-        <b style="color:${color}">Nível ${level}/5</b>
-        ${blocking?'<span style="background:#a12c7b;color:#fff;border-radius:20px;padding:1px 7px;font-size:10px;margin-left:6px">Bloqueado</span>':''}
-        <div style="font-size:12px;margin-top:4px">${street||'Via não identificada'}</div>
-        ${city?'<div style="font-size:11px;opacity:.6">'+city+'</div>':''}
-        ${speedKmh!==null?'<div style="font-size:11px;margin-top:4px">🞥 '+parseFloat(speedKmh).toFixed(1)+' km/h</div>':''}
-      </div>`, {maxWidth:220}).openPopup();
-  } else {
-    map.setView([-19.92,-43.94],10);
-    document.getElementById('jam-map').insertAdjacentHTML('afterend',
-      '<p style="color:var(--color-text-muted);font-size:var(--text-xs);margin-top:4px">Rota não disponível para este registro.</p>'
-    );
-  }
+  const coords = line.map(function(p){ return [p.y, p.x]; });
+  const poly = L.polyline(coords, {color:'#da7101', weight:5, opacity:0.85}).addTo(map);
+  map.fitBounds(poly.getBounds().pad(0.15));
+  setTimeout(function(){ map.invalidateSize(); }, 150);
 })();
 </script>
 {% endblock %}
