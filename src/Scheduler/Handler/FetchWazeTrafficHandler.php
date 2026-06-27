@@ -48,17 +48,19 @@ final class FetchWazeTrafficHandler
             $label = $link->getLabel() ?? $link->getUrl();
 
             try {
-                $count = $this->trafficService->fetchAndPersist($link);
+                // fetchAndPersist() retorna array{routes: int, irregularities: int}
+                $result = $this->trafficService->fetchAndPersist($link);
 
                 $link->setLastCollectedAt(new \DateTimeImmutable());
                 $this->em->flush();
 
-                $totalSaved += $count;
+                $totalSaved += $result['routes'] ?? 0;
 
                 $this->logger->info('[WazeTrafficScheduler] TVT coletado', [
-                    'link'    => $label,
-                    'partner' => $link->getPartner()?->getSlug(),
-                    'saved'   => $count,
+                    'link'           => $label,
+                    'partner'        => $link->getPartner()?->getSlug(),
+                    'routes'         => $result['routes']         ?? 0,
+                    'irregularities' => $result['irregularities'] ?? 0,
                 ]);
 
             } catch (\Throwable $e) {
@@ -72,7 +74,7 @@ final class FetchWazeTrafficHandler
             }
         }
 
-        $this->logger->info('[WazeTrafficScheduler] Ciclo conclu\u00eddo', [
+        $this->logger->info('[WazeTrafficScheduler] Ciclo concluído', [
             'total_saved'  => $totalSaved,
             'total_errors' => $totalErrors,
         ]);
