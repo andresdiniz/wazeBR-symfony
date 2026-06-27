@@ -66,6 +66,27 @@ class MonitoredLinkRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+    /**
+     * Links TVT ativos (linkType='waze_tvt').
+     * Esses links são usados pelo WazeCollectRoutesCommand para coletar
+     * tempos de viagem de rotas que têm wazeId mas não têm coordinates.
+     *
+     * @return MonitoredLink[]
+     */
+    public function findActiveWazeTvtLinks(): array
+    {
+        return $this->createQueryBuilder('ml')
+            ->join('ml.partner', 'p')
+            ->where('ml.linkType = :type')
+            ->andWhere('ml.isActive = true')
+            ->andWhere('p.isActive = true')
+            ->setParameter('type', LinkType::WazeTvt->value)
+            ->orderBy('p.id', 'ASC')
+            ->addOrderBy('ml.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
     /** Feeds TVT ativos (feedFormat = 2) */
     public function findActiveTrafficFeeds(): array
     {
@@ -123,5 +144,22 @@ class MonitoredLinkRepository extends ServiceEntityRepository
             ->setParameter('formats', [self::FORMAT_WAZE, self::FORMAT_TRAFFIC])
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * Retorna o primeiro MonitoredLink do tipo waze_tvt ativo para um dado parceiro.
+     * Usado pelo WazeCollectRoutesCommand no modo TVT.
+     */
+    public function findOneTvtLinkByPartner(Partner $partner): ?MonitoredLink
+    {
+        return $this->createQueryBuilder('ml')
+            ->where('ml.partner = :partner')
+            ->andWhere('ml.linkType = :type')
+            ->andWhere('ml.isActive = true')
+            ->setParameter('partner', $partner)
+            ->setParameter('type', LinkType::WazeTvt->value)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 }

@@ -6,6 +6,7 @@ namespace App\Command;
 
 use App\Entity\WazeRoute;
 use App\Entity\WazeRouteSnapshot;
+use App\Repository\MonitoredLinkRepository;
 use App\Repository\WazeRouteRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -26,8 +27,8 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  *    https://www.waze.com/row-RoutingManager/routingRequest
  *
  * 2. TVT API — rota tem `wazeId` mas NÃO tem `coordinates`:
- *    https://www.waze.com/row-partnerhub-api/feeds-tvt/{uuid}?id={wazeId}
- *    A URL base do feed deve estar em Partner::feedUrl.
+ *    Busca o MonitoredLink do parceiro com linkType=waze_tvt
+ *    e chama a URL do feed filtrada por ?id={wazeId}.
  */
 #[AsCommand(
     name: 'app:waze:collect-routes',
@@ -38,9 +39,10 @@ class WazeCollectRoutesCommand extends Command
     private const ROUTING_URL = 'https://www.waze.com/row-RoutingManager/routingRequest';
 
     public function __construct(
-        private readonly WazeRouteRepository   $routeRepo,
-        private readonly EntityManagerInterface $em,
-        private readonly HttpClientInterface    $httpClient,
+        private readonly WazeRouteRepository    $routeRepo,
+        private readonly MonitoredLinkRepository $linkRepo,
+        private readonly EntityManagerInterface  $em,
+        private readonly HttpClientInterface     $httpClient,
     ) {
         parent::__construct();
     }
@@ -181,31 +183,35 @@ class WazeCollectRoutesCommand extends Command
 
     /**
      * Coleta dados via feeds-tvt quando a rota tem wazeId mas não coordinates.
-     * O Partner deve ter feedUrl preenchido com a URL base do feed:
-     *   ex: https://www.waze.com/row-partnerhub-api/feeds-tvt/9bb3e551-...
+     * Busca o MonitoredLink com linkType=waze_tvt do parceiro da rota.
      *
      * @return array{int, int} [$ok, $errors]
      */
     private function collectViaTvt(
-        WazeRoute $route,
+        WazeRoute    $route,
         SymfonyStyle $io,
-        bool $dryRun,
-        int $ok,
-        int $errors
+        bool         $dryRun,
+        int          $ok,
+        int          $errors
     ): array {
         $partner = $route->getPartner();
-        $feedUrl = $partner?->getFeedUrl();
+        $link    = $partner !== null
+            ? $this->linkRepo->findOneTvtLinkByPartner($partner)
+            : null;
 
-        if (empty($feedUrl)) {
+        if ($link === null) {
             $io->warning(sprintf(
-                'Rota TVT (wazeId=%s) sem feedUrl no parceiro "%s". Pulando.',
+                'Rota TVT (wazeId=%s): nenhum MonitoredLink com linkType=waze_tvt ativo para o parceiro "%s". Pulando.',
                 $route->getWazeId(),
                 $partner?->getName() ?? '—',
             ));
             return [$ok, ++$errors];
         }
 
-        $url = rtrim($feedUrl, '?&') . '?id=' . $route->getWazeId();
+        $feedUrl = rtrim($link->getUrl(), '?&');
+        $url     = $feedUrl . '?id=' . $route->getWazeId();
+
+        $io->writeln(sprintf('  URL TVT: %s', $url));
 
         try {
             $response = $this->httpClient->request('GET', $url, [
@@ -237,8 +243,8 @@ class WazeCollectRoutesCommand extends Command
             }
         }
 
+        // Fallback: usa a primeira rota se o feed retornar apenas uma
         if ($matched === null) {
-            // Fallback: usa a primeira rota se o feed retornar apenas uma
             $matched = $data['routes'][0] ?? null;
         }
 
@@ -272,7 +278,7 @@ class WazeCollectRoutesCommand extends Command
         if ($line !== null) {
             $route->setLine($line);
         }
-        if ($bbox !== null) {
+        if ($bbox !== null && method_exists($route, 'setBbox')) {
             $route->setBbox($bbox);
         }
 
