@@ -10,6 +10,9 @@
     {% for flash in app.flashes('error') %}
         <div class="alert alert-danger">{{ flash }}</div>
     {% endfor %}
+    {% for flash in app.flashes('success') %}
+        <div class="alert alert-success">{{ flash }}</div>
+    {% endfor %}
 
     <form method="post" action="{{ path('admin_link_new') }}">
 
@@ -24,25 +27,35 @@
         </div>
 
         <div class="mb-3">
-            <label class="form-label fw-semibold">Nome do link <span class="text-danger">*</span></label>
-            <input type="text" name="name" class="form-control" required
-                   placeholder="Ex: PBH \u2014 Alertas Centro-Sul">
+            <label class="form-label fw-semibold">Rótulo / Nome do link</label>
+            <input type="text" name="label" class="form-control"
+                   placeholder="Ex: PBH — Alertas Centro-Sul">
         </div>
 
         <div class="mb-3">
             <label class="form-label fw-semibold">Tipo <span class="text-danger">*</span></label>
-            <select name="type" class="form-select" required id="type-select">
-                {% for type in types %}
-                    <option value="{{ type }}">
-                        {% if type == 'feed' %}\ud83d\udea8 Alertas Waze
-                        {% elseif type == 'traffic' %}\ud83d\ude97 Tr\u00e1fego TVT
-                        {% elseif type == 'cemaden' %}\ud83c\udf27 CEMADEN
-                        {% elseif type == 'camera' %}\ud83d\udcf7 C\u00e2mera
-                        {% elseif type == 'sensor' %}\ud83d\udcf1 Sensor
-                        {% else %}\ud83d\udd17 Gen\u00e9rico{% endif %}
+            <select name="link_type" class="form-select" required id="type-select">
+                {% for type in link_types %}
+                    <option value="{{ type.value }}">
+                        {% if type.value == 'waze_feed' %}🚨 {% endif %}
+                        {% if type.value == 'waze_tvt'  %}🚗 {% endif %}
+                        {% if type.value == 'cemaden'   %}🌧 {% endif %}
+                        {% if type.value == 'camera'    %}📷 {% endif %}
+                        {% if type.value == 'sensor'    %}📡 {% endif %}
+                        {% if type.value == 'other'     %}🔗 {% endif %}
+                        {{ type.label() }}
                     </option>
                 {% endfor %}
             </select>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Formato do Feed</label>
+            <select name="feed_format" class="form-select" id="feed-format-select">
+                <option value="1">1 — JSON PartnerHub (Alertas/Jams)</option>
+                <option value="2">2 — TVT (Tempos de Viagem)</option>
+            </select>
+            <div class="form-text">Preenchido automaticamente ao escolher o tipo.</div>
         </div>
 
         <div class="mb-3">
@@ -50,19 +63,28 @@
             <input type="url" name="url" class="form-control font-monospace" required
                    placeholder="https://www.waze.com/row-partnerhub-api/..."
                    id="url-input">
-            <div class="form-text" id="url-hint">
-                O feedUuid e o partnerId ser\u00e3o extra\u00eddos automaticamente da URL.
-            </div>
         </div>
 
-        {# Dicas din\u00e2micas por tipo #}
-        <div id="hint-feed" class="alert alert-secondary small d-none">
-            <strong>Formato esperado (Alertas):</strong><br>
+        {# Dicas dinâmicas por tipo #}
+        <div id="hint-waze_feed" class="alert alert-secondary small d-none">
+            <strong>🚨 Alertas / Jams:</strong><br>
             <code>https://www.waze.com/row-partnerhub-api/partners/{ID}/waze-feeds/{UUID}?format=1</code>
         </div>
-        <div id="hint-traffic" class="alert alert-secondary small d-none">
-            <strong>Formato esperado (Tr\u00e1fego TVT):</strong><br>
+        <div id="hint-waze_tvt" class="alert alert-secondary small d-none">
+            <strong>🚗 Tráfego TVT:</strong><br>
             <code>https://www.waze.com/row-partnerhub-api/feeds-tvt/{UUID}?id={partnerID}</code>
+        </div>
+        <div id="hint-cemaden" class="alert alert-secondary small d-none">
+            <strong>🌧 CEMADEN:</strong><br>
+            <code>https://cemaden.gov.br/feed/{UF}</code> — coleta chuva, alagamentos, deslizamentos.
+        </div>
+        <div id="hint-camera" class="alert alert-secondary small d-none">
+            <strong>📷 Câmera:</strong><br>
+            URL da câmera ou endpoint de snapshot. Ex: <code>https://cameras.pbh.gov.br/afonso-pena</code>
+        </div>
+        <div id="hint-sensor" class="alert alert-secondary small d-none">
+            <strong>📡 Sensor:</strong><br>
+            Endpoint REST que retorna leituras de sensor. Ex: <code>https://sensores.contagem.mg.gov.br/rai</code>
         </div>
 
         <div class="d-flex gap-2 mt-4">
@@ -74,19 +96,33 @@
 
 <script>
 (function() {
-    const typeSelect = document.getElementById('type-select');
-    const hintFeed   = document.getElementById('hint-feed');
-    const hintTraffic = document.getElementById('hint-traffic');
+    const typeSelect   = document.getElementById('type-select');
+    const formatSelect = document.getElementById('feed-format-select');
+    const allHints     = document.querySelectorAll('[id^="hint-"]');
 
-    function updateHint() {
-        hintFeed.classList.add('d-none');
-        hintTraffic.classList.add('d-none');
-        if (typeSelect.value === 'feed')    hintFeed.classList.remove('d-none');
-        if (typeSelect.value === 'traffic') hintTraffic.classList.remove('d-none');
+    const formatMap = {
+        'waze_feed': '1',
+        'waze_tvt':  '2',
+        'camera':    '1',
+        'sensor':    '1',
+        'cemaden':   '1',
+        'other':     '1',
+    };
+
+    function updateUI() {
+        const val = typeSelect.value;
+
+        // Atualiza feed_format automaticamente
+        formatSelect.value = formatMap[val] ?? '1';
+
+        // Mostra dica correta
+        allHints.forEach(h => h.classList.add('d-none'));
+        const hint = document.getElementById('hint-' + val);
+        if (hint) hint.classList.remove('d-none');
     }
 
-    typeSelect.addEventListener('change', updateHint);
-    updateHint();
+    typeSelect.addEventListener('change', updateUI);
+    updateUI();
 })();
 </script>
 {% endblock %}

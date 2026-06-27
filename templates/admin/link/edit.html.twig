@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Editar Link — {{ link.name }}{% endblock %}
+{% block title %}Editar Link — {{ link.label ?? link.url }}{% endblock %}
 
 {% block body %}
 <div class="container py-4" style="max-width: 640px">
@@ -13,49 +13,49 @@
     {% for flash in app.flashes('error') %}
         <div class="alert alert-danger">{{ flash }}</div>
     {% endfor %}
+    {% for flash in app.flashes('success') %}
+        <div class="alert alert-success">{{ flash }}</div>
+    {% endfor %}
 
     <form method="post" action="{{ path('admin_link_edit', {id: link.id}) }}">
 
         <div class="mb-3">
-            <label class="form-label fw-semibold">Nome</label>
-            <input type="text" name="name" class="form-control"
-                   value="{{ link.name }}" required>
+            <label class="form-label fw-semibold">Rótulo / Nome</label>
+            <input type="text" name="label" class="form-control"
+                   value="{{ link.label }}" placeholder="Ex: PBH — Alertas Centro-Sul">
         </div>
 
         <div class="mb-3">
-            <label class="form-label fw-semibold">Tipo</label>
-            <select name="type" class="form-select" required>
-                {% for type in types %}
-                    <option value="{{ type }}" {% if type == link.type %}selected{% endif %}>
-                        {{ type }}
+            <label class="form-label fw-semibold">Tipo <span class="text-danger">*</span></label>
+            <select name="link_type" class="form-select" required id="type-select">
+                {% for type in link_types %}
+                    <option value="{{ type.value }}"
+                            {% if type.value == link.linkType.value %}selected{% endif %}>
+                        {{ type.label() }}
                     </option>
                 {% endfor %}
             </select>
         </div>
 
         <div class="mb-3">
-            <label class="form-label fw-semibold">URL</label>
-            <input type="url" name="url" class="form-control font-monospace"
-                   value="{{ link.url }}" required>
-            <div class="form-text">
-                {% if link.feedUuid %}
-                    Feed UUID detectado: <code>{{ link.feedUuid }}</code>
-                    {% if link.wazePartnerId %} &mdash; Partner ID: <code>{{ link.wazePartnerId }}</code>{% endif %}
-                {% else %}
-                    Nenhum UUID detectado na URL atual.
-                {% endif %}
-            </div>
+            <label class="form-label fw-semibold">Formato do Feed</label>
+            <select name="feed_format" class="form-select" id="feed-format-select">
+                <option value="1" {% if link.feedFormat == 1 %}selected{% endif %}>1 — JSON PartnerHub (Alertas/Jams)</option>
+                <option value="2" {% if link.feedFormat == 2 %}selected{% endif %}>2 — TVT (Tempos de Viagem)</option>
+            </select>
+            <div class="form-text">Preenchido automaticamente ao escolher o tipo.</div>
         </div>
 
-        {% if link.lastFetchedAt %}
+        <div class="mb-3">
+            <label class="form-label fw-semibold">URL <span class="text-danger">*</span></label>
+            <input type="url" name="url" class="form-control font-monospace"
+                   value="{{ link.url }}" required
+                   placeholder="https://www.waze.com/row-partnerhub-api/...">
+        </div>
+
+        {% if link.lastCollectedAt %}
         <div class="alert alert-light border small">
-            <strong>\u00daltima coleta:</strong> {{ link.lastFetchedAt|date('d/m/Y H:i:s') }}
-            &mdash; {{ link.lastFetchCount ?? '?' }} registros<br>
-            {% if link.lastErrorMessage %}
-                <span class="text-danger">Erro: {{ link.lastErrorMessage }}</span>
-            {% else %}
-                <span class="text-success">\u2713 Sem erros</span>
-            {% endif %}
+            <strong>Última coleta:</strong> {{ link.lastCollectedAt|date('d/m/Y H:i:s') }}
         </div>
         {% endif %}
 
@@ -65,4 +65,25 @@
         </div>
     </form>
 </div>
+
+<script>
+(function() {
+    const typeSelect   = document.getElementById('type-select');
+    const formatSelect = document.getElementById('feed-format-select');
+
+    const formatMap = {
+        'waze_feed': '1',
+        'waze_tvt':  '2',
+        'camera':    '1',
+        'sensor':    '1',
+        'cemaden':   '1',
+        'other':     '1',
+    };
+
+    typeSelect.addEventListener('change', function() {
+        const fmt = formatMap[this.value] ?? '1';
+        formatSelect.value = fmt;
+    });
+})();
+</script>
 {% endblock %}
