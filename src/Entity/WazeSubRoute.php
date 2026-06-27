@@ -7,7 +7,7 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: WazeSubRouteRepository::class)]
-#[ORM\Table(name: 'waze_sub_routes')]
+#[ORM\Table(name: 'wazesubroutes')]
 class WazeSubRoute
 {
     #[ORM\Id]
@@ -15,9 +15,9 @@ class WazeSubRoute
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(targetEntity: WazeRoute::class, inversedBy: 'subRoutes')]
+    #[ORM\ManyToOne(targetEntity: WazeRouteSnapshot::class, inversedBy: 'subRoutes')]
     #[ORM\JoinColumn(nullable: false)]
-    private ?WazeRoute $route = null;
+    private ?WazeRouteSnapshot $routeSnapshot = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $fromName = null;
@@ -69,8 +69,8 @@ class WazeSubRoute
 
     public function getId(): ?int { return $this->id; }
 
-    public function getRoute(): ?WazeRoute { return $this->route; }
-    public function setRoute(?WazeRoute $route): static { $this->route = $route; return $this; }
+    public function getRouteSnapshot(): ?WazeRouteSnapshot { return $this->routeSnapshot; }
+    public function setRouteSnapshot(?WazeRouteSnapshot $routeSnapshot): static { $this->routeSnapshot = $routeSnapshot; return $this; }
 
     public function getFromName(): ?string { return $this->fromName; }
     public function setFromName(?string $fromName): static { $this->fromName = $fromName; return $this; }
