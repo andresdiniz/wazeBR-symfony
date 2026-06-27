@@ -6,6 +6,7 @@ namespace App\Repository;
 
 use App\Entity\MonitoredLink;
 use App\Entity\Partner;
+use App\Enum\LinkType;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -13,10 +14,9 @@ use Doctrine\Persistence\ManagerRegistry;
  * @extends ServiceEntityRepository<MonitoredLink>
  *
  * Campos reais da entidade MonitoredLink:
- *   $url, $label, $feedFormat (int), $isActive, $createdAt, $lastCollectedAt
+ *   $url, $label, $feedFormat (int), $linkType (LinkType enum), $isActive
  *
- * NÃO existem: $type, $name
- * Convenção adotada para feedFormat:
+ * Convenção para feedFormat:
  *   1 = feed Waze (alertas/jams)
  *   2 = feed TVT (tráfego)
  */
@@ -46,10 +46,24 @@ class MonitoredLinkRepository extends ServiceEntityRepository
         }
     }
 
-    /** Feeds Waze ativos (feedFormat = 1) */
+    /**
+     * Feeds Waze PartnerHub ativos (feedFormat=1 E linkType='waze_feed').
+     * Exclui câmeras, sensores e outros links cadastrados com feedFormat=1 por engano.
+     */
     public function findActiveWazeFeeds(): array
     {
-        return $this->findActiveByFormat(self::FORMAT_WAZE);
+        return $this->createQueryBuilder('ml')
+            ->join('ml.partner', 'p')
+            ->where('ml.feedFormat = :fmt')
+            ->andWhere('ml.linkType = :type')
+            ->andWhere('ml.isActive = true')
+            ->andWhere('p.isActive = true')
+            ->setParameter('fmt', self::FORMAT_WAZE)
+            ->setParameter('type', LinkType::WazeFeed->value)
+            ->orderBy('p.id', 'ASC')
+            ->addOrderBy('ml.id', 'ASC')
+            ->getQuery()
+            ->getResult();
     }
 
     /** Feeds TVT ativos (feedFormat = 2) */
@@ -58,7 +72,7 @@ class MonitoredLinkRepository extends ServiceEntityRepository
         return $this->findActiveByFormat(self::FORMAT_TRAFFIC);
     }
 
-    /** Feeds ativos por formato numérico */
+    /** Feeds ativos por formato numérico (sem filtro de linkType) */
     public function findActiveByFormat(int $feedFormat): array
     {
         return $this->createQueryBuilder('ml')
@@ -75,7 +89,6 @@ class MonitoredLinkRepository extends ServiceEntityRepository
 
     /**
      * @deprecated Use findActiveByFormat() com a constante FORMAT_*
-     * Mantido por compatibilidade com chamadas legadas que passavam string 'feed'/'traffic'.
      */
     public function findActiveByType(string $type): array
     {

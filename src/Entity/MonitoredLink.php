@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\LinkType;
 use App\Repository\MonitoredLinkRepository;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -28,9 +29,21 @@ class MonitoredLink
     #[ORM\Column(length: 120, nullable: true)]
     private ?string $label = null;
 
-    /** Formato do feed (1 = JSON PartnerHub) */
+    /** Formato do feed (1 = JSON PartnerHub, 2 = TVT) */
     #[ORM\Column(options: ['default' => 1])]
     private int $feedFormat = 1;
+
+    /**
+     * Tipo do link — diferencia Feed Waze real de câmera, sensor, etc.
+     * DEFAULT 'waze_feed' garante compatibilidade com registros existentes.
+     */
+    #[ORM\Column(
+        type: 'string',
+        length: 20,
+        enumType: LinkType::class,
+        options: ['default' => 'waze_feed'],
+    )]
+    private LinkType $linkType = LinkType::WazeFeed;
 
     #[ORM\Column]
     private bool $isActive = true;
@@ -52,6 +65,8 @@ class MonitoredLink
     public function setLabel(?string $l): static { $this->label = $l; return $this; }
     public function getFeedFormat(): int { return $this->feedFormat; }
     public function setFeedFormat(int $f): static { $this->feedFormat = $f; return $this; }
+    public function getLinkType(): LinkType { return $this->linkType; }
+    public function setLinkType(LinkType $t): static { $this->linkType = $t; return $this; }
     public function isActive(): bool { return $this->isActive; }
     public function setIsActive(bool $v): static { $this->isActive = $v; return $this; }
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
