@@ -5,44 +5,22 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\MonitoredLink;
-use App\Entity\WazeTvtRoute;
-use App\Entity\WazeTvtSnapshot;
+use App\Entity\WazeIrregularity;
+use App\Entity\WazeRoute;
+use App\Entity\WazeRouteSnapshot;
+use App\Entity\WazeSubRoute;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
- * Coleta o feed TVT do Waze e persiste como WazeTvtSnapshot + WazeTvtRoute.
+ * Coleta o feed de tráfego do Waze (PartnerHub) e persiste:
+ *   - WazeRoute        → upsert por (wazeId, partner)  — rota "viva"
+ *   - WazeRouteSnapshot → insert sempre                  — histórico
+ *   - WazeSubRoute     → recria a cada coleta (orphanRemoval)
+ *   - WazeIrregularity → upsert por (wazeId, sourceLink) — ativa/inativa
  *
- * Estrutura real do JSON (verificada em 2026-06-25):
- * {
- *   "updateTime": 1782350463272,
- *   "name": "Managed Area",
- *   "areaName": "Managed Area",
- *   "broadcasterId": "",
- *   "isMetric": true,
- *   "bbox": {"minX": -43.82, "maxX": -43.74, "minY": -20.71, "maxY": -20.61},
- *   "usersOnJams": [{"jamLevel": 0, "wazersCount": 79}, ...],   // 5 níveis
- *   "lengthOfJams": [{"jamLevel": 1, "jamLength": 0}, ...],     // 4 níveis
- *   "irregularities": [],
- *   "routes": [
- *     {
- *       "id": "1734959326165",
- *       "name": "Cachoeira Centro",
- *       "type": "STATIC",
- *       "fromName": "R. Antônio...",
- *       "toName": "Av. Pref. ...",
- *       "length": 3152,
- *       "time": 522,
- *       "historicTime": 457,
- *       "jamLevel": 1,
- *       "line": [{"x": -43.79, "y": -20.64}, ...],
- *       "bbox": {"minX":..., ...},
- *       "subRoutes": []
- *     },
- *     ...
- *   ]
- * }
+ * Adaptado do wazejobtraficc.php para Symfony + Doctrine.
  */
 class WazeTrafficFeedService
 {
@@ -52,13 +30,19 @@ class WazeTrafficFeedService
         private readonly LoggerInterface        $logger,
     ) {}
 
+    // ─────────────────────────────────────────────────────────────────
+    // Ponto de entrada
+    // ─────────────────────────────────────────────────────────────────
+
     /**
-     * Busca e persiste um snapshot completo do feed TVT.
+     * Busca o feed e persiste/atualiza rotas, snapshots históricos e irregularidades.
      *
-     * @return int Número de rotas salvas (principais + subRoutes)
- */
-    public function fetchAndPersist(MonitoredLink $link): int
+     * @return array{routes: int, irregularities: int}
+     */
+    public function fetchAndPersist(MonitoredLink $link): array
     {
+        $start    = microtime(true);
+        $partner  = $link->getPartner();
         $response = $this->httpClient->request('GET', $link->getUrl(), [
             'timeout' => 20,
             'headers' => ['Accept' => 'application/json'],
@@ -66,100 +50,242 @@ class WazeTrafficFeedService
 
         $data = $response->toArray();
 
-        // Validação básica
         if (!isset($data['routes']) || !is_array($data['routes'])) {
             throw new \UnexpectedValueException(
-                sprintf(
-                    '[WazeTVT] Chave "routes" ausente no JSON. Chaves encontradas: %s',
-                    implode(', ', array_keys($data))
-                )
+                sprintf('[Traffic] Chave "routes" ausente. Chaves: %s', implode(', ', array_keys($data)))
             );
         }
 
-        $partner = $link->getPartner();
+        $routeCount        = 0;
+        $irregularityCount = 0;
+        $now               = new \DateTimeImmutable();
 
-        // --- Criar snapshot ---
-        $snapshot = new WazeTvtSnapshot();
-        $snapshot
-            ->setPartner($partner)
-            ->setSourceLink($link)
-            ->setUpdateTime(isset($data['updateTime']) ? (int) $data['updateTime'] : null)
-            ->setFeedName($data['name'] ?? null)
-            ->setAreaName($data['areaName'] ?? null)
-            ->setBroadcasterId($data['broadcasterId'] ?? null)
-            ->setIsMetric((bool) ($data['isMetric'] ?? true))
-            ->setBbox($data['bbox'] ?? null)
-            ->setUsersOnJams($data['usersOnJams'] ?? [])
-            ->setLengthOfJams($data['lengthOfJams'] ?? [])
-            ->setIrregularities($data['irregularities'] ?? []);
-
-        // --- Normalizar rotas ---
-        $routeCount = 0;
-
-        foreach ($data['routes'] as $rawRoute) {
-            $routeCount += $this->persistRoute($snapshot, $rawRoute, false, null);
+        // ── Rotas ────────────────────────────────────────────────────
+        foreach ($data['routes'] as $raw) {
+            $this->upsertRoute($link, $raw, $now);
+            ++$routeCount;
         }
 
-        $snapshot->setRouteCount($routeCount);
+        // ── Irregularidades ──────────────────────────────────────────
+        // Desativa todas as irregularidades do link antes de processar
+        $this->deactivateIrregularities($link);
 
-        $this->em->persist($snapshot);
+        foreach ($data['irregularities'] ?? [] as $raw) {
+            $this->upsertIrregularity($link, $raw, $now);
+            ++$irregularityCount;
+        }
+
         $this->em->flush();
 
-        $this->logger->info('[WazeTVT] Snapshot salvo', [
-            'link'       => $link->getName(),
-            'partner'    => $partner->getSlug(),
-            'routes'     => $routeCount,
-            'updateTime' => $data['updateTime'] ?? null,
-            'area'       => $data['areaName'] ?? null,
+        $elapsed = round(microtime(true) - $start, 2);
+        $this->logger->info('[Traffic] Feed processado', [
+            'link'            => $link->getLabel() ?? $link->getUrl(),
+            'partner'         => $partner->getSlug(),
+            'routes'          => $routeCount,
+            'irregularities'  => $irregularityCount,
+            'elapsed_s'       => $elapsed,
         ]);
 
-        return $routeCount;
+        return ['routes' => $routeCount, 'irregularities' => $irregularityCount];
     }
 
-    /**
-     * Persiste uma rota (principal ou subRota) e suas subRoutes recursivamente.
-     *
-     * @return int Número de entidades WazeTvtRoute criadas
-     */
-    private function persistRoute(
-        WazeTvtSnapshot $snapshot,
-        array           $raw,
-        bool            $isSubRoute,
-        ?string         $parentWazeId
-    ): int {
-        $route = new WazeTvtRoute();
-        $route
-            ->setSnapshot($snapshot)
-            ->setWazeRouteId(isset($raw['id']) ? (string) $raw['id'] : null)
-            ->setIsSubRoute($isSubRoute)
-            ->setParentWazeId($parentWazeId)
-            ->setName($raw['name'] ?? null)
-            ->setType($raw['type'] ?? null)
-            ->setFromName($raw['fromName'] ?? null)
-            ->setToName($raw['toName'] ?? null)
-            ->setLength(isset($raw['length'])       ? (int)   $raw['length']       : null)
-            ->setTime(isset($raw['time'])           ? (int)   $raw['time']         : null)
-            ->setHistoricTime(isset($raw['historicTime']) ? (int) $raw['historicTime'] : null)
-            ->setJamLevel(isset($raw['jamLevel'])   ? (int)   $raw['jamLevel']     : null)
-            ->setLine($raw['line'] ?? [])
-            ->setBbox($raw['bbox'] ?? null)
-            ->setSubRoutesRaw($raw['subRoutes'] ?? []);
+    // ─────────────────────────────────────────────────────────────────
+    // Rotas
+    // ─────────────────────────────────────────────────────────────────
 
-        $this->em->persist($route);
-        $snapshot->addRoute($route);
+    private function upsertRoute(MonitoredLink $link, array $raw, \DateTimeImmutable $now): void
+    {
+        $partner = $link->getPartner();
+        $wazeId  = isset($raw['id']) ? (string) $raw['id'] : null;
 
-        $count = 1;
-
-        // Processar subRoutes recursivamente
-        foreach ($raw['subRoutes'] ?? [] as $subRaw) {
-            $count += $this->persistRoute(
-                $snapshot,
-                $subRaw,
-                true,
-                isset($raw['id']) ? (string) $raw['id'] : null
-            );
+        // Tentar reutilizar rota existente (upsert)
+        $route = null;
+        if ($wazeId !== null) {
+            $route = $this->em->getRepository(WazeRoute::class)->findOneBy([
+                'wazeId'  => $wazeId,
+                'partner' => $partner,
+            ]);
         }
 
-        return $count;
+        if ($route === null) {
+            $route = new WazeRoute();
+            $route->setPartner($partner);
+            $route->setWazeId($wazeId);
+        }
+
+        [$avgSpeed, $avgTime, $historicSpeed] = $this->calcSpeeds(
+            $raw['length']      ?? 0,
+            $raw['time']        ?? 0,
+            $raw['historicTime'] ?? 0
+        );
+
+        $route
+            ->setName($raw['name']         ?? null)
+            ->setFromName($raw['fromName'] ?? null)
+            ->setToName($raw['toName']     ?? null)
+            ->setLength((int) ($raw['length'] ?? 0))
+            ->setJamLevel((int) ($raw['jamLevel'] ?? 0))
+            ->setTime((int) ($raw['time'] ?? 0))
+            ->setHistoricTime((int) ($raw['historicTime'] ?? 0))
+            ->setType($raw['type']         ?? null)
+            ->setBbox($raw['bbox']         ?? null)
+            ->setLine($raw['line']         ?? null)
+            ->setIsActive(true)
+            ->setCollectedAt(\DateTime::createFromImmutable($now));
+
+        $this->em->persist($route);
+
+        // Snapshot histórico (sempre insert)
+        $this->insertRouteSnapshot($route, $avgSpeed, $avgTime, $now);
+
+        // Sub-rotas: apagar antigas e recriar
+        foreach ($route->getSubRoutes() as $old) {
+            $route->removeSubRoute($old);
+        }
+
+        foreach ($raw['subRoutes'] ?? [] as $i => $subRaw) {
+            $this->persistSubRoute($route, $subRaw, $i);
+        }
+    }
+
+    private function insertRouteSnapshot(WazeRoute $route, float $avgSpeed, float $avgTime, \DateTimeImmutable $now): void
+    {
+        $snapshot = new WazeRouteSnapshot();
+        $snapshot
+            ->setRoute($route)
+            ->setAvgSpeed($avgSpeed)
+            ->setAvgTime((int) $avgTime)
+            ->setCollectedAt($now);
+
+        $this->em->persist($snapshot);
+    }
+
+    private function persistSubRoute(WazeRoute $route, array $raw, int $order): void
+    {
+        [$avgSpeed, , $historicSpeed] = $this->calcSpeeds(
+            $raw['length']       ?? 0,
+            $raw['time']         ?? 0,
+            $raw['historicTime'] ?? 0
+        );
+
+        $leadAlert = $raw['leadAlert'] ?? null;
+
+        $sub = new WazeSubRoute();
+        $sub
+            ->setRoute($route)
+            ->setFromName($raw['fromName']       ?? null)
+            ->setToName($raw['toName']           ?? null)
+            ->setTime((int) ($raw['time']        ?? 0))
+            ->setHistoricTime((int) ($raw['historicTime'] ?? 0))
+            ->setLength((int) ($raw['length']    ?? 0))
+            ->setJamLevel((int) ($raw['jamLevel'] ?? 0))
+            ->setAvgSpeed($avgSpeed)
+            ->setHistoricSpeed($historicSpeed)
+            ->setLine($raw['line']               ?? null)
+            ->setBbox($raw['bbox']               ?? null)
+            ->setSortOrder($order)
+            ->setLeadAlertId($leadAlert['id']       ?? null)
+            ->setLeadAlertType($leadAlert['type']   ?? null)
+            ->setLeadAlertSubType($leadAlert['subType'] ?? null)
+            ->setLeadAlertPosition(isset($leadAlert['position']) ? (array) $leadAlert['position'] : null)
+            ->setLeadAlertNumComments((int) ($leadAlert['numComments'] ?? 0))
+            ->setLeadAlertNumThumbsUp((int) ($leadAlert['numThumbsUp'] ?? 0))
+            ->setLeadAlertNumNotThereReports((int) ($leadAlert['numNotThereReports'] ?? 0))
+            ->setLeadAlertStreet($leadAlert['street'] ?? null);
+
+        $route->addSubRoute($sub);
+        $this->em->persist($sub);
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Irregularidades
+    // ─────────────────────────────────────────────────────────────────
+
+    /**
+     * Marca todas as irregularidades deste link como inativas.
+     * As que ainda estão no feed serão reativadas no upsert.
+     */
+    private function deactivateIrregularities(MonitoredLink $link): void
+    {
+        $this->em->createQuery(
+            'UPDATE App\Entity\WazeIrregularity i SET i.isActive = false WHERE i.sourceLink = :link'
+        )->setParameter('link', $link)->execute();
+    }
+
+    private function upsertIrregularity(MonitoredLink $link, array $raw, \DateTimeImmutable $now): void
+    {
+        $partner = $link->getPartner();
+        $wazeId  = isset($raw['id']) ? (string) $raw['id'] : null;
+
+        $irr = null;
+        if ($wazeId !== null) {
+            $irr = $this->em->getRepository(WazeIrregularity::class)->findOneBy([
+                'wazeId'     => $wazeId,
+                'sourceLink' => $link,
+            ]);
+        }
+
+        if ($irr === null) {
+            $irr = new WazeIrregularity();
+            $irr->setWazeId($wazeId);
+            $irr->setPartner($partner);
+            $irr->setSourceLink($link);
+        }
+
+        [$avgSpeed, $avgTime, $historicSpeed] = $this->calcSpeeds(
+            $raw['length']       ?? 0,
+            $raw['time']         ?? 0,
+            $raw['historicTime'] ?? 0
+        );
+
+        $leadAlert = $raw['leadAlert'] ?? null;
+
+        $irr
+            ->setName($raw['name']         ?? null)
+            ->setFromName($raw['fromName'] ?? null)
+            ->setToName($raw['toName']     ?? null)
+            ->setLength((int) ($raw['length'] ?? 0))
+            ->setJamLevel((int) ($raw['jamLevel'] ?? 0))
+            ->setTime((int) ($raw['time'] ?? 0))
+            ->setHistoricTime((int) ($raw['historicTime'] ?? 0))
+            ->setAvgSpeed($avgSpeed)
+            ->setHistoricSpeed($historicSpeed)
+            ->setBbox($raw['bbox']         ?? null)
+            ->setLine($raw['line']         ?? null)
+            ->setIsActive(true)
+            ->setCollectedAt($now)
+            ->setLeadAlertId($leadAlert['id']         ?? null)
+            ->setLeadAlertType($leadAlert['type']     ?? null)
+            ->setLeadAlertSubType($leadAlert['subType'] ?? null)
+            ->setLeadAlertPosition(isset($leadAlert['position']) ? (array) $leadAlert['position'] : null)
+            ->setLeadAlertNumComments((int) ($leadAlert['numComments'] ?? 0))
+            ->setLeadAlertCity($leadAlert['city']     ?? null)
+            ->setLeadAlertExternalImageId($leadAlert['externalImageId'] ?? null)
+            ->setLeadAlertNumThumbsUp((int) ($leadAlert['numThumbsUp'] ?? 0))
+            ->setLeadAlertStreet($leadAlert['street'] ?? null)
+            ->setLeadAlertNumNotThereReports((int) ($leadAlert['numNotThereReports'] ?? 0));
+
+        $this->em->persist($irr);
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Helpers
+    // ─────────────────────────────────────────────────────────────────
+
+    /**
+     * Calcula velocidades médias a partir de comprimento e tempos.
+     *
+     * @return array{float, float, float}  [avgSpeed, avgTime, historicSpeed]  (km/h, s, km/h)
+     */
+    private function calcSpeeds(int|float $length, int|float $time, int|float $historicTime): array
+    {
+        $length      = max(1, (float) $length);
+        $time        = max(1, (float) $time);
+        $historicTime = max(1, (float) $historicTime);
+
+        $avgSpeed      = ($length / 1000) / ($time / 3600);         // km/h
+        $historicSpeed = ($length / 1000) / ($historicTime / 3600); // km/h
+
+        return [$avgSpeed, $time, $historicSpeed];
     }
 }
