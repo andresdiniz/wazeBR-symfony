@@ -1,8 +1,9 @@
 {% extends 'base.html.twig' %}
 {% block title %}Histórico — {{ latest.name ?? wazeRouteId }}{% endblock %}
 
-{% set jsFromName = latest.fromName ? latest.fromName|e('js') : 'Início' %}
-{% set jsToName   = latest.toName   ? latest.toName|e('js')   : 'Fim' %}
+{# Usa json_encode para serializar strings — garante escapes válidos dentro de data-attribute #}
+{% set jsFromName = (latest.fromName ?? 'Início')|json_encode %}
+{% set jsToName   = (latest.toName   ?? 'Fim')|json_encode %}
 {% set jsJamLevel = latest.jamLevel ?? 0 %}
 {% set jsLine     = latest.line is not null ? latest.line|json_encode : 'null' %}
 {% set jsHistory  = history|map(r => {
@@ -32,6 +33,11 @@
 {% endblock %}
 
 {% block content %}
+{#
+  Dados passados via data-attributes.
+  jsFromName e jsToName já são strings JSON (com aspas), ex: "Prç. Barão de Queluz"
+  Usamos |e('html_attr') só para escapar as aspas duplas dentro do atributo HTML.
+#}
 <div id="js-data"
   data-history="{{ jsHistory|e('html_attr') }}"
   data-line="{{ jsLine|e('html_attr') }}"
@@ -137,8 +143,10 @@
   var raw       = JSON.parse(ds.history);
   var routeLine = JSON.parse(ds.line);
   var jamLevel  = parseInt(ds.jamLevel, 10) || 0;
-  var fromName  = ds.from;
-  var toName    = ds.to;
+  // fromName e toName chegam como strings JSON com aspas, ex: ""Prç. Barão""
+  // JSON.parse remove as aspas e devolve a string pura com acentos corretos
+  var fromName  = JSON.parse(ds.from);
+  var toName    = JSON.parse(ds.to);
 
   var tz  = Intl.DateTimeFormat().resolvedOptions().timeZone;
   var FMT = new Intl.DateTimeFormat('pt-BR', { timeZone: tz, day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -183,12 +191,7 @@
     var pl        = L.polyline(latlngs, { color: color, weight: 5, opacity: 0.85 }).addTo(map);
 
     if (latlngs.length >= 2) {
-      /**
-       * Pin SVG: círculo com ponta para baixo.
-       * iconSize:   [largura, altura total do SVG]
-       * iconAnchor: [metade da largura, altura total] → ancora a ponta na coordenada exata
-       */
-      var mkPin = function(letter, bg, label) {
+      var mkPin = function(letter, bg) {
         var w = 28, h = 36;
         var svg =
           '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 28 36">' +
@@ -208,11 +211,11 @@
         });
       };
 
-      L.marker(latlngs[0], { icon: mkPin('A', '#01696f', fromName) })
+      L.marker(latlngs[0], { icon: mkPin('A', '#01696f') })
         .bindTooltip(fromName, { permanent: false, direction: 'top' })
         .addTo(map);
 
-      L.marker(latlngs[latlngs.length - 1], { icon: mkPin('B', '#a12c7b', toName) })
+      L.marker(latlngs[latlngs.length - 1], { icon: mkPin('B', '#a12c7b') })
         .bindTooltip(toName, { permanent: false, direction: 'top' })
         .addTo(map);
     }
