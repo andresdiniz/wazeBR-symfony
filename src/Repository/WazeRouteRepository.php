@@ -19,7 +19,8 @@ class WazeRouteRepository extends ServiceEntityRepository
     }
 
     /**
-     * Todas as rotas ativas (com coordenadas from/to definidas).
+     * Todas as rotas ativas que tenham coordinates (Routing API)
+     * OU wazeId preenchido (TVT API).
      *
      * @return WazeRoute[]
      */
@@ -28,7 +29,7 @@ class WazeRouteRepository extends ServiceEntityRepository
         return $this->createQueryBuilder('r')
             ->leftJoin('r.partner', 'p')
             ->where('r.isActive = true')
-            ->andWhere('r.coordinates IS NOT NULL')
+            ->andWhere('r.coordinates IS NOT NULL OR r.wazeId IS NOT NULL')
             ->orderBy('p.name', 'ASC')
             ->addOrderBy('r.name', 'ASC')
             ->getQuery()
@@ -36,7 +37,8 @@ class WazeRouteRepository extends ServiceEntityRepository
     }
 
     /**
-     * Rotas ativas de um parceiro filtrado por slug.
+     * Rotas ativas de um parceiro filtrado por slug,
+     * com coordinates (Routing API) OU wazeId (TVT API).
      *
      * @return WazeRoute[]
      */
@@ -46,7 +48,7 @@ class WazeRouteRepository extends ServiceEntityRepository
             ->join('r.partner', 'p')
             ->where('r.isActive = true')
             ->andWhere('p.slug = :slug')
-            ->andWhere('r.coordinates IS NOT NULL')
+            ->andWhere('r.coordinates IS NOT NULL OR r.wazeId IS NOT NULL')
             ->setParameter('slug', $slug)
             ->orderBy('r.name', 'ASC')
             ->getQuery()
