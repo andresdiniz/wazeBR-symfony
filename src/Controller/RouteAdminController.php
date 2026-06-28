@@ -56,6 +56,26 @@ class RouteAdminController extends AbstractController
         $avgDelaySec = $routesWithDelay > 0 ? (int) ($totalDelaySec / $routesWithDelay) : 0;
         $congested   = ($levels[3] ?? 0) + ($levels[4] ?? 0) + ($levels[5] ?? 0);
 
+        // Build routesJs: JSON array consumed by the Leaflet map at line 303
+        $routesJs = array_map(static function ($r): array {
+            $line = $r->getLine();
+            // line is stored as JSON string or array
+            $lineDecoded = is_string($line) ? json_decode($line, true) : $line;
+
+            return [
+                'id'          => $r->getId(),
+                'wazeRouteId' => $r->getWazeRouteId(),
+                'name'        => $r->getName(),
+                'fromName'    => $r->getFromName(),
+                'toName'      => $r->getToName(),
+                'jamLevel'    => $r->getJamLevel() ?? 0,
+                'time'        => $r->getTime(),
+                'historicTime'=> $r->getHistoricTime(),
+                'length'      => $r->getLength(),
+                'line'        => $lineDecoded ?? [],
+            ];
+        }, $routes);
+
         return $this->render('route/index.html.twig', [
             'partner'      => $partner,
             'routes'       => $routes,
@@ -66,7 +86,8 @@ class RouteAdminController extends AbstractController
                 'avgDelaySec' => $avgDelaySec,
                 'levels'      => $levels,
             ],
-            'jamFilter' => $jamFilter,
+            'jamFilter'  => $jamFilter,
+            'routesJs'   => $routesJs,
         ]);
     }
 
