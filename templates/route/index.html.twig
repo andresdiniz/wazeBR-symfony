@@ -92,7 +92,6 @@
 {% endblock %}
 
 {% block content %}
-{# jam_meta com chaves STRING para evitar erro de sintaxe Twig com int keys #}
 {% set jam_meta = [
   {lv:'0', label:'Livre',      dot:'dot-green',  bar:'var(--color-success)'},
   {lv:'1', label:'Lento',      dot:'dot-gold',   bar:'var(--color-gold)'},
@@ -119,13 +118,11 @@
   </a>
 </div>
 
-{# KPIs #}
 {% set congPct = kpi.total > 0 ? (kpi.congested / kpi.total * 100)|round(0) : 0 %}
 {% set freeCnt = kpi.levels[0] is defined ? kpi.levels[0] : 0 %}
 {% set freePct = kpi.total > 0 ? (freeCnt / kpi.total * 100)|round(0) : 0 %}
 
 <div class="kpi-strip">
-
   <div class="kpi-card kpi-primary">
     <div class="kpi-icon-row">
       <span class="kpi-lbl">Total de Rotas</span>
@@ -194,7 +191,6 @@
       {% endfor %}
     </div>
   </div>
-
 </div>
 
 {% if routes is not empty %}
@@ -283,13 +279,11 @@
   </div>
 </div>
 {% endif %}
-{% endblock %}
 
-{% block javascripts %}
-<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-(function(){
-  const routes = {{ routes|map(r => {
+{# Serializa rotas para JS sem arrow functions no Twig #}
+{% set routesJs = [] %}
+{% for r in routes %}
+  {% set routesJs = routesJs|merge([{
     id:   r.wazeRouteId,
     name: r.name,
     from: r.fromName,
@@ -298,57 +292,63 @@
     time: r.time,
     hist: r.historicTime,
     line: r.line
-  })|json_encode|raw }};
+  }]) %}
+{% endfor %}
+{% endblock %}
 
-  document.querySelectorAll('time[data-utc]').forEach(el => {
-    const d = new Date(el.dataset.utc);
-    const diff = Math.floor((Date.now() - d) / 1000);
-    if (diff < 60)         el.textContent = 'agora';
-    else if (diff < 3600)  el.textContent = 'h\u00e1 ' + Math.floor(diff/60) + ' min';
-    else if (diff < 86400) el.textContent = 'h\u00e1 ' + Math.floor(diff/3600) + 'h';
-  });
+{% block javascripts %}
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+  var routes = {{ routesJs|json_encode|raw }};
 
-  const mapEl = document.getElementById('tvt-map');
+  var mapEl = document.getElementById('tvt-map');
   if (!mapEl || !routes.length) return;
 
-  const map = L.map('tvt-map', {zoomControl:true});
+  var map = L.map('tvt-map', {zoomControl:true});
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors', maxZoom: 18
   }).addTo(map);
 
-  const jamColorsRaw = ['#437a22','#d19900','#da7101','#a12c7b','#7c1f1f','#555'];
-  const layers = {};
-  const bounds = L.latLngBounds();
+  var jamColors = ['#437a22','#d19900','#da7101','#a12c7b','#7c1f1f','#555'];
+  var layers = {};
+  var bounds = L.latLngBounds();
 
-  routes.forEach(r => {
+  routes.forEach(function(r) {
     if (!r.line || !r.line.length) return;
-    const latlngs = r.line.map(p => [p.y, p.x]);
-    const color = jamColorsRaw[r.jam ?? 0] ?? '#888';
-    const pl = L.polyline(latlngs, {color, weight:5, opacity:0.82});
-    const fmt = s => s == null ? '\u2014' : s < 60 ? s + 's' : (s/60).toFixed(1) + ' min';
-    pl.bindPopup('<strong>' + (r.name||'\u2014') + '</strong><br><span style="color:#888">' + (r.from||'') + ' \u2192 ' + (r.to||'') + '</span><br>Jam: ' + (r.jam??0) + ' | Atual: ' + fmt(r.time) + ' | Hist: ' + fmt(r.hist));
+    var latlngs = r.line.map(function(p){ return [p.y, p.x]; });
+    var color = jamColors[r.jam != null ? r.jam : 0] || '#888';
+    var pl = L.polyline(latlngs, {color: color, weight: 5, opacity: 0.82});
+    pl.bindPopup('<strong>' + (r.name || '\u2014') + '</strong><br>' +
+      '<span style="color:#888">' + (r.from || '') + ' \u2192 ' + (r.to || '') + '</span><br>' +
+      'Jam: ' + (r.jam != null ? r.jam : 0));
     pl.addTo(map);
     if (r.id) layers[r.id] = pl;
-    latlngs.forEach(ll => bounds.extend(ll));
+    latlngs.forEach(function(ll){ bounds.extend(ll); });
   });
 
-  if (bounds.isValid()) map.fitBounds(bounds, {padding:[24,24]});
+  if (bounds.isValid()) map.fitBounds(bounds, {padding: [24, 24]});
 
-  Object.entries(layers).forEach(([wid, pl]) => {
-    pl.on('click', () => {
-      document.querySelectorAll('.route-row').forEach(tr => tr.classList.remove('row-selected'));
-      const row = document.querySelector('.route-row[data-waze-id="' + wid + '"]');
+  Object.keys(layers).forEach(function(wid) {
+    var pl = layers[wid];
+    pl.on('click', function() {
+      document.querySelectorAll('.route-row').forEach(function(tr){ tr.classList.remove('row-selected'); });
+      var row = document.querySelector('.route-row[data-waze-id="' + wid + '"]');
       if (row) { row.classList.add('row-selected'); row.scrollIntoView({behavior:'smooth',block:'center'}); }
     });
   });
 
-  document.querySelectorAll('.route-row').forEach(tr => {
-    tr.addEventListener('click', e => {
+  document.querySelectorAll('.route-row').forEach(function(tr) {
+    tr.addEventListener('click', function(e) {
       if (e.target.closest('a')) return;
-      const wid = tr.dataset.wazeId;
-      const pl  = layers[wid];
-      if (pl) { pl.openPopup(); map.panTo(pl.getLatLngs()[Math.floor(pl.getLatLngs().length/2)]); }
-      document.querySelectorAll('.route-row').forEach(r => r.classList.remove('row-selected'));
+      var wid = tr.dataset.wazeId;
+      var pl  = layers[wid];
+      if (pl) {
+        var lls = pl.getLatLngs();
+        pl.openPopup();
+        map.panTo(lls[Math.floor(lls.length / 2)]);
+      }
+      document.querySelectorAll('.route-row').forEach(function(r){ r.classList.remove('row-selected'); });
       tr.classList.add('row-selected');
     });
   });
