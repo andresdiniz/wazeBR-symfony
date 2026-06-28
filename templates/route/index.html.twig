@@ -394,7 +394,7 @@
     {% endif %}
   </div>
 
-  {# 7 — Distribuição (donut) ocupa span 1 neste grid de 3 #}
+  {# 7 — Distribuição (donut) #}
   <div class="route-kpi-card">
     <div class="rkpi-label">Distribui&ccedil;&atilde;o por N&iacute;vel</div>
     {% if total > 0 %}
@@ -498,7 +498,7 @@
         {% set veloc = (r.length is not null and r.time is not null and r.time > 0) ? (r.length / r.time * 3.6)|round(0) : null %}
         <tr class="row-hover route-row" data-waze-id="{{ r.wazeRouteId }}" style="cursor:pointer">
           <td style="font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ r.name }}">{{ r.name ?? '&mdash;' }}</td>
-          <td style="font-size:var(--text-xs);color:var(--color-text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ r.fromName }} &rarr; {{ r.toName }}">{{ r.fromName ?? '&mdash;' }} &rarr; {{ r.toName ?? '&mdash;' }}</td>
+          <td style="font-size:var(--text-xs);color:var(--color-text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ r.fromName }} → {{ r.toName }}">{{ r.fromName ?? '&mdash;' }} &rarr; {{ r.toName ?? '&mdash;' }}</td>
           <td><span class="badge jam-{{ r.jamLevel ?? 0 }}">{{ r.jamLevelLabel }}</span></td>
           <td style="text-align:right;font-variant-numeric:tabular-nums">{{ r.length ?? '&mdash;' }}</td>
           <td style="text-align:right;font-variant-numeric:tabular-nums">{% if r.time is not null %}{% if r.time < 60 %}{{ r.time }}s{% else %}{{ (r.time/60)|round(1) }} min{% endif %}{% else %}&mdash;{% endif %}</td>
@@ -531,8 +531,64 @@
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function(){
-{% set routesData = [] %}
-{% for r in routes %}
-  {% set routesData = routesData|merge([{id:r.wazeRouteId,name:r.name,from:r.fromName,to:r.toName,jam:r.jamLevel,time:r.time,hist:r.historicTime,line:r.line}]) %}
-{% endfor %}
-  var routes = {
+  var routes = {{ routesJs|json_encode|raw }};
+  var jamColors = ['#4caf50','#cddc39','#ff9800','#f44336','#b71c1c','#212121'];
+
+  if (!routes || !routes.length) return;
+
+  var map = L.map('tvt-map');
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'&copy; OpenStreetMap contributors', maxZoom:19
+  }).addTo(map);
+
+  var bounds = [];
+  var polylines = {};
+
+  routes.forEach(function(r){
+    if (!r.line || !r.line.length) return;
+    var latlngs = r.line.map(function(p){ return [p.y, p.x]; });
+    var color = jamColors[r.jamLevel] || jamColors[0];
+    var pl = L.polyline(latlngs, {color:color, weight:5, opacity:0.85}).addTo(map);
+    var delayTxt = '';
+    if (r.time != null && r.hist != null) {
+      var d = r.time - r.hist;
+      delayTxt = d > 0 ? '<span style="color:#f44336">+' + (d < 60 ? d+'s' : (d/60).toFixed(1)+'min') + '</span>'
+                : d < 0 ? '<span style="color:#4caf50">'+(d/60).toFixed(1)+'min</span>'
+                : '<span style="color:#aaa">0s</span>';
+    }
+    pl.bindPopup('<strong>'+r.name+'</strong><br>'
+      +(r.from ? r.from+' &rarr; '+r.to+'<br>' : '')
+      +'Jam: <b>'+r.jamLevel+'</b> &nbsp; Atraso: '+delayTxt
+    );
+    pl.on('click', function(){
+      document.querySelectorAll('tr.route-row').forEach(function(tr){ tr.classList.remove('row-selected'); });
+      var tr = document.querySelector('tr[data-waze-id="'+r.id+'"]');
+      if (tr){ tr.classList.add('row-selected'); tr.scrollIntoView({behavior:'smooth',block:'center'}); }
+    });
+    polylines[r.id] = pl;
+    latlngs.forEach(function(ll){ bounds.push(ll); });
+  });
+
+  if (bounds.length) map.fitBounds(bounds, {padding:[16,16]});
+
+  document.querySelectorAll('tr.route-row').forEach(function(tr){
+    tr.addEventListener('click', function(){
+      var wid = tr.dataset.wazeId;
+      document.querySelectorAll('tr.route-row').forEach(function(t){ t.classList.remove('row-selected'); });
+      tr.classList.add('row-selected');
+      if (polylines[wid]){ polylines[wid].openPopup(); map.panTo(polylines[wid].getCenter()); }
+    });
+  });
+
+  document.querySelectorAll('time[data-utc]').forEach(function(el){
+    if (el.dataset.fmt === 'relative'){
+      var d = new Date(el.dataset.utc), now = new Date(), diff = Math.floor((now - d)/1000);
+      if (diff < 60) el.textContent = 'agora';
+      else if (diff < 3600) el.textContent = Math.floor(diff/60)+'min atrás';
+      else if (diff < 86400) el.textContent = Math.floor(diff/3600)+'h atrás';
+      else el.textContent = d.toLocaleDateString('pt-BR');
+    }
+  });
+})();
+</script>
+{% endblock %}
