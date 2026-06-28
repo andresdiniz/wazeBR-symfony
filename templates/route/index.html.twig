@@ -4,7 +4,6 @@
 {% block stylesheets %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-  /* ── Jam badge palette ── */
   .jam-0{background:oklch(from var(--color-success) l c h/.14);color:var(--color-success)}
   .jam-1{background:oklch(from var(--color-gold) l c h/.15);color:var(--color-gold)}
   .jam-2{background:oklch(from var(--color-orange) l c h/.15);color:var(--color-orange)}
@@ -12,33 +11,26 @@
   .jam-4{background:oklch(from var(--color-error) l c h/.22);color:var(--color-error)}
   .jam-5{background:var(--color-error);color:#fff}
 
-  /* ── KPI grid ── */
   .kpi-strip{
     display:grid;
     grid-template-columns:repeat(4,1fr) 2fr;
     gap:var(--space-4);
     margin-bottom:var(--space-6);
   }
-  @media(max-width:1100px){ .kpi-strip{ grid-template-columns:repeat(2,1fr); } }
-  @media(max-width:600px){  .kpi-strip{ grid-template-columns:1fr; } }
-  @media(min-width:1800px){ .kpi-strip{ gap:var(--space-6); } }
+  @media(max-width:1100px){.kpi-strip{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:600px) {.kpi-strip{grid-template-columns:1fr}}
+  @media(min-width:1800px){.kpi-strip{gap:var(--space-6)}}
 
-  /* base card */
   .kpi-card{
-    background:var(--color-surface);
-    border:1px solid var(--color-border);
-    border-radius:var(--radius-lg);
-    padding:var(--space-4) var(--space-5);
-    box-shadow:var(--shadow-sm);
-    display:flex;flex-direction:column;gap:var(--space-2);
+    background:var(--color-surface);border:1px solid var(--color-border);
+    border-radius:var(--radius-lg);padding:var(--space-4) var(--space-5);
+    box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:var(--space-2);
     position:relative;overflow:hidden;
   }
   @media(min-width:1800px){.kpi-card{padding:var(--space-6)}}
-
-  /* accent top border */
   .kpi-card::before{
-    content:'';position:absolute;top:0;left:0;right:0;
-    height:3px;border-radius:var(--radius-lg) var(--radius-lg) 0 0;
+    content:'';position:absolute;top:0;left:0;right:0;height:3px;
+    border-radius:var(--radius-lg) var(--radius-lg) 0 0;
     background:var(--kpi-accent,var(--color-primary));
   }
   .kpi-card.kpi-green  {--kpi-accent:var(--color-success)}
@@ -47,93 +39,45 @@
   .kpi-card.kpi-primary{--kpi-accent:var(--color-primary)}
   .kpi-card.kpi-dist   {--kpi-accent:var(--color-text-faint)}
 
-  /* icon */
   .kpi-icon-row{display:flex;align-items:center;justify-content:space-between}
   .kpi-icon{
     width:36px;height:36px;border-radius:var(--radius-md);
-    display:grid;place-items:center;
+    display:grid;place-items:center;flex-shrink:0;
     background:oklch(from var(--kpi-accent,var(--color-primary)) l c h/.12);
     color:var(--kpi-accent,var(--color-primary));
-    flex-shrink:0;
   }
   @media(min-width:1800px){.kpi-icon{width:44px;height:44px}}
-
-  /* label */
-  .kpi-lbl{
-    font-size:var(--text-xs);font-weight:600;
-    text-transform:uppercase;letter-spacing:.05em;
-    color:var(--color-text-muted);
-  }
-
-  /* main value */
+  .kpi-lbl{font-size:var(--text-xs);font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-muted)}
   .kpi-val{
-    font-family:var(--font-display);
-    font-size:clamp(1.6rem,1.2rem + 1.2vw,2.4rem);
-    font-weight:700;line-height:1;
-    color:var(--color-text);letter-spacing:-.03em;
+    font-family:var(--font-display);font-size:clamp(1.6rem,1.2rem + 1.2vw,2.4rem);
+    font-weight:700;line-height:1;color:var(--color-text);letter-spacing:-.03em;
     font-variant-numeric:tabular-nums;
   }
   @media(min-width:1800px){.kpi-val{font-size:2.8rem}}
+  .kpi-sub{font-size:var(--text-xs);color:var(--color-text-muted)}
+  .kpi-bar-wrap{height:5px;background:var(--color-surface-offset);border-radius:var(--radius-full);overflow:hidden;margin-top:var(--space-1)}
+  .kpi-bar{height:100%;border-radius:var(--radius-full);background:var(--kpi-accent,var(--color-primary));transition:width .6s cubic-bezier(.16,1,.3,1)}
 
-  /* sub-label below value */
-  .kpi-sub{
-    font-size:var(--text-xs);
-    color:var(--color-text-muted);
-  }
-
-  /* thin progress bar (percentage of total) */
-  .kpi-bar-wrap{
-    height:5px;
-    background:var(--color-surface-offset);
-    border-radius:var(--radius-full);
-    overflow:hidden;
-    margin-top:var(--space-1);
-  }
-  .kpi-bar{
-    height:100%;border-radius:var(--radius-full);
-    background:var(--kpi-accent,var(--color-primary));
-    transition:width .6s cubic-bezier(.16,1,.3,1);
-  }
-
-  /* badge pill with dot */
   .dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
   .dot-green {background:var(--color-success)}
   .dot-gold  {background:var(--color-gold)}
   .dot-orange{background:var(--color-orange)}
   .dot-red   {background:var(--color-error)}
   .dot-dark  {background:#7c1f1f}
-  .dot-black {background:#333}
+  .dot-black {background:#555}
 
-  /* jam distribution card */
-  .jam-dist-grid{
-    display:flex;flex-direction:column;gap:var(--space-2);
-    margin-top:var(--space-3);
-  }
-  .jam-row{
-    display:grid;
-    grid-template-columns:80px 1fr 32px;
-    align-items:center;
-    gap:var(--space-2);
-    font-size:var(--text-xs);
-  }
-  @media(min-width:1800px){.jam-row{grid-template-columns:100px 1fr 40px;font-size:var(--text-sm)}}
+  .jam-dist-grid{display:flex;flex-direction:column;gap:var(--space-2);margin-top:var(--space-3)}
+  .jam-row{display:grid;grid-template-columns:90px 1fr 32px;align-items:center;gap:var(--space-2);font-size:var(--text-xs)}
+  @media(min-width:1800px){.jam-row{grid-template-columns:110px 1fr 40px;font-size:var(--text-sm)}}
   .jam-row-label{display:flex;align-items:center;gap:var(--space-2);color:var(--color-text-muted)}
-  .jam-row-bar-wrap{
-    height:6px;background:var(--color-surface-offset);
-    border-radius:var(--radius-full);overflow:hidden;
-  }
-  .jam-row-bar{
-    height:100%;border-radius:var(--radius-full);
-    transition:width .6s cubic-bezier(.16,1,.3,1);
-  }
+  .jam-row-bar-wrap{height:6px;background:var(--color-surface-offset);border-radius:var(--radius-full);overflow:hidden}
+  .jam-row-bar{height:100%;border-radius:var(--radius-full);transition:width .6s cubic-bezier(.16,1,.3,1)}
   .jam-cnt{font-weight:700;text-align:right;font-variant-numeric:tabular-nums;color:var(--color-text)}
 
-  /* map */
   #tvt-map{height:420px;border-radius:var(--radius-lg);z-index:1;border:1px solid var(--color-border)}
   @media(max-width:600px){#tvt-map{height:260px}}
   @media(min-width:1800px){#tvt-map{height:560px}}
 
-  /* table */
   .chip-group{display:flex;flex-wrap:wrap;gap:var(--space-2)}
   .chip{display:inline-flex;align-items:center;gap:4px;padding:4px var(--space-3);border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:600;border:1px solid var(--color-border);color:var(--color-text-muted);background:var(--color-surface);text-decoration:none;transition:all 180ms cubic-bezier(.16,1,.3,1)}
   .chip:hover{background:var(--color-surface-offset);color:var(--color-text)}
@@ -148,15 +92,15 @@
 {% endblock %}
 
 {% block content %}
-{# ── precompute jam palette data ── #}
-{% set jam_meta = {
-  0: {label:'Livre',     dot:'dot-green',  bar:'var(--color-success)', order:0},
-  1: {label:'Lento',     dot:'dot-gold',   bar:'var(--color-gold)',    order:1},
-  2: {label:'Moderado',  dot:'dot-orange', bar:'var(--color-orange)',  order:2},
-  3: {label:'Pesado',    dot:'dot-red',    bar:'var(--color-error)',   order:3},
-  4: {label:'Mto pesado',dot:'dot-dark',   bar:'#7c1f1f',             order:4},
-  5: {label:'Parado',    dot:'dot-black',  bar:'#333',                order:5}
-} %}
+{# jam_meta com chaves STRING para evitar erro de sintaxe Twig com int keys #}
+{% set jam_meta = [
+  {lv:'0', label:'Livre',      dot:'dot-green',  bar:'var(--color-success)'},
+  {lv:'1', label:'Lento',      dot:'dot-gold',   bar:'var(--color-gold)'},
+  {lv:'2', label:'Moderado',   dot:'dot-orange', bar:'var(--color-orange)'},
+  {lv:'3', label:'Pesado',     dot:'dot-red',    bar:'var(--color-error)'},
+  {lv:'4', label:'Mto pesado', dot:'dot-dark',   bar:'#7c1f1f'},
+  {lv:'5', label:'Parado',     dot:'dot-black',  bar:'#555'}
+] %}
 
 <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:var(--space-4)">
   <div>
@@ -175,10 +119,13 @@
   </a>
 </div>
 
-{# ══ KPI STRIP ══ #}
+{# KPIs #}
+{% set congPct = kpi.total > 0 ? (kpi.congested / kpi.total * 100)|round(0) : 0 %}
+{% set freeCnt = kpi.levels[0] is defined ? kpi.levels[0] : 0 %}
+{% set freePct = kpi.total > 0 ? (freeCnt / kpi.total * 100)|round(0) : 0 %}
+
 <div class="kpi-strip">
 
-  {# 1 — Total #}
   <div class="kpi-card kpi-primary">
     <div class="kpi-icon-row">
       <span class="kpi-lbl">Total de Rotas</span>
@@ -188,8 +135,6 @@
     <div class="kpi-sub">monitoradas neste snapshot</div>
   </div>
 
-  {# 2 — Congestionadas #}
-  {% set congPct = kpi.total > 0 ? (kpi.congested / kpi.total * 100)|round(0) : 0 %}
   <div class="kpi-card kpi-red">
     <div class="kpi-icon-row">
       <span class="kpi-lbl">Congestionadas (&ge;3)</span>
@@ -200,20 +145,16 @@
     <div class="kpi-bar-wrap"><div class="kpi-bar" style="width:{{ congPct }}%"></div></div>
   </div>
 
-  {# 3 — Livres #}
-  {% set freeCnt = kpi.levels[0] ?? 0 %}
-  {% set freePct = kpi.total > 0 ? (freeCnt / kpi.total * 100)|round(0) : 0 %}
   <div class="kpi-card kpi-green">
     <div class="kpi-icon-row">
       <span class="kpi-lbl">Livres (n&iacute;vel 0)</span>
       <span class="kpi-icon"><i data-lucide="check-circle" style="width:18px;height:18px"></i></span>
     </div>
     <div class="kpi-val">{{ freeCnt }}</div>
-    <div class="kpi-sub">{{ freePct }}% sem tráfego</div>
+    <div class="kpi-sub">{{ freePct }}% sem tr&aacute;fego</div>
     <div class="kpi-bar-wrap"><div class="kpi-bar" style="width:{{ freePct }}%"></div></div>
   </div>
 
-  {# 4 — Atraso Médio #}
   <div class="kpi-card kpi-gold">
     <div class="kpi-icon-row">
       <span class="kpi-lbl">Atraso M&eacute;dio</span>
@@ -221,12 +162,12 @@
     </div>
     <div class="kpi-val">
       {% if kpi.avgDelaySec == 0 %}&mdash;
-      {% elseif kpi.avgDelaySec < 60 %}{{ kpi.avgDelaySec }}<span style="font-size:.5em;letter-spacing:0;font-weight:500">s</span>
-      {% else %}{{ (kpi.avgDelaySec / 60)|round(1) }}<span style="font-size:.5em;letter-spacing:0;font-weight:500">min</span>
+      {% elseif kpi.avgDelaySec < 60 %}{{ kpi.avgDelaySec }}<span style="font-size:.5em;font-weight:500">s</span>
+      {% else %}{{ (kpi.avgDelaySec / 60)|round(1) }}<span style="font-size:.5em;font-weight:500">min</span>
       {% endif %}
     </div>
     <div class="kpi-sub">
-      {% if kpi.avgDelaySec == 0 %}tráfego fluindo normalmente
+      {% if kpi.avgDelaySec == 0 %}tr&aacute;fego fluindo normalmente
       {% elseif kpi.avgDelaySec < 120 %}atraso leve
       {% elseif kpi.avgDelaySec < 300 %}atraso moderado
       {% else %}atraso significativo
@@ -234,15 +175,13 @@
     </div>
   </div>
 
-  {# 5 — Distribuição de Jam (card duplo) #}
-  <div class="kpi-card kpi-dist" style="grid-row:span 1">
+  <div class="kpi-card kpi-dist">
     <div class="kpi-lbl" style="margin-bottom:var(--space-1)">Distribui&ccedil;&atilde;o por N&iacute;vel</div>
     <div class="jam-dist-grid">
-      {% for lv in 0..5 %}
-        {% set cnt  = kpi.levels[lv] ?? 0 %}
-        {% set meta = jam_meta[lv] %}
-        {% set pct  = kpi.total > 0 ? (cnt / kpi.total * 100)|round(1) : 0 %}
-        <div class="jam-row" style="{{ cnt == 0 ? 'opacity:.4' }}">
+      {% for meta in jam_meta %}
+        {% set cnt = kpi.levels[meta.lv] is defined ? kpi.levels[meta.lv] : 0 %}
+        {% set pct = kpi.total > 0 ? (cnt / kpi.total * 100)|round(1) : 0 %}
+        <div class="jam-row" {% if cnt == 0 %}style="opacity:.4"{% endif %}>
           <div class="jam-row-label">
             <span class="dot {{ meta.dot }}"></span>
             {{ meta.label }}
@@ -256,9 +195,8 @@
     </div>
   </div>
 
-</div>{# /kpi-strip #}
+</div>
 
-{# ══ MAP ══ #}
 {% if routes is not empty %}
 <div class="card" style="margin-bottom:var(--space-6)">
   <div class="card-header">
@@ -271,7 +209,6 @@
 </div>
 {% endif %}
 
-{# ══ FILTER + TABLE ══ #}
 <div style="margin-bottom:var(--space-4);display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap">
   <div class="chip-group">
     <a href="{{ path('route_admin_index') }}" class="chip {{ jamFilter is null or jamFilter == '' ? 'active' }}">Todos</a>
@@ -316,7 +253,7 @@
         {% set delay = r.delaySeconds %}
         <tr class="row-hover route-row" data-waze-id="{{ r.wazeRouteId }}" style="cursor:pointer">
           <td style="font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ r.name }}">{{ r.name ?? '&mdash;' }}</td>
-          <td style="font-size:var(--text-xs);color:var(--color-text-muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ r.fromName }} → {{ r.toName }}">
+          <td style="font-size:var(--text-xs);color:var(--color-text-muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
             {{ r.fromName ?? '&mdash;' }} &rarr; {{ r.toName ?? '&mdash;' }}
           </td>
           <td><span class="badge jam-{{ r.jamLevel ?? 0 }}">{{ r.jamLevelLabel }}</span></td>
@@ -324,23 +261,18 @@
             {% if r.length is not null %}{{ r.length }} m{% else %}&mdash;{% endif %}
           </td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap">
-            {% if r.time is not null %}
-              {% if r.time < 60 %}{{ r.time }}s{% else %}{{ (r.time / 60)|round(1) }} min{% endif %}
-            {% else %}&mdash;{% endif %}
+            {% if r.time is not null %}{% if r.time < 60 %}{{ r.time }}s{% else %}{{ (r.time / 60)|round(1) }} min{% endif %}{% else %}&mdash;{% endif %}
           </td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--color-text-muted)">
-            {% if r.historicTime is not null %}
-              {% if r.historicTime < 60 %}{{ r.historicTime }}s{% else %}{{ (r.historicTime / 60)|round(1) }} min{% endif %}
-            {% else %}&mdash;{% endif %}
+            {% if r.historicTime is not null %}{% if r.historicTime < 60 %}{{ r.historicTime }}s{% else %}{{ (r.historicTime / 60)|round(1) }} min{% endif %}{% else %}&mdash;{% endif %}
           </td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap" class="{% if delay is not null %}{% if delay > 0 %}delay-pos{% elseif delay < 0 %}delay-neg{% else %}delay-zero{% endif %}{% endif %}">
-            {% if delay is null %}&mdash;
-            {% elseif delay == 0 %}&mdash;
+            {% if delay is null or delay == 0 %}&mdash;
             {% elseif delay > 0 %}+{{ delay < 60 ? delay ~ 's' : (delay/60)|round(1) ~ ' min' }}
             {% else %}{{ delay > -60 ? delay ~ 's' : (delay/60)|round(1) ~ ' min' }}{% endif %}
           </td>
           <td>
-            <a href="{{ path('route_admin_history', {wazeRouteId: r.wazeRouteId}) }}" class="btn btn-ghost btn-sm" title="Hist&oacute;rico da rota">
+            <a href="{{ path('route_admin_history', {wazeRouteId: r.wazeRouteId}) }}" class="btn btn-ghost btn-sm" title="Hist&oacute;rico">
               <i data-lucide="history" style="width:13px;height:13px"></i>
             </a>
           </td>
@@ -368,58 +300,48 @@
     line: r.line
   })|json_encode|raw }};
 
-  /* ── Relative time ── */
   document.querySelectorAll('time[data-utc]').forEach(el => {
-    const d    = new Date(el.dataset.utc);
+    const d = new Date(el.dataset.utc);
     const diff = Math.floor((Date.now() - d) / 1000);
-    if (diff < 60)        el.textContent = 'agora';
-    else if (diff < 3600) el.textContent = `há ${Math.floor(diff/60)} min`;
-    else if (diff < 86400)el.textContent = `há ${Math.floor(diff/3600)}h`;
+    if (diff < 60)         el.textContent = 'agora';
+    else if (diff < 3600)  el.textContent = 'h\u00e1 ' + Math.floor(diff/60) + ' min';
+    else if (diff < 86400) el.textContent = 'h\u00e1 ' + Math.floor(diff/3600) + 'h';
   });
 
-  /* ── Leaflet ── */
   const mapEl = document.getElementById('tvt-map');
   if (!mapEl || !routes.length) return;
 
-  const map = L.map('tvt-map', { zoomControl: true });
+  const map = L.map('tvt-map', {zoomControl:true});
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors', maxZoom: 18
   }).addTo(map);
 
-  const jamColors = [
-    'var(--color-success, #437a22)',
-    '#d19900','#da7101','#a12c7b','#7c1f1f','#333'
-  ];
-  const jamColorsRaw = ['#437a22','#d19900','#da7101','#a12c7b','#7c1f1f','#333'];
-
+  const jamColorsRaw = ['#437a22','#d19900','#da7101','#a12c7b','#7c1f1f','#555'];
   const layers = {};
   const bounds = L.latLngBounds();
 
   routes.forEach(r => {
     if (!r.line || !r.line.length) return;
     const latlngs = r.line.map(p => [p.y, p.x]);
-    const color   = jamColorsRaw[r.jam ?? 0] ?? '#888';
-    const pl = L.polyline(latlngs, { color, weight: 5, opacity: 0.82 });
-    const minStr = r.time ? (r.time < 60 ? r.time + 's' : (r.time/60).toFixed(1) + ' min') : '—';
-    const histStr= r.hist ? (r.hist < 60 ? r.hist + 's' : (r.hist/60).toFixed(1) + ' min') : '—';
-    pl.bindPopup(`<strong>${r.name ?? '—'}</strong><br><span style="color:#888">${r.from ?? ''} → ${r.to ?? ''}</span><br>Jam: ${r.jam ?? 0} &nbsp;|&nbsp; Atual: ${minStr} &nbsp;|&nbsp; Hist: ${histStr}`);
+    const color = jamColorsRaw[r.jam ?? 0] ?? '#888';
+    const pl = L.polyline(latlngs, {color, weight:5, opacity:0.82});
+    const fmt = s => s == null ? '\u2014' : s < 60 ? s + 's' : (s/60).toFixed(1) + ' min';
+    pl.bindPopup('<strong>' + (r.name||'\u2014') + '</strong><br><span style="color:#888">' + (r.from||'') + ' \u2192 ' + (r.to||'') + '</span><br>Jam: ' + (r.jam??0) + ' | Atual: ' + fmt(r.time) + ' | Hist: ' + fmt(r.hist));
     pl.addTo(map);
     if (r.id) layers[r.id] = pl;
     latlngs.forEach(ll => bounds.extend(ll));
   });
 
-  if (bounds.isValid()) map.fitBounds(bounds, { padding: [24, 24] });
+  if (bounds.isValid()) map.fitBounds(bounds, {padding:[24,24]});
 
-  /* highlight table row when map polyline is clicked */
   Object.entries(layers).forEach(([wid, pl]) => {
     pl.on('click', () => {
       document.querySelectorAll('.route-row').forEach(tr => tr.classList.remove('row-selected'));
-      const row = document.querySelector(`.route-row[data-waze-id="${wid}"]`);
-      if (row) { row.classList.add('row-selected'); row.scrollIntoView({ behavior:'smooth', block:'center' }); }
+      const row = document.querySelector('.route-row[data-waze-id="' + wid + '"]');
+      if (row) { row.classList.add('row-selected'); row.scrollIntoView({behavior:'smooth',block:'center'}); }
     });
   });
 
-  /* highlight polyline when table row is clicked */
   document.querySelectorAll('.route-row').forEach(tr => {
     tr.addEventListener('click', e => {
       if (e.target.closest('a')) return;
