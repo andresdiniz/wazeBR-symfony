@@ -367,8 +367,30 @@
   'use strict';
 
   // ── Dados vindos do Symfony ─────────────────────────────────────────
-  const alertsPerHour = {{ alertsPerHour|json_encode|raw }};
-  const jamsPerHour   = {{ jamsPerHour|json_encode|raw }};
+  // countPerHourLast24h retorna [{hour: N, total: M}, ...] — apenas horas com dados.
+  // Precisamos normalizar para um array de 24 posições (índice 0-23).
+  const rawAlertsPerHour = {{ alertsPerHour|json_encode|raw }};
+  const rawJamsPerHour   = {{ jamsPerHour|json_encode|raw }};
+
+  function normalizeTo24(raw) {
+    const arr = new Array(24).fill(0);
+    if (Array.isArray(raw)) {
+      raw.forEach(function(row) {
+        const h = parseInt(row.hour ?? row.h ?? 0, 10);
+        if (h >= 0 && h < 24) arr[h] = parseInt(row.total ?? row.count ?? 0, 10) || 0;
+      });
+    } else if (raw && typeof raw === 'object') {
+      // caso venha como objeto {0: 3, 1: 0, ...}
+      Object.keys(raw).forEach(function(k) {
+        const h = parseInt(k, 10);
+        if (h >= 0 && h < 24) arr[h] = parseInt(raw[k], 10) || 0;
+      });
+    }
+    return arr;
+  }
+
+  const alertsPerHour24 = normalizeTo24(rawAlertsPerHour);
+  const jamsPerHour24   = normalizeTo24(rawJamsPerHour);
 
   const alertsByType  = {{ alertsByType|json_encode|raw }};
   const jamsByLevel   = {{ jamsByLevel|json_encode|raw }};
@@ -426,10 +448,12 @@
     const h = (now.getHours() - 23 + i + 24) % 24;
     return h.toString().padStart(2,'0') + 'h';
   });
-  function reorderPerHour(arr) {
+
+  // Reordena o array de 24h para começar 23h atrás até agora
+  function reorderPerHour(arr24) {
     const base = now.getHours();
     const out = [];
-    for (let i = 0; i < 24; i++) out.push(arr[(base - 23 + i + 24) % 24]);
+    for (let i = 0; i < 24; i++) out.push(arr24[(base - 23 + i + 48) % 24]);
     return out;
   }
 
@@ -441,7 +465,7 @@
       datasets: [
         {
           label: 'Alertas',
-          data: reorderPerHour(alertsPerHour),
+          data: reorderPerHour(alertsPerHour24),
           borderColor: COLORS.warning,
           backgroundColor: COLORS.warning + '22',
           tension: 0.4, fill: true, pointRadius: 3,
@@ -449,7 +473,7 @@
         },
         {
           label: 'Congestionamentos',
-          data: reorderPerHour(jamsPerHour),
+          data: reorderPerHour(jamsPerHour24),
           borderColor: COLORS.orange,
           backgroundColor: COLORS.orange + '22',
           tension: 0.4, fill: true, pointRadius: 3,
