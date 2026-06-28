@@ -5,6 +5,79 @@
   <h1>Dados CEMADEN</h1>
 </div>
 
+{# =====================================================================
+   SEÇÃO 1: Estações Hidrológicas (Nível de Rio)
+   Dados da tabela cemaden_hydro_readings via command cemaden:collect-hydro
+   ===================================================================== #}
+{% if hydro_data is defined and hydro_data|length > 0 %}
+<h2 style="margin-bottom:var(--space-3);font-size:var(--text-lg);display:flex;align-items:center;gap:var(--space-2)">
+  <i data-lucide="waves" style="width:18px;height:18px;color:var(--color-primary)"></i>
+  Nível dos Rios
+</h2>
+<div class="table-wrapper" style="margin-bottom:var(--space-8)">
+  <table>
+    <thead>
+      <tr>
+        <th>Estação</th>
+        <th>Município</th>
+        <th>UF</th>
+        <th>Nível do Rio</th>
+        <th>Sensor</th>
+        <th>Status</th>
+        <th>Medido em</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for h in hydro_data %}
+      <tr>
+        <td>
+          <span style="font-weight:500">{{ h.nome }}</span><br>
+          <span style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ h.cod_estacao }}</span>
+        </td>
+        <td>{{ h.municipio }}</td>
+        <td>{{ h.uf }}</td>
+        <td>
+          {% if h.is_offline %}
+            <span style="color:var(--color-text-muted)">Offline</span>
+          {% elseif h.river_level is not null %}
+            <strong style="font-size:var(--text-lg)">{{ h.river_level|number_format(2, ',', '.') }}</strong>
+            <span style="color:var(--color-text-muted);font-size:var(--text-xs)"> m</span>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td>
+          {% if h.sensor_value is not null %}
+            {{ h.sensor_value|number_format(3, ',', '.') }} m
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td>
+          {% if h.is_offline %}
+            <span class="badge" style="background:var(--color-text-faint);color:var(--color-text-inverse)">OFFLINE</span>
+          {% else %}
+            <span class="badge" style="background:var(--color-blue);color:#fff">ATIVO</span>
+          {% endif %}
+        </td>
+        <td>
+          <time data-utc="{{ h.measured_at }}" data-fmt="datetime">{{ h.measured_at|date('d/m/Y H:i') }}</time>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{# =====================================================================
+   SEÇÃO 2: Estações Pluviométricas (Chuva Acumulada)
+   ===================================================================== #}
+<h2 style="margin-bottom:var(--space-3);font-size:var(--text-lg);display:flex;align-items:center;gap:var(--space-2)">
+  <i data-lucide="cloud-rain" style="width:18px;height:18px;color:var(--color-primary)"></i>
+  Dados Pluviométricos
+</h2>
+
 <div class="table-wrapper">
   <table>
     <thead>
@@ -24,13 +97,26 @@
         <td>{{ item.municipality ?? '—' }}</td>
         <td>{{ item.state ?? '—' }}</td>
         <td>{{ item.accumulatedRain is not null ? item.accumulatedRain|number_format(1,',','.') : '—' }}</td>
-        <td>{{ item.alertLevel ?? '—' }}</td>
+        <td>
+          {% set lvl = item.alertLevel ?? '' %}
+          {% if lvl == 'VERMELHO' %}
+            <span class="badge" style="background:var(--color-error);color:#fff">VERMELHO</span>
+          {% elseif lvl == 'LARANJA' %}
+            <span class="badge" style="background:var(--color-orange);color:#fff">LARANJA</span>
+          {% elseif lvl == 'AMARELO' %}
+            <span class="badge" style="background:var(--color-gold);color:#fff">AMARELO</span>
+          {% elseif lvl == 'VERDE' %}
+            <span class="badge" style="background:var(--color-success);color:#fff">VERDE</span>
+          {% else %}
+            <span style="color:var(--color-text-muted)">{{ lvl ?: '—' }}</span>
+          {% endif %}
+        </td>
         <td>
           <time data-utc="{{ item.measuredAt|date('c') }}" data-fmt="datetime">{{ item.measuredAt|date('d/m/Y H:i') }}</time>
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="6" class="empty-cell">Nenhum dado CEMADEN encontrado.</td></tr>
+      <tr><td colspan="6" class="empty-cell">Nenhum dado pluviométrico encontrado.</td></tr>
       {% endfor %}
     </tbody>
   </table>
