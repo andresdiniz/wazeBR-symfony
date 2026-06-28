@@ -279,8 +279,13 @@
   </div>
 </div>
 {% endif %}
+{% endblock %}
 
-{# Serializa rotas para JS sem arrow functions no Twig #}
+{% block javascripts %}
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+{# Serializa routes aqui dentro do bloco javascripts — routes é variável de contexto global #}
 {% set routesJs = [] %}
 {% for r in routes %}
   {% set routesJs = routesJs|merge([{
@@ -294,12 +299,6 @@
     line: r.line
   }]) %}
 {% endfor %}
-{% endblock %}
-
-{% block javascripts %}
-<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-(function(){
   var routes = {{ routesJs|json_encode|raw }};
 
   var mapEl = document.getElementById('tvt-map');
