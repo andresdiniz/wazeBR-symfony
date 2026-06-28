@@ -7,9 +7,39 @@
   </a>
   <h1 class="page-title">Editar Estação</h1>
 </div>
+
+{% if errors is defined and errors|length > 0 %}
+  <div class="alert alert-error" style="max-width:580px;margin-bottom:var(--space-4)">
+    {% for e in errors %}<p>{{ e }}</p>{% endfor %}
+  </div>
+{% endif %}
+
 <div class="card" style="max-width:580px">
   <div style="padding:var(--space-6)">
-    <form method="post">
+    <form method="post" id="station-form">
+
+      {# Tipo de estação #}
+      <div class="form-group">
+        <label class="form-label" for="station_type">Tipo de Estação</label>
+        <select class="form-control" id="station_type" name="station_type" required onchange="toggleHydroUrl()">
+          {% for value, label in station_types %}
+            <option value="{{ value }}" {{ station.station_type == value ? 'selected' }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {# URL hidrológica — visível somente quando tipo = hydrological #}
+      <div class="form-group" id="hydro-url-group" style="display:none">
+        <label class="form-label" for="hydro_url">URL da API Hidrológica</label>
+        <input class="form-control" id="hydro_url" name="hydro_url"
+               value="{{ station.hydro_url ?? '' }}"
+               placeholder="https://resources.cemaden.gov.br/graficos/cemaden/hidro/resources/json/AcumuladoResource.php?est=XXXXX&pag=24">
+        <span class="form-hint">
+          URL JSON da API CEMADEN. Retorna leituras horárias com campos:
+          <code>codigo</code>, <code>estacao</code>, <code>datahora</code>, <code>valor</code>.
+        </span>
+      </div>
+
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
         <div class="form-group">
           <label class="form-label" for="cod_estacao">Código da Estação</label>
@@ -20,14 +50,17 @@
           <input class="form-control" id="uf" name="uf" maxlength="2" required value="{{ station.uf }}">
         </div>
       </div>
+
       <div class="form-group">
         <label class="form-label" for="nome">Nome da Estação</label>
         <input class="form-control" id="nome" name="nome" required value="{{ station.nome }}">
       </div>
+
       <div class="form-group">
         <label class="form-label" for="municipio">Município</label>
         <input class="form-control" id="municipio" name="municipio" required value="{{ station.municipio }}">
       </div>
+
       <div class="form-group">
         <label class="form-label" for="partner_slug">Parceiro</label>
         <select class="form-control" id="partner_slug" name="partner_slug" required>
@@ -37,8 +70,21 @@
           {% endfor %}
         </select>
       </div>
+
       <button type="submit" class="btn btn-primary" style="width:100%">Salvar Alterações</button>
     </form>
   </div>
 </div>
+
+<script>
+function toggleHydroUrl() {
+  const type  = document.getElementById('station_type').value;
+  const group = document.getElementById('hydro-url-group');
+  const input = document.getElementById('hydro_url');
+  const show  = type === 'hydrological';
+  group.style.display = show ? 'block' : 'none';
+  input.required = show;
+}
+document.addEventListener('DOMContentLoaded', toggleHydroUrl);
+</script>
 {% endblock %}

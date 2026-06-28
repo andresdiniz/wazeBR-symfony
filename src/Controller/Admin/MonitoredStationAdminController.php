@@ -14,12 +14,20 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
  * CRUD de estações CEMADEN via SQL direto (tabela cemaden_stations).
- * Agrupado por partner_slug na listagem.
+ * Tipos: pluviometric | hydrological | meteorological
+ * Estações hidrológicas possuem campo hydro_url para a API JSON do CEMADEN.
  */
 #[Route('/admin/stations', name: 'admin_station_')]
 #[IsGranted('ROLE_ADMIN')]
 class MonitoredStationAdminController extends AbstractController
 {
+    /** Tipos disponíveis de estação CEMADEN */
+    private const STATION_TYPES = [
+        'pluviometric'   => 'Pluviométrica',
+        'hydrological'   => 'Hidrológica',
+        'meteorological' => 'Meteorológica',
+    ];
+
     public function __construct(
         private readonly Connection        $db,
         private readonly PartnerRepository $partnerRepo,
@@ -38,7 +46,8 @@ class MonitoredStationAdminController extends AbstractController
         }
 
         return $this->render('admin/station/index.html.twig', [
-            'by_partner' => $byPartner,
+            'by_partner'    => $byPartner,
+            'station_types' => self::STATION_TYPES,
         ]);
     }
 
@@ -46,23 +55,42 @@ class MonitoredStationAdminController extends AbstractController
     public function new(Request $request): Response
     {
         $partners = $this->partnerRepo->findActivePartners();
+        $errors   = [];
 
         if ($request->isMethod('POST')) {
-            $this->db->insert('cemaden_stations', [
-                'cod_estacao'  => $request->request->get('cod_estacao'),
-                'nome'         => $request->request->get('nome'),
-                'municipio'    => $request->request->get('municipio'),
-                'uf'           => strtoupper($request->request->get('uf')),
-                'partner_slug' => $request->request->get('partner_slug'),
-                'is_active'    => 1,
-            ]);
+            $type     = $request->request->get('station_type', 'pluviometric');
+            $hydroUrl = $type === 'hydrological'
+                ? trim((string) $request->request->get('hydro_url', ''))
+                : null;
 
-            $this->addFlash('success', 'Estação criada com sucesso.');
-            return $this->redirectToRoute('admin_station_index');
+            if (!array_key_exists($type, self::STATION_TYPES)) {
+                $errors[] = 'Tipo de estação inválido.';
+            }
+            if ($type === 'hydrological' && empty($hydroUrl)) {
+                $errors[] = 'A URL da API hidrológica é obrigatória para este tipo.';
+            }
+
+            if (empty($errors)) {
+                $this->db->insert('cemaden_stations', [
+                    'cod_estacao'  => $request->request->get('cod_estacao'),
+                    'nome'         => $request->request->get('nome'),
+                    'municipio'    => $request->request->get('municipio'),
+                    'uf'           => strtoupper($request->request->get('uf')),
+                    'station_type' => $type,
+                    'hydro_url'    => $hydroUrl,
+                    'partner_slug' => $request->request->get('partner_slug'),
+                    'is_active'    => 1,
+                ]);
+
+                $this->addFlash('success', 'Estação criada com sucesso.');
+                return $this->redirectToRoute('admin_station_index');
+            }
         }
 
         return $this->render('admin/station/new.html.twig', [
-            'partners' => $partners,
+            'partners'      => $partners,
+            'station_types' => self::STATION_TYPES,
+            'errors'        => $errors,
         ]);
     }
 
@@ -78,23 +106,42 @@ class MonitoredStationAdminController extends AbstractController
         }
 
         $partners = $this->partnerRepo->findActivePartners();
+        $errors   = [];
 
         if ($request->isMethod('POST')) {
-            $this->db->update('cemaden_stations', [
-                'cod_estacao'  => $request->request->get('cod_estacao'),
-                'nome'         => $request->request->get('nome'),
-                'municipio'    => $request->request->get('municipio'),
-                'uf'           => strtoupper($request->request->get('uf')),
-                'partner_slug' => $request->request->get('partner_slug'),
-            ], ['id' => $id]);
+            $type     = $request->request->get('station_type', 'pluviometric');
+            $hydroUrl = $type === 'hydrological'
+                ? trim((string) $request->request->get('hydro_url', ''))
+                : null;
 
-            $this->addFlash('success', 'Estação atualizada.');
-            return $this->redirectToRoute('admin_station_index');
+            if (!array_key_exists($type, self::STATION_TYPES)) {
+                $errors[] = 'Tipo de estação inválido.';
+            }
+            if ($type === 'hydrological' && empty($hydroUrl)) {
+                $errors[] = 'A URL da API hidrológica é obrigatória para este tipo.';
+            }
+
+            if (empty($errors)) {
+                $this->db->update('cemaden_stations', [
+                    'cod_estacao'  => $request->request->get('cod_estacao'),
+                    'nome'         => $request->request->get('nome'),
+                    'municipio'    => $request->request->get('municipio'),
+                    'uf'           => strtoupper($request->request->get('uf')),
+                    'station_type' => $type,
+                    'hydro_url'    => $hydroUrl,
+                    'partner_slug' => $request->request->get('partner_slug'),
+                ], ['id' => $id]);
+
+                $this->addFlash('success', 'Estação atualizada.');
+                return $this->redirectToRoute('admin_station_index');
+            }
         }
 
         return $this->render('admin/station/edit.html.twig', [
-            'station'  => $station,
-            'partners' => $partners,
+            'station'       => $station,
+            'partners'      => $partners,
+            'station_types' => self::STATION_TYPES,
+            'errors'        => $errors,
         ]);
     }
 

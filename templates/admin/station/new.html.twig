@@ -7,15 +7,48 @@
   </a>
   <h1 class="page-title">Nova Estação CEMADEN</h1>
 </div>
+
+{% if errors is defined and errors|length > 0 %}
+  <div class="alert alert-error" style="max-width:580px;margin-bottom:var(--space-4)">
+    {% for e in errors %}<p>{{ e }}</p>{% endfor %}
+  </div>
+{% endif %}
+
 <div class="card" style="max-width:580px">
   <div style="padding:var(--space-6)">
     <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-5)">
       O código da estação pode ser consultado no
       <a href="http://www.cemaden.gov.br/mapainterativo/" target="_blank" rel="noopener" style="color:var(--color-primary)">mapa interativo do CEMADEN</a>.
     </p>
-    <form method="post">
+    <form method="post" id="station-form">
+
+      {# Tipo de estação #}
+      <div class="form-group">
+        <label class="form-label" for="station_type">Tipo de Estação</label>
+        <select class="form-control" id="station_type" name="station_type" required onchange="toggleHydroUrl()">
+          {% for value, label in station_types %}
+            <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+        <span class="form-hint">Define o tipo de medição da estação</span>
+      </div>
+
+      {# URL hidrológica — aparece somente quando tipo = hydrological #}
+      <div class="form-group" id="hydro-url-group" style="display:none">
+        <label class="form-label" for="hydro_url">URL da API Hidrológica</label>
+        <input class="form-control" id="hydro_url" name="hydro_url"
+               placeholder="https://resources.cemaden.gov.br/graficos/cemaden/hidro/resources/json/AcumuladoResource.php?est=XXXXX&pag=24">
+        <span class="form-hint">
+          URL JSON da API CEMADEN. Exemplo:
+          <code style="font-size:0.8em;word-break:break-all">
+            .../AcumuladoResource.php?est=6622&amp;pag=24
+          </code><br>
+          Retorna leituras horárias com campos: <code>codigo</code>, <code>estacao</code>, <code>datahora</code>, <code>valor</code>.
+        </span>
+      </div>
+
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
-        <div class="form-group" style="grid-column:span 1">
+        <div class="form-group">
           <label class="form-label" for="cod_estacao">Código da Estação</label>
           <input class="form-control" id="cod_estacao" name="cod_estacao" required placeholder="ex: 310620901A">
           <span class="form-hint">Código único do CEMADEN</span>
@@ -25,14 +58,17 @@
           <input class="form-control" id="uf" name="uf" maxlength="2" required placeholder="MG">
         </div>
       </div>
+
       <div class="form-group">
         <label class="form-label" for="nome">Nome da Estação</label>
-        <input class="form-control" id="nome" name="nome" required placeholder="ex: Belo Horizonte - Bom Retiro">
+        <input class="form-control" id="nome" name="nome" required placeholder="ex: Rio Bananeiras">
       </div>
+
       <div class="form-group">
         <label class="form-label" for="municipio">Município</label>
-        <input class="form-control" id="municipio" name="municipio" required placeholder="ex: Belo Horizonte">
+        <input class="form-control" id="municipio" name="municipio" required placeholder="ex: Conselheiro Lafaiete">
       </div>
+
       <div class="form-group">
         <label class="form-label" for="partner_slug">Parceiro</label>
         <select class="form-control" id="partner_slug" name="partner_slug" required>
@@ -43,8 +79,22 @@
         </select>
         <span class="form-hint">A estação será visível apenas para este parceiro</span>
       </div>
+
       <button type="submit" class="btn btn-primary" style="width:100%">Criar Estação</button>
     </form>
   </div>
 </div>
+
+<script>
+function toggleHydroUrl() {
+  const type  = document.getElementById('station_type').value;
+  const group = document.getElementById('hydro-url-group');
+  const input = document.getElementById('hydro_url');
+  const show  = type === 'hydrological';
+  group.style.display = show ? 'block' : 'none';
+  input.required = show;
+}
+// Inicializa no load
+document.addEventListener('DOMContentLoaded', toggleHydroUrl);
+</script>
 {% endblock %}
