@@ -166,8 +166,8 @@
 {# Health score: 100 - weighted penalty (stopped=100, vheavy=80, heavy=50, moderate=20, slow=5) #}
 {% if total > 0 %}
   {% set penalty = (stopped * 100 + vheavy * 80 + heavy * 50 + moderate * 20 + slow * 5) / total %}
-  {% set healthScore = [0, (100 - penalty)|round(0)]|max %}
-  {% set healthScore = [100, healthScore]|min %}
+  {% set healthScore = max(0, (100 - penalty)|round(0)) %}
+  {% set healthScore = min(100, healthScore) %}
 {% else %}
   {% set healthScore = 100 %}
 {% endif %}
