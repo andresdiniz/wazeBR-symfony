@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Operador — {{ partnerName }}</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+/* ── Reset & tokens ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', sans-serif; background: #0d0e10; color: #e2e4e8; }
+:root {
+  --bg:        #0d0e10;
+  --surface:   #14161a;
+  --surface2:  #1c1f26;
+  --border:    rgba(255,255,255,.07);
+  --text:      #e2e4e8;
+  --muted:     #8b9099;
+  --faint:     #464c57;
+  --green:     #22c55e;
+  --yellow:    #eab308;
+  --orange:    #f97316;
+  --red:       #ef4444;
+  --blue:      #3b82f6;
+  --teal:      #14b8a6;
+  --radius:    6px;
+}
+
+/* ── Layout principal ─────────────────────────────────────────── */
+.op-shell {
+  display: grid;
+  grid-template-rows: 52px 1fr 56px;
+  height: 100vh;
+  width: 100vw;
+}
+.op-body {
+  display: grid;
+  grid-template-columns: 220px 1fr 300px;
+  overflow: hidden;
+}
+
+/* ── Header ───────────────────────────────────────────────────── */
+.op-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  z-index: 100;
+}
+.op-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--teal);
+  letter-spacing: .02em;
+}
+.op-logo svg { flex-shrink: 0; }
+.op-city {
+  font-size: 13px;
+  color: var(--muted);
+  border-left: 1px solid var(--border);
+  padding-left: 16px;
+}
+.op-clock {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .04em;
+  color: var(--text);
+  margin-left: auto;
+}
+.op-pulse {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--faint);
+  transition: background .3s;
+  flex-shrink: 0;
+}
+.op-pulse.ok  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.op-pulse.err { background: var(--red);   box-shadow: 0 0 6px var(--red); }
+.op-ago {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.op-sound-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color .2s, border-color .2s;
+}
+.op-sound-btn:hover { color: var(--text); border-color: var(--teal); }
+.op-fullscreen-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color .2s, border-color .2s;
+}
+.op-fullscreen-btn:hover { color: var(--text); border-color: var(--teal); }
+
+/* ── KPI Sidebar ──────────────────────────────────────────────── */
+.op-kpis {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kpi-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  position: relative;
+  overflow: hidden;
+}
+.kpi-card.alert-red    { border-left: 3px solid var(--red);    }
+.kpi-card.alert-orange { border-left: 3px solid var(--orange); }
+.kpi-card.alert-yellow { border-left: 3px solid var(--yellow); }
+.kpi-card.alert-green  { border-left: 3px solid var(--green);  }
+.kpi-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.kpi-value {
+  font-size: 28px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--text);
+}
+.kpi-value.val-red    { color: var(--red);    }
+.kpi-value.val-orange { color: var(--orange); }
+.kpi-value.val-yellow { color: var(--yellow); }
+.kpi-value.val-green  { color: var(--green);  }
+.kpi-sub {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.kpi-spark {
+  width: 100%;
+  height: 24px;
+  margin-top: 6px;
+}
+.kpi-divider {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  padding: 6px 2px 2px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+
+/* ── Mapa ─────────────────────────────────────────────────────── */
+.op-map-container {
+  position: relative;
+  overflow: hidden;
+}
+#op-map {
+  width: 100%;
+  height: 100%;
+}
+.map-overlay-info {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  background: rgba(13,14,16,.85);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  font-size: 11px;
+  color: var(--muted);
+  pointer-events: none;
+  z-index: 500;
+}
+
+/* ── Feed de eventos ──────────────────────────────────────────── */
+.op-feed {
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.feed-header {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 14px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+#feed-count {
+  background: var(--surface2);
+  border-radius: 20px;
+  padding: 2px 8px;
+  font-size: 10px;
+  color: var(--teal);
+}
+.feed-list { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.feed-item {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  border-left: 3px solid var(--faint);
+  animation: slideIn .25s ease;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+.feed-item:hover { background: #22252e; }
+.feed-item.type-accident   { border-left-color: var(--red);    }
+.feed-item.type-jam        { border-left-color: var(--orange); }
+.feed-item.type-hazard     { border-left-color: var(--yellow); }
+.feed-item.type-road-closed{ border-left-color: var(--blue);   }
+.feed-item.type-cemaden    { border-left-color: var(--teal);   }
+.feed-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+.feed-street { font-size: 12px; font-weight: 600; color: var(--text); line-height: 1.3; }
+.feed-meta   { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.feed-critical { background: rgba(239,68,68,.08); }
+@keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+
+/* ── Barra inferior ───────────────────────────────────────────── */
+.op-footer {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  align-items: center;
+  gap: 0;
+  padding: 0 12px;
+}
+.footer-block {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 12px;
+  border-right: 1px solid var(--border);
+}
+.footer-block:last-child { border-right: none; }
+.footer-label { font-size: 9px; color: var(--faint); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 2px; }
+.footer-spark { display: block; }
+.footer-sources {
+  display: flex;
+  gap: 14px;
+  padding: 0 12px;
+  align-items: center;
+}
+.source-dot {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.source-dot span {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+.source-dot span.ok  { background: var(--green); }
+.source-dot span.err { background: var(--red); }
+
+/* ── Leaflet custom ───────────────────────────────────────────── */
+.leaflet-container { background: #1a1d22; }
+.jam-popup, .alert-popup {
+  font-family: inherit;
+  font-size: 12px;
+  color: #e2e4e8;
+  background: #1c1f26;
+  border-radius: 6px;
+  padding: 8px 10px;
+  min-width: 160px;
+}
+.leaflet-popup-content-wrapper { background: #1c1f26; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+.leaflet-popup-tip { background: #1c1f26; }
+.leaflet-popup-content { margin: 8px 12px; color: #e2e4e8; font-size: 12px; }
+
+/* ── Scrollbar ────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--faint); border-radius: 4px; }
+
+/* ── Responsivo para telas múltiplas / gigantes ───────────────── */
+@media (min-width: 2560px) {
+  .op-body { grid-template-columns: 280px 1fr 380px; }
+  .kpi-value { font-size: 36px; }
+  .op-clock  { font-size: 28px; }
+  .feed-street { font-size: 14px; }
+  .op-header { height: 64px; }
+}
+@media (min-width: 3840px) {
+  .op-body { grid-template-columns: 340px 1fr 460px; }
+  .kpi-value { font-size: 48px; }
+  .kpi-label, .kpi-sub { font-size: 12px; }
+  .op-clock  { font-size: 36px; }
+}
+</style>
+</head>
+<body>
+<div class="op-shell">
+
+  <!-- ═══ HEADER ════════════════════════════════════════════ -->
+  <header class="op-header">
+    <div class="op-logo">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 8v4l3 3"/>
+      </svg>
+      WazeBR
+    </div>
+    <div class="op-city">{{ partnerName }} — Monitor ao Vivo</div>
+    <div class="op-clock" id="op-clock">--:--:--</div>
+    <div class="op-pulse" id="op-pulse"></div>
+    <div class="op-ago" id="op-ago">aguardando...</div>
+    <button class="op-sound-btn" id="op-sound-btn" title="Ativar/desativar alerta sonoro">🔇 Som</button>
+    <button class="op-fullscreen-btn" id="op-fs-btn" title="Tela cheia">⛶ Fullscreen</button>
+  </header>
+
+  <!-- ═══ CORPO ═════════════════════════════════════════════ -->
+  <div class="op-body">
+
+    <!-- KPIs -->
+    <aside class="op-kpis" id="op-kpis">
+      <div class="kpi-divider">Ao Vivo — últimas 3h</div>
+
+      <div class="kpi-card" id="kpi-live-jams">
+        <div class="kpi-label">Jams Ativos</div>
+        <div class="kpi-value" id="v-live-jams">—</div>
+        <div class="kpi-sub" id="s-live-jams">nível máx: —</div>
+        <canvas class="kpi-spark" id="spark-jams"></canvas>
+      </div>
+
+      <div class="kpi-card" id="kpi-speed">
+        <div class="kpi-label">Velocidade Média</div>
+        <div class="kpi-value" id="v-speed">—</div>
+        <div class="kpi-sub">km/h nos congestionamentos</div>
+      </div>
+
+      <div class="kpi-card" id="kpi-delay">
+        <div class="kpi-label">Atraso Médio</div>
+        <div class="kpi-value" id="v-delay">—</div>
+        <div class="kpi-sub" id="s-delay">segundos</div>
+      </div>
+
+      <div class="kpi-card" id="kpi-len">
+        <div class="kpi-label">Extensão Congestionada</div>
+        <div class="kpi-value" id="v-len">—</div>
+        <div class="kpi-sub">km de vias afetadas</div>
+      </div>
+
+      <div class="kpi-divider">Alertas</div>
+
+      <div class="kpi-card" id="kpi-alerts-hour">
+        <div class="kpi-label">Alertas — última hora</div>
+        <div class="kpi-value" id="v-alerts-hour">—</div>
+        <div class="kpi-sub" id="s-alerts24">— nas últimas 24h</div>
+        <canvas class="kpi-spark" id="spark-alerts"></canvas>
+      </div>
+
+      <div class="kpi-divider">CEMADEN</div>
+
+      <div class="kpi-card" id="kpi-rain">
+        <div class="kpi-label">Chuva acum. — 1h</div>
+        <div class="kpi-value" id="v-rain">—</div>
+        <div class="kpi-sub">mm acumulados</div>
+      </div>
+
+      <div class="kpi-divider">Infraestrutura</div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">Cidades / Links / Rotas</div>
+        <div class="kpi-value" style="font-size:18px" id="v-infra">— / — / —</div>
+        <div class="kpi-sub">monitorados</div>
+      </div>
+    </aside>
+
+    <!-- MAPA -->
+    <div class="op-map-container">
+      <div id="op-map"></div>
+      <div class="map-overlay-info" id="map-info">Carregando...</div>
+    </div>
+
+    <!-- FEED -->
+    <section class="op-feed">
+      <div class="feed-header">
+        Eventos Recentes
+        <span id="feed-count">0</span>
+      </div>
+      <div class="feed-list" id="feed-list"></div>
+    </section>
+
+  </div><!-- /op-body -->
+
+  <!-- ═══ FOOTER ════════════════════════════════════════════ -->
+  <footer class="op-footer">
+    <div class="footer-block">
+      <span class="footer-label">Alertas — 24h</span>
+      <canvas class="footer-spark" id="footer-spark-alerts" height="28"></canvas>
+    </div>
+    <div class="footer-block">
+      <span class="footer-label">Jams — 24h</span>
+      <canvas class="footer-spark" id="footer-spark-jams" height="28"></canvas>
+    </div>
+    <div class="footer-block">
+      <span class="footer-label">Atualização</span>
+      <canvas class="footer-spark" id="footer-spark-upd" height="28"></canvas>
+    </div>
+    <div class="footer-sources">
+      <div class="source-dot"><span id="src-waze"></span>Waze</div>
+      <div class="source-dot"><span id="src-cemaden"></span>CEMADEN</div>
+      <div class="source-dot"><span id="src-api"></span>API</div>
+    </div>
+  </footer>
+
+</div><!-- /op-shell -->
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+'use strict';
+
+// ── Config ────────────────────────────────────────────────────────
+const POLL_MS     = 30_000;
+const API_URL     = '/api/live-summary';
+const RAIN_WARN   = 10;   // mm/h → yellow
+const RAIN_CRIT   = 30;   // mm/h → red
+const JAM_WARN    = 10;   // jams → yellow
+const JAM_CRIT    = 30;   // jams → red
+const DELAY_WARN  = 60;   // seg
+const DELAY_CRIT  = 180;  // seg
+
+// ── Estado ────────────────────────────────────────────────────────
+let soundEnabled = false;
+let lastTs       = null;
+let history      = { jams: [], alerts: [], upd: [] };
+let mapLayers    = { jams: L.layerGroup(), alerts: L.layerGroup(), cemaden: L.layerGroup() };
+
+// ── Relógio ───────────────────────────────────────────────────────
+function tickClock() {
+  const now = new Date();
+  document.getElementById('op-clock').textContent =
+    now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+setInterval(tickClock, 1000);
+tickClock();
+
+// ── Fullscreen ────────────────────────────────────────────────────
+document.getElementById('op-fs-btn').addEventListener('click', () => {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+});
+
+// ── Som ───────────────────────────────────────────────────────────
+document.getElementById('op-sound-btn').addEventListener('click', function () {
+  soundEnabled = !soundEnabled;
+  this.textContent = soundEnabled ? '🔔 Som' : '🔇 Som';
+});
+
+function beep() {
+  if (!soundEnabled) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .4);
+    osc.start(); osc.stop(ctx.currentTime + .4);
+  } catch (_) {}
+}
+
+// ── Mapa ──────────────────────────────────────────────────────────
+const map = L.map('op-map', { zoomControl: true, attributionControl: false });
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  subdomains: 'abcd', maxZoom: 19,
+}).addTo(map);
+map.setView([-19.92, -43.94], 12);
+Object.values(mapLayers).forEach(l => l.addTo(map));
+
+function jamColor(level) {
+  if (level >= 5) return '#ef4444';
+  if (level >= 3) return '#f97316';
+  if (level >= 1) return '#eab308';
+  return '#22c55e';
+}
+function alertColor(type) {
+  type = (type || '').toUpperCase();
+  if (type.includes('ACCIDENT')) return '#ef4444';
+  if (type.includes('JAM'))      return '#f97316';
+  if (type.includes('HAZARD'))   return '#eab308';
+  if (type.includes('ROAD'))     return '#3b82f6';
+  return '#8b9099';
+}
+
+function renderMap(data) {
+  mapLayers.jams.clearLayers();
+  mapLayers.alerts.clearLayers();
+  mapLayers.cemaden.clearLayers();
+
+  // Jams — polylines
+  (data.jams || []).forEach(j => {
+    const line = j.line;
+    if (line && line.length > 1) {
+      const coords = line.map(p => [p.y ?? p[1], p.x ?? p[0]]);
+      L.polyline(coords, { color: jamColor(j.level), weight: 4, opacity: .85 })
+        .bindPopup(`<b>${j.street || 'Via'}</b><br>Nível ${j.level} · ${j.speed} km/h · ${Math.round(j.delay/60)} min atraso`)
+        .addTo(mapLayers.jams);
+    } else if (j.lat && j.lng) {
+      L.circleMarker([j.lat, j.lng], { radius: 8, color: jamColor(j.level), fillOpacity: .7 })
+        .bindPopup(`<b>${j.street || 'Via'}</b><br>Nível ${j.level}`)
+        .addTo(mapLayers.jams);
+    }
+  });
+
+  // Alertas — marcadores
+  (data.alerts || []).forEach(a => {
+    if (!a.lat || !a.lng) return;
+    const col = alertColor(a.type);
+    const icon = L.divIcon({
+      html: `<div style="width:10px;height:10px;border-radius:50%;background:${col};border:2px solid rgba(255,255,255,.3)"></div>`,
+      className: '', iconSize: [10, 10], iconAnchor: [5, 5],
+    });
+    L.marker([a.lat, a.lng], { icon })
+      .bindPopup(`<b>${a.type}</b><br>${a.street || ''} ${a.city || ''}`)
+      .addTo(mapLayers.alerts);
+  });
+
+  // CEMADEN — estações
+  (data.cemaden || []).forEach(c => {
+    if (!c.lat || !c.lng) return;
+    const col = c.alertLevel === 'RED' ? '#ef4444' : c.alertLevel === 'ORANGE' ? '#f97316' : c.alertLevel === 'YELLOW' ? '#eab308' : '#14b8a6';
+    const icon = L.divIcon({
+      html: `<div style="width:12px;height:12px;border-radius:3px;background:${col};border:2px solid rgba(255,255,255,.4);font-size:7px;color:#fff;display:flex;align-items:center;justify-content:center">☔</div>`,
+      className: '', iconSize: [12, 12], iconAnchor: [6, 6],
+    });
+    L.marker([c.lat, c.lng], { icon })
+      .bindPopup(`<b>${c.station}</b><br>${c.city}<br>Chuva: ${c.rain} mm · Nível: ${c.alertLevel}`)
+      .addTo(mapLayers.cemaden);
+  });
+
+  document.getElementById('map-info').textContent =
+    `${(data.jams||[]).length} jams · ${(data.alerts||[]).length} alertas · ${(data.cemaden||[]).length} estações CEMADEN`;
+}
+
+// ── KPIs ──────────────────────────────────────────────────────────
+function levelClass(val, warn, crit) {
+  if (val >= crit) return 'red';
+  if (val >= warn) return 'orange';
+  return 'green';
+}
+function setKpi(elId, value, colorClass) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.textContent = value;
+  el.className = 'kpi-value' + (colorClass ? ' val-' + colorClass : '');
+}
+function setCard(elId, colorClass) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.className = 'kpi-card alert-' + (colorClass || 'green');
+}
+function fmtDelay(secs) {
+  if (!secs) return '0';
+  if (secs < 60) return secs + ' s';
+  return Math.round(secs / 60) + ' min';
+}
+function fmtLen(m) {
+  if (!m) return '0';
+  if (m < 1000) return m + ' m';
+  return (m / 1000).toFixed(1) + ' km';
+}
+
+function renderKpis(k) {
+  const jamCls = levelClass(k.liveJams, JAM_WARN, JAM_CRIT);
+  setKpi('v-live-jams', k.liveJams ?? '—', jamCls);
+  setCard('kpi-live-jams', jamCls);
+  document.getElementById('s-live-jams').textContent = 'nível máx: ' + (k.maxJamLevel ?? '—');
+
+  const spd = k.liveAvgSpeed ? Math.round(k.liveAvgSpeed) : 0;
+  const spdCls = spd < 15 ? 'red' : spd < 30 ? 'orange' : 'green';
+  setKpi('v-speed', spd ? spd + ' km/h' : '—', spdCls);
+  setCard('kpi-speed', spdCls);
+
+  const del = k.liveAvgDelay ?? 0;
+  const delCls = levelClass(del, DELAY_WARN, DELAY_CRIT);
+  setKpi('v-delay', fmtDelay(del), delCls);
+  setCard('kpi-delay', delCls);
+
+  setKpi('v-len', fmtLen(k.liveTotalLen));
+
+  setKpi('v-alerts-hour', k.alertsHour ?? '—');
+  document.getElementById('s-alerts24').textContent = (k.alerts24h ?? '—') + ' nas últimas 24h';
+
+  const rain = k.rainLastHour;
+  const rainCls = rain >= RAIN_CRIT ? 'red' : rain >= RAIN_WARN ? 'orange' : 'green';
+  setKpi('v-rain', rain !== null && rain !== undefined ? rain + ' mm' : '—', rainCls);
+  setCard('kpi-rain', rainCls);
+
+  document.getElementById('v-infra').textContent =
+    (k.cities ?? '—') + ' / ' + (k.links ?? '—') + ' / ' + (k.routes ?? '—');
+}
+
+// ── Feed ──────────────────────────────────────────────────────────
+const ALERT_TYPES = {
+  ACCIDENT:    { label: '🔴 Acidente',   css: 'type-accident' },
+  JAM:         { label: '🟠 Engarrafamento', css: 'type-jam' },
+  HAZARD:      { label: '🟡 Perigo',     css: 'type-hazard' },
+  ROAD_CLOSED: { label: '🔵 Via fechada',css: 'type-road-closed' },
+};
+function alertMeta(a) {
+  const t = (a.type || '').toUpperCase();
+  for (const [k, v] of Object.entries(ALERT_TYPES)) {
+    if (t.includes(k)) return v;
+  }
+  return { label: '⚪ ' + (a.type || 'Alerta'), css: '' };
+}
+function timeAgo(isoStr) {
+  if (!isoStr) return '';
+  const diff = Math.floor((Date.now() - new Date(isoStr)) / 1000);
+  if (diff < 60)  return 'agora';
+  if (diff < 3600) return Math.floor(diff / 60) + ' min atrás';
+  return Math.floor(diff / 3600) + 'h atrás';
+}
+
+const CRITICAL_TYPES = ['ACCIDENT_MAJOR', 'ACCIDENT', 'ROAD_CLOSED'];
+let prevAlertIds = new Set();
+
+function renderFeed(alerts) {
+  const list = document.getElementById('feed-list');
+  document.getElementById('feed-count').textContent = alerts.length;
+
+  // detecta novos críticos
+  let hasNewCritical = false;
+  alerts.forEach(a => {
+    if (!prevAlertIds.has(a.id) && CRITICAL_TYPES.some(t => (a.type || '').toUpperCase().includes(t))) {
+      hasNewCritical = true;
+    }
+    prevAlertIds.add(a.id);
+  });
+  if (hasNewCritical) beep();
+
+  list.innerHTML = alerts.map(a => {
+    const meta = alertMeta(a);
+    const isCrit = CRITICAL_TYPES.some(t => (a.type || '').toUpperCase().includes(t));
+    return `<div class="feed-item ${meta.css} ${isCrit ? 'feed-critical' : ''}">
+      <div class="feed-type-badge" style="color:${isCrit ? 'var(--red)' : 'var(--muted)'}">${meta.label}${a.subtype ? ' · ' + a.subtype : ''}</div>
+      <div class="feed-street">${a.street || 'Via não identificada'}</div>
+      <div class="feed-meta">${a.city || ''} · conf. ${a.confidence ?? '?'} · ${timeAgo(a.reportedAt)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Sparklines ────────────────────────────────────────────────────
+function drawSparkline(canvasId, values, color) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth || 180;
+  const H = canvas.offsetHeight || 24;
+  canvas.width  = W;
+  canvas.height = H;
+  ctx.clearRect(0, 0, W, H);
+  if (!values || values.length < 2) return;
+  const max = Math.max(...values) || 1;
+  const step = W / (values.length - 1);
+  ctx.beginPath();
+  values.forEach((v, i) => {
+    const x = i * step;
+    const y = H - (v / max) * H;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = color || '#14b8a6';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+
+// ── Polling principal ─────────────────────────────────────────────
+async function poll() {
+  try {
+    const resp = await fetch(API_URL);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+
+    // pulso OK
+    const pulse = document.getElementById('op-pulse');
+    pulse.className = 'op-pulse ok';
+    setTimeout(() => { pulse.className = 'op-pulse'; }, 1500);
+
+    // ago
+    lastTs = new Date(data.ts);
+    document.getElementById('op-ago').textContent = 'atualizado às ' + lastTs.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    // fontes
+    ['waze','cemaden','api'].forEach(s => {
+      const el = document.getElementById('src-' + s);
+      if (el) el.className = 'ok';
+    });
+
+    renderKpis(data.kpis);
+    renderMap(data);
+    renderFeed(data.alerts || []);
+
+    // histórico para sparklines
+    history.jams.push(data.kpis.liveJams ?? 0);
+    history.alerts.push(data.kpis.alertsHour ?? 0);
+    history.upd.push(1);
+    if (history.jams.length > 48)   history.jams.shift();
+    if (history.alerts.length > 48) history.alerts.shift();
+    if (history.upd.length > 48)    history.upd.shift();
+
+    drawSparkline('spark-jams',           history.jams,   '#f97316');
+    drawSparkline('spark-alerts',         history.alerts, '#ef4444');
+    drawSparkline('footer-spark-jams',    history.jams,   '#f97316');
+    drawSparkline('footer-spark-alerts',  history.alerts, '#ef4444');
+    drawSparkline('footer-spark-upd',     history.upd,    '#22c55e');
+
+  } catch (e) {
+    const pulse = document.getElementById('op-pulse');
+    pulse.className = 'op-pulse err';
+    document.getElementById('op-ago').textContent = 'erro na atualização';
+    ['waze','cemaden','api'].forEach(s => {
+      const el = document.getElementById('src-' + s);
+      if (el) el.className = 'err';
+    });
+    console.error('LiveSummary poll error:', e);
+  }
+}
+
+// Primeiro poll imediato, depois a cada POLL_MS
+poll();
+setInterval(poll, POLL_MS);
+</script>
+</body>
+</html>
