@@ -66,6 +66,41 @@ class CemadenDataRepository extends ServiceEntityRepository
             ->getQuery()->getOneOrNullResult();
     }
 
+    /**
+     * Soma da chuva acumulada (accumulatedRain) das leituras
+     * da última hora para o parceiro.
+     * Retorna null se não houver leituras no período.
+     */
+    public function sumRainLastHourByPartner(Partner $partner): ?float
+    {
+        $since = new \DateTimeImmutable('-1 hour');
+
+        $val = $this->createQueryBuilder('c')
+            ->select('SUM(c.accumulatedRain)')
+            ->where('c.partner = :p')->setParameter('p', $partner)
+            ->andWhere('c.measuredAt >= :since')->setParameter('since', $since)
+            ->getQuery()->getSingleScalarResult();
+
+        return $val !== null ? round((float) $val, 1) : null;
+    }
+
+    /**
+     * Nível do rio mais recente para o parceiro (campo waterLevel).
+     * Retorna null se não houver dados de nível do rio.
+     */
+    public function latestWaterLevelByPartner(Partner $partner): ?float
+    {
+        $result = $this->createQueryBuilder('c')
+            ->select('c.waterLevel')
+            ->where('c.partner = :p')->setParameter('p', $partner)
+            ->andWhere('c.waterLevel IS NOT NULL')
+            ->orderBy('c.measuredAt', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()->getOneOrNullResult();
+
+        return $result ? (float) $result['waterLevel'] : null;
+    }
+
     public function save(CemadenData $data, bool $flush = true): void
     {
         $this->getEntityManager()->persist($data);
