@@ -6,7 +6,7 @@
 /* ── KPI row ──────────────────────────────────────────────────────── */
 .kpi-grid-main{
   display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(190px,1fr));
+  grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
   gap:var(--space-4);
   margin-bottom:var(--space-8);
 }
@@ -43,6 +43,13 @@
 }
 .kpi-sub{
   font-size:var(--text-xs);color:var(--color-text-faint);
+}
+.kpi-badge{
+  display:inline-flex;align-items:center;gap:var(--space-1);
+  font-size:var(--text-xs);font-weight:600;
+  padding:2px 6px;border-radius:var(--radius-full);
+  background:oklch(from var(--color-primary) l c h/.15);
+  color:var(--color-primary);
 }
 /* ── Charts grid ────────────────────────────────────────────── */
 .charts-grid{
@@ -110,6 +117,7 @@
 {# ══ KPIs principais ═══════════════════════════════════════════════════════════════════════ #}
 <div class="kpi-grid-main">
 
+  {# Alertas totais #}
   <div class="kpi-card-main">
     <div class="kpi-accent-bar" style="background:var(--color-warning)"></div>
     <div class="kpi-row">
@@ -122,6 +130,7 @@
     <div class="kpi-sub">{{ kpis.alerts24h|number_format(0,',','.') }} nas últimas 24h</div>
   </div>
 
+  {# Congestionamentos #}
   <div class="kpi-card-main">
     <div class="kpi-accent-bar" style="background:var(--color-orange)"></div>
     <div class="kpi-row">
@@ -134,6 +143,26 @@
     <div class="kpi-sub">{{ kpis.jams24h|number_format(0,',','.') }} nas últimas 24h</div>
   </div>
 
+  {# Jams ativos (3h) #}
+  <div class="kpi-card-main">
+    <div class="kpi-accent-bar" style="background:var(--color-error)"></div>
+    <div class="kpi-row">
+      <span class="kpi-label-main">Jams ativos (3h)</span>
+      <div class="kpi-icon-wrap" style="background:oklch(from var(--color-error) l c h/.12)">
+        <i data-lucide="zap" style="width:16px;height:16px;color:var(--color-error)"></i>
+      </div>
+    </div>
+    <div class="kpi-value-main">{{ kpis.liveJams|number_format(0,',','.') }}</div>
+    {% if kpis.maxJamLevel > 0 %}
+      {% set lvlColors = ['','#6daa45','#6daa45','#da7101','#da7101','#a12c7b'] %}
+      {% set lvlNames  = ['','Leve','Leve','Moderado','Pesado','Parado'] %}
+      <div class="kpi-sub">Nível máx. <span style="font-weight:700;color:{{ lvlColors[kpis.maxJamLevel] }}">{{ lvlNames[kpis.maxJamLevel] }} ({{ kpis.maxJamLevel }})</span></div>
+    {% else %}
+      <div class="kpi-sub">Sem congestionamentos ativos</div>
+    {% endif %}
+  </div>
+
+  {# Velocidade média (ao vivo) #}
   <div class="kpi-card-main">
     <div class="kpi-accent-bar" style="background:var(--color-primary)"></div>
     <div class="kpi-row">
@@ -142,48 +171,57 @@
         <i data-lucide="gauge" style="width:16px;height:16px;color:var(--color-primary)"></i>
       </div>
     </div>
-    <div class="kpi-value-main">{{ kpis.avgSpeed|number_format(1,',') }} <span style="font-size:var(--text-sm);font-weight:400">km/h</span></div>
-    <div class="kpi-sub">nos congestionamentos ativos</div>
+    <div class="kpi-value-main">{{ kpis.liveAvgSpeed|number_format(1,',') }} <span style="font-size:var(--text-sm);font-weight:400">km/h</span></div>
+    <div class="kpi-sub">Jams ativos (3h) · histórico: {{ kpis.avgSpeed|number_format(1,',') }} km/h</div>
   </div>
 
-  <div class="kpi-card-main">
-    <div class="kpi-accent-bar" style="background:var(--color-error)"></div>
-    <div class="kpi-row">
-      <span class="kpi-label-main">Atraso médio</span>
-      <div class="kpi-icon-wrap" style="background:oklch(from var(--color-error) l c h/.12)">
-        <i data-lucide="clock" style="width:16px;height:16px;color:var(--color-error)"></i>
-      </div>
-    </div>
-    {% set delayMin = (kpis.avgDelay / 60)|round %}
-    <div class="kpi-value-main">{{ delayMin }} <span style="font-size:var(--text-sm);font-weight:400">min</span></div>
-    <div class="kpi-sub">{{ kpis.avgDelay|number_format(0,',','.') }} segundos</div>
-  </div>
-
+  {# Atraso médio (ao vivo) #}
   <div class="kpi-card-main">
     <div class="kpi-accent-bar" style="background:var(--color-gold)"></div>
     <div class="kpi-row">
-      <span class="kpi-label-main">Extensão total</span>
+      <span class="kpi-label-main">Atraso médio</span>
       <div class="kpi-icon-wrap" style="background:oklch(from var(--color-gold) l c h/.12)">
-        <i data-lucide="route" style="width:16px;height:16px;color:var(--color-gold)"></i>
+        <i data-lucide="clock" style="width:16px;height:16px;color:var(--color-gold)"></i>
       </div>
     </div>
-    {% set lengthKm = (kpis.totalLength / 1000)|round(1) %}
-    <div class="kpi-value-main">{{ lengthKm|number_format(1,',') }} <span style="font-size:var(--text-sm);font-weight:400">km</span></div>
-    <div class="kpi-sub">{{ kpis.totalLength|number_format(0,',','.') }} m somados</div>
+    {% set liveDelayMin = (kpis.liveAvgDelay / 60)|round %}
+    <div class="kpi-value-main">{{ liveDelayMin }} <span style="font-size:var(--text-sm);font-weight:400">min</span></div>
+    <div class="kpi-sub">{{ kpis.liveAvgDelay|number_format(0,',') }}s · jams ativos (3h)</div>
   </div>
 
+  {# Extensão total (ao vivo) #}
+  <div class="kpi-card-main">
+    <div class="kpi-accent-bar" style="background:var(--color-blue)"></div>
+    <div class="kpi-row">
+      <span class="kpi-label-main">Extensão congestionada</span>
+      <div class="kpi-icon-wrap" style="background:oklch(from var(--color-blue) l c h/.12)">
+        <i data-lucide="route" style="width:16px;height:16px;color:var(--color-blue)"></i>
+      </div>
+    </div>
+    {% set liveKm = (kpis.liveTotalLen / 1000)|round(1) %}
+    <div class="kpi-value-main">{{ liveKm|number_format(1,',') }} <span style="font-size:var(--text-sm);font-weight:400">km</span></div>
+    <div class="kpi-sub">Jams ativos · total histórico: {{ (kpis.totalLength/1000)|round(1)|number_format(1,',') }} km</div>
+  </div>
+
+  {# CEMADEN / chuva #}
   <div class="kpi-card-main">
     <div class="kpi-accent-bar" style="background:var(--color-primary)"></div>
     <div class="kpi-row">
-      <span class="kpi-label-main">Leituras CEMADEN</span>
+      <span class="kpi-label-main">CEMADEN</span>
       <div class="kpi-icon-wrap" style="background:oklch(from var(--color-primary) l c h/.12)">
         <i data-lucide="cloud-rain" style="width:16px;height:16px;color:var(--color-primary)"></i>
       </div>
     </div>
-    <div class="kpi-value-main">{{ kpis.cemaden|number_format(0,',','.') }}</div>
-    <div class="kpi-sub">{{ kpis.cities }} cidades monitoradas</div>
+    {% if kpis.rainLastHour is not null and kpis.rainLastHour > 0 %}
+      <div class="kpi-value-main">{{ kpis.rainLastHour|number_format(1,',') }} <span style="font-size:var(--text-sm);font-weight:400">mm</span></div>
+      <div class="kpi-sub">Chuva acumulada última hora · {{ kpis.cemaden }} leituras</div>
+    {% else %}
+      <div class="kpi-value-main">{{ kpis.cemaden|number_format(0,',','.') }}</div>
+      <div class="kpi-sub">Leituras · {{ kpis.cities }} cidades monitoradas</div>
+    {% endif %}
   </div>
 
+  {# Rotas monitoradas #}
   <div class="kpi-card-main">
     <div class="kpi-accent-bar" style="background:var(--color-success)"></div>
     <div class="kpi-row">
@@ -193,7 +231,7 @@
       </div>
     </div>
     <div class="kpi-value-main">{{ kpis.routes|number_format(0,',','.') }}</div>
-    <div class="kpi-sub">{{ kpis.links|number_format(0,',','.') }} links monitorados</div>
+    <div class="kpi-sub">{{ kpis.links|number_format(0,',','.') }} links · {{ kpis.cities }} cidades</div>
   </div>
 
 </div>
@@ -367,20 +405,33 @@
   'use strict';
 
   // ── Dados vindos do Symfony ─────────────────────────────────────────
-  // countPerHourLast24h retorna [{hour: N, total: M}, ...] — apenas horas com dados.
-  // Precisamos normalizar para um array de 24 posições (índice 0-23).
+  // Ambos os repos agora retornam [{hour: N, total: M}, ...]
   const rawAlertsPerHour = {{ alertsPerHour|json_encode|raw }};
   const rawJamsPerHour   = {{ jamsPerHour|json_encode|raw }};
 
+  /**
+   * Normaliza qualquer formato para array de 24 posições (índice = hora 0-23).
+   * Aceita:
+   *   - [{hour: N, total: M}, ...]  (novo formato unificado)
+   *   - {0: 3, 1: 0, ...}           (formato legado indexado por chave)
+   *   - array de 24 elementos indexados 0..23
+   */
   function normalizeTo24(raw) {
     const arr = new Array(24).fill(0);
+    if (!raw) return arr;
+
     if (Array.isArray(raw)) {
+      if (raw.length === 24 && typeof raw[0] === 'number') {
+        // array de 24 números direto
+        return raw.slice();
+      }
       raw.forEach(function(row) {
         const h = parseInt(row.hour ?? row.h ?? 0, 10);
-        if (h >= 0 && h < 24) arr[h] = parseInt(row.total ?? row.count ?? 0, 10) || 0;
+        const v = parseInt(row.total ?? row.count ?? 0, 10);
+        if (h >= 0 && h < 24) arr[h] = v || 0;
       });
-    } else if (raw && typeof raw === 'object') {
-      // caso venha como objeto {0: 3, 1: 0, ...}
+    } else if (typeof raw === 'object') {
+      // objeto {0: 3, 1: 0, ...}
       Object.keys(raw).forEach(function(k) {
         const h = parseInt(k, 10);
         if (h >= 0 && h < 24) arr[h] = parseInt(raw[k], 10) || 0;
@@ -428,6 +479,7 @@
     error   : cv('--color-error'),
     success : cv('--color-success'),
     gold    : cv('--color-gold'),
+    blue    : cv('--color-blue'),
     muted   : cv('--color-text-muted'),
     border  : cv('--color-border'),
     text    : cv('--color-text'),
@@ -437,10 +489,7 @@
   Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
   Chart.defaults.color = COLORS.muted;
 
-  const baseGrid = {
-    color: COLORS.border,
-    drawBorder: false,
-  };
+  const baseGrid = { color: COLORS.border, drawBorder: false };
 
   // ── helpers de hora ───────────────────────────────────────────────
   const now = new Date();
@@ -457,6 +506,15 @@
     return out;
   }
 
+  const alertsOrdered = reorderPerHour(alertsPerHour24);
+  const jamsOrdered   = reorderPerHour(jamsPerHour24);
+
+  // Debug: verifica se há dados
+  const totalAlerts = alertsOrdered.reduce((s, v) => s + v, 0);
+  const totalJams   = jamsOrdered.reduce((s, v) => s + v, 0);
+  console.info('[Dashboard] alertas/hora total:', totalAlerts, alertsOrdered);
+  console.info('[Dashboard] jams/hora total:',   totalJams,   jamsOrdered);
+
   // ── 1. Gráfico de linha — ocorrências por hora ─────────────────
   new Chart(document.getElementById('chartHourly'), {
     type: 'line',
@@ -465,7 +523,7 @@
       datasets: [
         {
           label: 'Alertas',
-          data: reorderPerHour(alertsPerHour24),
+          data: alertsOrdered,
           borderColor: COLORS.warning,
           backgroundColor: COLORS.warning + '22',
           tension: 0.4, fill: true, pointRadius: 3,
@@ -473,7 +531,7 @@
         },
         {
           label: 'Congestionamentos',
-          data: reorderPerHour(jamsPerHour24),
+          data: jamsOrdered,
           borderColor: COLORS.orange,
           backgroundColor: COLORS.orange + '22',
           tension: 0.4, fill: true, pointRadius: 3,
@@ -494,49 +552,53 @@
 
   // ── 2. Rosca — alertas por tipo ─────────────────────────────
   const typeColors = [COLORS.warning, COLORS.orange, COLORS.error, COLORS.primary, COLORS.gold, COLORS.success, COLORS.muted, '#7a39bb'];
-  new Chart(document.getElementById('chartAlertType'), {
-    type: 'doughnut',
-    data: {
-      labels: alertsByType.map(r => label(TYPE_LABELS, r.type)),
-      datasets: [{
-        data: alertsByType.map(r => r.total),
-        backgroundColor: alertsByType.map((_, i) => typeColors[i % typeColors.length]),
-        borderWidth: 0,
-        hoverOffset: 6,
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      cutout: '62%',
-      plugins: {
-        legend: { position:'right', labels: { boxWidth:10, padding:12, font:{size:11} } },
+  if (alertsByType.length) {
+    new Chart(document.getElementById('chartAlertType'), {
+      type: 'doughnut',
+      data: {
+        labels: alertsByType.map(r => label(TYPE_LABELS, r.type)),
+        datasets: [{
+          data: alertsByType.map(r => r.total),
+          backgroundColor: alertsByType.map((_, i) => typeColors[i % typeColors.length]),
+          borderWidth: 0,
+          hoverOffset: 6,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        cutout: '62%',
+        plugins: {
+          legend: { position:'right', labels: { boxWidth:10, padding:12, font:{size:11} } },
+        }
       }
-    }
-  });
+    });
+  }
 
   // ── 3. Barras — jams por nível ───────────────────────────────
   const levelPalette = ['#6daa45','#6daa45','#da7101','#da7101','#a12c7b','#a12c7b'];
-  new Chart(document.getElementById('chartJamLevel'), {
-    type: 'bar',
-    data: {
-      labels: jamsByLevel.map(r => label(LEVEL_LABELS, +r.level) + ' ('+r.level+')'),
-      datasets: [{
-        label: 'Jams',
-        data: jamsByLevel.map(r => r.total),
-        backgroundColor: jamsByLevel.map(r => levelPalette[Math.min(+r.level, 5)] + 'cc'),
-        borderRadius: 4,
-        borderSkipped: false,
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display:false } },
-      scales: {
-        x: { grid: { display:false } },
-        y: { grid: baseGrid, beginAtZero:true, ticks:{ precision:0 } },
+  if (jamsByLevel.length) {
+    new Chart(document.getElementById('chartJamLevel'), {
+      type: 'bar',
+      data: {
+        labels: jamsByLevel.map(r => label(LEVEL_LABELS, +r.level) + ' ('+r.level+')'),
+        datasets: [{
+          label: 'Jams',
+          data: jamsByLevel.map(r => r.total),
+          backgroundColor: jamsByLevel.map(r => levelPalette[Math.min(+r.level, 5)] + 'cc'),
+          borderRadius: 4,
+          borderSkipped: false,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display:false } },
+        scales: {
+          x: { grid: { display:false } },
+          y: { grid: baseGrid, beginAtZero:true, ticks:{ precision:0 } },
+        }
       }
-    }
-  });
+    });
+  }
 
   // ── 4. Barras horizontais — top subtipos ───────────────────────
   const subtypeCanvas = document.getElementById('chartSubtype');

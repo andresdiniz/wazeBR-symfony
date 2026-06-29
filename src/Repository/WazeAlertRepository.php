@@ -47,8 +47,6 @@ class WazeAlertRepository extends ServiceEntityRepository
     /**
      * Histórico paginado com filtros opcionais.
      *
-     * @param string|null $dateFrom  ISO 8601 ou Y-m-d
-     * @param string|null $dateTo    ISO 8601 ou Y-m-d
      * @return array{items: WazeAlert[], total: int, pages: int}
      */
     public function findFilteredByPartner(
@@ -129,7 +127,6 @@ class WazeAlertRepository extends ServiceEntityRepository
 
     /**
      * Alertas "ao vivo" — últimas N horas, para o mapa.
-     * Retorna registros com todos os campos necessários para o mapa Leaflet.
      */
     public function findLiveByPartner(Partner $partner, int $hours = 3): array
     {
@@ -226,35 +223,38 @@ class WazeAlertRepository extends ServiceEntityRepository
             ->getQuery()->getArrayResult();
     }
 
-    /** Alertas por hora nas últimas 24h usando pubMillis */
+    /**
+     * Alertas por hora nas últimas 24h usando pubMillis.
+     * Retorna array de ['hour' => int(0-23), 'total' => int] —
+     * mesmo formato que WazeTrafficJamRepository::countPerHourLast24h.
+     */
     public function countPerHourLast24h(Partner $partner): array
     {
         $sinceMs = (new \DateTimeImmutable('-24 hours'))->getTimestamp() * 1000;
 
         $conn = $this->getEntityManager()->getConnection();
         $sql  = '
-            SELECT HOUR(FROM_UNIXTIME(pub_millis / 1000)) AS hr,
+            SELECT HOUR(FROM_UNIXTIME(pub_millis / 1000)) AS hour,
                    COUNT(*) AS total
             FROM waze_alerts
             WHERE partner_id = :pid
               AND pub_millis >= :since
-            GROUP BY hr
+            GROUP BY hour
+            ORDER BY hour ASC
         ';
         $rows = $conn->executeQuery($sql, [
             'pid'   => $partner->getId(),
             'since' => $sinceMs,
         ])->fetchAllAssociative();
 
-        $map = array_fill(0, 24, 0);
-        foreach ($rows as $row) {
-            $map[(int) $row['hr']] = (int) $row['total'];
-        }
-        return $map;
+        return array_map(static fn(array $r) => [
+            'hour'  => (int) $r['hour'],
+            'total' => (int) $r['total'],
+        ], $rows);
     }
 
     /**
      * Alertas agrupados por cidade (região) para o mapa ao vivo.
-     * Retorna [city => ['count' => N, 'lat' => float, 'lng' => float, 'types' => []], ...]
      */
     public function findLiveGroupedByRegion(Partner $partner, int $hours = 3): array
     {

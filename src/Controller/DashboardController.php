@@ -41,7 +41,7 @@ class DashboardController extends AbstractController
         $cemadenCount = $this->cemadenRepo->countByPartner($partner);
         $cityCount    = $this->cityRepo->countByPartner($partner);
         $linkCount    = $this->linkRepo->countByPartner($partner);
-        $routeCount   = $this->tvtRouteRepo->countByPartner($partner);  // rotas TVT coletadas
+        $routeCount   = $this->tvtRouteRepo->countByPartner($partner);
 
         // ── KPIs derivados ───────────────────────────────────────────────────
         $alertsLast24h  = $this->alertRepo->countLast24hByPartner($partner);
@@ -49,6 +49,16 @@ class DashboardController extends AbstractController
         $avgJamSpeed    = $this->jamRepo->avgSpeedKmhByPartner($partner);
         $avgJamDelay    = $this->jamRepo->avgDelaySecsByPartner($partner);
         $totalJamLength = $this->jamRepo->totalLengthMByPartner($partner);
+
+        // ── KPIs das últimas 3h (jams ativos) ───────────────────────────────
+        $liveStats   = $this->jamRepo->avgStats($partner, 3);
+        $liveJams    = $this->jamRepo->findLiveByPartner($partner, 3);
+        $maxJamLevel = count($liveJams) > 0
+            ? max(array_map(fn($j) => $j->getLevel() ?? 0, $liveJams))
+            : 0;
+
+        // ── KPI chuva acumulada última hora (CEMADEN) ───────────────────────
+        $rainLastHour = $this->cemadenRepo->sumRainLastHourByPartner($partner);
 
         // ── Distribuições para gráficos ──────────────────────────────────────
         $alertsByType    = $this->alertRepo->countGroupByType($partner);
@@ -60,17 +70,25 @@ class DashboardController extends AbstractController
         return $this->render('dashboard/index.html.twig', [
             'partner' => $partner,
             'kpis'    => [
-                'alerts'      => $alertCount,
-                'jams'        => $jamCount,
-                'cemaden'     => $cemadenCount,
-                'cities'      => $cityCount,
-                'links'       => $linkCount,
-                'routes'      => $routeCount,
-                'alerts24h'   => $alertsLast24h,
-                'jams24h'     => $jamsLast24h,
-                'avgSpeed'    => $avgJamSpeed,
-                'avgDelay'    => $avgJamDelay,
-                'totalLength' => $totalJamLength,
+                'alerts'        => $alertCount,
+                'jams'          => $jamCount,
+                'cemaden'       => $cemadenCount,
+                'cities'        => $cityCount,
+                'links'         => $linkCount,
+                'routes'        => $routeCount,
+                'alerts24h'     => $alertsLast24h,
+                'jams24h'       => $jamsLast24h,
+                'avgSpeed'      => $avgJamSpeed,
+                'avgDelay'      => $avgJamDelay,
+                'totalLength'   => $totalJamLength,
+                // últimas 3h
+                'liveJams'      => count($liveJams),
+                'maxJamLevel'   => $maxJamLevel,
+                'liveAvgSpeed'  => $liveStats['avgSpeed'],
+                'liveAvgDelay'  => $liveStats['avgDelay'],
+                'liveTotalLen'  => $liveStats['totalLength'],
+                // CEMADEN
+                'rainLastHour'  => $rainLastHour,
             ],
             'alertsByType'    => $alertsByType,
             'alertsBySubtype' => $alertsBySubtype,
