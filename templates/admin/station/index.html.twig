@@ -1,99 +1,93 @@
 {% extends 'base.html.twig' %}
+
 {% block title %}Estações CEMADEN{% endblock %}
-{% block content %}
-<div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-4)">
-  <div>
-    <h1 class="page-title">Estações CEMADEN</h1>
-    <div class="page-subtitle">Estações pluviômetricas monitoradas — agrupadas por parceiro</div>
-  </div>
-  <a href="{{ path('admin_station_new') }}" class="btn btn-primary">
-    <i data-lucide="plus" style="width:14px;height:14px"></i> Nova Estação
-  </a>
-</div>
 
-{% if by_partner is empty %}
-  <div class="empty">
-    <i data-lucide="radio-tower" style="width:40px;height:40px"></i>
-    <h3>Nenhuma estação cadastrada</h3>
-    <p>Adicione estações CEMADEN para monitoramento de chuvas.</p>
-    <a href="{{ path('admin_station_new') }}" class="btn btn-primary">Nova Estação</a>
-  </div>
-{% else %}
-  <div style="margin-bottom:var(--space-4)">
-    <input class="form-control" id="station-search"
-      placeholder="Filtrar por código, nome, município…"
-      style="max-width:360px">
-  </div>
+{% block body %}
+<div class="container py-4">
 
-  {% for slug, stations in by_partner %}
-    <div class="card" style="margin-bottom:var(--space-6)">
-      <div class="card-header">
-        <div style="display:flex;align-items:center;gap:var(--space-3)">
-          <i data-lucide="radio-tower" style="width:16px;height:16px;color:var(--color-text-muted)"></i>
-          <span class="card-title">{{ slug }}</span>
-        </div>
-        <span style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ stations|length }} estação(s)</span>
-      </div>
-      <div style="overflow-x:auto">
-        <table class="station-table">
-          <thead>
-            <tr>
-              <th>Código</th>
-              <th>Nome</th>
-              <th>Município / UF</th>
-              <th>Status</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-          {% for s in stations %}
-            <tr style="opacity:{{ s.is_active ? 1 : 0.5 }}">
-              <td style="font-family:monospace;font-size:var(--text-xs)">{{ s.cod_estacao }}</td>
-              <td style="font-weight:500">{{ s.nome }}</td>
-              <td style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ s.municipio }} / <span class="badge badge-gray">{{ s.uf }}</span></td>
-              <td>
-                {% if s.is_active %}
-                  <span class="badge" style="background:oklch(from var(--color-success) l c h/.12);color:var(--color-success)">Ativa</span>
-                {% else %}
-                  <span class="badge badge-gray">Inativa</span>
-                {% endif %}
-              </td>
-              <td style="display:flex;gap:var(--space-2);white-space:nowrap">
-                <a href="{{ path('admin_station_edit', {id: s.id}) }}" class="btn btn-ghost btn-sm" title="Editar">
-                  <i data-lucide="pencil" style="width:12px;height:12px"></i>
-                </a>
-                <form method="post" action="{{ path('admin_station_toggle', {id: s.id}) }}">
-                  <button class="btn btn-ghost btn-sm" title="{{ s.is_active ? 'Desativar' : 'Ativar' }}">
-                    <i data-lucide="{{ s.is_active ? 'pause' : 'play' }}" style="width:12px;height:12px"></i>
-                  </button>
-                </form>
-                <form method="post" action="{{ path('admin_station_delete', {id: s.id}) }}" onsubmit="return confirm('Excluir estação?')">
-                  <input type="hidden" name="_token" value="{{ csrf_token('del_station_' ~ s.id) }}">
-                  <button class="btn btn-sm" style="color:var(--color-error);border-color:oklch(from var(--color-error) l c h/.3)" title="Excluir">
-                    <i data-lucide="trash-2" style="width:12px;height:12px"></i>
-                  </button>
-                </form>
-              </td>
-            </tr>
-          {% endfor %}
-          </tbody>
-        </table>
-      </div>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h4 mb-0">Estações CEMADEN</h1>
+        <a href="{{ path('admin_station_new') }}" class="btn btn-primary btn-sm">✚ Nova Estação</a>
     </div>
-  {% endfor %}
-{% endif %}
-{% endblock %}
 
-{% block javascripts %}
-{{ parent() }}
-<script>
-const sInp = document.getElementById('station-search');
-const sTables = document.querySelectorAll('.station-table tbody tr');
-sInp?.addEventListener('input', () => {
-  const q = sInp.value.toLowerCase();
-  sTables.forEach(r => {
-    r.style.display = r.textContent.toLowerCase().includes(q) ? '' : 'none';
-  });
-});
-</script>
+    {% for msg in app.flashes('success') %}
+        <div class="alert alert-success">{{ msg }}</div>
+    {% endfor %}
+    {% for msg in app.flashes('error') %}
+        <div class="alert alert-danger">{{ msg }}</div>
+    {% endfor %}
+
+    {% if by_partner is empty %}
+        <div class="alert alert-info">Nenhuma estação cadastrada ainda.</div>
+    {% else %}
+        {% for slug, stations in by_partner %}
+            <h5 class="mt-4 mb-2 text-muted text-uppercase" style="font-size:.75rem;letter-spacing:.05em">Parceiro: {{ slug }}</h5>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Código</th>
+                            <th>Nome</th>
+                            <th>Município/UF</th>
+                            <th>Tipo</th>
+                            <th>Lat/Lng</th>
+                            <th>Ativo</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in stations %}
+                        <tr>
+                            <td class="text-muted">{{ s.id }}</td>
+                            <td><code>{{ s.cod_estacao }}</code></td>
+                            <td>{{ s.nome }}</td>
+                            <td>
+                                {% if s.municipio starts with '{' %}
+                                    <span class="badge bg-warning text-dark" title="Dado corrompido">⚠️ corrompido</span>
+                                {% else %}
+                                    {{ s.municipio }}
+                                {% endif %}
+                                /{{ s.uf }}
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ station_types[s.station_type] ?? s.station_type }}</span>
+                                {% if s.station_type == 'hydrological' and s.hydro_url %}
+                                    <a href="{{ s.hydro_url }}" target="_blank" class="small ms-1" title="API">&#x1f517;</a>
+                                {% endif %}
+                            </td>
+                            <td class="small text-muted">
+                                {% if s.lat and s.lng %}
+                                    {{ s.lat|number_format(4) }}, {{ s.lng|number_format(4) }}
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <form method="POST" action="{{ path('admin_station_toggle', {id: s.id}) }}" class="d-inline">
+                                    <button class="btn btn-sm {{ s.is_active ? 'btn-success' : 'btn-outline-secondary' }}"
+                                            title="{{ s.is_active ? 'Ativo — clique para desativar' : 'Inativo — clique para ativar' }}">
+                                        {{ s.is_active ? '✅' : '⏸️' }}
+                                    </button>
+                                </form>
+                            </td>
+                            <td class="text-end">
+                                <a href="{{ path('admin_station_edit', {id: s.id}) }}"
+                                   class="btn btn-sm btn-outline-primary">Editar</a>
+                                <form method="POST" action="{{ path('admin_station_delete', {id: s.id}) }}"
+                                      class="d-inline"
+                                      onsubmit="return confirm('Remover esta estação?')">
+                                    <input type="hidden" name="_token"
+                                           value="{{ csrf_token('del_station_' ~ s.id) }}">
+                                    <button class="btn btn-sm btn-outline-danger">Remover</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endfor %}
+    {% endif %}
+</div>
 {% endblock %}
