@@ -35,13 +35,13 @@ class LiveSummaryController extends AbstractController
         $partner = $this->tenantContext->requirePartner();
 
         // ── Jams ao vivo (últimas 3h) ────────────────────────────────────────
-        $liveJams   = $this->jamRepo->findLiveByPartner($partner, 3);
-        $liveStats  = $this->jamRepo->avgStats($partner, 3);
-        $maxLevel   = count($liveJams) > 0
+        $liveJams  = $this->jamRepo->findLiveByPartner($partner, 3);
+        $liveStats = $this->jamRepo->avgStats($partner, 3);
+        $maxLevel  = count($liveJams) > 0
             ? max(array_map(fn($j) => $j->getLevel() ?? 0, $liveJams))
             : 0;
 
-        // ── Alertas recentes (últimas 1h para feed) ─────────────────────────
+        // ── Alertas recentes ─────────────────────────────────────────────────
         $recentAlerts = $this->alertRepo->findRecentByPartner($partner, 30);
         $alertsHour   = $this->alertRepo->countLast1hByPartner($partner);
         $alerts24h    = $this->alertRepo->countLast24hByPartner($partner);
@@ -58,15 +58,15 @@ class LiveSummaryController extends AbstractController
         // ── Feed de alertas serializado ──────────────────────────────────────
         $alertFeed = array_map(function ($a) {
             return [
-                'id'        => $a->getId(),
-                'type'      => $a->getType(),
-                'subtype'   => $a->getSubtype(),
-                'street'    => $a->getStreet() ?? $a->getRoadType() ?? '',
-                'city'      => $a->getCity() ?? '',
-                'lat'       => $a->getLatitude(),
-                'lng'       => $a->getLongitude(),
-                'confidence'=> $a->getReliability() ?? 0,
-                'reportedAt'=> $a->getPubMillis()
+                'id'         => $a->getId(),
+                'type'       => $a->getType(),
+                'subtype'    => $a->getSubtype(),
+                'street'     => $a->getStreet() ?? $a->getRoadType() ?? '',
+                'city'       => $a->getCity() ?? '',
+                'lat'        => $a->getLatitude(),
+                'lng'        => $a->getLongitude(),
+                'confidence' => $a->getConfidence() ?? 0,
+                'reportedAt' => $a->getPubMillis()
                     ? (new \DateTimeImmutable('@' . intval($a->getPubMillis() / 1000)))->format('c')
                     : null,
             ];
@@ -74,47 +74,51 @@ class LiveSummaryController extends AbstractController
 
         // ── Feed de jams serializado ─────────────────────────────────────────
         $jamFeed = array_map(function ($j) {
+            // startNode é string (nome do nó), não array de coordenadas
+            // coordenadas ficam no primeiro ponto de getLine()
+            $firstPoint = $j->getLine()[0] ?? null;
+
             return [
-                'id'      => $j->getId(),
-                'street'  => $j->getStreet() ?? '',
-                'city'    => $j->getCity() ?? '',
-                'level'   => $j->getLevel() ?? 0,
-                'speed'   => $j->getSpeedKmh() ?? 0,
-                'delay'   => $j->getDelaySeconds() ?? 0,
-                'length'  => $j->getLengthM() ?? 0,
-                'lat'     => $j->getStartNode() ? $j->getStartNode()['y'] ?? null : null,
-                'lng'     => $j->getStartNode() ? $j->getStartNode()['x'] ?? null : null,
-                'line'    => $j->getLine() ?? [],
+                'id'     => $j->getId(),
+                'street' => $j->getStreet() ?? '',
+                'city'   => $j->getCity() ?? '',
+                'level'  => $j->getLevel() ?? 0,
+                'speed'  => $j->getSpeedKmh() ?? 0,
+                'delay'  => $j->getDelay() ?? 0,
+                'length' => $j->getLength() ?? 0,
+                'lat'    => $firstPoint['y'] ?? null,
+                'lng'    => $firstPoint['x'] ?? null,
+                'line'   => $j->getLine(),
             ];
         }, $liveJams);
 
         // ── CEMADEN serializado ──────────────────────────────────────────────
         $cemadenFeed = array_map(function ($c) {
             return [
-                'station'  => $c->getStationName() ?? $c->getStationCode() ?? '',
-                'city'     => $c->getCityName() ?? '',
-                'state'    => $c->getState() ?? '',
-                'rain'     => $c->getAccumulatedRain() ?? 0,
+                'station'    => $c->getStationName() ?? $c->getStationCode() ?? '',
+                'city'       => $c->getCityName() ?? '',
+                'state'      => $c->getState() ?? '',
+                'rain'       => $c->getAccumulatedRain() ?? 0,
                 'alertLevel' => $c->getAlertLevel() ?? 'NO_ALERT',
-                'lat'      => $c->getLatitude(),
-                'lng'      => $c->getLongitude(),
+                'lat'        => $c->getLatitude(),
+                'lng'        => $c->getLongitude(),
             ];
         }, $cemadenData);
 
         return $this->json([
-            'ts'          => (new \DateTimeImmutable())->format('c'),
+            'ts'   => (new \DateTimeImmutable())->format('c'),
             'kpis' => [
-                'liveJams'      => count($liveJams),
-                'maxJamLevel'   => $maxLevel,
-                'liveAvgSpeed'  => $liveStats['avgSpeed'],
-                'liveAvgDelay'  => $liveStats['avgDelay'],
-                'liveTotalLen'  => $liveStats['totalLength'],
-                'alertsHour'    => $alertsHour,
-                'alerts24h'     => $alerts24h,
-                'rainLastHour'  => $rainLastHour,
-                'cities'        => $cityCount,
-                'links'         => $linkCount,
-                'routes'        => $routeCount,
+                'liveJams'     => count($liveJams),
+                'maxJamLevel'  => $maxLevel,
+                'liveAvgSpeed' => $liveStats['avgSpeed'],
+                'liveAvgDelay' => $liveStats['avgDelay'],
+                'liveTotalLen' => $liveStats['totalLength'],
+                'alertsHour'   => $alertsHour,
+                'alerts24h'    => $alerts24h,
+                'rainLastHour' => $rainLastHour,
+                'cities'       => $cityCount,
+                'links'        => $linkCount,
+                'routes'       => $routeCount,
             ],
             'alerts'  => $alertFeed,
             'jams'    => $jamFeed,
