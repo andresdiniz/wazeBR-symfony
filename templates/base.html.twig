@@ -168,11 +168,42 @@
       background:oklch(from var(--color-primary) l c h/.08);
       border-left-color:var(--color-primary);font-weight:500;
     }
+    /* Tela Live — destaque especial com pulso */
+    .nav-item-live{
+      display:flex;align-items:center;gap:var(--space-3);
+      padding:var(--space-2) var(--space-4);
+      font-size:var(--text-sm);color:var(--color-text-muted);
+      border-radius:0;transition:all var(--transition);
+      border-left:2px solid transparent;
+      min-height:44px;
+    }
+    .nav-item-live:hover{color:var(--color-text);background:var(--color-surface-offset)}
+    .nav-item-live.active{
+      color:var(--color-primary);
+      background:oklch(from var(--color-primary) l c h/.08);
+      border-left-color:var(--color-primary);font-weight:500;
+    }
+    .nav-live-dot{
+      width:7px;height:7px;border-radius:50%;
+      background:var(--color-success);
+      flex-shrink:0;margin-left:auto;
+      box-shadow:0 0 0 0 oklch(from var(--color-success) l c h/.4);
+      animation:live-pulse 2s ease-in-out infinite;
+    }
+    @keyframes live-pulse{
+      0%,100%{box-shadow:0 0 0 0 oklch(from var(--color-success) l c h/.4)}
+      50%{box-shadow:0 0 0 5px oklch(from var(--color-success) l c h/0)}
+    }
+    @media(prefers-reduced-motion:reduce){.nav-live-dot{animation:none}}
     .nav-item svg,.nav-item [data-lucide]{flex-shrink:0;width:17px;height:17px}
+    .nav-item-live svg,.nav-item-live [data-lucide]{flex-shrink:0;width:17px;height:17px}
     @media(min-width:1800px){
       .nav-item{font-size:var(--text-base);padding:var(--space-3) var(--space-6);min-height:52px}
+      .nav-item-live{font-size:var(--text-base);padding:var(--space-3) var(--space-6);min-height:52px}
       .nav-label{padding:var(--space-4) var(--space-6) var(--space-2);font-size:var(--text-sm)}
       .nav-item svg,.nav-item [data-lucide]{width:20px;height:20px}
+      .nav-item-live svg,.nav-item-live [data-lucide]{width:20px;height:20px}
+      .nav-live-dot{width:9px;height:9px}
     }
 
     /* Mobile: sidebar off-canvas */
@@ -209,13 +240,11 @@
       padding:var(--space-6);
       overflow-y:auto;
       min-height:0;
-      /* max-width clamp for very wide TVs — content doesn't stretch beyond readable width */
       max-width:100%;
     }
     @media(min-width:1800px){main{padding:var(--space-8) var(--space-12)}}
     @media(max-width:480px){main{padding:var(--space-4)}}
 
-    /* TV: limit content max-width so it doesn't span the entire 4K screen */
     @media(min-width:1800px){
       .content-wrap{max-width:1600px;margin-inline:auto}
     }
@@ -251,6 +280,14 @@
       background:oklch(from var(--color-primary) l c h/.08);
     }
     .bottom-nav-item svg,.bottom-nav-item [data-lucide]{width:20px;height:20px}
+    /* Live indicator no bottom nav */
+    .bottom-nav-live{position:relative}
+    .bottom-nav-live::after{
+      content:'';position:absolute;top:6px;right:calc(50% - 14px);
+      width:7px;height:7px;border-radius:50%;
+      background:var(--color-success);
+      border:2px solid var(--color-surface);
+    }
 
     /* ══ COMPONENTS ════════════════════════════════════════════════════════ */
     .page-header{margin-bottom:var(--space-6)}
@@ -405,6 +442,10 @@
       <a href="{{ path('dashboard_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'dashboard' ? 'active' }}">
         <i data-lucide="layout-dashboard"></i> Dashboard
       </a>
+      <a href="{{ path('operator_live') }}" class="nav-item-live {{ app.request.attributes.get('_route') starts with 'operator' ? 'active' }}" title="Tela de operador em tempo real">
+        <i data-lucide="monitor"></i> Tela Live
+        <span class="nav-live-dot" aria-hidden="true"></span>
+      </a>
       <a href="{{ path('alert_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'alert' ? 'active' }}">
         <i data-lucide="triangle-alert"></i> Alertas
       </a>
@@ -471,6 +512,10 @@
       <i data-lucide="layout-dashboard"></i>
       <span>Dashboard</span>
     </a>
+    <a href="{{ path('operator_live') }}" class="bottom-nav-item bottom-nav-live {{ app.request.attributes.get('_route') starts with 'operator' ? 'active' }}" aria-label="Tela Live">
+      <i data-lucide="monitor"></i>
+      <span>Live</span>
+    </a>
     <a href="{{ path('alert_index') }}" class="bottom-nav-item {{ app.request.attributes.get('_route') starts with 'alert' ? 'active' }}" aria-label="Alertas">
       <i data-lucide="triangle-alert"></i>
       <span>Alertas</span>
@@ -478,10 +523,6 @@
     <a href="{{ path('jam_index') }}" class="bottom-nav-item {{ app.request.attributes.get('_route') starts with 'jam' ? 'active' }}" aria-label="Jams">
       <i data-lucide="traffic-cone"></i>
       <span>Jams</span>
-    </a>
-    <a href="{{ path('cemaden_index') }}" class="bottom-nav-item {{ app.request.attributes.get('_route') starts with 'cemaden' ? 'active' }}" aria-label="CEMADEN">
-      <i data-lucide="cloud-rain"></i>
-      <span>CEMADEN</span>
     </a>
     <!-- More button opens sidebar -->
     <button class="bottom-nav-item" id="btnMenuBottom" aria-label="Mais opções">
@@ -530,7 +571,7 @@
       btnBottom && btnBottom.addEventListener('click', ()=> sidebar.classList.contains('open') ? close() : open());
       overlay.addEventListener('click', close);
       /* close on nav click (mobile) */
-      sidebar.querySelectorAll('.nav-item').forEach(el => el.addEventListener('click', ()=>{
+      sidebar.querySelectorAll('.nav-item,.nav-item-live').forEach(el => el.addEventListener('click', ()=>{
         if(window.innerWidth < 768) close();
       }));
       /* ESC closes */
