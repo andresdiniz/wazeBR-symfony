@@ -46,9 +46,17 @@ class MonitoredLinkRepository extends ServiceEntityRepository
         }
     }
 
+    public function countByPartner(Partner $partner): int
+    {
+        return (int) $this->createQueryBuilder('ml')
+            ->select('COUNT(ml.id)')
+            ->where('ml.partner = :p')
+            ->setParameter('p', $partner)
+            ->getQuery()->getSingleScalarResult();
+    }
+
     /**
      * Feeds Waze PartnerHub ativos (feedFormat=1 E linkType='waze_feed').
-     * Exclui câmeras, sensores e outros links cadastrados com feedFormat=1 por engano.
      */
     public function findActiveWazeFeeds(): array
     {
@@ -68,8 +76,6 @@ class MonitoredLinkRepository extends ServiceEntityRepository
 
     /**
      * Links TVT ativos (linkType='waze_tvt').
-     * Esses links são usados pelo WazeCollectRoutesCommand para coletar
-     * tempos de viagem de rotas que têm wazeId mas não têm coordinates.
      *
      * @return MonitoredLink[]
      */
@@ -148,7 +154,6 @@ class MonitoredLinkRepository extends ServiceEntityRepository
 
     /**
      * Retorna o primeiro MonitoredLink do tipo waze_tvt ativo para um dado parceiro.
-     * Usado pelo WazeCollectRoutesCommand no modo TVT.
      */
     public function findOneTvtLinkByPartner(Partner $partner): ?MonitoredLink
     {
