@@ -16,6 +16,15 @@ class MonitoredCityRepository extends ServiceEntityRepository
         parent::__construct($registry, MonitoredCity::class);
     }
 
+    public function countByPartner(Partner $partner): int
+    {
+        return (int) $this->createQueryBuilder('c')
+            ->select('COUNT(c.id)')
+            ->where('c.partner = :p')
+            ->setParameter('p', $partner)
+            ->getQuery()->getSingleScalarResult();
+    }
+
     public function findByPartner(Partner $partner): array
     {
         return $this->createQueryBuilder('c')
@@ -23,7 +32,7 @@ class MonitoredCityRepository extends ServiceEntityRepository
             ->andWhere('c.isActive = true')
             ->setParameter('partner', $partner)
             ->orderBy('c.state', 'ASC')
-            ->addOrderBy('c.name', 'ASC')   // campo correto: $name, nao $city
+            ->addOrderBy('c.name', 'ASC')
             ->getQuery()->getResult();
     }
 
