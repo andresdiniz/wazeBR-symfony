@@ -71,7 +71,7 @@
             <div class="form-group">
                 <label class="form-label">Tipo da Estação</label>
                 <select name="station_type" class="form-control"
-                        onchange="toggleHydroUrl(this.value)">
+                        onchange="toggleUrlFields(this.value)">
                     {% for value, label in station_types %}
                         <option value="{{ value }}"
                             {% if station.station_type == value %}selected{% endif %}>
@@ -108,6 +108,20 @@
 
         </div>
 
+        {# URL Pluviométrica #}
+        <div id="pluvio-url-section"
+             style="margin-top:var(--space-4);{{ station.station_type != 'pluviometric' ? 'display:none' : '' }}">
+            <div class="form-group">
+                <label class="form-label">URL do Feed Pluviométrico CEMADEN</label>
+                <input type="url" name="pluvio_url" class="form-control"
+                       value="{{ station.pluvio_url ?? '' }}"
+                       placeholder="https://sjc.salvar.cemaden.gov.br/resources/graficos/...json"
+                       style="font-family:monospace;font-size:var(--text-xs)">
+                <span class="form-hint">URL do JSON de chuva acumulada. Opcional — deixe vazio se não houver feed direto.</span>
+            </div>
+        </div>
+
+        {# URL Hidrológica #}
         <div id="hydro-url-section"
              style="margin-top:var(--space-4);{{ station.station_type != 'hydrological' ? 'display:none' : '' }}">
             <div class="form-group">
@@ -128,9 +142,9 @@
 </div>
 
 <script>
-function toggleHydroUrl(type) {
-    document.getElementById('hydro-url-section').style.display =
-        type === 'hydrological' ? '' : 'none';
+function toggleUrlFields(type) {
+    document.getElementById('pluvio-url-section').style.display = type === 'pluviometric' ? '' : 'none';
+    document.getElementById('hydro-url-section').style.display  = type === 'hydrological'  ? '' : 'none';
 }
 </script>
 {% endblock %}

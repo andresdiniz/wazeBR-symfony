@@ -16,6 +16,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
  * CRUD de estações CEMADEN via SQL direto (tabela cemaden_stations).
  * Tipos: pluviometric | hydrological | meteorological
  * Estações hidrológicas possuem campo hydro_url para a API JSON do CEMADEN.
+ * Estações pluviométricas possuem campo pluvio_url para o feed JSON do CEMADEN.
  * Todas as estações podem ter lat/lng fixas (usadas no mapa do monitor).
  */
 #[Route('/admin/stations', name: 'admin_station_')]
@@ -58,9 +59,12 @@ class MonitoredStationAdminController extends AbstractController
         $errors   = [];
 
         if ($request->isMethod('POST')) {
-            $type     = $request->request->get('station_type', 'pluviometric');
-            $hydroUrl = $type === 'hydrological'
+            $type      = $request->request->get('station_type', 'pluviometric');
+            $hydroUrl  = $type === 'hydrological'
                 ? trim((string) $request->request->get('hydro_url', ''))
+                : null;
+            $pluvioUrl = $type === 'pluviometric'
+                ? trim((string) $request->request->get('pluvio_url', '')) ?: null
                 : null;
 
             $latRaw = $request->request->get('lat', '');
@@ -83,6 +87,7 @@ class MonitoredStationAdminController extends AbstractController
                     'uf'           => strtoupper($request->request->get('uf')),
                     'station_type' => $type,
                     'hydro_url'    => $hydroUrl,
+                    'pluvio_url'   => $pluvioUrl,
                     'partner_slug' => $request->request->get('partner_slug'),
                     'lat'          => $lat,
                     'lng'          => $lng,
@@ -116,9 +121,12 @@ class MonitoredStationAdminController extends AbstractController
         $errors   = [];
 
         if ($request->isMethod('POST')) {
-            $type     = $request->request->get('station_type', 'pluviometric');
-            $hydroUrl = $type === 'hydrological'
+            $type      = $request->request->get('station_type', 'pluviometric');
+            $hydroUrl  = $type === 'hydrological'
                 ? trim((string) $request->request->get('hydro_url', ''))
+                : null;
+            $pluvioUrl = $type === 'pluviometric'
+                ? trim((string) $request->request->get('pluvio_url', '')) ?: null
                 : null;
 
             $latRaw = $request->request->get('lat', '');
@@ -141,6 +149,7 @@ class MonitoredStationAdminController extends AbstractController
                     'uf'           => strtoupper($request->request->get('uf')),
                     'station_type' => $type,
                     'hydro_url'    => $hydroUrl,
+                    'pluvio_url'   => $pluvioUrl,
                     'partner_slug' => $request->request->get('partner_slug'),
                     'lat'          => $lat,
                     'lng'          => $lng,

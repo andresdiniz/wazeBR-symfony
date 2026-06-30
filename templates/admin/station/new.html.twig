@@ -6,7 +6,7 @@
 <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem">
     <div>
         <h1 class="page-title">Nova Estação CEMADEN</h1>
-        <p class="page-subtitle">Cadastre uma estação pluviométrica ou hidrológica para monitoramento.</p>
+        <p class="page-subtitle">Cadastre uma estação pluviométrica, hidrológica ou meteorológica.</p>
     </div>
     <a href="{{ path('admin_station_index') }}" class="btn btn-ghost btn-sm">← Voltar</a>
 </div>
@@ -49,7 +49,7 @@
             <div class="form-group">
                 <label class="form-label">Tipo da Estação</label>
                 <select name="station_type" class="form-control"
-                        onchange="toggleHydroUrl(this.value)">
+                        onchange="toggleUrlFields(this.value)">
                     {% for value, label in station_types %}
                         <option value="{{ value }}">{{ label }}</option>
                     {% endfor %}
@@ -80,6 +80,18 @@
 
         </div>
 
+        {# URL Pluviométrica — visível por padrão pois Pluviométrica é o primeiro tipo #}
+        <div id="pluvio-url-section" style="margin-top:var(--space-4);">
+            <div class="form-group">
+                <label class="form-label">URL do Feed Pluviométrico CEMADEN</label>
+                <input type="url" name="pluvio_url" class="form-control"
+                       placeholder="https://sjc.salvar.cemaden.gov.br/resources/graficos/...json"
+                       style="font-family:monospace;font-size:var(--text-xs)">
+                <span class="form-hint">URL do JSON de chuva acumulada. Opcional — deixe vazio se não houver feed direto.</span>
+            </div>
+        </div>
+
+        {# URL Hidrológica — oculta por padrão #}
         <div id="hydro-url-section" style="margin-top:var(--space-4);display:none">
             <div class="form-group">
                 <label class="form-label">URL da API Hidrológica CEMADEN</label>
@@ -98,9 +110,9 @@
 </div>
 
 <script>
-function toggleHydroUrl(type) {
-    document.getElementById('hydro-url-section').style.display =
-        type === 'hydrological' ? '' : 'none';
+function toggleUrlFields(type) {
+    document.getElementById('pluvio-url-section').style.display = type === 'pluviometric' ? '' : 'none';
+    document.getElementById('hydro-url-section').style.display  = type === 'hydrological'  ? '' : 'none';
 }
 </script>
 {% endblock %}
