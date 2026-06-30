@@ -2,54 +2,53 @@
 
 {% block title %}Nova Estação CEMADEN{% endblock %}
 
-{% block body %}
-<div class="container py-4" style="max-width: 800px">
-
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h4 mb-1">Nova Estação CEMADEN</h1>
-            <p class="text-muted small mb-0">Cadastre uma estação pluviométrica ou hidrológica para monitoramento.</p>
-        </div>
-        <a href="{{ path('admin_station_index') }}" class="btn btn-outline-secondary btn-sm">← Voltar</a>
+{% block content %}
+<div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem">
+    <div>
+        <h1 class="page-title">Nova Estação CEMADEN</h1>
+        <p class="page-subtitle">Cadastre uma estação pluviométrica ou hidrológica para monitoramento.</p>
     </div>
+    <a href="{{ path('admin_station_index') }}" class="btn btn-ghost btn-sm">← Voltar</a>
+</div>
 
-    {% if errors is defined and errors|length > 0 %}
-        <div class="alert alert-danger">
-            <ul class="mb-0">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
-        </div>
-    {% endif %}
+{% if errors is defined and errors|length > 0 %}
+    <div class="flash flash-error">
+        <div>{% for e in errors %}<div>{{ e }}</div>{% endfor %}</div>
+    </div>
+{% endif %}
 
+<div class="card" style="padding:var(--space-6)">
     <form method="POST">
-        <div class="row g-3">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:var(--space-4)">
 
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Código da Estação</label>
+            <div class="form-group">
+                <label class="form-label">Código da Estação</label>
                 <input type="text" name="cod_estacao" class="form-control" required
                        placeholder="Ex: 311830410H">
-                <div class="form-text">Pluviométrica: 9 dígitos+letra &nbsp;|&nbsp; Hidrológica: geralmente 10 dígitos+letra</div>
+                <span class="form-hint">Pluviométrica: 9 dígitos+letra &nbsp;|&nbsp; Hidrológica: 10+ dígitos+letra</span>
             </div>
 
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Nome da Estação</label>
+            <div class="form-group">
+                <label class="form-label">Nome da Estação</label>
                 <input type="text" name="nome" class="form-control" required
                        placeholder="Ex: Rio Bananeiras">
             </div>
 
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Município</label>
+            <div class="form-group">
+                <label class="form-label">Município</label>
                 <input type="text" name="municipio" class="form-control" required
                        placeholder="Ex: Conselheiro Lafaiete">
             </div>
 
-            <div class="col-md-2">
-                <label class="form-label fw-semibold">UF</label>
+            <div class="form-group">
+                <label class="form-label">UF</label>
                 <input type="text" name="uf" class="form-control" maxlength="2" required
                        placeholder="MG">
             </div>
 
-            <div class="col-md-4">
-                <label class="form-label fw-semibold">Tipo da Estação</label>
-                <select name="station_type" class="form-select" id="station-type-select"
+            <div class="form-group">
+                <label class="form-label">Tipo da Estação</label>
+                <select name="station_type" class="form-control"
                         onchange="toggleHydroUrl(this.value)">
                     {% for value, label in station_types %}
                         <option value="{{ value }}">{{ label }}</option>
@@ -57,40 +56,43 @@
                 </select>
             </div>
 
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Parceiro</label>
-                <select name="partner_slug" class="form-select">
+            <div class="form-group">
+                <label class="form-label">Parceiro</label>
+                <select name="partner_slug" class="form-control">
                     {% for partner in partners %}
                         <option value="{{ partner.slug }}">{{ partner.name }}</option>
                     {% endfor %}
                 </select>
             </div>
 
-            <div class="col-md-3">
-                <label class="form-label fw-semibold">Latitude <span class="text-muted fw-normal">(opcional)</span></label>
+            <div class="form-group">
+                <label class="form-label">Latitude <span style="color:var(--color-text-muted);font-weight:400">(opcional)</span></label>
                 <input type="number" name="lat" class="form-control" step="0.000001"
                        placeholder="-20.656400">
-                <div class="form-text">Preenchida automaticamente na 1ª coleta.</div>
+                <span class="form-hint">Deixe vazio — será preenchida automaticamente na 1ª coleta.</span>
             </div>
 
-            <div class="col-md-3">
-                <label class="form-label fw-semibold">Longitude <span class="text-muted fw-normal">(opcional)</span></label>
+            <div class="form-group">
+                <label class="form-label">Longitude <span style="color:var(--color-text-muted);font-weight:400">(opcional)</span></label>
                 <input type="number" name="lng" class="form-control" step="0.000001"
                        placeholder="-43.793700">
             </div>
 
         </div>
 
-        <div id="hydro-url-section" class="mt-3" style="display:none">
-            <label class="form-label fw-semibold">URL da API Hidrológica CEMADEN</label>
-            <input type="url" name="hydro_url" class="form-control font-monospace"
-                   placeholder="https://resources.cemaden.gov.br/graficos/cemaden/hidro/resources/json/MedidaResource.php?est=XXXX&sen=20&pag=24">
-            <div class="form-text">URL completa retornando JSON com campos: <code>datahora</code>, <code>valor</code>, <code>offset</code>.</div>
+        <div id="hydro-url-section" style="margin-top:var(--space-4);display:none">
+            <div class="form-group">
+                <label class="form-label">URL da API Hidrológica CEMADEN</label>
+                <input type="url" name="hydro_url" class="form-control"
+                       placeholder="https://resources.cemaden.gov.br/graficos/cemaden/hidro/resources/json/MedidaResource.php?est=XXXX&sen=20&pag=24"
+                       style="font-family:monospace;font-size:var(--text-xs)">
+                <span class="form-hint">Retorna JSON com campos: <code>datahora</code>, <code>valor</code>, <code>offset</code>.</span>
+            </div>
         </div>
 
-        <div class="d-flex gap-2 mt-4">
+        <div style="display:flex;gap:var(--space-3);margin-top:var(--space-6)">
             <button type="submit" class="btn btn-primary">✚ Criar Estação</button>
-            <a href="{{ path('admin_station_index') }}" class="btn btn-outline-secondary">Cancelar</a>
+            <a href="{{ path('admin_station_index') }}" class="btn btn-ghost">Cancelar</a>
         </div>
     </form>
 </div>

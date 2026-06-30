@@ -2,70 +2,75 @@
 
 {% block title %}Editar Estação CEMADEN{% endblock %}
 
-{% block body %}
-<div class="container py-4" style="max-width: 800px">
-
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h4 mb-1">Editar Estação</h1>
-            <p class="text-muted small mb-0">{{ station.nome }} — {{ station.municipio starts with '{' ? '(município corrompido)' : station.municipio }}/{{ station.uf }}</p>
-        </div>
-        <a href="{{ path('admin_station_index') }}" class="btn btn-outline-secondary btn-sm">← Voltar</a>
+{% block content %}
+<div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem">
+    <div>
+        <h1 class="page-title">Editar Estação</h1>
+        <p class="page-subtitle">
+            {{ station.nome }} —
+            {% if station.municipio starts with '{' %}
+                <span style="color:var(--color-warning)">(município corrompido)</span>
+            {% else %}
+                {{ station.municipio }}
+            {% endif %}
+            / {{ station.uf }}
+        </p>
     </div>
+    <a href="{{ path('admin_station_index') }}" class="btn btn-ghost btn-sm">← Voltar</a>
+</div>
 
-    {% for msg in app.flashes('error') %}
-        <div class="alert alert-danger">{{ msg }}</div>
-    {% endfor %}
-    {% for msg in app.flashes('success') %}
-        <div class="alert alert-success">{{ msg }}</div>
-    {% endfor %}
+{% if municipio_warning %}
+    <div class="flash flash-error" style="margin-bottom:var(--space-4)">
+        <i data-lucide="alert-triangle" style="width:16px;height:16px"></i>
+        {{ municipio_warning }}
+    </div>
+{% endif %}
 
-    {% if municipio_warning %}
-        <div class="alert alert-warning">⚠️ {{ municipio_warning }}</div>
-    {% endif %}
+{% if errors is defined and errors|length > 0 %}
+    <div class="flash flash-error">
+        <div>{% for e in errors %}<div>{{ e }}</div>{% endfor %}</div>
+    </div>
+{% endif %}
 
-    {% if errors is defined and errors|length > 0 %}
-        <div class="alert alert-danger">
-            <ul class="mb-0">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
-        </div>
-    {% endif %}
-
+<div class="card" style="padding:var(--space-6)">
     <form method="POST">
-        <div class="row g-3">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:var(--space-4)">
 
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Código da Estação</label>
+            <div class="form-group">
+                <label class="form-label">Código da Estação</label>
                 <input type="text" name="cod_estacao" class="form-control"
                        value="{{ station.cod_estacao }}" required
                        placeholder="Ex: 311830410H">
-                <div class="form-text">Pluviométrica: 9 dígitos+letra &nbsp;|&nbsp; Hidrológica: geralmente 10 dígitos+letra</div>
+                <span class="form-hint">Pluviométrica: 9 dígitos+letra &nbsp;|&nbsp; Hidrológica: 10+ dígitos+letra</span>
             </div>
 
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Nome da Estação</label>
+            <div class="form-group">
+                <label class="form-label">Nome da Estação</label>
                 <input type="text" name="nome" class="form-control"
                        value="{{ station.nome }}" required>
             </div>
 
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Município</label>
-                <input type="text" name="municipio" class="form-control{% if municipio_warning %} is-warning border-warning{% endif %}"
+            <div class="form-group">
+                <label class="form-label">Município</label>
+                <input type="text" name="municipio" class="form-control"
                        value="{% if station.municipio starts with '{' %}{% else %}{{ station.municipio }}{% endif %}"
-                       required placeholder="Ex: Conselheiro Lafaiete">
+                       required placeholder="Ex: Conselheiro Lafaiete"
+                       style="{% if municipio_warning %}border-color:var(--color-warning){% endif %}">
                 {% if municipio_warning %}
-                    <div class="form-text text-warning">O valor atual está corrompido. Digite o nome correto.</div>
+                    <span class="form-hint" style="color:var(--color-warning)">Dado corrompido. Digite o nome correto do município.</span>
                 {% endif %}
             </div>
 
-            <div class="col-md-2">
-                <label class="form-label fw-semibold">UF</label>
+            <div class="form-group">
+                <label class="form-label">UF</label>
                 <input type="text" name="uf" class="form-control"
-                       value="{{ station.uf }}" maxlength="2" required>
+                       value="{{ station.uf }}" maxlength="2" required
+                       placeholder="MG">
             </div>
 
-            <div class="col-md-4">
-                <label class="form-label fw-semibold">Tipo da Estação</label>
-                <select name="station_type" class="form-select" id="station-type-select"
+            <div class="form-group">
+                <label class="form-label">Tipo da Estação</label>
+                <select name="station_type" class="form-control"
                         onchange="toggleHydroUrl(this.value)">
                     {% for value, label in station_types %}
                         <option value="{{ value }}"
@@ -76,9 +81,9 @@
                 </select>
             </div>
 
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">Parceiro</label>
-                <select name="partner_slug" class="form-select">
+            <div class="form-group">
+                <label class="form-label">Parceiro</label>
+                <select name="partner_slug" class="form-control">
                     {% for partner in partners %}
                         <option value="{{ partner.slug }}"
                             {% if station.partner_slug == partner.slug %}selected{% endif %}>
@@ -88,34 +93,36 @@
                 </select>
             </div>
 
-            <div class="col-md-3">
-                <label class="form-label fw-semibold">Latitude <span class="text-muted fw-normal">(opcional)</span></label>
+            <div class="form-group">
+                <label class="form-label">Latitude <span style="color:var(--color-text-muted);font-weight:400">(opcional)</span></label>
                 <input type="number" name="lat" class="form-control" step="0.000001"
                        value="{{ station.lat ?? '' }}" placeholder="-20.656400">
-                <div class="form-text">Preenchida automaticamente na 1ª coleta pluviométrica.</div>
+                <span class="form-hint">Preenchida automaticamente na 1ª coleta pluviométrica.</span>
             </div>
 
-            <div class="col-md-3">
-                <label class="form-label fw-semibold">Longitude <span class="text-muted fw-normal">(opcional)</span></label>
+            <div class="form-group">
+                <label class="form-label">Longitude <span style="color:var(--color-text-muted);font-weight:400">(opcional)</span></label>
                 <input type="number" name="lng" class="form-control" step="0.000001"
                        value="{{ station.lng ?? '' }}" placeholder="-43.793700">
             </div>
 
         </div>
 
-        {# hydro_url — visível apenas para hidrológicas #}
-        <div id="hydro-url-section" class="mt-3"
-             style="{{ station.station_type != 'hydrological' ? 'display:none' : '' }}">
-            <label class="form-label fw-semibold">URL da API Hidrológica CEMADEN</label>
-            <input type="url" name="hydro_url" class="form-control font-monospace"
-                   value="{{ station.hydro_url ?? '' }}"
-                   placeholder="https://resources.cemaden.gov.br/graficos/cemaden/hidro/resources/json/MedidaResource.php?est=XXXX&sen=20&pag=24">
-            <div class="form-text">URL completa retornando JSON com campos: <code>datahora</code>, <code>valor</code>, <code>offset</code>.</div>
+        <div id="hydro-url-section"
+             style="margin-top:var(--space-4);{{ station.station_type != 'hydrological' ? 'display:none' : '' }}">
+            <div class="form-group">
+                <label class="form-label">URL da API Hidrológica CEMADEN</label>
+                <input type="url" name="hydro_url" class="form-control"
+                       value="{{ station.hydro_url ?? '' }}"
+                       placeholder="https://resources.cemaden.gov.br/graficos/cemaden/hidro/resources/json/MedidaResource.php?est=XXXX&sen=20&pag=24"
+                       style="font-family:monospace;font-size:var(--text-xs)">
+                <span class="form-hint">Retorna JSON com campos: <code>datahora</code>, <code>valor</code>, <code>offset</code>.</span>
+            </div>
         </div>
 
-        <div class="d-flex gap-2 mt-4">
+        <div style="display:flex;gap:var(--space-3);margin-top:var(--space-6)">
             <button type="submit" class="btn btn-primary">💾 Salvar alterações</button>
-            <a href="{{ path('admin_station_index') }}" class="btn btn-outline-secondary">Cancelar</a>
+            <a href="{{ path('admin_station_index') }}" class="btn btn-ghost">Cancelar</a>
         </div>
     </form>
 </div>
