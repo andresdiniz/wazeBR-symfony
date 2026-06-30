@@ -16,12 +16,12 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
  * CRUD de estações CEMADEN via SQL direto (tabela cemaden_stations).
  * Tipos: pluviometric | hydrological | meteorological
  * Estações hidrológicas possuem campo hydro_url para a API JSON do CEMADEN.
+ * Todas as estações podem ter lat/lng fixas (usadas no mapa do monitor).
  */
 #[Route('/admin/stations', name: 'admin_station_')]
 #[IsGranted('ROLE_ADMIN')]
 class MonitoredStationAdminController extends AbstractController
 {
-    /** Tipos disponíveis de estação CEMADEN */
     private const STATION_TYPES = [
         'pluviometric'   => 'Pluviométrica',
         'hydrological'   => 'Hidrológica',
@@ -63,6 +63,11 @@ class MonitoredStationAdminController extends AbstractController
                 ? trim((string) $request->request->get('hydro_url', ''))
                 : null;
 
+            $latRaw = $request->request->get('lat', '');
+            $lngRaw = $request->request->get('lng', '');
+            $lat    = $latRaw !== '' ? (float) $latRaw : null;
+            $lng    = $lngRaw !== '' ? (float) $lngRaw : null;
+
             if (!array_key_exists($type, self::STATION_TYPES)) {
                 $errors[] = 'Tipo de estação inválido.';
             }
@@ -79,6 +84,8 @@ class MonitoredStationAdminController extends AbstractController
                     'station_type' => $type,
                     'hydro_url'    => $hydroUrl,
                     'partner_slug' => $request->request->get('partner_slug'),
+                    'lat'          => $lat,
+                    'lng'          => $lng,
                     'is_active'    => 1,
                 ]);
 
@@ -114,6 +121,11 @@ class MonitoredStationAdminController extends AbstractController
                 ? trim((string) $request->request->get('hydro_url', ''))
                 : null;
 
+            $latRaw = $request->request->get('lat', '');
+            $lngRaw = $request->request->get('lng', '');
+            $lat    = $latRaw !== '' ? (float) $latRaw : null;
+            $lng    = $lngRaw !== '' ? (float) $lngRaw : null;
+
             if (!array_key_exists($type, self::STATION_TYPES)) {
                 $errors[] = 'Tipo de estação inválido.';
             }
@@ -130,6 +142,8 @@ class MonitoredStationAdminController extends AbstractController
                     'station_type' => $type,
                     'hydro_url'    => $hydroUrl,
                     'partner_slug' => $request->request->get('partner_slug'),
+                    'lat'          => $lat,
+                    'lng'          => $lng,
                 ], ['id' => $id]);
 
                 $this->addFlash('success', 'Estação atualizada.');
@@ -137,11 +151,18 @@ class MonitoredStationAdminController extends AbstractController
             }
         }
 
+        // Aviso visual se municipio parece JSON corrompido
+        $municipioWarning = null;
+        if (isset($station['municipio']) && str_starts_with(trim($station['municipio']), '{')) {
+            $municipioWarning = 'O campo município parece conter dados corrompidos (JSON). Corrija abaixo.';
+        }
+
         return $this->render('admin/station/edit.html.twig', [
-            'station'       => $station,
-            'partners'      => $partners,
-            'station_types' => self::STATION_TYPES,
-            'errors'        => $errors,
+            'station'           => $station,
+            'partners'          => $partners,
+            'station_types'     => self::STATION_TYPES,
+            'errors'            => $errors,
+            'municipio_warning' => $municipioWarning,
         ]);
     }
 

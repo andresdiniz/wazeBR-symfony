@@ -1,90 +1,136 @@
-{% extends 'base.html.twig' %}
+{% extends 'admin/layout.html.twig' %}
+
 {% block title %}Editar Estação CEMADEN{% endblock %}
+
 {% block content %}
-<div class="page-header" style="display:flex;align-items:center;gap:var(--space-4)">
-  <a href="{{ path('admin_station_index') }}" class="btn btn-ghost btn-sm">
-    <i data-lucide="arrow-left" style="width:14px;height:14px"></i> Voltar
-  </a>
-  <h1 class="page-title">Editar Estação</h1>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Editar Estação</h1>
+        <p class="page-subtitle">{{ station.nome }} — {{ station.municipio }}/{{ station.uf }}</p>
+    </div>
+    <a href="{{ path('admin_station_index') }}" class="btn btn-secondary">← Voltar</a>
 </div>
 
-{% if errors is defined and errors|length > 0 %}
-  <div class="alert alert-error" style="max-width:580px;margin-bottom:var(--space-4)">
-    {% for e in errors %}<p>{{ e }}</p>{% endfor %}
-  </div>
+{% for msg in app.flashes('error') %}
+    <div class="alert alert-error">{{ msg }}</div>
+{% endfor %}
+
+{% if municipio_warning %}
+    <div class="alert alert-warning" style="margin-bottom:1rem">
+        ⚠️ {{ municipio_warning }}
+    </div>
 {% endif %}
 
-<div class="card" style="max-width:580px">
-  <div style="padding:var(--space-6)">
-    <form method="post" id="station-form">
+{% if errors is defined and errors|length > 0 %}
+    <div class="alert alert-error">
+        <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+    </div>
+{% endif %}
 
-      {# Tipo de estação #}
-      <div class="form-group">
-        <label class="form-label" for="station_type">Tipo de Estação</label>
-        <select class="form-control" id="station_type" name="station_type" required onchange="toggleHydroUrl()">
-          {% for value, label in station_types %}
-            <option value="{{ value }}" {{ station.station_type == value ? 'selected' }}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <div class="form-grid">
 
-      {# URL hidrológica — visível somente quando tipo = hydrological #}
-      <div class="form-group" id="hydro-url-group" style="display:none">
-        <label class="form-label" for="hydro_url">URL da API Hidrológica</label>
-        <input class="form-control" id="hydro_url" name="hydro_url"
-               value="{{ station.hydro_url ?? '' }}"
-               placeholder="https://resources.cemaden.gov.br/graficos/cemaden/hidro/resources/json/AcumuladoResource.php?est=XXXXX&pag=24">
-        <span class="form-hint">
-          URL JSON da API CEMADEN. Retorna leituras horárias com campos:
-          <code>codigo</code>, <code>estacao</code>, <code>datahora</code>, <code>valor</code>.
-        </span>
-      </div>
+                <div class="form-group">
+                    <label for="cod_estacao">Código da Estação</label>
+                    <input type="text" id="cod_estacao" name="cod_estacao"
+                           value="{{ station.cod_estacao }}" class="form-control" required>
+                    <small class="form-hint">Ex: 311830410H (pluviométrica) | 3118304110H (hidrológica)</small>
+                </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
-        <div class="form-group">
-          <label class="form-label" for="cod_estacao">Código da Estação</label>
-          <input class="form-control" id="cod_estacao" name="cod_estacao" required value="{{ station.cod_estacao }}">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="uf">UF</label>
-          <input class="form-control" id="uf" name="uf" maxlength="2" required value="{{ station.uf }}">
-        </div>
-      </div>
+                <div class="form-group">
+                    <label for="nome">Nome da Estação</label>
+                    <input type="text" id="nome" name="nome"
+                           value="{{ station.nome }}" class="form-control" required>
+                </div>
 
-      <div class="form-group">
-        <label class="form-label" for="nome">Nome da Estação</label>
-        <input class="form-control" id="nome" name="nome" required value="{{ station.nome }}">
-      </div>
+                <div class="form-group">
+                    <label for="municipio">Município</label>
+                    <input type="text" id="municipio" name="municipio"
+                           value="{% if station.municipio starts with '{' %}{% else %}{{ station.municipio }}{% endif %}"
+                           class="form-control{% if municipio_warning %} input-warning{% endif %}" required
+                           placeholder="Ex: Conselheiro Lafaiete">
+                    {% if municipio_warning %}
+                        <small class="form-hint text-warning">O valor atual está corrompido. Digite o nome correto do município.</small>
+                    {% endif %}
+                </div>
 
-      <div class="form-group">
-        <label class="form-label" for="municipio">Município</label>
-        <input class="form-control" id="municipio" name="municipio" required value="{{ station.municipio }}">
-      </div>
+                <div class="form-group">
+                    <label for="uf">UF</label>
+                    <input type="text" id="uf" name="uf"
+                           value="{{ station.uf }}" class="form-control" maxlength="2" required>
+                </div>
 
-      <div class="form-group">
-        <label class="form-label" for="partner_slug">Parceiro</label>
-        <select class="form-control" id="partner_slug" name="partner_slug" required>
-          <option value="">Selecione…</option>
-          {% for p in partners %}
-            <option value="{{ p.slug }}" {{ station.partner_slug == p.slug ? 'selected' }}>{{ p.name }} ({{ p.slug }})</option>
-          {% endfor %}
-        </select>
-      </div>
+                <div class="form-group">
+                    <label for="station_type">Tipo da Estação</label>
+                    <select id="station_type" name="station_type" class="form-control"
+                            onchange="toggleHydroUrl(this.value)">
+                        {% for value, label in station_types %}
+                            <option value="{{ value }}"
+                                {% if station.station_type == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-      <button type="submit" class="btn btn-primary" style="width:100%">Salvar Alterações</button>
-    </form>
-  </div>
+                <div class="form-group">
+                    <label for="partner_slug">Parceiro</label>
+                    <select id="partner_slug" name="partner_slug" class="form-control">
+                        {% for partner in partners %}
+                            <option value="{{ partner.slug }}"
+                                {% if station.partner_slug == partner.slug %}selected{% endif %}>
+                                {{ partner.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                {# Coordenadas fixas — usadas no mapa; preenchidas automaticamente na 1ª coleta pluviométrica #}
+                <div class="form-group">
+                    <label for="lat">Latitude (opcional)</label>
+                    <input type="number" id="lat" name="lat" step="0.000001"
+                           value="{{ station.lat ?? '' }}" class="form-control"
+                           placeholder="Ex: -20.656400">
+                    <small class="form-hint">Preenchida automaticamente na próxima coleta pluviométrica, se vazia.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="lng">Longitude (opcional)</label>
+                    <input type="number" id="lng" name="lng" step="0.000001"
+                           value="{{ station.lng ?? '' }}" class="form-control"
+                           placeholder="Ex: -43.793700">
+                </div>
+
+            </div>
+
+            {# Campo hydro_url — visível apenas para estações hidrológicas #}
+            <div id="hydro-url-section"
+                 style="{{ station.station_type != 'hydrological' ? 'display:none' : '' }}">
+                <div class="form-group" style="margin-top:1rem">
+                    <label for="hydro_url">URL da API Hidrológica CEMADEN</label>
+                    <input type="url" id="hydro_url" name="hydro_url"
+                           value="{{ station.hydro_url ?? '' }}" class="form-control"
+                           placeholder="https://resources.cemaden.gov.br/graficos/cemaden/hidro/resources/json/MedidaResource.php?est=XXXX&sen=20&pag=24">
+                    <small class="form-hint">
+                        URL completa retornando JSON com campos: <code>datahora</code>, <code>valor</code>, <code>offset</code>.
+                    </small>
+                </div>
+            </div>
+
+            <div class="form-actions" style="margin-top:1.5rem">
+                <button type="submit" class="btn btn-primary">💾 Salvar alterações</button>
+                <a href="{{ path('admin_station_index') }}" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
 </div>
 
 <script>
-function toggleHydroUrl() {
-  const type  = document.getElementById('station_type').value;
-  const group = document.getElementById('hydro-url-group');
-  const input = document.getElementById('hydro_url');
-  const show  = type === 'hydrological';
-  group.style.display = show ? 'block' : 'none';
-  input.required = show;
+function toggleHydroUrl(type) {
+    document.getElementById('hydro-url-section').style.display =
+        type === 'hydrological' ? '' : 'none';
 }
-document.addEventListener('DOMContentLoaded', toggleHydroUrl);
 </script>
 {% endblock %}

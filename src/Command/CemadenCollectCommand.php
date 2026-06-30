@@ -65,15 +65,21 @@ class CemadenCollectCommand extends Command
             $this->tenantContext->setPartner($partner);
             $io->section("Parceiro: {$partner->getName()} [{$partner->getSlug()}]");
 
-            // Carrega estações pluviométricas ativas deste parceiro
-            $allowedCodes = $this->loadAllowedCodes($partner->getSlug());
+            // Carrega estações pluviométricas ativas deste parceiro (com id para atualizar lat/lng)
+            $stations = $this->loadPluviometricStations($partner->getSlug());
 
-            if (empty($allowedCodes)) {
+            if (empty($stations)) {
                 $io->warning('Nenhuma estação pluviométrica ativa cadastrada em cemaden_stations. Pulando.');
                 continue;
             }
 
-            $io->text(sprintf('  Estações autorizadas: %s', implode(', ', $allowedCodes)));
+            // Monta mapa cod_estacao → id (para atualizar lat/lng depois)
+            $stationMap = [];
+            foreach ($stations as $s) {
+                $stationMap[$s['cod_estacao']] = $s;
+            }
+
+            $io->text(sprintf('  Estações autorizadas: %s', implode(', ', array_keys($stationMap))));
 
             $states = $partner->getCemadenStates();
             if (empty($states)) {
@@ -84,7 +90,7 @@ class CemadenCollectCommand extends Command
             $total = 0;
             foreach ($states as $state) {
                 try {
-                    $count = $this->collectState($partner, $state, $allowedCodes);
+                    $count = $this->collectState($partner, $state, $stationMap);
                     $io->text("  Estado {$state}: {$count} novos registros.");
                     $total += $count;
                 } catch (\Throwable $e) {
@@ -99,26 +105,19 @@ class CemadenCollectCommand extends Command
     }
 
     /**
-     * Carrega os cod_estacao pluviométricos ativos de um parceiro.
-     * Retorna um array associativo: ['311830410H' => true, ...]
+     * Carrega estações pluviométricas ativas de um parceiro com id, cod_estacao e lat/lng atuais.
      */
-    private function loadAllowedCodes(string $partnerSlug): array
+    private function loadPluviometricStations(string $partnerSlug): array
     {
-        $rows = $this->db->fetchAllAssociative(
-            "SELECT cod_estacao FROM cemaden_stations
+        return $this->db->fetchAllAssociative(
+            "SELECT id, cod_estacao, lat, lng
+             FROM cemaden_stations
              WHERE partner_slug = ? AND station_type = 'pluviometric' AND is_active = 1",
             [$partnerSlug],
         );
-
-        $codes = [];
-        foreach ($rows as $row) {
-            $codes[$row['cod_estacao']] = true;
-        }
-
-        return $codes;
     }
 
-    private function collectState(Partner $partner, string $state, array $allowedCodes): int
+    private function collectState(Partner $partner, string $state, array $stationMap): int
     {
         $response = $this->httpClient->request('GET', self::CEMADEN_URL, [
             'query'   => ['uf' => $state, 'tipo' => 1],
@@ -138,7 +137,7 @@ class CemadenCollectCommand extends Command
             if (!$stationCode) continue;
 
             // ← Filtro principal: ignora estações não cadastradas
-            if (!isset($allowedCodes[$stationCode])) continue;
+            if (!isset($stationMap[$stationCode])) continue;
 
             $measuredAt = isset($raw['dataHora'])
                 ? new \DateTimeImmutable($raw['dataHora'])
@@ -152,8 +151,22 @@ class CemadenCollectCommand extends Command
 
             if ($existing) continue;
 
-            $rain  = (float) ($raw['valorMedido'] ?? 0);
-            $level = $this->resolveAlertLevel($rain);
+            $lat  = isset($raw['latitude'])  ? (float) $raw['latitude']  : null;
+            $lng  = isset($raw['longitude']) ? (float) $raw['longitude'] : null;
+            $rain = (float) ($raw['valorMedido'] ?? 0);
+
+            // Atualiza lat/lng na tabela cemaden_stations se ainda não tiver coordenada
+            $stationRow = $stationMap[$stationCode];
+            if ($lat !== null && $lng !== null &&
+                (empty($stationRow['lat']) || empty($stationRow['lng']))) {
+                $this->db->update('cemaden_stations', [
+                    'lat' => $lat,
+                    'lng' => $lng,
+                ], ['id' => (int) $stationRow['id']]);
+                // Atualiza o mapa local para não repetir o UPDATE
+                $stationMap[$stationCode]['lat'] = $lat;
+                $stationMap[$stationCode]['lng'] = $lng;
+            }
 
             $item = (new CemadenData())
                 ->setPartner($partner)
@@ -161,10 +174,10 @@ class CemadenCollectCommand extends Command
                 ->setStationName($raw['nomeEstacao'] ?? '')
                 ->setMunicipality($raw['municipio'] ?? '')
                 ->setState($state)
-                ->setLatitude((float) ($raw['latitude'] ?? 0))
-                ->setLongitude((float) ($raw['longitude'] ?? 0))
+                ->setLatitude($lat ?? 0.0)
+                ->setLongitude($lng ?? 0.0)
                 ->setAccumulatedRain($rain)
-                ->setAlertLevel($level)
+                ->setAlertLevel($this->resolveAlertLevel($rain))
                 ->setMeasuredAt($measuredAt);
 
             $this->cemadenRepo->save($item, false);

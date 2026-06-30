@@ -1,100 +1,114 @@
-{% extends 'base.html.twig' %}
+{% extends 'admin/layout.html.twig' %}
+
 {% block title %}Nova Estação CEMADEN{% endblock %}
+
 {% block content %}
-<div class="page-header" style="display:flex;align-items:center;gap:var(--space-4)">
-  <a href="{{ path('admin_station_index') }}" class="btn btn-ghost btn-sm">
-    <i data-lucide="arrow-left" style="width:14px;height:14px"></i> Voltar
-  </a>
-  <h1 class="page-title">Nova Estação CEMADEN</h1>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Nova Estação CEMADEN</h1>
+        <p class="page-subtitle">Cadastre uma estação pluviométrica ou hidrológica para monitoramento.</p>
+    </div>
+    <a href="{{ path('admin_station_index') }}" class="btn btn-secondary">← Voltar</a>
 </div>
 
 {% if errors is defined and errors|length > 0 %}
-  <div class="alert alert-error" style="max-width:580px;margin-bottom:var(--space-4)">
-    {% for e in errors %}<p>{{ e }}</p>{% endfor %}
-  </div>
+    <div class="alert alert-error">
+        <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+    </div>
 {% endif %}
 
-<div class="card" style="max-width:580px">
-  <div style="padding:var(--space-6)">
-    <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-5)">
-      O código da estação pode ser consultado no
-      <a href="http://www.cemaden.gov.br/mapainterativo/" target="_blank" rel="noopener" style="color:var(--color-primary)">mapa interativo do CEMADEN</a>.
-    </p>
-    <form method="post" id="station-form">
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <div class="form-grid">
 
-      {# Tipo de estação #}
-      <div class="form-group">
-        <label class="form-label" for="station_type">Tipo de Estação</label>
-        <select class="form-control" id="station_type" name="station_type" required onchange="toggleHydroUrl()">
-          {% for value, label in station_types %}
-            <option value="{{ value }}">{{ label }}</option>
-          {% endfor %}
-        </select>
-        <span class="form-hint">Define o tipo de medição da estação</span>
-      </div>
+                <div class="form-group">
+                    <label for="cod_estacao">Código da Estação</label>
+                    <input type="text" id="cod_estacao" name="cod_estacao"
+                           class="form-control" required
+                           placeholder="Ex: 311830410H">
+                    <small class="form-hint">Código CEMADEN. Pluviométrica: alfanumérico simples. Hidrológica: geralmente mais dígitos.</small>
+                </div>
 
-      {# URL hidrológica — aparece somente quando tipo = hydrological #}
-      <div class="form-group" id="hydro-url-group" style="display:none">
-        <label class="form-label" for="hydro_url">URL da API Hidrológica</label>
-        <input class="form-control" id="hydro_url" name="hydro_url"
-               placeholder="https://resources.cemaden.gov.br/graficos/cemaden/hidro/resources/json/AcumuladoResource.php?est=XXXXX&pag=24">
-        <span class="form-hint">
-          URL JSON da API CEMADEN. Exemplo:
-          <code style="font-size:0.8em;word-break:break-all">
-            .../AcumuladoResource.php?est=6622&amp;pag=24
-          </code><br>
-          Retorna leituras horárias com campos: <code>codigo</code>, <code>estacao</code>, <code>datahora</code>, <code>valor</code>.
-        </span>
-      </div>
+                <div class="form-group">
+                    <label for="nome">Nome da Estação</label>
+                    <input type="text" id="nome" name="nome"
+                           class="form-control" required
+                           placeholder="Ex: Rio Bananeiras">
+                </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
-        <div class="form-group">
-          <label class="form-label" for="cod_estacao">Código da Estação</label>
-          <input class="form-control" id="cod_estacao" name="cod_estacao" required placeholder="ex: 310620901A">
-          <span class="form-hint">Código único do CEMADEN</span>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="uf">UF</label>
-          <input class="form-control" id="uf" name="uf" maxlength="2" required placeholder="MG">
-        </div>
-      </div>
+                <div class="form-group">
+                    <label for="municipio">Município</label>
+                    <input type="text" id="municipio" name="municipio"
+                           class="form-control" required
+                           placeholder="Ex: Conselheiro Lafaiete">
+                </div>
 
-      <div class="form-group">
-        <label class="form-label" for="nome">Nome da Estação</label>
-        <input class="form-control" id="nome" name="nome" required placeholder="ex: Rio Bananeiras">
-      </div>
+                <div class="form-group">
+                    <label for="uf">UF</label>
+                    <input type="text" id="uf" name="uf"
+                           class="form-control" maxlength="2" required
+                           placeholder="MG">
+                </div>
 
-      <div class="form-group">
-        <label class="form-label" for="municipio">Município</label>
-        <input class="form-control" id="municipio" name="municipio" required placeholder="ex: Conselheiro Lafaiete">
-      </div>
+                <div class="form-group">
+                    <label for="station_type">Tipo da Estação</label>
+                    <select id="station_type" name="station_type" class="form-control"
+                            onchange="toggleHydroUrl(this.value)">
+                        {% for value, label in station_types %}
+                            <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-      <div class="form-group">
-        <label class="form-label" for="partner_slug">Parceiro</label>
-        <select class="form-control" id="partner_slug" name="partner_slug" required>
-          <option value="">Selecione…</option>
-          {% for p in partners %}
-            <option value="{{ p.slug }}">{{ p.name }} ({{ p.slug }})</option>
-          {% endfor %}
-        </select>
-        <span class="form-hint">A estação será visível apenas para este parceiro</span>
-      </div>
+                <div class="form-group">
+                    <label for="partner_slug">Parceiro</label>
+                    <select id="partner_slug" name="partner_slug" class="form-control">
+                        {% for partner in partners %}
+                            <option value="{{ partner.slug }}">{{ partner.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-      <button type="submit" class="btn btn-primary" style="width:100%">Criar Estação</button>
-    </form>
-  </div>
+                <div class="form-group">
+                    <label for="lat">Latitude (opcional)</label>
+                    <input type="number" id="lat" name="lat" step="0.000001"
+                           class="form-control" placeholder="Ex: -20.656400">
+                    <small class="form-hint">Deixe vazio — será preenchida automaticamente na 1ª coleta pluviométrica.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="lng">Longitude (opcional)</label>
+                    <input type="number" id="lng" name="lng" step="0.000001"
+                           class="form-control" placeholder="Ex: -43.793700">
+                </div>
+
+            </div>
+
+            <div id="hydro-url-section" style="display:none">
+                <div class="form-group" style="margin-top:1rem">
+                    <label for="hydro_url">URL da API Hidrológica CEMADEN</label>
+                    <input type="url" id="hydro_url" name="hydro_url"
+                           class="form-control"
+                           placeholder="https://resources.cemaden.gov.br/graficos/cemaden/hidro/resources/json/MedidaResource.php?est=XXXX&sen=20&pag=24">
+                    <small class="form-hint">
+                        URL completa retornando JSON com campos: <code>datahora</code>, <code>valor</code>, <code>offset</code>.
+                    </small>
+                </div>
+            </div>
+
+            <div class="form-actions" style="margin-top:1.5rem">
+                <button type="submit" class="btn btn-primary">✚ Criar Estação</button>
+                <a href="{{ path('admin_station_index') }}" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
 </div>
 
 <script>
-function toggleHydroUrl() {
-  const type  = document.getElementById('station_type').value;
-  const group = document.getElementById('hydro-url-group');
-  const input = document.getElementById('hydro_url');
-  const show  = type === 'hydrological';
-  group.style.display = show ? 'block' : 'none';
-  input.required = show;
+function toggleHydroUrl(type) {
+    document.getElementById('hydro-url-section').style.display =
+        type === 'hydrological' ? '' : 'none';
 }
-// Inicializa no load
-document.addEventListener('DOMContentLoaded', toggleHydroUrl);
 </script>
 {% endblock %}
