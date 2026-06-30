@@ -20,7 +20,7 @@ class WazeAlertRepository extends ServiceEntityRepository
         parent::__construct($registry, WazeAlert::class);
     }
 
-    // ── contagens simples ────────────────────────────────────────────────────
+    // ── contagens simples ─────────────────────────────────────────────────────────────────────
 
     public function countByPartner(Partner $partner): int
     {
@@ -28,6 +28,17 @@ class WazeAlertRepository extends ServiceEntityRepository
             ->select('COUNT(a.id)')
             ->where('a.partner = :p')
             ->setParameter('p', $partner)
+            ->getQuery()->getSingleScalarResult();
+    }
+
+    public function countLast1hByPartner(Partner $partner): int
+    {
+        return (int) $this->createQueryBuilder('a')
+            ->select('COUNT(a.id)')
+            ->where('a.partner = :p')
+            ->setParameter('p', $partner)
+            ->andWhere('a.createdAt >= :since')
+            ->setParameter('since', new \DateTimeImmutable('-1 hour'))
             ->getQuery()->getSingleScalarResult();
     }
 
@@ -42,7 +53,7 @@ class WazeAlertRepository extends ServiceEntityRepository
             ->getQuery()->getSingleScalarResult();
     }
 
-    // ── listagens ────────────────────────────────────────────────────────────
+    // ── listagens ───────────────────────────────────────────────────────────────────────
 
     /**
      * Histórico paginado com filtros opcionais.
@@ -147,7 +158,7 @@ class WazeAlertRepository extends ServiceEntityRepository
         return $this->findLiveByPartner($partner, 3);
     }
 
-    // ── agregações para filtros / charts ─────────────────────────────────────
+    // ── agregações para filtros / charts ─────────────────────────────────────────────
 
     /** Lista de cidades distintas do parceiro */
     public function findDistinctCities(Partner $partner): array
