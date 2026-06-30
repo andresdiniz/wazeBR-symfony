@@ -74,10 +74,7 @@ class LiveSummaryController extends AbstractController
 
         // ── Feed de jams serializado ─────────────────────────────────────────
         $jamFeed = array_map(function ($j) {
-            // startNode é string (nome do nó), não array de coordenadas
-            // coordenadas ficam no primeiro ponto de getLine()
             $firstPoint = $j->getLine()[0] ?? null;
-
             return [
                 'id'     => $j->getId(),
                 'street' => $j->getStreet() ?? '',
@@ -95,9 +92,9 @@ class LiveSummaryController extends AbstractController
         // ── CEMADEN serializado ──────────────────────────────────────────────
         $cemadenFeed = array_map(function ($c) {
             return [
-                'station'    => $c->getStationName() ?? $c->getStationCode() ?? '',
-                'city'       => $c->getCityName() ?? '',
-                'state'      => $c->getState() ?? '',
+                'station'    => $c->getStationName(),
+                'city'       => $c->getMunicipality(),
+                'state'      => $c->getState(),
                 'rain'       => $c->getAccumulatedRain() ?? 0,
                 'alertLevel' => $c->getAlertLevel() ?? 'NO_ALERT',
                 'lat'        => $c->getLatitude(),
