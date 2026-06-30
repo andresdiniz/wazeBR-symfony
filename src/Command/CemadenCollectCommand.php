@@ -9,6 +9,7 @@ use App\Entity\Partner;
 use App\Repository\CemadenDataRepository;
 use App\Repository\PartnerRepository;
 use App\Service\TenantContext;
+use Doctrine\DBAL\Connection;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -19,7 +20,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 #[AsCommand(
     name: 'cemaden:collect',
-    description: 'Coleta dados CEMADEN para todos os parceiros ativos.',
+    description: 'Coleta dados CEMADEN pluviométricos para estações cadastradas em cemaden_stations.',
 )]
 class CemadenCollectCommand extends Command
 {
@@ -30,6 +31,7 @@ class CemadenCollectCommand extends Command
         private readonly CemadenDataRepository $cemadenRepo,
         private readonly TenantContext         $tenantContext,
         private readonly HttpClientInterface   $httpClient,
+        private readonly Connection            $db,
     ) {
         parent::__construct();
     }
@@ -43,7 +45,7 @@ class CemadenCollectCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        $io->title('CEMADEN Collect — Multi-Tenant');
+        $io->title('CEMADEN Collect — Multi-Tenant (filtrado por cemaden_stations)');
 
         $slugFilter = $input->getOption('partner');
 
@@ -63,6 +65,16 @@ class CemadenCollectCommand extends Command
             $this->tenantContext->setPartner($partner);
             $io->section("Parceiro: {$partner->getName()} [{$partner->getSlug()}]");
 
+            // Carrega estações pluviométricas ativas deste parceiro
+            $allowedCodes = $this->loadAllowedCodes($partner->getSlug());
+
+            if (empty($allowedCodes)) {
+                $io->warning('Nenhuma estação pluviométrica ativa cadastrada em cemaden_stations. Pulando.');
+                continue;
+            }
+
+            $io->text(sprintf('  Estações autorizadas: %s', implode(', ', $allowedCodes)));
+
             $states = $partner->getCemadenStates();
             if (empty($states)) {
                 $io->warning('Nenhum estado CEMADEN configurado. Pulando.');
@@ -72,7 +84,7 @@ class CemadenCollectCommand extends Command
             $total = 0;
             foreach ($states as $state) {
                 try {
-                    $count = $this->collectState($partner, $state);
+                    $count = $this->collectState($partner, $state, $allowedCodes);
                     $io->text("  Estado {$state}: {$count} novos registros.");
                     $total += $count;
                 } catch (\Throwable $e) {
@@ -86,7 +98,27 @@ class CemadenCollectCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function collectState(Partner $partner, string $state): int
+    /**
+     * Carrega os cod_estacao pluviométricos ativos de um parceiro.
+     * Retorna um array associativo: ['311830410H' => true, ...]
+     */
+    private function loadAllowedCodes(string $partnerSlug): array
+    {
+        $rows = $this->db->fetchAllAssociative(
+            "SELECT cod_estacao FROM cemaden_stations
+             WHERE partner_slug = ? AND station_type = 'pluviometric' AND is_active = 1",
+            [$partnerSlug],
+        );
+
+        $codes = [];
+        foreach ($rows as $row) {
+            $codes[$row['cod_estacao']] = true;
+        }
+
+        return $codes;
+    }
+
+    private function collectState(Partner $partner, string $state, array $allowedCodes): int
     {
         $response = $this->httpClient->request('GET', self::CEMADEN_URL, [
             'query'   => ['uf' => $state, 'tipo' => 1],
@@ -105,7 +137,9 @@ class CemadenCollectCommand extends Command
             $stationCode = $raw['codEstacao'] ?? null;
             if (!$stationCode) continue;
 
-            // Evita duplicata: mesmo parceiro + estação + horário
+            // ← Filtro principal: ignora estações não cadastradas
+            if (!isset($allowedCodes[$stationCode])) continue;
+
             $measuredAt = isset($raw['dataHora'])
                 ? new \DateTimeImmutable($raw['dataHora'])
                 : new \DateTimeImmutable();
