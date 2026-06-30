@@ -468,14 +468,18 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
 'use strict';
 
 // ── Config ────────────────────────────────────────────────────────
-const POLL_MS     = 30_000;
-const API_URL     = '/api/live-summary';
-const RAIN_WARN   = 10;   // mm/h → yellow
-const RAIN_CRIT   = 30;   // mm/h → red
-const JAM_WARN    = 10;   // jams → yellow
-const JAM_CRIT    = 30;   // jams → red
-const DELAY_WARN  = 60;   // seg
-const DELAY_CRIT  = 180;  // seg
+const POLL_MS    = 30_000;
+const API_URL    = '/api/live-summary';
+const RAIN_WARN  = 10;
+const RAIN_CRIT  = 30;
+const JAM_WARN   = 10;
+const JAM_CRIT   = 30;
+const DELAY_WARN = 60;
+const DELAY_CRIT = 180;
+// Coordenadas de fallback (BH) — usadas apenas se a API não retornar nenhum dado geográfico
+const FALLBACK_LAT = -19.92;
+const FALLBACK_LNG = -43.94;
+const FALLBACK_ZOOM = 12;
 
 // ── Wake Lock — impede bloqueio de tela ──────────────────────────
 let wakeLock = null;
@@ -483,7 +487,6 @@ const wakeLockEl = document.getElementById('wakelock-indicator');
 
 async function requestWakeLock() {
   if (!('wakeLock' in navigator)) {
-    // API não suportada (Firefox sem flag, por ex.)
     if (wakeLockEl) { wakeLockEl.textContent = ''; wakeLockEl.style.display = 'none'; }
     return;
   }
@@ -491,30 +494,25 @@ async function requestWakeLock() {
     wakeLock = await navigator.wakeLock.request('screen');
     wakeLockEl.textContent = '🔆 tela ativa';
     wakeLockEl.classList.add('active');
-    // Re-adquire automaticamente se a aba voltar ao foco
     wakeLock.addEventListener('release', () => {
       wakeLockEl.textContent = '💤 tela livre';
       wakeLockEl.classList.remove('active');
     });
   } catch (err) {
-    // sem permissão ou erro — silencioso
     if (wakeLockEl) wakeLockEl.style.display = 'none';
   }
 }
-
-// Quando o usuário muda de aba e volta, reativa o Wake Lock
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') requestWakeLock();
 });
-
-// Inicia imediatamente
 requestWakeLock();
 
 // ── Estado ────────────────────────────────────────────────────────
-let soundEnabled = false;
-let lastTs       = null;
-let history      = { jams: [], alerts: [], upd: [] };
-let mapLayers    = { jams: L.layerGroup(), alerts: L.layerGroup(), cemaden: L.layerGroup() };
+let soundEnabled  = false;
+let lastTs        = null;
+let mapFitted     = false;  // ajusta o bounding box apenas uma vez (no primeiro poll)
+let history       = { jams: [], alerts: [], upd: [] };
+let mapLayers     = { jams: L.layerGroup(), alerts: L.layerGroup(), cemaden: L.layerGroup() };
 
 // ── Relógio ───────────────────────────────────────────────────────
 function tickClock() {
@@ -536,7 +534,6 @@ document.getElementById('op-sound-btn').addEventListener('click', function () {
   soundEnabled = !soundEnabled;
   this.textContent = soundEnabled ? '🔔 Som' : '🔇 Som';
 });
-
 function beep() {
   if (!soundEnabled) return;
   try {
@@ -556,7 +553,8 @@ const map = L.map('op-map', { zoomControl: true, attributionControl: false });
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
   subdomains: 'abcd', maxZoom: 19,
 }).addTo(map);
-map.setView([-19.92, -43.94], 12);
+// Posicionamento inicial genérico (será substituído por fitBounds no primeiro poll)
+map.setView([FALLBACK_LAT, FALLBACK_LNG], FALLBACK_ZOOM);
 Object.values(mapLayers).forEach(l => l.addTo(map));
 
 function jamColor(level) {
@@ -572,6 +570,36 @@ function alertColor(type) {
   if (type.includes('HAZARD'))   return '#eab308';
   if (type.includes('ROAD'))     return '#3b82f6';
   return '#8b9099';
+}
+
+/**
+ * Coleta todas as coordenadas presentes nos dados e retorna um L.LatLngBounds.
+ * Retorna null se não houver nenhuma coordenada válida.
+ */
+function calcBounds(data) {
+  const pts = [];
+
+  // Jams: polylines ou pontos soltos
+  (data.jams || []).forEach(j => {
+    if (j.line && j.line.length > 0) {
+      j.line.forEach(p => pts.push([p.y ?? p[1], p.x ?? p[0]]));
+    } else if (j.lat && j.lng) {
+      pts.push([j.lat, j.lng]);
+    }
+  });
+
+  // Alertas
+  (data.alerts || []).forEach(a => {
+    if (a.lat && a.lng) pts.push([a.lat, a.lng]);
+  });
+
+  // CEMADEN
+  (data.cemaden || []).forEach(c => {
+    if (c.lat && c.lng) pts.push([c.lat, c.lng]);
+  });
+
+  if (pts.length === 0) return null;
+  return L.latLngBounds(pts);
 }
 
 function renderMap(data) {
@@ -622,6 +650,17 @@ function renderMap(data) {
 
   document.getElementById('map-info').textContent =
     `${(data.jams||[]).length} jams · ${(data.alerts||[]).length} alertas · ${(data.cemaden||[]).length} estações CEMADEN`;
+
+  // ── Ajuste automático de região ────────────────────────────────
+  // Só ajusta uma vez (no primeiro poll com dados). Após isso o operador
+  // pode navegar livremente sem o mapa pular a cada atualização.
+  if (!mapFitted) {
+    const bounds = calcBounds(data);
+    if (bounds && bounds.isValid()) {
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+      mapFitted = true;
+    }
+  }
 }
 
 // ── KPIs ──────────────────────────────────────────────────────────
@@ -651,7 +690,6 @@ function fmtLen(m) {
   if (m < 1000) return m + ' m';
   return (m / 1000).toFixed(1) + ' km';
 }
-
 function renderKpis(k) {
   const jamCls = levelClass(k.liveJams, JAM_WARN, JAM_CRIT);
   setKpi('v-live-jams', k.liveJams ?? '—', jamCls);
@@ -669,7 +707,6 @@ function renderKpis(k) {
   setCard('kpi-delay', delCls);
 
   setKpi('v-len', fmtLen(k.liveTotalLen));
-
   setKpi('v-alerts-hour', k.alertsHour ?? '—');
   document.getElementById('s-alerts24').textContent = (k.alerts24h ?? '—') + ' nas últimas 24h';
 
@@ -684,10 +721,10 @@ function renderKpis(k) {
 
 // ── Feed ──────────────────────────────────────────────────────────
 const ALERT_TYPES = {
-  ACCIDENT:    { label: '🔴 Acidente',   css: 'type-accident' },
+  ACCIDENT:    { label: '🔴 Acidente',       css: 'type-accident' },
   JAM:         { label: '🟠 Engarrafamento', css: 'type-jam' },
-  HAZARD:      { label: '🟡 Perigo',     css: 'type-hazard' },
-  ROAD_CLOSED: { label: '🔵 Via fechada',css: 'type-road-closed' },
+  HAZARD:      { label: '🟡 Perigo',         css: 'type-hazard' },
+  ROAD_CLOSED: { label: '🔵 Via fechada',   css: 'type-road-closed' },
 };
 function alertMeta(a) {
   const t = (a.type || '').toUpperCase();
@@ -699,19 +736,15 @@ function alertMeta(a) {
 function timeAgo(isoStr) {
   if (!isoStr) return '';
   const diff = Math.floor((Date.now() - new Date(isoStr)) / 1000);
-  if (diff < 60)  return 'agora';
+  if (diff < 60)   return 'agora';
   if (diff < 3600) return Math.floor(diff / 60) + ' min atrás';
   return Math.floor(diff / 3600) + 'h atrás';
 }
-
 const CRITICAL_TYPES = ['ACCIDENT_MAJOR', 'ACCIDENT', 'ROAD_CLOSED'];
 let prevAlertIds = new Set();
-
 function renderFeed(alerts) {
   const list = document.getElementById('feed-list');
   document.getElementById('feed-count').textContent = alerts.length;
-
-  // detecta novos críticos
   let hasNewCritical = false;
   alerts.forEach(a => {
     if (!prevAlertIds.has(a.id) && CRITICAL_TYPES.some(t => (a.type || '').toUpperCase().includes(t))) {
@@ -720,7 +753,6 @@ function renderFeed(alerts) {
     prevAlertIds.add(a.id);
   });
   if (hasNewCritical) beep();
-
   list.innerHTML = alerts.map(a => {
     const meta = alertMeta(a);
     const isCrit = CRITICAL_TYPES.some(t => (a.type || '').toUpperCase().includes(t));
@@ -763,26 +795,23 @@ async function poll() {
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
 
-    // pulso OK
     const pulse = document.getElementById('op-pulse');
     pulse.className = 'op-pulse ok';
     setTimeout(() => { pulse.className = 'op-pulse'; }, 1500);
 
-    // ago
     lastTs = new Date(data.ts);
-    document.getElementById('op-ago').textContent = 'atualizado às ' + lastTs.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    document.getElementById('op-ago').textContent =
+      'atualizado às ' + lastTs.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-    // fontes
     ['waze','cemaden','api'].forEach(s => {
       const el = document.getElementById('src-' + s);
       if (el) el.className = 'ok';
     });
 
     renderKpis(data.kpis);
-    renderMap(data);
+    renderMap(data);      // inclui fitBounds no 1º poll com dados
     renderFeed(data.alerts || []);
 
-    // histórico para sparklines
     history.jams.push(data.kpis.liveJams ?? 0);
     history.alerts.push(data.kpis.alertsHour ?? 0);
     history.upd.push(1);
@@ -790,11 +819,11 @@ async function poll() {
     if (history.alerts.length > 48) history.alerts.shift();
     if (history.upd.length > 48)    history.upd.shift();
 
-    drawSparkline('spark-jams',           history.jams,   '#f97316');
-    drawSparkline('spark-alerts',         history.alerts, '#ef4444');
-    drawSparkline('footer-spark-jams',    history.jams,   '#f97316');
-    drawSparkline('footer-spark-alerts',  history.alerts, '#ef4444');
-    drawSparkline('footer-spark-upd',     history.upd,    '#22c55e');
+    drawSparkline('spark-jams',          history.jams,   '#f97316');
+    drawSparkline('spark-alerts',        history.alerts, '#ef4444');
+    drawSparkline('footer-spark-jams',   history.jams,   '#f97316');
+    drawSparkline('footer-spark-alerts', history.alerts, '#ef4444');
+    drawSparkline('footer-spark-upd',    history.upd,    '#22c55e');
 
   } catch (e) {
     const pulse = document.getElementById('op-pulse');
@@ -808,7 +837,6 @@ async function poll() {
   }
 }
 
-// Primeiro poll imediato, depois a cada POLL_MS
 poll();
 setInterval(poll, POLL_MS);
 </script>
