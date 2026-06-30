@@ -110,6 +110,15 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
   transition: color .2s, border-color .2s;
 }
 .op-fullscreen-btn:hover { color: var(--text); border-color: var(--teal); }
+.op-wakelock-indicator {
+  font-size: 10px;
+  color: var(--faint);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.op-wakelock-indicator.active { color: var(--teal); }
 
 /* ── KPI Sidebar ──────────────────────────────────────────────── */
 .op-kpis {
@@ -351,6 +360,7 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
     <div class="op-clock" id="op-clock">--:--:--</div>
     <div class="op-pulse" id="op-pulse"></div>
     <div class="op-ago" id="op-ago">aguardando...</div>
+    <div class="op-wakelock-indicator" id="wakelock-indicator" title="Wake Lock: impede bloqueio de tela">💤 tela livre</div>
     <button class="op-sound-btn" id="op-sound-btn" title="Ativar/desativar alerta sonoro">🔇 Som</button>
     <button class="op-fullscreen-btn" id="op-fs-btn" title="Tela cheia">⛶ Fullscreen</button>
   </header>
@@ -466,6 +476,39 @@ const JAM_WARN    = 10;   // jams → yellow
 const JAM_CRIT    = 30;   // jams → red
 const DELAY_WARN  = 60;   // seg
 const DELAY_CRIT  = 180;  // seg
+
+// ── Wake Lock — impede bloqueio de tela ──────────────────────────
+let wakeLock = null;
+const wakeLockEl = document.getElementById('wakelock-indicator');
+
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator)) {
+    // API não suportada (Firefox sem flag, por ex.)
+    if (wakeLockEl) { wakeLockEl.textContent = ''; wakeLockEl.style.display = 'none'; }
+    return;
+  }
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLockEl.textContent = '🔆 tela ativa';
+    wakeLockEl.classList.add('active');
+    // Re-adquire automaticamente se a aba voltar ao foco
+    wakeLock.addEventListener('release', () => {
+      wakeLockEl.textContent = '💤 tela livre';
+      wakeLockEl.classList.remove('active');
+    });
+  } catch (err) {
+    // sem permissão ou erro — silencioso
+    if (wakeLockEl) wakeLockEl.style.display = 'none';
+  }
+}
+
+// Quando o usuário muda de aba e volta, reativa o Wake Lock
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') requestWakeLock();
+});
+
+// Inicia imediatamente
+requestWakeLock();
 
 // ── Estado ────────────────────────────────────────────────────────
 let soundEnabled = false;
