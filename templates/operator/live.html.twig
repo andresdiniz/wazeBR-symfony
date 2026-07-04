@@ -205,7 +205,6 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
 }
 .kpi-card:hover { border-color: var(--border2); background: var(--surface3); }
 
-/* status accent strip — topo do card */
 .kpi-card::before {
   content: '';
   position: absolute;
@@ -221,7 +220,6 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
 .kpi-card.alert-green::before  { background: var(--green); }
 .kpi-card.alert-teal::before   { background: var(--teal); }
 
-/* subtle glow no fundo do card por status */
 .kpi-card.alert-red    { background: color-mix(in srgb, var(--surface2), rgba(239,68,68,.06)); }
 .kpi-card.alert-orange { background: color-mix(in srgb, var(--surface2), rgba(249,115,22,.06)); }
 .kpi-card.alert-green  { background: color-mix(in srgb, var(--surface2), rgba(34,197,94,.04)); }
@@ -296,7 +294,6 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
   display: block;
 }
 
-/* ícone colorido no estado alert */
 .kpi-card.alert-red    .kpi-icon { background: var(--red-dim); }
 .kpi-card.alert-orange .kpi-icon { background: var(--orange-dim); }
 .kpi-card.alert-yellow .kpi-icon { background: var(--yellow-dim); }
@@ -309,7 +306,6 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
 .kpi-card.alert-green  .kpi-icon svg { color: var(--green); }
 .kpi-card.alert-teal   .kpi-icon svg { color: var(--teal); }
 
-/* card de infraestrutura — valor em linha */
 .kpi-infra-row {
   display: flex;
   align-items: center;
@@ -371,6 +367,67 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
   border-radius: 50%;
   flex-shrink: 0;
 }
+
+/* ── Legenda do mapa ─────────────────────────────────────────── */
+.map-legend {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(13,14,16,.9);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  z-index: 500;
+  backdrop-filter: blur(6px);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  pointer-events: none;
+  min-width: 140px;
+}
+.map-legend-title {
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+.map-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.map-legend-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.legend-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 2px 0;
+}
+
+/* ── Ícones do mapa (divIcon) ────────────────────────────────── */
+.map-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.25);
+  box-shadow: 0 2px 8px rgba(0,0,0,.6);
+  transition: transform .15s;
+}
+.map-marker:hover { transform: scale(1.15); }
+.map-marker svg { display: block; }
 
 /* ── Feed de eventos ──────────────────────────────────────────── */
 .op-feed {
@@ -635,7 +692,6 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
     <!-- ── KPIs ───────────────────────────────────────────── -->
     <aside class="op-kpis" id="op-kpis">
 
-      <!-- Seção: Tráfego -->
       <div class="kpi-section-label">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
         Tráfego — últimas 3h
@@ -704,7 +760,6 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
         <div class="kpi-sub">km de vias afetadas</div>
       </div>
 
-      <!-- Seção: Alertas -->
       <div class="kpi-section-label">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         Alertas
@@ -726,7 +781,6 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
         <canvas class="kpi-spark" id="spark-alerts"></canvas>
       </div>
 
-      <!-- Seção: CEMADEN -->
       <div class="kpi-section-label">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M16 14v6"/><path d="M8 14v6"/><path d="M12 16v6"/></svg>
         CEMADEN
@@ -749,7 +803,6 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
         <div class="kpi-sub">acumulado última hora</div>
       </div>
 
-      <!-- Seção: Infraestrutura -->
       <div class="kpi-section-label">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
         Infraestrutura
@@ -785,6 +838,54 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
     <!-- ── MAPA ────────────────────────────────────────────── -->
     <div class="op-map-container">
       <div id="op-map"></div>
+
+      <!-- Legenda -->
+      <div class="map-legend" id="map-legend">
+        <div class="map-legend-title">Legenda</div>
+        <div class="map-legend-row">
+          <div class="map-legend-icon"><!-- Acidente --><svg width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" fill="#ef4444" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/><text x="10" y="14" text-anchor="middle" font-size="11" fill="#fff">!</text></svg></div>
+          <span>Acidente</span>
+        </div>
+        <div class="map-legend-row">
+          <div class="map-legend-icon"><!-- Engarrafamento --><svg width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" fill="#f97316" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/><text x="10" y="14" text-anchor="middle" font-size="9" fill="#fff">JAM</text></svg></div>
+          <span>Engarrafamento</span>
+        </div>
+        <div class="map-legend-row">
+          <div class="map-legend-icon"><!-- Perigo --><svg width="20" height="20" viewBox="0 0 20 20"><polygon points="10,2 18,18 2,18" fill="#eab308" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/><text x="10" y="15" text-anchor="middle" font-size="11" fill="#fff">!</text></svg></div>
+          <span>Perigo / Obra</span>
+        </div>
+        <div class="map-legend-row">
+          <div class="map-legend-icon"><!-- Via fechada --><svg width="20" height="20" viewBox="0 0 20 20"><rect x="1" y="1" width="18" height="18" rx="4" fill="#3b82f6" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/><line x1="5" y1="5" x2="15" y2="15" stroke="#fff" stroke-width="2.5"/><line x1="15" y1="5" x2="5" y2="15" stroke="#fff" stroke-width="2.5"/></svg></div>
+          <span>Via fechada</span>
+        </div>
+        <div class="legend-sep"></div>
+        <div class="map-legend-row">
+          <div class="map-legend-icon"><!-- CEMADEN --><svg width="20" height="20" viewBox="0 0 20 20"><rect x="1" y="1" width="18" height="18" rx="4" fill="#14b8a6" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/><text x="10" y="14" text-anchor="middle" font-size="9" fill="#fff">mm</text></svg></div>
+          <span>Estação (normal)</span>
+        </div>
+        <div class="map-legend-row">
+          <div class="map-legend-icon"><svg width="20" height="20" viewBox="0 0 20 20"><rect x="1" y="1" width="18" height="18" rx="4" fill="#eab308" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/><text x="10" y="14" text-anchor="middle" font-size="9" fill="#fff">mm</text></svg></div>
+          <span>Estação (alerta)</span>
+        </div>
+        <div class="map-legend-row">
+          <div class="map-legend-icon"><svg width="20" height="20" viewBox="0 0 20 20"><rect x="1" y="1" width="18" height="18" rx="4" fill="#ef4444" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/><text x="10" y="14" text-anchor="middle" font-size="9" fill="#fff">mm</text></svg></div>
+          <span>Estação (crítica)</span>
+        </div>
+        <div class="legend-sep"></div>
+        <div class="map-legend-row">
+          <div class="map-legend-icon"><svg width="20" height="4" viewBox="0 0 20 4"><line x1="0" y1="2" x2="20" y2="2" stroke="#ef4444" stroke-width="3"/></svg></div>
+          <span>Jam crítico (nível 5+)</span>
+        </div>
+        <div class="map-legend-row">
+          <div class="map-legend-icon"><svg width="20" height="4" viewBox="0 0 20 4"><line x1="0" y1="2" x2="20" y2="2" stroke="#f97316" stroke-width="3"/></svg></div>
+          <span>Jam moderado (3-4)</span>
+        </div>
+        <div class="map-legend-row">
+          <div class="map-legend-icon"><svg width="20" height="4" viewBox="0 0 20 4"><line x1="0" y1="2" x2="20" y2="2" stroke="#eab308" stroke-width="3"/></svg></div>
+          <span>Jam leve (1-2)</span>
+        </div>
+      </div>
+
       <div class="map-overlay-info" id="map-info">
         <div class="map-overlay-dot" style="background:var(--orange)"></div>
         <span id="map-info-text">Carregando...</span>
@@ -919,20 +1020,97 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
 map.setView([FALLBACK_LAT, FALLBACK_LNG], FALLBACK_ZOOM);
 Object.values(mapLayers).forEach(l => l.addTo(map));
 
+// ── Cores dos jams ────────────────────────────────────────────────
 function jamColor(level) {
   if (level >= 5) return '#ef4444';
   if (level >= 3) return '#f97316';
   if (level >= 1) return '#eab308';
   return '#22c55e';
 }
-function alertColor(type) {
+
+// ── Ícones SVG por tipo de alerta ─────────────────────────────────
+function makeAlertIcon(type) {
   type = (type || '').toUpperCase();
-  if (type.includes('ACCIDENT')) return '#ef4444';
-  if (type.includes('JAM'))      return '#f97316';
-  if (type.includes('HAZARD'))   return '#eab308';
-  if (type.includes('ROAD'))     return '#3b82f6';
-  return '#8b9099';
+
+  if (type.includes('ACCIDENT')) {
+    // Círculo vermelho com "!"
+    return L.divIcon({
+      html: `<svg width="22" height="22" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="11" cy="11" r="10" fill="#ef4444" stroke="rgba(255,255,255,.4)" stroke-width="1.5"/>
+        <text x="11" y="15.5" text-anchor="middle" font-size="13" font-weight="bold" font-family="Arial,sans-serif" fill="#fff">!</text>
+      </svg>`,
+      className: '', iconSize: [22, 22], iconAnchor: [11, 11],
+    });
+  }
+
+  if (type.includes('JAM')) {
+    // Círculo laranja com ícone de carro simplificado
+    return L.divIcon({
+      html: `<svg width="22" height="22" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="11" cy="11" r="10" fill="#f97316" stroke="rgba(255,255,255,.4)" stroke-width="1.5"/>
+        <rect x="5" y="9" width="12" height="5" rx="1.5" fill="#fff" opacity=".9"/>
+        <rect x="6" y="7.5" width="10" height="3" rx="1" fill="#fff" opacity=".7"/>
+        <circle cx="7.5" cy="14.5" r="1.5" fill="#f97316" stroke="#fff" stroke-width=".8"/>
+        <circle cx="14.5" cy="14.5" r="1.5" fill="#f97316" stroke="#fff" stroke-width=".8"/>
+      </svg>`,
+      className: '', iconSize: [22, 22], iconAnchor: [11, 11],
+    });
+  }
+
+  if (type.includes('HAZARD') || type.includes('CONSTRUCTION') || type.includes('POT_HOLE') || type.includes('OBJECT')) {
+    // Triângulo amarelo com "!"
+    return L.divIcon({
+      html: `<svg width="24" height="22" viewBox="0 0 24 22" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="12,1 23,21 1,21" fill="#eab308" stroke="rgba(255,255,255,.4)" stroke-width="1.5"/>
+        <text x="12" y="17.5" text-anchor="middle" font-size="12" font-weight="bold" font-family="Arial,sans-serif" fill="#fff">!</text>
+      </svg>`,
+      className: '', iconSize: [24, 22], iconAnchor: [12, 11],
+    });
+  }
+
+  if (type.includes('ROAD') || type.includes('CLOSED')) {
+    // Quadrado azul com X
+    return L.divIcon({
+      html: `<svg width="22" height="22" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1" y="1" width="20" height="20" rx="5" fill="#3b82f6" stroke="rgba(255,255,255,.4)" stroke-width="1.5"/>
+        <line x1="6" y1="6" x2="16" y2="16" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="16" y1="6" x2="6" y2="16" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>`,
+      className: '', iconSize: [22, 22], iconAnchor: [11, 11],
+    });
+  }
+
+  // Genérico — círculo cinza com ponto
+  return L.divIcon({
+    html: `<svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="9" cy="9" r="8" fill="#8b9099" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/>
+      <circle cx="9" cy="9" r="3" fill="#fff" opacity=".8"/>
+    </svg>`,
+    className: '', iconSize: [18, 18], iconAnchor: [9, 9],
+  });
 }
+
+// ── Ícone CEMADEN por nível de alerta ─────────────────────────────
+function makeCemadenIcon(alertLevel, rainVal) {
+  const col = alertLevel === 'RED'    ? '#ef4444'
+             : alertLevel === 'ORANGE' ? '#f97316'
+             : alertLevel === 'YELLOW' ? '#eab308'
+             : '#14b8a6';
+  const label = rainVal !== undefined && rainVal !== null ? String(Math.round(rainVal)) : 'mm';
+  return L.divIcon({
+    html: `<svg width="28" height="28" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="1" width="26" height="26" rx="6" fill="${col}" stroke="rgba(255,255,255,.35)" stroke-width="1.5"/>
+      <!-- nuvem + chuva -->
+      <path d="M7 13a4 4 0 0 1 7.42-2.1A3 3 0 1 1 18 16H8a3 3 0 0 1-1-5.83" fill="none" stroke="#fff" stroke-width="1.3" opacity=".9"/>
+      <line x1="9" y1="18" x2="9" y2="21" stroke="#fff" stroke-width="1.3" stroke-linecap="round" opacity=".85"/>
+      <line x1="13" y1="18" x2="13" y2="21" stroke="#fff" stroke-width="1.3" stroke-linecap="round" opacity=".85"/>
+      <line x1="17" y1="18" x2="17" y2="21" stroke="#fff" stroke-width="1.3" stroke-linecap="round" opacity=".85"/>
+    </svg>`,
+    className: '', iconSize: [28, 28], iconAnchor: [14, 14],
+  });
+}
+
+// ── Render do mapa ─────────────────────────────────────────────────
 function calcBounds(data) {
   const pts = [];
   (data.jams   || []).forEach(j => {
@@ -949,6 +1127,7 @@ function renderMap(data) {
   mapLayers.alerts.clearLayers();
   mapLayers.cemaden.clearLayers();
 
+  // Jams — polylines coloridas por nível
   (data.jams || []).forEach(j => {
     if (j.line?.length > 1) {
       const coords = j.line.map(p => [p.y ?? p[1], p.x ?? p[0]]);
@@ -962,26 +1141,18 @@ function renderMap(data) {
     }
   });
 
+  // Alertas — ícones SVG por tipo
   (data.alerts || []).forEach(a => {
     if (!a.lat || !a.lng) return;
-    const col = alertColor(a.type);
-    const icon = L.divIcon({
-      html: `<div style="width:10px;height:10px;border-radius:50%;background:${col};border:2px solid rgba(255,255,255,.3)"></div>`,
-      className: '', iconSize: [10,10], iconAnchor: [5,5],
-    });
-    L.marker([a.lat, a.lng], { icon })
-      .bindPopup(`<b>${a.type}</b><br>${a.street || ''} ${a.city || ''}`)
+    L.marker([a.lat, a.lng], { icon: makeAlertIcon(a.type) })
+      .bindPopup(`<b>${a.type || 'Alerta'}</b>${a.subtype ? ' — ' + a.subtype : ''}<br>${a.street || ''} ${a.city || ''}`)
       .addTo(mapLayers.alerts);
   });
 
+  // CEMADEN — ícone com símbolo de chuva, cor por nível
   (data.cemaden || []).forEach(c => {
     if (!c.lat || !c.lng) return;
-    const col = c.alertLevel === 'RED' ? '#ef4444' : c.alertLevel === 'ORANGE' ? '#f97316' : c.alertLevel === 'YELLOW' ? '#eab308' : '#14b8a6';
-    const icon = L.divIcon({
-      html: `<div style="width:12px;height:12px;border-radius:3px;background:${col};border:2px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;font-size:7px;color:#fff">☔</div>`,
-      className: '', iconSize: [12,12], iconAnchor: [6,6],
-    });
-    L.marker([c.lat, c.lng], { icon })
+    L.marker([c.lat, c.lng], { icon: makeCemadenIcon(c.alertLevel, c.rain) })
       .bindPopup(`<b>${c.station}</b><br>${c.city}<br>Chuva: ${c.rain} mm · ${c.alertLevel}`)
       .addTo(mapLayers.cemaden);
   });
@@ -1134,7 +1305,6 @@ function drawSparkline(canvasId, values, color) {
   const max  = Math.max(...values) || 1;
   const step = W / (values.length - 1);
 
-  // Área sob a curva
   ctx.beginPath();
   values.forEach((v, i) => {
     const x = i * step, y = H - (v / max) * (H - 2) - 1;
@@ -1143,14 +1313,9 @@ function drawSparkline(canvasId, values, color) {
   ctx.lineTo((values.length - 1) * step, H);
   ctx.lineTo(0, H);
   ctx.closePath();
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, color.replace(')', ', .25)').replace('rgb', 'rgba'));
-  grad.addColorStop(1, color.replace(')', ', 0)').replace('rgb', 'rgba'));
-  // fallback com opacidade inline caso não seja rgb
   ctx.fillStyle = color + '22';
   ctx.fill();
 
-  // Linha
   ctx.beginPath();
   values.forEach((v, i) => {
     const x = i * step, y = H - (v / max) * (H - 2) - 1;
