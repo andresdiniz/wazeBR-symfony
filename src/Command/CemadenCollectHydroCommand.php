@@ -118,12 +118,23 @@ class CemadenCollectHydroCommand extends Command
     }
 
     /**
+     * Remove caracteres CR, LF e TAB da URL (evita Malformed URL).
+     * Isso acontece quando a URL foi copiada com texto extra no banco.
+     */
+    private function sanitizeUrl(string $url): string
+    {
+        return trim(preg_replace('/[\r\n\t]+/', '', $url));
+    }
+
+    /**
      * Busca a URL da estação, processa cada leitura e insere novas na tabela.
      * Retorna o número de registros novos inseridos.
      */
     private function processStation(array $station, SymfonyStyle $io, bool $dryRun): int
     {
-        $response = $this->httpClient->request('GET', $station['hydro_url'], [
+        $url = $this->sanitizeUrl($station['hydro_url']);
+
+        $response = $this->httpClient->request('GET', $url, [
             'timeout' => 20,
             'headers' => ['Accept' => 'application/json'],
         ]);
