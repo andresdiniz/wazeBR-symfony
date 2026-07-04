@@ -2,132 +2,260 @@
 
 {% block title %}Nível dos Rios — Histórico{% endblock %}
 
+{% block stylesheets %}
+<style>
+/* ── toolbar ── */
+.hydro-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+.hydro-toolbar-left h1 {
+  font-family: var(--font-display);
+  font-size: var(--text-xl); font-weight: 700; letter-spacing: -.02em;
+}
+.hydro-toolbar-left small { font-size: var(--text-xs); color: var(--color-text-muted); }
+.hydro-toolbar-right { display: flex; gap: var(--space-2); }
+
+/* ── filtros ── */
+.filter-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-5);
+  box-shadow: var(--shadow-sm);
+}
+.filter-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr auto;
+  gap: var(--space-3);
+  align-items: end;
+}
+@media(max-width: 800px) {
+  .filter-grid { grid-template-columns: 1fr 1fr; }
+  .filter-grid .filter-full { grid-column: 1 / -1; }
+  .filter-grid .filter-actions { grid-column: 1 / -1; display: flex; gap: var(--space-2); }
+}
+.filter-label { display: block; font-size: var(--text-xs); font-weight: 600; color: var(--color-text-muted); margin-bottom: var(--space-1); }
+.filter-actions { display: flex; gap: var(--space-2); }
+
+/* ── table rows por nível ── */
+.row-atencao td         { background: oklch(from var(--color-gold)    l c h / .07); }
+.row-alerta td          { background: oklch(from var(--color-warning)  l c h / .09); }
+.row-transbordamento td { background: oklch(from var(--color-error)    l c h / .09); }
+tr.row-atencao:hover td         { background: oklch(from var(--color-gold)   l c h / .14); }
+tr.row-alerta:hover td          { background: oklch(from var(--color-warning) l c h / .16); }
+tr.row-transbordamento:hover td { background: oklch(from var(--color-error)   l c h / .16); }
+.level-icon { font-size: 1.25rem; line-height: 1; display: block; text-align: center; }
+
+/* ── paginação ── */
+.pagination {
+  display: flex; align-items: center; justify-content: center;
+  gap: var(--space-1); margin-top: var(--space-5); flex-wrap: wrap;
+}
+.pagination-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 36px; height: 36px; padding: 0 var(--space-2);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  transition: all var(--transition);
+  text-decoration: none;
+}
+.pagination-btn:hover { background: var(--color-surface-offset); color: var(--color-text); }
+.pagination-btn.active {
+  background: var(--color-primary); color: #fff;
+  border-color: var(--color-primary); font-weight: 600;
+}
+.pagination-btn.disabled { opacity: .4; pointer-events: none; }
+.pagination-info { font-size: var(--text-xs); color: var(--color-text-muted); margin-top: var(--space-3); text-align: center; }
+
+/* ── empty ── */
+.hydro-empty {
+  padding: var(--space-16) var(--space-8);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+.hydro-empty-icon { font-size: 3rem; margin-bottom: var(--space-4); }
+.hydro-empty h3 { font-size: var(--text-lg); color: var(--color-text); margin-bottom: var(--space-2); }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="page-header d-flex justify-content-between align-items-center mb-3">
-    <div>
-        <h4 class="mb-0">📋 Nível dos Rios — Histórico</h4>
-        <small class="text-muted">{{ total }} registro(s) encontrado(s)</small>
-    </div>
-    <a href="{{ path('hydro_live') }}" class="btn btn-sm btn-outline-primary">🌊 Ao Vivo</a>
+
+{# ── Toolbar ── #}
+<div class="hydro-toolbar">
+  <div class="hydro-toolbar-left">
+    <h1>📋 Nível dos Rios — Histórico</h1>
+    <small>{{ total }} registro(s) encontrado(s)</small>
+  </div>
+  <div class="hydro-toolbar-right">
+    <a href="{{ path('hydro_live') }}" class="btn btn-primary btn-sm">
+      <i data-lucide="waves" style="width:15px;height:15px"></i> Ao Vivo
+    </a>
+  </div>
 </div>
 
-{# Filtros #}
-<form method="get" class="card card-body shadow-sm mb-3">
-    <div class="row g-2 align-items-end">
-        <div class="col-12 col-md-4">
-            <label class="form-label small mb-1">Estação</label>
-            <select name="station" class="form-select form-select-sm">
-                <option value="">Todas</option>
-                {% for s in stations %}
-                    <option value="{{ s.station_code }}" {% if station == s.station_code %}selected{% endif %}>
-                        {{ s.station_name }} ({{ s.municipality }}/{{ s.state }})
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-6 col-md-2">
-            <label class="form-label small mb-1">Nível</label>
-            <select name="level" class="form-select form-select-sm">
-                <option value="">Todos</option>
-                <option value="normal"          {% if level == 'normal'          %}selected{% endif %}>✅ Normal</option>
-                <option value="atencao"         {% if level == 'atencao'         %}selected{% endif %}>⚠️ Atenção</option>
-                <option value="alerta"          {% if level == 'alerta'          %}selected{% endif %}>🚨 Alerta</option>
-                <option value="transbordamento" {% if level == 'transbordamento' %}selected{% endif %}>🌊 Transbordamento</option>
-            </select>
-        </div>
-        <div class="col-6 col-md-2">
-            <label class="form-label small mb-1">De</label>
-            <input type="date" name="date_from" class="form-control form-control-sm" value="{{ date_from }}">
-        </div>
-        <div class="col-6 col-md-2">
-            <label class="form-label small mb-1">Até</label>
-            <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to }}">
-        </div>
-        <div class="col-6 col-md-2 d-flex gap-1">
-            <button class="btn btn-sm btn-primary w-100">🔍 Filtrar</button>
-            <a href="{{ path('hydro_historico') }}" class="btn btn-sm btn-outline-secondary">✕</a>
-        </div>
+{# ── Filtros ── #}
+<form method="get" class="filter-card">
+  <div class="filter-grid">
+    <div class="filter-full">
+      <label class="filter-label">Estação</label>
+      <select name="station" class="form-control">
+        <option value="">Todas as estações</option>
+        {% for s in stations %}
+          <option value="{{ s.station_code }}" {% if station == s.station_code %}selected{% endif %}>
+            {{ s.station_name }} — {{ s.municipality }}/{{ s.state }}
+          </option>
+        {% endfor %}
+      </select>
     </div>
+    <div>
+      <label class="filter-label">Nível de alerta</label>
+      <select name="level" class="form-control">
+        <option value="">Todos</option>
+        <option value="normal"          {% if level == 'normal'          %}selected{% endif %}>✅ Normal</option>
+        <option value="atencao"         {% if level == 'atencao'         %}selected{% endif %}>⚠️ Atenção</option>
+        <option value="alerta"          {% if level == 'alerta'          %}selected{% endif %}>🚨 Alerta</option>
+        <option value="transbordamento" {% if level == 'transbordamento' %}selected{% endif %}>🌊 Transbordamento</option>
+      </select>
+    </div>
+    <div>
+      <label class="filter-label">De</label>
+      <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+    </div>
+    <div>
+      <label class="filter-label">Até</label>
+      <input type="date" name="date_to"   class="form-control" value="{{ date_to }}">
+    </div>
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-primary">
+        <i data-lucide="search" style="width:14px;height:14px"></i> Filtrar
+      </button>
+      <a href="{{ path('hydro_historico') }}" class="btn btn-ghost" title="Limpar filtros">
+        <i data-lucide="x" style="width:14px;height:14px"></i>
+      </a>
+    </div>
+  </div>
 </form>
 
-{# Tabela #}
-<div class="card shadow-sm">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover table-sm mb-0">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Nível</th>
-                        <th>Estação</th>
-                        <th>Município / UF</th>
-                        <th class="text-end">Rio (m)</th>
-                        <th class="text-end">Atenção</th>
-                        <th class="text-end">Alerta</th>
-                        <th class="text-end">Transb.</th>
-                        <th>Medido em</th>
-                    </tr>
-                </thead>
-                <tbody>
-                {% for r in rows %}
-                    {% set bg = '' %}
-                    {% set icon = '✅' %}
-                    {% if r.alert_level == 'atencao' %}{% set bg = 'table-warning' %}{% set icon = '⚠️' %}
-                    {% elseif r.alert_level == 'alerta' %}{% set bg = 'table-danger' %}{% set icon = '🚨' %}
-                    {% elseif r.alert_level == 'transbordamento' %}{% set bg = 'table-dark text-white' %}{% set icon = '🌊' %}
-                    {% endif %}
-                    <tr class="{{ bg }}">
-                        <td class="fs-5 text-center" title="{{ r.alert_level|capitalize }}">{{ icon }}</td>
-                        <td>
-                            <div class="fw-semibold">{{ r.station_name }}</div>
-                            <div class="text-muted small">{{ r.station_code }}</div>
-                        </td>
-                        <td>{{ r.municipality }} / {{ r.state }}</td>
-                        <td class="text-end fw-bold">
-                            {{ r.water_level is not null ? r.water_level|number_format(2, ',', '.') ~ ' m' : '—' }}
-                        </td>
-                        <td class="text-end">{{ r.cota_atencao          is not null ? r.cota_atencao|number_format(2, ',', '.') ~ ' m' : '—' }}</td>
-                        <td class="text-end">{{ r.cota_alerta           is not null ? r.cota_alerta|number_format(2, ',', '.') ~ ' m' : '—' }}</td>
-                        <td class="text-end">{{ r.cota_transbordamento  is not null ? r.cota_transbordamento|number_format(2, ',', '.') ~ ' m' : '—' }}</td>
-                        <td class="small text-nowrap">{{ r.measured_at|date('d/m/Y H:i') }}</td>
-                    </tr>
-                {% else %}
-                    <tr><td colspan="8" class="text-center text-muted py-4">Nenhum dado encontrado para os filtros selecionados.</td></tr>
-                {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
+{# ── Tabela ── #}
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Registros históricos</span>
+    <span class="badge badge-gray">{{ total }} resultados</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:44px"></th>
+          <th>Estação</th>
+          <th>Município / UF</th>
+          <th style="text-align:right">Nível (m)</th>
+          <th style="text-align:right">Atenção</th>
+          <th style="text-align:right">Alerta</th>
+          <th style="text-align:right">Transb.</th>
+          <th>Medido em</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in rows %}
+        {% set rowCss = '' %}
+        {% set icon   = '✅' %}
+        {% if r.alert_level == 'atencao' %}
+          {% set rowCss = 'row-atencao' %}{% set icon = '⚠️' %}
+        {% elseif r.alert_level == 'alerta' %}
+          {% set rowCss = 'row-alerta' %}{% set icon = '🚨' %}
+        {% elseif r.alert_level == 'transbordamento' %}
+          {% set rowCss = 'row-transbordamento' %}{% set icon = '🌊' %}
+        {% endif %}
+        <tr class="{{ rowCss }}">
+          <td><span class="level-icon" title="{{ r.alert_level|capitalize }}">{{ icon }}</span></td>
+          <td>
+            <div style="font-weight:600">{{ r.station_name }}</div>
+            <div style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ r.station_code }}</div>
+          </td>
+          <td style="white-space:nowrap">{{ r.municipality }} / {{ r.state }}</td>
+          <td style="text-align:right;font-weight:700;font-variant-numeric:tabular-nums">
+            {{ r.water_level is not null ? r.water_level|number_format(2,',','.') ~ ' m' : '—' }}
+          </td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums">
+            {{ r.cota_atencao is not null ? r.cota_atencao|number_format(2,',','.') ~ ' m' : '—' }}
+          </td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums">
+            {{ r.cota_alerta is not null ? r.cota_alerta|number_format(2,',','.') ~ ' m' : '—' }}
+          </td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums">
+            {{ r.cota_transbordamento is not null ? r.cota_transbordamento|number_format(2,',','.') ~ ' m' : '—' }}
+          </td>
+          <td style="white-space:nowrap;font-size:var(--text-xs)">
+            <time data-utc="{{ r.measured_at|date('Y-m-d H:i:s') }}" data-fmt="datetime">
+              {{ r.measured_at|date('d/m/Y H:i') }}
+            </time>
+          </td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="8">
+            <div class="hydro-empty">
+              <div class="hydro-empty-icon">🔍</div>
+              <h3>Nenhum resultado</h3>
+              <p>Tente ajustar os filtros ou ampliar o intervalo de datas.</p>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 
-{# Paginação #}
+{# ── Paginação ── #}
 {% if pages > 1 %}
-<nav class="mt-3">
-    <ul class="pagination pagination-sm justify-content-center">
-        {% if page > 1 %}
-            <li class="page-item">
-                <a class="page-link" href="?{{ app.request.query.all|merge({page: page - 1})|url_encode }}">‹</a>
-            </li>
-        {% endif %}
+<nav class="pagination" aria-label="Paginação">
+  {% if page > 1 %}
+    <a class="pagination-btn" href="?{{ app.request.query.all|merge({page: page - 1})|url_encode }}" aria-label="Anterior">
+      <i data-lucide="chevron-left" style="width:14px;height:14px"></i>
+    </a>
+  {% else %}
+    <span class="pagination-btn disabled" aria-hidden="true">
+      <i data-lucide="chevron-left" style="width:14px;height:14px"></i>
+    </span>
+  {% endif %}
 
-        {% for p in 1..pages %}
-            {% if p == page %}
-                <li class="page-item active"><span class="page-link">{{ p }}</span></li>
-            {% elseif p == 1 or p == pages or (p >= page - 2 and p <= page + 2) %}
-                <li class="page-item">
-                    <a class="page-link" href="?{{ app.request.query.all|merge({page: p})|url_encode }}">{{ p }}</a>
-                </li>
-            {% elseif p == page - 3 or p == page + 3 %}
-                <li class="page-item disabled"><span class="page-link">…</span></li>
-            {% endif %}
-        {% endfor %}
+  {% for p in 1..pages %}
+    {% if p == page %}
+      <span class="pagination-btn active" aria-current="page">{{ p }}</span>
+    {% elseif p == 1 or p == pages or (p >= page - 2 and p <= page + 2) %}
+      <a class="pagination-btn" href="?{{ app.request.query.all|merge({page: p})|url_encode }}">{{ p }}</a>
+    {% elseif p == page - 3 or p == page + 3 %}
+      <span class="pagination-btn disabled" aria-hidden="true">…</span>
+    {% endif %}
+  {% endfor %}
 
-        {% if page < pages %}
-            <li class="page-item">
-                <a class="page-link" href="?{{ app.request.query.all|merge({page: page + 1})|url_encode }}">›</a>
-            </li>
-        {% endif %}
-    </ul>
-    <p class="text-center text-muted small">Página {{ page }} de {{ pages }} — {{ total }} registros</p>
+  {% if page < pages %}
+    <a class="pagination-btn" href="?{{ app.request.query.all|merge({page: page + 1})|url_encode }}" aria-label="Próxima">
+      <i data-lucide="chevron-right" style="width:14px;height:14px"></i>
+    </a>
+  {% else %}
+    <span class="pagination-btn disabled" aria-hidden="true">
+      <i data-lucide="chevron-right" style="width:14px;height:14px"></i>
+    </span>
+  {% endif %}
 </nav>
+<p class="pagination-info">Página {{ page }} de {{ pages }} — {{ total }} registros no total</p>
 {% endif %}
+
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+<script>lucide.createIcons();</script>
 {% endblock %}
