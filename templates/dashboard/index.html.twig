@@ -3,127 +3,186 @@
 
 {% block stylesheets %}
 <style>
-/* ── KPI row ──────────────────────────────────────────────────────── */
-.kpi-grid-main{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
-  gap:var(--space-4);
-  margin-bottom:var(--space-8);
+/* ── KPI grid ────────────────────────────────────────────────────── */
+.kpi-grid-main {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-8);
 }
-.kpi-card-main{
-  background:var(--color-surface);
-  border:1px solid var(--color-border);
-  border-radius:var(--radius-lg);
-  padding:var(--space-5);
-  box-shadow:var(--shadow-sm);
-  display:flex;
-  flex-direction:column;
-  gap:var(--space-2);
-  position:relative;
-  overflow:hidden;
+.kpi-card-main {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5) var(--space-5) var(--space-4);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow var(--transition-interactive), transform var(--transition-interactive);
 }
-.kpi-accent-bar{
-  position:absolute;left:0;top:0;bottom:0;width:3px;
+.kpi-card-main:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
-.kpi-row{display:flex;align-items:center;justify-content:space-between}
-.kpi-icon-wrap{
-  width:34px;height:34px;border-radius:var(--radius-md);
-  display:flex;align-items:center;justify-content:center;
-  flex-shrink:0;
+.kpi-accent-bar {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
 }
-.kpi-value-main{
-  font-size:var(--text-xl);font-weight:700;
-  letter-spacing:-.03em;color:var(--color-text);
-  font-variant-numeric:tabular-nums;line-height:1;
+
+/* Linha topo: label + ícone centralizados verticalmente */
+.kpi-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 34px;
 }
-.kpi-label-main{
-  font-size:var(--text-xs);font-weight:600;
-  letter-spacing:.05em;text-transform:uppercase;
-  color:var(--color-text-muted);
+.kpi-label-main {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  line-height: 1.3;
+  flex: 1;
 }
-.kpi-sub{
-  font-size:var(--text-xs);color:var(--color-text-faint);
+.kpi-icon-wrap {
+  width: 34px; height: 34px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
-.kpi-badge{
-  display:inline-flex;align-items:center;gap:var(--space-1);
-  font-size:var(--text-xs);font-weight:600;
-  padding:2px 6px;border-radius:var(--radius-full);
-  background:oklch(from var(--color-primary) l c h/.15);
-  color:var(--color-primary);
+.kpi-icon-wrap svg,
+.kpi-icon-wrap i[data-lucide] {
+  display: block;
+  width: 16px !important;
+  height: 16px !important;
+  flex-shrink: 0;
 }
-/* ── Charts grid ────────────────────────────────────────────── */
-.charts-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:var(--space-6);
-  margin-bottom:var(--space-8);
+
+/* Valor principal */
+.kpi-value-main {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  letter-spacing: -.03em;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
-.chart-card{
-  background:var(--color-surface);
-  border:1px solid var(--color-border);
-  border-radius:var(--radius-lg);
-  box-shadow:var(--shadow-sm);
-  overflow:hidden;
+.kpi-value-unit {
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--color-text-muted);
 }
-.chart-card-header{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:var(--space-4) var(--space-5);
-  border-bottom:1px solid var(--color-divider);
+
+/* Subtítulo */
+.kpi-sub {
+  font-size: var(--text-xs);
+  color: var(--color-text-faint);
+  line-height: 1.4;
 }
-.chart-card-title{
-  font-size:var(--text-sm);font-weight:600;color:var(--color-text);
+.kpi-sub strong {
+  font-weight: 600;
 }
-.chart-card-sub{
-  font-size:var(--text-xs);color:var(--color-text-muted);
+
+/* ── Charts grid ─────────────────────────────────────────────────── */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  margin-bottom: var(--space-8);
 }
-.chart-body{
-  padding:var(--space-4) var(--space-5);
-  position:relative;
+.chart-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
 }
-/* ── Tables row ─────────────────────────────────────────────────── */
-.tables-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:var(--space-6);
+.chart-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-divider);
+  gap: var(--space-3);
 }
-/* ── Level bar inline ───────────────────────────────────────────── */
-.level-bar-wrap{
-  display:flex;align-items:center;gap:var(--space-2);
+.chart-card-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
 }
-.level-dots{
-  display:flex;gap:3px;
+.chart-card-sub {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-top: 2px;
 }
-.level-dot{
-  width:7px;height:7px;border-radius:50%;
-  background:var(--color-border);
+.chart-body {
+  padding: var(--space-4) var(--space-5);
+  position: relative;
 }
-.level-dot.on-0,.level-dot.on-1{background:#6daa45}
-.level-dot.on-2,.level-dot.on-3{background:#da7101}
-.level-dot.on-4,.level-dot.on-5{background:#a12c7b}
-@media(max-width:900px){
-  .charts-grid,.tables-grid{grid-template-columns:1fr}
+
+/* ── Tabelas ─────────────────────────────────────────────────────── */
+.tables-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+}
+
+/* ── Nível de severidade (dots) ──────────────────────────────────── */
+.level-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.level-dots {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+.level-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
+.level-dot.on-0, .level-dot.on-1 { background: #6daa45 }
+.level-dot.on-2, .level-dot.on-3 { background: #da7101 }
+.level-dot.on-4, .level-dot.on-5 { background: #a12c7b }
+
+/* ── Responsivo ──────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .charts-grid, .tables-grid { grid-template-columns: 1fr }
+}
+@media (max-width: 600px) {
+  .kpi-grid-main { grid-template-columns: repeat(2, 1fr); }
 }
 </style>
 {% endblock %}
 
 {% block content %}
 
-{# ══ Cabeçalho ════════════════════════════════════════════════════════════════════════ #}
+{# ══ Cabeçalho ══════════════════════════════════════════════════════════════ #}
 <div class="page-header">
   <h1 class="page-title">Dashboard</h1>
   <p class="page-subtitle">Visão geral do monitoramento — {{ partner.name }}</p>
 </div>
 
-{# ══ KPIs principais ═══════════════════════════════════════════════════════════════════════ #}
+{# ══ KPIs ════════════════════════════════════════════════════════════════════ #}
 <div class="kpi-grid-main">
 
   {# Alertas totais #}
   <div class="kpi-card-main">
     <div class="kpi-accent-bar" style="background:var(--color-warning)"></div>
-    <div class="kpi-row">
+    <div class="kpi-top-row">
       <span class="kpi-label-main">Alertas totais</span>
       <div class="kpi-icon-wrap" style="background:oklch(from var(--color-warning) l c h/.12)">
-        <i data-lucide="triangle-alert" style="width:16px;height:16px;color:var(--color-warning)"></i>
+        <i data-lucide="triangle-alert" style="color:var(--color-warning)"></i>
       </div>
     </div>
     <div class="kpi-value-main">{{ kpis.alerts|number_format(0,',','.') }}</div>
@@ -133,10 +192,10 @@
   {# Congestionamentos #}
   <div class="kpi-card-main">
     <div class="kpi-accent-bar" style="background:var(--color-orange)"></div>
-    <div class="kpi-row">
+    <div class="kpi-top-row">
       <span class="kpi-label-main">Congestionamentos</span>
       <div class="kpi-icon-wrap" style="background:oklch(from var(--color-orange) l c h/.12)">
-        <i data-lucide="traffic-cone" style="width:16px;height:16px;color:var(--color-orange)"></i>
+        <i data-lucide="traffic-cone" style="color:var(--color-orange)"></i>
       </div>
     </div>
     <div class="kpi-value-main">{{ kpis.jams|number_format(0,',','.') }}</div>
@@ -146,75 +205,92 @@
   {# Jams ativos (3h) #}
   <div class="kpi-card-main">
     <div class="kpi-accent-bar" style="background:var(--color-error)"></div>
-    <div class="kpi-row">
+    <div class="kpi-top-row">
       <span class="kpi-label-main">Jams ativos (3h)</span>
       <div class="kpi-icon-wrap" style="background:oklch(from var(--color-error) l c h/.12)">
-        <i data-lucide="zap" style="width:16px;height:16px;color:var(--color-error)"></i>
+        <i data-lucide="zap" style="color:var(--color-error)"></i>
       </div>
     </div>
     <div class="kpi-value-main">{{ kpis.liveJams|number_format(0,',','.') }}</div>
     {% if kpis.maxJamLevel > 0 %}
       {% set lvlColors = ['','#6daa45','#6daa45','#da7101','#da7101','#a12c7b'] %}
       {% set lvlNames  = ['','Leve','Leve','Moderado','Pesado','Parado'] %}
-      <div class="kpi-sub">Nível máx. <span style="font-weight:700;color:{{ lvlColors[kpis.maxJamLevel] }}">{{ lvlNames[kpis.maxJamLevel] }} ({{ kpis.maxJamLevel }})</span></div>
+      <div class="kpi-sub">
+        Nível máx.
+        <strong style="color:{{ lvlColors[kpis.maxJamLevel] }}">
+          {{ lvlNames[kpis.maxJamLevel] }} ({{ kpis.maxJamLevel }})
+        </strong>
+      </div>
     {% else %}
       <div class="kpi-sub">Sem congestionamentos ativos</div>
     {% endif %}
   </div>
 
-  {# Velocidade média (ao vivo) #}
+  {# Velocidade média #}
   <div class="kpi-card-main">
     <div class="kpi-accent-bar" style="background:var(--color-primary)"></div>
-    <div class="kpi-row">
+    <div class="kpi-top-row">
       <span class="kpi-label-main">Velocidade média</span>
       <div class="kpi-icon-wrap" style="background:oklch(from var(--color-primary) l c h/.12)">
-        <i data-lucide="gauge" style="width:16px;height:16px;color:var(--color-primary)"></i>
+        <i data-lucide="gauge" style="color:var(--color-primary)"></i>
       </div>
     </div>
-    <div class="kpi-value-main">{{ kpis.liveAvgSpeed|number_format(1,',') }} <span style="font-size:var(--text-sm);font-weight:400">km/h</span></div>
-    <div class="kpi-sub">Jams ativos (3h) · histórico: {{ kpis.avgSpeed|number_format(1,',') }} km/h</div>
+    <div class="kpi-value-main">
+      {{ kpis.liveAvgSpeed|number_format(1,',') }}
+      <span class="kpi-value-unit">km/h</span>
+    </div>
+    <div class="kpi-sub">Ao vivo · histórico: {{ kpis.avgSpeed|number_format(1,',') }} km/h</div>
   </div>
 
-  {# Atraso médio (ao vivo) #}
+  {# Atraso médio #}
   <div class="kpi-card-main">
     <div class="kpi-accent-bar" style="background:var(--color-gold)"></div>
-    <div class="kpi-row">
+    <div class="kpi-top-row">
       <span class="kpi-label-main">Atraso médio</span>
       <div class="kpi-icon-wrap" style="background:oklch(from var(--color-gold) l c h/.12)">
-        <i data-lucide="clock" style="width:16px;height:16px;color:var(--color-gold)"></i>
+        <i data-lucide="clock" style="color:var(--color-gold)"></i>
       </div>
     </div>
     {% set liveDelayMin = (kpis.liveAvgDelay / 60)|round %}
-    <div class="kpi-value-main">{{ liveDelayMin }} <span style="font-size:var(--text-sm);font-weight:400">min</span></div>
+    <div class="kpi-value-main">
+      {{ liveDelayMin }}
+      <span class="kpi-value-unit">min</span>
+    </div>
     <div class="kpi-sub">{{ kpis.liveAvgDelay|number_format(0,',') }}s · jams ativos (3h)</div>
   </div>
 
-  {# Extensão total (ao vivo) #}
+  {# Extensão congestionada #}
   <div class="kpi-card-main">
     <div class="kpi-accent-bar" style="background:var(--color-blue)"></div>
-    <div class="kpi-row">
+    <div class="kpi-top-row">
       <span class="kpi-label-main">Extensão congestionada</span>
       <div class="kpi-icon-wrap" style="background:oklch(from var(--color-blue) l c h/.12)">
-        <i data-lucide="route" style="width:16px;height:16px;color:var(--color-blue)"></i>
+        <i data-lucide="route" style="color:var(--color-blue)"></i>
       </div>
     </div>
     {% set liveKm = (kpis.liveTotalLen / 1000)|round(1) %}
-    <div class="kpi-value-main">{{ liveKm|number_format(1,',') }} <span style="font-size:var(--text-sm);font-weight:400">km</span></div>
-    <div class="kpi-sub">Jams ativos · total histórico: {{ (kpis.totalLength/1000)|round(1)|number_format(1,',') }} km</div>
+    <div class="kpi-value-main">
+      {{ liveKm|number_format(1,',') }}
+      <span class="kpi-value-unit">km</span>
+    </div>
+    <div class="kpi-sub">Ao vivo · total hist.: {{ (kpis.totalLength / 1000)|round(1)|number_format(1,',') }} km</div>
   </div>
 
   {# CEMADEN / chuva #}
   <div class="kpi-card-main">
     <div class="kpi-accent-bar" style="background:var(--color-primary)"></div>
-    <div class="kpi-row">
+    <div class="kpi-top-row">
       <span class="kpi-label-main">CEMADEN</span>
       <div class="kpi-icon-wrap" style="background:oklch(from var(--color-primary) l c h/.12)">
-        <i data-lucide="cloud-rain" style="width:16px;height:16px;color:var(--color-primary)"></i>
+        <i data-lucide="cloud-rain" style="color:var(--color-primary)"></i>
       </div>
     </div>
     {% if kpis.rainLastHour is not null and kpis.rainLastHour > 0 %}
-      <div class="kpi-value-main">{{ kpis.rainLastHour|number_format(1,',') }} <span style="font-size:var(--text-sm);font-weight:400">mm</span></div>
-      <div class="kpi-sub">Chuva acumulada última hora · {{ kpis.cemaden }} leituras</div>
+      <div class="kpi-value-main">
+        {{ kpis.rainLastHour|number_format(1,',') }}
+        <span class="kpi-value-unit">mm</span>
+      </div>
+      <div class="kpi-sub">Chuva acumulada — última hora · {{ kpis.cemaden }} leituras</div>
     {% else %}
       <div class="kpi-value-main">{{ kpis.cemaden|number_format(0,',','.') }}</div>
       <div class="kpi-sub">Leituras · {{ kpis.cities }} cidades monitoradas</div>
@@ -224,10 +300,10 @@
   {# Rotas monitoradas #}
   <div class="kpi-card-main">
     <div class="kpi-accent-bar" style="background:var(--color-success)"></div>
-    <div class="kpi-row">
+    <div class="kpi-top-row">
       <span class="kpi-label-main">Rotas monitoradas</span>
       <div class="kpi-icon-wrap" style="background:oklch(from var(--color-success) l c h/.12)">
-        <i data-lucide="map" style="width:16px;height:16px;color:var(--color-success)"></i>
+        <i data-lucide="map" style="color:var(--color-success)"></i>
       </div>
     </div>
     <div class="kpi-value-main">{{ kpis.routes|number_format(0,',','.') }}</div>
@@ -236,10 +312,10 @@
 
 </div>
 
-{# ══ Gráficos ════════════════════════════════════════════════════════════════════════════ #}
+{# ══ Gráficos ════════════════════════════════════════════════════════════════ #}
 <div class="charts-grid">
 
-  {# Linha — alertas + jams por hora (24h) #}
+  {# Linha — alertas + jams por hora (24h) — largura total #}
   <div class="chart-card" style="grid-column:1/-1">
     <div class="chart-card-header">
       <div>
@@ -265,7 +341,7 @@
     </div>
   </div>
 
-  {# Barras — congestionamentos por nível #}
+  {# Barras — jams por nível #}
   <div class="chart-card">
     <div class="chart-card-header">
       <div>
@@ -280,7 +356,7 @@
 
 </div>
 
-{# ══ Top subtipos (barra horizontal) ════════════════════════════════════════════════════ #}
+{# ══ Top subtipos ════════════════════════════════════════════════════════════ #}
 {% if alertsBySubtype is not empty %}
 <div class="chart-card" style="margin-bottom:var(--space-6)">
   <div class="chart-card-header">
@@ -295,7 +371,7 @@
 </div>
 {% endif %}
 
-{# ══ Tabelas recentes ════════════════════════════════════════════════════════════════════════ #}
+{# ══ Tabelas recentes ════════════════════════════════════════════════════════ #}
 <div class="tables-grid">
 
   {# Alertas recentes #}
@@ -321,7 +397,7 @@
         </thead>
         <tbody>
         {% for a in recentAlerts %}
-          {% set typeKey = a.type|lower|replace({'-': '_', ' ': '_'}) %}
+          {% set typeKey    = a.type|lower|replace({'-': '_', ' ': '_'}) %}
           {% set subtypeKey = a.subtype|default('')|lower|replace({'-': '_', ' ': '_'}) %}
           <tr>
             <td>
@@ -404,34 +480,20 @@
 (function(){
   'use strict';
 
-  // ── Dados vindos do Symfony ─────────────────────────────────────────
-  // Ambos os repos agora retornam [{hour: N, total: M}, ...]
   const rawAlertsPerHour = {{ alertsPerHour|json_encode|raw }};
   const rawJamsPerHour   = {{ jamsPerHour|json_encode|raw }};
 
-  /**
-   * Normaliza qualquer formato para array de 24 posições (índice = hora 0-23).
-   * Aceita:
-   *   - [{hour: N, total: M}, ...]  (novo formato unificado)
-   *   - {0: 3, 1: 0, ...}           (formato legado indexado por chave)
-   *   - array de 24 elementos indexados 0..23
-   */
   function normalizeTo24(raw) {
     const arr = new Array(24).fill(0);
     if (!raw) return arr;
-
     if (Array.isArray(raw)) {
-      if (raw.length === 24 && typeof raw[0] === 'number') {
-        // array de 24 números direto
-        return raw.slice();
-      }
+      if (raw.length === 24 && typeof raw[0] === 'number') return raw.slice();
       raw.forEach(function(row) {
         const h = parseInt(row.hour ?? row.h ?? 0, 10);
         const v = parseInt(row.total ?? row.count ?? 0, 10);
         if (h >= 0 && h < 24) arr[h] = v || 0;
       });
     } else if (typeof raw === 'object') {
-      // objeto {0: 3, 1: 0, ...}
       Object.keys(raw).forEach(function(k) {
         const h = parseInt(k, 10);
         if (h >= 0 && h < 24) arr[h] = parseInt(raw[k], 10) || 0;
@@ -447,7 +509,6 @@
   const jamsByLevel   = {{ jamsByLevel|json_encode|raw }};
   const alertsBySub   = {{ alertsBySubtype|json_encode|raw }};
 
-  // ── Traduções JS ───────────────────────────────────────────────
   const TYPE_LABELS = {
     ACCIDENT:'Acidente', HAZARD:'Perigo na via', JAM:'Congestionamento',
     ROAD_CLOSED:'Via fechada', WEATHERHAZARD:'Risco climático',
@@ -460,7 +521,8 @@
     HAZARD_ON_ROAD_LANE_CLOSED:'Faixa fechada', HAZARD_ON_ROAD_OBJECT:'Objeto caído',
     HAZARD_ON_ROAD_OIL:'Óleo derramado', HAZARD_ON_ROAD_POTHOLES:'Buracos',
     HAZARD_WEATHER_FLOOD:'Alagamento', HAZARD_WEATHER_FOG:'Neblina',
-    HAZARD_WEATHER_HEAVY_RAIN:'Chuva intensa', HAZARD_ON_ROAD_TRAFFIC_LIGHT_FAULT:'Semáforo com defeito',
+    HAZARD_WEATHER_HEAVY_RAIN:'Chuva intensa',
+    HAZARD_ON_ROAD_TRAFFIC_LIGHT_FAULT:'Semáforo com defeito',
     JAM_HEAVY_TRAFFIC:'Tráfego intenso', JAM_LIGHT_TRAFFIC:'Tráfego leve',
     JAM_MODERATE_TRAFFIC:'Tráfego moderado', JAM_STAND_STILL_TRAFFIC:'Trânsito parado',
     ROAD_CLOSED_CONSTRUCTION:'Fechamento por obra', ROAD_CLOSED_EVENT:'Fechamento por evento',
@@ -469,9 +531,8 @@
   const LEVEL_LABELS = ['Livre','Leve','Moderado','Pesado','Intenso','Parado'];
   const label = (map, key) => map[key] || key;
 
-  // ── Tema dinâmico ──────────────────────────────────────────────────
   const root = getComputedStyle(document.documentElement);
-  const cv = (v) => root.getPropertyValue(v).trim();
+  const cv   = (v) => root.getPropertyValue(v).trim();
   const COLORS = {
     warning : cv('--color-warning'),
     orange  : cv('--color-orange'),
@@ -483,7 +544,6 @@
     muted   : cv('--color-text-muted'),
     border  : cv('--color-border'),
     text    : cv('--color-text'),
-    bg      : cv('--color-surface'),
   };
 
   Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
@@ -491,14 +551,12 @@
 
   const baseGrid = { color: COLORS.border, drawBorder: false };
 
-  // ── helpers de hora ───────────────────────────────────────────────
   const now = new Date();
   const hours = Array.from({length:24}, (_, i) => {
     const h = (now.getHours() - 23 + i + 24) % 24;
     return h.toString().padStart(2,'0') + 'h';
   });
 
-  // Reordena o array de 24h para começar 23h atrás até agora
   function reorderPerHour(arr24) {
     const base = now.getHours();
     const out = [];
@@ -509,13 +567,7 @@
   const alertsOrdered = reorderPerHour(alertsPerHour24);
   const jamsOrdered   = reorderPerHour(jamsPerHour24);
 
-  // Debug: verifica se há dados
-  const totalAlerts = alertsOrdered.reduce((s, v) => s + v, 0);
-  const totalJams   = jamsOrdered.reduce((s, v) => s + v, 0);
-  console.info('[Dashboard] alertas/hora total:', totalAlerts, alertsOrdered);
-  console.info('[Dashboard] jams/hora total:',   totalJams,   jamsOrdered);
-
-  // ── 1. Gráfico de linha — ocorrências por hora ─────────────────
+  // 1. Linha — ocorrências por hora
   new Chart(document.getElementById('chartHourly'), {
     type: 'line',
     data: {
@@ -526,16 +578,14 @@
           data: alertsOrdered,
           borderColor: COLORS.warning,
           backgroundColor: COLORS.warning + '22',
-          tension: 0.4, fill: true, pointRadius: 3,
-          borderWidth: 2,
+          tension: 0.4, fill: true, pointRadius: 3, borderWidth: 2,
         },
         {
           label: 'Congestionamentos',
           data: jamsOrdered,
           borderColor: COLORS.orange,
           backgroundColor: COLORS.orange + '22',
-          tension: 0.4, fill: true, pointRadius: 3,
-          borderWidth: 2,
+          tension: 0.4, fill: true, pointRadius: 3, borderWidth: 2,
         },
       ]
     },
@@ -550,7 +600,7 @@
     }
   });
 
-  // ── 2. Rosca — alertas por tipo ─────────────────────────────
+  // 2. Rosca — alertas por tipo
   const typeColors = [COLORS.warning, COLORS.orange, COLORS.error, COLORS.primary, COLORS.gold, COLORS.success, COLORS.muted, '#7a39bb'];
   if (alertsByType.length) {
     new Chart(document.getElementById('chartAlertType'), {
@@ -560,8 +610,7 @@
         datasets: [{
           data: alertsByType.map(r => r.total),
           backgroundColor: alertsByType.map((_, i) => typeColors[i % typeColors.length]),
-          borderWidth: 0,
-          hoverOffset: 6,
+          borderWidth: 0, hoverOffset: 6,
         }]
       },
       options: {
@@ -574,19 +623,18 @@
     });
   }
 
-  // ── 3. Barras — jams por nível ───────────────────────────────
+  // 3. Barras — jams por nível
   const levelPalette = ['#6daa45','#6daa45','#da7101','#da7101','#a12c7b','#a12c7b'];
   if (jamsByLevel.length) {
     new Chart(document.getElementById('chartJamLevel'), {
       type: 'bar',
       data: {
-        labels: jamsByLevel.map(r => label(LEVEL_LABELS, +r.level) + ' ('+r.level+')'),
+        labels: jamsByLevel.map(r => label(LEVEL_LABELS, +r.level) + ' (' + r.level + ')'),
         datasets: [{
           label: 'Jams',
           data: jamsByLevel.map(r => r.total),
           backgroundColor: jamsByLevel.map(r => levelPalette[Math.min(+r.level, 5)] + 'cc'),
-          borderRadius: 4,
-          borderSkipped: false,
+          borderRadius: 4, borderSkipped: false,
         }]
       },
       options: {
@@ -600,7 +648,7 @@
     });
   }
 
-  // ── 4. Barras horizontais — top subtipos ───────────────────────
+  // 4. Barras horizontais — top subtipos
   const subtypeCanvas = document.getElementById('chartSubtype');
   if (subtypeCanvas && alertsBySub.length) {
     new Chart(subtypeCanvas, {
@@ -611,8 +659,7 @@
           label: 'Ocorrências',
           data: alertsBySub.map(r => r.total),
           backgroundColor: COLORS.warning + 'bb',
-          borderRadius: 4,
-          borderSkipped: false,
+          borderRadius: 4, borderSkipped: false,
         }]
       },
       options: {
