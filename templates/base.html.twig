@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    /* ══ TOKENS ══════════════════════════════════════════════════════════ */
+    /* ══ TOKENS ════════════════════════════════════════════════════════════════════ */
     :root,[data-theme=light]{
       /* type — fluid scale */
       --text-xs:  clamp(.7rem,  .65rem + .25vw, .8rem);
@@ -70,7 +70,7 @@
       --shadow-lg:0 12px 32px oklch(0 0 0/.4);
     }
 
-    /* ══ RESET ════════════════════════════════════════════════════════════ */
+    /* ══ RESET ════════════════════════════════════════════════════════════════════════ */
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     html{-webkit-font-smoothing:antialiased;scroll-behavior:smooth;scroll-padding-top:var(--header-h)}
     body{
@@ -90,7 +90,7 @@
     :focus-visible{outline:2px solid var(--color-primary);outline-offset:3px;border-radius:var(--radius-sm)}
     @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 
-    /* ══ HEADER ═══════════════════════════════════════════════════════════ */
+    /* ══ HEADER ════════════════════════════════════════════════════════════════════ */
     .header{
       grid-area:header;
       background:var(--color-surface);
@@ -135,7 +135,7 @@
     .btn-menu{display:grid;place-items:center;min-width:44px;min-height:44px}
     @media(min-width:768px){.btn-menu{display:none}}
 
-    /* ══ SIDEBAR ══════════════════════════════════════════════════════════ */
+    /* ══ SIDEBAR ══════════════════════════════════════════════════════════════════════════ */
     .sidebar{
       grid-area:sidebar;
       background:var(--color-surface);
@@ -234,7 +234,7 @@
       .sidebar-overlay.visible{display:block}
     }
 
-    /* ══ MAIN ══════════════════════════════════════════════════════════════ */
+    /* ══ MAIN ══════════════════════════════════════════════════════════════════════════════ */
     main{
       grid-area:main;
       padding:var(--space-6);
@@ -249,7 +249,7 @@
       .content-wrap{max-width:1600px;margin-inline:auto}
     }
 
-    /* ══ BOTTOM NAV (mobile only) ══════════════════════════════════════════ */
+    /* ══ BOTTOM NAV (mobile only) ══════════════════════════════════════════════════════════ */
     .bottom-nav{
       display:none;
       position:fixed;
@@ -289,7 +289,7 @@
       border:2px solid var(--color-surface);
     }
 
-    /* ══ COMPONENTS ════════════════════════════════════════════════════════ */
+    /* ══ COMPONENTS ════════════════════════════════════════════════════════════════════════════════════════ */
     .page-header{margin-bottom:var(--space-6)}
     .page-title{
       font-family:var(--font-display);
@@ -436,37 +436,40 @@
     </div>
   </header>
 
+  {% set _route = app.request.attributes.get('_route') %}
+
   <nav class="sidebar" id="sidebar" aria-label="Navegação principal">
     <div class="nav-section">
       <div class="nav-label">Monitoramento</div>
-      <a href="{{ path('dashboard_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'dashboard' ? 'active' }}">
+      <a href="{{ path('dashboard_index') }}" class="nav-item {{ _route starts with 'dashboard' ? 'active' }}">
         <i data-lucide="layout-dashboard"></i> Dashboard
       </a>
-      <a href="{{ path('operator_live') }}" class="nav-item-live {{ app.request.attributes.get('_route') starts with 'operator' ? 'active' }}" title="Tela de operador em tempo real">
+      <a href="{{ path('operator_live') }}" class="nav-item-live {{ _route starts with 'operator' ? 'active' }}" title="Tela de operador em tempo real">
         <i data-lucide="monitor"></i> Tela Live
         <span class="nav-live-dot" aria-hidden="true"></span>
       </a>
-      <a href="{{ path('alert_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'alert' ? 'active' }}">
+      <a href="{{ path('alert_index') }}" class="nav-item {{ _route starts with 'alert' ? 'active' }}">
         <i data-lucide="triangle-alert"></i> Alertas
       </a>
-      <a href="{{ path('jam_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'jam' ? 'active' }}">
+      <a href="{{ path('jam_index') }}" class="nav-item {{ _route starts with 'jam' ? 'active' }}">
         <i data-lucide="traffic-cone"></i> Congestionamentos
       </a>
-      <a href="{{ path('route_admin_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'route_admin' ? 'active' }}">
+      <a href="{{ path('route_admin_index') }}" class="nav-item {{ _route starts with 'route_admin' ? 'active' }}">
         <i data-lucide="route"></i> Rotas
       </a>
-      <a href="{{ path('cemaden_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'cemaden' ? 'active' }}">
+      <a href="{{ path('cemaden_index') }}" class="nav-item {{ _route starts with 'cemaden' ? 'active' }}">
         <i data-lucide="cloud-rain"></i> CEMADEN
       </a>
-      {# ── Nível dos Rios (hidrológico) ── #}
-      <a href="{{ path('hydro_live') }}" class="nav-item-live {{ app.request.attributes.get('_route') starts with 'hydro' ? 'active' }}" title="Nível dos rios em tempo real">
+      {# Rios Ao Vivo: ativo SOMENTE na rota exata hydro_live ou hydro_live_data #}
+      <a href="{{ path('hydro_live') }}" class="nav-item-live {{ _route == 'hydro_live' or _route == 'hydro_live_data' ? 'active' }}" title="Nível dos rios em tempo real">
         <i data-lucide="waves"></i> Rios — Ao Vivo
         <span class="nav-live-dot" aria-hidden="true"></span>
       </a>
-      <a href="{{ path('hydro_historico') }}" class="nav-item {{ app.request.attributes.get('_route') == 'hydro_historico' ? 'active' }}">
+      {# Rios Histórico: ativo SOMENTE na rota hydro_historico #}
+      <a href="{{ path('hydro_historico') }}" class="nav-item {{ _route == 'hydro_historico' ? 'active' }}">
         <i data-lucide="book-open"></i> Rios — Histórico
       </a>
-      <a href="{{ path('notification_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'notification' ? 'active' }}">
+      <a href="{{ path('notification_index') }}" class="nav-item {{ _route starts with 'notification' ? 'active' }}">
         <i data-lucide="bell"></i> Notificações
       </a>
     </div>
@@ -474,16 +477,16 @@
     {% if is_granted('ROLE_ADMIN') %}
     <div class="nav-section">
       <div class="nav-label">Administração</div>
-      <a href="{{ path('admin_link_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'admin_link' ? 'active' }}">
+      <a href="{{ path('admin_link_index') }}" class="nav-item {{ _route starts with 'admin_link' ? 'active' }}">
         <i data-lucide="link"></i> Links Monitorados
       </a>
-      <a href="{{ path('admin_city_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'admin_city' ? 'active' }}">
+      <a href="{{ path('admin_city_index') }}" class="nav-item {{ _route starts with 'admin_city' ? 'active' }}">
         <i data-lucide="map-pin"></i> Cidades / Clima
       </a>
-      <a href="{{ path('admin_station_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'admin_station' ? 'active' }}">
+      <a href="{{ path('admin_station_index') }}" class="nav-item {{ _route starts with 'admin_station' ? 'active' }}">
         <i data-lucide="radio-tower"></i> Estações CEMADEN
       </a>
-      <a href="{{ path('admin_settings_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'admin_settings' ? 'active' }}">
+      <a href="{{ path('admin_settings_index') }}" class="nav-item {{ _route starts with 'admin_settings' ? 'active' }}">
         <i data-lucide="settings"></i> Configurações
       </a>
     </div>
@@ -492,7 +495,7 @@
     {% if is_granted('ROLE_SUPER_ADMIN') %}
     <div class="nav-section">
       <div class="nav-label">Super Admin</div>
-      <a href="{{ path('partner_admin_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'partner_admin' ? 'active' }}">
+      <a href="{{ path('partner_admin_index') }}" class="nav-item {{ _route starts with 'partner_admin' ? 'active' }}">
         <i data-lucide="building-2"></i> Parceiros
       </a>
     </div>
@@ -516,19 +519,19 @@
 
   <!-- Bottom nav (mobile) -->
   <nav class="bottom-nav" aria-label="Navegação rápida">
-    <a href="{{ path('dashboard_index') }}" class="bottom-nav-item {{ app.request.attributes.get('_route') starts with 'dashboard' ? 'active' }}" aria-label="Dashboard">
+    <a href="{{ path('dashboard_index') }}" class="bottom-nav-item {{ _route starts with 'dashboard' ? 'active' }}" aria-label="Dashboard">
       <i data-lucide="layout-dashboard"></i>
       <span>Dashboard</span>
     </a>
-    <a href="{{ path('operator_live') }}" class="bottom-nav-item bottom-nav-live {{ app.request.attributes.get('_route') starts with 'operator' ? 'active' }}" aria-label="Tela Live">
+    <a href="{{ path('operator_live') }}" class="bottom-nav-item bottom-nav-live {{ _route starts with 'operator' ? 'active' }}" aria-label="Tela Live">
       <i data-lucide="monitor"></i>
       <span>Live</span>
     </a>
-    <a href="{{ path('hydro_live') }}" class="bottom-nav-item bottom-nav-live {{ app.request.attributes.get('_route') starts with 'hydro' ? 'active' }}" aria-label="Rios ao vivo">
+    <a href="{{ path('hydro_live') }}" class="bottom-nav-item bottom-nav-live {{ _route starts with 'hydro' ? 'active' }}" aria-label="Rios ao vivo">
       <i data-lucide="waves"></i>
       <span>Rios</span>
     </a>
-    <a href="{{ path('alert_index') }}" class="bottom-nav-item {{ app.request.attributes.get('_route') starts with 'alert' ? 'active' }}" aria-label="Alertas">
+    <a href="{{ path('alert_index') }}" class="bottom-nav-item {{ _route starts with 'alert' ? 'active' }}" aria-label="Alertas">
       <i data-lucide="triangle-alert"></i>
       <span>Alertas</span>
     </a>
