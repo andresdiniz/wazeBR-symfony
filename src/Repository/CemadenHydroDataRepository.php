@@ -9,8 +9,6 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
- * Repositório para leituras hidrológicas CEMADEN.
- *
  * @extends ServiceEntityRepository<CemadenHydroData>
  */
 class CemadenHydroDataRepository extends ServiceEntityRepository
@@ -21,55 +19,91 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
     }
 
     /**
-     * Verifica se já existe um registro para esta estação e datahora.
-     * Usa índice único (station_code, measured_at) para garantir idempotência.
+     * Última leitura de cada estação do parceiro (para a tela ao vivo).
      */
-    public function existsByStationAndTime(string $stationCode, \DateTimeImmutable $measuredAt): bool
+    public function findLatestByPartner(int $partnerId): array
     {
-        return (bool) $this->createQueryBuilder('h')
-            ->select('1')
-            ->where('h.stationCode = :code')
-            ->andWhere('h.measuredAt = :at')
-            ->setParameter('code', $stationCode)
-            ->setParameter('at', $measuredAt)
-            ->setMaxResults(1)
-            ->getQuery()
-            ->getOneOrNullResult();
+        $conn = $this->getEntityManager()->getConnection();
+
+        return $conn->fetchAllAssociative(
+            "SELECT h.*
+             FROM cemaden_hydro_data h
+             INNER JOIN (
+                 SELECT station_code, MAX(measured_at) AS max_at
+                 FROM cemaden_hydro_data
+                 WHERE partner_id = :pid
+                 GROUP BY station_code
+             ) latest ON latest.station_code = h.station_code
+                      AND latest.max_at      = h.measured_at
+             WHERE h.partner_id = :pid
+             ORDER BY h.alert_level DESC, h.municipality, h.station_name",
+            ['pid' => $partnerId],
+        );
     }
 
     /**
-     * Retorna as últimas N leituras de uma estação, ordenadas por datahora DESC.
+     * Histórico paginado com filtros.
      *
-     * @return CemadenHydroData[]
+     * @return array{0: array, 1: int}  [rows, total]
      */
-    public function findLatestByStation(string $stationCode, int $limit = 24): array
-    {
-        return $this->createQueryBuilder('h')
-            ->where('h.stationCode = :code')
-            ->setParameter('code', $stationCode)
-            ->orderBy('h.measuredAt', 'DESC')
-            ->setMaxResults($limit)
-            ->getQuery()
-            ->getResult();
+    public function findHistorico(
+        int    $partnerId,
+        ?string $stationCode,
+        ?string $alertLevel,
+        string  $dateFrom,
+        string  $dateTo,
+        int     $page,
+        int     $perPage,
+    ): array {
+        $conn   = $this->getEntityManager()->getConnection();
+        $where  = ['h.partner_id = :pid'];
+        $params = ['pid' => $partnerId];
+
+        if ($stationCode) {
+            $where[]              = 'h.station_code = :sc';
+            $params['sc']         = $stationCode;
+        }
+        if ($alertLevel) {
+            $where[]              = 'h.alert_level = :lv';
+            $params['lv']         = $alertLevel;
+        }
+
+        $where[]           = 'DATE(h.measured_at) BETWEEN :df AND :dt';
+        $params['df']      = $dateFrom;
+        $params['dt']      = $dateTo;
+
+        $whereClause = implode(' AND ', $where);
+
+        $total = (int) $conn->fetchOne(
+            "SELECT COUNT(*) FROM cemaden_hydro_data h WHERE {$whereClause}",
+            $params,
+        );
+
+        $offset = ($page - 1) * $perPage;
+        $rows   = $conn->fetchAllAssociative(
+            "SELECT h.* FROM cemaden_hydro_data h
+              WHERE {$whereClause}
+              ORDER BY h.measured_at DESC, h.station_name
+              LIMIT {$perPage} OFFSET {$offset}",
+            $params,
+        );
+
+        return [$rows, $total];
     }
 
     /**
-     * Retorna a leitura mais recente de cada estação (útil para o mapa).
-     *
-     * @return CemadenHydroData[]
+     * Lista de estações distintas do parceiro (para filtro do histórico).
      */
-    public function findLatestPerStation(): array
+    public function findStationsByPartner(int $partnerId): array
     {
-        // Subquery: MAX(measured_at) por station_code
-        $sub = $this->createQueryBuilder('sub')
-            ->select('MAX(sub.measuredAt)')
-            ->where('sub.stationCode = h.stationCode')
-            ->getDQL();
+        $conn = $this->getEntityManager()->getConnection();
 
-        return $this->createQueryBuilder('h')
-            ->where("h.measuredAt = ($sub)")
-            ->orderBy('h.stationCode', 'ASC')
-            ->getQuery()
-            ->getResult();
+        return $conn->fetchAllAssociative(
+            "SELECT DISTINCT station_code, station_name, municipality, state
+             FROM cemaden_hydro_data
+             WHERE partner_id = :pid
+             ORDER BY municipality, station_name",
+            ['pid' => $partnerId],
+        );
     }
 }

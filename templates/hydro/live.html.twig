@@ -1,0 +1,170 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Nível dos Rios — Ao Vivo{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="mb-0">🌊 Nível dos Rios — Ao Vivo</h4>
+        <small class="text-muted">Atualiza automaticamente a cada 60 s &nbsp;•&nbsp;
+            Última atualização: <span id="last-update">—</span>
+        </small>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ path('hydro_historico') }}" class="btn btn-sm btn-outline-secondary">
+            📋 Histórico
+        </a>
+        <button id="btn-refresh" class="btn btn-sm btn-outline-primary" title="Atualizar agora">
+            🔄 Atualizar
+        </button>
+    </div>
+</div>
+
+{# Sumário de alertas #}
+<div class="row g-2 mb-3" id="summary-cards">
+    {% set counts = {normal: 0, atencao: 0, alerta: 0, transbordamento: 0} %}
+    {% for r in rows %}
+        {% if r.alert_level == 'normal' %}{% set counts = counts|merge({normal: counts.normal + 1}) %}
+        {% elseif r.alert_level == 'atencao' %}{% set counts = counts|merge({atencao: counts.atencao + 1}) %}
+        {% elseif r.alert_level == 'alerta' %}{% set counts = counts|merge({alerta: counts.alerta + 1}) %}
+        {% elseif r.alert_level == 'transbordamento' %}{% set counts = counts|merge({transbordamento: counts.transbordamento + 1}) %}
+        {% endif %}
+    {% endfor %}
+    <div class="col-6 col-md-3">
+        <div class="card border-0 bg-success bg-opacity-10 text-center py-2">
+            <div class="fs-3 fw-bold text-success">{{ counts.normal }}</div>
+            <div class="small text-muted">✅ Normal</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 bg-warning bg-opacity-10 text-center py-2">
+            <div class="fs-3 fw-bold text-warning">{{ counts.atencao }}</div>
+            <div class="small text-muted">⚠️ Atenção</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 bg-danger bg-opacity-10 text-center py-2">
+            <div class="fs-3 fw-bold text-danger">{{ counts.alerta }}</div>
+            <div class="small text-muted">🚨 Alerta</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 bg-dark bg-opacity-10 text-center py-2">
+            <div class="fs-3 fw-bold text-dark">{{ counts.transbordamento }}</div>
+            <div class="small text-muted">🌊 Transbordamento</div>
+        </div>
+    </div>
+</div>
+
+{# Tabela principal #}
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0" id="hydro-table">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Nível</th>
+                        <th>Estação</th>
+                        <th>Município / UF</th>
+                        <th class="text-end">Rio (m)</th>
+                        <th class="text-end">Atenção</th>
+                        <th class="text-end">Alerta</th>
+                        <th class="text-end">Transb.</th>
+                        <th>Medido em</th>
+                    </tr>
+                </thead>
+                <tbody id="hydro-tbody">
+                {% for r in rows %}
+                    {% set bg = '' %}
+                    {% set icon = '✅' %}
+                    {% if r.alert_level == 'atencao' %}{% set bg = 'table-warning' %}{% set icon = '⚠️' %}
+                    {% elseif r.alert_level == 'alerta' %}{% set bg = 'table-danger' %}{% set icon = '🚨' %}
+                    {% elseif r.alert_level == 'transbordamento' %}{% set bg = 'table-dark text-white' %}{% set icon = '🌊' %}
+                    {% endif %}
+                    <tr class="{{ bg }}">
+                        <td class="fs-5 text-center" title="{{ r.alert_level|capitalize }}">{{ icon }}</td>
+                        <td>
+                            <div class="fw-semibold">{{ r.station_name }}</div>
+                            <div class="text-muted small">{{ r.station_code }}</div>
+                        </td>
+                        <td>{{ r.municipality }} / {{ r.state }}</td>
+                        <td class="text-end fw-bold">{{ r.water_level is not null ? r.water_level|number_format(2, ',', '.') ~ ' m' : '—' }}</td>
+                        <td class="text-end">{{ r.cota_atencao is not null ? r.cota_atencao|number_format(2, ',', '.') ~ ' m' : '—' }}</td>
+                        <td class="text-end">{{ r.cota_alerta is not null ? r.cota_alerta|number_format(2, ',', '.') ~ ' m' : '—' }}</td>
+                        <td class="text-end">{{ r.cota_transbordamento is not null ? r.cota_transbordamento|number_format(2, ',', '.') ~ ' m' : '—' }}</td>
+                        <td class="small text-nowrap">{{ r.measured_at|date('d/m H:i') }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="8" class="text-center text-muted py-4">Nenhuma estação hidrológica cadastrada.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+<script>
+(function () {
+    const INTERVAL = 60_000;
+    const tbody    = document.getElementById('hydro-tbody');
+    const lastEl   = document.getElementById('last-update');
+    const btnRef   = document.getElementById('btn-refresh');
+
+    const alertMeta = {
+        normal:          { icon: '✅', css: '' },
+        atencao:         { icon: '⚠️', css: 'table-warning' },
+        alerta:          { icon: '🚨', css: 'table-danger' },
+        transbordamento: { icon: '🌊', css: 'table-dark text-white' },
+    };
+
+    function fmt(v, decimals = 2) {
+        if (v === null || v === undefined) return '—';
+        return parseFloat(v).toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) + ' m';
+    }
+
+    function fmtDate(s) {
+        if (!s) return '—';
+        const d = new Date(s.replace(' ', 'T'));
+        return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function renderRows(rows) {
+        if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Nenhuma estação hidrológica cadastrada.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = rows.map(r => {
+            const m = alertMeta[r.alert_level] ?? alertMeta.normal;
+            return `<tr class="${m.css}">
+                <td class="fs-5 text-center" title="${(r.alert_level ?? 'normal')}"> ${m.icon}</td>
+                <td><div class="fw-semibold">${r.station_name}</div><div class="text-muted small">${r.station_code}</div></td>
+                <td>${r.municipality} / ${r.state}</td>
+                <td class="text-end fw-bold">${fmt(r.water_level)}</td>
+                <td class="text-end">${fmt(r.cota_atencao)}</td>
+                <td class="text-end">${fmt(r.cota_alerta)}</td>
+                <td class="text-end">${fmt(r.cota_transbordamento)}</td>
+                <td class="small text-nowrap">${fmtDate(r.measured_at)}</td>
+            </tr>`;
+        }).join('');
+
+        lastEl.textContent = new Date().toLocaleTimeString('pt-BR');
+    }
+
+    function load() {
+        btnRef.disabled = true;
+        fetch('{{ path('hydro_live_data') }}')
+            .then(r => r.json())
+            .then(renderRows)
+            .catch(() => {})
+            .finally(() => { btnRef.disabled = false; });
+    }
+
+    btnRef.addEventListener('click', load);
+    lastEl.textContent = new Date().toLocaleTimeString('pt-BR');
+    setInterval(load, INTERVAL);
+})();
+</script>
+{% endblock %}
