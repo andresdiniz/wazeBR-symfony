@@ -205,7 +205,8 @@ tr.row-transbordamento:hover td { background: oklch(from var(--color-error)   l 
         {% endif %}
         {% set pct = 0 %}
         {% if r.cota_transbordamento is not null and r.water_level is not null and r.cota_transbordamento > 0 %}
-          {% set pct = [((r.water_level / r.cota_transbordamento) * 100)|round, 100]|min %}
+          {% set pct_raw = ((r.water_level / r.cota_transbordamento) * 100)|round %}
+          {% set pct = pct_raw > 100 ? 100 : pct_raw %}
         {% endif %}
         <tr class="{{ rowCss }}">
           <td><span class="level-icon" title="{{ r.alert_level|capitalize }}">{{ icon }}</span></td>
