@@ -335,6 +335,135 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
   margin-top: 2px;
 }
 
+/* ── Card estação CEMADEN ────────────────────────────────────── */
+.cemaden-station-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+.cemaden-station-city {
+  font-size: 10px;
+  color: var(--muted);
+  margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cemaden-level-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.cemaden-level-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  border-radius: 20px;
+  padding: 3px 8px;
+  background: var(--surface3);
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.cemaden-level-badge.lvl-normal  { background: var(--teal-dim);   color: var(--teal); }
+.cemaden-level-badge.lvl-atencao { background: var(--yellow-dim); color: var(--yellow); }
+.cemaden-level-badge.lvl-alerta  { background: var(--orange-dim); color: var(--orange); }
+.cemaden-level-badge.lvl-critico { background: var(--red-dim);    color: var(--red); }
+
+/* Barra de nível de cota */
+.cemaden-quota-wrap {
+  margin-top: 4px;
+}
+.cemaden-quota-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--muted);
+  margin-bottom: 3px;
+}
+.cemaden-quota-label span:last-child {
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.cemaden-quota-track {
+  width: 100%;
+  height: 6px;
+  background: var(--surface3);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+.cemaden-quota-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width .5s ease, background .3s;
+  min-width: 3px;
+}
+/* Marcadores de cota de alerta e transbordamento */
+.cemaden-quota-markers {
+  position: relative;
+  height: 10px;
+  margin-top: 2px;
+}
+.cemaden-quota-marker {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 8px;
+  white-space: nowrap;
+}
+.cemaden-quota-marker::before {
+  content: '';
+  display: block;
+  width: 1px;
+  height: 5px;
+  margin: 0 auto 1px;
+}
+.cemaden-quota-marker.mk-alerta {
+  color: var(--yellow);
+}
+.cemaden-quota-marker.mk-alerta::before { background: var(--yellow); }
+.cemaden-quota-marker.mk-transbordamento {
+  color: var(--red);
+}
+.cemaden-quota-marker.mk-transbordamento::before { background: var(--red); }
+
+.cemaden-rain-row {
+  display: flex;
+  gap: 5px;
+  margin-top: 6px;
+}
+.cemaden-rain-item {
+  flex: 1;
+  background: var(--surface3);
+  border-radius: var(--radius-sm);
+  padding: 5px 4px;
+  text-align: center;
+}
+.cemaden-rain-val {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  line-height: 1;
+}
+.cemaden-rain-key {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--faint);
+  margin-top: 2px;
+}
+
 /* ── Mapa ─────────────────────────────────────────────────────── */
 .op-map-container {
   position: relative;
@@ -793,9 +922,62 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
 
       <div class="kpi-section-label">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M16 14v6"/><path d="M8 14v6"/><path d="M12 16v6"/></svg>
-        CEMADEN
+        CEMADEN — Estação Próxima
       </div>
 
+      <!-- Card da estação CEMADEN mais próxima -->
+      <div class="kpi-card alert-teal" id="kpi-cemaden-station">
+        <div class="kpi-header">
+          <div class="kpi-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/>
+              <path d="M16 14v6"/><path d="M8 14v6"/><path d="M12 16v6"/>
+            </svg>
+          </div>
+          <div class="kpi-label">Monitoramento Fluvial</div>
+        </div>
+
+        <!-- Nome e cidade da estação -->
+        <div class="cemaden-station-name" id="cs-name">—</div>
+        <div class="cemaden-station-city" id="cs-city">aguardando dados...</div>
+
+        <!-- Badge de nível de alerta + distância -->
+        <div class="cemaden-level-row">
+          <span class="cemaden-level-badge" id="cs-level-badge">—</span>
+          <span style="font-size:9px;color:var(--muted)" id="cs-distance"></span>
+        </div>
+
+        <!-- Barra de cota (nível do rio) -->
+        <div class="cemaden-quota-wrap" id="cs-quota-wrap" style="display:none">
+          <div class="cemaden-quota-label">
+            <span id="cs-quota-label-text">Cota atual</span>
+            <span id="cs-quota-val">—</span>
+          </div>
+          <div class="cemaden-quota-track">
+            <div class="cemaden-quota-fill" id="cs-quota-fill" style="width:0%;background:var(--teal)"></div>
+          </div>
+          <!-- Marcadores de cotas de referência -->
+          <div class="cemaden-quota-markers" id="cs-quota-markers"></div>
+        </div>
+
+        <!-- Mini grid de chuva -->
+        <div class="cemaden-rain-row">
+          <div class="cemaden-rain-item">
+            <div class="cemaden-rain-val" id="cs-rain-1h">—</div>
+            <div class="cemaden-rain-key">mm / 1h</div>
+          </div>
+          <div class="cemaden-rain-item">
+            <div class="cemaden-rain-val" id="cs-rain-12h">—</div>
+            <div class="cemaden-rain-key">mm / 12h</div>
+          </div>
+          <div class="cemaden-rain-item">
+            <div class="cemaden-rain-val" id="cs-rain-24h">—</div>
+            <div class="cemaden-rain-key">mm / 24h</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card de chuva acumulada (resumo geral CEMADEN) -->
       <div class="kpi-card" id="kpi-rain">
         <div class="kpi-header">
           <div class="kpi-icon">
@@ -804,13 +986,13 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
               <path d="M16 14v6"/><path d="M8 14v6"/><path d="M12 16v6"/>
             </svg>
           </div>
-          <div class="kpi-label">Chuva acum. — 1h</div>
+          <div class="kpi-label">Chuva acum. — 1h (rede)</div>
         </div>
         <div class="kpi-body">
           <div class="kpi-value" id="v-rain">—</div>
           <div class="kpi-unit">mm</div>
         </div>
-        <div class="kpi-sub">acumulado última hora</div>
+        <div class="kpi-sub">máximo entre todas as estações</div>
       </div>
 
       <div class="kpi-section-label">
@@ -1048,13 +1230,11 @@ function makeAlertIcon(type) {
 
 // ── Ícone CEMADEN por nível de alerta ─────────────────────────────
 function makeCemadenIcon(alertLevel) {
-  // Emoji de chuva com variação de cor via CSS filter por nível
   let filter = '';
   let title  = 'Estação CEMADEN';
   if      (alertLevel === 'RED')    { filter = 'hue-rotate(320deg) saturate(2.5) brightness(1.2)'; title = 'CEMADEN — crítico'; }
   else if (alertLevel === 'ORANGE') { filter = 'hue-rotate(20deg) saturate(2) brightness(1.1)';   title = 'CEMADEN — alerta'; }
   else if (alertLevel === 'YELLOW') { filter = 'hue-rotate(50deg) saturate(1.8)';                 title = 'CEMADEN — atenção'; }
-  // normal: sem filter (azul natural do emoji)
 
   return L.divIcon({
     html: `<span class="map-emoji-marker" title="${title}" style="font-size:26px;width:28px;height:28px;${filter ? 'filter:' + filter : ''}"">🌧️</span>`,
@@ -1106,8 +1286,12 @@ function renderMap(data) {
   // CEMADEN — emoji de chuva com cor por nível de alerta
   (data.cemaden || []).forEach(c => {
     if (!c.lat || !c.lng) return;
+    let popup = `<b>${c.station}</b><br>${c.city}<br>Chuva: ${c.rain} mm · ${c.alertLevel}`;
+    if (c.quota != null)             popup += `<br>Cota: <b>${c.quota} m</b>`;
+    if (c.quotaAlerta != null)       popup += ` · Alerta: ${c.quotaAlerta} m`;
+    if (c.quotaTransbordamento != null) popup += ` · Transbordamento: ${c.quotaTransbordamento} m`;
     L.marker([c.lat, c.lng], { icon: makeCemadenIcon(c.alertLevel) })
-      .bindPopup(`<b>${c.station}</b><br>${c.city}<br>Chuva: ${c.rain} mm · ${c.alertLevel}`)
+      .bindPopup(popup)
       .addTo(mapLayers.cemaden);
   });
 
@@ -1150,7 +1334,105 @@ function fmtLen(m) {
   if (m < 1000) return m + ' m';
   return (m / 1000).toFixed(1);
 }
-function renderKpis(k) {
+
+// ── Render card estação CEMADEN ───────────────────────────────────
+function renderCemadenStation(cemaden) {
+  if (!cemaden || cemaden.length === 0) return;
+
+  // Pega a estação com maior nível de alerta (ou a primeira)
+  const priority = { RED: 4, ORANGE: 3, YELLOW: 2, NORMAL: 1 };
+  const station  = [...cemaden].sort((a, b) =>
+    (priority[b.alertLevel] || 0) - (priority[a.alertLevel] || 0)
+  )[0];
+
+  // Nome e cidade
+  const nameEl = document.getElementById('cs-name');
+  const cityEl = document.getElementById('cs-city');
+  if (nameEl) nameEl.textContent = station.station || '—';
+  if (cityEl) cityEl.textContent = station.city    || '—';
+
+  // Distância (se disponível na API)
+  const distEl = document.getElementById('cs-distance');
+  if (distEl) distEl.textContent = station.distance != null ? `~${station.distance} km` : '';
+
+  // Badge de nível
+  const badgeEl = document.getElementById('cs-level-badge');
+  if (badgeEl) {
+    const lvlMap = {
+      RED:    { label: '🔴 Crítico',  cls: 'lvl-critico' },
+      ORANGE: { label: '🟠 Alerta',   cls: 'lvl-alerta'  },
+      YELLOW: { label: '🟡 Atenção',  cls: 'lvl-atencao' },
+      NORMAL: { label: '🟢 Normal',   cls: 'lvl-normal'  },
+    };
+    const lv = lvlMap[station.alertLevel] || { label: station.alertLevel || '—', cls: '' };
+    badgeEl.textContent = lv.label;
+    badgeEl.className   = 'cemaden-level-badge ' + lv.cls;
+  }
+
+  // Cor do card
+  const cardEl = document.getElementById('kpi-cemaden-station');
+  if (cardEl) {
+    const cardCls = { RED: 'red', ORANGE: 'orange', YELLOW: 'yellow', NORMAL: 'teal' };
+    cardEl.className = 'kpi-card alert-' + (cardCls[station.alertLevel] || 'teal');
+  }
+
+  // Barra de cota
+  const quotaWrap = document.getElementById('cs-quota-wrap');
+  if (station.quota != null && quotaWrap) {
+    quotaWrap.style.display = '';
+    const quota     = parseFloat(station.quota)              || 0;
+    const qAlerta   = parseFloat(station.quotaAlerta)        || null;
+    const qTransb   = parseFloat(station.quotaTransbordamento) || null;
+    const maxRef    = qTransb ? qTransb * 1.1 : qAlerta ? qAlerta * 1.2 : quota * 1.5 || 5;
+
+    // Valor atual
+    const quotaValEl = document.getElementById('cs-quota-val');
+    if (quotaValEl) quotaValEl.textContent = quota.toFixed(2) + ' m';
+
+    // Label
+    const quotaLabelEl = document.getElementById('cs-quota-label-text');
+    if (quotaLabelEl) quotaLabelEl.textContent = 'Cota atual';
+
+    // Fill da barra
+    const pct  = Math.min(100, (quota / maxRef) * 100);
+    const fill = document.getElementById('cs-quota-fill');
+    if (fill) {
+      fill.style.width = pct + '%';
+      // Cor progressiva conforme proximidade das cotas
+      let fillColor = '#14b8a6'; // teal normal
+      if (qTransb && quota >= qTransb)           fillColor = '#ef4444'; // vermelho = transbordou
+      else if (qAlerta && quota >= qAlerta)       fillColor = '#f97316'; // laranja = em alerta
+      else if (qAlerta && quota >= qAlerta * 0.8) fillColor = '#eab308'; // amarelo = próximo do alerta
+      fill.style.background = fillColor;
+    }
+
+    // Marcadores de cota de referência
+    const markersEl = document.getElementById('cs-quota-markers');
+    if (markersEl) {
+      markersEl.innerHTML = '';
+      if (qAlerta) {
+        const pctA = Math.min(98, (qAlerta / maxRef) * 100);
+        markersEl.innerHTML += `<span class="cemaden-quota-marker mk-alerta" style="left:${pctA}%" title="Cota de alerta: ${qAlerta} m">A</span>`;
+      }
+      if (qTransb) {
+        const pctT = Math.min(98, (qTransb / maxRef) * 100);
+        markersEl.innerHTML += `<span class="cemaden-quota-marker mk-transbordamento" style="left:${pctT}%" title="Cota de transbordamento: ${qTransb} m">T</span>`;
+      }
+    }
+  } else if (quotaWrap) {
+    quotaWrap.style.display = 'none';
+  }
+
+  // Mini grid de chuva
+  const r1  = document.getElementById('cs-rain-1h');
+  const r12 = document.getElementById('cs-rain-12h');
+  const r24 = document.getElementById('cs-rain-24h');
+  if (r1)  r1.textContent  = station.rain    != null ? station.rain    : '—';
+  if (r12) r12.textContent = station.rain12h != null ? station.rain12h : '—';
+  if (r24) r24.textContent = station.rain24h != null ? station.rain24h : '—';
+}
+
+function renderKpis(k, cemaden) {
   const jamCls = levelClass(k.liveJams, JAM_WARN, JAM_CRIT);
   setKpi('v-live-jams', k.liveJams ?? '—', jamCls);
   setCard('kpi-live-jams', jamCls);
@@ -1185,6 +1467,9 @@ function renderKpis(k) {
   if (ci) ci.textContent = k.cities ?? '—';
   if (li) li.textContent = k.links  ?? '—';
   if (ri) ri.textContent = k.routes ?? '—';
+
+  // Estação CEMADEN com maior alerta
+  renderCemadenStation(cemaden);
 }
 
 // ── Feed ──────────────────────────────────────────────────────────
@@ -1301,7 +1586,7 @@ async function poll() {
       if (el) { el.className = 'source-pill ok'; }
     });
 
-    renderKpis(data.kpis);
+    renderKpis(data.kpis, data.cemaden);
     renderMap(data);
     renderFeed(data.alerts || []);
 
