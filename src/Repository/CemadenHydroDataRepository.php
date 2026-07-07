@@ -13,7 +13,7 @@ use Doctrine\Persistence\ManagerRegistry;
  *
  * Lê dados de cemaden_hydro_readings (tabela de leituras coletadas pelo
  * comando cemaden:collect-hydro), cruzando com cemaden_stations para
- * filtrar por parceiro e obter metadados da esta\u00e7\u00e3o.
+ * filtrar por parceiro e obter metadados da estação.
  *
  * Estrutura relevante:
  *   cemaden_hydro_readings: id, station_id, measured_at, sensor_value,
@@ -22,7 +22,7 @@ use Doctrine\Persistence\ManagerRegistry;
  *                           partner_id(*), partner_slug, cota_atencao,
  *                           cota_alerta, cota_transbordamento
  *
- * (*) partner_id pode ser null se a esta\u00e7\u00e3o n\u00e3o tiver parceiro associado.
+ * (*) partner_id pode ser null se a estação não tiver parceiro associado.
  *     Estações sem partner_id não aparecem nos resultados.
  */
 class CemadenHydroDataRepository extends ServiceEntityRepository
@@ -33,11 +33,34 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
     }
 
     // -------------------------------------------------------------------------
+    // Idempotência
+    // -------------------------------------------------------------------------
+
+    /**
+     * Verifica se já existe uma leitura para a estação no instante informado.
+     * Usado pelo FetchCemadenHydroHandler para evitar duplicatas.
+     */
+    public function existsByStationAndTime(string $stationCode, \DateTimeImmutable $measuredAt): bool
+    {
+        return (bool) $this->getEntityManager()
+            ->getConnection()
+            ->fetchOne(
+                'SELECT 1
+                 FROM cemaden_hydro_readings r
+                 INNER JOIN cemaden_stations s ON s.id = r.station_id
+                 WHERE s.cod_estacao = ?
+                   AND r.measured_at = ?
+                 LIMIT 1',
+                [$stationCode, $measuredAt->format('Y-m-d H:i:s')],
+            );
+    }
+
+    // -------------------------------------------------------------------------
     // Tela AO VIVO
     // -------------------------------------------------------------------------
 
     /**
-     * Última leitura de cada esta\u00e7\u00e3o do parceiro.
+     * Última leitura de cada estação do parceiro.
      * Retorna colunas compatíveis com o que o HydroController / live.html.twig espera:
      *   station_code, station_name, municipality, state,
      *   water_level (alias de river_level), alert_level,
@@ -91,7 +114,7 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
     // -------------------------------------------------------------------------
 
     /**
-     * Histórico paginado com filtros por esta\u00e7\u00e3o, nível de alerta e intervalo de datas.
+     * Histórico paginado com filtros por estação, nível de alerta e intervalo de datas.
      *
      * @return array{0: array, 1: int}  [rows, total]
      */
@@ -183,7 +206,7 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
     // -------------------------------------------------------------------------
 
     /**
-     * Esta\u00e7\u00f5es distintas do parceiro com leituras registradas
+     * Estações distintas do parceiro com leituras registradas
      * (para o filtro da tela de histórico).
      */
     public function findStationsByPartner(int $partnerId): array
