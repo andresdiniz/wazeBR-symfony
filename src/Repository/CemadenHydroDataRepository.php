@@ -39,6 +39,9 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
     /**
      * Verifica se já existe uma leitura para a estação no instante informado.
      * Usado pelo FetchCemadenHydroHandler para evitar duplicatas.
+     *
+     * ATENÇÃO: consulta cemaden_hydro_data (tabela do ORM CemadenHydroData),
+     * que é onde o INSERT é feito — NÃO cemaden_hydro_readings.
      */
     public function existsByStationAndTime(string $stationCode, \DateTimeImmutable $measuredAt): bool
     {
@@ -46,10 +49,9 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
             ->getConnection()
             ->fetchOne(
                 'SELECT 1
-                 FROM cemaden_hydro_readings r
-                 INNER JOIN cemaden_stations s ON s.id = r.station_id
-                 WHERE s.cod_estacao = ?
-                   AND r.measured_at = ?
+                 FROM cemadenhydrodata
+                 WHERE stationcode = ?
+                   AND measuredat = ?
                  LIMIT 1',
                 [$stationCode, $measuredAt->format('Y-m-d H:i:s')],
             );
