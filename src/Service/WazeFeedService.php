@@ -59,8 +59,8 @@ class WazeFeedService
                 continue;
             }
 
-            // Upsert: busca existente pelo wazeId único
-            $alert = $this->alertRepo->findOneBy(['wazeId' => $uuid]);
+            // fix: lookup inclui partner para evitar falsos positivos entre parceiros
+            $alert = $this->alertRepo->findOneBy(['wazeId' => $uuid, 'partner' => $partner]);
             $isNew = $alert === null;
 
             if ($isNew) {

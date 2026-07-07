@@ -17,7 +17,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * Coleta o feed de tráfego do Waze (PartnerHub) e persiste:
  *   - WazeRoute        → upsert por (wazeId, partner)  — rota "viva"
  *   - WazeRouteSnapshot → insert sempre                  — histórico
- *   - WazeSubRoute     → recria a cada coleta (orphanRemoval)
+ *   - WazeSubRoute     → recria a cada coleta (bulk DELETE + re-insert)
  *   - WazeIrregularity → upsert por (wazeId, sourceLink) — ativa/inativa
  */
 class WazeTrafficFeedService
@@ -103,8 +103,8 @@ class WazeTrafficFeedService
             $route->setWazeId($wazeId);
         }
 
-        $length      = $this->toNum($raw['length']       ?? 0);
-        $time        = $this->toNum($raw['time']         ?? 0);
+        $length       = $this->toNum($raw['length']       ?? 0);
+        $time         = $this->toNum($raw['time']         ?? 0);
         $historicTime = $this->toNum($raw['historicTime'] ?? 0);
 
         [$avgSpeed, $timeInt, $historicSpeed] = $this->calcSpeeds($length, $time, $historicTime);
@@ -127,8 +127,12 @@ class WazeTrafficFeedService
 
         $this->insertRouteSnapshot($route, $avgSpeed, $timeInt, $historicSpeed, $raw, $now);
 
-        foreach ($route->getSubRoutes() as $old) {
-            $route->removeSubRoute($old);
+        // fix: DELETE em bulk via DQL ao invés de um DELETE por subrota (N+1)
+        if ($route->getId() !== null) {
+            $this->em->createQuery(
+                'DELETE App\Entity\WazeSubRoute s WHERE s.route = :route'
+            )->setParameter('route', $route)->execute();
+            $this->em->clear(WazeSubRoute::class);
         }
 
         foreach ($raw['subRoutes'] ?? [] as $i => $subRaw) {
@@ -160,8 +164,8 @@ class WazeTrafficFeedService
 
     private function persistSubRoute(WazeRoute $route, array $raw, int $order): void
     {
-        $length      = $this->toNum($raw['length']       ?? 0);
-        $time        = $this->toNum($raw['time']         ?? 0);
+        $length       = $this->toNum($raw['length']       ?? 0);
+        $time         = $this->toNum($raw['time']         ?? 0);
         $historicTime = $this->toNum($raw['historicTime'] ?? 0);
 
         [$avgSpeed, , $historicSpeed] = $this->calcSpeeds($length, $time, $historicTime);
@@ -191,7 +195,6 @@ class WazeTrafficFeedService
             ->setLeadAlertNumNotThereReports((int) $this->toNum($leadAlert['numNotThereReports'] ?? 0))
             ->setLeadAlertStreet($leadAlert['street'] ?? null);
 
-        $route->addSubRoute($sub);
         $this->em->persist($sub);
     }
 
@@ -226,8 +229,8 @@ class WazeTrafficFeedService
             $irr->setSourceLink($link);
         }
 
-        $length      = $this->toNum($raw['length']       ?? 0);
-        $time        = $this->toNum($raw['time']         ?? 0);
+        $length       = $this->toNum($raw['length']       ?? 0);
+        $time         = $this->toNum($raw['time']         ?? 0);
         $historicTime = $this->toNum($raw['historicTime'] ?? 0);
 
         [$avgSpeed, , $historicSpeed] = $this->calcSpeeds($length, $time, $historicTime);
