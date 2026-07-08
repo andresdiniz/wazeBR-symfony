@@ -10,20 +10,6 @@ use Doctrine\Persistence\ManagerRegistry;
 
 /**
  * @extends ServiceEntityRepository<CemadenHydroData>
- *
- * Lê dados de cemaden_hydro_readings (tabela de leituras coletadas pelo
- * comando cemaden:collect-hydro), cruzando com cemaden_stations para
- * filtrar por parceiro e obter metadados da estação.
- *
- * Estrutura relevante:
- *   cemaden_hydro_readings: id, station_id, measured_at, sensor_value,
- *                           offset_value, river_level, is_offline, created_at
- *   cemaden_stations:       id, cod_estacao, nome, municipio, uf,
- *                           partner_id(*), partner_slug, cota_atencao,
- *                           cota_alerta, cota_transbordamento
- *
- * (*) partner_id pode ser null se a estação não tiver parceiro associado.
- *     Estações sem partner_id não aparecem nos resultados.
  */
 class CemadenHydroDataRepository extends ServiceEntityRepository
 {
@@ -40,8 +26,8 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
      * Verifica se já existe uma leitura para a estação no instante informado.
      * Usado pelo FetchCemadenHydroHandler para evitar duplicatas.
      *
-     * ATENÇÃO: consulta cemaden_hydro_data (tabela do ORM CemadenHydroData),
-     * que é onde o INSERT é feito — NÃO cemaden_hydro_readings.
+     * Consulta cemaden_hydro_data (tabela mapeada pela entity CemadenHydroData,
+     * com colunas station_code e measured_at).
      */
     public function existsByStationAndTime(string $stationCode, \DateTimeImmutable $measuredAt): bool
     {
@@ -49,9 +35,9 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
             ->getConnection()
             ->fetchOne(
                 'SELECT 1
-                 FROM cemadenhydrodata
-                 WHERE stationcode = ?
-                   AND measuredat = ?
+                 FROM cemaden_hydro_data
+                 WHERE station_code = ?
+                   AND measured_at  = ?
                  LIMIT 1',
                 [$stationCode, $measuredAt->format('Y-m-d H:i:s')],
             );
@@ -63,11 +49,6 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
 
     /**
      * Última leitura de cada estação do parceiro.
-     * Retorna colunas compatíveis com o que o HydroController / live.html.twig espera:
-     *   station_code, station_name, municipality, state,
-     *   water_level (alias de river_level), alert_level,
-     *   cota_atencao, cota_alerta, cota_transbordamento,
-     *   measured_at, is_offline
      */
     public function findLatestByPartner(int $partnerId): array
     {
@@ -75,38 +56,26 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
 
         return $conn->fetchAllAssociative(
             "SELECT
-                 s.cod_estacao          AS station_code,
-                 s.nome                 AS station_name,
-                 s.municipio            AS municipality,
-                 s.uf                   AS state,
-                 r.river_level          AS water_level,
-                 r.is_offline,
-                 r.measured_at,
-                 s.cota_atencao,
-                 s.cota_alerta,
-                 s.cota_transbordamento,
-                 CASE
-                     WHEN r.is_offline = 1                              THEN 'offline'
-                     WHEN r.river_level IS NULL                         THEN 'sem_dado'
-                     WHEN s.cota_transbordamento IS NOT NULL
-                          AND r.river_level >= s.cota_transbordamento   THEN 'transbordamento'
-                     WHEN s.cota_alerta IS NOT NULL
-                          AND r.river_level >= s.cota_alerta            THEN 'alerta'
-                     WHEN s.cota_atencao IS NOT NULL
-                          AND r.river_level >= s.cota_atencao           THEN 'atencao'
-                     ELSE 'normal'
-                 END AS alert_level
-             FROM cemaden_hydro_readings r
-             INNER JOIN cemaden_stations s ON s.id = r.station_id
+                 h.station_code,
+                 h.station_name,
+                 h.municipality,
+                 h.state,
+                 h.water_level,
+                 h.alert_level,
+                 h.cota_atencao,
+                 h.cota_alerta,
+                 h.cota_transbordamento,
+                 h.measured_at
+             FROM cemaden_hydro_data h
              INNER JOIN (
-                 SELECT station_id, MAX(measured_at) AS max_at
-                 FROM cemaden_hydro_readings
-                 GROUP BY station_id
-             ) latest ON latest.station_id = r.station_id
-                      AND latest.max_at    = r.measured_at
-             WHERE s.partner_id = :pid
-               AND s.is_active  = 1
-             ORDER BY alert_level DESC, s.municipio, s.nome",
+                 SELECT station_code, MAX(measured_at) AS max_at
+                 FROM cemaden_hydro_data
+                 GROUP BY station_code
+             ) latest ON latest.station_code = h.station_code
+                      AND latest.max_at      = h.measured_at
+             INNER JOIN partner p ON p.id = h.partner_id
+             WHERE h.partner_id = :pid
+             ORDER BY h.alert_level DESC, h.municipality, h.station_name",
             ['pid' => $partnerId],
         );
     }
@@ -130,72 +99,48 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
         int     $perPage,
     ): array {
         $conn   = $this->getEntityManager()->getConnection();
-        $where  = ['s.partner_id = :pid', 's.is_active = 1'];
+        $where  = ['h.partner_id = :pid'];
         $params = ['pid' => $partnerId];
 
         if ($stationCode) {
-            $where[]      = 's.cod_estacao = :sc';
+            $where[]      = 'h.station_code = :sc';
             $params['sc'] = $stationCode;
         }
 
-        $where[]       = "DATE(r.measured_at) BETWEEN :df AND :dt";
+        if ($alertLevel) {
+            $where[]      = 'h.alert_level = :lv';
+            $params['lv'] = $alertLevel;
+        }
+
+        $where[]       = 'DATE(h.measured_at) BETWEEN :df AND :dt';
         $params['df']  = $dateFrom;
         $params['dt']  = $dateTo;
 
-        // Calcula alert_level inline para poder filtrar por ele
-        $alertExpr = "CASE
-            WHEN r.is_offline = 1                                       THEN 'offline'
-            WHEN r.river_level IS NULL                                   THEN 'sem_dado'
-            WHEN s.cota_transbordamento IS NOT NULL
-                 AND r.river_level >= s.cota_transbordamento             THEN 'transbordamento'
-            WHEN s.cota_alerta IS NOT NULL
-                 AND r.river_level >= s.cota_alerta                      THEN 'alerta'
-            WHEN s.cota_atencao IS NOT NULL
-                 AND r.river_level >= s.cota_atencao                     THEN 'atencao'
-            ELSE 'normal'
-        END";
-
         $whereClause = implode(' AND ', $where);
 
-        // Subquery para filtrar alert_level se necessário
-        $havingClause = '';
-        if ($alertLevel) {
-            $havingClause    = "HAVING alert_level = :lv";
-            $params['lv']    = $alertLevel;
-        }
-
-        $baseQuery = "FROM cemaden_hydro_readings r
-                      INNER JOIN cemaden_stations s ON s.id = r.station_id
-                      WHERE {$whereClause}";
-
         $total = (int) $conn->fetchOne(
-            "SELECT COUNT(*) FROM (
-                SELECT 1, {$alertExpr} AS alert_level
-                {$baseQuery}
-                {$havingClause}
-             ) sub",
+            "SELECT COUNT(*) FROM cemaden_hydro_data h WHERE {$whereClause}",
             $params,
         );
 
         $offset = ($page - 1) * $perPage;
         $rows   = $conn->fetchAllAssociative(
             "SELECT
-                 s.cod_estacao              AS station_code,
-                 s.nome                     AS station_name,
-                 s.municipio                AS municipality,
-                 s.uf                       AS state,
-                 r.river_level              AS water_level,
-                 r.sensor_value,
-                 r.offset_value,
-                 r.is_offline,
-                 r.measured_at,
-                 s.cota_atencao,
-                 s.cota_alerta,
-                 s.cota_transbordamento,
-                 {$alertExpr}               AS alert_level
-             {$baseQuery}
-             {$havingClause}
-             ORDER BY r.measured_at DESC, s.nome
+                 h.station_code,
+                 h.station_name,
+                 h.municipality,
+                 h.state,
+                 h.water_level,
+                 h.offset_value,
+                 h.qualificacao,
+                 h.alert_level,
+                 h.cota_atencao,
+                 h.cota_alerta,
+                 h.cota_transbordamento,
+                 h.measured_at
+             FROM cemaden_hydro_data h
+             WHERE {$whereClause}
+             ORDER BY h.measured_at DESC, h.station_name
              LIMIT {$perPage} OFFSET {$offset}",
             $params,
         );
@@ -216,16 +161,14 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
         $conn = $this->getEntityManager()->getConnection();
 
         return $conn->fetchAllAssociative(
-            "SELECT DISTINCT
-                 s.cod_estacao AS station_code,
-                 s.nome        AS station_name,
-                 s.municipio   AS municipality,
-                 s.uf          AS state
-             FROM cemaden_hydro_readings r
-             INNER JOIN cemaden_stations s ON s.id = r.station_id
-             WHERE s.partner_id = :pid
-               AND s.is_active  = 1
-             ORDER BY s.municipio, s.nome",
+            'SELECT DISTINCT
+                 station_code,
+                 station_name,
+                 municipality,
+                 state
+             FROM cemaden_hydro_data
+             WHERE partner_id = :pid
+             ORDER BY municipality, station_name',
             ['pid' => $partnerId],
         );
     }
