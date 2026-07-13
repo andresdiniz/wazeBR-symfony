@@ -474,6 +474,13 @@
       </a>
     </div>
 
+    <div class="nav-section">
+      <div class="nav-label">Waze — Envio</div>
+      <a href="{{ path('cifs_index') }}" class="nav-item {{ _route starts with 'cifs' ? 'active' }}" title="Criar e gerenciar eventos enviados ao Waze (CIFS)">
+        <i data-lucide="send"></i> Enviar Alertas
+      </a>
+    </div>
+
     {% if is_granted('ROLE_ADMIN') %}
     <div class="nav-section">
       <div class="nav-label">Administração</div>
@@ -531,8 +538,8 @@
       <i data-lucide="waves"></i>
       <span>Rios</span>
     </a>
-    <a href="{{ path('alert_index') }}" class="bottom-nav-item {{ _route starts with 'alert' ? 'active' }}" aria-label="Alertas">
-      <i data-lucide="triangle-alert"></i>
+    <a href="{{ path('cifs_index') }}" class="bottom-nav-item {{ _route starts with 'cifs' ? 'active' }}" aria-label="Enviar Alertas ao Waze">
+      <i data-lucide="send"></i>
       <span>Alertas</span>
     </a>
     <!-- More button opens sidebar -->
