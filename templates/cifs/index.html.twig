@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#14b8a6">
+<link rel="manifest" href="/cifs-manifest.json">
+<title>Criar Evento — WazeBR</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+/* ── Reset & tokens ──────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', sans-serif;
+  background: #0d0e10; color: #e2e4e8; font-size: 14px; }
+:root {
+  --bg:        #0d0e10;
+  --surface:   #14161a;
+  --surface2:  #1c1f26;
+  --surface3:  #22252e;
+  --border:    rgba(255,255,255,.07);
+  --border2:   rgba(255,255,255,.13);
+  --text:      #e2e4e8;
+  --muted:     #8b9099;
+  --faint:     #464c57;
+  --teal:      #14b8a6;
+  --teal-dim:  rgba(20,184,166,.15);
+  --red:       #ef4444;
+  --red-dim:   rgba(239,68,68,.15);
+  --orange:    #f97316;
+  --yellow:    #eab308;
+  --green:     #22c55e;
+  --blue:      #3b82f6;
+  --radius:    10px;
+  --radius-sm: 6px;
+  --tr:        200ms cubic-bezier(.16,1,.3,1);
+}
+
+/* ── Shell ───────────────────────────────────────────────────── */
+.shell {
+  display: grid;
+  grid-template-rows: 52px 1fr;
+  height: 100dvh;
+  width: 100vw;
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  z-index: 200;
+}
+.logo {
+  display: flex; align-items: center; gap: 7px;
+  font-weight: 700; font-size: 15px; color: var(--teal);
+}
+.logo-icon {
+  width: 28px; height: 28px;
+  background: var(--teal); border-radius: 7px;
+  display: grid; place-items: center;
+}
+.logo-icon svg { color: #0d0e10; }
+.header-title {
+  font-size: 13px; color: var(--muted);
+}
+.header-spacer { flex: 1; }
+.header-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  background: var(--teal-dim); color: var(--teal);
+  border: 1px solid rgba(20,184,166,.3);
+  border-radius: 20px; padding: 3px 9px;
+}
+
+/* ── Body: mapa + painel ─────────────────────────────────────── */
+.body {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  overflow: hidden;
+  min-height: 0;
+}
+@media (max-width: 768px) {
+  .body {
+    grid-template-columns: 1fr;
+    grid-template-rows: 45vh 1fr;
+  }
+}
+
+/* ── Mapa ────────────────────────────────────────────────────── */
+.map-wrap {
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+#map {
+  width: 100%; height: 100%;
+  background: #1a1d22;
+}
+
+/* Hint de instrução sobre o mapa */
+.map-hint {
+  position: absolute;
+  bottom: 12px; left: 50%; transform: translateX(-50%);
+  background: rgba(13,14,16,.9);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 6px 14px;
+  font-size: 11px; color: var(--muted);
+  pointer-events: none; z-index: 500;
+  backdrop-filter: blur(6px);
+  white-space: nowrap;
+  transition: opacity var(--tr);
+}
+.map-hint.hidden { opacity: 0; }
+
+/* Toolbar flutuante sobre o mapa */
+.map-toolbar {
+  position: absolute;
+  top: 10px; left: 10px;
+  display: flex; gap: 6px; flex-direction: column;
+  z-index: 500;
+}
+.map-tool-btn {
+  width: 36px; height: 36px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  display: grid; place-items: center;
+  cursor: pointer; color: var(--muted);
+  transition: color var(--tr), background var(--tr), border-color var(--tr);
+  font-size: 16px;
+}
+.map-tool-btn:hover { color: var(--text); background: var(--surface3); }
+.map-tool-btn.active { color: var(--teal); border-color: rgba(20,184,166,.4); background: var(--teal-dim); }
+
+/* Polilinha em desenho */
+.leaflet-container { background: #1a1d22; }
+.leaflet-popup-content-wrapper {
+  background: #1c1f26;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.5);
+}
+.leaflet-popup-tip { background: #1c1f26; }
+.leaflet-popup-content { margin: 8px 12px; color: #e2e4e8; font-size: 12px; }
+.leaflet-control-zoom {
+  border: 1px solid var(--border2) !important;
+  border-radius: var(--radius-sm) !important;
+  overflow: hidden;
+}
+.leaflet-control-zoom a {
+  background: var(--surface2) !important;
+  color: var(--muted) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+.leaflet-control-zoom a:hover { background: var(--surface3) !important; color: var(--text) !important; }
+
+/* ── Painel lateral ──────────────────────────────────────────── */
+.panel {
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+@media (max-width: 768px) {
+  .panel { border-left: none; border-top: 1px solid var(--border); }
+}
+
+/* Abas */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.tab-btn {
+  flex: 1; padding: 10px 4px;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: .05em; text-transform: uppercase;
+  color: var(--muted); background: none; border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color var(--tr), border-color var(--tr);
+}
+.tab-btn.active { color: var(--teal); border-bottom-color: var(--teal); }
+
+.tab-content { display: none; flex: 1; overflow-y: auto; padding: 12px; flex-direction: column; gap: 10px; }
+.tab-content.active { display: flex; }
+.tab-content::-webkit-scrollbar { width: 3px; }
+.tab-content::-webkit-scrollbar-track { background: transparent; }
+.tab-content::-webkit-scrollbar-thumb { background: var(--faint); border-radius: 4px; }
+
+/* ── Formulário ──────────────────────────────────────────────── */
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase;
+  color: var(--muted);
+}
+.field input, .field select, .field textarea {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: 13px; color: var(--text);
+  width: 100%;
+  transition: border-color var(--tr);
+  outline: none;
+  appearance: none;
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color: rgba(20,184,166,.5);
+}
+.field textarea { resize: vertical; min-height: 52px; font-size: 12px; }
+.field .hint {
+  font-size: 9.5px; color: var(--faint);
+}
+.field .char-count {
+  font-size: 9px; color: var(--faint);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.field .char-count.warn { color: var(--yellow); }
+.field .char-count.over { color: var(--red); }
+
+/* Polilinha display */
+.polyline-display {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  font-size: 10px; color: var(--muted);
+  font-family: monospace;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  cursor: default;
+}
+.polyline-display.has-data { color: var(--teal); border-color: rgba(20,184,166,.3); }
+.polyline-display.error { color: var(--red); border-color: var(--red-dim); }
+
+/* Botão principal */
+.btn-primary {
+  background: var(--teal);
+  color: #0d0e10;
+  font-weight: 700; font-size: 13px;
+  border: none; border-radius: var(--radius-sm);
+  padding: 11px;
+  cursor: pointer; width: 100%;
+  transition: background var(--tr), transform var(--tr);
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.btn-primary:hover { background: #0fa899; }
+.btn-primary:active { transform: scale(.98); }
+.btn-primary:disabled { background: var(--faint); color: var(--muted); cursor: not-allowed; }
+
+.btn-secondary {
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: 12px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  cursor: pointer; width: 100%;
+  transition: color var(--tr), border-color var(--tr);
+}
+.btn-secondary:hover { color: var(--text); border-color: var(--border2); }
+
+/* Toast */
+#toast {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(80px);
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 10px 18px;
+  font-size: 13px; color: var(--text);
+  box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  z-index: 9999;
+  transition: transform .3s cubic-bezier(.16,1,.3,1), opacity .3s;
+  opacity: 0;
+  pointer-events: none;
+}
+#toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+#toast.ok   { border-color: rgba(34,197,94,.4); color: var(--green); }
+#toast.err  { border-color: rgba(239,68,68,.4);  color: var(--red); }
+
+/* ── Lista de eventos ────────────────────────────────────────── */
+.event-item {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 11px;
+  cursor: pointer;
+  transition: background var(--tr), border-color var(--tr);
+}
+.event-item:hover { background: var(--surface3); border-color: var(--border2); }
+.event-item.inactive { opacity: .45; }
+.event-header {
+  display: flex; align-items: center; gap: 7px; margin-bottom: 4px;
+}
+.event-type-badge {
+  font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 20px;
+  background: var(--surface3); color: var(--muted);
+}
+.event-type-badge.ROAD_CLOSED { background: var(--red-dim); color: var(--red); }
+.event-type-badge.ACCIDENT    { background: rgba(249,115,22,.15); color: var(--orange); }
+.event-type-badge.HAZARD      { background: rgba(234,179,8,.15);  color: var(--yellow); }
+.event-type-badge.POLICE      { background: rgba(59,130,246,.15); color: var(--blue); }
+.event-type-badge.JAM         { background: rgba(249,115,22,.12); color: var(--orange); }
+.event-street { font-size: 12px; font-weight: 600; color: var(--text); }
+.event-desc   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.event-meta   { font-size: 10px; color: var(--faint); margin-top: 4px;
+  display: flex; align-items: center; gap: 5px; }
+.event-deact  {
+  margin-left: auto;
+  background: var(--red-dim); border: 1px solid rgba(239,68,68,.3);
+  color: var(--red); font-size: 9px; font-weight: 700;
+  border-radius: 20px; padding: 2px 7px; cursor: pointer;
+  transition: background var(--tr);
+}
+.event-deact:hover { background: rgba(239,68,68,.25); }
+
+.empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 6px; padding: 30px 12px;
+  color: var(--faint); font-size: 12px; text-align: center;
+}
+
+/* ── Scrollbar global ────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--faint); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ═══ HEADER ═══════════════════════════════════════════════ -->
+  <header class="header">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      </div>
+      WazeBR
+    </div>
+    <span class="header-title">Criar Evento CIFS</span>
+    <div class="header-spacer"></div>
+    <span class="header-badge">Feed Waze</span>
+  </header>
+
+  <!-- ═══ BODY ═════════════════════════════════════════════════ -->
+  <div class="body">
+
+    <!-- ── MAPA ───────────────────────────────────────────────── -->
+    <div class="map-wrap">
+      <div id="map"></div>
+
+      <!-- Toolbar: modo de seleção -->
+      <div class="map-toolbar">
+        <button class="map-tool-btn active" id="btn-mode-point" title="Ponto único">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/></svg>
+        </button>
+        <button class="map-tool-btn" id="btn-mode-poly" title="Polilinha (cliques múltiplos)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 17 9 7 15 13 21 5"/></svg>
+        </button>
+        <button class="map-tool-btn" id="btn-clear" title="Limpar seleção">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div class="map-hint" id="map-hint">Clique no mapa para marcar o segmento do evento</div>
+    </div>
+
+    <!-- ── PAINEL ─────────────────────────────────────────────── -->
+    <div class="panel">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="form">📝 Novo Evento</button>
+        <button class="tab-btn" data-tab="list">📋 Eventos</button>
+      </div>
+
+      <!-- ABA: Formulário ──────────────────────────────────── -->
+      <div class="tab-content active" id="tab-form">
+
+        <!-- Polilinha -->
+        <div class="field">
+          <label>Segmento selecionado no mapa</label>
+          <div class="polyline-display" id="polyline-display">Nenhum ponto selecionado</div>
+          <span class="hint">Clique no mapa ao lado para definir o trecho. Use o modo polilinha para trechos longos.</span>
+        </div>
+
+        <!-- Tipo -->
+        <div class="field">
+          <label>Tipo *</label>
+          <select id="sel-type">
+            <option value="">Selecione o tipo…</option>
+            {% for type, data in grouped %}
+              <option value="{{ type }}">{{ data.label ?: type }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Subtipo -->
+        <div class="field" id="field-subtype" style="display:none">
+          <label>Subtipo</label>
+          <select id="sel-subtype">
+            <option value="">Nenhum / genérico</option>
+          </select>
+        </div>
+
+        <!-- Rua -->
+        <div class="field">
+          <label>Nome da via *</label>
+          <input type="text" id="inp-street" placeholder="Ex: Av. Paulista, BR-040…" maxlength="150">
+          <span class="hint">Use o nome exato conforme mapa do Waze.</span>
+        </div>
+
+        <!-- Direção -->
+        <div class="field">
+          <label>Direção</label>
+          <select id="sel-direction">
+            <option value="">Não especificada</option>
+            {% for dir in directions %}
+              <option value="{{ dir.value }}">{{ dir.label() }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Descrição -->
+        <div class="field">
+          <label>Descrição (máx 40 chars)</label>
+          <input type="text" id="inp-description" placeholder="Ex: Obras na pista central" maxlength="40">
+          <div class="char-count" id="char-count">0 / 40</div>
+        </div>
+
+        <!-- Início -->
+        <div class="field">
+          <label>Início *</label>
+          <input type="datetime-local" id="inp-start">
+        </div>
+
+        <!-- Fim -->
+        <div class="field">
+          <label>Término (deixe vazio = 14 dias padrão)</label>
+          <input type="datetime-local" id="inp-end">
+        </div>
+
+        <!-- Botões -->
+        <button class="btn-primary" id="btn-save" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Enviar para o Waze
+        </button>
+        <button class="btn-secondary" id="btn-reset">Limpar formulário</button>
+
+      </div>
+
+      <!-- ABA: Lista de eventos ────────────────────────────── -->
+      <div class="tab-content" id="tab-list">
+        {% if events|length == 0 %}
+          <div class="empty-state">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+            Nenhum evento cadastrado ainda.
+          </div>
+        {% else %}
+          {% for event in events %}
+            <div class="event-item {{ not event.active ? 'inactive' }}" data-id="{{ event.id }}" data-polyline="{{ event.polyline }}">
+              <div class="event-header">
+                <span class="event-type-badge {{ event.type.value }}">{{ event.type.emoji() }} {{ event.type.value }}</span>
+                {% if not event.active %}<span style="font-size:9px;color:var(--faint)">INATIVO</span>{% endif %}
+              </div>
+              <div class="event-street">{{ event.street }}</div>
+              {% if event.description %}
+                <div class="event-desc">{{ event.description }}</div>
+              {% endif %}
+              <div class="event-meta">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                {{ event.startTime|date('d/m/Y H:i') }}
+                {% if event.endTime %} → {{ event.endTime|date('d/m/Y H:i') }}{% endif %}
+                {% if event.active %}
+                  <button class="event-deact" data-id="{{ event.id }}">Desativar</button>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+    </div><!-- /panel -->
+  </div><!-- /body -->
+</div><!-- /shell -->
+
+<div id="toast"></div>
+
+<!-- Dados de tipos/subtipos para o JS ─────────────────────────── -->
+<script>
+const GROUPED_TYPES = {{ grouped|json_encode|raw }};
+</script>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+'use strict';
+
+// ── Constantes ────────────────────────────────────────────────
+const TYPE_COLORS = {
+  ROAD_CLOSED: '#ef4444',
+  ACCIDENT:    '#f97316',
+  HAZARD:      '#eab308',
+  POLICE:      '#3b82f6',
+  JAM:         '#f97316',
+  CHIT_CHAT:   '#8b9099',
+};
+
+// ── Mapa ──────────────────────────────────────────────────────
+const map = L.map('map', { zoomControl: true, attributionControl: false });
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  subdomains: 'abcd', maxZoom: 19,
+}).addTo(map);
+map.setView([-19.92, -43.94], 13);
+
+// ── Estado ────────────────────────────────────────────────────
+let mode         = 'point';  // 'point' | 'poly'
+let points       = [];       // L.LatLng[]
+let drawLayer    = L.layerGroup().addTo(map);
+let eventLayers  = L.layerGroup().addTo(map);
+
+// ── Plotar eventos existentes no mapa ─────────────────────────
+document.querySelectorAll('.event-item[data-polyline]').forEach(el => {
+  const raw = el.dataset.polyline;
+  const active = !el.classList.contains('inactive');
+  if (!raw) return;
+  const coords = polylineStrToLatLng(raw);
+  if (coords.length === 0) return;
+  const color = active ? '#14b8a6' : '#464c57';
+  if (coords.length === 1) {
+    L.circleMarker(coords[0], { radius: 7, color, fillOpacity: .7, weight: 2 }).addTo(eventLayers)
+      .bindPopup(el.querySelector('.event-street')?.textContent || '');
+  } else {
+    L.polyline(coords, { color, weight: 4, opacity: .75 }).addTo(eventLayers)
+      .bindPopup(el.querySelector('.event-street')?.textContent || '');
+  }
+});
+
+// ── Ferramentas de mapa ───────────────────────────────────────
+document.getElementById('btn-mode-point').addEventListener('click', () => setMode('point'));
+document.getElementById('btn-mode-poly').addEventListener('click',  () => setMode('poly'));
+document.getElementById('btn-clear').addEventListener('click', clearDraw);
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-mode-point').classList.toggle('active', m === 'point');
+  document.getElementById('btn-mode-poly').classList.toggle('active',  m === 'poly');
+  const hint = document.getElementById('map-hint');
+  hint.textContent = m === 'point'
+    ? 'Clique no mapa para marcar o ponto do evento'
+    : 'Clique para adicionar pontos ao trecho — clique duplo para finalizar';
+  hint.classList.remove('hidden');
+  setTimeout(() => hint.classList.add('hidden'), 3000);
+}
+
+map.on('click', e => {
+  if (mode === 'point') {
+    clearDraw();
+    points = [e.latlng];
+    L.circleMarker(e.latlng, { radius: 8, color: '#14b8a6', fillOpacity: .85, weight: 2 }).addTo(drawLayer);
+    updatePolylineDisplay();
+  } else {
+    points.push(e.latlng);
+    L.circleMarker(e.latlng, { radius: 5, color: '#14b8a6', fillOpacity: .85, weight: 2 }).addTo(drawLayer);
+    if (points.length > 1) {
+      L.polyline(points, { color: '#14b8a6', weight: 4, opacity: .8 }).addTo(drawLayer);
+    }
+    updatePolylineDisplay();
+  }
+});
+
+map.on('dblclick', e => {
+  if (mode === 'poly' && points.length >= 2) {
+    updatePolylineDisplay();
+    showToast('Polilinha finalizada com ' + points.length + ' pontos', 'ok');
+  }
+});
+
+function clearDraw() {
+  points = [];
+  drawLayer.clearLayers();
+  updatePolylineDisplay();
+}
+
+function polylineToString(pts) {
+  return pts.map(p => p.lat.toFixed(6) + ' ' + p.lng.toFixed(6)).join(' ');
+}
+
+function polylineStrToLatLng(str) {
+  const nums = str.trim().split(/\s+/);
+  const coords = [];
+  for (let i = 0; i < nums.length - 1; i += 2) {
+    const lat = parseFloat(nums[i]), lng = parseFloat(nums[i + 1]);
+    if (!isNaN(lat) && !isNaN(lng)) coords.push(L.latLng(lat, lng));
+  }
+  return coords;
+}
+
+function updatePolylineDisplay() {
+  const el = document.getElementById('polyline-display');
+  if (points.length === 0) {
+    el.textContent = 'Nenhum ponto selecionado';
+    el.className = 'polyline-display';
+  } else if (points.length === 1) {
+    el.textContent = '📍 ' + points[0].lat.toFixed(6) + ', ' + points[0].lng.toFixed(6);
+    el.className = 'polyline-display has-data';
+  } else {
+    el.textContent = '📏 ' + points.length + ' pontos — ' + polylineToString(points).substring(0, 50) + '…';
+    el.className = 'polyline-display has-data';
+  }
+  updateSaveBtn();
+}
+
+// ── Tipo e subtipo ────────────────────────────────────────────
+const selType    = document.getElementById('sel-type');
+const selSubtype = document.getElementById('sel-subtype');
+const fieldSub   = document.getElementById('field-subtype');
+
+selType.addEventListener('change', () => {
+  const type = selType.value;
+  selSubtype.innerHTML = '<option value="">Nenhum / genérico</option>';
+  if (type && GROUPED_TYPES[type]?.subtypes) {
+    const subs = GROUPED_TYPES[type].subtypes;
+    Object.entries(subs).forEach(([key, label]) => {
+      const opt = document.createElement('option');
+      opt.value = key; opt.textContent = label;
+      selSubtype.appendChild(opt);
+    });
+    fieldSub.style.display = Object.keys(subs).length > 0 ? 'flex' : 'none';
+  } else {
+    fieldSub.style.display = 'none';
+  }
+  updateSaveBtn();
+});
+
+// ── Contador de caracteres na descrição ───────────────────────
+const inpDesc   = document.getElementById('inp-description');
+const charCount = document.getElementById('char-count');
+inpDesc.addEventListener('input', () => {
+  const len = inpDesc.value.length;
+  charCount.textContent = len + ' / 40';
+  charCount.className = 'char-count' + (len >= 40 ? ' over' : len >= 32 ? ' warn' : '');
+});
+
+// ── Hora de início padrão = agora ────────────────────────────
+const inpStart = document.getElementById('inp-start');
+const now = new Date();
+now.setSeconds(0, 0);
+inpStart.value = now.toISOString().slice(0, 16);
+
+// ── Habilitar botão salvar ────────────────────────────────────
+function updateSaveBtn() {
+  const ok = points.length > 0
+    && selType.value !== ''
+    && document.getElementById('inp-street').value.trim() !== '';
+  document.getElementById('btn-save').disabled = !ok;
+}
+document.getElementById('inp-street').addEventListener('input', updateSaveBtn);
+
+// ── Salvar evento ─────────────────────────────────────────────
+document.getElementById('btn-save').addEventListener('click', async () => {
+  const polyline = polylineToString(points);
+  const payload = {
+    type:        selType.value,
+    subtype:     selSubtype.value || null,
+    polyline,
+    street:      document.getElementById('inp-street').value.trim(),
+    direction:   document.getElementById('sel-direction').value || null,
+    description: inpDesc.value.trim() || null,
+    starttime:   document.getElementById('inp-start').value || null,
+    endtime:     document.getElementById('inp-end').value || null,
+  };
+
+  document.getElementById('btn-save').disabled = true;
+
+  try {
+    const res = await fetch('/cifs/api/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (res.ok) {
+      showToast('✅ Evento ' + json.externalId + ' criado!', 'ok');
+      setTimeout(() => location.reload(), 1500);
+    } else {
+      showToast('❌ ' + (json.error || 'Erro ao salvar'), 'err');
+      document.getElementById('btn-save').disabled = false;
+    }
+  } catch (e) {
+    showToast('❌ Sem conexão', 'err');
+    document.getElementById('btn-save').disabled = false;
+  }
+});
+
+// ── Reset ─────────────────────────────────────────────────────
+document.getElementById('btn-reset').addEventListener('click', () => {
+  clearDraw();
+  selType.value = '';
+  selSubtype.innerHTML = '<option value="">Nenhum / genérico</option>';
+  fieldSub.style.display = 'none';
+  document.getElementById('inp-street').value = '';
+  document.getElementById('sel-direction').value = '';
+  inpDesc.value = '';
+  charCount.textContent = '0 / 40';
+  document.getElementById('inp-end').value = '';
+  updateSaveBtn();
+});
+
+// ── Abas ──────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Desativar evento na lista ─────────────────────────────────
+document.querySelectorAll('.event-deact').forEach(btn => {
+  btn.addEventListener('click', async e => {
+    e.stopPropagation();
+    const id = btn.dataset.id;
+    try {
+      const res = await fetch('/cifs/api/event/' + id + '/deactivate', { method: 'POST' });
+      if (res.ok) {
+        showToast('Evento desativado', 'ok');
+        setTimeout(() => location.reload(), 1000);
+      }
+    } catch (_) {
+      showToast('Erro ao desativar', 'err');
+    }
+  });
+});
+
+// ── Click na lista → voa para o mapa ─────────────────────────
+document.querySelectorAll('.event-item').forEach(el => {
+  el.addEventListener('click', e => {
+    if (e.target.classList.contains('event-deact')) return;
+    const raw = el.dataset.polyline;
+    if (!raw) return;
+    const coords = polylineStrToLatLng(raw);
+    if (coords.length === 0) return;
+    if (coords.length === 1) {
+      map.setView(coords[0], 16);
+    } else {
+      map.fitBounds(L.latLngBounds(coords), { padding: [40, 40], maxZoom: 16 });
+    }
+    // Muda para aba implicitamente em mobile não faz nada, mas orienta o usuário
+  });
+});
+
+// ── Toast ─────────────────────────────────────────────────────
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show' + (type ? ' ' + type : '');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => { t.className = ''; }, 3000);
+}
+
+// ── PWA: registrar Service Worker ────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/cifs-sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>

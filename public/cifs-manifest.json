@@ -1,0 +1,14 @@
+{
+  "name": "WazeBR — Criar Evento",
+  "short_name": "CifsEvent",
+  "description": "Criação de eventos CIFS para o feed do Waze",
+  "start_url": "/cifs",
+  "display": "standalone",
+  "background_color": "#0d0e10",
+  "theme_color": "#14b8a6",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/icons/cifs-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/cifs-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
