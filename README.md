@@ -1,6 +1,6 @@
-# WazeBR — Symfony 7.4 / PHP 8.2
+# TrafikHub — Symfony 7.4 / PHP 8.2
 
-Plataforma de monitoramento de trânsito, alertas e dados hidrológicos integrados com a API Waze Data For Cities e CEMADEN.
+Plataforma de inteligência de tráfego urbano com monitoramento em tempo real, alertas, dados hidrológicos e envio de eventos para o mapa, integrada com a API Waze Data For Cities e CEMADEN.
 
 ## Stack
 
@@ -56,7 +56,7 @@ Ver `doc/cron-reference.md` para configuração completa de crontab.
 
 ```
 src/
-├── Controller/      AuthController, DashboardController, ApiController, ApiExternaController, HealthController
+├── Controller/      AuthController, DashboardController, ApiController, ApiExternaController, CifsEventController, HealthController
 ├── Entity/          User, WazeAlert, WazeTrafficJam, CemadenData, Notification, ActivityLog
 ├── Repository/      6 repositories com queries customizadas
 ├── Service/         WazeApiService, CemadenService, NotificationService, DashboardService, HealthCheckService
