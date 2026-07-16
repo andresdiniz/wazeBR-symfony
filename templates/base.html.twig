@@ -481,6 +481,16 @@
       </a>
     </div>
 
+    {# Minha Conta — visível para ROLE_ACCOUNT_ADMIN (exceto super admin que usa painel admin) #}
+    {% if is_granted('ROLE_ACCOUNT_ADMIN') and not is_granted('ROLE_ADMIN') %}
+    <div class="nav-section">
+      <div class="nav-label">Minha Conta</div>
+      <a href="{{ path('account_link_index') }}" class="nav-item {{ _route starts with 'account_link' ? 'active' }}">
+        <i data-lucide="link"></i> Meus Links
+      </a>
+    </div>
+    {% endif %}
+
     {% if is_granted('ROLE_ADMIN') %}
     <div class="nav-section">
       <div class="nav-label">Administração</div>
@@ -538,10 +548,17 @@
       <i data-lucide="waves"></i>
       <span>Rios</span>
     </a>
+    {% if is_granted('ROLE_ACCOUNT_ADMIN') and not is_granted('ROLE_ADMIN') %}
+    <a href="{{ path('account_link_index') }}" class="bottom-nav-item {{ _route starts with 'account_link' ? 'active' }}" aria-label="Meus Links">
+      <i data-lucide="link"></i>
+      <span>Links</span>
+    </a>
+    {% else %}
     <a href="{{ path('cifs_index') }}" class="bottom-nav-item {{ _route starts with 'cifs' ? 'active' }}" aria-label="Enviar Alertas ao Waze">
       <i data-lucide="send"></i>
       <span>Alertas</span>
     </a>
+    {% endif %}
     <!-- More button opens sidebar -->
     <button class="bottom-nav-item" id="btnMenuBottom" aria-label="Mais opções">
       <i data-lucide="menu"></i>
