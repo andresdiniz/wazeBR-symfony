@@ -30,4 +30,10 @@ class SecurityController extends AbstractController
     {
         throw new \LogicException('Este método nunca é executado — o Symfony intercepta o logout.');
     }
+
+    #[Route('/', name: 'app_home')]
+        public function home(): Response
+        {
+            return $this->redirectToRoute('security_login');
+        }
 }
