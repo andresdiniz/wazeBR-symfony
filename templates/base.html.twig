@@ -488,6 +488,12 @@
       <a href="{{ path('account_link_index') }}" class="nav-item {{ _route starts with 'account_link' ? 'active' }}">
         <i data-lucide="link"></i> Meus Links
       </a>
+      <a href="{{ path('account_settings') }}" class="nav-item {{ _route == 'account_settings' ? 'active' }}">
+        <i data-lucide="timer"></i> Intervalo de Coleta
+      </a>
+      <a href="{{ path('account_logs') }}" class="nav-item {{ _route == 'account_logs' ? 'active' }}">
+        <i data-lucide="file-warning"></i> Logs de Erros
+      </a>
     </div>
     {% endif %}
 
@@ -549,9 +555,9 @@
       <span>Rios</span>
     </a>
     {% if is_granted('ROLE_ACCOUNT_ADMIN') and not is_granted('ROLE_ADMIN') %}
-    <a href="{{ path('account_link_index') }}" class="bottom-nav-item {{ _route starts with 'account_link' ? 'active' }}" aria-label="Meus Links">
-      <i data-lucide="link"></i>
-      <span>Links</span>
+    <a href="{{ path('account_settings') }}" class="bottom-nav-item {{ _route == 'account_settings' or _route == 'account_logs' ? 'active' }}" aria-label="Minha Conta">
+      <i data-lucide="settings-2"></i>
+      <span>Conta</span>
     </a>
     {% else %}
     <a href="{{ path('cifs_index') }}" class="bottom-nav-item {{ _route starts with 'cifs' ? 'active' }}" aria-label="Enviar Alertas ao Waze">
