@@ -12,6 +12,12 @@ use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 
 class SecurityController extends AbstractController
 {
+    #[Route('/', name: 'app_home')]
+    public function home(): Response
+    {
+        return $this->redirectToRoute('security_login');
+    }
+
     #[Route('/login', name: 'security_login')]
     public function login(AuthenticationUtils $authenticationUtils): Response
     {
@@ -30,10 +36,4 @@ class SecurityController extends AbstractController
     {
         throw new \LogicException('Este método nunca é executado — o Symfony intercepta o logout.');
     }
-
-    #[Route('/', name: 'app_home')]
-        public function home(): Response
-        {
-            return $this->redirectToRoute('security_login');
-        }
 }
