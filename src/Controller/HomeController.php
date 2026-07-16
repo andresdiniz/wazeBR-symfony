@@ -14,6 +14,11 @@ class HomeController extends AbstractController
     public function index(): Response
     {
         if ($this->getUser()) {
+            // Super admin vai direto para a gestão de parceiros
+            if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+                return $this->redirectToRoute('admin_partner_index');
+            }
+
             return $this->redirectToRoute('dashboard_index');
         }
 

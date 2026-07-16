@@ -33,6 +33,11 @@ class DashboardController extends AbstractController
     #[Route('', name: 'index')]
     public function index(): Response
     {
+        // Super admin não pertence a nenhum parceiro — redireciona para a área de administração
+        if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+            return $this->redirectToRoute('admin_partner_index');
+        }
+
         $partner = $this->tenantContext->requirePartner();
 
         // ── KPIs básicos ──────────────────────────────────────────────────────
@@ -108,6 +113,11 @@ class DashboardController extends AbstractController
     #[Route('/mapa', name: 'map')]
     public function map(): Response
     {
+        // Super admin não pertence a nenhum parceiro — redireciona para a área de administração
+        if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+            return $this->redirectToRoute('admin_partner_index');
+        }
+
         $partner = $this->tenantContext->requirePartner();
 
         return $this->render('dashboard/map.html.twig', [
