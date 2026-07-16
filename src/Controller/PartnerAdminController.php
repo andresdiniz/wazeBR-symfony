@@ -34,21 +34,22 @@ class PartnerAdminController extends AbstractController
     {
         if ($request->isMethod('POST')) {
             $partner = (new Partner())
-                ->setName((string) $request->request->get('name'))
-                ->setSlug((string) $request->request->get('slug'))
-                ->setEmail((string) $request->request->get('email'))
-                ->setBbox($request->request->get('bbox'))
+                ->setName(trim((string) $request->request->get('name')))
+                ->setSlug(trim((string) $request->request->get('slug')))
+                ->setEmail(trim((string) $request->request->get('email')))
+                ->setBbox($request->request->get('bbox') ?: null)
                 ->setCemadenStates(
-                    array_filter(
+                    array_values(array_filter(
                         array_map('trim', explode(',', (string) $request->request->get('cemaden_states', '')))
-                    )
+                    ))
                 )
+                ->setIsActive((bool) $request->request->get('isActive', false))
                 ->generateApiToken();
 
             $this->partnerRepository->save($partner);
 
             $this->addFlash('success',
-                "Parceiro '{$partner->getName()}' criado. Token: {$partner->getApiToken()}"
+                "Parceiro '{$partner->getName()}' criado com sucesso."
             );
 
             return $this->redirectToRoute('admin_partner_index');
@@ -57,11 +58,53 @@ class PartnerAdminController extends AbstractController
         return $this->render('admin/partner/new.html.twig');
     }
 
-    #[Route('/{id}/token/regenerate', name: 'regenerate_token', methods: ['POST'])]
-    public function regenerateToken(Partner $partner): JsonResponse
+    #[Route('/{id}/edit', name: 'edit', methods: ['GET', 'POST'])]
+    public function edit(Partner $partner, Request $request): Response
     {
+        if ($request->isMethod('POST')) {
+            $partner
+                ->setName(trim((string) $request->request->get('name')))
+                ->setSlug(trim((string) $request->request->get('slug')))
+                ->setEmail(trim((string) $request->request->get('email')))
+                ->setBbox($request->request->get('bbox') ?: null)
+                ->setCemadenStates(
+                    array_values(array_filter(
+                        array_map('trim', explode(',', (string) $request->request->get('cemaden_states', '')))
+                    ))
+                )
+                ->setIsActive((bool) $request->request->get('isActive', false));
+
+            $this->partnerRepository->save($partner);
+
+            $this->addFlash('success', "Parceiro '{$partner->getName()}' atualizado.");
+
+            return $this->redirectToRoute('admin_partner_index');
+        }
+
+        return $this->render('admin/partner/edit.html.twig', [
+            'partner' => $partner,
+        ]);
+    }
+
+    #[Route('/{id}/show', name: 'show', methods: ['GET'])]
+    public function show(Partner $partner): Response
+    {
+        return $this->render('admin/partner/show.html.twig', [
+            'partner' => $partner,
+        ]);
+    }
+
+    #[Route('/{id}/token/regenerate', name: 'regenerate_token', methods: ['POST'])]
+    public function regenerateToken(Partner $partner, Request $request): JsonResponse
+    {
+        if (!$this->isCsrfTokenValid('regen_token_' . $partner->getId(), $request->request->get('_token'))) {
+            return $this->json(['error' => 'Invalid CSRF token'], 403);
+        }
+
         $partner->generateApiToken();
         $this->partnerRepository->save($partner);
+
+        $this->addFlash('success', 'Token regenerado com sucesso.');
 
         return $this->json(['token' => $partner->getApiToken()]);
     }

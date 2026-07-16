@@ -18,6 +18,22 @@ class PartnerRepository extends ServiceEntityRepository
         parent::__construct($registry, Partner::class);
     }
 
+    public function save(Partner $partner, bool $flush = true): void
+    {
+        $this->getEntityManager()->persist($partner);
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
+    }
+
+    public function remove(Partner $partner, bool $flush = true): void
+    {
+        $this->getEntityManager()->remove($partner);
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
+    }
+
     /**
      * Lista todos os parceiros com contagem de usuários, ordenados por nome.
      */
@@ -32,25 +48,16 @@ class PartnerRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    /**
-     * Busca parceiro pelo slug.
-     */
     public function findBySlug(string $slug): ?Partner
     {
         return $this->findOneBy(['slug' => $slug]);
     }
 
-    /**
-     * Busca parceiro pelo API token.
-     */
     public function findByApiToken(string $token): ?Partner
     {
         return $this->findOneBy(['apiToken' => $token]);
     }
 
-    /**
-     * Lista apenas parceiros ativos.
-     */
     public function findAllActive(): array
     {
         return $this->createQueryBuilder('p')
@@ -60,9 +67,6 @@ class PartnerRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    /**
-     * Busca parceiros com links monitorados carregados em JOIN.
-     */
     public function findWithLinks(int $id): ?Partner
     {
         return $this->createQueryBuilder('p')
