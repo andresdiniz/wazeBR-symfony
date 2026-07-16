@@ -1,0 +1,107 @@
+{% extends 'base.html.twig' %}
+{% block title %}Novo Usuário{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <a href="{{ path('account_user_index') }}" style="display:inline-flex;align-items:center;gap:var(--space-1);font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-3)">
+    <i data-lucide="arrow-left" style="width:14px;height:14px"></i> Voltar para Usuários
+  </a>
+  <h1 class="page-title">Novo Usuário</h1>
+  <p class="page-subtitle">Adicione um usuário comum ou agente de rua ao parceiro <strong>{{ partner.name }}</strong></p>
+</div>
+
+<div class="card" style="max-width:640px">
+  <form method="post" action="{{ path('account_user_new') }}" novalidate>
+    <div style="padding:var(--space-5);display:flex;flex-direction:column;gap:var(--space-4)">
+
+      {# Nome #}
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label" for="name">Nome completo</label>
+        <input class="form-control {{ errors.name is defined ? 'error' }}" type="text" id="name" name="name"
+               value="{{ data.name ?? '' }}" placeholder="Ex: João Silva" required autocomplete="name">
+        {% if errors.name is defined %}
+          <span class="form-hint" style="color:var(--color-error)">{{ errors.name }}</span>
+        {% endif %}
+      </div>
+
+      {# E-mail #}
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label" for="email">E-mail</label>
+        <input class="form-control {{ errors.email is defined ? 'error' }}" type="email" id="email" name="email"
+               value="{{ data.email ?? '' }}" placeholder="usuario@empresa.com" required autocomplete="email">
+        {% if errors.email is defined %}
+          <span class="form-hint" style="color:var(--color-error)">{{ errors.email }}</span>
+        {% endif %}
+      </div>
+
+      {# Senha #}
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label" for="password">Senha</label>
+        <input class="form-control {{ errors.password is defined ? 'error' }}" type="password" id="password" name="password"
+               placeholder="Mínimo 8 caracteres" required autocomplete="new-password">
+        {% if errors.password is defined %}
+          <span class="form-hint" style="color:var(--color-error)">{{ errors.password }}</span>
+        {% else %}
+          <span class="form-hint">Mínimo de 8 caracteres.</span>
+        {% endif %}
+      </div>
+
+      {# Perfil #}
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label" for="role">Perfil</label>
+        <select class="form-control" id="role" name="role" onchange="toggleAgentPerms(this.value)">
+          <option value="ROLE_USER"     {{ (data.role ?? 'ROLE_USER') == 'ROLE_USER'        ? 'selected' }}>👤 Usuário Comum — visualiza o painel</option>
+          <option value="ROLE_FIELD_AGENT" {{ (data.role ?? '') == 'ROLE_FIELD_AGENT' ? 'selected' }}>🦺 Agente de Rua — permissões de campo</option>
+        </select>
+        {% if errors.role is defined %}
+          <span class="form-hint" style="color:var(--color-error)">{{ errors.role }}</span>
+        {% endif %}
+      </div>
+
+      {# Permissões do agente #}
+      <div id="agentPerms" style="display:{{ (data.role ?? '') == 'ROLE_FIELD_AGENT' ? 'block' : 'none' }}">
+        <div style="padding:var(--space-4);background:var(--color-surface-offset);border-radius:var(--radius-md);border:1px solid var(--color-border)">
+          <p style="font-size:var(--text-sm);font-weight:500;margin-bottom:var(--space-3)">
+            <i data-lucide="shield-check" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"></i>
+            Permissões do agente
+          </p>
+          <p style="font-size:var(--text-xs);color:var(--color-text-muted);margin-bottom:var(--space-3)">Se nenhuma for selecionada, o agente terá as mesmas permissões de usuário comum.</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--space-2)">
+            {% set allPerms = [
+              {key: 'view_alerts',    label: 'Ver Alertas'},
+              {key: 'view_jams',      label: 'Ver Congestionamentos'},
+              {key: 'view_cemaden',   label: 'Ver CEMADEN'},
+              {key: 'view_hydro',     label: 'Ver Rios'},
+              {key: 'submit_report',  label: 'Enviar Relatório'},
+              {key: 'view_dashboard', label: 'Ver Dashboard'},
+            ] %}
+            {% for perm in allPerms %}
+            <label style="display:flex;align-items:center;gap:var(--space-2);font-size:var(--text-sm);cursor:pointer;padding:var(--space-2) var(--space-3);border-radius:var(--radius-sm);background:var(--color-surface);border:1px solid var(--color-border)">
+              <input type="checkbox" name="permissions[]" value="{{ perm.key }}"
+                     {{ data.permissions is defined and perm.key in data.permissions ? 'checked' }}>
+              {{ perm.label }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="padding:var(--space-4) var(--space-5);border-top:1px solid var(--color-divider);display:flex;align-items:center;gap:var(--space-3);justify-content:flex-end">
+      <a href="{{ path('account_user_index') }}" class="btn btn-ghost">Cancelar</a>
+      <button type="submit" class="btn btn-primary">
+        <i data-lucide="user-plus" style="width:15px;height:15px"></i> Criar Usuário
+      </button>
+    </div>
+  </form>
+</div>
+
+{% block javascripts %}
+<script>
+function toggleAgentPerms(role) {
+  document.getElementById('agentPerms').style.display = role === 'ROLE_FIELD_AGENT' ? 'block' : 'none';
+}
+</script>
+{% endblock %}
+{% endblock %}

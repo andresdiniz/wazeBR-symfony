@@ -1,0 +1,189 @@
+{% extends 'base.html.twig' %}
+{% block title %}Usuários — {{ partner.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-4)">
+  <div>
+    <h1 class="page-title">Usuários</h1>
+    <p class="page-subtitle">Gerencie os usuários do parceiro <strong>{{ partner.name }}</strong></p>
+  </div>
+  <a href="{{ path('account_user_new') }}" class="btn btn-primary">
+    <i data-lucide="user-plus" style="width:16px;height:16px"></i> Novo Usuário
+  </a>
+</div>
+
+{% set regular = users|filter(u => not u.isFieldAgent and not u.isAccountAdmin and not u.isSuperAdmin) %}
+{% set agents  = users|filter(u => u.isFieldAgent) %}
+
+{# ── Usuários Comuns ───────────────────────────────────────────────── #}
+<div class="card" style="margin-bottom:var(--space-6)">
+  <div class="card-header">
+    <span class="card-title">
+      <i data-lucide="users" style="width:15px;height:15px;vertical-align:middle;margin-right:4px"></i>
+      Usuários Comuns
+    </span>
+    <span class="badge badge-gray">{{ regular|length }}</span>
+  </div>
+  <div class="table-wrap">
+    {% if regular|length == 0 %}
+      <div class="empty" style="padding:var(--space-10)">
+        <i data-lucide="user-x"></i>
+        <h3>Nenhum usuário comum</h3>
+        <p>Crie um usuário com acesso de visualização ao painel.</p>
+      </div>
+    {% else %}
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>E-mail</th>
+          <th>Status</th>
+          <th>Último acesso</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in regular %}
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:var(--space-2)">
+              <div style="width:28px;height:28px;border-radius:50%;background:oklch(from var(--color-primary) l c h/.15);color:var(--color-primary);display:grid;place-items:center;font-weight:700;font-size:var(--text-xs);flex-shrink:0">
+                {{ u.name|slice(0,1)|upper }}
+              </div>
+              {{ u.name }}
+            </div>
+          </td>
+          <td style="color:var(--color-text-muted)">{{ u.email }}</td>
+          <td>
+            {% if u.isActive %}
+              <span class="badge badge-green"><i data-lucide="circle" style="width:7px;height:7px"></i> Ativo</span>
+            {% else %}
+              <span class="badge badge-gray"><i data-lucide="circle" style="width:7px;height:7px"></i> Inativo</span>
+            {% endif %}
+          </td>
+          <td style="color:var(--color-text-muted);font-size:var(--text-xs)">
+            {% if u.lastLoginAt %}
+              <time data-utc="{{ u.lastLoginAt|date('c') }}">—</time>
+            {% else %}
+              <span>Nunca acessou</span>
+            {% endif %}
+          </td>
+          <td>
+            <div style="display:flex;align-items:center;gap:var(--space-2);justify-content:flex-end">
+              <a href="{{ path('account_user_edit', {id: u.id}) }}" class="btn btn-ghost btn-sm">
+                <i data-lucide="pencil" style="width:13px;height:13px"></i> Editar
+              </a>
+              <form method="post" action="{{ path('account_user_toggle', {id: u.id}) }}" style="display:inline">
+                <input type="hidden" name="_token" value="{{ csrf_token('toggle_user_' ~ u.id) }}">
+                <button type="submit" class="btn btn-ghost btn-sm" title="{{ u.isActive ? 'Desativar' : 'Reativar' }}">
+                  <i data-lucide="{{ u.isActive ? 'user-x' : 'user-check' }}" style="width:13px;height:13px"></i>
+                  {{ u.isActive ? 'Desativar' : 'Reativar' }}
+                </button>
+              </form>
+              <form method="post" action="{{ path('account_user_delete', {id: u.id}) }}" style="display:inline"
+                    onsubmit="return confirm('Remover {{ u.name }}? Esta ação não pode ser desfeita.')">
+                <input type="hidden" name="_token" value="{{ csrf_token('delete_user_' ~ u.id) }}">
+                <button type="submit" class="btn btn-sm" style="color:var(--color-error);border-color:oklch(from var(--color-error) l c h/.3)">
+                  <i data-lucide="trash-2" style="width:13px;height:13px"></i>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</div>
+
+{# ── Agentes de Rua ───────────────────────────────────────────────── #}
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">
+      <i data-lucide="hard-hat" style="width:15px;height:15px;vertical-align:middle;margin-right:4px"></i>
+      Agentes de Rua
+    </span>
+    <span class="badge badge-orange">{{ agents|length }}</span>
+  </div>
+  <div class="table-wrap">
+    {% if agents|length == 0 %}
+      <div class="empty" style="padding:var(--space-10)">
+        <i data-lucide="user-round-x"></i>
+        <h3>Nenhum agente cadastrado</h3>
+        <p>Crie um agente de rua com permissões de campo.</p>
+      </div>
+    {% else %}
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>E-mail</th>
+          <th>Permissões</th>
+          <th>Status</th>
+          <th>Último acesso</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in agents %}
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:var(--space-2)">
+              <div style="width:28px;height:28px;border-radius:50%;background:oklch(from var(--color-orange) l c h/.15);color:var(--color-orange);display:grid;place-items:center;font-weight:700;font-size:var(--text-xs);flex-shrink:0">
+                {{ u.name|slice(0,1)|upper }}
+              </div>
+              {{ u.name }}
+            </div>
+          </td>
+          <td style="color:var(--color-text-muted)">{{ u.email }}</td>
+          <td>
+            {% if u.fieldAgentPermissions is empty %}
+              <span class="badge badge-green" title="Mesmas permissões de usuário comum">Padrão</span>
+            {% else %}
+              <span class="badge badge-orange">{{ u.fieldAgentPermissions|length }} perm.</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.isActive %}
+              <span class="badge badge-green"><i data-lucide="circle" style="width:7px;height:7px"></i> Ativo</span>
+            {% else %}
+              <span class="badge badge-gray"><i data-lucide="circle" style="width:7px;height:7px"></i> Inativo</span>
+            {% endif %}
+          </td>
+          <td style="color:var(--color-text-muted);font-size:var(--text-xs)">
+            {% if u.lastLoginAt %}
+              <time data-utc="{{ u.lastLoginAt|date('c') }}">—</time>
+            {% else %}
+              <span>Nunca acessou</span>
+            {% endif %}
+          </td>
+          <td>
+            <div style="display:flex;align-items:center;gap:var(--space-2);justify-content:flex-end">
+              <a href="{{ path('account_user_edit', {id: u.id}) }}" class="btn btn-ghost btn-sm">
+                <i data-lucide="pencil" style="width:13px;height:13px"></i> Editar
+              </a>
+              <form method="post" action="{{ path('account_user_toggle', {id: u.id}) }}" style="display:inline">
+                <input type="hidden" name="_token" value="{{ csrf_token('toggle_user_' ~ u.id) }}">
+                <button type="submit" class="btn btn-ghost btn-sm">
+                  <i data-lucide="{{ u.isActive ? 'user-x' : 'user-check' }}" style="width:13px;height:13px"></i>
+                  {{ u.isActive ? 'Desativar' : 'Reativar' }}
+                </button>
+              </form>
+              <form method="post" action="{{ path('account_user_delete', {id: u.id}) }}" style="display:inline"
+                    onsubmit="return confirm('Remover {{ u.name }}?')">
+                <input type="hidden" name="_token" value="{{ csrf_token('delete_user_' ~ u.id) }}">
+                <button type="submit" class="btn btn-sm" style="color:var(--color-error);border-color:oklch(from var(--color-error) l c h/.3)">
+                  <i data-lucide="trash-2" style="width:13px;height:13px"></i>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
