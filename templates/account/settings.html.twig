@@ -39,8 +39,8 @@
                 style="width:100%;max-width:280px;padding:var(--space-2) var(--space-3);border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);color:var(--color-text);font-size:var(--text-sm);appearance:none;cursor:pointer"
                 {% if errors.refresh_interval is defined %}style="border-color:var(--color-error)"{% endif %}>
 
-          <option value="" {{ partner.refreshIntervalMinutes is null ? 'selected' : '' }}>
-            Padrão do sistema (5 min)
+          <option value="" {{ partner.refreshIntervalMinutes is null ? 'selected' : '2' }}>
+            Padrão do sistema (2 min)
           </option>
 
           {% for option in intervalOptions %}
