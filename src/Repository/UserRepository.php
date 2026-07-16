@@ -22,6 +22,22 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         parent::__construct($registry, User::class);
     }
 
+    public function save(User $user, bool $flush = true): void
+    {
+        $this->getEntityManager()->persist($user);
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
+    }
+
+    public function remove(User $user, bool $flush = true): void
+    {
+        $this->getEntityManager()->remove($user);
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
+    }
+
     public function upgradePassword(PasswordAuthenticatedUserInterface $user, string $newHashedPassword): void
     {
         if (!$user instanceof User) {
@@ -31,9 +47,6 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         $this->getEntityManager()->flush();
     }
 
-    /**
-     * Lista todos os usuários de um parceiro, ordenados por nome.
-     */
     public function findByPartner(Partner $partner): array
     {
         return $this->createQueryBuilder('u')
@@ -44,9 +57,6 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
             ->getResult();
     }
 
-    /**
-     * Lista apenas administradores de conta de um parceiro.
-     */
     public function findAccountAdminsByPartner(Partner $partner): array
     {
         return $this->createQueryBuilder('u')
@@ -59,9 +69,6 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
             ->getResult();
     }
 
-    /**
-     * Lista agentes de via de um parceiro.
-     */
     public function findFieldAgentsByPartner(Partner $partner): array
     {
         return $this->createQueryBuilder('u')
@@ -74,9 +81,6 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
             ->getResult();
     }
 
-    /**
-     * Busca por e-mail (case-insensitive).
-     */
     public function findByEmail(string $email): ?User
     {
         return $this->createQueryBuilder('u')
