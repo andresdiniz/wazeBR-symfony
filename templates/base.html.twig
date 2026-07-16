@@ -128,10 +128,9 @@
       width:36px;height:36px;border-radius:var(--radius-md);
       display:grid;place-items:center;
       transition:background var(--transition);
-      min-width:44px;min-height:44px; /* touch target */
+      min-width:44px;min-height:44px;
     }
     .btn-icon:hover{background:var(--color-surface-offset)}
-    /* hamburger — visible only on mobile */
     .btn-menu{display:grid;place-items:center;min-width:44px;min-height:44px}
     @media(min-width:768px){.btn-menu{display:none}}
 
@@ -160,7 +159,7 @@
       font-size:var(--text-sm);color:var(--color-text-muted);
       border-radius:0;transition:all var(--transition);
       border-left:2px solid transparent;
-      min-height:44px; /* touch target */
+      min-height:44px;
     }
     .nav-item:hover{color:var(--color-text);background:var(--color-surface-offset)}
     .nav-item.active{
@@ -168,7 +167,6 @@
       background:oklch(from var(--color-primary) l c h/.08);
       border-left-color:var(--color-primary);font-weight:500;
     }
-    /* Tela Live — destaque especial com pulso */
     .nav-item-live{
       display:flex;align-items:center;gap:var(--space-3);
       padding:var(--space-2) var(--space-4);
@@ -244,7 +242,6 @@
     }
     @media(min-width:1800px){main{padding:var(--space-8) var(--space-12)}}
     @media(max-width:480px){main{padding:var(--space-4)}}
-
     @media(min-width:1800px){
       .content-wrap{max-width:1600px;margin-inline:auto}
     }
@@ -280,7 +277,6 @@
       background:oklch(from var(--color-primary) l c h/.08);
     }
     .bottom-nav-item svg,.bottom-nav-item [data-lucide]{width:20px;height:20px}
-    /* Live indicator no bottom nav */
     .bottom-nav-live{position:relative}
     .bottom-nav-live::after{
       content:'';position:absolute;top:6px;right:calc(50% - 14px);
@@ -311,7 +307,6 @@
     }
     .card-title{font-weight:600;font-size:var(--text-sm)}
 
-    /* responsive tables */
     .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
     table{width:100%;border-collapse:collapse}
     th{
@@ -337,7 +332,7 @@
       border:1px solid transparent;
       transition:all var(--transition);
       text-decoration:none;cursor:pointer;
-      min-height:44px; /* touch target */
+      min-height:44px;
     }
     .btn-primary{background:var(--color-primary);color:#fff;border-color:var(--color-primary)}
     .btn-primary:hover{background:var(--color-primary-hover)}
@@ -401,12 +396,10 @@
 </head>
 <body>
 
-  <!-- Overlay for mobile sidebar -->
   <div class="sidebar-overlay" id="sidebarOverlay" aria-hidden="true"></div>
 
   <header class="header">
     <div class="header-brand">
-      <!-- Hamburger (mobile only) -->
       <button class="btn-menu btn-icon" id="btnMenu" aria-label="Abrir menu" aria-expanded="false" aria-controls="sidebar">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
@@ -460,12 +453,10 @@
       <a href="{{ path('cemaden_index') }}" class="nav-item {{ _route starts with 'cemaden' ? 'active' }}">
         <i data-lucide="cloud-rain"></i> CEMADEN
       </a>
-      {# Rios Ao Vivo: ativo SOMENTE na rota exata hydro_live ou hydro_live_data #}
       <a href="{{ path('hydro_live') }}" class="nav-item-live {{ _route == 'hydro_live' or _route == 'hydro_live_data' ? 'active' }}" title="Nível dos rios em tempo real">
         <i data-lucide="waves"></i> Rios — Ao Vivo
         <span class="nav-live-dot" aria-hidden="true"></span>
       </a>
-      {# Rios Histórico: ativo SOMENTE na rota hydro_historico #}
       <a href="{{ path('hydro_historico') }}" class="nav-item {{ _route == 'hydro_historico' ? 'active' }}">
         <i data-lucide="book-open"></i> Rios — Histórico
       </a>
@@ -485,6 +476,9 @@
     {% if is_granted('ROLE_ACCOUNT_ADMIN') and not is_granted('ROLE_ADMIN') %}
     <div class="nav-section">
       <div class="nav-label">Minha Conta</div>
+      <a href="{{ path('account_user_index') }}" class="nav-item {{ _route starts with 'account_user' ? 'active' }}">
+        <i data-lucide="users"></i> Usuários
+      </a>
       <a href="{{ path('account_link_index') }}" class="nav-item {{ _route starts with 'account_link' ? 'active' }}">
         <i data-lucide="link"></i> Meus Links
       </a>
@@ -555,9 +549,9 @@
       <span>Rios</span>
     </a>
     {% if is_granted('ROLE_ACCOUNT_ADMIN') and not is_granted('ROLE_ADMIN') %}
-    <a href="{{ path('account_settings') }}" class="bottom-nav-item {{ _route == 'account_settings' or _route == 'account_logs' ? 'active' }}" aria-label="Minha Conta">
-      <i data-lucide="settings-2"></i>
-      <span>Conta</span>
+    <a href="{{ path('account_user_index') }}" class="bottom-nav-item {{ _route starts with 'account_user' ? 'active' }}" aria-label="Usuários">
+      <i data-lucide="users"></i>
+      <span>Usuários</span>
     </a>
     {% else %}
     <a href="{{ path('cifs_index') }}" class="bottom-nav-item {{ _route starts with 'cifs' ? 'active' }}" aria-label="Enviar Alertas ao Waze">
@@ -565,7 +559,6 @@
       <span>Alertas</span>
     </a>
     {% endif %}
-    <!-- More button opens sidebar -->
     <button class="bottom-nav-item" id="btnMenuBottom" aria-label="Mais opções">
       <i data-lucide="menu"></i>
       <span>Mais</span>
@@ -611,11 +604,9 @@
       btnMenu   && btnMenu.addEventListener('click', ()=> sidebar.classList.contains('open') ? close() : open());
       btnBottom && btnBottom.addEventListener('click', ()=> sidebar.classList.contains('open') ? close() : open());
       overlay.addEventListener('click', close);
-      /* close on nav click (mobile) */
       sidebar.querySelectorAll('.nav-item,.nav-item-live').forEach(el => el.addEventListener('click', ()=>{
         if(window.innerWidth < 768) close();
       }));
-      /* ESC closes */
       document.addEventListener('keydown', e => { if(e.key==='Escape') close(); });
     })();
 
