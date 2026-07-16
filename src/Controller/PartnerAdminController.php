@@ -25,7 +25,7 @@ class PartnerAdminController extends AbstractController
     public function index(): Response
     {
         return $this->render('admin/partner/index.html.twig', [
-            'partners' => $this->partnerRepository->findActivePartners(),
+            'partners' => $this->partnerRepository->findAllActive(),
         ]);
     }
 
