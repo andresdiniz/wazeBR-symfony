@@ -38,13 +38,30 @@ security:
         always_remember_me: false
 
   access_control:
+    # Rotas públicas
     - { path: ^/$,              roles: PUBLIC_ACCESS }
     - { path: ^/login,          roles: PUBLIC_ACCESS }
     - { path: ^/senha,          roles: PUBLIC_ACCESS }
     - { path: ^/api/externa,    roles: PUBLIC_ACCESS }
-    - { path: ^/admin,          roles: ROLE_ADMIN }
+
+    # Área exclusiva do super admin (gestão de parceiros)
+    - { path: ^/admin/parceiros, roles: ROLE_SUPER_ADMIN }
+
+    # Área administrativa do parceiro (account admin + super admin)
+    - { path: ^/admin,          roles: ROLE_ACCOUNT_ADMIN }
+
+    # Tudo mais exige ao menos ROLE_USER
     - { path: ^/,               roles: ROLE_USER }
 
   role_hierarchy:
-    ROLE_ADMIN:       ROLE_USER
-    ROLE_SUPER_ADMIN: ROLE_ADMIN
+    # ROLE_FIELD_AGENT herda ROLE_USER (acesso base de visualização)
+    ROLE_FIELD_AGENT:   ROLE_USER
+
+    # ROLE_ACCOUNT_ADMIN herda ROLE_USER (pode ver tudo que usuário vê)
+    ROLE_ACCOUNT_ADMIN: ROLE_USER
+
+    # ROLE_ADMIN é alias de ROLE_ACCOUNT_ADMIN (retrocompatibilidade)
+    ROLE_ADMIN:         ROLE_ACCOUNT_ADMIN
+
+    # ROLE_SUPER_ADMIN herda tudo
+    ROLE_SUPER_ADMIN:   [ROLE_ACCOUNT_ADMIN, ROLE_ADMIN]
