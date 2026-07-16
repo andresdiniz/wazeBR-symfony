@@ -4,25 +4,27 @@ declare(strict_types=1);
 
 namespace App\Scheduler\Handler;
 
+use App\Entity\ActivityLog;
 use App\Repository\MonitoredLinkRepository;
 use App\Scheduler\Message\FetchWazeTrafficMessage;
-use App\Service\WazeTrafficFeedService;
+use App\Service\WazeFeedService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
  * Processa FetchWazeTrafficMessage:
- * itera todos os feeds TVT ativos (feedFormat=2) e persiste snapshots.
+ * itera todos os feeds Waze ativos e persiste jams/irregularidades.
  *
- * Circuit breaker: se a primeira falha for por DNS ou conexão,
- * o ciclo é abortado imediatamente para não repetir o mesmo erro
- * para cada link quando a rede está totalmente indisponível.
+ * - Respeita o refreshIntervalMinutes do parceiro.
+ * - Grava ActivityLog(action=fetch_error) em caso de falha.
+ * - Circuit breaker para falhas de rede.
  */
 #[AsMessageHandler]
 final class FetchWazeTrafficHandler
 {
-    /** Fragmentos de mensagem que indicam falha de infra (DNS / TCP). */
+    private const DEFAULT_INTERVAL_MINUTES = 5;
+
     private const NETWORK_ERROR_PATTERNS = [
         'Could not resolve host',
         'Recv failure',
@@ -36,17 +38,17 @@ final class FetchWazeTrafficHandler
 
     public function __construct(
         private readonly MonitoredLinkRepository $linkRepo,
-        private readonly WazeTrafficFeedService  $trafficService,
+        private readonly WazeFeedService         $feedService,
         private readonly EntityManagerInterface  $em,
         private readonly LoggerInterface         $logger,
     ) {}
 
     public function __invoke(FetchWazeTrafficMessage $message): void
     {
-        $links = $this->linkRepo->findActiveTrafficFeeds();
+        $links = $this->linkRepo->findActiveWazeFeeds();
 
         if (empty($links)) {
-            $this->logger->info('[WazeTrafficScheduler] Nenhum feed TVT ativo.');
+            $this->logger->info('[WazeTrafficScheduler] Nenhum feed ativo encontrado.');
             return;
         }
 
@@ -57,45 +59,76 @@ final class FetchWazeTrafficHandler
             );
         }
 
-        $totalSaved      = 0;
-        $totalErrors     = 0;
-        $networkAborted  = false;
+        $totalSaved     = 0;
+        $totalErrors    = 0;
+        $totalSkipped   = 0;
+        $networkAborted = false;
 
         foreach ($links as $link) {
             $label   = $link->getLabel() ?? $link->getUrl();
-            $partner = $link->getPartner()?->getSlug();
+            $partner = $link->getPartner();
+
+            // ── Respeita o intervalo do parceiro ──────────────────────────
+            $intervalMin = $partner?->getRefreshIntervalMinutes() ?? self::DEFAULT_INTERVAL_MINUTES;
+            if ($link->getLastCollectedAt() !== null) {
+                $elapsedSec = (new \DateTimeImmutable())->getTimestamp() - $link->getLastCollectedAt()->getTimestamp();
+                if ($elapsedSec < $intervalMin * 60) {
+                    $totalSkipped++;
+                    $this->logger->debug('[WazeTrafficScheduler] Coleta ignorada (dentro do intervalo)', [
+                        'link'        => $label,
+                        'partner'     => $partner?->getSlug(),
+                        'interval'    => $intervalMin,
+                        'elapsed_sec' => $elapsedSec,
+                    ]);
+                    continue;
+                }
+            }
+            // ─────────────────────────────────────────────────────────────
 
             try {
-                // fetchAndPersist() retorna array{routes: int, irregularities: int}
-                $result = $this->trafficService->fetchAndPersist($link);
+                $count = $this->feedService->fetchAndPersist($link);
 
                 $link->setLastCollectedAt(new \DateTimeImmutable());
                 $this->em->flush();
 
-                $totalSaved += $result['routes'] ?? 0;
+                $totalSaved += $count;
 
-                $this->logger->info('[WazeTrafficScheduler] TVT coletado', [
-                    'link'           => $label,
-                    'partner'        => $partner,
-                    'routes'         => $result['routes']         ?? 0,
-                    'irregularities' => $result['irregularities'] ?? 0,
+                $this->logger->info('[WazeTrafficScheduler] Feed coletado', [
+                    'link'    => $label,
+                    'partner' => $partner?->getSlug(),
+                    'saved'   => $count,
                 ]);
 
             } catch (\Throwable $e) {
                 $totalErrors++;
                 $msg = $e->getMessage();
 
-                $this->logger->error('[WazeTrafficScheduler] Erro TVT', [
+                $this->logger->error('[WazeTrafficScheduler] Erro ao coletar feed', [
                     'link'    => $label,
-                    'partner' => $partner,
+                    'partner' => $partner?->getSlug(),
                     'error'   => $msg,
                 ]);
 
-                // Circuit breaker: falha de rede afeta todos os links — abort.
+                // Grava no ActivityLog para visibilidade na área do parceiro
+                if ($partner !== null) {
+                    $log = (new ActivityLog())
+                        ->setPartner($partner)
+                        ->setAction('fetch_error')
+                        ->setDescription('Erro ao coletar feed Waze Traffic: ' . mb_substr($msg, 0, 240))
+                        ->setContext([
+                            'link_id' => $link->getId(),
+                            'url'     => $link->getUrl(),
+                            'label'   => $label,
+                            'error'   => $msg,
+                        ]);
+                    $this->em->persist($log);
+                    $this->em->flush();
+                }
+
                 if ($this->isNetworkError($msg)) {
                     $networkAborted = true;
                     $this->logger->warning(
-                        '[WazeTrafficScheduler] Falha de rede detectada — ciclo TVT abortado.',
+                        '[WazeTrafficScheduler] Falha de rede — ciclo abortado.',
                         ['pattern' => $msg]
                     );
                     break;
@@ -106,6 +139,7 @@ final class FetchWazeTrafficHandler
         $this->logger->info('[WazeTrafficScheduler] Ciclo concluído', [
             'total_saved'     => $totalSaved,
             'total_errors'    => $totalErrors,
+            'total_skipped'   => $totalSkipped,
             'network_aborted' => $networkAborted,
         ]);
     }

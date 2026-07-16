@@ -41,6 +41,14 @@ class Partner
     #[ORM\Column]
     private bool $isActive = true;
 
+    /**
+     * Intervalo em minutos entre coletas para este parceiro.
+     * NULL = usa o padrão global do sistema (definido em WazeFeedSchedule).
+     * Valores permitidos: 5, 10, 15, 30, 60.
+     */
+    #[ORM\Column(nullable: true)]
+    private ?int $refreshIntervalMinutes = null;
+
     #[ORM\Column]
     private \DateTimeImmutable $createdAt;
 
@@ -92,6 +100,8 @@ class Partner
     public function setCemadenStates(array $s): static { $this->cemadenStates = $s; return $this; }
     public function isActive(): bool { return $this->isActive; }
     public function setIsActive(bool $v): static { $this->isActive = $v; return $this; }
+    public function getRefreshIntervalMinutes(): ?int { return $this->refreshIntervalMinutes; }
+    public function setRefreshIntervalMinutes(?int $v): static { $this->refreshIntervalMinutes = $v; return $this; }
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
     public function getUsers(): Collection { return $this->users; }
     public function getAlerts(): Collection { return $this->alerts; }
