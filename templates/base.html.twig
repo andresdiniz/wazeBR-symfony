@@ -502,7 +502,7 @@
     {% if is_granted('ROLE_SUPER_ADMIN') %}
     <div class="nav-section">
       <div class="nav-label">Super Admin</div>
-      <a href="{{ path('partner_admin_index') }}" class="nav-item {{ _route starts with 'partner_admin' ? 'active' }}">
+      <a href="{{ path('admin_partner_index') }}" class="nav-item {{ _route starts with 'admin_partner' ? 'active' }}">
         <i data-lucide="building-2"></i> Parceiros
       </a>
     </div>
