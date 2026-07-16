@@ -1,32 +1,62 @@
 {% extends 'base.html.twig' %}
+
 {% block title %}Novo Parceiro{% endblock %}
-{% block content %}
-<div class="page-header">
-  <a href="{{ path('partner_admin_index') }}" class="btn btn-ghost">&larr; Voltar</a>
-  <h1>Novo Parceiro</h1>
-</div>
-<div class="form-card">
-  <form method="post" action="{{ path('partner_admin_new') }}">
-    <div class="form-group">
-      <label for="name">Nome <span class="required">*</span></label>
-      <input type="text" id="name" name="name" required class="form-control">
-    </div>
-    <div class="form-group">
-      <label for="slug">Slug <span class="required">*</span></label>
-      <input type="text" id="slug" name="slug" required class="form-control" placeholder="ex: pbh">
-    </div>
-    <div class="form-group">
-      <label for="email">Email</label>
-      <input type="email" id="email" name="email" class="form-control">
-    </div>
-    <div class="form-group">
-      <label for="bbox">BBox (lat_min,lon_min,lat_max,lon_max)</label>
-      <input type="text" id="bbox" name="bbox" class="form-control" placeholder="-20.1,-44.1,-19.7,-43.8">
-    </div>
-    <div class="form-actions">
-      <a href="{{ path('partner_admin_index') }}" class="btn btn-ghost">Cancelar</a>
-      <button type="submit" class="btn btn-primary">Criar Parceiro</button>
-    </div>
-  </form>
+
+{% block body %}
+<div class="container py-4" style="max-width: 680px">
+
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ path('admin_partner_index') }}">Parceiros</a></li>
+            <li class="breadcrumb-item active">Novo parceiro</li>
+        </ol>
+    </nav>
+
+    <h1 class="h3 mb-4">Novo parceiro</h1>
+
+    {{ form_start(form, {attr: {novalidate: 'novalidate'}}) }}
+
+        <div class="card shadow-sm p-4 mb-3">
+            <h2 class="h6 text-muted text-uppercase mb-3">Dados do parceiro</h2>
+
+            <div class="mb-3">
+                {{ form_label(form.name) }}
+                {{ form_widget(form.name, {attr: {class: 'form-control'}}) }}
+                {{ form_errors(form.name) }}
+            </div>
+
+            <div class="mb-3">
+                {{ form_label(form.slug) }}
+                {{ form_widget(form.slug, {attr: {class: 'form-control'}}) }}
+                {{ form_help(form.slug) }}
+                {{ form_errors(form.slug) }}
+            </div>
+
+            <div class="mb-3">
+                {{ form_label(form.email) }}
+                {{ form_widget(form.email, {attr: {class: 'form-control'}}) }}
+                {{ form_errors(form.email) }}
+            </div>
+
+            <div class="mb-3">
+                {{ form_label(form.bbox) }}
+                {{ form_widget(form.bbox, {attr: {class: 'form-control font-monospace'}}) }}
+                {{ form_help(form.bbox) }}
+                {{ form_errors(form.bbox) }}
+            </div>
+
+            <div class="form-check">
+                {{ form_widget(form.isActive, {attr: {class: 'form-check-input'}}) }}
+                {{ form_label(form.isActive, null, {label_attr: {class: 'form-check-label'}}) }}
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary px-4">Criar parceiro</button>
+            <a href="{{ path('admin_partner_index') }}" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+
+    {{ form_end(form) }}
+
 </div>
 {% endblock %}

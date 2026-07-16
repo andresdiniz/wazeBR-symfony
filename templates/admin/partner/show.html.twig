@@ -1,21 +1,163 @@
 {% extends 'base.html.twig' %}
-{% block title %}Parceiro: {{ partner.name }}{% endblock %}
-{% block content %}
-<div class="page-header">
-  <a href="{{ path('partner_admin_index') }}" class="btn btn-ghost">&larr; Voltar</a>
-  <h1>{{ partner.name }}</h1>
-</div>
-<div class="detail-card">
-  <dl>
-    <dt>Slug</dt><dd><code>{{ partner.slug }}</code></dd>
-    <dt>Email</dt><dd>{{ partner.email ?? '—' }}</dd>
-    <dt>Token API</dt><dd><code>{{ partner.apiToken ?? '—' }}</code></dd>
-    <dt>BBox</dt><dd>{{ partner.bbox ?? '—' }}</dd>
-    <dt>Ativo</dt><dd>{{ partner.isActive ? 'Sim' : 'Não' }}</dd>
-    <dt>Criado em</dt><dd>{{ partner.createdAt|date('d/m/Y H:i') }}</dd>
-  </dl>
-  <div class="actions" style="margin-top:1rem">
-    <a href="{{ path('partner_admin_edit', {id: partner.id}) }}" class="btn btn-primary">Editar</a>
-  </div>
+
+{% block title %}{{ partner.name }}{% endblock %}
+
+{% block body %}
+<div class="container py-4">
+
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ path('admin_partner_index') }}">Parceiros</a></li>
+            <li class="breadcrumb-item active">{{ partner.name }}</li>
+        </ol>
+    </nav>
+
+    {% for message in app.flashes('success') %}
+        <div class="alert alert-success alert-dismissible fade show">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+    {% for message in app.flashes('error') %}
+        <div class="alert alert-danger alert-dismissible fade show">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+
+    <div class="row g-4">
+
+        {# — Coluna esquerda: dados do parceiro — #}
+        <div class="col-lg-4">
+            <div class="card shadow-sm p-4 mb-3">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h1 class="h4 mb-1">{{ partner.name }}</h1>
+                        <code class="small text-muted">{{ partner.slug }}</code>
+                    </div>
+                    {% if partner.isActive %}
+                        <span class="badge bg-success">Ativo</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Inativo</span>
+                    {% endif %}
+                </div>
+
+                <dl class="row small mb-0">
+                    <dt class="col-sm-4 text-muted">E-mail</dt>
+                    <dd class="col-sm-8">{{ partner.email }}</dd>
+
+                    <dt class="col-sm-4 text-muted">BBox</dt>
+                    <dd class="col-sm-8">
+                        {% if partner.bbox %}
+                            <code>{{ partner.bbox }}</code>
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </dd>
+
+                    <dt class="col-sm-4 text-muted">Criado</dt>
+                    <dd class="col-sm-8">{{ partner.createdAt|date('d/m/Y') }}</dd>
+
+                    <dt class="col-sm-4 text-muted">Links</dt>
+                    <dd class="col-sm-8">{{ partner.links|length }}</dd>
+
+                    <dt class="col-sm-4 text-muted">Usuários</dt>
+                    <dd class="col-sm-8">{{ partner.users|length }}</dd>
+                </dl>
+            </div>
+
+            <div class="card shadow-sm p-3 mb-3">
+                <h2 class="h6 text-muted text-uppercase mb-2">API Token</h2>
+                <div class="input-group input-group-sm">
+                    <input type="password" id="apiToken" class="form-control font-monospace" value="{{ partner.apiToken }}" readonly>
+                    <button class="btn btn-outline-secondary" type="button"
+                            onclick="const i=document.getElementById('apiToken');i.type=i.type==='password'?'text':'password'">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
+                <form method="post" action="{{ path('admin_partner_regenerate_token', {id: partner.id}) }}" class="mt-2">
+                    <input type="hidden" name="_token" value="{{ csrf_token('regen_token_' ~ partner.id) }}">
+                    <button type="submit" class="btn btn-sm btn-outline-warning w-100"
+                            onclick="return confirm('Token atual será invalidado. Confirmar?')">
+                        <i class="bi bi-arrow-repeat me-1"></i> Regenerar token
+                    </button>
+                </form>
+            </div>
+
+            <div class="d-flex gap-2">
+                <a href="{{ path('admin_partner_edit', {id: partner.id}) }}" class="btn btn-outline-primary flex-grow-1">
+                    <i class="bi bi-pencil me-1"></i> Editar
+                </a>
+                <form method="post" action="{{ path('admin_partner_toggle_active', {id: partner.id}) }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('toggle_' ~ partner.id) }}">
+                    <button type="submit" class="btn {{ partner.isActive ? 'btn-outline-secondary' : 'btn-outline-success' }}"
+                            onclick="return confirm('Confirmar alteração de status?')">
+                        {{ partner.isActive ? 'Desativar' : 'Ativar' }}
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {# — Coluna direita: usuários — #}
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-0">Usuários</h2>
+                    <a href="{{ path('admin_partner_user_new', {id: partner.id}) }}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-person-plus me-1"></i> Adicionar usuário
+                    </a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Nome</th>
+                                <th>E-mail</th>
+                                <th>Perfil</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-center">Último acesso</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for user in users %}
+                            <tr>
+                                <td class="fw-semibold">{{ user.name }}</td>
+                                <td class="text-muted small">{{ user.email }}</td>
+                                <td>
+                                    {% if 'ROLE_ACCOUNT_ADMIN' in user.roles %}
+                                        <span class="badge bg-primary">Admin da conta</span>
+                                    {% elseif 'ROLE_FIELD_AGENT' in user.roles %}
+                                        <span class="badge bg-info text-dark">Agente de via</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-dark border">Usuário</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if user.isActive %}
+                                        <span class="badge bg-success">Ativo</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Inativo</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center text-muted small">
+                                    {{ user.lastLoginAt ? user.lastLoginAt|date('d/m/Y H:i') : '—' }}
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    <i class="bi bi-people fs-4 d-block mb-2"></i>
+                                    Nenhum usuário cadastrado.
+                                    <a href="{{ path('admin_partner_user_new', {id: partner.id}) }}">Adicionar o primeiro</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
 </div>
 {% endblock %}

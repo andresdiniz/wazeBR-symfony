@@ -12,6 +12,9 @@ use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\PasswordUpgraderInterface;
 
+/**
+ * @extends ServiceEntityRepository<User>
+ */
 class UserRepository extends ServiceEntityRepository implements PasswordUpgraderInterface
 {
     public function __construct(ManagerRegistry $registry)
@@ -22,41 +25,64 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
     public function upgradePassword(PasswordAuthenticatedUserInterface $user, string $newHashedPassword): void
     {
         if (!$user instanceof User) {
-            throw new UnsupportedUserException(sprintf('Instância de "%s" esperada.', User::class));
+            throw new UnsupportedUserException(sprintf('Instances of "%s" are not supported.', $user::class));
         }
         $user->setPassword($newHashedPassword);
         $this->getEntityManager()->flush();
     }
 
-    public function findAdminsByPartner(Partner $partner): array
-    {
-        return $this->createQueryBuilder('u')
-            ->where('u.partner = :p')->setParameter('p', $partner)
-            ->andWhere('u.isActive = true')
-            ->andWhere('u.roles LIKE :role')->setParameter('role', '%ROLE_ADMIN%')
-            ->getQuery()->getResult();
-    }
-
+    /**
+     * Lista todos os usuários de um parceiro, ordenados por nome.
+     */
     public function findByPartner(Partner $partner): array
     {
         return $this->createQueryBuilder('u')
-            ->where('u.partner = :p')->setParameter('p', $partner)
-            ->andWhere('u.isActive = true')
+            ->where('u.partner = :partner')
+            ->setParameter('partner', $partner)
             ->orderBy('u.name', 'ASC')
-            ->getQuery()->getResult();
+            ->getQuery()
+            ->getResult();
     }
 
-    public function findByValidResetToken(string $token): ?User
+    /**
+     * Lista apenas administradores de conta de um parceiro.
+     */
+    public function findAccountAdminsByPartner(Partner $partner): array
     {
         return $this->createQueryBuilder('u')
-            ->where('u.resetToken = :token')->setParameter('token', $token)
-            ->andWhere('u.resetTokenExpiresAt > :now')->setParameter('now', new \DateTimeImmutable())
-            ->getQuery()->getOneOrNullResult();
+            ->where('u.partner = :partner')
+            ->andWhere('u.roles LIKE :role')
+            ->setParameter('partner', $partner)
+            ->setParameter('role', '%ROLE_ACCOUNT_ADMIN%')
+            ->orderBy('u.name', 'ASC')
+            ->getQuery()
+            ->getResult();
     }
 
-    public function save(User $user, bool $flush = true): void
+    /**
+     * Lista agentes de via de um parceiro.
+     */
+    public function findFieldAgentsByPartner(Partner $partner): array
     {
-        $this->getEntityManager()->persist($user);
-        if ($flush) $this->getEntityManager()->flush();
+        return $this->createQueryBuilder('u')
+            ->where('u.partner = :partner')
+            ->andWhere('u.roles LIKE :role')
+            ->setParameter('partner', $partner)
+            ->setParameter('role', '%ROLE_FIELD_AGENT%')
+            ->orderBy('u.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Busca por e-mail (case-insensitive).
+     */
+    public function findByEmail(string $email): ?User
+    {
+        return $this->createQueryBuilder('u')
+            ->where('LOWER(u.email) = LOWER(:email)')
+            ->setParameter('email', $email)
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 }
