@@ -2,73 +2,76 @@
 
 {% block title %}Editar {{ partner.name }}{% endblock %}
 
-{% block body %}
-<div class="container py-4" style="max-width: 680px">
+{% block content %}
+<div style="max-width:680px">
 
-    <nav aria-label="breadcrumb" class="mb-3">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ path('admin_partner_index') }}">Parceiros</a></li>
-            <li class="breadcrumb-item"><a href="{{ path('admin_partner_show', {id: partner.id}) }}">{{ partner.name }}</a></li>
-            <li class="breadcrumb-item active">Editar</li>
-        </ol>
+    <nav aria-label="breadcrumb" style="margin-bottom:var(--space-4);font-size:var(--text-sm);color:var(--color-text-muted)">
+        <a href="{{ path('admin_partner_index') }}" style="color:var(--color-primary)">Parceiros</a>
+        <span style="margin:0 var(--space-2)">›</span>
+        <a href="{{ path('admin_partner_show', {id: partner.id}) }}" style="color:var(--color-primary)">{{ partner.name }}</a>
+        <span style="margin:0 var(--space-2)">›</span>
+        <span>Editar</span>
     </nav>
 
-    <h1 class="h3 mb-4">Editar: {{ partner.name }}</h1>
+    <div class="page-header">
+        <h1 class="page-title">Editar: {{ partner.name }}</h1>
+    </div>
 
     {{ form_start(form, {attr: {novalidate: 'novalidate'}}) }}
 
-        <div class="card shadow-sm p-4 mb-3">
-            <h2 class="h6 text-muted text-uppercase mb-3">Dados do parceiro</h2>
+        <div class="card" style="padding:var(--space-6);margin-bottom:var(--space-4)">
+            <h2 style="font-size:var(--text-xs);font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--color-text-muted);margin-bottom:var(--space-4)">Dados do parceiro</h2>
 
-            <div class="mb-3">
-                {{ form_label(form.name) }}
+            <div class="form-group">
+                {{ form_label(form.name, null, {label_attr: {class: 'form-label'}}) }}
                 {{ form_widget(form.name, {attr: {class: 'form-control'}}) }}
                 {{ form_errors(form.name) }}
             </div>
 
-            <div class="mb-3">
-                {{ form_label(form.slug) }}
+            <div class="form-group">
+                {{ form_label(form.slug, null, {label_attr: {class: 'form-label'}}) }}
                 {{ form_widget(form.slug, {attr: {class: 'form-control'}}) }}
                 {{ form_help(form.slug) }}
                 {{ form_errors(form.slug) }}
             </div>
 
-            <div class="mb-3">
-                {{ form_label(form.email) }}
+            <div class="form-group">
+                {{ form_label(form.email, null, {label_attr: {class: 'form-label'}}) }}
                 {{ form_widget(form.email, {attr: {class: 'form-control'}}) }}
                 {{ form_errors(form.email) }}
             </div>
 
-            <div class="mb-3">
-                {{ form_label(form.bbox) }}
-                {{ form_widget(form.bbox, {attr: {class: 'form-control font-monospace'}}) }}
+            <div class="form-group">
+                {{ form_label(form.bbox, null, {label_attr: {class: 'form-label'}}) }}
+                {{ form_widget(form.bbox, {attr: {class: 'form-control', style: 'font-family:monospace'}}) }}
                 {{ form_help(form.bbox) }}
                 {{ form_errors(form.bbox) }}
             </div>
 
-            <div class="form-check">
-                {{ form_widget(form.isActive, {attr: {class: 'form-check-input'}}) }}
-                {{ form_label(form.isActive, null, {label_attr: {class: 'form-check-label'}}) }}
+            <div style="display:flex;align-items:center;gap:var(--space-3);margin-top:var(--space-2)">
+                {{ form_widget(form.isActive) }}
+                {{ form_label(form.isActive, null, {label_attr: {class: 'form-label', style: 'margin:0;cursor:pointer'}}) }}
             </div>
         </div>
 
-        <div class="card shadow-sm p-4 mb-4">
-            <h2 class="h6 text-muted text-uppercase mb-2">API Token</h2>
-            <div class="d-flex align-items-center gap-2">
-                <code class="flex-grow-1 bg-light px-3 py-2 rounded small">{{ partner.apiToken }}</code>
+        <div class="card" style="padding:var(--space-5);margin-bottom:var(--space-6)">
+            <h2 style="font-size:var(--text-xs);font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--color-text-muted);margin-bottom:var(--space-3)">API Token</h2>
+            <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap">
+                <code style="flex:1;min-width:0;font-size:var(--text-xs);background:var(--color-surface-offset);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ partner.apiToken }}</code>
                 <form method="post" action="{{ path('admin_partner_regenerate_token', {id: partner.id}) }}">
                     <input type="hidden" name="_token" value="{{ csrf_token('regen_token_' ~ partner.id) }}">
-                    <button type="submit" class="btn btn-sm btn-outline-warning"
+                    <button type="submit" class="btn btn-ghost btn-sm"
                             onclick="return confirm('Atenção: o token atual deixará de funcionar imediatamente. Confirmar?')">
-                        <i class="bi bi-arrow-repeat"></i> Regenerar
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        Regenerar
                     </button>
                 </form>
             </div>
         </div>
 
-        <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary px-4">Salvar alterações</button>
-            <a href="{{ path('admin_partner_show', {id: partner.id}) }}" class="btn btn-outline-secondary">Cancelar</a>
+        <div style="display:flex;gap:var(--space-3)">
+            <button type="submit" class="btn btn-primary">Salvar alterações</button>
+            <a href="{{ path('admin_partner_show', {id: partner.id}) }}" class="btn btn-ghost">Cancelar</a>
         </div>
 
     {{ form_end(form) }}
