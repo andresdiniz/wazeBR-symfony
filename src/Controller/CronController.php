@@ -17,15 +17,18 @@ final class CronController extends AbstractController
             return new Response('Forbidden', 403);
         }
 
-        $php = '/usr/bin/php8.2';
+        $php = 'php';
         $project = dirname(__DIR__, 2);
+        $log = $project . '/var/log/cron_scheduler.log';
+
         $cmd = sprintf(
-            '%s %s/bin/console messenger:consume scheduler_main --time-limit=55 --limit=10 --env=prod',
+            'cd %s && %s bin/console messenger:consume scheduler_main --time-limit=90 --limit=10 --env=prod -vv >> %s 2>&1 &',
+            escapeshellarg($project),
             escapeshellarg($php),
-            escapeshellarg($project)
+            escapeshellarg($log)
         );
 
-        exec($cmd . ' > /dev/null 2>&1 &');
+        exec($cmd);
 
         return new Response('OK');
     }
