@@ -1,6 +1,7 @@
 monolog:
     channels:
         - deprecation
+        - scheduler
 
 when@dev:
     monolog:
@@ -10,6 +11,11 @@ when@dev:
                 path: '%kernel.logs_dir%/%kernel.environment%.log'
                 level: debug
                 channels: ['!event']
+            scheduler:
+                type: stream
+                path: '%kernel.logs_dir%/scheduler_dev.log'
+                level: '%env(default:debug:SCHEDULER_LOG_LEVEL)%'
+                channels: ['scheduler']
             console:
                 type: console
                 process_psr_3_messages: false
@@ -24,19 +30,33 @@ when@prod:
                 handler: nested
                 excluded_http_codes: [404, 405]
                 buffer_size: 50
+                channels: ['!deprecation', '!scheduler']
+
             nested:
                 type: stream
                 path: php://stderr
-                level: debug
+                level: error
                 formatter: monolog.formatter.json
+
+            scheduler_errors:
+                type: rotating_file
+                path: '%kernel.logs_dir%/scheduler_error.log'
+                level: '%env(default:error:SCHEDULER_LOG_LEVEL)%'
+                max_files: 14
+                channels: ['scheduler']
+                formatter: monolog.formatter.json
+
             console:
                 type: console
                 process_psr_3_messages: false
-                channels: ['!event', '!doctrine']
+                channels: ['!event', '!doctrine', '!console', '!deprecation']
+
             deprecation:
-                type: stream
+                type: rotating_file
+                path: '%kernel.logs_dir%/deprecations.log'
+                level: notice
+                max_files: 7
                 channels: [deprecation]
-                path: php://stderr
                 formatter: monolog.formatter.json
 
 when@test:
@@ -46,7 +66,21 @@ when@test:
                 type: fingers_crossed
                 action_level: error
                 handler: nested
+                channels: ['!deprecation', '!scheduler']
+
             nested:
                 type: stream
                 path: '%kernel.logs_dir%/test.log'
                 level: debug
+
+            scheduler:
+                type: stream
+                path: '%kernel.logs_dir%/scheduler_test.log'
+                level: '%env(default:debug:SCHEDULER_LOG_LEVEL)%'
+                channels: ['scheduler']
+
+            deprecation:
+                type: stream
+                path: '%kernel.logs_dir%/deprecations_test.log'
+                channels: [deprecation]
+                level: notice

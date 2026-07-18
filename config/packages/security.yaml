@@ -1,4 +1,12 @@
 security:
+  role_hierarchy:
+    ROLE_FIELD_AGENT: ROLE_USER
+    ROLE_ACCOUNT_ADMIN: ROLE_USER
+    ROLE_ADMIN: ROLE_ACCOUNT_ADMIN
+    ROLE_SUPER_ADMIN:
+      - ROLE_ADMIN
+      - ROLE_ALLOWED_TO_SWITCH
+
   password_hashers:
     App\Entity\User:
       algorithm: bcrypt
@@ -35,34 +43,23 @@ security:
       remember_me:
         secret: '%kernel.secret%'
         lifetime: 604800
+        path: /
+        remember_me_parameter: _remember_me
         always_remember_me: false
 
   access_control:
     # Rotas públicas
-    - { path: ^/$,              roles: PUBLIC_ACCESS }
-    - { path: ^/login,          roles: PUBLIC_ACCESS }
-    - { path: ^/senha,          roles: PUBLIC_ACCESS }
-    - { path: ^/api/externa,    roles: PUBLIC_ACCESS }
-    - { path: ^/cron/run$,      roles: PUBLIC_ACCESS }
+    - { path: ^/$, roles: PUBLIC_ACCESS }
+    - { path: ^/login, roles: PUBLIC_ACCESS }
+    - { path: ^/senha, roles: PUBLIC_ACCESS }
+    - { path: ^/api/externa, roles: PUBLIC_ACCESS }
+    - { path: ^/cron/run$, roles: PUBLIC_ACCESS }
 
-    # Área exclusiva do super admin (gestão de parceiros)
+    # Área exclusiva do super admin
     - { path: ^/admin/parceiros, roles: ROLE_SUPER_ADMIN }
 
-    # Área administrativa do parceiro (account admin + super admin)
-    - { path: ^/admin,          roles: ROLE_ACCOUNT_ADMIN }
+    # Área administrativa geral
+    - { path: ^/admin, roles: ROLE_ACCOUNT_ADMIN }
 
-    # Tudo mais exige ao menos ROLE_USER
-    - { path: ^/,               roles: ROLE_USER }
-
-  role_hierarchy:
-    # ROLE_FIELD_AGENT herda ROLE_USER (acesso base de visualização)
-    ROLE_FIELD_AGENT:   ROLE_USER
-
-    # ROLE_ACCOUNT_ADMIN herda ROLE_USER (pode ver tudo que usuário vê)
-    ROLE_ACCOUNT_ADMIN: ROLE_USER
-
-    # ROLE_ADMIN é alias de ROLE_ACCOUNT_ADMIN (retrocompatibilidade)
-    ROLE_ADMIN:         ROLE_ACCOUNT_ADMIN
-
-    # ROLE_SUPER_ADMIN herda tudo
-    ROLE_SUPER_ADMIN:   [ROLE_ACCOUNT_ADMIN, ROLE_ADMIN]
+    # Todo o restante exige login
+    - { path: ^/, roles: ROLE_USER }
