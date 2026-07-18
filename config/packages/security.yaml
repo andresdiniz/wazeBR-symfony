@@ -43,6 +43,7 @@ security:
     - { path: ^/login,          roles: PUBLIC_ACCESS }
     - { path: ^/senha,          roles: PUBLIC_ACCESS }
     - { path: ^/api/externa,    roles: PUBLIC_ACCESS }
+    - { path: ^/cron/run$,      roles: PUBLIC_ACCESS }
 
     # Área exclusiva do super admin (gestão de parceiros)
     - { path: ^/admin/parceiros, roles: ROLE_SUPER_ADMIN }
