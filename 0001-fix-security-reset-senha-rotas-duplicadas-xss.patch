@@ -1,0 +1,653 @@
+From 2c774e035ce710125b09adef4a8741be14d3c8e1 Mon Sep 17 00:00:00 2001
+From: Andre Diniz <andre@local>
+Date: Sun, 19 Jul 2026 01:57:22 +0000
+Subject: [PATCH] fix(security): corrige reset de senha, remove rotas
+ duplicadas e XSS em tvt_route
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Reset de senha: tokens agora persistidos em User.resetToken/resetTokenExpiresAt
+  (migration Version20260718_add_reset_token), substituindo array estático em
+  memória que não sobrevivia a múltiplos workers/processos e quebrava o fluxo
+  em produção. Adiciona UserRepository::findByValidResetToken().
+
+- Remove controllers/templates duplicados e órfãos que causavam colisão de
+  rotas e confusão de qual fluxo era o 'oficial':
+  - src/Controller/SecurityController.php (rota /login duplicada; a
+    realmente conectada ao firewall é auth_login, em Controller/Auth)
+  - src/Controller/ResetPasswordController.php (fluxo antigo com tokens em
+    memória; auth_password_* em Controller/Auth é o mantido)
+  - src/Controller/ApiExternaController.php (token único global conflitando
+    com ExternalApiController, que já implementa autenticação multi-tenant
+    por parceiro via TenantTokenListener/TenantContext)
+  - templates/security/{login,reset_request,reset_form}.html.twig e
+    templates/auth/reset_password.html.twig (órfãos, sem controller/rota)
+  - parâmetro/bind app.api_externa_token e API_EXTERNA_TOKEN em
+    services.yaml/.env.example (não usados após remoção do controller acima)
+
+- Corrige referências para a rota de login correta (auth_login) em
+  LoginFormAuthenticator::getLoginUrl() e templates/home/index.html.twig,
+  que apontavam para a rota security_login agora removida.
+
+- Corrige possível quebra de contexto JS/XSS em templates/tvt_route/index.html.twig:
+  troca montagem manual de string JSON (que não escapava barra invertida
+  nem sequências de fechamento de <script>) por |json_encode|raw, como já
+  feito em todo o resto do projeto.
+---
+ .env.example                                  |  1 -
+ config/services.yaml                          |  2 -
+ .../Version20260718_add_reset_token.php       | 37 +++++++
+ src/Controller/ApiExternaController.php       | 84 ----------------
+ src/Controller/ResetPasswordController.php    | 98 -------------------
+ src/Controller/SecurityController.php         | 33 -------
+ src/Entity/User.php                           | 20 ++++
+ src/Repository/UserRepository.php             | 15 +++
+ src/Security/LoginFormAuthenticator.php       |  2 +-
+ templates/auth/reset_password.html.twig       | 29 ------
+ templates/home/index.html.twig                |  6 +-
+ templates/security/login.html.twig            | 55 -----------
+ templates/security/reset_form.html.twig       | 27 -----
+ templates/security/reset_request.html.twig    | 25 -----
+ templates/tvt_route/index.html.twig           |  6 +-
+ 15 files changed, 79 insertions(+), 361 deletions(-)
+ create mode 100644 migrations/Version20260718_add_reset_token.php
+ delete mode 100644 src/Controller/ApiExternaController.php
+ delete mode 100644 src/Controller/ResetPasswordController.php
+ delete mode 100644 src/Controller/SecurityController.php
+ delete mode 100644 templates/auth/reset_password.html.twig
+ delete mode 100644 templates/security/login.html.twig
+ delete mode 100644 templates/security/reset_form.html.twig
+ delete mode 100644 templates/security/reset_request.html.twig
+
+diff --git a/.env.example b/.env.example
+index 0219a0e..cf667e9 100644
+--- a/.env.example
++++ b/.env.example
+@@ -25,6 +25,5 @@ CEMADEN_API_URL="http://sjc.salvar.cemaden.gov.br/resources/graficos/interativo/
+ CEMADEN_API_KEY=""
+ 
+ # Token para API externa
+-API_EXTERNA_TOKEN="CHANGE_ME_STRONG_TOKEN"
+ 
+ CRON_TOKEN=
+diff --git a/config/services.yaml b/config/services.yaml
+index 8182c38..3033a2e 100644
+--- a/config/services.yaml
++++ b/config/services.yaml
+@@ -1,5 +1,4 @@
+ parameters:
+-    app.api_externa_token:  '%env(string:API_EXTERNA_TOKEN)%'
+     app.waze_api_url:       '%env(string:WAZE_API_URL)%'
+     app.waze_api_key:       '%env(string:WAZE_API_KEY)%'
+     app.waze_bbox:          '%env(string:WAZE_BBOX)%'
+@@ -14,7 +13,6 @@ services:
+         autoconfigure: true
+         bind:
+             # Scalares injetados por nome de argumento em qualquer servico/controller
+-            string $apiExternaToken: '%app.api_externa_token%'
+             string $apiUrl:          '%app.waze_api_url%'
+             string $apiKey:          '%app.waze_api_key%'
+             string $bbox:            '%app.waze_bbox%'
+diff --git a/migrations/Version20260718_add_reset_token.php b/migrations/Version20260718_add_reset_token.php
+new file mode 100644
+index 0000000..578a6c4
+--- /dev/null
++++ b/migrations/Version20260718_add_reset_token.php
+@@ -0,0 +1,37 @@
++<?php
++
++declare(strict_types=1);
++
++namespace DoctrineMigrations;
++
++use Doctrine\DBAL\Schema\Schema;
++use Doctrine\Migrations\AbstractMigration;
++
++/**
++ * Adiciona reset_token e reset_token_expires_at na tabela users.
++ * Substitui o armazenamento em memória (array estático) do fluxo antigo
++ * de redefinição de senha, que não sobrevivia a múltiplos workers/processos.
++ */
++final class Version20260718_add_reset_token extends AbstractMigration
++{
++    public function getDescription(): string
++    {
++        return 'Adiciona reset_token (único) e reset_token_expires_at em users para redefinição de senha persistida.';
++    }
++
++    public function up(Schema $schema): void
++    {
++        $this->addSql(
++            'ALTER TABLE users ADD reset_token VARCHAR(64) DEFAULT NULL, ADD reset_token_expires_at DATETIME DEFAULT NULL'
++        );
++        $this->addSql(
++            'CREATE UNIQUE INDEX UNIQ_USERS_RESET_TOKEN ON users (reset_token)'
++        );
++    }
++
++    public function down(Schema $schema): void
++    {
++        $this->addSql('DROP INDEX UNIQ_USERS_RESET_TOKEN ON users');
++        $this->addSql('ALTER TABLE users DROP reset_token, DROP reset_token_expires_at');
++    }
++}
+diff --git a/src/Controller/ApiExternaController.php b/src/Controller/ApiExternaController.php
+deleted file mode 100644
+index 27f754a..0000000
+--- a/src/Controller/ApiExternaController.php
++++ /dev/null
+@@ -1,84 +0,0 @@
+-<?php
+-
+-declare(strict_types=1);
+-
+-namespace App\Controller;
+-
+-use App\Repository\WazeAlertRepository;
+-use App\Repository\WazeTrafficJamRepository;
+-use App\Service\WazeApiService;
+-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+-use Symfony\Component\HttpFoundation\JsonResponse;
+-use Symfony\Component\HttpFoundation\Request;
+-use Symfony\Component\HttpFoundation\Response;
+-use Symfony\Component\Routing\Attribute\Route;
+-
+-/**
+- * API pública/externa com Basic Auth via token de header.
+- * Substitui api_externa.php.
+- */
+-#[Route('/api/externa', name: 'api_externa_')]
+-class ApiExternaController extends AbstractController
+-{
+-    public function __construct(
+-        private readonly WazeAlertRepository     $alertRepo,
+-        private readonly WazeTrafficJamRepository $jamRepo,
+-        private readonly WazeApiService           $wazeApiService,
+-        private readonly string                   $apiExternaToken,
+-    ) {}
+-
+-    #[Route('/alertas', name: 'alerts', methods: ['GET'])]
+-    public function alerts(Request $request): JsonResponse
+-    {
+-        if (!$this->isAuthorized($request)) {
+-            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+-        }
+-
+-        $hours = $request->query->getInt('h', 2);
+-        $data  = array_map(
+-            fn($a) => [
+-                'uuid'        => $a->getWazeId(),
+-                'type'        => $a->getType(),
+-                'subtype'     => $a->getSubtype(),
+-                'street'      => $a->getStreet(),
+-                'city'        => $a->getCity(),
+-                'location'    => ['lat' => $a->getLatitude(), 'lng' => $a->getLongitude()],
+-                'reliability' => $a->getReliability(),
+-                'pub_millis'  => $a->getPubMillis(),
+-            ],
+-            $this->alertRepo->findRecentAlerts($hours)
+-        );
+-
+-        return $this->json(['generated_at' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM), 'count' => count($data), 'alerts' => $data]);
+-    }
+-
+-    #[Route('/transito', name: 'traffic', methods: ['GET'])]
+-    public function traffic(Request $request): JsonResponse
+-    {
+-        if (!$this->isAuthorized($request)) {
+-            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+-        }
+-
+-        $hours = $request->query->getInt('h', 2);
+-        $data  = array_map(
+-            fn($j) => [
+-                'uuid'      => $j->getWazeId(),
+-                'street'    => $j->getStreet(),
+-                'city'      => $j->getCity(),
+-                'level'     => $j->getLevel(),
+-                'speed_kmh' => $j->getSpeedKmh(),
+-                'length_m'  => $j->getLength(),
+-                'delay_s'   => $j->getDelay(),
+-            ],
+-            $this->jamRepo->findRecentJams($hours)
+-        );
+-
+-        return $this->json(['generated_at' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM), 'count' => count($data), 'jams' => $data]);
+-    }
+-
+-    private function isAuthorized(Request $request): bool
+-    {
+-        $token = $request->headers->get('X-Api-Token') ?? $request->query->getString('token', '');
+-        return hash_equals($this->apiExternaToken, $token);
+-    }
+-}
+diff --git a/src/Controller/ResetPasswordController.php b/src/Controller/ResetPasswordController.php
+deleted file mode 100644
+index 2250859..0000000
+--- a/src/Controller/ResetPasswordController.php
++++ /dev/null
+@@ -1,98 +0,0 @@
+-<?php
+-
+-declare(strict_types=1);
+-
+-namespace App\Controller;
+-
+-use App\Entity\User;
+-use Doctrine\ORM\EntityManagerInterface;
+-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+-use Symfony\Component\HttpFoundation\Request;
+-use Symfony\Component\HttpFoundation\Response;
+-use Symfony\Component\Mailer\MailerInterface;
+-use Symfony\Component\Mime\Email;
+-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+-use Symfony\Component\Routing\Attribute\Route;
+-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+-
+-#[Route('/senha', name: 'password_')]
+-class ResetPasswordController extends AbstractController
+-{
+-    /** Tokens temporários em memória (em produção use tabela ou cache Redis). */
+-    private static array $tokens = [];
+-
+-    public function __construct(
+-        private readonly EntityManagerInterface      $em,
+-        private readonly UserPasswordHasherInterface $hasher,
+-        private readonly MailerInterface             $mailer,
+-    ) {}
+-
+-    #[Route('/recuperar', name: 'request', methods: ['GET', 'POST'])]
+-    public function request(Request $request): Response
+-    {
+-        if ($request->isMethod('POST')) {
+-            $email = (string) $request->request->get('email');
+-            $user  = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
+-
+-            if ($user) {
+-                $token   = bin2hex(random_bytes(32));
+-                $expires = time() + 3600;
+-                self::$tokens[$token] = ['userId' => $user->getId(), 'expires' => $expires];
+-
+-                $resetUrl = $this->generateUrl('password_reset', ['token' => $token], UrlGeneratorInterface::ABSOLUTE_URL);
+-
+-                $this->mailer->send(
+-                    (new Email())
+-                        ->from('noreply@wazebr.local')
+-                        ->to($user->getEmail())
+-                        ->subject('Redefinição de senha — WazeBR')
+-                        ->html("<p>Olá, {$user->getName()}!</p><p><a href='{$resetUrl}'>Clique aqui para redefinir sua senha.</a></p><p>Link válido por 1 hora.</p>")
+-                );
+-            }
+-
+-            // Mensagem genérica para não revelar se o email existe
+-            $this->addFlash('info', 'Se este email estiver cadastrado, você receberá um link de redefinição.');
+-            return $this->redirectToRoute('password_request');
+-        }
+-
+-        return $this->render('security/reset_request.html.twig');
+-    }
+-
+-    #[Route('/redefinir/{token}', name: 'reset', methods: ['GET', 'POST'])]
+-    public function reset(string $token, Request $request): Response
+-    {
+-        $data = self::$tokens[$token] ?? null;
+-
+-        if (!$data || $data['expires'] < time()) {
+-            $this->addFlash('error', 'Link inválido ou expirado.');
+-            return $this->redirectToRoute('password_request');
+-        }
+-
+-        if ($request->isMethod('POST')) {
+-            $password = (string) $request->request->get('password');
+-            $confirm  = (string) $request->request->get('confirm');
+-
+-            if (strlen($password) < 8) {
+-                $this->addFlash('error', 'A senha deve ter pelo menos 8 caracteres.');
+-                return $this->render('security/reset_form.html.twig', ['token' => $token]);
+-            }
+-
+-            if ($password !== $confirm) {
+-                $this->addFlash('error', 'As senhas não coincidem.');
+-                return $this->render('security/reset_form.html.twig', ['token' => $token]);
+-            }
+-
+-            $user = $this->em->getRepository(User::class)->find($data['userId']);
+-            if ($user) {
+-                $user->setPassword($this->hasher->hashPassword($user, $password));
+-                $this->em->flush();
+-                unset(self::$tokens[$token]);
+-                $this->addFlash('success', 'Senha redefinida com sucesso! Faça login.');
+-            }
+-
+-            return $this->redirectToRoute('security_login');
+-        }
+-
+-        return $this->render('security/reset_form.html.twig', ['token' => $token]);
+-    }
+-}
+diff --git a/src/Controller/SecurityController.php b/src/Controller/SecurityController.php
+deleted file mode 100644
+index 43593a7..0000000
+--- a/src/Controller/SecurityController.php
++++ /dev/null
+@@ -1,33 +0,0 @@
+-<?php
+-
+-declare(strict_types=1);
+-
+-namespace App\Controller;
+-
+-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+-use Symfony\Component\HttpFoundation\Response;
+-use Symfony\Component\Routing\Attribute\Route;
+-use Symfony\Component\Security\Http\Attribute\IsGranted;
+-use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
+-
+-class SecurityController extends AbstractController
+-{
+-    #[Route('/login', name: 'security_login')]
+-    public function login(AuthenticationUtils $authenticationUtils): Response
+-    {
+-        if ($this->getUser()) {
+-            return $this->redirectToRoute('dashboard_index');
+-        }
+-
+-        return $this->render('security/login.html.twig', [
+-            'last_username' => $authenticationUtils->getLastUsername(),
+-            'error'         => $authenticationUtils->getLastAuthenticationError(),
+-        ]);
+-    }
+-
+-    #[Route('/logout', name: 'security_logout', methods: ['POST'])]
+-    public function logout(): never
+-    {
+-        throw new \LogicException('Este método nunca é executado — o Symfony intercepta o logout.');
+-    }
+-}
+diff --git a/src/Entity/User.php b/src/Entity/User.php
+index 4bd6567..4782406 100644
+--- a/src/Entity/User.php
++++ b/src/Entity/User.php
+@@ -66,6 +66,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
+     #[ORM\Column(type: 'json', nullable: true)]
+     private ?array $fieldAgentPermissions = null;
+ 
++    /**
++     * Token de redefinição de senha (hash aleatório de uso único).
++     * Persistido no banco — sobrevive a múltiplos workers/processos e reinícios.
++     */
++    #[ORM\Column(length: 64, nullable: true, unique: true)]
++    private ?string $resetToken = null;
++
++    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
++    private ?\DateTimeImmutable $resetTokenExpiresAt = null;
++
+     #[ORM\PrePersist]
+     public function onPrePersist(): void
+     {
+@@ -116,6 +126,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
+         return $this;
+     }
+ 
++    public function getResetToken(): ?string { return $this->resetToken; }
++    public function setResetToken(?string $resetToken): static { $this->resetToken = $resetToken; return $this; }
++
++    public function getResetTokenExpiresAt(): ?\DateTimeImmutable { return $this->resetTokenExpiresAt; }
++    public function setResetTokenExpiresAt(?\DateTimeImmutable $expiresAt): static
++    {
++        $this->resetTokenExpiresAt = $expiresAt;
++        return $this;
++    }
++
+     // ── Role helpers ─────────────────────────────────────────────────────────
+ 
+     /** Acesso total à plataforma; cria e gerencia parceiros. Sem parceiro vinculado. */
+diff --git a/src/Repository/UserRepository.php b/src/Repository/UserRepository.php
+index 3544c16..f212986 100644
+--- a/src/Repository/UserRepository.php
++++ b/src/Repository/UserRepository.php
+@@ -89,4 +89,19 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
+             ->getQuery()
+             ->getOneOrNullResult();
+     }
++
++    /**
++     * Busca um usuário por token de redefinição de senha ainda válido
++     * (não expirado). Tokens expirados ou inexistentes retornam null.
++     */
++    public function findByValidResetToken(string $token): ?User
++    {
++        return $this->createQueryBuilder('u')
++            ->where('u.resetToken = :token')
++            ->andWhere('u.resetTokenExpiresAt > :now')
++            ->setParameter('token', $token)
++            ->setParameter('now', new \DateTimeImmutable())
++            ->getQuery()
++            ->getOneOrNullResult();
++    }
+ }
+diff --git a/src/Security/LoginFormAuthenticator.php b/src/Security/LoginFormAuthenticator.php
+index a06339b..e343576 100644
+--- a/src/Security/LoginFormAuthenticator.php
++++ b/src/Security/LoginFormAuthenticator.php
+@@ -74,6 +74,6 @@ class LoginFormAuthenticator extends AbstractLoginFormAuthenticator
+ 
+     protected function getLoginUrl(Request $request): string
+     {
+-        return $this->router->generate('security_login');
++        return $this->router->generate('auth_login');
+     }
+ }
+diff --git a/templates/auth/reset_password.html.twig b/templates/auth/reset_password.html.twig
+deleted file mode 100644
+index 6396708..0000000
+--- a/templates/auth/reset_password.html.twig
++++ /dev/null
+@@ -1,29 +0,0 @@
+-{% extends 'base.html.twig' %}
+-{% block title %}Nova Senha — WazeBR{% endblock %}
+-{% block body %}
+-<style>
+-.auth-wrap{min-height:100dvh;display:flex;align-items:center;justify-content:center;background:var(--color-bg)}
+-.auth-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:2.5rem;width:100%;max-width:400px;box-shadow:var(--shadow-md)}
+-.form-group{margin-bottom:1.25rem}
+-.form-group label{display:block;font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:.4rem}
+-.form-group input{width:100%;padding:.65rem .9rem;background:var(--color-bg);border:1px solid var(--color-border);border-radius:var(--radius-md);color:var(--color-text);font-size:var(--text-base);transition:border-color 150ms}
+-.form-group input:focus{outline:none;border-color:var(--color-primary)}
+-.btn-block{width:100%;justify-content:center;padding:.75rem}
+-</style>
+-<div class="auth-wrap">
+-    <div class="auth-card">
+-        <h2 style="margin-bottom:1.5rem;font-size:var(--text-lg)">Nova Senha</h2>
+-        <form method="post" action="{{ path('app_reset_password', {token: token}) }}">
+-            <div class="form-group">
+-                <label for="password">Nova senha (mín. 8 caracteres)</label>
+-                <input type="password" id="password" name="password" minlength="8" required autofocus>
+-            </div>
+-            <div class="form-group">
+-                <label for="confirm">Confirme a senha</label>
+-                <input type="password" id="confirm" name="confirm" minlength="8" required>
+-            </div>
+-            <button type="submit" class="btn btn-primary btn-block">Salvar senha</button>
+-        </form>
+-    </div>
+-</div>
+-{% endblock %}
+diff --git a/templates/home/index.html.twig b/templates/home/index.html.twig
+index cc61316..852a398 100644
+--- a/templates/home/index.html.twig
++++ b/templates/home/index.html.twig
+@@ -340,7 +340,7 @@
+         </svg>
+         WazeBR
+     </a>
+-    <a href="{{ path('security_login') }}" class="nav-cta">Acessar plataforma</a>
++    <a href="{{ path('auth_login') }}" class="nav-cta">Acessar plataforma</a>
+ </nav>
+ 
+ <!-- HERO -->
+@@ -525,7 +525,7 @@
+         <p>Entre em contato para uma demonstração gratuita ou acesse a plataforma se já tiver credenciais.</p>
+         <div class="cta-actions">
+             <a href="mailto:contato@wazebr.com.br" class="btn-primary">Solicitar demonstração</a>
+-            <a href="{{ path('security_login') }}" class="btn-ghost">Acessar plataforma</a>
++            <a href="{{ path('auth_login') }}" class="btn-ghost">Acessar plataforma</a>
+         </div>
+         <p class="contact-info">Dúvidas? Envie para <a href="mailto:contato@wazebr.com.br">contato@wazebr.com.br</a></p>
+     </div>
+@@ -535,7 +535,7 @@
+ <footer>
+     <p>&copy; {{ 'now'|date('Y') }} WazeBR — Plataforma de monitoramento de tráfego</p>
+     <div class="footer-login">
+-        Já tem acesso? <a href="{{ path('security_login') }}">Entrar na plataforma →</a>
++        Já tem acesso? <a href="{{ path('auth_login') }}">Entrar na plataforma →</a>
+     </div>
+ </footer>
+ 
+diff --git a/templates/security/login.html.twig b/templates/security/login.html.twig
+deleted file mode 100644
+index 2fbef4e..0000000
+--- a/templates/security/login.html.twig
++++ /dev/null
+@@ -1,55 +0,0 @@
+-{% extends 'base.html.twig' %}
+-
+-{% block title %}Login — WazeBR{% endblock %}
+-
+-{% block body %}
+-<div class="auth-wrapper">
+-    <div class="auth-card">
+-        <div class="auth-logo">
+-            <svg viewBox="0 0 48 48" width="48" height="48" aria-label="WazeBR" fill="none">
+-                <circle cx="24" cy="24" r="22" stroke="var(--color-primary)" stroke-width="2.5"/>
+-                <path d="M14 30 Q24 14 34 30" stroke="var(--color-primary)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+-                <circle cx="18" cy="26" r="2" fill="var(--color-primary)"/>
+-                <circle cx="30" cy="26" r="2" fill="var(--color-primary)"/>
+-            </svg>
+-            <span>WazeBR</span>
+-        </div>
+-
+-        <h1>Entrar na plataforma</h1>
+-        <p class="auth-sub">Monitoramento inteligente de tráfego</p>
+-
+-        {% for type, messages in app.flashes %}
+-            {% for msg in messages %}
+-                <div class="flash flash--{{ type }}">{{ msg }}</div>
+-            {% endfor %}
+-        {% endfor %}
+-
+-        {% if error %}
+-            <div class="flash flash--error">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
+-        {% endif %}
+-
+-        <form method="post" action="{{ path('security_login') }}" novalidate>
+-            <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+-
+-            <div class="form-group">
+-                <label for="email">Email</label>
+-                <input type="email" id="email" name="email" value="{{ last_username }}" autofocus autocomplete="email" required placeholder="seu@email.com">
+-            </div>
+-
+-            <div class="form-group">
+-                <label for="password">Senha</label>
+-                <input type="password" id="password" name="password" autocomplete="current-password" required placeholder="••••••••">
+-            </div>
+-
+-            <div class="form-row">
+-                <label class="checkbox-label">
+-                    <input type="checkbox" name="_remember_me"> Lembrar de mim
+-                </label>
+-                <a href="{{ path('password_request') }}" class="link-muted">Esqueci minha senha</a>
+-            </div>
+-
+-            <button type="submit" class="btn btn--primary btn--full">Entrar</button>
+-        </form>
+-    </div>
+-</div>
+-{% endblock %}
+diff --git a/templates/security/reset_form.html.twig b/templates/security/reset_form.html.twig
+deleted file mode 100644
+index cb873ae..0000000
+--- a/templates/security/reset_form.html.twig
++++ /dev/null
+@@ -1,27 +0,0 @@
+-{% extends 'base.html.twig' %}
+-{% block title %}Nova senha — WazeBR{% endblock %}
+-{% block body %}
+-<div class="auth-wrapper">
+-    <div class="auth-card">
+-        <h1>Definir nova senha</h1>
+-
+-        {% for type, messages in app.flashes %}
+-            {% for msg in messages %}
+-                <div class="flash flash--{{ type }}">{{ msg }}</div>
+-            {% endfor %}
+-        {% endfor %}
+-
+-        <form method="post">
+-            <div class="form-group">
+-                <label for="password">Nova senha</label>
+-                <input type="password" id="password" name="password" required autofocus minlength="8" placeholder="Mínimo 8 caracteres">
+-            </div>
+-            <div class="form-group">
+-                <label for="confirm">Confirmar senha</label>
+-                <input type="password" id="confirm" name="confirm" required placeholder="Repita a senha">
+-            </div>
+-            <button type="submit" class="btn btn--primary btn--full">Salvar nova senha</button>
+-        </form>
+-    </div>
+-</div>
+-{% endblock %}
+diff --git a/templates/security/reset_request.html.twig b/templates/security/reset_request.html.twig
+deleted file mode 100644
+index 3629621..0000000
+--- a/templates/security/reset_request.html.twig
++++ /dev/null
+@@ -1,25 +0,0 @@
+-{% extends 'base.html.twig' %}
+-{% block title %}Recuperar senha — WazeBR{% endblock %}
+-{% block body %}
+-<div class="auth-wrapper">
+-    <div class="auth-card">
+-        <h1>Recuperar senha</h1>
+-        <p class="auth-sub">Informe seu email e enviaremos um link de redefinição.</p>
+-
+-        {% for type, messages in app.flashes %}
+-            {% for msg in messages %}
+-                <div class="flash flash--{{ type }}">{{ msg }}</div>
+-            {% endfor %}
+-        {% endfor %}
+-
+-        <form method="post">
+-            <div class="form-group">
+-                <label for="email">Email</label>
+-                <input type="email" id="email" name="email" required autofocus placeholder="seu@email.com">
+-            </div>
+-            <button type="submit" class="btn btn--primary btn--full">Enviar link</button>
+-        </form>
+-        <p class="auth-back"><a href="{{ path('security_login') }}">Voltar ao login</a></p>
+-    </div>
+-</div>
+-{% endblock %}
+diff --git a/templates/tvt_route/index.html.twig b/templates/tvt_route/index.html.twig
+index c32f68e..d870494 100644
+--- a/templates/tvt_route/index.html.twig
++++ b/templates/tvt_route/index.html.twig
+@@ -198,10 +198,10 @@
+   {% for r in routes %}
+     {% if r.line|length > 1 %}
+     {
+-      wazeId: {{ r.wazeRouteId ? ('"' ~ r.wazeRouteId ~ '"')|raw : 'null' }},
+-      name: {{ r.name ? ('"' ~ r.name|replace({'"': '\\"', "\n": ' '})|raw ~ '"') : 'null' }},
++      wazeId: {{ r.wazeRouteId|json_encode|raw }},
++      name: {{ r.name|json_encode|raw }},
+       jam: {{ r.jamLevel ?? 0 }},
+-      label: {{ '"' ~ r.jamLevelLabel ~ '"'|raw }},
++      label: {{ r.jamLevelLabel|json_encode|raw }},
+       delay: {{ r.delaySeconds ?? 'null' }},
+       line: {{ r.line|json_encode|raw }}
+     }{{ not loop.last ? ',' }}
+-- 
+2.43.0
+
