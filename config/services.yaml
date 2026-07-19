@@ -1,5 +1,4 @@
 parameters:
-    app.api_externa_token:  '%env(string:API_EXTERNA_TOKEN)%'
     app.waze_api_url:       '%env(string:WAZE_API_URL)%'
     app.waze_api_key:       '%env(string:WAZE_API_KEY)%'
     app.waze_bbox:          '%env(string:WAZE_BBOX)%'
@@ -14,7 +13,6 @@ services:
         autoconfigure: true
         bind:
             # Scalares injetados por nome de argumento em qualquer servico/controller
-            string $apiExternaToken: '%app.api_externa_token%'
             string $apiUrl:          '%app.waze_api_url%'
             string $apiKey:          '%app.waze_api_key%'
             string $bbox:            '%app.waze_bbox%'

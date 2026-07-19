@@ -89,4 +89,19 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
             ->getQuery()
             ->getOneOrNullResult();
     }
+
+    /**
+     * Busca um usuário por token de redefinição de senha ainda válido
+     * (não expirado). Tokens expirados ou inexistentes retornam null.
+     */
+    public function findByValidResetToken(string $token): ?User
+    {
+        return $this->createQueryBuilder('u')
+            ->where('u.resetToken = :token')
+            ->andWhere('u.resetTokenExpiresAt > :now')
+            ->setParameter('token', $token)
+            ->setParameter('now', new \DateTimeImmutable())
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 }

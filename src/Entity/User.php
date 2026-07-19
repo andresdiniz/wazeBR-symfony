@@ -66,6 +66,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: 'json', nullable: true)]
     private ?array $fieldAgentPermissions = null;
 
+    /**
+     * Token de redefinição de senha (hash aleatório de uso único).
+     * Persistido no banco — sobrevive a múltiplos workers/processos e reinícios.
+     */
+    #[ORM\Column(length: 64, nullable: true, unique: true)]
+    private ?string $resetToken = null;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $resetTokenExpiresAt = null;
+
     #[ORM\PrePersist]
     public function onPrePersist(): void
     {
@@ -113,6 +123,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setFieldAgentPermissions(?array $fieldAgentPermissions): static
     {
         $this->fieldAgentPermissions = $fieldAgentPermissions;
+        return $this;
+    }
+
+    public function getResetToken(): ?string { return $this->resetToken; }
+    public function setResetToken(?string $resetToken): static { $this->resetToken = $resetToken; return $this; }
+
+    public function getResetTokenExpiresAt(): ?\DateTimeImmutable { return $this->resetTokenExpiresAt; }
+    public function setResetTokenExpiresAt(?\DateTimeImmutable $expiresAt): static
+    {
+        $this->resetTokenExpiresAt = $expiresAt;
         return $this;
     }
 

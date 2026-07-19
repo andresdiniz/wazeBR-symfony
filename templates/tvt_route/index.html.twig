@@ -198,10 +198,10 @@
   {% for r in routes %}
     {% if r.line|length > 1 %}
     {
-      wazeId: {{ r.wazeRouteId ? ('"' ~ r.wazeRouteId ~ '"')|raw : 'null' }},
-      name: {{ r.name ? ('"' ~ r.name|replace({'"': '\\"', "\n": ' '})|raw ~ '"') : 'null' }},
+      wazeId: {{ r.wazeRouteId|json_encode|raw }},
+      name: {{ r.name|json_encode|raw }},
       jam: {{ r.jamLevel ?? 0 }},
-      label: {{ '"' ~ r.jamLevelLabel ~ '"'|raw }},
+      label: {{ r.jamLevelLabel|json_encode|raw }},
       delay: {{ r.delaySeconds ?? 'null' }},
       line: {{ r.line|json_encode|raw }}
     }{{ not loop.last ? ',' }}
