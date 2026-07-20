@@ -18,16 +18,10 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
         parent::__construct($registry, CemadenHydroData::class);
     }
 
-    // -------------------------------------------------------------------------
-    // Idempotência
-    // -------------------------------------------------------------------------
+    // ── Idempotência ──────────────────────────────────────────────────────────
 
     /**
      * Verifica se já existe uma leitura para a estação no instante informado.
-     * Usado pelo FetchCemadenHydroHandler para evitar duplicatas.
-     *
-     * Consulta cemaden_hydro_data (tabela mapeada pela entity CemadenHydroData,
-     * com colunas station_code e measured_at).
      */
     public function existsByStationAndTime(string $stationCode, \DateTimeImmutable $measuredAt): bool
     {
@@ -43,9 +37,7 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
             );
     }
 
-    // -------------------------------------------------------------------------
-    // Tela AO VIVO
-    // -------------------------------------------------------------------------
+    // ── Tela AO VIVO ──────────────────────────────────────────────────────────
 
     /**
      * Última leitura de cada estação do parceiro.
@@ -80,9 +72,76 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
         );
     }
 
-    // -------------------------------------------------------------------------
-    // Histórico
-    // -------------------------------------------------------------------------
+    // ── KPIs ──────────────────────────────────────────────────────────────────
+
+    /**
+     * Resumo de KPIs por nível de alerta das estações hidrológicas.
+     *
+     * Considera apenas a última leitura de cada estação.
+     * Retorna:
+     *   total               – total de estações com leitura
+     *   acima_atencao       – estações com nível >= cota_atencao
+     *   acima_alerta        – estações com nível >= cota_alerta
+     *   acima_transbordamento – estações com nível >= cota_transbordamento
+     *   por_nivel           – [['alert_level' => 'ALERTA', 'total' => 3], ...]
+     */
+    public function kpiSummaryByPartner(int $partnerId): array
+    {
+        $conn = $this->getEntityManager()->getConnection();
+
+        // Última leitura de cada estação
+        $rows = $conn->fetchAllAssociative(
+            "SELECT
+                 h.alert_level,
+                 h.water_level,
+                 h.cota_atencao,
+                 h.cota_alerta,
+                 h.cota_transbordamento
+             FROM cemaden_hydro_data h
+             INNER JOIN (
+                 SELECT station_code, MAX(measured_at) AS max_at
+                 FROM cemaden_hydro_data
+                 GROUP BY station_code
+             ) latest ON latest.station_code = h.station_code
+                      AND latest.max_at      = h.measured_at
+             WHERE h.partner_id = :pid",
+            ['pid' => $partnerId],
+        );
+
+        $total       = count($rows);
+        $acAtencao   = 0;
+        $acAlerta    = 0;
+        $acTransb    = 0;
+        $byLevel     = [];
+
+        foreach ($rows as $r) {
+            $wl = (float) ($r['water_level'] ?? 0);
+
+            if ($r['cota_atencao']        !== null && $wl >= (float) $r['cota_atencao'])        { $acAtencao++; }
+            if ($r['cota_alerta']         !== null && $wl >= (float) $r['cota_alerta'])         { $acAlerta++; }
+            if ($r['cota_transbordamento'] !== null && $wl >= (float) $r['cota_transbordamento']) { $acTransb++; }
+
+            $lv = $r['alert_level'] ?? 'NORMAL';
+            $byLevel[$lv] = ($byLevel[$lv] ?? 0) + 1;
+        }
+
+        arsort($byLevel);
+        $porNivel = array_map(
+            static fn(string $lv, int $cnt) => ['alert_level' => $lv, 'total' => $cnt],
+            array_keys($byLevel),
+            array_values($byLevel),
+        );
+
+        return [
+            'total'                => $total,
+            'acima_atencao'        => $acAtencao,
+            'acima_alerta'         => $acAlerta,
+            'acima_transbordamento'=> $acTransb,
+            'por_nivel'            => $porNivel,
+        ];
+    }
+
+    // ── Histórico ─────────────────────────────────────────────────────────────
 
     /**
      * Histórico paginado com filtros por estação, nível de alerta e intervalo de datas.
@@ -148,13 +207,10 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
         return [$rows, $total];
     }
 
-    // -------------------------------------------------------------------------
-    // Listas auxiliares
-    // -------------------------------------------------------------------------
+    // ── Listas auxiliares ─────────────────────────────────────────────────────
 
     /**
-     * Estações distintas do parceiro com leituras registradas
-     * (para o filtro da tela de histórico).
+     * Estações distintas do parceiro com leituras registradas.
      */
     public function findStationsByPartner(int $partnerId): array
     {

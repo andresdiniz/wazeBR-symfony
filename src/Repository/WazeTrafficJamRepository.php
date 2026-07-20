@@ -20,7 +20,7 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
         parent::__construct($registry, WazeTrafficJam::class);
     }
 
-    // ── contagens ────────────────────────────────────────────────────
+    // ── contagens ─────────────────────────────────────────────────────────────
 
     public function countByPartner(Partner $partner): int
     {
@@ -40,7 +40,17 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
             ->getQuery()->getSingleScalarResult();
     }
 
-    // ── agregações simples (usadas pelo DashboardController) ─────────
+    public function countLast7dByPartner(Partner $partner): int
+    {
+        return (int) $this->createQueryBuilder('j')
+            ->select('COUNT(j.id)')
+            ->where('j.partner = :p')->setParameter('p', $partner)
+            ->andWhere('j.createdAt >= :since')
+            ->setParameter('since', new \DateTimeImmutable('-7 days'))
+            ->getQuery()->getSingleScalarResult();
+    }
+
+    // ── agregações simples (usadas pelo DashboardController) ──────────────────
 
     public function avgSpeedKmhByPartner(Partner $partner): float
     {
@@ -72,13 +82,65 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
         return round((float)($val ?? 0));
     }
 
-    // ── por hora (gráfico 24 h) ───────────────────────────────────────
+    // ── KPIs extras ───────────────────────────────────────────────────────────
+
+    /**
+     * Breakdown por nível de congestionamento.
+     * Retorna [['level' => 4, 'total' => 12], ...] ordenado do mais crítico.
+     */
+    public function levelBreakdownByPartner(Partner $partner): array
+    {
+        $rows = $this->createQueryBuilder('j')
+            ->select('j.level, COUNT(j.id) AS total')
+            ->where('j.partner = :p')->setParameter('p', $partner)
+            ->groupBy('j.level')
+            ->orderBy('j.level', 'DESC')
+            ->getQuery()->getArrayResult();
+
+        return array_map(static fn(array $r) => [
+            'level' => (int) $r['level'],
+            'total' => (int) $r['total'],
+        ], $rows);
+    }
+
+    /**
+     * Top N cidades por volume de jams.
+     * Retorna [['city' => 'Joinville', 'total' => 80], ...]
+     */
+    public function countGroupByCity(Partner $partner, int $limit = 10): array
+    {
+        return $this->createQueryBuilder('j')
+            ->select('j.city, COUNT(j.id) AS total')
+            ->where('j.partner = :p')->setParameter('p', $partner)
+            ->andWhere('j.city IS NOT NULL')
+            ->groupBy('j.city')
+            ->orderBy('total', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()->getArrayResult();
+    }
+
+    /**
+     * Jam ativo mais crítico (maior delay) nas últimas 3 horas.
+     * Retorna null quando não há jams ativos.
+     */
+    public function worstActiveJamByPartner(Partner $partner, int $hours = 3): ?WazeTrafficJam
+    {
+        $sinceMs = (new \DateTimeImmutable("-{$hours} hours"))->getTimestamp() * 1000;
+
+        return $this->createQueryBuilder('j')
+            ->where('j.partner = :p')->setParameter('p', $partner)
+            ->andWhere('j.pubMillis >= :since')->setParameter('since', $sinceMs)
+            ->orderBy('j.delay', 'DESC')
+            ->addOrderBy('j.level', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()->getOneOrNullResult();
+    }
+
+    // ── por hora (gráfico 24 h) ───────────────────────────────────────────────
 
     /**
      * Retorna array de ['hour' => int(0-23), 'total' => int]
      * para as últimas 24 horas.
-     *
-     * Usa Native SQL pois DQL não suporta a função HOUR() nativamente.
      */
     public function countPerHourLast24h(Partner $partner): array
     {
@@ -105,9 +167,7 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
         ], $rows);
     }
 
-    // ── mesmo método para alertas (WazeAlertRepository pode usar o mesmo padrão) ──
-
-    // ── listagens ────────────────────────────────────────────────────
+    // ── listagens ─────────────────────────────────────────────────────────────
 
     /** Jams mais recentes (para o painel do dashboard). */
     public function findRecentByPartner(Partner $partner, int $limit = 10): array
@@ -194,7 +254,7 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
             ->getQuery()->getResult();
     }
 
-    // ── valores distintos para filtros ───────────────────────────────────
+    // ── valores distintos para filtros ────────────────────────────────────────
 
     public function findDistinctCities(Partner $partner): array
     {
@@ -218,7 +278,7 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
         return array_column($rows, 'type');
     }
 
-    // ── agregações ───────────────────────────────────────────────────
+    // ── agregações ────────────────────────────────────────────────────────────
 
     public function countGroupByLevel(Partner $partner): array
     {

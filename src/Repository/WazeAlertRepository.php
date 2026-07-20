@@ -20,7 +20,7 @@ class WazeAlertRepository extends ServiceEntityRepository
         parent::__construct($registry, WazeAlert::class);
     }
 
-    // ── contagens simples ─────────────────────────────────────────────────────────────────────
+    // ── contagens simples ─────────────────────────────────────────────────────
 
     public function countByPartner(Partner $partner): int
     {
@@ -53,7 +53,18 @@ class WazeAlertRepository extends ServiceEntityRepository
             ->getQuery()->getSingleScalarResult();
     }
 
-    // ── listagens ───────────────────────────────────────────────────────────────────────
+    public function countLast7dByPartner(Partner $partner): int
+    {
+        return (int) $this->createQueryBuilder('a')
+            ->select('COUNT(a.id)')
+            ->where('a.partner = :p')
+            ->setParameter('p', $partner)
+            ->andWhere('a.createdAt >= :since')
+            ->setParameter('since', new \DateTimeImmutable('-7 days'))
+            ->getQuery()->getSingleScalarResult();
+    }
+
+    // ── listagens ─────────────────────────────────────────────────────────────
 
     /**
      * Histórico paginado com filtros opcionais.
@@ -158,7 +169,7 @@ class WazeAlertRepository extends ServiceEntityRepository
         return $this->findLiveByPartner($partner, 3);
     }
 
-    // ── agregações para filtros / charts ─────────────────────────────────────────────
+    // ── agregações para filtros / charts ──────────────────────────────────────
 
     /** Lista de cidades distintas do parceiro */
     public function findDistinctCities(Partner $partner): array
@@ -235,9 +246,72 @@ class WazeAlertRepository extends ServiceEntityRepository
     }
 
     /**
+     * Top N cidades por volume de alertas.
+     * Retorna [['city' => 'Florianópolis', 'total' => 120], ...]
+     */
+    public function countGroupByCity(Partner $partner, int $limit = 10): array
+    {
+        return $this->createQueryBuilder('a')
+            ->select('a.city, COUNT(a.id) AS total')
+            ->where('a.partner = :p')
+            ->setParameter('p', $partner)
+            ->andWhere('a.city IS NOT NULL')
+            ->groupBy('a.city')
+            ->orderBy('total', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()->getArrayResult();
+    }
+
+    /**
+     * Top N ruas/logradouros por volume de alertas.
+     * Retorna [['street' => 'Av. Beira-Mar Norte', 'total' => 55], ...]
+     */
+    public function topStreetsByAlert(Partner $partner, int $limit = 10): array
+    {
+        return $this->createQueryBuilder('a')
+            ->select('a.street, COUNT(a.id) AS total')
+            ->where('a.partner = :p')
+            ->setParameter('p', $partner)
+            ->andWhere('a.street IS NOT NULL')
+            ->andWhere('a.street != :empty')
+            ->setParameter('empty', '')
+            ->groupBy('a.street')
+            ->orderBy('total', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()->getArrayResult();
+    }
+
+    /**
+     * Distribuição por faixa de confiança (0-4, 5-7, 8-10).
+     * Retorna [['band' => 'alta', 'total' => 310], ...]
+     */
+    public function countByConfidence(Partner $partner): array
+    {
+        $conn = $this->getEntityManager()->getConnection();
+        $sql  = '
+            SELECT
+                CASE
+                    WHEN confidence >= 8 THEN \'alta\'
+                    WHEN confidence >= 5 THEN \'media\'
+                    ELSE \'baixa\'
+                END AS band,
+                COUNT(*) AS total
+            FROM waze_alerts
+            WHERE partner_id = :pid
+              AND confidence IS NOT NULL
+            GROUP BY band
+            ORDER BY FIELD(band, \'alta\', \'media\', \'baixa\')
+        ';
+        $rows = $conn->executeQuery($sql, ['pid' => $partner->getId()])->fetchAllAssociative();
+        return array_map(static fn(array $r) => [
+            'band'  => $r['band'],
+            'total' => (int) $r['total'],
+        ], $rows);
+    }
+
+    /**
      * Alertas por hora nas últimas 24h usando pubMillis.
-     * Retorna array de ['hour' => int(0-23), 'total' => int] —
-     * mesmo formato que WazeTrafficJamRepository::countPerHourLast24h.
+     * Retorna array de ['hour' => int(0-23), 'total' => int]
      */
     public function countPerHourLast24h(Partner $partner): array
     {
