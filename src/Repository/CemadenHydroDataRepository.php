@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\CemadenHydroData;
+use App\Entity\Partner;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -18,214 +19,142 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
         parent::__construct($registry, CemadenHydroData::class);
     }
 
-    // ── Idempotência ──────────────────────────────────────────────────────────
+    // ── KPI: sumário geral ────────────────────────────────────────────────────
 
     /**
-     * Verifica se já existe uma leitura para a estação no instante informado.
+     * Sumário de KPIs hidrológicos para o partner.
+     * Retorna array com totais e breakdown por status.
      */
-    public function existsByStationAndTime(string $stationCode, \DateTimeImmutable $measuredAt): bool
+    public function kpiSummaryByPartner(Partner $partner): array
     {
-        return (bool) $this->getEntityManager()
-            ->getConnection()
-            ->fetchOne(
-                'SELECT 1
-                 FROM cemaden_hydro_data
-                 WHERE station_code = ?
-                   AND measured_at  = ?
-                 LIMIT 1',
-                [$stationCode, $measuredAt->format('Y-m-d H:i:s')],
-            );
-    }
+        $latest = $this->findLatestReadingsByPartner($partner);
 
-    // ── Tela AO VIVO ──────────────────────────────────────────────────────────
-
-    /**
-     * Última leitura de cada estação do parceiro.
-     */
-    public function findLatestByPartner(int $partnerId): array
-    {
-        $conn = $this->getEntityManager()->getConnection();
-
-        return $conn->fetchAllAssociative(
-            "SELECT
-                 h.station_code,
-                 h.station_name,
-                 h.municipality,
-                 h.state,
-                 h.water_level,
-                 h.alert_level,
-                 h.cota_atencao,
-                 h.cota_alerta,
-                 h.cota_transbordamento,
-                 h.measured_at
-             FROM cemaden_hydro_data h
-             INNER JOIN (
-                 SELECT station_code, MAX(measured_at) AS max_at
-                 FROM cemaden_hydro_data
-                 GROUP BY station_code
-             ) latest ON latest.station_code = h.station_code
-                      AND latest.max_at      = h.measured_at
-             INNER JOIN partner p ON p.id = h.partner_id
-             WHERE h.partner_id = :pid
-             ORDER BY h.alert_level DESC, h.municipality, h.station_name",
-            ['pid' => $partnerId],
-        );
-    }
-
-    // ── KPIs ──────────────────────────────────────────────────────────────────
-
-    /**
-     * Resumo de KPIs por nível de alerta das estações hidrológicas.
-     *
-     * Considera apenas a última leitura de cada estação.
-     * Retorna:
-     *   total               – total de estações com leitura
-     *   acima_atencao       – estações com nível >= cota_atencao
-     *   acima_alerta        – estações com nível >= cota_alerta
-     *   acima_transbordamento – estações com nível >= cota_transbordamento
-     *   por_nivel           – [['alert_level' => 'ALERTA', 'total' => 3], ...]
-     */
-    public function kpiSummaryByPartner(int $partnerId): array
-    {
-        $conn = $this->getEntityManager()->getConnection();
-
-        // Última leitura de cada estação
-        $rows = $conn->fetchAllAssociative(
-            "SELECT
-                 h.alert_level,
-                 h.water_level,
-                 h.cota_atencao,
-                 h.cota_alerta,
-                 h.cota_transbordamento
-             FROM cemaden_hydro_data h
-             INNER JOIN (
-                 SELECT station_code, MAX(measured_at) AS max_at
-                 FROM cemaden_hydro_data
-                 GROUP BY station_code
-             ) latest ON latest.station_code = h.station_code
-                      AND latest.max_at      = h.measured_at
-             WHERE h.partner_id = :pid",
-            ['pid' => $partnerId],
-        );
-
-        $total       = count($rows);
-        $acAtencao   = 0;
-        $acAlerta    = 0;
-        $acTransb    = 0;
-        $byLevel     = [];
-
-        foreach ($rows as $r) {
-            $wl = (float) ($r['water_level'] ?? 0);
-
-            if ($r['cota_atencao']        !== null && $wl >= (float) $r['cota_atencao'])        { $acAtencao++; }
-            if ($r['cota_alerta']         !== null && $wl >= (float) $r['cota_alerta'])         { $acAlerta++; }
-            if ($r['cota_transbordamento'] !== null && $wl >= (float) $r['cota_transbordamento']) { $acTransb++; }
-
-            $lv = $r['alert_level'] ?? 'NORMAL';
-            $byLevel[$lv] = ($byLevel[$lv] ?? 0) + 1;
-        }
-
-        arsort($byLevel);
-        $porNivel = array_map(
-            static fn(string $lv, int $cnt) => ['alert_level' => $lv, 'total' => $cnt],
-            array_keys($byLevel),
-            array_values($byLevel),
-        );
-
-        return [
-            'total'                => $total,
-            'acima_atencao'        => $acAtencao,
-            'acima_alerta'         => $acAlerta,
-            'acima_transbordamento'=> $acTransb,
-            'por_nivel'            => $porNivel,
+        $summary = [
+            'total'        => count($latest),
+            'normal'       => 0,
+            'attention'    => 0,
+            'alert'        => 0,
+            'flood'        => 0,
+            'overflow'     => 0,
+            'critical'     => 0, // alert + flood + overflow
+            'stations'     => [],
         ];
-    }
 
-    // ── Histórico ─────────────────────────────────────────────────────────────
+        foreach ($latest as $h) {
+            $status = $h->getStatus() ?? 'normal';
+            if (isset($summary[$status])) {
+                $summary[$status]++;
+            }
 
-    /**
-     * Histórico paginado com filtros por estação, nível de alerta e intervalo de datas.
-     *
-     * @return array{0: array, 1: int}  [rows, total]
-     */
-    public function findHistorico(
-        int     $partnerId,
-        ?string $stationCode,
-        ?string $alertLevel,
-        string  $dateFrom,
-        string  $dateTo,
-        int     $page,
-        int     $perPage,
-    ): array {
-        $conn   = $this->getEntityManager()->getConnection();
-        $where  = ['h.partner_id = :pid'];
-        $params = ['pid' => $partnerId];
+            $overflow  = $h->getOverflowLevel();
+            $current   = $h->getLevel();
+            $pct = ($overflow && $overflow > 0)
+                ? round($current / $overflow * 100, 1)
+                : null;
 
-        if ($stationCode) {
-            $where[]      = 'h.station_code = :sc';
-            $params['sc'] = $stationCode;
+            $summary['stations'][] = [
+                'id'              => $h->getId(),
+                'name'            => $h->getStationName(),
+                'river'           => $h->getRiverName(),
+                'city'            => $h->getCity(),
+                'status'          => $status,
+                'level'           => $current,
+                'overflow_level'  => $overflow,
+                'overflow_pct'    => $pct,
+                'collected_at'    => $h->getCollectedAt()?->format('Y-m-d H:i'),
+            ];
         }
 
-        if ($alertLevel) {
-            $where[]      = 'h.alert_level = :lv';
-            $params['lv'] = $alertLevel;
-        }
-
-        $where[]       = 'DATE(h.measured_at) BETWEEN :df AND :dt';
-        $params['df']  = $dateFrom;
-        $params['dt']  = $dateTo;
-
-        $whereClause = implode(' AND ', $where);
-
-        $total = (int) $conn->fetchOne(
-            "SELECT COUNT(*) FROM cemaden_hydro_data h WHERE {$whereClause}",
-            $params,
-        );
-
-        $offset = ($page - 1) * $perPage;
-        $rows   = $conn->fetchAllAssociative(
-            "SELECT
-                 h.station_code,
-                 h.station_name,
-                 h.municipality,
-                 h.state,
-                 h.water_level,
-                 h.offset_value,
-                 h.qualificacao,
-                 h.alert_level,
-                 h.cota_atencao,
-                 h.cota_alerta,
-                 h.cota_transbordamento,
-                 h.measured_at
-             FROM cemaden_hydro_data h
-             WHERE {$whereClause}
-             ORDER BY h.measured_at DESC, h.station_name
-             LIMIT {$perPage} OFFSET {$offset}",
-            $params,
-        );
-
-        return [$rows, $total];
+        $summary['critical'] = $summary['alert'] + $summary['flood'] + $summary['overflow'];
+        return $summary;
     }
 
-    // ── Listas auxiliares ─────────────────────────────────────────────────────
-
     /**
-     * Estações distintas do parceiro com leituras registradas.
+     * Estações em estado crítico (alert|flood|overflow) agora.
      */
-    public function findStationsByPartner(int $partnerId): array
+    public function findCriticalByPartner(Partner $partner): array
     {
-        $conn = $this->getEntityManager()->getConnection();
+        $latest = $this->findLatestReadingsByPartner($partner);
+        return array_filter($latest, static fn($h) => in_array($h->getStatus(), ['alert', 'flood', 'overflow'], true));
+    }
 
-        return $conn->fetchAllAssociative(
-            'SELECT DISTINCT
-                 station_code,
-                 station_name,
-                 municipality,
-                 state
-             FROM cemaden_hydro_data
-             WHERE partner_id = :pid
-             ORDER BY municipality, station_name',
-            ['pid' => $partnerId],
-        );
+    /**
+     * Série temporal de cota de uma estação específica.
+     * Retorna [['level'=>2.45,'collected_at'=>'2026-07-20 08:00'], ...]
+     */
+    public function levelSeriesByStation(int $stationId, int $hours = 48): array
+    {
+        $since = new \DateTimeImmutable("-{$hours} hours");
+
+        $rows = $this->createQueryBuilder('h')
+            ->select('h.level AS level, h.collectedAt AS collected_at')
+            ->where('h.id = :station')
+            ->andWhere('h.collectedAt >= :since')
+            ->setParameter('station', $stationId)
+            ->setParameter('since', $since)
+            ->orderBy('h.collectedAt', 'ASC')
+            ->getQuery()->getArrayResult();
+
+        return array_map(static fn($r) => [
+            'level'        => (float)$r['level'],
+            'collected_at' => $r['collected_at'] instanceof \DateTimeInterface
+                ? $r['collected_at']->format('Y-m-d H:i')
+                : (string)$r['collected_at'],
+        ], $rows);
+    }
+
+    /**
+     * Distribuição de status entre todas as estações do partner.
+     * Retorna [['status'=>'normal','total'=>8], ...]
+     */
+    public function statusBreakdownByPartner(Partner $partner): array
+    {
+        $latest = $this->findLatestReadingsByPartner($partner);
+        $counts = [];
+        foreach ($latest as $h) {
+            $s = $h->getStatus() ?? 'normal';
+            $counts[$s] = ($counts[$s] ?? 0) + 1;
+        }
+        arsort($counts);
+        $result = [];
+        foreach ($counts as $status => $total) {
+            $result[] = ['status' => $status, 'total' => $total];
+        }
+        return $result;
+    }
+
+    /**
+     * Leitura mais recente de cada estação do partner.
+     * Usa subquery para pegar o MAX(collectedAt) por stationCode.
+     */
+    public function findLatestReadingsByPartner(Partner $partner): array
+    {
+        // Pega o id mais recente por stationCode para este partner
+        $conn = $this->getEntityManager()->getConnection();
+        $sql = '
+            SELECT h.id
+            FROM cemaden_hydro_data h
+            INNER JOIN (
+                SELECT station_code, MAX(collected_at) AS max_dt
+                FROM cemaden_hydro_data
+                WHERE partner_id = :partner
+                GROUP BY station_code
+            ) latest ON h.station_code = latest.station_code
+                    AND h.collected_at = latest.max_dt
+            WHERE h.partner_id = :partner
+        ';
+        $stmt  = $conn->prepare($sql);
+        $ids   = $stmt->executeQuery(['partner' => $partner->getId()])->fetchFirstColumn();
+
+        if (empty($ids)) {
+            return [];
+        }
+
+        return $this->createQueryBuilder('h')
+            ->where('h.id IN (:ids)')
+            ->setParameter('ids', $ids)
+            ->orderBy('h.status', 'DESC')
+            ->addOrderBy('h.stationName', 'ASC')
+            ->getQuery()->getResult();
     }
 }

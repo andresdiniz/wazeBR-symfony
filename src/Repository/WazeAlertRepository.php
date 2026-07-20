@@ -7,7 +7,6 @@ namespace App\Repository;
 use App\Entity\Partner;
 use App\Entity\WazeAlert;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
-use Doctrine\ORM\Tools\Pagination\Paginator;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -20,359 +19,300 @@ class WazeAlertRepository extends ServiceEntityRepository
         parent::__construct($registry, WazeAlert::class);
     }
 
-    // ── contagens simples ─────────────────────────────────────────────────────
+    // ── Contagens básicas ─────────────────────────────────────────────────────
 
     public function countByPartner(Partner $partner): int
     {
         return (int) $this->createQueryBuilder('a')
             ->select('COUNT(a.id)')
-            ->where('a.partner = :p')
-            ->setParameter('p', $partner)
+            ->where('a.partner = :partner')
+            ->setParameter('partner', $partner)
             ->getQuery()->getSingleScalarResult();
     }
 
-    public function countLast1hByPartner(Partner $partner): int
+    /** Alertas publicados nas últimas $hours horas */
+    public function countLastHoursByPartner(Partner $partner, int $hours = 1): int
     {
+        $since = (new \DateTimeImmutable("-{$hours} hours"))->getTimestamp() * 1000;
+
         return (int) $this->createQueryBuilder('a')
             ->select('COUNT(a.id)')
-            ->where('a.partner = :p')
-            ->setParameter('p', $partner)
-            ->andWhere('a.createdAt >= :since')
-            ->setParameter('since', new \DateTimeImmutable('-1 hour'))
-            ->getQuery()->getSingleScalarResult();
-    }
-
-    public function countLast24hByPartner(Partner $partner): int
-    {
-        return (int) $this->createQueryBuilder('a')
-            ->select('COUNT(a.id)')
-            ->where('a.partner = :p')
-            ->setParameter('p', $partner)
-            ->andWhere('a.createdAt >= :since')
-            ->setParameter('since', new \DateTimeImmutable('-24 hours'))
-            ->getQuery()->getSingleScalarResult();
-    }
-
-    public function countLast7dByPartner(Partner $partner): int
-    {
-        return (int) $this->createQueryBuilder('a')
-            ->select('COUNT(a.id)')
-            ->where('a.partner = :p')
-            ->setParameter('p', $partner)
-            ->andWhere('a.createdAt >= :since')
-            ->setParameter('since', new \DateTimeImmutable('-7 days'))
-            ->getQuery()->getSingleScalarResult();
-    }
-
-    // ── listagens ─────────────────────────────────────────────────────────────
-
-    /**
-     * Histórico paginado com filtros opcionais.
-     *
-     * @return array{items: WazeAlert[], total: int, pages: int}
-     */
-    public function findFilteredByPartner(
-        Partner     $partner,
-        ?string     $type     = null,
-        ?string     $subtype  = null,
-        ?string     $city     = null,
-        ?string     $dateFrom = null,
-        ?string     $dateTo   = null,
-        int         $page     = 1,
-        int         $limit    = 30,
-    ): array {
-        $qb = $this->createQueryBuilder('a')
-            ->where('a.partner = :p')
-            ->setParameter('p', $partner)
-            ->orderBy('a.pubMillis', 'DESC');
-
-        if ($type) {
-            $qb->andWhere('a.type = :type')->setParameter('type', $type);
-        }
-        if ($subtype) {
-            $qb->andWhere('a.subtype = :subtype')->setParameter('subtype', $subtype);
-        }
-        if ($city) {
-            $qb->andWhere('a.city LIKE :city')->setParameter('city', '%' . $city . '%');
-        }
-        if ($dateFrom) {
-            $from = new \DateTimeImmutable($dateFrom);
-            $qb->andWhere('a.createdAt >= :from')->setParameter('from', $from->setTime(0, 0, 0));
-        }
-        if ($dateTo) {
-            $to = new \DateTimeImmutable($dateTo);
-            $qb->andWhere('a.createdAt <= :to')->setParameter('to', $to->setTime(23, 59, 59));
-        }
-
-        $paginator = new Paginator($qb->setFirstResult(($page - 1) * $limit)->setMaxResults($limit));
-        $total     = count($paginator);
-
-        return [
-            'items' => iterator_to_array($paginator),
-            'total' => $total,
-            'pages' => (int) ceil($total / $limit),
-        ];
-    }
-
-    /** Conta com os mesmos filtros (sem paginar) */
-    public function countFiltered(
-        Partner  $partner,
-        ?string  $type     = null,
-        ?string  $subtype  = null,
-        ?string  $city     = null,
-        ?string  $dateFrom = null,
-        ?string  $dateTo   = null,
-    ): int {
-        $result = $this->findFilteredByPartner(
-            $partner, $type, $subtype, $city, $dateFrom, $dateTo, 1, 1
-        );
-        return $result['total'];
-    }
-
-    public function findOneByPartner(int $id, Partner $partner): ?WazeAlert
-    {
-        return $this->createQueryBuilder('a')
-            ->where('a.id = :id')->setParameter('id', $id)
-            ->andWhere('a.partner = :p')->setParameter('p', $partner)
-            ->getQuery()->getOneOrNullResult();
-    }
-
-    public function findRecentByPartner(Partner $partner, int $limit = 10): array
-    {
-        return $this->createQueryBuilder('a')
-            ->where('a.partner = :p')
-            ->setParameter('p', $partner)
-            ->orderBy('a.pubMillis', 'DESC')
-            ->setMaxResults($limit)
-            ->getQuery()->getResult();
-    }
-
-    /**
-     * Alertas "ao vivo" — últimas N horas, para o mapa.
-     */
-    public function findLiveByPartner(Partner $partner, int $hours = 3): array
-    {
-        $sinceMs = (new \DateTimeImmutable("-{$hours} hours"))->getTimestamp() * 1000;
-
-        return $this->createQueryBuilder('a')
-            ->where('a.partner = :p')
-            ->setParameter('p', $partner)
+            ->where('a.partner = :partner')
             ->andWhere('a.pubMillis >= :since')
-            ->setParameter('since', $sinceMs)
-            ->orderBy('a.pubMillis', 'DESC')
-            ->setMaxResults(2000)
-            ->getQuery()->getResult();
+            ->setParameter('partner', $partner)
+            ->setParameter('since', $since)
+            ->getQuery()->getSingleScalarResult();
     }
 
-    public function findActiveByPartner(Partner $partner): array
+    /** Alertas publicados nos últimos $days dias */
+    public function countLast7dByPartner(Partner $partner, int $days = 7): int
     {
-        return $this->findLiveByPartner($partner, 3);
+        $since = (new \DateTimeImmutable("-{$days} days"))->getTimestamp() * 1000;
+
+        return (int) $this->createQueryBuilder('a')
+            ->select('COUNT(a.id)')
+            ->where('a.partner = :partner')
+            ->andWhere('a.pubMillis >= :since')
+            ->setParameter('partner', $partner)
+            ->setParameter('since', $since)
+            ->getQuery()->getSingleScalarResult();
     }
 
-    // ── agregações para filtros / charts ──────────────────────────────────────
+    // ── KPIs de distribuição ──────────────────────────────────────────────────
 
-    /** Lista de cidades distintas do parceiro */
-    public function findDistinctCities(Partner $partner): array
+    /**
+     * Contagem por type nas últimas $hours horas.
+     * Retorna [['type'=>'ACCIDENT','total'=>12], ...]
+     */
+    public function countGroupByType(Partner $partner, int $hours = 24): array
     {
+        $since = (new \DateTimeImmutable("-{$hours} hours"))->getTimestamp() * 1000;
+
         $rows = $this->createQueryBuilder('a')
-            ->select('DISTINCT a.city')
-            ->where('a.partner = :p')
-            ->setParameter('p', $partner)
-            ->andWhere('a.city IS NOT NULL')
-            ->orderBy('a.city', 'ASC')
-            ->getQuery()->getArrayResult();
-
-        return array_column($rows, 'city');
-    }
-
-    /** Lista de tipos distintos do parceiro */
-    public function findDistinctTypes(Partner $partner): array
-    {
-        $rows = $this->createQueryBuilder('a')
-            ->select('DISTINCT a.type')
-            ->where('a.partner = :p')
-            ->setParameter('p', $partner)
-            ->orderBy('a.type', 'ASC')
-            ->getQuery()->getArrayResult();
-
-        return array_column($rows, 'type');
-    }
-
-    /** Lista de subtipos distintos, opcionalmente filtrada por tipo */
-    public function findDistinctSubtypes(Partner $partner, ?string $type = null): array
-    {
-        $qb = $this->createQueryBuilder('a')
-            ->select('DISTINCT a.subtype')
-            ->where('a.partner = :p')
-            ->setParameter('p', $partner)
-            ->andWhere('a.subtype IS NOT NULL')
-            ->andWhere('a.subtype != :empty')
-            ->setParameter('empty', '')
-            ->orderBy('a.subtype', 'ASC');
-
-        if ($type) {
-            $qb->andWhere('a.type = :type')->setParameter('type', $type);
-        }
-
-        return array_column($qb->getQuery()->getArrayResult(), 'subtype');
-    }
-
-    /** Contagem por tipo de alerta: [['type' => 'ACCIDENT', 'total' => 42], ...] */
-    public function countGroupByType(Partner $partner): array
-    {
-        return $this->createQueryBuilder('a')
-            ->select('a.type, COUNT(a.id) AS total')
-            ->where('a.partner = :p')
-            ->setParameter('p', $partner)
+            ->select('a.type AS type, COUNT(a.id) AS total')
+            ->where('a.partner = :partner')
+            ->andWhere('a.pubMillis >= :since')
+            ->setParameter('partner', $partner)
+            ->setParameter('since', $since)
             ->groupBy('a.type')
             ->orderBy('total', 'DESC')
             ->getQuery()->getArrayResult();
-    }
 
-    /** Top N subtipos: [['subtype' => 'HAZARD_ON_ROAD', 'total' => 15], ...] */
-    public function countGroupBySubtype(Partner $partner, int $limit = 8): array
-    {
-        return $this->createQueryBuilder('a')
-            ->select('a.subtype, COUNT(a.id) AS total')
-            ->where('a.partner = :p')
-            ->setParameter('p', $partner)
-            ->andWhere('a.subtype IS NOT NULL')
-            ->andWhere('a.subtype != :empty')
-            ->setParameter('empty', '')
-            ->groupBy('a.subtype')
-            ->orderBy('total', 'DESC')
-            ->setMaxResults($limit)
-            ->getQuery()->getArrayResult();
+        return array_map(static fn($r) => ['type' => $r['type'], 'total' => (int)$r['total']], $rows);
     }
 
     /**
-     * Top N cidades por volume de alertas.
-     * Retorna [['city' => 'Florianópolis', 'total' => 120], ...]
+     * Tipo dominante nas últimas 24h.
+     * Retorna ['type' => 'HAZARD', 'total' => 34] ou null.
      */
-    public function countGroupByCity(Partner $partner, int $limit = 10): array
+    public function dominantTypeToday(Partner $partner): ?array
     {
-        return $this->createQueryBuilder('a')
-            ->select('a.city, COUNT(a.id) AS total')
-            ->where('a.partner = :p')
-            ->setParameter('p', $partner)
-            ->andWhere('a.city IS NOT NULL')
-            ->groupBy('a.city')
-            ->orderBy('total', 'DESC')
-            ->setMaxResults($limit)
-            ->getQuery()->getArrayResult();
+        $rows = $this->countGroupByType($partner, 24);
+        return $rows[0] ?? null;
     }
 
     /**
-     * Top N ruas/logradouros por volume de alertas.
-     * Retorna [['street' => 'Av. Beira-Mar Norte', 'total' => 55], ...]
+     * Top $limit ruas com mais alertas nos últimos $days dias.
+     * Retorna [['street'=>'Av. Brasil','total'=>8], ...]
      */
-    public function topStreetsByAlert(Partner $partner, int $limit = 10): array
+    public function topStreetsByAlert(Partner $partner, int $days = 7, int $limit = 10): array
     {
-        return $this->createQueryBuilder('a')
-            ->select('a.street, COUNT(a.id) AS total')
-            ->where('a.partner = :p')
-            ->setParameter('p', $partner)
+        $since = (new \DateTimeImmutable("-{$days} days"))->getTimestamp() * 1000;
+
+        $rows = $this->createQueryBuilder('a')
+            ->select('a.street AS street, COUNT(a.id) AS total')
+            ->where('a.partner = :partner')
+            ->andWhere('a.pubMillis >= :since')
             ->andWhere('a.street IS NOT NULL')
-            ->andWhere('a.street != :empty')
-            ->setParameter('empty', '')
+            ->setParameter('partner', $partner)
+            ->setParameter('since', $since)
             ->groupBy('a.street')
             ->orderBy('total', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()->getArrayResult();
+
+        return array_map(static fn($r) => ['street' => $r['street'], 'total' => (int)$r['total']], $rows);
     }
 
     /**
-     * Distribuição por faixa de confiança (0-4, 5-7, 8-10).
-     * Retorna [['band' => 'alta', 'total' => 310], ...]
+     * Contagem por cidade nos últimos $days dias.
+     * Retorna [['city'=>'Juiz de Fora','total'=>22], ...]
      */
-    public function countByConfidence(Partner $partner): array
+    public function countGroupByCity(Partner $partner, int $days = 7): array
     {
-        $conn = $this->getEntityManager()->getConnection();
-        $sql  = '
-            SELECT
-                CASE
-                    WHEN confidence >= 8 THEN \'alta\'
-                    WHEN confidence >= 5 THEN \'media\'
-                    ELSE \'baixa\'
-                END AS band,
-                COUNT(*) AS total
-            FROM waze_alerts
-            WHERE partner_id = :pid
-              AND confidence IS NOT NULL
-            GROUP BY band
-            ORDER BY FIELD(band, \'alta\', \'media\', \'baixa\')
-        ';
-        $rows = $conn->executeQuery($sql, ['pid' => $partner->getId()])->fetchAllAssociative();
-        return array_map(static fn(array $r) => [
-            'band'  => $r['band'],
-            'total' => (int) $r['total'],
+        $since = (new \DateTimeImmutable("-{$days} days"))->getTimestamp() * 1000;
+
+        $rows = $this->createQueryBuilder('a')
+            ->select('a.city AS city, COUNT(a.id) AS total')
+            ->where('a.partner = :partner')
+            ->andWhere('a.pubMillis >= :since')
+            ->andWhere('a.city IS NOT NULL')
+            ->setParameter('partner', $partner)
+            ->setParameter('since', $since)
+            ->groupBy('a.city')
+            ->orderBy('total', 'DESC')
+            ->getQuery()->getArrayResult();
+
+        return array_map(static fn($r) => ['city' => $r['city'], 'total' => (int)$r['total']], $rows);
+    }
+
+    /**
+     * Distribuição de confidence nas últimas 24h.
+     * Retorna [['confidence'=>8,'total'=>14], ...]
+     */
+    public function countByConfidence(Partner $partner, int $hours = 24): array
+    {
+        $since = (new \DateTimeImmutable("-{$hours} hours"))->getTimestamp() * 1000;
+
+        $rows = $this->createQueryBuilder('a')
+            ->select('a.confidence AS confidence, COUNT(a.id) AS total')
+            ->where('a.partner = :partner')
+            ->andWhere('a.pubMillis >= :since')
+            ->andWhere('a.confidence IS NOT NULL')
+            ->setParameter('partner', $partner)
+            ->setParameter('since', $since)
+            ->groupBy('a.confidence')
+            ->orderBy('a.confidence', 'DESC')
+            ->getQuery()->getArrayResult();
+
+        return array_map(static fn($r) => ['confidence' => (int)$r['confidence'], 'total' => (int)$r['total']], $rows);
+    }
+
+    /**
+     * Qualidade média dos relatos (média de confidence + reliability + reportRating)
+     * por type nas últimas 24h.
+     */
+    public function avgQualityByType(Partner $partner, int $hours = 24): array
+    {
+        $since = (new \DateTimeImmutable("-{$hours} hours"))->getTimestamp() * 1000;
+
+        $rows = $this->createQueryBuilder('a')
+            ->select(
+                'a.type AS type,'
+                . 'AVG(a.confidence) AS avg_confidence,'
+                . 'AVG(a.reliability) AS avg_reliability,'
+                . 'AVG(a.reportRating) AS avg_rating'
+            )
+            ->where('a.partner = :partner')
+            ->andWhere('a.pubMillis >= :since')
+            ->setParameter('partner', $partner)
+            ->setParameter('since', $since)
+            ->groupBy('a.type')
+            ->orderBy('avg_confidence', 'DESC')
+            ->getQuery()->getArrayResult();
+
+        return array_map(static fn($r) => [
+            'type'            => $r['type'],
+            'avg_confidence'  => round((float)($r['avg_confidence'] ?? 0), 1),
+            'avg_reliability' => round((float)($r['avg_reliability'] ?? 0), 1),
+            'avg_rating'      => round((float)($r['avg_rating'] ?? 0), 1),
         ], $rows);
     }
 
     /**
-     * Alertas por hora nas últimas 24h usando pubMillis.
-     * Retorna array de ['hour' => int(0-23), 'total' => int]
+     * Top $limit alertas com maior engajamento (thumbsUp + comentários)
+     * nos últimos $days dias.
      */
-    public function countPerHourLast24h(Partner $partner): array
+    public function topEngagedAlerts(Partner $partner, int $days = 7, int $limit = 10): array
     {
-        $sinceMs = (new \DateTimeImmutable('-24 hours'))->getTimestamp() * 1000;
+        $since = (new \DateTimeImmutable("-{$days} days"))->getTimestamp() * 1000;
 
+        return $this->createQueryBuilder('a')
+            ->where('a.partner = :partner')
+            ->andWhere('a.pubMillis >= :since')
+            ->setParameter('partner', $partner)
+            ->setParameter('since', $since)
+            ->orderBy('a.nThumbsUp + a.nComments', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()->getResult();
+    }
+
+    /**
+     * % de alertas associados a um jam (jamUuid preenchido) nas últimas 24h.
+     * Retorna valor entre 0.0 e 100.0.
+     */
+    public function percentLinkedToJam(Partner $partner, int $hours = 24): float
+    {
+        $since = (new \DateTimeImmutable("-{$hours} hours"))->getTimestamp() * 1000;
+
+        $total = (int) $this->createQueryBuilder('a')
+            ->select('COUNT(a.id)')
+            ->where('a.partner = :partner')
+            ->andWhere('a.pubMillis >= :since')
+            ->setParameter('partner', $partner)
+            ->setParameter('since', $since)
+            ->getQuery()->getSingleScalarResult();
+
+        if ($total === 0) { return 0.0; }
+
+        $withJam = (int) $this->createQueryBuilder('a')
+            ->select('COUNT(a.id)')
+            ->where('a.partner = :partner')
+            ->andWhere('a.pubMillis >= :since')
+            ->andWhere('a.jamUuid IS NOT NULL')
+            ->setParameter('partner', $partner)
+            ->setParameter('since', $since)
+            ->getQuery()->getSingleScalarResult();
+
+        return round($withJam / $total * 100, 1);
+    }
+
+    /**
+     * % de alertas em vias expressas (roadType IN (3,4,5)) nas últimas 24h.
+     */
+    public function percentOnHighways(Partner $partner, int $hours = 24): float
+    {
+        $since = (new \DateTimeImmutable("-{$hours} hours"))->getTimestamp() * 1000;
+
+        $total = (int) $this->createQueryBuilder('a')
+            ->select('COUNT(a.id)')
+            ->where('a.partner = :partner')
+            ->andWhere('a.pubMillis >= :since')
+            ->andWhere('a.roadType IS NOT NULL')
+            ->setParameter('partner', $partner)
+            ->setParameter('since', $since)
+            ->getQuery()->getSingleScalarResult();
+
+        if ($total === 0) { return 0.0; }
+
+        $highway = (int) $this->createQueryBuilder('a')
+            ->select('COUNT(a.id)')
+            ->where('a.partner = :partner')
+            ->andWhere('a.pubMillis >= :since')
+            ->andWhere('a.roadType IN (3,4,5)')
+            ->setParameter('partner', $partner)
+            ->setParameter('since', $since)
+            ->getQuery()->getSingleScalarResult();
+
+        return round($highway / $total * 100, 1);
+    }
+
+    /**
+     * Série temporal: contagem de alertas agrupada por hora nas últimas 24h.
+     * Retorna [['hour'=>'08','total'=>5], ...]
+     * Nota: usa SUBSTRING sobre pubMillis convertido — compatível com MySQL.
+     */
+    public function hourlySeriesLast24h(Partner $partner): array
+    {
+        $since = (new \DateTimeImmutable('-24 hours'))->getTimestamp() * 1000;
+
+        // Converte pubMillis (ms) para datetime via FROM_UNIXTIME no DQL nativo
         $conn = $this->getEntityManager()->getConnection();
-        $sql  = '
-            SELECT HOUR(FROM_UNIXTIME(pub_millis / 1000)) AS hour,
+        $sql = '
+            SELECT DATE_FORMAT(FROM_UNIXTIME(pub_millis / 1000), \'%Y-%m-%d %H\') AS hour_label,
                    COUNT(*) AS total
             FROM waze_alerts
-            WHERE partner_id = :pid
+            WHERE partner_id = :partner
               AND pub_millis >= :since
-            GROUP BY hour
-            ORDER BY hour ASC
+            GROUP BY hour_label
+            ORDER BY hour_label ASC
         ';
-        $rows = $conn->executeQuery($sql, [
-            'pid'   => $partner->getId(),
-            'since' => $sinceMs,
-        ])->fetchAllAssociative();
-
-        return array_map(static fn(array $r) => [
-            'hour'  => (int) $r['hour'],
-            'total' => (int) $r['total'],
-        ], $rows);
+        $stmt = $conn->prepare($sql);
+        $result = $stmt->executeQuery(['partner' => $partner->getId(), 'since' => $since]);
+        return $result->fetchAllAssociative();
     }
 
-    /**
-     * Alertas agrupados por cidade (região) para o mapa ao vivo.
-     */
-    public function findLiveGroupedByRegion(Partner $partner, int $hours = 3): array
+    // ── Listagens ─────────────────────────────────────────────────────────────
+
+    public function findRecentByPartner(Partner $partner, int $limit = 50): array
     {
-        $alerts = $this->findLiveByPartner($partner, $hours);
+        return $this->createQueryBuilder('a')
+            ->where('a.partner = :partner')
+            ->setParameter('partner', $partner)
+            ->orderBy('a.pubMillis', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()->getResult();
+    }
 
-        $regions = [];
-        foreach ($alerts as $alert) {
-            $key = $alert->getCity() ?? 'Desconhecido';
-            if (!isset($regions[$key])) {
-                $regions[$key] = [
-                    'city'   => $key,
-                    'count'  => 0,
-                    'lat'    => $alert->getLatitude(),
-                    'lng'    => $alert->getLongitude(),
-                    'types'  => [],
-                    'alerts' => [],
-                ];
-            }
-            $regions[$key]['count']++;
-            $t = $alert->getType();
-            $regions[$key]['types'][$t] = ($regions[$key]['types'][$t] ?? 0) + 1;
-            if (count($regions[$key]['alerts']) < 5) {
-                $regions[$key]['alerts'][] = [
-                    'id'      => $alert->getId(),
-                    'type'    => $alert->getType(),
-                    'subtype' => $alert->getSubtype(),
-                    'street'  => $alert->getStreet(),
-                    'conf'    => $alert->getConfidence(),
-                ];
-            }
-        }
-
-        usort($regions, fn($a, $b) => $b['count'] <=> $a['count']);
-        return array_values($regions);
+    public function findByPartnerAndType(Partner $partner, string $type, int $limit = 50): array
+    {
+        return $this->createQueryBuilder('a')
+            ->where('a.partner = :partner')
+            ->andWhere('a.type = :type')
+            ->setParameter('partner', $partner)
+            ->setParameter('type', $type)
+            ->orderBy('a.pubMillis', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()->getResult();
     }
 }

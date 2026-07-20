@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repository;
 
 use App\Entity\CifsEvent;
+use App\Entity\Partner;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -16,48 +19,95 @@ class CifsEventRepository extends ServiceEntityRepository
         parent::__construct($registry, CifsEvent::class);
     }
 
+    // ── KPIs ──────────────────────────────────────────────────────────────────
+
     /**
-     * Retorna eventos ativos que ainda não expiraram (para o feed do Waze).
-     *
-     * @return CifsEvent[]
+     * Eventos ativos agora (endDate > NOW() ou sem endDate).
      */
-    public function findActiveForFeed(): array
+    public function findActiveByPartner(Partner $partner): array
     {
         $now = new \DateTimeImmutable();
 
         return $this->createQueryBuilder('e')
-            ->where('e.active = true')
-            ->andWhere('e.startTime <= :now')
-            ->andWhere('e.endTime IS NULL OR e.endTime > :now')
+            ->where('e.partner = :partner')
+            ->andWhere('e.endDate IS NULL OR e.endDate > :now')
+            ->andWhere('e.startDate <= :now')
+            ->setParameter('partner', $partner)
             ->setParameter('now', $now)
-            ->orderBy('e.creationTime', 'DESC')
-            ->getQuery()
-            ->getResult();
+            ->orderBy('e.startDate', 'DESC')
+            ->getQuery()->getResult();
     }
 
     /**
-     * Listagem para o painel administrativo com filtros.
-     *
-     * @return CifsEvent[]
+     * Eventos programados para os próximos $days dias (não iniciados ainda).
      */
-    public function findFiltered(
-        bool $onlyActive = false,
-        ?string $type = null,
-        int $limit = 100
-    ): array {
-        $qb = $this->createQueryBuilder('e')
-            ->leftJoin('e.partner', 'p')
-            ->addSelect('p')
-            ->orderBy('e.creationTime', 'DESC')
-            ->setMaxResults($limit);
+    public function findUpcomingByPartner(Partner $partner, int $days = 7): array
+    {
+        $now    = new \DateTimeImmutable();
+        $future = new \DateTimeImmutable("+{$days} days");
 
-        if ($onlyActive) {
-            $qb->andWhere('e.active = true');
-        }
-        if ($type) {
-            $qb->andWhere('e.type = :type')->setParameter('type', $type);
-        }
+        return $this->createQueryBuilder('e')
+            ->where('e.partner = :partner')
+            ->andWhere('e.startDate > :now')
+            ->andWhere('e.startDate <= :future')
+            ->setParameter('partner', $partner)
+            ->setParameter('now', $now)
+            ->setParameter('future', $future)
+            ->orderBy('e.startDate', 'ASC')
+            ->getQuery()->getResult();
+    }
 
-        return $qb->getQuery()->getResult();
+    /**
+     * Contagem de eventos ativos por tipo (CONSTRUCTION, ROAD_CLOSED, etc.).
+     * Retorna [['type'=>'CONSTRUCTION','total'=>3], ...]
+     */
+    public function countActiveByType(Partner $partner): array
+    {
+        $now = new \DateTimeImmutable();
+
+        $rows = $this->createQueryBuilder('e')
+            ->select('e.type AS type, COUNT(e.id) AS total')
+            ->where('e.partner = :partner')
+            ->andWhere('e.endDate IS NULL OR e.endDate > :now')
+            ->andWhere('e.startDate <= :now')
+            ->setParameter('partner', $partner)
+            ->setParameter('now', $now)
+            ->groupBy('e.type')
+            ->orderBy('total', 'DESC')
+            ->getQuery()->getArrayResult();
+
+        return array_map(static fn($r) => ['type' => $r['type'], 'total' => (int)$r['total']], $rows);
+    }
+
+    /**
+     * Vias com maior concentração de eventos ativos simultâneos.
+     * Retorna [['street'=>'Av. Brasil','total'=>3], ...]
+     */
+    public function topStreetsByActiveEvents(Partner $partner, int $limit = 10): array
+    {
+        $now = new \DateTimeImmutable();
+
+        $rows = $this->createQueryBuilder('e')
+            ->select('e.street AS street, COUNT(e.id) AS total')
+            ->where('e.partner = :partner')
+            ->andWhere('e.endDate IS NULL OR e.endDate > :now')
+            ->andWhere('e.startDate <= :now')
+            ->andWhere('e.street IS NOT NULL')
+            ->setParameter('partner', $partner)
+            ->setParameter('now', $now)
+            ->groupBy('e.street')
+            ->orderBy('total', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()->getArrayResult();
+
+        return array_map(static fn($r) => ['street' => $r['street'], 'total' => (int)$r['total']], $rows);
+    }
+
+    /**
+     * Total de eventos ativos agora.
+     */
+    public function countActive(Partner $partner): int
+    {
+        return count($this->findActiveByPartner($partner));
     }
 }
