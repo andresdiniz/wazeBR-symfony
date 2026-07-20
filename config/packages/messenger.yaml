@@ -1,6 +1,44 @@
 framework:
     messenger:
+        # Falha de um transport não bloqueia os outros.
+        # Cada fila doctrine é independente — sem lock cruzado.
         transports:
+
+            # ----------------------------------------------------------------
+            # async_waze — alertas Waze, congestionamentos, feeds PartnerHub/TVT
+            # 2 workers em paralelo (ver supervisor/waze_scheduler.conf)
+            # ----------------------------------------------------------------
+            async_waze:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    use_notify: true
+                    check_delayed_interval: 60000
+                    queue_name: waze
+                retry_strategy:
+                    max_retries: 3
+                    delay: 1000
+                    multiplier: 2
+                    max_delay: 30000
+
+            # ----------------------------------------------------------------
+            # async_cemaden — dados hidrológicos CEMADEN (menor prioridade)
+            # 1 worker dedicado (ver supervisor/waze_scheduler.conf)
+            # ----------------------------------------------------------------
+            async_cemaden:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    use_notify: true
+                    check_delayed_interval: 60000
+                    queue_name: cemaden
+                retry_strategy:
+                    max_retries: 3
+                    delay: 2000
+                    multiplier: 2
+                    max_delay: 60000
+
+            # ----------------------------------------------------------------
+            # async — fila genérica para outros jobs futuros
+            # ----------------------------------------------------------------
             async:
                 dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
                 options:
@@ -12,15 +50,20 @@ framework:
                     multiplier: 2
                     max_delay: 0
 
-            # Transporte do Symfony Scheduler
-            # DSN = symfony://scheduler_{nome_do_AsSchedule}
-            # WazeFeedSchedule usa #[AsSchedule('main')] => symfony://scheduler_main
-            # Worker: php bin/console messenger:consume scheduler_waze_feed --time-limit=3600 -vv
+            # ----------------------------------------------------------------
+            # scheduler_waze_feed — Symfony Scheduler (dispara as mensagens)
+            # WazeFeedSchedule usa #[AsSchedule('main')]
+            # Worker: php bin/console messenger:consume scheduler_waze_feed
+            # ----------------------------------------------------------------
             scheduler_waze_feed:
                 dsn: 'symfony://scheduler_main'
 
         routing:
-            App\Scheduler\Message\FetchWazeAlertsMessage:  scheduler_waze_feed
-            App\Scheduler\Message\FetchWazeTrafficMessage: scheduler_waze_feed
-            App\Scheduler\Message\CollectWazeFeedMessage:  scheduler_waze_feed
-            App\Scheduler\Message\CollectWazeTvtMessage:   scheduler_waze_feed
+            # Waze — vão para async_waze (2 workers paralelos)
+            App\Scheduler\Message\FetchWazeAlertsMessage:  async_waze
+            App\Scheduler\Message\FetchWazeTrafficMessage: async_waze
+            App\Scheduler\Message\CollectWazeFeedMessage:  async_waze
+            App\Scheduler\Message\CollectWazeTvtMessage:   async_waze
+
+            # CEMADEN — worker dedicado separado
+            App\Scheduler\Message\FetchCemadenHydroMessage: async_cemaden
