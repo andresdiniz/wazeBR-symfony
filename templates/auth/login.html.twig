@@ -8,572 +8,562 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap" rel="stylesheet">
   <style>
-    /* ── Tokens ─────────────────────────────────────────────── */
+    /* ──────────────────────────────────────────
+       Tokens
+    ────────────────────────────────────────── */
     :root {
-      --bg:          #0e1117;
-      --panel:       #13161d;
-      --surface:     #1a1e27;
-      --border:      rgba(255,255,255,.07);
-      --text:        #e8e9ec;
-      --muted:       #6b7280;
-      --faint:       #374151;
-      --primary:     #00c2cb;
-      --primary-dim: rgba(0,194,203,.15);
-      --primary-glow:rgba(0,194,203,.35);
-      --error:       #f87171;
-      --error-dim:   rgba(248,113,113,.12);
-      --jam-red:     #ef4444;
-      --jam-orange:  #f97316;
-      --jam-yellow:  #facc15;
-      --r:           .625rem;
-      --r-lg:        1rem;
-      --t:           200ms cubic-bezier(.16,1,.3,1);
+      --bg:       #0d1117;
+      --surface:  #161b22;
+      --border:   rgba(255,255,255,.08);
+      --text:     #e6edf3;
+      --muted:    #7d8590;
+      --faint:    #30363d;
+      --primary:  #2da8aa;
+      --p-dim:    rgba(45,168,170,.14);
+      --p-glow:   rgba(45,168,170,.28);
+      --error:    #f85149;
+      --e-dim:    rgba(248,81,73,.1);
+      --t: 200ms cubic-bezier(.16,1,.3,1);
+      --r: .5rem;
+      --r-lg: .875rem;
     }
     [data-theme="light"] {
-      --bg:          #f0f4f8;
-      --panel:       #e8edf2;
-      --surface:     #ffffff;
-      --border:      rgba(0,0,0,.09);
-      --text:        #111827;
-      --muted:       #6b7280;
-      --faint:       #d1d5db;
-      --primary:     #006f73;
-      --primary-dim: rgba(0,111,115,.12);
-      --primary-glow:rgba(0,111,115,.3);
-      --error:       #dc2626;
-      --error-dim:   rgba(220,38,38,.1);
+      --bg:       #f6f8fa;
+      --surface:  #ffffff;
+      --border:   rgba(0,0,0,.08);
+      --text:     #1f2328;
+      --muted:    #636c76;
+      --faint:    #d0d7de;
+      --primary:  #00696f;
+      --p-dim:    rgba(0,105,111,.1);
+      --p-glow:   rgba(0,105,111,.25);
+      --error:    #cf222e;
+      --e-dim:    rgba(207,34,46,.08);
     }
 
-    /* ── Reset ──────────────────────────────────────────────── */
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    html{-webkit-font-smoothing:antialiased;text-size-adjust:none}
-    body{
-      min-height:100dvh;
-      font-family:'Inter',sans-serif;
-      font-size:1rem;
-      color:var(--text);
-      background:var(--bg);
-      display:grid;
-      grid-template-columns:1fr 1fr;
+    /* ──────────────────────────────────────────
+       Base
+    ────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-font-smoothing: antialiased; text-size-adjust: none; }
+    body {
+      min-height: 100dvh;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      color: var(--text);
+      background: var(--bg);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
     }
-    @media(max-width:768px){body{grid-template-columns:1fr}}
-
-    /* ── Left panel — mapa animado ──────────────────────────── */
-    .map-panel{
-      position:relative;
-      overflow:hidden;
-      background:var(--panel);
-      display:flex;
-      flex-direction:column;
-      justify-content:flex-end;
-      padding:2.5rem;
-      min-height:100dvh;
-    }
-    @media(max-width:768px){.map-panel{display:none}}
-
-    /* grade de fundo tipo mapa */
-    .map-panel::before{
-      content:'';
-      position:absolute;inset:0;
-      background-image:
-        linear-gradient(rgba(0,194,203,.06) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,194,203,.06) 1px, transparent 1px);
-      background-size:48px 48px;
-      animation:gridShift 20s linear infinite;
-    }
-    @keyframes gridShift{from{background-position:0 0}to{background-position:48px 48px}}
-
-    /* vinheta radial */
-    .map-panel::after{
-      content:'';
-      position:absolute;inset:0;
-      background:radial-gradient(ellipse at 50% 110%, transparent 40%, var(--panel) 80%);
-      pointer-events:none;
+    @media (max-width: 720px) { body { grid-template-columns: 1fr; } }
+    :focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; border-radius: .25rem; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
     }
 
-    .map-svg-wrap{
-      position:absolute;inset:0;
-      display:flex;align-items:center;justify-content:center;
-      opacity:.9;
+    /* ──────────────────────────────────────────
+       Painel esquerdo
+    ────────────────────────────────────────── */
+    .side {
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 2.5rem;
+      min-height: 100dvh;
+      background: #0a1628;
+    }
+    @media (max-width: 720px) { .side { display: none; } }
+
+    /* gradiente atmosférico estático — sem animação pesada */
+    .side::before {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 20%, rgba(45,168,170,.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 80% at 80% 80%, rgba(45,168,170,.08) 0%, transparent 60%);
+      pointer-events: none;
     }
 
-    /* ── Vias SVG ────────────────────────────────────────────── */
-    .road{stroke:var(--faint);stroke-width:3;fill:none;stroke-linecap:round}
-    .road-hi{stroke:var(--border);stroke-width:5;fill:none;stroke-linecap:round}
-
-    /* congestionamento animado */
-    .jam-red   {stroke:var(--jam-red);stroke-width:4;fill:none;stroke-dasharray:12 6;animation:dashMove 1.2s linear infinite}
-    .jam-orange{stroke:var(--jam-orange);stroke-width:4;fill:none;stroke-dasharray:12 6;animation:dashMove 1.8s linear infinite}
-    .jam-yellow{stroke:var(--jam-yellow);stroke-width:3;fill:none;stroke-dasharray:10 8;animation:dashMove 2.4s linear infinite}
-    @keyframes dashMove{to{stroke-dashoffset:-18}}
-
-    /* pulsação de alerta */
-    .alert-pulse{fill:var(--jam-red)}
-    .alert-pulse circle.ring{fill:none;stroke:var(--jam-red);animation:pulse 2s ease-out infinite}
-    .alert-pulse circle.ring2{fill:none;stroke:var(--jam-red);animation:pulse 2s ease-out .5s infinite}
-    @keyframes pulse{
-      0%{r:6;opacity:.9;stroke-width:2}
-      100%{r:22;opacity:0;stroke-width:.5}
+    /* SVG de fundo — vias estáticas, só os pontos de alerta pulsam */
+    .side-svg {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      opacity: 1;
     }
 
-    /* veículo percorrendo rota */
-    .car-dot{fill:var(--primary);filter:drop-shadow(0 0 4px var(--primary-glow))}
-
-    /* ── Caixas de info flutuantes ───────────────────────────── */
-    .map-badge{
-      position:absolute;
-      background:rgba(19,22,29,.85);
-      backdrop-filter:blur(8px);
-      border:1px solid var(--border);
-      border-radius:var(--r);
-      padding:.5rem .875rem;
-      font-size:.75rem;
-      color:var(--muted);
-      display:flex;align-items:center;gap:.5rem;
-      animation:float 4s ease-in-out infinite;
+    .side-top {
+      position: relative; z-index: 2;
+      display: flex; align-items: center; gap: .625rem;
     }
-    [data-theme="light"] .map-badge{background:rgba(240,244,248,.85)}
-    .map-badge strong{color:var(--text);font-weight:600}
-    .map-badge .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-    .badge-1{top:18%;left:12%;animation-delay:0s}
-    .badge-2{top:32%;right:10%;animation-delay:1.2s}
-    .badge-3{top:55%;left:8%;animation-delay:2.1s}
-    .badge-4{top:70%;right:14%;animation-delay:.7s}
-    @keyframes float{
-      0%,100%{transform:translateY(0)}
-      50%{transform:translateY(-6px)}
+    .side-logo-icon {
+      width: 36px; height: 36px; border-radius: .5rem;
+      background: var(--primary);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .side-logo-name {
+      font-size: 1.1rem; font-weight: 700; letter-spacing: -.03em;
+      color: rgba(255,255,255,.9);
     }
 
-    /* texto rodapé do painel */
-    .map-footer{
-      position:relative;z-index:2;
+    /* stats no meio */
+    .side-stats {
+      position: relative; z-index: 2;
+      display: flex; flex-direction: column; gap: 1rem;
     }
-    .map-footer h2{
-      font-size:clamp(1.5rem,2.5vw,2rem);
-      font-weight:700;
-      line-height:1.2;
-      letter-spacing:-.03em;
-      margin-bottom:.5rem;
+    .stat-card {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: var(--r-lg);
+      padding: 1rem 1.25rem;
+      display: flex; align-items: center; gap: 1rem;
     }
-    .map-footer p{font-size:.9rem;color:var(--muted);max-width:38ch}
+    .stat-icon {
+      width: 36px; height: 36px; border-radius: .5rem;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      font-size: .875rem;
+    }
+    .stat-icon.teal  { background: rgba(45,168,170,.15); color: #2da8aa; }
+    .stat-icon.amber { background: rgba(251,191,36,.12);  color: #fbbf24; }
+    .stat-icon.rose  { background: rgba(251,113,133,.12); color: #fb7185; }
+    .stat-body { flex: 1; }
+    .stat-value {
+      font-size: 1.375rem; font-weight: 700;
+      color: rgba(255,255,255,.9);
+      letter-spacing: -.03em;
+      line-height: 1.2;
+    }
+    .stat-label { font-size: .75rem; color: rgba(255,255,255,.4); margin-top: .1rem; }
+    /* indicador de live */
+    .live-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #2da8aa;
+      animation: livePulse 2.5s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes livePulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: .4; transform: scale(.7); }
+    }
 
-    /* ── Right panel — formulário ───────────────────────────── */
-    .login-panel{
-      display:flex;
-      flex-direction:column;
-      justify-content:center;
-      align-items:center;
-      padding:2.5rem 2rem;
-      background:var(--bg);
-      min-height:100dvh;
+    /* rodapé do painel */
+    .side-footer {
+      position: relative; z-index: 2;
+    }
+    .side-footer h2 {
+      font-size: clamp(1.4rem, 2.2vw, 1.75rem);
+      font-weight: 700;
+      letter-spacing: -.04em;
+      line-height: 1.25;
+      color: rgba(255,255,255,.92);
+      margin-bottom: .5rem;
+    }
+    .side-footer p {
+      font-size: .8125rem;
+      color: rgba(255,255,255,.38);
+      max-width: 34ch;
+      line-height: 1.6;
     }
 
-    .login-box{width:100%;max-width:380px}
-
-    /* logo */
-    .logo{display:flex;align-items:center;gap:.625rem;margin-bottom:2.5rem}
-    .logo-icon{
-      width:40px;height:40px;border-radius:.625rem;
-      background:var(--primary);
-      display:flex;align-items:center;justify-content:center;
-      flex-shrink:0;
-      box-shadow:0 0 20px var(--primary-glow);
+    /* ──────────────────────────────────────────
+       Painel direito — formulário
+    ────────────────────────────────────────── */
+    .form-panel {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 2.5rem 2rem;
+      background: var(--bg);
+      min-height: 100dvh;
+      position: relative;
     }
-    .logo-name{font-size:1.35rem;font-weight:700;letter-spacing:-.04em;color:var(--text)}
-    .logo-name span{color:var(--primary)}
+
+    /* botão tema */
+    .theme-btn {
+      position: absolute; top: 1.25rem; right: 1.25rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: .5rem;
+      padding: .5rem;
+      cursor: pointer;
+      color: var(--muted);
+      transition: color var(--t);
+    }
+    .theme-btn:hover { color: var(--text); }
+
+    .form-box { width: 100%; max-width: 360px; }
+
+    /* logo (desktop: escondida, só aparece no mobile) */
+    .form-logo {
+      display: none;
+      align-items: center; gap: .5rem;
+      margin-bottom: 2rem;
+    }
+    @media (max-width: 720px) { .form-logo { display: flex; } }
+    .form-logo-icon {
+      width: 32px; height: 32px; border-radius: .5rem;
+      background: var(--primary);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .form-logo-name { font-size: 1.1rem; font-weight: 700; letter-spacing: -.03em; }
 
     /* cabeçalho */
-    .login-head{margin-bottom:2rem}
-    .login-head h1{font-size:1.6rem;font-weight:700;letter-spacing:-.03em;margin-bottom:.35rem}
-    .login-head p{font-size:.875rem;color:var(--muted)}
+    .form-head { margin-bottom: 2rem; }
+    .form-head h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -.035em;
+      margin-bottom: .35rem;
+    }
+    .form-head p { font-size: .875rem; color: var(--muted); }
 
     /* erro */
-    .alert-error{
-      background:var(--error-dim);
-      border:1px solid rgba(248,113,113,.25);
-      border-radius:var(--r);
-      padding:.75rem 1rem;
-      font-size:.8125rem;
-      color:var(--error);
-      display:flex;align-items:flex-start;gap:.5rem;
-      margin-bottom:1.25rem;
+    .err-box {
+      background: var(--e-dim);
+      border: 1px solid rgba(248,81,73,.2);
+      border-radius: var(--r);
+      padding: .75rem 1rem;
+      font-size: .8125rem;
+      color: var(--error);
+      display: flex; align-items: flex-start; gap: .5rem;
+      margin-bottom: 1.25rem;
     }
-    [data-theme="light"] .alert-error{border-color:rgba(220,38,38,.2)}
+    [data-theme="light"] .err-box { border-color: rgba(207,34,46,.18); }
 
-    /* grupos de campo */
-    .field{margin-bottom:1.25rem;position:relative}
-    .field label{
-      display:block;
-      font-size:.8125rem;
-      font-weight:500;
-      color:var(--muted);
-      margin-bottom:.375rem;
-      letter-spacing:.01em;
+    /* campo */
+    .field { margin-bottom: 1.125rem; }
+    .field > label {
+      display: block;
+      font-size: .8rem;
+      font-weight: 500;
+      color: var(--muted);
+      margin-bottom: .375rem;
+      letter-spacing: .01em;
     }
-    .field-wrap{position:relative}
-    .field-wrap svg{
-      position:absolute;left:.875rem;top:50%;transform:translateY(-50%);
-      color:var(--faint);pointer-events:none;transition:color var(--t);
+    .fw { position: relative; }
+    .fw .ico {
+      position: absolute; left: .875rem; top: 50%; transform: translateY(-50%);
+      color: var(--faint); pointer-events: none;
+      transition: color var(--t);
     }
-    .field input{
-      width:100%;
-      padding:.75rem .875rem .75rem 2.5rem;
-      background:var(--surface);
-      border:1px solid var(--border);
-      border-radius:var(--r);
-      color:var(--text);
-      font-size:.9375rem;
-      font-family:inherit;
-      transition:border-color var(--t),box-shadow var(--t);
+    .fw:focus-within .ico { color: var(--primary); }
+    .fw input {
+      width: 100%;
+      padding: .75rem .875rem .75rem 2.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      color: var(--text);
+      font-size: .9375rem;
+      font-family: inherit;
+      transition: border-color var(--t), box-shadow var(--t);
     }
-    .field input::placeholder{color:var(--faint)}
-    .field input:focus{
-      outline:none;
-      border-color:var(--primary);
-      box-shadow:0 0 0 3px var(--primary-dim);
+    .fw input::placeholder { color: var(--faint); }
+    .fw input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--p-dim);
     }
-    .field input:focus + svg,
-    .field-wrap:focus-within svg{color:var(--primary)}
+    .pw-toggle {
+      position: absolute; right: .75rem; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      color: var(--faint); padding: .25rem;
+      transition: color var(--t);
+    }
+    .pw-toggle:hover { color: var(--muted); }
 
-    /* toggle senha */
-    .toggle-pw{
-      position:absolute;right:.75rem;top:50%;transform:translateY(-50%);
-      background:none;border:none;cursor:pointer;
-      color:var(--faint);padding:.25rem;
-      transition:color var(--t);
+    /* linha lembrar + esqueci */
+    .row-aux {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1.5rem; font-size: .8125rem;
     }
-    .toggle-pw:hover{color:var(--muted)}
+    .lbl-remember {
+      display: flex; align-items: center; gap: .4rem;
+      color: var(--muted); cursor: pointer;
+    }
+    .lbl-remember input { accent-color: var(--primary); cursor: pointer; }
+    .link-fw { color: var(--primary); text-decoration: none; transition: opacity var(--t); }
+    .link-fw:hover { opacity: .7; }
 
-    /* "lembrar" + esqueci */
-    .row-remember{
-      display:flex;align-items:center;justify-content:space-between;
-      margin-bottom:1.5rem;font-size:.8125rem;
+    /* botão */
+    .btn {
+      width: 100%;
+      padding: .8125rem;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--r);
+      font-size: .9375rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      position: relative; overflow: hidden;
+      transition: opacity var(--t), box-shadow var(--t), transform var(--t);
     }
-    .remember{display:flex;align-items:center;gap:.5rem;color:var(--muted);cursor:pointer}
-    .remember input[type=checkbox]{
-      accent-color:var(--primary);width:15px;height:15px;cursor:pointer;
+    .btn:hover { opacity: .88; box-shadow: 0 4px 18px var(--p-glow); transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn-txt { transition: opacity var(--t); }
+    .btn.loading .btn-txt { opacity: 0; }
+    .btn .spin {
+      position: absolute; inset: 0;
+      display: none; align-items: center; justify-content: center;
     }
-    .link-forgot{color:var(--primary);text-decoration:none;transition:opacity var(--t)}
-    .link-forgot:hover{opacity:.75}
+    .btn.loading .spin { display: flex; }
+    .spin svg { animation: rot .7s linear infinite; }
+    @keyframes rot { to { transform: rotate(360deg); } }
 
-    /* botão submit */
-    .btn-login{
-      width:100%;
-      padding:.875rem;
-      background:var(--primary);
-      color:#fff;
-      border:none;
-      border-radius:var(--r);
-      font-size:.9375rem;
-      font-weight:600;
-      font-family:inherit;
-      cursor:pointer;
-      transition:background var(--t),box-shadow var(--t),transform var(--t);
-      letter-spacing:.01em;
-      position:relative;overflow:hidden;
+    /* rodapé */
+    .form-foot {
+      margin-top: 1.75rem;
+      text-align: center;
+      font-size: .8rem;
+      color: var(--muted);
     }
-    [data-theme="light"] .btn-login{color:#fff}
-    .btn-login:hover{
-      background:color-mix(in oklch,var(--primary) 85%,black);
-      box-shadow:0 4px 16px var(--primary-glow);
-      transform:translateY(-1px);
-    }
-    .btn-login:active{transform:translateY(0)}
-    .btn-login .btn-text{transition:opacity var(--t)}
-    .btn-login.loading .btn-text{opacity:0}
-    .btn-login .spinner{
-      position:absolute;inset:0;display:none;
-      align-items:center;justify-content:center;
-    }
-    .btn-login.loading .spinner{display:flex}
-    .spinner svg{animation:spin .7s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}
-
-    /* divisor */
-    .divider{
-      display:flex;align-items:center;gap:.75rem;
-      margin:1.5rem 0;font-size:.75rem;color:var(--faint);
-    }
-    .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
-
-    /* rodapé do form */
-    .login-footer{
-      margin-top:2rem;
-      text-align:center;
-      font-size:.8125rem;
-      color:var(--muted);
-    }
-
-    /* toggle tema */
-    .theme-toggle{
-      position:fixed;top:1rem;right:1rem;
-      background:var(--surface);
-      border:1px solid var(--border);
-      border-radius:.5rem;
-      padding:.5rem;
-      cursor:pointer;
-      color:var(--muted);
-      z-index:100;
-      transition:color var(--t),background var(--t);
-    }
-    .theme-toggle:hover{color:var(--text)}
-
-    /* acessibilidade */
-    :focus-visible{outline:2px solid var(--primary);outline-offset:3px;border-radius:.25rem}
-    @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+    .form-foot a { color: var(--primary); }
   </style>
 </head>
 <body>
 
-  <!-- ── Toggle tema ─────────────────────────────────────── -->
-  <button class="theme-toggle" data-theme-toggle aria-label="Alternar tema">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  {# ──────────────────────────────────────────
+     PAINEL ESQUERDO — visual atmosférico estático
+  ────────────────────────────────────────── #}
+  <aside class="side" aria-hidden="true">
+
+    {# SVG mapa estático — vias + 3 pontos de alerta com pulso lento #}
+    <svg class="side-svg" viewBox="0 0 520 800" preserveAspectRatio="xMidYMid slice"
+         xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <style>
+          .rv { stroke: rgba(255,255,255,.06); stroke-width: 2; fill: none; stroke-linecap: round; }
+          .rp { stroke: rgba(255,255,255,.1);  stroke-width: 3.5; fill: none; stroke-linecap: round; }
+          /* pulso lento nos alertas — apenas opacidade, sem escala */
+          .ap { animation: aop 3s ease-in-out infinite; }
+          .ap2 { animation: aop 3s ease-in-out 1s infinite; }
+          .ap3 { animation: aop 3s ease-in-out 2s infinite; }
+          @keyframes aop { 0%,100%{opacity:1} 50%{opacity:.25} }
+        </style>
+      </defs>
+
+      {# vias secundárias #}
+      <g class="rv">
+        <path d="M40 100 Q200 80 340 130"/>
+        <path d="M260 50 Q280 200 260 350"/>
+        <path d="M420 70 Q450 220 430 380"/>
+        <path d="M80 420 Q200 400 340 440"/>
+        <path d="M50 560 Q170 540 300 570"/>
+        <path d="M390 500 Q430 580 410 680"/>
+        <path d="M140 640 Q260 620 370 660"/>
+        <path d="M470 380 Q500 460 480 580"/>
+        <path d="M60 300 Q100 360 80 460"/>
+        <path d="M320 340 Q370 420 350 520"/>
+      </g>
+
+      {# vias principais #}
+      <g class="rp">
+        <path d="M0 220 Q130 200 280 240 Q420 275 520 255"/>
+        <path d="M0 500 Q130 480 280 510 Q420 535 520 518"/>
+        <path d="M180 0 Q200 200 185 400 Q170 570 185 800"/>
+        <path d="M380 0 Q395 220 385 430 Q375 590 390 800"/>
+      </g>
+
+      {# ponto de alerta 1 — cruzamento via principal #}
+      <g transform="translate(175, 240)">
+        <circle r="10" fill="rgba(251,113,133,.12)" class="ap"/>
+        <circle r="5"  fill="#fb7185" class="ap"/>
+      </g>
+
+      {# ponto de alerta 2 #}
+      <g transform="translate(385, 255)">
+        <circle r="10" fill="rgba(251,191,36,.1)" class="ap2"/>
+        <circle r="4.5" fill="#fbbf24" class="ap2"/>
+      </g>
+
+      {# ponto de alerta 3 #}
+      <g transform="translate(185, 510)">
+        <circle r="10" fill="rgba(251,113,133,.12)" class="ap3"/>
+        <circle r="4.5" fill="#fb7185" class="ap3"/>
+      </g>
     </svg>
-  </button>
 
-  <!-- ══════════════════════════════════════════════════════
-       PAINEL ESQUERDO — mapa animado
-  ══════════════════════════════════════════════════════ -->
-  <div class="map-panel" aria-hidden="true">
-
-    <!-- badges flutuantes de alertas/ocorrências -->
-    <div class="map-badge badge-1">
-      <span class="dot" style="background:var(--jam-red)"></span>
-      <span>Acidente · Marginal Pinheiros</span>
-      <strong>agora</strong>
-    </div>
-    <div class="map-badge badge-2">
-      <span class="dot" style="background:var(--jam-orange)"></span>
-      <span>Lentidão · Av. Paulista</span>
-      <strong>+12 min</strong>
-    </div>
-    <div class="map-badge badge-3">
-      <span class="dot" style="background:var(--jam-yellow)"></span>
-      <span>Obra · Rua Augusta</span>
-      <strong>8h–18h</strong>
-    </div>
-    <div class="map-badge badge-4">
-      <span class="dot" style="background:var(--primary)"></span>
-      <span>Rotas monitoradas</span>
-      <strong>248</strong>
+    {# topo: logo #}
+    <div class="side-top">
+      <div class="side-logo-icon">
+        <svg width="20" height="20" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <path d="M16 5 L27 25 H5 Z" stroke="#fff" stroke-width="2.5" stroke-linejoin="round" fill="none"/>
+          <circle cx="16" cy="27" r="2.2" fill="#fff"/>
+        </svg>
+      </div>
+      <span class="side-logo-name">WazeBR</span>
     </div>
 
-    <!-- SVG do mapa (vias + congestionamentos + alertas) -->
-    <div class="map-svg-wrap">
-      <svg viewBox="0 0 600 700" width="600" height="700" xmlns="http://www.w3.org/2000/svg">
+    {# meio: stats de contexto #}
+    <div class="side-stats">
+      <div class="stat-card">
+        <div class="stat-icon teal">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+        </div>
+        <div class="stat-body">
+          <div class="stat-value">248</div>
+          <div class="stat-label">Rotas monitoradas</div>
+        </div>
+        <span class="live-dot"></span>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon amber">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div class="stat-body">
+          <div class="stat-value">12</div>
+          <div class="stat-label">Alertas ativos agora</div>
+        </div>
+        <span class="live-dot" style="background:#fbbf24"></span>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon rose">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="stat-body">
+          <div class="stat-value">&lt; 2 min</div>
+          <div class="stat-label">Latência média de atualização</div>
+        </div>
+      </div>
+    </div>
 
-        <!-- vias secundárias -->
-        <g class="road" opacity=".5">
-          <path d="M50 120 Q180 90 320 140"/>
-          <path d="M280 60 Q310 180 290 300"/>
-          <path d="M450 80 Q480 200 460 340"/>
-          <path d="M100 400 Q200 380 320 420"/>
-          <path d="M350 300 Q400 360 380 460"/>
-          <path d="M60 500 Q160 480 280 520"/>
-          <path d="M420 480 Q460 540 440 620"/>
-          <path d="M150 580 Q250 560 360 600"/>
-          <path d="M490 380 Q530 440 510 560"/>
-          <path d="M80 280 Q120 320 100 420"/>
-        </g>
+    {# rodapé #}
+    <div class="side-footer">
+      <h2>Trânsito inteligente<br>em tempo real</h2>
+      <p>Alertas, congestionamentos e rotas integrados com a rede Waze para sua cidade.</p>
+    </div>
+  </aside>
 
-        <!-- vias principais -->
-        <g class="road-hi">
-          <path d="M0 200 Q150 180 300 220 Q450 260 600 240"/>
-          <path d="M0 460 Q150 440 300 480 Q450 510 600 490"/>
-          <path d="M200 0 Q220 180 200 350 Q180 500 200 700"/>
-          <path d="M400 0 Q420 200 410 380 Q400 520 415 700"/>
-        </g>
+  {# ──────────────────────────────────────────
+     PAINEL DIREITO — formulário
+  ────────────────────────────────────────── #}
+  <main class="form-panel">
 
-        <!-- congestionamentos animados -->
-        <path class="jam-red" d="M0 200 Q80 190 160 206"/>
-        <path class="jam-orange" d="M300 220 Q380 235 460 228"/>
-        <path class="jam-yellow" d="M200 350 Q210 420 205 490"/>
-        <path class="jam-orange" d="M410 200 Q415 280 412 360"/>
-
-        <!-- alertas pulsantes -->
-        <g class="alert-pulse" transform="translate(155,205)">
-          <circle r="5"/>
-          <circle class="ring"/>
-          <circle class="ring2"/>
-        </g>
-        <g class="alert-pulse" transform="translate(420,228)" style="--jam-red:#f97316">
-          <circle r="5" fill="#f97316"/>
-          <circle class="ring" style="stroke:#f97316"/>
-          <circle class="ring2" style="stroke:#f97316;animation-delay:1s"/>
-        </g>
-        <g class="alert-pulse" transform="translate(205,488)">
-          <circle r="5"/>
-          <circle class="ring"/>
-          <circle class="ring2" style="animation-delay:.8s"/>
-        </g>
-
-        <!-- veículos em rota (animateMotion) -->
-        <circle r="4" class="car-dot">
-          <animateMotion dur="6s" repeatCount="indefinite" rotate="auto">
-            <mpath href="#route1"/>
-          </animateMotion>
-        </circle>
-        <circle r="3.5" class="car-dot" style="fill:var(--jam-yellow)">
-          <animateMotion dur="9s" repeatCount="indefinite" rotate="auto" begin="2s">
-            <mpath href="#route2"/>
-          </animateMotion>
-        </circle>
-
-        <!-- rotas dos veículos (hidden) -->
-        <defs>
-          <path id="route1" d="M0 460 Q150 440 300 480 Q450 510 600 490"/>
-          <path id="route2" d="M400 0 Q420 200 410 380 Q400 520 415 700"/>
-        </defs>
+    <button class="theme-btn" data-theme-toggle aria-label="Alternar tema">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
       </svg>
-    </div>
+    </button>
 
-    <!-- texto rodapé -->
-    <div class="map-footer">
-      <h2>Monitoramento<br>em tempo real</h2>
-      <p>Alertas, congestionamentos e rotas integrados com a rede Waze.</p>
-    </div>
-  </div>
+    <div class="form-box">
 
-  <!-- ══════════════════════════════════════════════════════
-       PAINEL DIREITO — formulário de login
-  ══════════════════════════════════════════════════════ -->
-  <div class="login-panel">
-    <div class="login-box">
-
-      <!-- Logo -->
-      <div class="logo">
-        <div class="logo-icon">
-          <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-            <path d="M16 4 L28 26 H4 Z" stroke="#fff" stroke-width="2.5" stroke-linejoin="round" fill="none"/>
-            <circle cx="16" cy="28" r="2.5" fill="#fff"/>
+      {# logo (apenas mobile) #}
+      <div class="form-logo">
+        <div class="form-logo-icon">
+          <svg width="18" height="18" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <path d="M16 5 L27 25 H5 Z" stroke="#fff" stroke-width="2.5" stroke-linejoin="round" fill="none"/>
+            <circle cx="16" cy="27" r="2.2" fill="#fff"/>
           </svg>
         </div>
-        <div class="logo-name">Waze<span>BR</span></div>
+        <span class="form-logo-name">WazeBR</span>
       </div>
 
-      <!-- Cabeçalho -->
-      <div class="login-head">
+      <div class="form-head">
         <h1>Bem-vindo de volta</h1>
-        <p>Entre com suas credenciais para acessar o painel.</p>
+        <p>Acesse o painel de monitoramento.</p>
       </div>
 
-      <!-- Erro de autenticação -->
       {% if error %}
-      <div class="alert-error" role="alert">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:.1rem"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div class="err-box" role="alert">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:.15rem"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         {{ error.messageKey|trans(error.messageData, 'security') }}
       </div>
       {% endif %}
 
-      <!-- Formulário -->
       <form method="POST" action="{{ path('auth_login') }}" id="loginForm" novalidate>
         <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
 
-        <!-- E-mail -->
         <div class="field">
           <label for="email">E-mail</label>
-          <div class="field-wrap">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg>
-            <input
-              type="email"
-              id="email"
-              name="email"
+          <div class="fw">
+            <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg>
+            <input type="email" id="email" name="email"
               value="{{ last_username }}"
-              autocomplete="email"
-              autofocus
-              required
-              placeholder="seu@email.com.br"
-            >
+              autocomplete="email" autofocus required
+              placeholder="seu@email.com.br">
           </div>
         </div>
 
-        <!-- Senha -->
         <div class="field">
           <label for="password">Senha</label>
-          <div class="field-wrap">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              autocomplete="current-password"
-              required
+          <div class="fw">
+            <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="password" id="password" name="password"
+              autocomplete="current-password" required
               placeholder="••••••••"
-              style="padding-right:2.75rem"
-            >
-            <button type="button" class="toggle-pw" id="togglePw" aria-label="Mostrar senha">
-              <svg id="eyeIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              style="padding-right:2.75rem">
+            <button type="button" class="pw-toggle" id="pwBtn" aria-label="Mostrar senha">
+              <svg id="eyeIco" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
           </div>
         </div>
 
-        <!-- Lembrar + Esqueci -->
-        <div class="row-remember">
-          <label class="remember">
-            <input type="checkbox" name="_remember_me" id="remember">
-            Lembrar acesso
+        <div class="row-aux">
+          <label class="lbl-remember">
+            <input type="checkbox" name="_remember_me"> Lembrar acesso
           </label>
-          <a href="{{ path('auth_password_request') }}" class="link-forgot">Esqueceu a senha?</a>
+          <a href="{{ path('auth_password_request') }}" class="link-fw">Esqueceu a senha?</a>
         </div>
 
-        <!-- Submit -->
-        <button type="submit" class="btn-login" id="loginBtn">
-          <span class="btn-text">Entrar</span>
-          <span class="spinner" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5">
-              <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/>
-            </svg>
+        <button type="submit" class="btn" id="loginBtn">
+          <span class="btn-txt">Entrar</span>
+          <span class="spin" aria-hidden="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>
           </span>
         </button>
       </form>
 
-      <!-- Rodapé do form -->
-      <div class="login-footer">
-        Problemas de acesso? <a href="mailto:suporte@wazebr.com.br" style="color:var(--primary)">Contate o suporte</a>
+      <div class="form-foot">
+        Problemas? <a href="mailto:suporte@wazebr.com.br">Fale com o suporte</a>
       </div>
 
     </div>
-  </div>
+  </main>
 
   <script>
-    // ── Tema ──────────────────────────────────────────────────
-    (function(){
-      const btn = document.querySelector('[data-theme-toggle]');
+    // Tema
+    (function () {
+      const btn  = document.querySelector('[data-theme-toggle]');
       const root = document.documentElement;
-      let theme = matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light';
-      root.setAttribute('data-theme', theme);
-      const sunSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
-      const moonSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+      const sun  = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
+      const moon = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+      let t = matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light';
+      root.setAttribute('data-theme', t);
       if (btn) {
-        btn.innerHTML = theme === 'dark' ? sunSvg : moonSvg;
+        btn.innerHTML = t === 'dark' ? sun : moon;
         btn.addEventListener('click', () => {
-          theme = theme === 'dark' ? 'light' : 'dark';
-          root.setAttribute('data-theme', theme);
-          btn.innerHTML = theme === 'dark' ? sunSvg : moonSvg;
-          btn.setAttribute('aria-label', theme === 'dark' ? 'Modo claro' : 'Modo escuro');
+          t = t === 'dark' ? 'light' : 'dark';
+          root.setAttribute('data-theme', t);
+          btn.innerHTML = t === 'dark' ? sun : moon;
+          btn.setAttribute('aria-label', t === 'dark' ? 'Modo claro' : 'Modo escuro');
         });
       }
     })();
 
-    // ── Toggle mostrar senha ──────────────────────────────────
-    (function(){
-      const btn = document.getElementById('togglePw');
-      const input = document.getElementById('password');
-      const icon = document.getElementById('eyeIcon');
-      if (!btn || !input) return;
+    // Toggle senha
+    (function () {
+      const btn = document.getElementById('pwBtn');
+      const inp = document.getElementById('password');
+      const ico = document.getElementById('eyeIco');
+      if (!btn || !inp) return;
       btn.addEventListener('click', () => {
-        const show = input.type === 'password';
-        input.type = show ? 'text' : 'password';
-        icon.innerHTML = show
+        const show = inp.type === 'password';
+        inp.type = show ? 'text' : 'password';
+        ico.innerHTML = show
           ? `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>`
           : `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
         btn.setAttribute('aria-label', show ? 'Ocultar senha' : 'Mostrar senha');
       });
     })();
 
-    // ── Loading no submit ─────────────────────────────────────
-    (function(){
+    // Loading no submit
+    (function () {
       const form = document.getElementById('loginForm');
       const btn  = document.getElementById('loginBtn');
       if (!form || !btn) return;
