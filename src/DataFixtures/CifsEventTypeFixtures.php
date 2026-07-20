@@ -174,6 +174,10 @@ class CifsEventTypeFixtures extends Fixture
         ['POLICE', 'POLICE_HIDING',   'en', 'Police hiding',     null],
         ['POLICE', 'POLICE_HIDING',   'es', 'Policía oculta',    null],
 
+        ['POLICE', 'POLICE_WITH_MOBILE_CAMERA', 'pt', 'Radar móvel',            null],
+        ['POLICE', 'POLICE_WITH_MOBILE_CAMERA', 'en', 'Police with mobile camera', null],
+        ['POLICE', 'POLICE_WITH_MOBILE_CAMERA', 'es', 'Policía con radar móvil',   null],
+
         // ── CHIT_CHAT ─────────────────────────────────────────────
         ['CHIT_CHAT', null, 'pt', 'Informação',   null],
         ['CHIT_CHAT', null, 'en', 'Information',  null],

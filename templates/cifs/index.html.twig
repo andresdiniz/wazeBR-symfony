@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#14b8a6">
 <link rel="manifest" href="/cifs-manifest.json">
-<title>Criar Evento — WazeBR</title>
+<title>Eventos CIFS — WazeBR</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 /* ── Reset & tokens ──────────────────────────────────────────── */
@@ -349,7 +349,7 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
       </div>
       WazeBR
     </div>
-    <span class="header-title">Criar Evento CIFS</span>
+    <span class="header-title">Eventos CIFS (feed Waze)</span>
     <div class="header-spacer"></div>
     <span class="header-badge">Feed Waze</span>
   </header>
@@ -442,12 +442,45 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
         <div class="field">
           <label>Início *</label>
           <input type="datetime-local" id="inp-start">
+          <span class="hint">Obrigatório para Via Interditada. Para os demais tipos, se deixado vazio, assume-se "agora".</span>
         </div>
 
         <!-- Fim -->
         <div class="field">
           <label>Término (deixe vazio = 14 dias padrão)</label>
           <input type="datetime-local" id="inp-end">
+        </div>
+
+        <!-- Impacto por faixa (lane_impact) — só p/ incidentes de sentido único -->
+        <div class="field" id="field-lane-impact" style="display:none">
+          <label>Impacto por faixa <span class="hint" style="text-transform:none;font-weight:400">(opcional)</span></label>
+          <div style="display:flex;gap:6px">
+            <input type="number" id="inp-lane-count" min="1" max="10" placeholder="Nº de faixas fechadas" style="flex:1">
+            <select id="sel-lane-roadside" style="flex:1">
+              <option value="">Lado</option>
+              {% for rs in roadsides %}
+                <option value="{{ rs.value }}">{{ rs.label() }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <span class="hint">Só se aplica quando a via é de sentido único e o evento não é interdição total.</span>
+        </div>
+
+        <!-- Agendamento recorrente (schedule) -->
+        <div class="field">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer" id="toggle-schedule">
+            <input type="checkbox" id="chk-schedule" style="width:auto">
+            Agendamento recorrente <span class="hint" style="text-transform:none;font-weight:400">(opcional)</span>
+          </label>
+          <div id="schedule-days" style="display:none;flex-direction:column;gap:6px;margin-top:4px">
+            {% for key, name in weekdays %}
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="width:64px;font-size:11px;color:var(--muted)">{{ name }}</span>
+                <input type="text" class="schedule-range" data-day="{{ key }}" placeholder="09:00-18:00" style="flex:1;padding:5px 8px;font-size:11px">
+              </div>
+            {% endfor %}
+            <span class="hint">Formato HH:MM-HH:MM, múltiplos intervalos separados por vírgula (ex: 09:00-11:00,17:00-21:00).</span>
+          </div>
         </div>
 
         <!-- Botões -->
@@ -470,7 +503,7 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
           {% for event in events %}
             <div class="event-item {{ not event.active ? 'inactive' }}" data-id="{{ event.id }}" data-polyline="{{ event.polyline }}">
               <div class="event-header">
-                <span class="event-type-badge {{ event.type.value }}">{{ event.type.emoji() }} {{ event.type.value }}</span>
+                <span class="event-type-badge {{ event.type.value }}">{{ event.type.emoji() }} {{ typesMap[event.type.value] ?? event.type.value }}</span>
                 {% if not event.active %}<span style="font-size:9px;color:var(--faint)">INATIVO</span>{% endif %}
               </div>
               <div class="event-street">{{ event.street }}</div>
@@ -639,7 +672,28 @@ selType.addEventListener('change', () => {
   } else {
     fieldSub.style.display = 'none';
   }
+  updateLaneImpactVisibility();
   updateSaveBtn();
+});
+
+// ── Impacto por faixa: só p/ tipos != ROAD_CLOSED com direção única ──
+const selDirection     = document.getElementById('sel-direction');
+const fieldLaneImpact  = document.getElementById('field-lane-impact');
+function updateLaneImpactVisibility() {
+  const show = selType.value !== 'ROAD_CLOSED' && selDirection.value === 'ONE_DIRECTION';
+  fieldLaneImpact.style.display = show ? 'flex' : 'none';
+  if (!show) {
+    document.getElementById('inp-lane-count').value = '';
+    document.getElementById('sel-lane-roadside').value = '';
+  }
+}
+selDirection.addEventListener('change', updateLaneImpactVisibility);
+
+// ── Agendamento recorrente: mostra/esconde os dias ────────────
+const chkSchedule = document.getElementById('chk-schedule');
+const scheduleDays = document.getElementById('schedule-days');
+chkSchedule.addEventListener('change', () => {
+  scheduleDays.style.display = chkSchedule.checked ? 'flex' : 'none';
 });
 
 // ── Contador de caracteres na descrição ───────────────────────
@@ -669,6 +723,20 @@ document.getElementById('inp-street').addEventListener('input', updateSaveBtn);
 // ── Salvar evento ─────────────────────────────────────────────
 document.getElementById('btn-save').addEventListener('click', async () => {
   const polyline = polylineToString(points);
+
+  const schedule = {};
+  if (chkSchedule.checked) {
+    document.querySelectorAll('.schedule-range').forEach(inp => {
+      const val = inp.value.trim();
+      if (val) schedule[inp.dataset.day] = val;
+    });
+  }
+
+  const laneCount = document.getElementById('inp-lane-count').value;
+  const laneImpact = laneCount
+    ? { total_closed_lanes: parseInt(laneCount, 10), roadside: document.getElementById('sel-lane-roadside').value || null }
+    : null;
+
   const payload = {
     type:        selType.value,
     subtype:     selSubtype.value || null,
@@ -678,6 +746,8 @@ document.getElementById('btn-save').addEventListener('click', async () => {
     description: inpDesc.value.trim() || null,
     starttime:   document.getElementById('inp-start').value || null,
     endtime:     document.getElementById('inp-end').value || null,
+    schedule:    Object.keys(schedule).length ? schedule : null,
+    lane_impact: laneImpact,
   };
 
   document.getElementById('btn-save').disabled = true;
@@ -713,6 +783,12 @@ document.getElementById('btn-reset').addEventListener('click', () => {
   inpDesc.value = '';
   charCount.textContent = '0 / 40';
   document.getElementById('inp-end').value = '';
+  document.getElementById('inp-lane-count').value = '';
+  document.getElementById('sel-lane-roadside').value = '';
+  fieldLaneImpact.style.display = 'none';
+  chkSchedule.checked = false;
+  scheduleDays.style.display = 'none';
+  document.querySelectorAll('.schedule-range').forEach(inp => inp.value = '');
   updateSaveBtn();
 });
 

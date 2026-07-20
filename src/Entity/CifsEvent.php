@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Enum\CifsDirectionEnum;
+use App\Enum\CifsRoadsideEnum;
 use App\Enum\CifsTypeEnum;
 use App\Repository\CifsEventRepository;
 use Doctrine\ORM\Mapping as ORM;
@@ -65,6 +66,24 @@ class CifsEvent
     #[ORM\JoinColumn(nullable: true)]
     private ?Partner $partner = null;
 
+    /**
+     * Agendamento recorrente (tag <schedule> da spec CIFS).
+     * Formato: { "monday": "09:00-11:00,17:00-21:00", "thursday": "09:00-11:00", ... }
+     * Chaves em inglês minúsculo (monday..sunday), só dias com horário aparecem.
+     */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $schedule = null;
+
+    /**
+     * lane_impact (formato parcial da spec CIFS).
+     * Só faz sentido quando type != ROAD_CLOSED e direction == ONE_DIRECTION.
+     */
+    #[ORM\Column(type: 'integer', nullable: true)]
+    private ?int $laneImpactClosedLanes = null;
+
+    #[ORM\Column(enumType: CifsRoadsideEnum::class, length: 10, nullable: true)]
+    private ?CifsRoadsideEnum $laneImpactRoadside = null;
+
     // ── Lifecycle ─────────────────────────────────────────────
 
     #[ORM\PrePersist]
@@ -122,4 +141,13 @@ class CifsEvent
 
     public function getPartner(): ?Partner { return $this->partner; }
     public function setPartner(?Partner $partner): static { $this->partner = $partner; return $this; }
+
+    public function getSchedule(): ?array { return $this->schedule; }
+    public function setSchedule(?array $schedule): static { $this->schedule = $schedule; return $this; }
+
+    public function getLaneImpactClosedLanes(): ?int { return $this->laneImpactClosedLanes; }
+    public function setLaneImpactClosedLanes(?int $n): static { $this->laneImpactClosedLanes = $n; return $this; }
+
+    public function getLaneImpactRoadside(): ?CifsRoadsideEnum { return $this->laneImpactRoadside; }
+    public function setLaneImpactRoadside(?CifsRoadsideEnum $r): static { $this->laneImpactRoadside = $r; return $this; }
 }

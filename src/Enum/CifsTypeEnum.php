@@ -85,6 +85,7 @@ enum CifsTypeEnum: string
             self::POLICE => [
                 'POLICE_VISIBLE',
                 'POLICE_HIDING',
+                'POLICE_WITH_MOBILE_CAMERA',
             ],
             self::CHIT_CHAT => [],
         };

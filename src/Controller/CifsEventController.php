@@ -31,15 +31,22 @@ class CifsEventController extends AbstractController
     #[Route('', name: 'index', methods: ['GET'])]
     public function index(Request $request): Response
     {
-        $locale  = $request->getLocale() ?: 'pt';
-        $grouped = $this->typeRepo->getGroupedByType($locale);
-        $events  = $this->eventRepo->findFiltered(onlyActive: false, limit: 50);
+        $locale   = $request->getLocale() ?: 'pt';
+        $grouped  = $this->typeRepo->getGroupedByType($locale);
+        $typesMap = $this->typeRepo->getTypesMap($locale);
+        $events   = $this->eventRepo->findFiltered(onlyActive: false, limit: 50);
 
         return $this->render('cifs/index.html.twig', [
             'grouped'    => $grouped,
+            'typesMap'   => $typesMap,
             'events'     => $events,
             'directions' => CifsDirectionEnum::cases(),
             'types'      => CifsTypeEnum::cases(),
+            'roadsides'  => \App\Enum\CifsRoadsideEnum::cases(),
+            'weekdays'   => [
+                'monday' => 'Segunda', 'tuesday' => 'Terça', 'wednesday' => 'Quarta',
+                'thursday' => 'Quinta', 'friday' => 'Sexta', 'saturday' => 'Sábado', 'sunday' => 'Domingo',
+            ],
         ]);
     }
 
@@ -81,13 +88,43 @@ class CifsEventController extends AbstractController
         $event->setPolyline(trim($data['polyline']));
         $event->setStreet($data['street']);
 
+        $direction = null;
         if (!empty($data['direction'])) {
-            $dir = CifsDirectionEnum::tryFrom($data['direction']);
-            if ($dir) $event->setDirection($dir);
+            $direction = CifsDirectionEnum::tryFrom($data['direction']);
+            if ($direction) $event->setDirection($direction);
         }
 
         if (!empty($data['description'])) {
             $event->setDescription(mb_substr($data['description'], 0, 40));
+        }
+
+        // schedule: mapa {dayname: "hh:mm-hh:mm,hh:mm-hh:mm"} — tag opcional da spec CIFS
+        if (!empty($data['schedule']) && is_array($data['schedule'])) {
+            $validDays = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+            $schedule = [];
+            foreach ($data['schedule'] as $day => $ranges) {
+                if (!in_array($day, $validDays, true) || empty($ranges)) continue;
+                if (!preg_match('/^\d{2}:\d{2}-\d{2}:\d{2}(,\d{2}:\d{2}-\d{2}:\d{2})*$/', $ranges)) {
+                    return $this->json(['error' => "Horário inválido para $day. Use HH:MM-HH:MM."], 400);
+                }
+                $schedule[$day] = $ranges;
+            }
+            if ($schedule) $event->setSchedule($schedule);
+        }
+
+        // lane_impact (formato parcial): só se não for fechamento total e a via afetada for um único sentido
+        if (isset($data['lane_impact']['total_closed_lanes']) && $data['lane_impact']['total_closed_lanes'] !== '') {
+            if ($type === CifsTypeEnum::ROAD_CLOSED) {
+                return $this->json(['error' => 'lane_impact não se aplica a ROAD_CLOSED (fechamento total).'], 400);
+            }
+            if ($direction !== CifsDirectionEnum::ONE_DIRECTION) {
+                return $this->json(['error' => 'lane_impact exige direction = ONE_DIRECTION.'], 400);
+            }
+            $event->setLaneImpactClosedLanes((int) $data['lane_impact']['total_closed_lanes']);
+            if (!empty($data['lane_impact']['roadside'])) {
+                $roadside = \App\Enum\CifsRoadsideEnum::tryFrom($data['lane_impact']['roadside']);
+                if ($roadside) $event->setLaneImpactRoadside($roadside);
+            }
         }
 
         try {

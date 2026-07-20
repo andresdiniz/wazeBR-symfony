@@ -41,6 +41,19 @@ class CifsFeedService
             if ($event->getEndTime())    $incident['endtime']     = $event->getEndTime()->format(\DateTimeInterface::ATOM);
             if ($event->getUpdateTime()) $incident['updatetime']  = $event->getUpdateTime()->format(\DateTimeInterface::ATOM);
 
+            if ($event->getSchedule()) {
+                $incident['schedule'] = $event->getSchedule();
+            }
+
+            if ($event->getLaneImpactClosedLanes() !== null) {
+                $incident['lane_impact'] = [
+                    'total_closed_lanes' => $event->getLaneImpactClosedLanes(),
+                ];
+                if ($event->getLaneImpactRoadside()) {
+                    $incident['lane_impact']['roadside'] = $event->getLaneImpactRoadside()->value;
+                }
+            }
+
             $incidents[] = $incident;
         }
 
@@ -82,6 +95,21 @@ class CifsFeedService
             $inc->addChild('starttime', $event->getStartTime()->format(\DateTimeInterface::ATOM));
             if ($event->getEndTime()) {
                 $inc->addChild('endtime', $event->getEndTime()->format(\DateTimeInterface::ATOM));
+            }
+
+            if ($event->getSchedule()) {
+                $sched = $inc->addChild('schedule');
+                foreach ($event->getSchedule() as $day => $ranges) {
+                    $sched->addChild($day, $ranges);
+                }
+            }
+
+            if ($event->getLaneImpactClosedLanes() !== null) {
+                $lane = $inc->addChild('lane_impact');
+                $lane->addChild('total_closed_lanes', (string) $event->getLaneImpactClosedLanes());
+                if ($event->getLaneImpactRoadside()) {
+                    $lane->addChild('roadside', $event->getLaneImpactRoadside()->value);
+                }
             }
         }
 
