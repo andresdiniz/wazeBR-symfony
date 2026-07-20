@@ -35,41 +35,90 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
     // ── KPIs ──────────────────────────────────────────────────────────────────
 
     /**
-     * Velocidade média (km/h) das rotas principais do snapshot mais recente.
-     * Retorna 0.0 quando não há snapshot.
+     * Velocidade média calculada (km/h) das rotas principais do snapshot mais recente.
+     * Fórmula: (length_metros / time_segundos) * 3.6
+     * Retorna 0.0 quando não há snapshot ou rotas com dados válidos.
      */
     public function avgSpeedByPartner(Partner $partner): float
     {
         $latestId = $this->latestSnapshotId($partner);
-        if (!$latestId) { return 0.0; }
+        if (!$latestId) {
+            return 0.0;
+        }
 
-        $val = $this->createQueryBuilder('r')
-            ->select('AVG(r.speed)')
+        // Busca length e time de todas as rotas válidas do snapshot
+        $rows = $this->createQueryBuilder('r')
+            ->select('r.length AS length_m, r.time AS time_s')
             ->where('r.snapshot = :snap')
             ->andWhere('r.isSubRoute = false')
-            ->andWhere('r.speed IS NOT NULL')
+            ->andWhere('r.length IS NOT NULL')
+            ->andWhere('r.time IS NOT NULL')
+            ->andWhere('r.time > 0')
             ->setParameter('snap', $latestId)
-            ->getQuery()->getSingleScalarResult();
+            ->getQuery()
+            ->getArrayResult();
 
-        return round((float)($val ?? 0), 1);
+        if (empty($rows)) {
+            return 0.0;
+        }
+
+        $totalSpeed = 0.0;
+        $count = 0;
+        foreach ($rows as $row) {
+            $speedKmh = ((float)$row['length_m'] / (float)$row['time_s']) * 3.6;
+            $totalSpeed += $speedKmh;
+            $count++;
+        }
+
+        return $count > 0 ? round($totalSpeed / $count, 1) : 0.0;
     }
 
     /**
      * Tempo de viagem médio (segundos) das rotas principais do snapshot mais recente.
+     * Usa o campo `time` da entity (tempo atual de percurso em segundos).
      * Retorna 0.0 quando não há snapshot.
      */
     public function avgTravelTimeByPartner(Partner $partner): float
     {
         $latestId = $this->latestSnapshotId($partner);
-        if (!$latestId) { return 0.0; }
+        if (!$latestId) {
+            return 0.0;
+        }
 
         $val = $this->createQueryBuilder('r')
-            ->select('AVG(r.travelTime)')
+            ->select('AVG(r.time)')
             ->where('r.snapshot = :snap')
             ->andWhere('r.isSubRoute = false')
-            ->andWhere('r.travelTime IS NOT NULL')
+            ->andWhere('r.time IS NOT NULL')
             ->setParameter('snap', $latestId)
-            ->getQuery()->getSingleScalarResult();
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return round((float)($val ?? 0));
+    }
+
+    /**
+     * Atraso médio (segundos) em relação ao tempo histórico no snapshot mais recente.
+     * delay = time - historicTime  (positivo = mais lento que o normal)
+     * Retorna 0.0 quando não há snapshot ou dados válidos.
+     */
+    public function avgDelayByPartner(Partner $partner): float
+    {
+        $latestId = $this->latestSnapshotId($partner);
+        if (!$latestId) {
+            return 0.0;
+        }
+
+        $val = $this->createQueryBuilder('r')
+            ->select('AVG(r.time - r.historicTime)')
+            ->where('r.snapshot = :snap')
+            ->andWhere('r.isSubRoute = false')
+            ->andWhere('r.time IS NOT NULL')
+            ->andWhere('r.historicTime IS NOT NULL')
+            ->andWhere('r.historicTime > 0')
+            ->setParameter('snap', $latestId)
+            ->getQuery()
+            ->getSingleScalarResult();
 
         return round((float)($val ?? 0));
     }
@@ -81,7 +130,9 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
     public function countGroupByJamLevel(Partner $partner): array
     {
         $latestId = $this->latestSnapshotId($partner);
-        if (!$latestId) { return []; }
+        if (!$latestId) {
+            return [];
+        }
 
         $rows = $this->createQueryBuilder('r')
             ->select('r.jamLevel AS jam_level, COUNT(r.id) AS total')
@@ -90,7 +141,8 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
             ->setParameter('snap', $latestId)
             ->groupBy('r.jamLevel')
             ->orderBy('r.jamLevel', 'DESC')
-            ->getQuery()->getArrayResult();
+            ->getQuery()
+            ->getArrayResult();
 
         return array_map(static fn(array $r) => [
             'jam_level' => (int) $r['jam_level'],
@@ -104,7 +156,9 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
     public function findTvtByPartner(Partner $partner, ?int $jamLevel = null): array
     {
         $latestId = $this->latestSnapshotId($partner);
-        if (!$latestId) { return []; }
+        if (!$latestId) {
+            return [];
+        }
 
         $qb = $this->createQueryBuilder('r')
             ->where('r.snapshot = :snapId')
@@ -188,7 +242,8 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
             ->from(WazeTvtSnapshot::class, 's')
             ->where('s.partner = :partner')
             ->setParameter('partner', $partner)
-            ->getQuery()->getSingleScalarResult();
+            ->getQuery()
+            ->getSingleScalarResult();
 
         return $id ? (int) $id : null;
     }
