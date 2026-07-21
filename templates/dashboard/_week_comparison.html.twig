@@ -1,0 +1,66 @@
+{#
+  Bloco de comparação semana atual × semana passada para WazeCount.
+  Uso: {% include 'dashboard/_week_comparison.html.twig' with {current: kpis.wazeCount, lastWeek: kpis.wazeCountLastWeek, peak: kpis.wazeCountPeak} %}
+#}
+{% set cur = current %}
+{% set prev = lastWeek %}
+<div class="card h-100">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-bar-chart-line me-1"></i> Comparativo — Semana Atual vs Anterior</span>
+        {% if peak %}
+        <small class="text-muted">Pico hoje: {{ peak.max_jams }} jams · {{ peak.max_alerts }} alertas</small>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        {% if cur %}
+        <div class="row row-cols-2 row-cols-md-4 g-3">
+            {# Jams #}
+            <div class="col">
+                <div class="text-muted small">Jams agora</div>
+                <div class="fs-4 fw-bold">{{ cur.totalJams ?? '—' }}</div>
+                {% if prev and prev.totalJams is not null %}
+                    {% set diff = (cur.totalJams ?? 0) - prev.totalJams %}
+                    <div class="small {{ diff > 0 ? 'text-danger' : 'text-success' }}">
+                        {{ diff > 0 ? '▲' : '▼' }} {{ diff|abs }} vs semana passada
+                    </div>
+                {% endif %}
+            </div>
+            {# Alertas #}
+            <div class="col">
+                <div class="text-muted small">Alertas agora</div>
+                <div class="fs-4 fw-bold">{{ cur.totalAlerts ?? '—' }}</div>
+                {% if prev and prev.totalAlerts is not null %}
+                    {% set diff = (cur.totalAlerts ?? 0) - prev.totalAlerts %}
+                    <div class="small {{ diff > 0 ? 'text-danger' : 'text-success' }}">
+                        {{ diff > 0 ? '▲' : '▼' }} {{ diff|abs }} vs semana passada
+                    </div>
+                {% endif %}
+            </div>
+            {# Irregularidades #}
+            <div class="col">
+                <div class="text-muted small">Irregularidades</div>
+                <div class="fs-4 fw-bold">{{ cur.totalIrregularities ?? '—' }}</div>
+                {% if prev and prev.totalIrregularities is not null %}
+                    {% set diff = (cur.totalIrregularities ?? 0) - prev.totalIrregularities %}
+                    <div class="small {{ diff > 0 ? 'text-danger' : 'text-success' }}">
+                        {{ diff > 0 ? '▲' : '▼' }} {{ diff|abs }} vs semana passada
+                    </div>
+                {% endif %}
+            </div>
+            {# Mentions #}
+            <div class="col">
+                <div class="text-muted small">Menções</div>
+                <div class="fs-4 fw-bold">{{ cur.totalMentions ?? '—' }}</div>
+                {% if prev and prev.totalMentions is not null %}
+                    {% set diff = (cur.totalMentions ?? 0) - prev.totalMentions %}
+                    <div class="small {{ diff > 0 ? 'text-warning' : 'text-success' }}">
+                        {{ diff > 0 ? '▲' : '▼' }} {{ diff|abs }} vs semana passada
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <p class="text-muted">Sem dados de snapshot disponíveis.</p>
+        {% endif %}
+    </div>
+</div>

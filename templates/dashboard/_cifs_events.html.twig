@@ -1,0 +1,72 @@
+{#
+  Painel de Eventos CIFS (fechamentos, obras, eventos especiais).
+  Inclua na dashboard: {% include 'dashboard/_cifs_events.html.twig' %}
+  Variáveis: cifsActive, cifsUpcoming, cifsActiveByType, cifsTopStreets, kpis.cifsActiveCount
+#}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-cone-striped me-1"></i> Eventos de Via (CIFS)</span>
+        <span class="badge bg-danger">{{ kpis.cifsActiveCount }} ativos</span>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+
+            {# Distribuição por tipo #}
+            {% if cifsActiveByType %}
+            <div class="col-md-4">
+                <h6 class="text-muted mb-2">Por Tipo</h6>
+                <ul class="list-group list-group-flush">
+                {% for row in cifsActiveByType %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-1">
+                        <span class="small">
+                        {% if row.type == 'ROAD_CLOSED' %}<i class="bi bi-sign-stop text-danger"></i>
+                        {% elseif row.type == 'CONSTRUCTION' %}<i class="bi bi-wrench-adjustable text-warning"></i>
+                        {% else %}<i class="bi bi-exclamation-circle text-info"></i>
+                        {% endif %}
+                        {{ row.type|replace({'_': ' '})|title }}
+                        </span>
+                        <span class="badge bg-secondary">{{ row.total }}</span>
+                    </li>
+                {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {# Vias mais afetadas #}
+            {% if cifsTopStreets %}
+            <div class="col-md-4">
+                <h6 class="text-muted mb-2">Vias Mais Afetadas</h6>
+                <ul class="list-group list-group-flush">
+                {% for row in cifsTopStreets %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-1">
+                        <span class="small text-truncate" style="max-width:140px">{{ row.street }}</span>
+                        <span class="badge bg-warning text-dark">{{ row.total }}</span>
+                    </li>
+                {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {# Próximos eventos (7 dias) #}
+            <div class="col-md-4">
+                <h6 class="text-muted mb-2"><i class="bi bi-calendar3 me-1"></i>Próximos 7 dias</h6>
+                {% if cifsUpcoming %}
+                <ul class="list-group list-group-flush">
+                {% for ev in cifsUpcoming|slice(0, 5) %}
+                    <li class="list-group-item px-0 py-1">
+                        <div class="small fw-semibold">{{ ev.street ?? 'Via não informada' }}</div>
+                        <div class="text-muted" style="font-size:.75rem">
+                            {{ ev.startTime ? ev.startTime|date('d/m H:i') : '—' }}
+                            {% if ev.endTime %} até {{ ev.endTime|date('d/m H:i') }}{% endif %}
+                        </div>
+                    </li>
+                {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted small">Nenhum evento programado.</p>
+                {% endif %}
+            </div>
+
+        </div>
+    </div>
+</div>
