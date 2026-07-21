@@ -41,8 +41,7 @@ class DashboardController extends AbstractController
             return $this->redirectToRoute('admin_partner_index');
         }
 
-        $partner   = $this->tenantContext->requirePartner();
-        $partnerId = $partner->getId();
+        $partner = $this->tenantContext->requirePartner();
 
         // ── Contagens base ────────────────────────────────────────────────────
         $alertCount   = $this->alertRepo->countByPartner($partner);
@@ -58,8 +57,8 @@ class DashboardController extends AbstractController
         $alertsLast7d  = $this->alertRepo->countLast7dByPartner($partner);
 
         // ── KPIs temporais — jams ─────────────────────────────────────────────
-        $jamsLast24h = $this->jamRepo->countLast24hByPartner($partner);
-        $jamsLast7d  = $this->jamRepo->countLast7dByPartner($partner);
+        $jamsLast24h    = $this->jamRepo->countLast24hByPartner($partner);
+        $jamsLast7d     = $this->jamRepo->countLast7dByPartner($partner);
         $avgJamSpeed    = $this->jamRepo->avgSpeedKmhByPartner($partner);
         $avgJamDelay    = $this->jamRepo->avgDelaySecsByPartner($partner);
         $totalJamLength = $this->jamRepo->totalLengthMByPartner($partner);
@@ -76,27 +75,27 @@ class DashboardController extends AbstractController
         $rainLastHour = $this->cemadenRepo->sumRainLastHourByPartner($partner);
 
         // ── KPIs hidrológicos — CemadenHydro ─────────────────────────────────
-        $hydroKpis = $this->hydroRepo->kpiSummaryByPartner($partnerId);
+        $hydroKpis = $this->hydroRepo->kpiSummaryByPartner($partner);
 
         // ── KPIs TVT ──────────────────────────────────────────────────────────
-        $tvtAvgSpeed       = $this->tvtRouteRepo->avgSpeedByPartner($partner);
-        $tvtAvgTravelTime  = $this->tvtRouteRepo->avgTravelTimeByPartner($partner);
-        $tvtJamLevelDist   = $this->tvtRouteRepo->countGroupByJamLevel($partner);
+        $tvtAvgSpeed      = $this->tvtRouteRepo->avgSpeedByPartner($partner);
+        $tvtAvgTravelTime = $this->tvtRouteRepo->avgTravelTimeByPartner($partner);
+        $tvtJamLevelDist  = $this->tvtRouteRepo->countGroupByJamLevel($partner);
 
         // ── WazeCount — usuários em congestionamentos ─────────────────────────
         $wazeCount = $this->wazeCountRepo->findLatest();
 
         // ── Distribuições para gráficos ───────────────────────────────────────
-        $alertsByType    = $this->alertRepo->countGroupByType($partner);
-        $alertsBySubtype = $this->alertRepo->countGroupBySubtype($partner, 8);
-        $alertsByCity    = $this->alertRepo->countGroupByCity($partner, 10);
-        $alertsByConf    = $this->alertRepo->countByConfidence($partner);
-        $topStreets      = $this->alertRepo->topStreetsByAlert($partner, 10);
-        $jamsByLevel     = $this->jamRepo->countGroupByLevel($partner);
-        $jamsByCity      = $this->jamRepo->countGroupByCity($partner, 10);
+        $alertsByType      = $this->alertRepo->countGroupByType($partner);
+        $alertsBySubtype   = $this->alertRepo->countGroupBySubtype($partner, 8);
+        $alertsByCity      = $this->alertRepo->countGroupByCity($partner, 10);
+        $alertsByConf      = $this->alertRepo->countByConfidence($partner);
+        $topStreets        = $this->alertRepo->topStreetsByAlert($partner, 10);
+        $jamsByLevel       = $this->jamRepo->countGroupByLevel($partner);
+        $jamsByCity        = $this->jamRepo->countGroupByCity($partner, 10);
         $jamLevelBreakdown = $this->jamRepo->levelBreakdownByPartner($partner);
-        $alertsPerHour   = $this->alertRepo->countPerHourLast24h($partner);
-        $jamsPerHour     = $this->jamRepo->countPerHourLast24h($partner);
+        $alertsPerHour     = $this->alertRepo->countPerHourLast24h($partner);
+        $jamsPerHour       = $this->jamRepo->countPerHourLast24h($partner);
 
         return $this->render('dashboard/index.html.twig', [
             'partner' => $partner,
