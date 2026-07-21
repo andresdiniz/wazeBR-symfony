@@ -25,7 +25,7 @@ class WazeCountRepository extends ServiceEntityRepository
     public function findLatest(Partner $partner): ?WazeCount
     {
         return $this->createQueryBuilder('c')
-            ->where('c.<NOME_DO_CAMPO> = :partner')
+            ->where('c.partner = :partner')
             ->setParameter('partner', $partner)
             ->orderBy('c.collectedAt', 'DESC')
             ->setMaxResults(1)
