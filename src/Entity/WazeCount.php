@@ -24,6 +24,13 @@ class WazeCount
     private ?int $id = null;
 
     /**
+     * Partner dono deste snapshot de contagem.
+     */
+    #[ORM\ManyToOne(targetEntity: Partner::class, inversedBy: 'wazeCounts')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Partner $partner = null;
+
+    /**
      * Timestamp da coleta
      */
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
@@ -73,6 +80,9 @@ class WazeCount
     private ?array $rawData = null;
 
     public function getId(): ?int { return $this->id; }
+
+    public function getPartner(): ?Partner { return $this->partner; }
+    public function setPartner(?Partner $partner): static { $this->partner = $partner; return $this; }
 
     public function getCollectedAt(): ?\DateTimeInterface { return $this->collectedAt; }
     public function setCollectedAt(?\DateTimeInterface $collectedAt): static { $this->collectedAt = $collectedAt; return $this; }

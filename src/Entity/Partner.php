@@ -73,6 +73,9 @@ class Partner
     #[ORM\OneToMany(targetEntity: MonitoredLink::class, mappedBy: 'partner')]
     private Collection $links;
 
+    #[ORM\OneToMany(targetEntity: WazeCount::class, mappedBy: 'partner', orphanRemoval: true)]
+    private Collection $wazeCounts;
+
     public function __construct()
     {
         $this->createdAt   = new \DateTimeImmutable();
@@ -83,6 +86,7 @@ class Partner
         $this->routes      = new ArrayCollection();
         $this->cities      = new ArrayCollection();
         $this->links       = new ArrayCollection();
+        $this->wazeCounts  = new ArrayCollection();
     }
 
     public function getId(): ?int { return $this->id; }
@@ -110,6 +114,7 @@ class Partner
     public function getRoutes(): Collection { return $this->routes; }
     public function getCities(): Collection { return $this->cities; }
     public function getLinks(): Collection { return $this->links; }
+    public function getWazeCounts(): Collection { return $this->wazeCounts; }
 
     public function generateApiToken(): static
     {

@@ -48,7 +48,7 @@ class WazeCountRepository extends ServiceEntityRepository
 
     /**
      * Pico do dia: máximo de cada indicador com o horário em que ocorreu.
-     * Retorna ['max_jams'=>47,'max_jams_at'=>'08:15','max_alerts'=>23,...]
+     * Retorna ['max_jams'=>47,'max_alerts'=>23,...]
      */
     public function peakOfDay(Partner $partner): array
     {
