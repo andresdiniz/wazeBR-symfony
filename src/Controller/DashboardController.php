@@ -53,8 +53,8 @@ class DashboardController extends AbstractController
         $routeCount   = $this->tvtRouteRepo->countByPartner($partner);
 
         // ── KPIs temporais — alertas ──────────────────────────────────────────
-        $alertsLast1h  = $this->alertRepo->countLast1hByPartner($partner);
-        $alertsLast24h = $this->alertRepo->countLast24hByPartner($partner);
+        $alertsLast1h  = $this->alertRepo->countLastHoursByPartner($partner, 1);
+        $alertsLast24h = $this->alertRepo->countLastHoursByPartner($partner, 24);
         $alertsLast7d  = $this->alertRepo->countLast7dByPartner($partner);
 
         // ── KPIs temporais — jams ─────────────────────────────────────────────
