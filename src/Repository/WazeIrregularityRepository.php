@@ -18,6 +18,9 @@ use Doctrine\Persistence\ManagerRegistry;
  *   bbox, line, isActive, collectedAt,
  *   leadAlert* (id, type, subType, position, numComments, city,
  *               externalImageId, numThumbsUp, street, numNotThereReports)
+ *
+ * NOTA: MariaDB não aceita parâmetros bind no LIMIT/OFFSET.
+ *       Valores de limit/offset são interpolados como int diretamente na SQL.
  */
 class WazeIrregularityRepository extends ServiceEntityRepository
 {
@@ -50,8 +53,8 @@ class WazeIrregularityRepository extends ServiceEntityRepository
     // ── KPIs ──────────────────────────────────────────────────────────────────
 
     /**
-     * Irregularidades "piorando" = ativas onde tempo atual > tempo histórico
-     * (a via está mais lenta que o histórico), ordenadas pelo maior atraso relativo.
+     * Irregularidades "piorando" = ativas onde tempo atual > tempo histórico.
+     * Ordenadas pelo maior jamLevel e depois pelo maior atraso.
      */
     public function findWorseningByPartner(Partner $partner, int $limit = 20): array
     {
@@ -69,25 +72,24 @@ class WazeIrregularityRepository extends ServiceEntityRepository
     }
 
     /**
-     * Ranking de piora de velocidade por via (fromName/toName).
-     * Calcula (historicTime - time) como delta de atraso.
-     * Retorna [['name'=>'...','from_name'=>'...','to_name'=>'...','delay_s'=>120,'jam_level'=>3], ...]
+     * Ranking de piora por via (fromName → toName).
+     * LIMIT interpolado como int — MariaDB não aceita bind no LIMIT.
      */
     public function speedLossRankingByStreet(Partner $partner, int $hours = 24, int $limit = 10): array
     {
-        $conn  = $this->getEntityManager()->getConnection();
+        $limit = max(1, (int) $limit);
         $since = (new \DateTimeImmutable("-{$hours} hours"))->format('Y-m-d H:i:s');
 
-        $sql = '
+        $sql = "
             SELECT
                 name,
                 from_name,
                 to_name,
-                ROUND(AVG(time - historic_time), 0)          AS avg_delay_s,
-                ROUND(AVG(avg_speed), 1)                     AS avg_speed,
-                ROUND(AVG(historic_speed), 1)                AS avg_historic_speed,
-                ROUND(AVG(jam_level), 1)                     AS avg_jam_level,
-                COUNT(*)                                     AS occurrences
+                ROUND(AVG(time - historic_time), 0)  AS avg_delay_s,
+                ROUND(AVG(avg_speed), 1)             AS avg_speed,
+                ROUND(AVG(historic_speed), 1)        AS avg_historic_speed,
+                ROUND(AVG(jam_level), 1)             AS avg_jam_level,
+                COUNT(*)                             AS occurrences
             FROM waze_irregularities
             WHERE partner_id = :partner
               AND collected_at >= :since
@@ -95,27 +97,26 @@ class WazeIrregularityRepository extends ServiceEntityRepository
               AND name IS NOT NULL
             GROUP BY name, from_name, to_name
             ORDER BY avg_delay_s DESC
-            LIMIT :lim
-        ';
+            LIMIT {$limit}
+        ";
 
         return $this->getEntityManager()->getConnection()
             ->executeQuery($sql, [
                 'partner' => $partner->getId(),
                 'since'   => $since,
-                'lim'     => $limit,
             ])->fetchAllAssociative();
     }
 
     /**
-     * Atraso acumulado total (segundos) por via nas últimas $hours horas.
-     * Retorna [['name'=>'...','total_delay_s'=>840,'occurrences'=>6], ...]
+     * Atraso acumulado total por via.
+     * LIMIT interpolado como int — MariaDB não aceita bind no LIMIT.
      */
     public function accumulatedDelayByStreet(Partner $partner, int $hours = 24, int $limit = 10): array
     {
-        $conn  = $this->getEntityManager()->getConnection();
+        $limit = max(1, (int) $limit);
         $since = (new \DateTimeImmutable("-{$hours} hours"))->format('Y-m-d H:i:s');
 
-        $sql = '
+        $sql = "
             SELECT
                 name,
                 from_name,
@@ -129,31 +130,28 @@ class WazeIrregularityRepository extends ServiceEntityRepository
               AND historic_time IS NOT NULL
             GROUP BY name, from_name, to_name
             ORDER BY total_delay_s DESC
-            LIMIT :lim
-        ';
+            LIMIT {$limit}
+        ";
 
         return $this->getEntityManager()->getConnection()
             ->executeQuery($sql, [
                 'partner' => $partner->getId(),
                 'since'   => $since,
-                'lim'     => $limit,
             ])->fetchAllAssociative();
     }
 
     /**
      * Distribuição por jamLevel (0=livre .. 4=parado).
-     * Retorna [['jam_level'=>3,'total'=>12,'avg_time'=>180], ...]
      */
     public function breakdownByJamLevel(Partner $partner, int $days = 7): array
     {
-        $conn  = $this->getEntityManager()->getConnection();
         $since = (new \DateTimeImmutable("-{$days} days"))->format('Y-m-d H:i:s');
 
         $sql = '
             SELECT
                 jam_level,
-                COUNT(*)           AS total,
-                ROUND(AVG(time),0) AS avg_time_s
+                COUNT(*)            AS total,
+                ROUND(AVG(time), 0) AS avg_time_s
             FROM waze_irregularities
             WHERE partner_id = :partner
               AND collected_at >= :since
@@ -170,9 +168,6 @@ class WazeIrregularityRepository extends ServiceEntityRepository
 
     // ── Listagens ─────────────────────────────────────────────────────────────
 
-    /**
-     * Irregularidades ativas mais recentes.
-     */
     public function findRecentByPartner(Partner $partner, int $limit = 50): array
     {
         return $this->createQueryBuilder('i')
