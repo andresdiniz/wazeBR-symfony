@@ -87,7 +87,6 @@ class DashboardController extends AbstractController
 
         // ── WazeCount — usuários em congestionamentos ─────────────────────────
         $wazeCount = $this->wazeCountRepo->findLatest($partner);
-
         // ── Distribuições para gráficos ───────────────────────────────────────
         $alertsByType      = $this->alertRepo->countGroupByType($partner);
         $alertsBySubtype   = $this->alertRepo->countGroupBySubtype($partner, 8);
