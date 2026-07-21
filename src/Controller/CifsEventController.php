@@ -19,165 +19,212 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/cifs', name: 'cifs_')]
 class CifsEventController extends AbstractController
 {
-    public function __construct(
-        private readonly CifsEventRepository     $eventRepo,
-        private readonly CifsEventTypeRepository $typeRepo,
-        private readonly CifsFeedService         $feedService,
-        private readonly EntityManagerInterface  $em,
-    ) {}
+public function __construct(
+private readonly CifsEventRepository $eventRepo,
+private readonly CifsEventTypeRepository $typeRepo,
+private readonly CifsFeedService $feedService,
+private readonly EntityManagerInterface $em,
+) {}
 
-    // ── Página principal (PWA) ─────────────────────────────────
+#[Route('', name: 'index', methods: ['GET'])]
+public function index(Request $request): Response
+{
+$locale = $request->getLocale() ?: 'pt';
+$grouped = $this->typeRepo->getGroupedByType($locale);
+$typesMap = $this->typeRepo->getTypesMap($locale);
+$events = $this->eventRepo->findFiltered(onlyActive: false, limit: 100);
 
-    #[Route('', name: 'index', methods: ['GET'])]
-    public function index(Request $request): Response
-    {
-        $locale   = $request->getLocale() ?: 'pt';
-        $grouped  = $this->typeRepo->getGroupedByType($locale);
-        $typesMap = $this->typeRepo->getTypesMap($locale);
-        $events   = $this->eventRepo->findFiltered(onlyActive: false, limit: 50);
+return $this->render('cifs/index.html.twig', [
+'grouped' => $grouped,
+'typesMap' => $typesMap,
+'events' => $events,
+'directions' => CifsDirectionEnum::cases(),
+'types' => CifsTypeEnum::cases(),
+'roadsides' => \App\Enum\CifsRoadsideEnum::cases(),
+'weekdays' => [
+'monday' => 'Segunda', 'tuesday' => 'Terça', 'wednesday' => 'Quarta',
+'thursday' => 'Quinta', 'friday' => 'Sexta', 'saturday' => 'Sábado', 'sunday' => 'Domingo',
+],
+]);
+}
 
-        return $this->render('cifs/index.html.twig', [
-            'grouped'    => $grouped,
-            'typesMap'   => $typesMap,
-            'events'     => $events,
-            'directions' => CifsDirectionEnum::cases(),
-            'types'      => CifsTypeEnum::cases(),
-            'roadsides'  => \App\Enum\CifsRoadsideEnum::cases(),
-            'weekdays'   => [
-                'monday' => 'Segunda', 'tuesday' => 'Terça', 'wednesday' => 'Quarta',
-                'thursday' => 'Quinta', 'friday' => 'Sexta', 'saturday' => 'Sábado', 'sunday' => 'Domingo',
-            ],
-        ]);
-    }
+#[Route('/api/types', name: 'api_types', methods: ['GET'])]
+public function apiTypes(Request $request): JsonResponse
+{
+$locale = $request->query->get('locale', 'pt');
+$grouped = $this->typeRepo->getGroupedByType($locale);
+return $this->json($grouped);
+}
 
-    // ── API: tipos e subtipos (JSON) — usada pelo JS da página ──
+#[Route('/api/event', name: 'api_save', methods: ['POST'])]
+public function apiSave(Request $request, PartnerRepository $partnerRepo): JsonResponse
+{
+$data = json_decode($request->getContent(), true);
 
-    #[Route('/api/types', name: 'api_types', methods: ['GET'])]
-    public function apiTypes(Request $request): JsonResponse
-    {
-        $locale  = $request->query->get('locale', 'pt');
-        $grouped = $this->typeRepo->getGroupedByType($locale);
-        return $this->json($grouped);
-    }
+if (!$data || empty($data['type']) || empty($data['polyline']) || empty($data['street'])) {
+return $this->json(['error' => 'Campos obrigatórios ausentes: type, polyline, street'], 400);
+}
 
-    // ── API: salvar evento (POST JSON) ─────────────────────────
+$type = CifsTypeEnum::tryFrom($data['type']);
+if (!$type) {
+return $this->json(['error' => 'Tipo inválido'], 400);
+}
 
-    #[Route('/api/event', name: 'api_save', methods: ['POST'])]
-    public function apiSave(Request $request, PartnerRepository $partnerRepo): JsonResponse
-    {
-        $data = json_decode($request->getContent(), true);
+// parse and basic normalize polyline: expect "lat lon lat lon ..." or "lon lat,lon lat" etc.
+$polyline = trim((string)$data['polyline']);
+if ($polyline === '') {
+return $this->json(['error' => 'Polyline inválida'], 400);
+}
+// Normalização mínima: accept space-separated pairs (lat lon) or comma pairs (lon,lat)
+// For stricter validation you may implement encoded polyline support.
+$pairsSpace = preg_split('/\s+/', $polyline);
+if (count($pairsSpace) < 2) {
+// Try comma-separated lon,lat list
+$coords = array_filter(array_map('trim', preg_split('/,/', $polyline)));
+if (count($coords) < 2) {
+return $this->json(['error' => 'Polyline contém poucos pontos (mínimo 1 ponto requerido, preferível 2+)'], 400);
+}
+}
 
-        if (!$data || empty($data['type']) || empty($data['polyline']) || empty($data['street'])) {
-            return $this->json(['error' => 'Campos obrigatórios ausentes: type, polyline, street'], 400);
-        }
+// validate start/end time parsing; ensure timezone-aware ISO
+try {
+$start = !empty($data['starttime']) ? new \DateTimeImmutable($data['starttime']) : new \DateTimeImmutable('now');
+} catch (\Exception) {
+return $this->json(['error' => 'starttime inválido; use ISO8601 com timezone'], 400);
+}
 
-        $type = CifsTypeEnum::tryFrom($data['type']);
-        if (!$type) {
-            return $this->json(['error' => 'Tipo inválido'], 400);
-        }
+$end = null;
+if (!empty($data['endtime'])) {
+try {
+$end = new \DateTimeImmutable($data['endtime']);
+} catch (\Exception) {
+return $this->json(['error' => 'endtime inválido; use ISO8601 com timezone'], 400);
+}
+}
 
-        // Valida subtipo se informado
-        $subtype = $data['subtype'] ?? null;
-        if ($subtype && !in_array($subtype, $type->allowedSubtypes(), true)) {
-            return $this->json(['error' => 'Subtipo inválido para o tipo ' . $type->value], 400);
-        }
+// For ROAD_CLOSED, enforce starttime + direction and require polyline with >=2 points when possible
+$direction = null;
+if (!empty($data['direction'])) {
+$direction = CifsDirectionEnum::tryFrom($data['direction']);
+if (!$direction) {
+return $this->json(['error' => 'direction inválida'], 400);
+}
+}
 
-        $event = new CifsEvent();
-        $event->setType($type);
-        $event->setSubtype($subtype);
-        $event->setPolyline(trim($data['polyline']));
-        $event->setStreet($data['street']);
+if ($type === CifsTypeEnum::ROAD_CLOSED) {
+// starttime must be explicit (not now) according to stricter policy — require user provide starttime
+if (empty($data['starttime'])) {
+return $this->json(['error' => 'starttime obrigatório para ROAD_CLOSED (fechamento total)'], 400);
+}
+if (!$direction) {
+return $this->json(['error' => 'direction (ONE_DIRECTION|BOTH_DIRECTIONS) recomendado para ROAD_CLOSED'], 400);
+}
+}
 
-        $direction = null;
-        if (!empty($data['direction'])) {
-            $direction = CifsDirectionEnum::tryFrom($data['direction']);
-            if ($direction) $event->setDirection($direction);
-        }
+// description length: allow up to 64 chars per CIFS common recommendations
+$description = null;
+if (!empty($data['description'])) {
+$description = mb_substr((string)$data['description'], 0, 64);
+}
 
-        if (!empty($data['description'])) {
-            $event->setDescription(mb_substr($data['description'], 0, 40));
-        }
+// schedule validation (HH:MM-HH:MM[,...])
+$schedule = null;
+if (!empty($data['schedule']) && is_array($data['schedule'])) {
+$validDays = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+$sched = [];
+foreach ($data['schedule'] as $day => $ranges) {
+if (!in_array($day, $validDays, true) || empty($ranges)) continue;
+if (!preg_match('/^\d{2}:\d{2}-\d{2}:\d{2}(,\d{2}:\d{2}-\d{2}:\d{2})*$/', $ranges)) {
+return $this->json(['error' => "Horário inválido para $day. Use HH:MM-HH:MM."], 400);
+}
+$sched[$day] = $ranges;
+}
+if ($sched) $schedule = $sched;
+}
 
-        // schedule: mapa {dayname: "hh:mm-hh:mm,hh:mm-hh:mm"} — tag opcional da spec CIFS
-        if (!empty($data['schedule']) && is_array($data['schedule'])) {
-            $validDays = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
-            $schedule = [];
-            foreach ($data['schedule'] as $day => $ranges) {
-                if (!in_array($day, $validDays, true) || empty($ranges)) continue;
-                if (!preg_match('/^\d{2}:\d{2}-\d{2}:\d{2}(,\d{2}:\d{2}-\d{2}:\d{2})*$/', $ranges)) {
-                    return $this->json(['error' => "Horário inválido para $day. Use HH:MM-HH:MM."], 400);
-                }
-                $schedule[$day] = $ranges;
-            }
-            if ($schedule) $event->setSchedule($schedule);
-        }
+// lane_impact checks
+$laneImpact = null;
+if (!empty($data['lane_impact']) && is_array($data['lane_impact'])) {
+$li = $data['lane_impact'];
+if (isset($li['total_closed_lanes']) && $li['total_closed_lanes'] !== '') {
+if ($type === CifsTypeEnum::ROAD_CLOSED) {
+// disallow lane_impact for full closure
+return $this->json(['error' => 'lane_impact não se aplica a ROAD_CLOSED (fechamento total).'], 400);
+}
+if ($direction !== CifsDirectionEnum::ONE_DIRECTION) {
+return $this->json(['error' => 'lane_impact exige direction = ONE_DIRECTION.'], 400);
+}
+$laneImpact = [
+'total_closed_lanes' => (int)$li['total_closed_lanes'],
+];
+if (!empty($li['roadside'])) {
+$laneImpact['roadside'] = $li['roadside'];
+}
+}
+}
 
-        // lane_impact (formato parcial): só se não for fechamento total e a via afetada for um único sentido
-        if (isset($data['lane_impact']['total_closed_lanes']) && $data['lane_impact']['total_closed_lanes'] !== '') {
-            if ($type === CifsTypeEnum::ROAD_CLOSED) {
-                return $this->json(['error' => 'lane_impact não se aplica a ROAD_CLOSED (fechamento total).'], 400);
-            }
-            if ($direction !== CifsDirectionEnum::ONE_DIRECTION) {
-                return $this->json(['error' => 'lane_impact exige direction = ONE_DIRECTION.'], 400);
-            }
-            $event->setLaneImpactClosedLanes((int) $data['lane_impact']['total_closed_lanes']);
-            if (!empty($data['lane_impact']['roadside'])) {
-                $roadside = \App\Enum\CifsRoadsideEnum::tryFrom($data['lane_impact']['roadside']);
-                if ($roadside) $event->setLaneImpactRoadside($roadside);
-            }
-        }
+// partner assignment if provided
+$partner = null;
+if (!empty($data['partner_id'])) {
+$partner = $partnerRepo->find($data['partner_id']);
+}
 
-        try {
-            $event->setStartTime(new \DateTimeImmutable($data['starttime'] ?? 'now'));
-        } catch (\Exception) {
-            $event->setStartTime(new \DateTimeImmutable());
-        }
+// create event
+$event = new CifsEvent();
+$event->setType($type);
+$event->setSubtype($data['subtype'] ?? null);
+$event->setPolyline($polyline);
+$event->setStreet($data['street']);
+if ($direction) $event->setDirection($direction);
+if ($description) $event->setDescription($description);
+$event->setStartTime($start);
+if ($end) $event->setEndTime($end);
+if ($schedule) $event->setSchedule($schedule);
+if ($laneImpact !== null) {
+$event->setLaneImpactClosedLanes($laneImpact['total_closed_lanes']);
+if (!empty($laneImpact['roadside'])) {
+// Attempt to map roadside enum if exists
+$event->setLaneImpactRoadside(\App\Enum\CifsRoadsideEnum::tryFrom($laneImpact['roadside']) ?? null);
+}
+}
+if ($partner) $event->setPartner($partner);
 
-        if (!empty($data['endtime'])) {
-            try {
-                $event->setEndTime(new \DateTimeImmutable($data['endtime']));
-            } catch (\Exception) {}
-        }
+// externalId generation: prefer provided externalId, otherwise create stable unique id
+if (!empty($data['externalId'])) {
+$event->setExternalId(substr(preg_replace('/[^A-Za-z0-9-_]/', '-', $data['externalId']), 0, 80));
+} else {
+$event->setExternalId('cifs-' . bin2hex(random_bytes(6)));
+}
 
-        if (!empty($data['partner_id'])) {
-            $partner = $partnerRepo->find($data['partner_id']);
-            if ($partner) $event->setPartner($partner);
-        }
+$this->em->persist($event);
+$this->em->flush();
 
-        $this->em->persist($event);
-        $this->em->flush();
+return $this->json([
+'id' => $event->getId(),
+'externalId' => $event->getExternalId(),
+'message' => 'Evento criado com sucesso',
+], 201);
+}
 
-        return $this->json([
-            'id'         => $event->getId(),
-            'externalId' => $event->getExternalId(),
-            'message'    => 'Evento criado com sucesso',
-        ], 201);
-    }
+#[Route('/api/event/{id}/deactivate', name: 'api_deactivate', methods: ['POST'])]
+public function apiDeactivate(CifsEvent $event): JsonResponse
+{
+$event->setActive(false);
+$this->em->flush();
+return $this->json(['message' => 'Evento desativado']);
+}
 
-    // ── API: desativar evento ──────────────────────────────────
+#[Route('/feed.json', name: 'feed_json', methods: ['GET'])]
+public function feedJson(): JsonResponse
+{
+// Return JSON feed ready to be consumed by Waze; service handles shape
+return $this->json($this->feedService->buildJsonFeed());
+}
 
-    #[Route('/api/event/{id}/deactivate', name: 'api_deactivate', methods: ['POST'])]
-    public function apiDeactivate(CifsEvent $event): JsonResponse
-    {
-        $event->setActive(false);
-        $this->em->flush();
-        return $this->json(['message' => 'Evento desativado']);
-    }
-
-    // ── Feed JSON (para o Waze consumir) ───────────────────────
-
-    #[Route('/feed.json', name: 'feed_json', methods: ['GET'])]
-    public function feedJson(): JsonResponse
-    {
-        return $this->json($this->feedService->buildJsonFeed());
-    }
-
-    // ── Feed XML (para o Waze consumir) ───────────────────────
-
-    #[Route('/feed.xml', name: 'feed_xml', methods: ['GET'])]
-    public function feedXml(): Response
-    {
-        $xml = $this->feedService->buildXmlFeed();
-        return new Response($xml, 200, ['Content-Type' => 'application/xml; charset=utf-8']);
-    }
+#[Route('/feed.xml', name: 'feed_xml', methods: ['GET'])]
+public function feedXml(): Response
+{
+$xml = $this->feedService->buildXmlFeed();
+return new Response($xml, 200, ['Content-Type' => 'application/xml; charset=utf-8']);
+}
 }
