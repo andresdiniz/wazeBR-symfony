@@ -148,9 +148,36 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
   transition: color var(--transition), border-color var(--transition), background var(--transition);
   white-space: nowrap;
   flex-shrink: 0;
+  text-decoration: none;
 }
 .op-btn:hover { color: var(--text); border-color: var(--border2); background: var(--surface3); }
 .op-btn svg { flex-shrink: 0; }
+
+/* Botão voltar — destaque sutil em teal */
+.op-btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(20,184,166,.08);
+  border: 1px solid rgba(20,184,166,.25);
+  border-radius: var(--radius-sm);
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--teal);
+  cursor: pointer;
+  transition: color var(--transition), border-color var(--transition), background var(--transition);
+  white-space: nowrap;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+.op-btn-back:hover {
+  background: rgba(20,184,166,.18);
+  border-color: rgba(20,184,166,.5);
+  color: #5eead4;
+}
+.op-btn-back svg { flex-shrink: 0; }
+
 .op-wakelock-indicator {
   display: flex;
   align-items: center;
@@ -564,7 +591,6 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
   justify-content: center;
   font-style: normal;
   line-height: 1;
-  /* sombra sutil para destaque no mapa escuro */
   filter: drop-shadow(0 1px 3px rgba(0,0,0,.7));
 }
 
@@ -789,6 +815,17 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
 
   <!-- ═══ HEADER ════════════════════════════════════════════ -->
   <header class="op-header">
+
+    {# ── Botão voltar ao dashboard ── #}
+    <a href="{{ path('dashboard_index') }}" class="op-btn-back" title="Voltar ao Dashboard">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 12H5M12 5l-7 7 7 7"/>
+      </svg>
+      Dashboard
+    </a>
+
+    <div class="op-divider"></div>
+
     <div class="op-logo">
       <div class="op-logo-icon">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -937,17 +974,14 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
           <div class="kpi-label">Monitoramento Fluvial</div>
         </div>
 
-        <!-- Nome e cidade da estação -->
         <div class="cemaden-station-name" id="cs-name">—</div>
         <div class="cemaden-station-city" id="cs-city">aguardando dados...</div>
 
-        <!-- Badge de nível de alerta + distância -->
         <div class="cemaden-level-row">
           <span class="cemaden-level-badge" id="cs-level-badge">—</span>
           <span style="font-size:9px;color:var(--muted)" id="cs-distance"></span>
         </div>
 
-        <!-- Barra de cota (nível do rio) -->
         <div class="cemaden-quota-wrap" id="cs-quota-wrap" style="display:none">
           <div class="cemaden-quota-label">
             <span id="cs-quota-label-text">Cota atual</span>
@@ -956,11 +990,9 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
           <div class="cemaden-quota-track">
             <div class="cemaden-quota-fill" id="cs-quota-fill" style="width:0%;background:var(--teal)"></div>
           </div>
-          <!-- Marcadores de cotas de referência -->
           <div class="cemaden-quota-markers" id="cs-quota-markers"></div>
         </div>
 
-        <!-- Mini grid de chuva -->
         <div class="cemaden-rain-row">
           <div class="cemaden-rain-item">
             <div class="cemaden-rain-val" id="cs-rain-1h">—</div>
@@ -1031,30 +1063,21 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
     <div class="op-map-container">
       <div id="op-map"></div>
 
-      <!-- Legenda — somente ícones com tooltip via title -->
       <div class="map-legend" id="map-legend">
         <div class="map-legend-title">Legenda</div>
-
-        <!-- Alertas: linha de emojis -->
         <div class="map-legend-group">
           <span class="map-legend-cell" title="Acidente">🚨</span>
           <span class="map-legend-cell" title="Engarrafamento">🚗</span>
           <span class="map-legend-cell" title="Perigo / Obra">⚠️</span>
           <span class="map-legend-cell" title="Via fechada">🚫</span>
         </div>
-
         <div class="legend-sep"></div>
-
-        <!-- CEMADEN: nuvens coloridas por nível -->
         <div class="map-legend-group">
           <span class="map-legend-cell" title="Estação CEMADEN — normal" style="filter:hue-rotate(160deg)">🌧️</span>
           <span class="map-legend-cell" title="Estação CEMADEN — alerta" style="filter:hue-rotate(30deg) saturate(2)">🌧️</span>
           <span class="map-legend-cell" title="Estação CEMADEN — crítica" style="filter:hue-rotate(320deg) saturate(2)">🌧️</span>
         </div>
-
         <div class="legend-sep"></div>
-
-        <!-- Jams: linhas coloridas -->
         <div class="map-legend-jams">
           <div class="legend-jam-line" style="background:#ef4444" title="Jam crítico (nível 5+)"></div>
           <div class="legend-jam-line" style="background:#f97316" title="Jam moderado (3-4)"></div>
@@ -1207,10 +1230,8 @@ function jamColor(level) {
 // ── Ícones emoji por tipo de alerta ──────────────────────────────
 function makeAlertIcon(type) {
   type = (type || '').toUpperCase();
-
   let emoji = '📍';
   let size  = 28;
-
   if (type.includes('ACCIDENT'))                                               { emoji = '🚨'; size = 30; }
   else if (type.includes('JAM'))                                               { emoji = '🚗'; size = 28; }
   else if (type.includes('CONSTRUCTION'))                                      { emoji = '🚧'; size = 28; }
@@ -1218,7 +1239,6 @@ function makeAlertIcon(type) {
   else if (type.includes('HAZARD') || type.includes('OBJECT'))                 { emoji = '⚠️'; size = 28; }
   else if (type.includes('ROAD') || type.includes('CLOSED'))                   { emoji = '🚫'; size = 28; }
   else if (type.includes('WEATHER') || type.includes('FLOOD'))                 { emoji = '🌊'; size = 28; }
-
   const half = Math.round(size / 2);
   return L.divIcon({
     html: `<span class="map-emoji-marker" style="font-size:${size}px;width:${size}px;height:${size}px;">${emoji}</span>`,
@@ -1235,7 +1255,6 @@ function makeCemadenIcon(alertLevel) {
   if      (alertLevel === 'RED')    { filter = 'hue-rotate(320deg) saturate(2.5) brightness(1.2)'; title = 'CEMADEN — crítico'; }
   else if (alertLevel === 'ORANGE') { filter = 'hue-rotate(20deg) saturate(2) brightness(1.1)';   title = 'CEMADEN — alerta'; }
   else if (alertLevel === 'YELLOW') { filter = 'hue-rotate(50deg) saturate(1.8)';                 title = 'CEMADEN — atenção'; }
-
   return L.divIcon({
     html: `<span class="map-emoji-marker" title="${title}" style="font-size:26px;width:28px;height:28px;${filter ? 'filter:' + filter : ''}"">🌧️</span>`,
     className:  '',
@@ -1261,7 +1280,6 @@ function renderMap(data) {
   mapLayers.alerts.clearLayers();
   mapLayers.cemaden.clearLayers();
 
-  // Jams — polylines coloridas por nível
   (data.jams || []).forEach(j => {
     if (j.line?.length > 1) {
       const coords = j.line.map(p => [p.y ?? p[1], p.x ?? p[0]]);
@@ -1275,7 +1293,6 @@ function renderMap(data) {
     }
   });
 
-  // Alertas — ícones emoji por tipo
   (data.alerts || []).forEach(a => {
     if (!a.lat || !a.lng) return;
     L.marker([a.lat, a.lng], { icon: makeAlertIcon(a.type) })
@@ -1283,7 +1300,6 @@ function renderMap(data) {
       .addTo(mapLayers.alerts);
   });
 
-  // CEMADEN — emoji de chuva com cor por nível de alerta
   (data.cemaden || []).forEach(c => {
     if (!c.lat || !c.lng) return;
     let popup = `<b>${c.station}</b><br>${c.city}<br>Chuva: ${c.rain} mm · ${c.alertLevel}`;
@@ -1338,24 +1354,19 @@ function fmtLen(m) {
 // ── Render card estação CEMADEN ───────────────────────────────────
 function renderCemadenStation(cemaden) {
   if (!cemaden || cemaden.length === 0) return;
-
-  // Pega a estação com maior nível de alerta (ou a primeira)
   const priority = { RED: 4, ORANGE: 3, YELLOW: 2, NORMAL: 1 };
   const station  = [...cemaden].sort((a, b) =>
     (priority[b.alertLevel] || 0) - (priority[a.alertLevel] || 0)
   )[0];
 
-  // Nome e cidade
   const nameEl = document.getElementById('cs-name');
   const cityEl = document.getElementById('cs-city');
   if (nameEl) nameEl.textContent = station.station || '—';
   if (cityEl) cityEl.textContent = station.city    || '—';
 
-  // Distância (se disponível na API)
   const distEl = document.getElementById('cs-distance');
   if (distEl) distEl.textContent = station.distance != null ? `~${station.distance} km` : '';
 
-  // Badge de nível
   const badgeEl = document.getElementById('cs-level-badge');
   if (badgeEl) {
     const lvlMap = {
@@ -1369,44 +1380,37 @@ function renderCemadenStation(cemaden) {
     badgeEl.className   = 'cemaden-level-badge ' + lv.cls;
   }
 
-  // Cor do card
   const cardEl = document.getElementById('kpi-cemaden-station');
   if (cardEl) {
     const cardCls = { RED: 'red', ORANGE: 'orange', YELLOW: 'yellow', NORMAL: 'teal' };
     cardEl.className = 'kpi-card alert-' + (cardCls[station.alertLevel] || 'teal');
   }
 
-  // Barra de cota
   const quotaWrap = document.getElementById('cs-quota-wrap');
   if (station.quota != null && quotaWrap) {
     quotaWrap.style.display = '';
-    const quota     = parseFloat(station.quota)              || 0;
-    const qAlerta   = parseFloat(station.quotaAlerta)        || null;
-    const qTransb   = parseFloat(station.quotaTransbordamento) || null;
-    const maxRef    = qTransb ? qTransb * 1.1 : qAlerta ? qAlerta * 1.2 : quota * 1.5 || 5;
+    const quota   = parseFloat(station.quota)              || 0;
+    const qAlerta = parseFloat(station.quotaAlerta)        || null;
+    const qTransb = parseFloat(station.quotaTransbordamento) || null;
+    const maxRef  = qTransb ? qTransb * 1.1 : qAlerta ? qAlerta * 1.2 : quota * 1.5 || 5;
 
-    // Valor atual
     const quotaValEl = document.getElementById('cs-quota-val');
     if (quotaValEl) quotaValEl.textContent = quota.toFixed(2) + ' m';
 
-    // Label
     const quotaLabelEl = document.getElementById('cs-quota-label-text');
     if (quotaLabelEl) quotaLabelEl.textContent = 'Cota atual';
 
-    // Fill da barra
     const pct  = Math.min(100, (quota / maxRef) * 100);
     const fill = document.getElementById('cs-quota-fill');
     if (fill) {
       fill.style.width = pct + '%';
-      // Cor progressiva conforme proximidade das cotas
-      let fillColor = '#14b8a6'; // teal normal
-      if (qTransb && quota >= qTransb)           fillColor = '#ef4444'; // vermelho = transbordou
-      else if (qAlerta && quota >= qAlerta)       fillColor = '#f97316'; // laranja = em alerta
-      else if (qAlerta && quota >= qAlerta * 0.8) fillColor = '#eab308'; // amarelo = próximo do alerta
+      let fillColor = '#14b8a6';
+      if (qTransb && quota >= qTransb)           fillColor = '#ef4444';
+      else if (qAlerta && quota >= qAlerta)       fillColor = '#f97316';
+      else if (qAlerta && quota >= qAlerta * 0.8) fillColor = '#eab308';
       fill.style.background = fillColor;
     }
 
-    // Marcadores de cota de referência
     const markersEl = document.getElementById('cs-quota-markers');
     if (markersEl) {
       markersEl.innerHTML = '';
@@ -1423,7 +1427,6 @@ function renderCemadenStation(cemaden) {
     quotaWrap.style.display = 'none';
   }
 
-  // Mini grid de chuva
   const r1  = document.getElementById('cs-rain-1h');
   const r12 = document.getElementById('cs-rain-12h');
   const r24 = document.getElementById('cs-rain-24h');
@@ -1468,7 +1471,6 @@ function renderKpis(k, cemaden) {
   if (li) li.textContent = k.links  ?? '—';
   if (ri) ri.textContent = k.routes ?? '—';
 
-  // Estação CEMADEN com maior alerta
   renderCemadenStation(cemaden);
 }
 
