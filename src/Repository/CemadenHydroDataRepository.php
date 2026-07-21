@@ -131,36 +131,36 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
      * dentro de subqueries na mesma query. Por isso usamos :partner1 e :partner2.
      */
     public function findLatestReadingsByPartner(Partner $partner): array
-        {
-            $partnerId = $partner->getId();
+    {
+        $partnerId = $partner->getId();
 
-            $conn = $this->getEntityManager()->getConnection();
-            $sql = '
-                SELECT h.id
-                FROM cemaden_hydro_data h
-                INNER JOIN (
-                    SELECT station_code, MAX(collected_at) AS max_dt
-                    FROM cemaden_hydro_data
-                    WHERE partner_id = ?
-                    GROUP BY station_code
-                ) latest ON h.station_code = latest.station_code
-                        AND h.collected_at = latest.max_dt
-                WHERE h.partner_id = ?
-            ';
+        $conn = $this->getEntityManager()->getConnection();
+        $sql = '
+            SELECT h.id
+            FROM cemaden_hydro_data h
+            INNER JOIN (
+                SELECT station_code, MAX(measured_at) AS max_dt
+                FROM cemaden_hydro_data
+                WHERE partner_id = ?
+                GROUP BY station_code
+            ) latest ON h.station_code = latest.station_code
+                    AND h.measured_at = latest.max_dt
+            WHERE h.partner_id = ?
+        ';
 
-            $ids = $conn->executeQuery($sql, [$partnerId, $partnerId])
-                ->fetchFirstColumn();
+        $ids = $conn->executeQuery($sql, [$partnerId, $partnerId])
+            ->fetchFirstColumn();
 
-            if (empty($ids)) {
-                return [];
-            }
-
-            return $this->createQueryBuilder('h')
-                ->where('h.id IN (:ids)')
-                ->setParameter('ids', $ids)
-                ->orderBy('h.status', 'DESC')
-                ->addOrderBy('h.stationName', 'ASC')
-                ->getQuery()
-                ->getResult();
+        if (empty($ids)) {
+            return [];
         }
+
+        return $this->createQueryBuilder('h')
+            ->where('h.id IN (:ids)')
+            ->setParameter('ids', $ids)
+            ->orderBy('h.status', 'DESC')
+            ->addOrderBy('h.stationName', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }
