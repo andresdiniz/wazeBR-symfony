@@ -19,7 +19,7 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
         parent::__construct($registry, WazeTrafficJam::class);
     }
 
-    // ── Contagens básicas ─────────────────────────────────────────────────────
+    // ── Contagens básicas ────────────────────────────────────────────────────
 
     public function countByPartner(Partner $partner): int
     {
@@ -27,6 +27,20 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
             ->select('COUNT(j.id)')
             ->where('j.partner = :partner')
             ->setParameter('partner', $partner)
+            ->getQuery()->getSingleScalarResult();
+    }
+
+    /** Jams das últimas 24h. */
+    public function countLast24hByPartner(Partner $partner): int
+    {
+        $since = (new \DateTimeImmutable('-24 hours'))->getTimestamp() * 1000;
+
+        return (int) $this->createQueryBuilder('j')
+            ->select('COUNT(j.id)')
+            ->where('j.partner = :partner')
+            ->andWhere('j.pubMillis >= :since')
+            ->setParameter('partner', $partner)
+            ->setParameter('since', $since)
             ->getQuery()->getSingleScalarResult();
     }
 
@@ -43,7 +57,92 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
             ->getQuery()->getSingleScalarResult();
     }
 
-    // ── KPIs de impacto ───────────────────────────────────────────────────────
+    // ── KPIs de velocidade / atraso / extensão (histórico total) ─────────────────
+
+    /** Velocidade média (km/h) de todos os jams do partner. */
+    public function avgSpeedKmhByPartner(Partner $partner): float
+    {
+        $val = $this->createQueryBuilder('j')
+            ->select('AVG(j.speedKmh)')
+            ->where('j.partner = :partner')
+            ->andWhere('j.speedKmh IS NOT NULL')
+            ->setParameter('partner', $partner)
+            ->getQuery()->getSingleScalarResult();
+
+        return round((float)($val ?? 0), 1);
+    }
+
+    /** Atraso médio (segundos) de todos os jams do partner. */
+    public function avgDelaySecsByPartner(Partner $partner): float
+    {
+        $val = $this->createQueryBuilder('j')
+            ->select('AVG(j.delay)')
+            ->where('j.partner = :partner')
+            ->andWhere('j.delay IS NOT NULL')
+            ->setParameter('partner', $partner)
+            ->getQuery()->getSingleScalarResult();
+
+        return round((float)($val ?? 0));
+    }
+
+    /** Extensão total (metros) de todos os jams do partner. */
+    public function totalLengthMByPartner(Partner $partner): float
+    {
+        $val = $this->createQueryBuilder('j')
+            ->select('SUM(j.length)')
+            ->where('j.partner = :partner')
+            ->setParameter('partner', $partner)
+            ->getQuery()->getSingleScalarResult();
+
+        return (float)($val ?? 0);
+    }
+
+    // ── KPIs ao vivo (jams das últimas $hours horas) ───────────────────────────
+
+    /**
+     * Retorna ['avgSpeed' => float, 'avgDelay' => float, 'totalLength' => float]
+     * para jams das últimas $hours horas.
+     */
+    public function avgStats(Partner $partner, int $hours = 3): array
+    {
+        $since = (new \DateTimeImmutable("-{$hours} hours"))->getTimestamp() * 1000;
+
+        $row = $this->createQueryBuilder('j')
+            ->select(
+                'AVG(j.speedKmh) AS avgSpeed,'
+                . 'AVG(j.delay) AS avgDelay,'
+                . 'SUM(j.length) AS totalLength'
+            )
+            ->where('j.partner = :partner')
+            ->andWhere('j.pubMillis >= :since')
+            ->setParameter('partner', $partner)
+            ->setParameter('since', $since)
+            ->getQuery()->getOneOrNullResult();
+
+        return [
+            'avgSpeed'    => round((float)($row['avgSpeed']    ?? 0), 1),
+            'avgDelay'    => round((float)($row['avgDelay']    ?? 0)),
+            'totalLength' => (float)($row['totalLength'] ?? 0),
+        ];
+    }
+
+    /**
+     * Lista jams das últimas $hours horas, ordenados por delay DESC.
+     */
+    public function findLiveByPartner(Partner $partner, int $hours = 3): array
+    {
+        $since = (new \DateTimeImmutable("-{$hours} hours"))->getTimestamp() * 1000;
+
+        return $this->createQueryBuilder('j')
+            ->where('j.partner = :partner')
+            ->andWhere('j.pubMillis >= :since')
+            ->setParameter('partner', $partner)
+            ->setParameter('since', $since)
+            ->orderBy('j.delay', 'DESC')
+            ->getQuery()->getResult();
+    }
+
+    // ── KPIs de impacto ───────────────────────────────────────────────────
 
     /**
      * Extensão total de congestionamento ativo agora (metros → km).
@@ -85,7 +184,6 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
 
     /**
      * Velocidade média (km/h) de todos os jams ativos agora.
-     * Termômetro de fluidez urbana.
      */
     public function avgActiveSpeedKmh(Partner $partner, int $minutes = 10): float
     {
@@ -122,13 +220,13 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
         return round((float)($val ?? 0));
     }
 
-    // ── KPIs de distribuição ──────────────────────────────────────────────────
+    // ── KPIs de distribuição ───────────────────────────────────────────────
 
     /**
-     * Distribuição por level (0-5) nos últimos $days dias.
+     * Contagem agrupada por level nos últimos $days dias.
      * Retorna [['level'=>3,'total'=>7], ...]
      */
-    public function levelBreakdownByPartner(Partner $partner, int $days = 7): array
+    public function countGroupByLevel(Partner $partner, int $days = 7): array
     {
         $since = (new \DateTimeImmutable("-{$days} days"))->getTimestamp() * 1000;
 
@@ -143,6 +241,15 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
             ->getQuery()->getArrayResult();
 
         return array_map(static fn($r) => ['level' => (int)$r['level'], 'total' => (int)$r['total']], $rows);
+    }
+
+    /**
+     * Distribuição por level (0-5) nos últimos $days dias.
+     * Retorna [['level'=>3,'total'=>7], ...]
+     */
+    public function levelBreakdownByPartner(Partner $partner, int $days = 7): array
+    {
+        return $this->countGroupByLevel($partner, $days);
     }
 
     /**
@@ -164,6 +271,29 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
             ->getQuery()->getArrayResult();
 
         return array_map(static fn($r) => ['city' => $r['city'], 'total' => (int)$r['total']], $rows);
+    }
+
+    /**
+     * Série temporal: contagem de jams agrupada por hora nas últimas 24h.
+     * Retorna [['hour_label'=>'2026-07-20 08','total'=>5], ...]
+     */
+    public function countPerHourLast24h(Partner $partner): array
+    {
+        $since = (new \DateTimeImmutable('-24 hours'))->getTimestamp() * 1000;
+
+        $conn = $this->getEntityManager()->getConnection();
+        $sql = '
+            SELECT DATE_FORMAT(FROM_UNIXTIME(pub_millis / 1000), \'%Y-%m-%d %H\') AS hour_label,
+                   COUNT(*) AS total
+            FROM waze_traffic_jams
+            WHERE partner_id = :partner
+              AND pub_millis >= :since
+            GROUP BY hour_label
+            ORDER BY hour_label ASC
+        ';
+        $stmt = $conn->prepare($sql);
+        $result = $stmt->executeQuery(['partner' => $partner->getId(), 'since' => $since]);
+        return $result->fetchAllAssociative();
     }
 
     /**
@@ -194,7 +324,6 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
 
     /**
      * Série temporal: atraso médio agrupado por hora nas últimas 24h (SQL nativo).
-     * Retorna [['hour_label'=>'2026-07-20 08','avg_delay'=>120], ...]
      */
     public function hourlyDelaySeries(Partner $partner): array
     {
