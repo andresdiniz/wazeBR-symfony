@@ -141,6 +141,35 @@ class WazeIrregularityRepository extends ServiceEntityRepository
     }
 
     /**
+     * Severidade média de irregularidades agrupada por cidade (lead_alert_city).
+     * Retorna array de ['city' => string, 'avg_jam_level' => float, 'total' => int].
+     */
+    public function avgSeverityByCity(Partner $partner, int $days = 7): array
+    {
+        $since = (new \DateTimeImmutable("-{$days} days"))->format('Y-m-d H:i:s');
+
+        $sql = "
+            SELECT
+                lead_alert_city                     AS city,
+                ROUND(AVG(jam_level), 2)            AS avg_jam_level,
+                COUNT(*)                            AS total
+            FROM waze_irregularities
+            WHERE partner_id = :partner
+              AND collected_at >= :since
+              AND lead_alert_city IS NOT NULL
+              AND lead_alert_city != ''
+            GROUP BY lead_alert_city
+            ORDER BY avg_jam_level DESC
+        ";
+
+        return $this->getEntityManager()->getConnection()
+            ->executeQuery($sql, [
+                'partner' => $partner->getId(),
+                'since'   => $since,
+            ])->fetchAllAssociative();
+    }
+
+    /**
      * Distribuição por jamLevel (0=livre .. 4=parado).
      */
     public function breakdownByJamLevel(Partner $partner, int $days = 7): array
