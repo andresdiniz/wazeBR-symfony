@@ -83,7 +83,7 @@ class DashboardController extends AbstractController
         $tvtJamLevelDist  = $this->tvtRouteRepo->countGroupByJamLevel($partner);
 
         // ── WazeCount — usuários em congestionamentos ─────────────────────────
-        $wazeCount = $this->wazeCountRepo->findLatest();
+        $wazeCount = $this->wazeCountRepo->findLatest($partner);
 
         // ── Distribuições para gráficos ───────────────────────────────────────
         $alertsByType      = $this->alertRepo->countGroupByType($partner);
