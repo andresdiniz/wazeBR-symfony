@@ -30,7 +30,6 @@ class WazeAlertRepository extends ServiceEntityRepository
             ->getQuery()->getSingleScalarResult();
     }
 
-    /** Alertas publicados nas últimas $hours horas */
     public function countLastHoursByPartner(Partner $partner, int $hours = 1): int
     {
         $since = (new \DateTimeImmutable("-{$hours} hours"))->getTimestamp() * 1000;
@@ -44,7 +43,6 @@ class WazeAlertRepository extends ServiceEntityRepository
             ->getQuery()->getSingleScalarResult();
     }
 
-    /** Alertas publicados nos últimos $days dias */
     public function countLast7dByPartner(Partner $partner, int $days = 7): int
     {
         $since = (new \DateTimeImmutable("-{$days} days"))->getTimestamp() * 1000;
@@ -60,10 +58,6 @@ class WazeAlertRepository extends ServiceEntityRepository
 
     // ── KPIs de distribuição ──────────────────────────────────────────────────
 
-    /**
-     * Contagem por type nas últimas $hours horas.
-     * Retorna [['type'=>'ACCIDENT','total'=>12], ...]
-     */
     public function countGroupByType(Partner $partner, int $hours = 24): array
     {
         $since = (new \DateTimeImmutable("-{$hours} hours"))->getTimestamp() * 1000;
@@ -81,10 +75,6 @@ class WazeAlertRepository extends ServiceEntityRepository
         return array_map(static fn($r) => ['type' => $r['type'], 'total' => (int)$r['total']], $rows);
     }
 
-    /**
-     * Contagem por subtype nas últimas $hours horas.
-     * Retorna [['subtype'=>'ACCIDENT_MINOR','total'=>7], ...]
-     */
     public function countGroupBySubtype(Partner $partner, int $limit = 10, int $hours = 24): array
     {
         $since = (new \DateTimeImmutable("-{$hours} hours"))->getTimestamp() * 1000;
@@ -104,20 +94,12 @@ class WazeAlertRepository extends ServiceEntityRepository
         return array_map(static fn($r) => ['subtype' => $r['subtype'], 'total' => (int)$r['total']], $rows);
     }
 
-    /**
-     * Tipo dominante nas últimas 24h.
-     * Retorna ['type' => 'HAZARD', 'total' => 34] ou null.
-     */
     public function dominantTypeToday(Partner $partner): ?array
     {
         $rows = $this->countGroupByType($partner, 24);
         return $rows[0] ?? null;
     }
 
-    /**
-     * Top $limit ruas com mais alertas nos últimos $days dias.
-     * Retorna [['street'=>'Av. Brasil','total'=>8], ...]
-     */
     public function topStreetsByAlert(Partner $partner, int $days = 7, int $limit = 10): array
     {
         $since = (new \DateTimeImmutable("-{$days} days"))->getTimestamp() * 1000;
@@ -137,10 +119,6 @@ class WazeAlertRepository extends ServiceEntityRepository
         return array_map(static fn($r) => ['street' => $r['street'], 'total' => (int)$r['total']], $rows);
     }
 
-    /**
-     * Contagem por cidade nos últimos $days dias, limitado a $limit resultados.
-     * Retorna [['city'=>'Juiz de Fora','total'=>22], ...]
-     */
     public function countGroupByCity(Partner $partner, int $limit = 10, int $days = 7): array
     {
         $since = (new \DateTimeImmutable("-{$days} days"))->getTimestamp() * 1000;
@@ -160,10 +138,6 @@ class WazeAlertRepository extends ServiceEntityRepository
         return array_map(static fn($r) => ['city' => $r['city'], 'total' => (int)$r['total']], $rows);
     }
 
-    /**
-     * Distribuição de confidence nas últimas 24h.
-     * Retorna [['confidence'=>8,'total'=>14], ...]
-     */
     public function countByConfidence(Partner $partner, int $hours = 24): array
     {
         $since = (new \DateTimeImmutable("-{$hours} hours"))->getTimestamp() * 1000;
@@ -184,13 +158,13 @@ class WazeAlertRepository extends ServiceEntityRepository
 
     /**
      * Série temporal: contagem por hora nas últimas 24h.
-     * Retorna [['hour'=>'2026-07-21 08','total'=>5], ...]
+     * Usa conn->executeQuery() — correto para DBAL moderno (sem prepare).
+     * Retorna [['hour_label'=>'2026-07-21 08','total'=>5], ...]
      */
     public function countPerHourLast24h(Partner $partner): array
     {
         $since = (new \DateTimeImmutable('-24 hours'))->getTimestamp() * 1000;
 
-        $conn = $this->getEntityManager()->getConnection();
         $sql = "
             SELECT DATE_FORMAT(FROM_UNIXTIME(pub_millis / 1000), '%Y-%m-%d %H') AS hour_label,
                    COUNT(*) AS total
@@ -200,16 +174,13 @@ class WazeAlertRepository extends ServiceEntityRepository
             GROUP BY hour_label
             ORDER BY hour_label ASC
         ";
-        $result = $conn->prepare($sql)->executeQuery([
-            'partner' => $partner->getId(),
-            'since'   => $since,
-        ]);
-        return $result->fetchAllAssociative();
+
+        return $this->getEntityManager()
+            ->getConnection()
+            ->executeQuery($sql, ['partner' => $partner->getId(), 'since' => $since])
+            ->fetchAllAssociative();
     }
 
-    /**
-     * Alertas ativos (publicados nas últimas $hours horas).
-     */
     public function findActiveByPartner(Partner $partner, int $hours = 1): array
     {
         $since = (new \DateTimeImmutable("-{$hours} hours"))->getTimestamp() * 1000;
@@ -223,10 +194,6 @@ class WazeAlertRepository extends ServiceEntityRepository
             ->getQuery()->getResult();
     }
 
-    /**
-     * Qualidade média dos relatos (média de confidence + reliability + reportRating)
-     * por type nas últimas 24h.
-     */
     public function avgQualityByType(Partner $partner, int $hours = 24): array
     {
         $since = (new \DateTimeImmutable("-{$hours} hours"))->getTimestamp() * 1000;
@@ -254,10 +221,6 @@ class WazeAlertRepository extends ServiceEntityRepository
         ], $rows);
     }
 
-    /**
-     * Top $limit alertas com maior engajamento (thumbsUp + comentários)
-     * nos últimos $days dias.
-     */
     public function topEngagedAlerts(Partner $partner, int $days = 7, int $limit = 10): array
     {
         $since = (new \DateTimeImmutable("-{$days} days"))->getTimestamp() * 1000;
@@ -272,9 +235,6 @@ class WazeAlertRepository extends ServiceEntityRepository
             ->getQuery()->getResult();
     }
 
-    /**
-     * % de alertas associados a um jam (jamUuid preenchido) nas últimas 24h.
-     */
     public function percentLinkedToJam(Partner $partner, int $hours = 24): float
     {
         $since = (new \DateTimeImmutable("-{$hours} hours"))->getTimestamp() * 1000;
@@ -301,9 +261,6 @@ class WazeAlertRepository extends ServiceEntityRepository
         return round($withJam / $total * 100, 1);
     }
 
-    /**
-     * % de alertas em vias expressas (roadType IN (3,4,5)) nas últimas 24h.
-     */
     public function percentOnHighways(Partner $partner, int $hours = 24): float
     {
         $since = (new \DateTimeImmutable("-{$hours} hours"))->getTimestamp() * 1000;
@@ -331,9 +288,7 @@ class WazeAlertRepository extends ServiceEntityRepository
         return round($highway / $total * 100, 1);
     }
 
-    /**
-     * @deprecated Use countPerHourLast24h()
-     */
+    /** @deprecated Use countPerHourLast24h() */
     public function hourlySeriesLast24h(Partner $partner): array
     {
         return $this->countPerHourLast24h($partner);

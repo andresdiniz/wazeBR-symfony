@@ -19,9 +19,6 @@ class WazeCountRepository extends ServiceEntityRepository
         parent::__construct($registry, WazeCount::class);
     }
 
-    /**
-     * Leitura mais recente de contagens para o partner.
-     */
     public function findLatest(Partner $partner): ?WazeCount
     {
         return $this->createQueryBuilder('c')
@@ -33,9 +30,6 @@ class WazeCountRepository extends ServiceEntityRepository
             ->getOneOrNullResult();
     }
 
-    /**
-     * Últimas $limit leituras para sparklines (mais recente primeiro).
-     */
     public function findRecent(Partner $partner, int $limit = 24): array
     {
         return $this->createQueryBuilder('c')
@@ -47,14 +41,12 @@ class WazeCountRepository extends ServiceEntityRepository
     }
 
     /**
-     * Pico do dia: máximo de cada indicador com o horário em que ocorreu.
-     * Retorna ['max_jams'=>47,'max_alerts'=>23,...]
+     * Pico do dia — usa conn->executeQuery() (correto para DBAL moderno).
      */
     public function peakOfDay(Partner $partner): array
     {
         $since = (new \DateTimeImmutable('today'))->format('Y-m-d H:i:s');
 
-        $conn = $this->getEntityManager()->getConnection();
         $sql = '
             SELECT
                 MAX(total_jams)           AS max_jams,
@@ -65,9 +57,11 @@ class WazeCountRepository extends ServiceEntityRepository
             WHERE partner_id = :partner
               AND collected_at >= :since
         ';
-        $stmt   = $conn->prepare($sql);
-        $result = $stmt->executeQuery(['partner' => $partner->getId(), 'since' => $since]);
-        $row    = $result->fetchAssociative();
+
+        $row = $this->getEntityManager()
+            ->getConnection()
+            ->executeQuery($sql, ['partner' => $partner->getId(), 'since' => $since])
+            ->fetchAssociative();
 
         return [
             'max_jams'     => (int)($row['max_jams'] ?? 0),
@@ -77,10 +71,6 @@ class WazeCountRepository extends ServiceEntityRepository
         ];
     }
 
-    /**
-     * Comparativo semana passada: mesmo horário 7 dias atrás.
-     * Retorna a WazeCount mais próxima ao horário atual de 7 dias atrás.
-     */
     public function findSameTimeLastWeek(Partner $partner): ?WazeCount
     {
         $target     = new \DateTimeImmutable('-7 days');
