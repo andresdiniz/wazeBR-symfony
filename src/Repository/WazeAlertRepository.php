@@ -43,6 +43,18 @@ class WazeAlertRepository extends ServiceEntityRepository
             ->getQuery()->getSingleScalarResult();
     }
 
+    /** Alias explícito usado pelo LiveSummaryController. */
+    public function countLast1hByPartner(Partner $partner): int
+    {
+        return $this->countLastHoursByPartner($partner, 1);
+    }
+
+    /** Alias explícito usado pelo LiveSummaryController. */
+    public function countLast24hByPartner(Partner $partner): int
+    {
+        return $this->countLastHoursByPartner($partner, 24);
+    }
+
     public function countLast7dByPartner(Partner $partner, int $days = 7): int
     {
         $since = (new \DateTimeImmutable("-{$days} days"))->getTimestamp() * 1000;
