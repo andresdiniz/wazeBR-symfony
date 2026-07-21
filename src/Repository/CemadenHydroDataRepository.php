@@ -19,7 +19,7 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
         parent::__construct($registry, CemadenHydroData::class);
     }
 
-    // ── KPI: sumário geral ────────────────────────────────────────────────────
+    // ── KPI: sumário geral ─────────────────────────────────────────────────
 
     /**
      * Sumário de KPIs hidrológicos para o partner.
@@ -46,22 +46,22 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
                 $summary[$status]++;
             }
 
-            $overflow  = $h->getOverflowLevel();
-            $current   = $h->getLevel();
+            $overflow = $h->getOverflowLevel();
+            $current  = $h->getLevel();
             $pct = ($overflow && $overflow > 0)
                 ? round($current / $overflow * 100, 1)
                 : null;
 
             $summary['stations'][] = [
-                'id'              => $h->getId(),
-                'name'            => $h->getStationName(),
-                'river'           => $h->getRiverName(),
-                'city'            => $h->getCity(),
-                'status'          => $status,
-                'level'           => $current,
-                'overflow_level'  => $overflow,
-                'overflow_pct'    => $pct,
-                'collected_at'    => $h->getCollectedAt()?->format('Y-m-d H:i'),
+                'id'             => $h->getId(),
+                'name'           => $h->getStationName(),
+                'river'          => $h->getRiverName(),
+                'city'           => $h->getCity(),
+                'status'         => $status,
+                'level'          => $current,
+                'overflow_level' => $overflow,
+                'overflow_pct'   => $pct,
+                'collected_at'   => $h->getCollectedAt()?->format('Y-m-d H:i'),
             ];
         }
 
@@ -126,10 +126,12 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
     /**
      * Leitura mais recente de cada estação do partner.
      * Usa subquery para pegar o MAX(collectedAt) por stationCode.
+     *
+     * Nota: o MariaDB/PDO não suporta reutilizar o mesmo named parameter
+     * dentro de subqueries na mesma query. Por isso usamos :partner1 e :partner2.
      */
     public function findLatestReadingsByPartner(Partner $partner): array
     {
-        // Pega o id mais recente por stationCode para este partner
         $conn = $this->getEntityManager()->getConnection();
         $sql = '
             SELECT h.id
@@ -137,14 +139,19 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
             INNER JOIN (
                 SELECT station_code, MAX(collected_at) AS max_dt
                 FROM cemaden_hydro_data
-                WHERE partner_id = :partner
+                WHERE partner_id = :partner1
                 GROUP BY station_code
             ) latest ON h.station_code = latest.station_code
                     AND h.collected_at = latest.max_dt
-            WHERE h.partner_id = :partner
+            WHERE h.partner_id = :partner2
         ';
-        $stmt  = $conn->prepare($sql);
-        $ids   = $stmt->executeQuery(['partner' => $partner->getId()])->fetchFirstColumn();
+
+        $ids = $conn->prepare($sql)
+            ->executeQuery([
+                'partner1' => $partner->getId(),
+                'partner2' => $partner->getId(),
+            ])
+            ->fetchFirstColumn();
 
         if (empty($ids)) {
             return [];
