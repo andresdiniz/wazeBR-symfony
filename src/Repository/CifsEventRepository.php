@@ -24,9 +24,9 @@ class CifsEventRepository extends ServiceEntityRepository
     /**
      * Lista eventos com filtros opcionais.
      *
-     * @param bool     $onlyActive  Se true, retorna apenas eventos ativos agora.
-     * @param int      $limit       Número máximo de resultados.
-     * @param Partner|null $partner Filtra por parceiro (null = todos).
+     * @param bool         $onlyActive  Se true, retorna apenas eventos ativos (active=true e dentro do período).
+     * @param int          $limit       Número máximo de resultados.
+     * @param Partner|null $partner     Filtra por parceiro (null = todos).
      * @return CifsEvent[]
      */
     public function findFiltered(
@@ -36,12 +36,13 @@ class CifsEventRepository extends ServiceEntityRepository
     ): array {
         $now = new \DateTimeImmutable();
         $qb  = $this->createQueryBuilder('e')
-            ->orderBy('e.startDate', 'DESC')
+            ->orderBy('e.startTime', 'DESC')
             ->setMaxResults($limit);
 
         if ($onlyActive) {
-            $qb->andWhere('e.startDate <= :now')
-               ->andWhere('e.endDate IS NULL OR e.endDate > :now')
+            $qb->andWhere('e.active = true')
+               ->andWhere('e.startTime <= :now')
+               ->andWhere('e.endTime IS NULL OR e.endTime > :now')
                ->setParameter('now', $now);
         }
 
@@ -56,7 +57,7 @@ class CifsEventRepository extends ServiceEntityRepository
     // ── KPIs ──────────────────────────────────────────────────────────────────
 
     /**
-     * Eventos ativos agora (endDate > NOW() ou sem endDate).
+     * Eventos ativos agora (active=true, startTime <= NOW, endTime > NOW ou sem endTime).
      */
     public function findActiveByPartner(Partner $partner): array
     {
@@ -64,11 +65,12 @@ class CifsEventRepository extends ServiceEntityRepository
 
         return $this->createQueryBuilder('e')
             ->where('e.partner = :partner')
-            ->andWhere('e.endDate IS NULL OR e.endDate > :now')
-            ->andWhere('e.startDate <= :now')
+            ->andWhere('e.active = true')
+            ->andWhere('e.startTime <= :now')
+            ->andWhere('e.endTime IS NULL OR e.endTime > :now')
             ->setParameter('partner', $partner)
             ->setParameter('now', $now)
-            ->orderBy('e.startDate', 'DESC')
+            ->orderBy('e.startTime', 'DESC')
             ->getQuery()->getResult();
     }
 
@@ -82,12 +84,13 @@ class CifsEventRepository extends ServiceEntityRepository
 
         return $this->createQueryBuilder('e')
             ->where('e.partner = :partner')
-            ->andWhere('e.startDate > :now')
-            ->andWhere('e.startDate <= :future')
+            ->andWhere('e.active = true')
+            ->andWhere('e.startTime > :now')
+            ->andWhere('e.startTime <= :future')
             ->setParameter('partner', $partner)
             ->setParameter('now', $now)
             ->setParameter('future', $future)
-            ->orderBy('e.startDate', 'ASC')
+            ->orderBy('e.startTime', 'ASC')
             ->getQuery()->getResult();
     }
 
@@ -102,8 +105,9 @@ class CifsEventRepository extends ServiceEntityRepository
         $rows = $this->createQueryBuilder('e')
             ->select('e.type AS type, COUNT(e.id) AS total')
             ->where('e.partner = :partner')
-            ->andWhere('e.endDate IS NULL OR e.endDate > :now')
-            ->andWhere('e.startDate <= :now')
+            ->andWhere('e.active = true')
+            ->andWhere('e.startTime <= :now')
+            ->andWhere('e.endTime IS NULL OR e.endTime > :now')
             ->setParameter('partner', $partner)
             ->setParameter('now', $now)
             ->groupBy('e.type')
@@ -124,8 +128,9 @@ class CifsEventRepository extends ServiceEntityRepository
         $rows = $this->createQueryBuilder('e')
             ->select('e.street AS street, COUNT(e.id) AS total')
             ->where('e.partner = :partner')
-            ->andWhere('e.endDate IS NULL OR e.endDate > :now')
-            ->andWhere('e.startDate <= :now')
+            ->andWhere('e.active = true')
+            ->andWhere('e.startTime <= :now')
+            ->andWhere('e.endTime IS NULL OR e.endTime > :now')
             ->andWhere('e.street IS NOT NULL')
             ->setParameter('partner', $partner)
             ->setParameter('now', $now)
@@ -142,6 +147,16 @@ class CifsEventRepository extends ServiceEntityRepository
      */
     public function countActive(Partner $partner): int
     {
-        return count($this->findActiveByPartner($partner));
+        $now = new \DateTimeImmutable();
+
+        return (int) $this->createQueryBuilder('e')
+            ->select('COUNT(e.id)')
+            ->where('e.partner = :partner')
+            ->andWhere('e.active = true')
+            ->andWhere('e.startTime <= :now')
+            ->andWhere('e.endTime IS NULL OR e.endTime > :now')
+            ->setParameter('partner', $partner)
+            ->setParameter('now', $now)
+            ->getQuery()->getSingleScalarResult();
     }
 }
