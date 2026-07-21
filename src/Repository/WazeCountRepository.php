@@ -41,7 +41,9 @@ class WazeCountRepository extends ServiceEntityRepository
     }
 
     /**
-     * Pico do dia — usa conn->executeQuery() (correto para DBAL moderno).
+     * Pico do dia — máximo de cada nível de wazers desde meia-noite.
+     * Colunas reais: wazers_level_0..4, wazers_total.
+     * Retorna array com max_level0..4 e max_total.
      */
     public function peakOfDay(Partner $partner): array
     {
@@ -49,10 +51,12 @@ class WazeCountRepository extends ServiceEntityRepository
 
         $sql = '
             SELECT
-                MAX(total_jams)           AS max_jams,
-                MAX(total_alerts)         AS max_alerts,
-                MAX(total_irregularities) AS max_irreg,
-                MAX(total_mentions)       AS max_mentions
+                MAX(wazers_level_0) AS max_level0,
+                MAX(wazers_level_1) AS max_level1,
+                MAX(wazers_level_2) AS max_level2,
+                MAX(wazers_level_3) AS max_level3,
+                MAX(wazers_level_4) AS max_level4,
+                MAX(wazers_total)   AS max_total
             FROM waze_counts
             WHERE partner_id = :partner
               AND collected_at >= :since
@@ -64,10 +68,12 @@ class WazeCountRepository extends ServiceEntityRepository
             ->fetchAssociative();
 
         return [
-            'max_jams'     => (int)($row['max_jams'] ?? 0),
-            'max_alerts'   => (int)($row['max_alerts'] ?? 0),
-            'max_irreg'    => (int)($row['max_irreg'] ?? 0),
-            'max_mentions' => (int)($row['max_mentions'] ?? 0),
+            'max_level0' => $row['max_level0'] !== null ? (float) $row['max_level0'] : null,
+            'max_level1' => $row['max_level1'] !== null ? (float) $row['max_level1'] : null,
+            'max_level2' => $row['max_level2'] !== null ? (float) $row['max_level2'] : null,
+            'max_level3' => $row['max_level3'] !== null ? (float) $row['max_level3'] : null,
+            'max_level4' => $row['max_level4'] !== null ? (float) $row['max_level4'] : null,
+            'max_total'  => $row['max_total']  !== null ? (float) $row['max_total']  : null,
         ];
     }
 
