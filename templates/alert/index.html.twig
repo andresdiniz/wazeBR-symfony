@@ -132,8 +132,8 @@
       <tbody>
       {% for a in alerts %}
         <tr>
-          <td><span class="badge badge-{{ a.type == 'ACCIDENT' ? 'red' : (a.type == 'JAM' ? 'orange' : (a.type == 'HAZARD' ? 'yellow' : 'gray')) }}">{{ a.type }}</span></td>
-          <td style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ a.subtype ?? '—' }}</td>
+          <td><span class="badge badge-{{ a.type == 'ACCIDENT' ? 'red' : (a.type == 'JAM' ? 'orange' : (a.type == 'HAZARD' or a.type == 'WEATHERHAZARD' ? 'yellow' : 'gray')) }}">{{ typesMap[a.type] ?? a.type }}</span></td>
+          <td style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ a.subtype ? (subtypesMap[a.type ~ '|' ~ a.subtype] ?? a.subtype) : '—' }}</td>
           <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ a.street ?? '—' }}</td>
           <td style="font-size:var(--text-xs)">{{ a.city ?? '—' }}</td>
           <td style="text-align:center;font-size:var(--text-xs)">
@@ -210,11 +210,8 @@ document.addEventListener('DOMContentLoaded', function() {
     JAM:'#da7101', ROAD_CLOSED:'#7a7974', CONSTRUCTION:'#437a22',
     POLICE:'#01696f', MISC:'#7a39bb'
   };
-  var TYPE_LABEL = {
-    ACCIDENT:'Acidente', HAZARD:'Perigo', WEATHERHAZARD:'Risco clim\u00e1tico',
-    JAM:'Congestionamento', ROAD_CLOSED:'Via fechada', CONSTRUCTION:'Obra',
-    POLICE:'Pol\u00edcia/Radar', MISC:'Diverso'
-  };
+  var TYPE_LABEL = {{ typesMap|json_encode|raw }};
+  var SUBTYPE_LABEL = {{ subtypesMap|json_encode|raw }};
 
   var mapEl = document.getElementById('alert-map');
   if (!mapEl) { return; }
@@ -234,7 +231,7 @@ document.addEventListener('DOMContentLoaded', function() {
       className: '', iconSize: [12, 12], iconAnchor: [6, 6]
     });
 
-    var subtypeClean = a.subtype ? a.subtype.replace(/_/g, ' ') : '';
+    var subtypeClean = a.subtype ? (SUBTYPE_LABEL[a.type + '|' + a.subtype] || a.subtype.replace(/_/g, ' ')) : '';
     var pubFormatted = a.pubIso ? FMT.format(new Date(a.pubIso)) : '\u2014';
     var popup = '<div class="popup-inner">'
       + '<div class="popup-type" style="color:' + color + '">' + (TYPE_LABEL[a.type] || a.type) + '</div>'

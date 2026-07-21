@@ -80,7 +80,7 @@
 <div style="display:flex;flex-wrap:wrap;gap:var(--space-3);margin-bottom:var(--space-5)">
   {% for type, cnt in typeCounts %}
   <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4);min-width:120px">
-    <div style="font-size:var(--text-xs);font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--color-text-muted)">{{ ('waze.alert_type.' ~ type|lower)|trans({}, 'waze') }}</div>
+    <div style="font-size:var(--text-xs);font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--color-text-muted)">{{ typesMap[type] ?? type }}</div>
     <div style="font-size:var(--text-xl);font-weight:700;font-variant-numeric:tabular-nums">{{ cnt }}</div>
   </div>
   {% endfor %}
@@ -112,7 +112,7 @@
                 {% elseif type == 'JAM' %}badge-orange
                 {% elseif type == 'ROAD_CLOSED' %}badge-gray
                 {% else %}badge-blue{% endif %}">
-                {{ ('waze.alert_type.' ~ type|lower)|trans({}, 'waze') }} ({{ cnt }})
+                {{ typesMap[type] ?? type }} ({{ cnt }})
               </span>
             {% endfor %}
           </div>
@@ -123,9 +123,9 @@
       <div class="region-alerts">
         {% for al in r.alerts %}
         <div class="region-alert-item">
-          <span class="badge badge-gray" style="margin-right:4px">{{ ('waze.alert_type.' ~ al.type|lower)|trans({}, 'waze') }}</span>
+          <span class="badge badge-gray" style="margin-right:4px">{{ typesMap[al.type] ?? al.type }}</span>
           {{ al.street ?? '—' }}
-          {% if al.subtype %}<div style="color:var(--color-text-faint);margin-top:2px">{{ ('waze.alert_subtype.' ~ al.subtype|lower|replace({'-':'_',' ':'_'}))|trans({}, 'waze') }}</div>{% endif %}
+          {% if al.subtype %}<div style="color:var(--color-text-faint);margin-top:2px">{{ subtypesMap[al.type ~ '|' ~ al.subtype] ?? al.subtype }}</div>{% endif %}
         </div>
         {% endfor %}
         {% if r.count > r.alerts|length %}
@@ -165,11 +165,8 @@
     JAM:'#da7101', ROAD_CLOSED:'#7a7974', CONSTRUCTION:'#437a22',
     POLICE:'#01696f', MISC:'#7a39bb'
   };
-  const TYPE_LABEL = {
-    ACCIDENT:'Acidente', HAZARD:'Perigo', WEATHERHAZARD:'Risco climático',
-    JAM:'Congestionamento', ROAD_CLOSED:'Via fechada', CONSTRUCTION:'Obra',
-    POLICE:'Polícia/Radar', MISC:'Diverso'
-  };
+  const TYPE_LABEL = {{ typesMap|json_encode|raw }};
+  const SUBTYPE_LABEL = {{ subtypesMap|json_encode|raw }};
 
   const map = L.map('live-map');
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -185,7 +182,7 @@
       className:'',iconSize:[10,10],iconAnchor:[5,5]
     });
     const m = L.marker([a.lat,a.lng],{icon})
-      .bindPopup(`<b>${TYPE_LABEL[a.type]||a.type}</b><br>${a.subtype||''}<br>${a.street||''}${a.city?' — '+a.city:''}`);
+      .bindPopup(`<b>${TYPE_LABEL[a.type]||a.type}</b><br>${a.subtype ? (SUBTYPE_LABEL[a.type+'|'+a.subtype]||a.subtype) : ''}<br>${a.street||''}${a.city?' — '+a.city:''}`);
     m.addTo(map);
     pts.push(m);
   });
