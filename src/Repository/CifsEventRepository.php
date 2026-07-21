@@ -19,6 +19,40 @@ class CifsEventRepository extends ServiceEntityRepository
         parent::__construct($registry, CifsEvent::class);
     }
 
+    // ── Listagem filtrada (usada pelo CifsEventController) ────────────────────
+
+    /**
+     * Lista eventos com filtros opcionais.
+     *
+     * @param bool     $onlyActive  Se true, retorna apenas eventos ativos agora.
+     * @param int      $limit       Número máximo de resultados.
+     * @param Partner|null $partner Filtra por parceiro (null = todos).
+     * @return CifsEvent[]
+     */
+    public function findFiltered(
+        bool     $onlyActive = false,
+        int      $limit      = 50,
+        ?Partner $partner    = null,
+    ): array {
+        $now = new \DateTimeImmutable();
+        $qb  = $this->createQueryBuilder('e')
+            ->orderBy('e.startDate', 'DESC')
+            ->setMaxResults($limit);
+
+        if ($onlyActive) {
+            $qb->andWhere('e.startDate <= :now')
+               ->andWhere('e.endDate IS NULL OR e.endDate > :now')
+               ->setParameter('now', $now);
+        }
+
+        if ($partner !== null) {
+            $qb->andWhere('e.partner = :partner')
+               ->setParameter('partner', $partner);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
     // ── KPIs ──────────────────────────────────────────────────────────────────
 
     /**
