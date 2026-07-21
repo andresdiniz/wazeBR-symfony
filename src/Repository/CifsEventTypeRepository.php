@@ -77,4 +77,22 @@ class CifsEventTypeRepository extends ServiceEntityRepository
         }
         return $map;
     }
+
+    /**
+     * Mapa "TYPE|SUBTYPE" => rótulo traduzido, para um locale.
+     */
+    public function getSubtypesMap(string $locale = 'pt'): array
+    {
+        $rows = $this->createQueryBuilder('t')
+            ->where('t.locale = :locale AND t.subtype IS NOT NULL')
+            ->setParameter('locale', $locale)
+            ->getQuery()
+            ->getResult();
+
+        $map = [];
+        foreach ($rows as $row) {
+            $map[$row->getType() . '|' . $row->getSubtype()] = $row->getLabel();
+        }
+        return $map;
+    }
 }

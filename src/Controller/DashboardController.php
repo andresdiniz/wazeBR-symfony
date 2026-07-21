@@ -9,11 +9,13 @@ use App\Repository\CemadenHydroDataRepository;
 use App\Repository\MonitoredCityRepository;
 use App\Repository\MonitoredLinkRepository;
 use App\Repository\WazeAlertRepository;
+use App\Repository\WazeAlertTypeRepository;
 use App\Repository\WazeCountRepository;
 use App\Repository\WazeTvtRouteRepository;
 use App\Repository\WazeTrafficJamRepository;
 use App\Service\TenantContext;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -25,6 +27,7 @@ class DashboardController extends AbstractController
     public function __construct(
         private readonly TenantContext               $tenantContext,
         private readonly WazeAlertRepository         $alertRepo,
+        private readonly WazeAlertTypeRepository     $alertTypeRepo,
         private readonly WazeTrafficJamRepository    $jamRepo,
         private readonly CemadenDataRepository       $cemadenRepo,
         private readonly CemadenHydroDataRepository  $hydroRepo,
@@ -35,7 +38,7 @@ class DashboardController extends AbstractController
     ) {}
 
     #[Route('', name: 'index')]
-    public function index(): Response
+    public function index(Request $request): Response
     {
         if ($this->isGranted('ROLE_SUPER_ADMIN')) {
             return $this->redirectToRoute('admin_partner_index');
@@ -96,9 +99,12 @@ class DashboardController extends AbstractController
         $jamLevelBreakdown = $this->jamRepo->levelBreakdownByPartner($partner);
         $alertsPerHour     = $this->alertRepo->countPerHourLast24h($partner);
         $jamsPerHour       = $this->jamRepo->countPerHourLast24h($partner);
+        $locale            = $request->getLocale() ?: 'pt';
 
         return $this->render('dashboard/index.html.twig', [
-            'partner' => $partner,
+            'partner'     => $partner,
+            'typesMap'    => $this->alertTypeRepo->getTypesMap($locale),
+            'subtypesMap' => $this->alertTypeRepo->getSubtypesMap($locale),
             'kpis'    => [
                 // base
                 'alerts'        => $alertCount,

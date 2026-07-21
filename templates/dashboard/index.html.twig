@@ -522,9 +522,9 @@
           <div class="field-alert-top">
             <div style="flex:1">
               <div class="field-alert-type">
-                {{ ('waze.alert_type.' ~ typeKey)|trans({}, 'waze') }}
+                {{ typesMap[a.type] ?? a.type }}
                 {% if subtypeKey is not empty %}
-                  <span style="font-weight:400;color:var(--color-text-muted)"> · {{ ('waze.alert_subtype.' ~ subtypeKey)|trans({}, 'waze') }}</span>
+                  <span style="font-weight:400;color:var(--color-text-muted)"> · {{ subtypesMap[a.type ~ '|' ~ a.subtype] ?? a.subtype }}</span>
                 {% endif %}
               </div>
               <div class="field-alert-meta">
@@ -604,12 +604,12 @@
           <tr>
             <td>
               <span class="badge {{ a.type in ['ACCIDENT'] ? 'badge-red' : (a.type == 'JAM' ? 'badge-orange' : (a.type == 'ROAD_CLOSED' ? 'badge-gray' : 'badge-yellow')) }}">
-                {{ ('waze.alert_type.' ~ typeKey)|trans({}, 'waze') }}
+                {{ typesMap[a.type] ?? a.type }}
               </span>
             </td>
             <td style="font-size:var(--text-xs);color:var(--color-text-muted)">
               {% if subtypeKey is not empty %}
-                {{ ('waze.alert_subtype.' ~ subtypeKey)|trans({}, 'waze') }}
+                {{ subtypesMap[a.type ~ '|' ~ a.subtype] ?? a.subtype }}
               {% else %}—{% endif %}
             </td>
             <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">

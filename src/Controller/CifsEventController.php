@@ -15,8 +15,11 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 #[Route('/cifs', name: 'cifs_')]
+#[IsGranted('ROLE_USER')]
 class CifsEventController extends AbstractController
 {
 public function __construct(
@@ -24,6 +27,7 @@ private readonly CifsEventRepository $eventRepo,
 private readonly CifsEventTypeRepository $typeRepo,
 private readonly CifsFeedService $feedService,
 private readonly EntityManagerInterface $em,
+private readonly HttpClientInterface $httpClient,
 ) {}
 
 #[Route('', name: 'index', methods: ['GET'])]
@@ -32,11 +36,13 @@ public function index(Request $request): Response
 $locale = $request->getLocale() ?: 'pt';
 $grouped = $this->typeRepo->getGroupedByType($locale);
 $typesMap = $this->typeRepo->getTypesMap($locale);
+$subtypesMap = $this->typeRepo->getSubtypesMap($locale);
 $events = $this->eventRepo->findFiltered(onlyActive: false, limit: 100);
 
 return $this->render('cifs/index.html.twig', [
 'grouped' => $grouped,
 'typesMap' => $typesMap,
+'subtypesMap' => $subtypesMap,
 'events' => $events,
 'directions' => CifsDirectionEnum::cases(),
 'types' => CifsTypeEnum::cases(),
@@ -54,6 +60,106 @@ public function apiTypes(Request $request): JsonResponse
 $locale = $request->query->get('locale', 'pt');
 $grouped = $this->typeRepo->getGroupedByType($locale);
 return $this->json($grouped);
+}
+
+/**
+ * Geocodificação reversa (lat/lon -> nomes de via candidatos), para sugerir
+ * o campo "Nome da via" enquanto o operador desenha o segmento no mapa.
+ *
+ * Usa a API oficial de Reverse Geocoding do Waze (Partner Hub) quando
+ * WAZE_GEOCODE_TOKEN estiver configurado — é o método que a própria
+ * documentação recomenda para evitar divergência entre o nome enviado no
+ * feed e o nome que existe no mapa do Waze:
+ * https://support.google.com/waze/partners/answer/11486981
+ * Retorna candidatos ordenados por distância, como a doc descreve.
+ * Sem token, cai para o Nominatim (OSM) como aproximação.
+ */
+#[Route('/api/geocode/reverse', name: 'api_geocode_reverse', methods: ['GET'])]
+public function apiGeocodeReverse(Request $request): JsonResponse
+{
+$lat = $request->query->get('lat');
+$lon = $request->query->get('lon');
+
+if (!is_numeric($lat) || !is_numeric($lon)) {
+return $this->json(['error' => 'lat/lon inválidos.'], 400);
+}
+
+$wazeToken = $_ENV['WAZE_GEOCODE_TOKEN'] ?? null;
+$wazeRegion = $_ENV['WAZE_GEOCODE_REGION'] ?? 'ROW'; // NA | ROW | IL — Brasil = ROW
+
+if (!empty($wazeToken)) {
+$result = $this->reverseGeocodeWaze((float) $lat, (float) $lon, $wazeToken, $wazeRegion);
+if ($result !== null) {
+return $this->json(['source' => 'waze', 'candidates' => $result]);
+}
+}
+
+try {
+$response = $this->httpClient->request('GET', 'https://nominatim.openstreetmap.org/reverse', [
+'query' => [
+'format' => 'jsonv2',
+'lat' => $lat,
+'lon' => $lon,
+'addressdetails' => 1,
+'zoom' => 17,
+'accept-language' => 'pt-BR',
+],
+'headers' => [
+'User-Agent' => 'WazeBR-Symfony/1.0 (contato@wazebr.com.br)',
+],
+'timeout' => 5,
+]);
+
+$data = $response->toArray(false);
+$address = $data['address'] ?? [];
+$street = $address['road'] ?? $address['pedestrian'] ?? $address['footway'] ?? null;
+
+return $this->json([
+'source' => 'nominatim',
+'candidates' => $street ? [['name' => $street, 'distance' => null]] : [],
+]);
+} catch (\Throwable $e) {
+return $this->json(['source' => null, 'candidates' => [], 'error' => 'Geocodificação indisponível no momento.'], 200);
+}
+}
+
+/**
+ * Chama a API oficial de Reverse Geocoding do Waze (streetsInfo). Retorna
+ * até 5 nomes de rua num raio de 50m ordenados por distância, conforme a
+ * documentação oficial. Retorna null em caso de falha.
+ *
+ * @return array<int, array{name: string, distance: float}>|null
+ */
+private function reverseGeocodeWaze(float $lat, float $lon, string $token, string $region): ?array
+{
+$hostByRegion = [
+'NA' => 'https://www.waze.com/partnerhub-api/waze-map/streetsInfo',
+'ROW' => 'https://www.waze.com/row-partnerhub-api/waze-map/streetsInfo',
+'IL' => 'https://www.waze.com/il-partnerhub-api/waze-map/streetsInfo',
+];
+$url = $hostByRegion[$region] ?? $hostByRegion['ROW'];
+
+try {
+$response = $this->httpClient->request('GET', $url, [
+'query' => ['lat' => $lat, 'lon' => $lon, 'token' => $token],
+'timeout' => 5,
+]);
+
+if ($response->getStatusCode() !== 200) {
+return null;
+}
+
+$data = $response->toArray(false);
+$out = [];
+foreach (($data['result'] ?? []) as $entry) {
+$names = $entry['streetNames'] ?? [];
+if (empty($names)) continue;
+$out[] = ['name' => $names[0], 'distance' => $entry['distance'] ?? null];
+}
+return $out;
+} catch (\Throwable $e) {
+return null;
+}
 }
 
 #[Route('/api/event', name: 'api_save', methods: ['POST'])]
