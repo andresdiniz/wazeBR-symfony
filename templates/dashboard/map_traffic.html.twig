@@ -2,28 +2,136 @@
 {% block title %}Mapa de Trânsito — WazeBR{% endblock %}
 {% block stylesheets %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+/* ── mapa ── */
+#map { height: 600px; width: 100%; }
+
+/* ── legenda flutuante ── */
+.map-legend {
+  position: absolute;
+  bottom: 28px;
+  right: 10px;
+  z-index: 1000;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 10px 14px;
+  min-width: 160px;
+  pointer-events: none;
+}
+.map-legend-title {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: 8px;
+}
+.map-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-xs);
+  color: var(--color-text);
+  margin-bottom: 5px;
+}
+.map-legend-item:last-child { margin-bottom: 0; }
+.map-legend-line {
+  width: 24px; height: 4px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ── seletor de tema do mapa ── */
+.map-theme-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.map-theme-btn {
+  padding: 3px 11px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 120ms ease;
+  line-height: 1.6;
+}
+.map-theme-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.map-theme-btn.active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+.map-theme-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-weight: 600;
+  margin-right: 2px;
+}
+
+/* ── wrapper relativo para posicionar a legenda sobre o mapa ── */
+.map-wrap {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+}
+</style>
 {% endblock %}
+
 {% block content %}
 <div class="topbar">
-    <h1>🚗 Mapa de Congestionamentos</h1>
-    <form method="get" style="display:flex;gap:.5rem;align-items:center;margin-left:auto">
-        <select name="h" class="btn btn-ghost" style="padding:.4rem .7rem">
-            {% for h in [1,2,4,6,12] %}
-                <option value="{{ h }}" {% if hours == h %}selected{% endif %}>{{ h }}h</option>
-            {% endfor %}
-        </select>
-        <button type="submit" class="btn btn-primary">Filtrar</button>
-    </form>
+  <h1>🚗 Mapa de Congestionamentos</h1>
+  <form method="get" style="display:flex;gap:.5rem;align-items:center;margin-left:auto">
+    <select name="h" class="btn btn-ghost" style="padding:.4rem .7rem">
+      {% for h in [1,2,4,6,12] %}
+        <option value="{{ h }}" {% if hours == h %}selected{% endif %}>{{ h }}h</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary">Filtrar</button>
+  </form>
 </div>
-<div class="card" style="padding:0;overflow:hidden">
-    <div id="map" style="height:600px;width:100%"></div>
+
+{# Barra de tema do mapa — independente do tema do sistema #}
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+  <span class="map-theme-label">Tema do mapa:</span>
+  <div class="map-theme-bar" id="mapThemeBar">
+    <button class="map-theme-btn active" data-tile="osm">Padrão</button>
+    <button class="map-theme-btn" data-tile="light">Claro</button>
+    <button class="map-theme-btn" data-tile="dark">Escuro</button>
+    <button class="map-theme-btn" data-tile="satellite">Satélite</button>
+  </div>
+</div>
+
+<div class="card" style="padding:0;overflow:visible">
+  <div class="map-wrap">
+    <div id="map"></div>
+    {# Legenda fixa sobre o mapa — não interfere no zoom #}
+    <div class="map-legend">
+      <div class="map-legend-title">Legenda</div>
+      <div class="map-legend-item"><span class="map-legend-line" style="background:#48bb78"></span> Livre (0–1)</div>
+      <div class="map-legend-item"><span class="map-legend-line" style="background:#ecc94b"></span> Leve (2)</div>
+      <div class="map-legend-item"><span class="map-legend-line" style="background:#dd6b20"></span> Moderado (3–4)</div>
+      <div class="map-legend-item"><span class="map-legend-line" style="background:#e53e3e"></span> Intenso/Parado (5)</div>
+    </div>
+  </div>
 </div>
 <p style="margin-top:.75rem;font-size:var(--text-sm);color:var(--color-text-muted)">{{ jams|length }} congestionamento(s) exibido(s)</p>
 {% endblock %}
+
 {% block javascripts %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const jams = {{ jams|map(j => {
+(function(){
+  'use strict';
+
+  const jams = {{ jams|map(j => {
     lat: j.latitude,
     lng: j.longitude,
     street: j.street,
@@ -32,19 +140,86 @@ const jams = {{ jams|map(j => {
     speed: j.speedKmh,
     delay: j.delay,
     line: j.line
-})|json_encode|raw }};
+  })|json_encode|raw }};
 
-const map = L.map('map').setView([-19.9, -43.9], 11);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
+  /* ── tiles disponíveis ── */
+  const TILES = {
+    osm:       { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                 attr: '© <a href="https://openstreetmap.org">OpenStreetMap</a>' },
+    light:     { url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                 attr: '© <a href="https://carto.com">CartoDB</a>' },
+    dark:      { url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                 attr: '© <a href="https://carto.com">CartoDB</a>' },
+    satellite: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                 attr: '© <a href="https://www.esri.com">Esri</a>' },
+  };
 
-const levelColor = l => l >= 5?'#e53e3e':l >= 3?'#dd6b20':l >= 1?'#ecc94b':'#48bb78';
-jams.forEach(j => {
-    if(j.line && j.line.length > 1) {
-        const pts = j.line.map(p => [p.y, p.x]);
-        L.polyline(pts, {color: levelColor(j.level), weight: 4, opacity: 0.8})
-         .bindPopup(`<strong>${j.street||'Sem nome'}</strong><br>${j.city||''}<br>Nível: ${j.level} | ${j.speed} km/h | Atraso: ${j.delay}s`)
-         .addTo(map);
+  /* ── mapa ── */
+  const map = L.map('map', { zoomControl: true }).setView([-19.9, -43.9], 11);
+
+  let currentTile = L.tileLayer(TILES.osm.url, { attribution: TILES.osm.attr }).addTo(map);
+
+  /* ── cor por nível ── */
+  function levelColor(l) {
+    if (l >= 5) return '#e53e3e';
+    if (l >= 3) return '#dd6b20';
+    if (l >= 1) return '#ecc94b';
+    return '#48bb78';
+  }
+
+  /* ── polylines + coleta de bounds ── */
+  const allBounds = [];
+  jams.forEach(function(j) {
+    if (j.line && j.line.length > 1) {
+      const pts = j.line.map(function(p) { return [p.y, p.x]; });
+      pts.forEach(function(p) { allBounds.push(p); });
+      L.polyline(pts, { color: levelColor(j.level), weight: 4, opacity: 0.85 })
+       .bindPopup(
+         '<strong>' + (j.street || 'Sem nome') + '</strong>' +
+         '<br>' + (j.city || '') +
+         '<br>Nível: ' + j.level +
+         ' | ' + (j.speed != null ? j.speed + ' km/h' : '—') +
+         ' | Atraso: ' + (j.delay != null ? j.delay + 's' : '—')
+       )
+       .addTo(map);
     }
-});
+  });
+
+  /* ── fitBounds com padding para não entrar na legenda (180px direita, 40px baixo) ── */
+  if (allBounds.length) {
+    map.fitBounds(allBounds, {
+      paddingTopLeft:     [20, 20],
+      paddingBottomRight: [190, 50],
+    });
+  }
+
+  /* ── troca de tema do mapa ── */
+  document.getElementById('mapThemeBar').addEventListener('click', function(e) {
+    const btn = e.target.closest('.map-theme-btn');
+    if (!btn) return;
+    const key = btn.dataset.tile;
+    if (!TILES[key]) return;
+
+    document.querySelectorAll('.map-theme-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+
+    map.removeLayer(currentTile);
+    currentTile = L.tileLayer(TILES[key].url, { attribution: TILES[key].attr });
+    currentTile.addTo(map);
+    currentTile.bringToBack();
+
+    sessionStorage.setItem('mapTileTraffic', key);
+  });
+
+  /* ── restaura tema salvo na sessão ── */
+  (function(){
+    const saved = sessionStorage.getItem('mapTileTraffic');
+    if (saved && TILES[saved] && saved !== 'osm') {
+      const btn = document.querySelector('[data-tile="' + saved + '"]');
+      if (btn) btn.click();
+    }
+  })();
+
+})();
 </script>
 {% endblock %}

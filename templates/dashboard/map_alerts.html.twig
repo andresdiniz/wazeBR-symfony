@@ -2,29 +2,140 @@
 {% block title %}Mapa de Alertas — WazeBR{% endblock %}
 {% block stylesheets %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+/* ── mapa ── */
+#map { height: 600px; width: 100%; }
+
+/* ── legenda flutuante ── */
+.map-legend {
+  position: absolute;
+  bottom: 28px;
+  right: 10px;
+  z-index: 1000;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 10px 14px;
+  min-width: 160px;
+  pointer-events: none;
+}
+.map-legend-title {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: 8px;
+}
+.map-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-xs);
+  color: var(--color-text);
+  margin-bottom: 5px;
+}
+.map-legend-item:last-child { margin-bottom: 0; }
+.map-legend-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1.5px solid rgba(0,0,0,.15);
+}
+
+/* ── seletor de tema do mapa ── */
+.map-theme-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.map-theme-btn {
+  padding: 3px 11px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 120ms ease;
+  line-height: 1.6;
+}
+.map-theme-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.map-theme-btn.active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+.map-theme-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-weight: 600;
+  margin-right: 2px;
+}
+
+/* ── wrapper relativo para posicionar a legenda sobre o mapa ── */
+.map-wrap {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+}
+</style>
 {% endblock %}
+
 {% block content %}
 <div class="topbar">
-    <h1>🚨 Mapa de Alertas Waze</h1>
-    <form method="get" style="display:flex;gap:.5rem;align-items:center;margin-left:auto">
-        <select name="h" class="btn btn-ghost" style="padding:.4rem .7rem">
-            {% for h in [1,2,4,6,12] %}
-                <option value="{{ h }}" {% if hours == h %}selected{% endif %}>{{ h }}h</option>
-            {% endfor %}
-        </select>
-        <input name="city" type="text" value="{{ city }}" placeholder="Cidade..." style="padding:.4rem .7rem;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);color:var(--color-text);font-size:var(--text-sm)">
-        <button type="submit" class="btn btn-primary">Filtrar</button>
-    </form>
+  <h1>🚨 Mapa de Alertas Waze</h1>
+  <form method="get" style="display:flex;gap:.5rem;align-items:center;margin-left:auto">
+    <select name="h" class="btn btn-ghost" style="padding:.4rem .7rem">
+      {% for h in [1,2,4,6,12] %}
+        <option value="{{ h }}" {% if hours == h %}selected{% endif %}>{{ h }}h</option>
+      {% endfor %}
+    </select>
+    <input name="city" type="text" value="{{ city }}" placeholder="Cidade..."
+      style="padding:.4rem .7rem;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);color:var(--color-text);font-size:var(--text-sm)">
+    <button type="submit" class="btn btn-primary">Filtrar</button>
+  </form>
 </div>
-<div class="card" style="padding:0;overflow:hidden">
-    <div id="map" style="height:600px;width:100%"></div>
+
+{# Barra de tema do mapa — independente do tema do sistema #}
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+  <span class="map-theme-label">Tema do mapa:</span>
+  <div class="map-theme-bar" id="mapThemeBar">
+    <button class="map-theme-btn active" data-tile="osm">Padrão</button>
+    <button class="map-theme-btn" data-tile="light">Claro</button>
+    <button class="map-theme-btn" data-tile="dark">Escuro</button>
+    <button class="map-theme-btn" data-tile="satellite">Satélite</button>
+  </div>
+</div>
+
+<div class="card" style="padding:0;overflow:visible">
+  <div class="map-wrap">
+    <div id="map"></div>
+    {# Legenda fixa sobre o mapa — não interfere no zoom #}
+    <div class="map-legend">
+      <div class="map-legend-title">Legenda</div>
+      <div class="map-legend-item"><span class="map-legend-dot" style="background:#e53e3e"></span> Acidente</div>
+      <div class="map-legend-item"><span class="map-legend-dot" style="background:#dd6b20"></span> Congestionamento</div>
+      <div class="map-legend-item"><span class="map-legend-dot" style="background:#805ad5"></span> Via fechada</div>
+      <div class="map-legend-item"><span class="map-legend-dot" style="background:#d69e2e"></span> Perigo</div>
+      <div class="map-legend-item"><span class="map-legend-dot" style="background:#4f98a3"></span> Outros</div>
+    </div>
+  </div>
 </div>
 <p style="margin-top:.75rem;font-size:var(--text-sm);color:var(--color-text-muted)">{{ alerts|length }} alerta(s) exibido(s)</p>
 {% endblock %}
+
 {% block javascripts %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const alerts = {{ alerts|map(a => {
+(function(){
+  'use strict';
+
+  const alerts = {{ alerts|map(a => {
     lat: a.latitude,
     lng: a.longitude,
     type: a.type,
@@ -32,18 +143,88 @@ const alerts = {{ alerts|map(a => {
     street: a.street,
     city: a.city,
     reliability: a.reliability
-})|json_encode|raw }};
+  })|json_encode|raw }};
 
-const map = L.map('map').setView([-19.9, -43.9], 11);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
+  /* ── tiles disponíveis ── */
+  const TILES = {
+    osm:       { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                 attr: '© <a href="https://openstreetmap.org">OpenStreetMap</a>' },
+    light:     { url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                 attr: '© <a href="https://carto.com">CartoDB</a>' },
+    dark:      { url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                 attr: '© <a href="https://carto.com">CartoDB</a>' },
+    satellite: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                 attr: '© <a href="https://www.esri.com">Esri</a>' },
+  };
 
-const colors = {ACCIDENT:'#e53e3e',JAM:'#dd6b20',ROAD_CLOSED:'#805ad5',HAZARD:'#d69e2e',DEFAULT:'#4f98a3'};
-alerts.forEach(a => {
+  /* ── mapa ── */
+  const map = L.map('map', { zoomControl: true }).setView([-19.9, -43.9], 11);
+
+  let currentTile = L.tileLayer(TILES.osm.url, { attribution: TILES.osm.attr }).addTo(map);
+
+  /* ── cores por tipo ── */
+  const colors = {
+    ACCIDENT:    '#e53e3e',
+    JAM:         '#dd6b20',
+    ROAD_CLOSED: '#805ad5',
+    HAZARD:      '#d69e2e',
+    DEFAULT:     '#4f98a3',
+  };
+
+  /* ── marcadores ── */
+  const bounds = [];
+  alerts.forEach(function(a) {
     const color = colors[a.type] || colors.DEFAULT;
-    L.circleMarker([a.lat, a.lng], {radius:7, color, fillColor:color, fillOpacity:0.8, weight:1.5})
-     .bindPopup(`<strong>${a.type}</strong>${a.subtype?' / '+a.subtype:''}<br>${a.street||''}<br>${a.city||''}<br>Confiança: ${a.reliability||'?'}`)
-     .addTo(map);
-});
-if(alerts.length) map.fitBounds(alerts.map(a=>[a.lat,a.lng]),{padding:[30,30]});
+    L.circleMarker([a.lat, a.lng], {
+      radius: 7, color: color, fillColor: color, fillOpacity: 0.8, weight: 1.5
+    }).bindPopup(
+      '<strong>' + a.type + '</strong>' +
+      (a.subtype ? ' / ' + a.subtype : '') +
+      '<br>' + (a.street || '') +
+      '<br>' + (a.city || '') +
+      '<br>Confiança: ' + (a.reliability || '?')
+    ).addTo(map);
+    bounds.push([a.lat, a.lng]);
+  });
+
+  /* ── fitBounds com padding para não entrar na legenda (180px direita, 40px baixo) ── */
+  if (bounds.length) {
+    map.fitBounds(bounds, {
+      paddingTopLeft:     [20, 20],
+      paddingBottomRight: [190, 50],  /* 190px = largura da legenda + margem */
+    });
+  }
+
+  /* ── troca de tema do mapa ── */
+  document.getElementById('mapThemeBar').addEventListener('click', function(e) {
+    const btn = e.target.closest('.map-theme-btn');
+    if (!btn) return;
+    const key = btn.dataset.tile;
+    if (!TILES[key]) return;
+
+    /* atualiza botões */
+    document.querySelectorAll('.map-theme-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+
+    /* troca tile layer */
+    map.removeLayer(currentTile);
+    currentTile = L.tileLayer(TILES[key].url, { attribution: TILES[key].attr });
+    currentTile.addTo(map);
+    currentTile.bringToBack();
+
+    /* persiste escolha para esta sessão */
+    sessionStorage.setItem('mapTileAlerts', key);
+  });
+
+  /* ── restaura tema salvo na sessão ── */
+  (function(){
+    const saved = sessionStorage.getItem('mapTileAlerts');
+    if (saved && TILES[saved] && saved !== 'osm') {
+      const btn = document.querySelector('[data-tile="' + saved + '"]');
+      if (btn) btn.click();
+    }
+  })();
+
+})();
 </script>
 {% endblock %}
