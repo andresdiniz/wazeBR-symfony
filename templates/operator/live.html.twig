@@ -226,7 +226,7 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
   padding: 10px 11px;
   position: relative;
   overflow: hidden;
-  transition: border-color var(--transition), background var(--transition);
+  transition: border-color var(--transition), background var(--transition), box-shadow var(--transition);
   cursor: default;
 }
 .kpi-card:hover { border-color: var(--border2); background: var(--surface3); }
@@ -246,8 +246,15 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
 .kpi-card.alert-green::before  { background: var(--green); }
 .kpi-card.alert-teal::before   { background: var(--teal); }
 
-.kpi-card.alert-red    { background: color-mix(in srgb, var(--surface2), rgba(239,68,68,.06)); }
-.kpi-card.alert-orange { background: color-mix(in srgb, var(--surface2), rgba(249,115,22,.06)); }
+/* ── KPI glow states (active alerts) ─────────────────────────── */
+.kpi-card.alert-red    {
+  background: color-mix(in srgb, var(--surface2), rgba(239,68,68,.10));
+  box-shadow: 0 0 0 1px rgba(239,68,68,.22), inset 0 0 20px rgba(239,68,68,.04);
+}
+.kpi-card.alert-orange {
+  background: color-mix(in srgb, var(--surface2), rgba(249,115,22,.08));
+  box-shadow: 0 0 0 1px rgba(249,115,22,.18);
+}
 .kpi-card.alert-green  { background: color-mix(in srgb, var(--surface2), rgba(34,197,94,.04)); }
 .kpi-card.alert-teal   { background: color-mix(in srgb, var(--surface2), rgba(20,184,166,.04)); }
 
@@ -299,205 +306,30 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
   color: var(--muted);
   line-height: 1;
 }
-.kpi-value.val-red    { color: var(--red); }
-.kpi-value.val-orange { color: var(--orange); }
-.kpi-value.val-yellow { color: var(--yellow); }
-.kpi-value.val-green  { color: var(--green); }
-.kpi-value.val-teal   { color: var(--teal); }
-
-/* ── kpi-sub com hierarquia: info secundária em --faint ─────── */
 .kpi-sub {
   font-size: 10px;
   color: var(--faint);
-  margin-top: 4px;
+  margin-top: 5px;
   line-height: 1.3;
 }
-.kpi-sub strong { color: var(--muted); font-weight: 600; }
-.kpi-sub em     { color: var(--text);  font-style: normal; font-weight: 700; }
-
-.kpi-spark {
-  width: 100%;
-  height: 22px;
+.kpi-bar-wrap {
+  height: 3px;
+  background: var(--surface3);
+  border-radius: 2px;
   margin-top: 7px;
-  display: block;
-}
-
-/* ── Sparkline empty state ─────────────────────────────────── */
-.kpi-spark-empty {
-  width: 100%;
-  height: 22px;
-  margin-top: 7px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.kpi-spark-empty span {
-  font-size: 9px;
-  color: var(--faint);
-  letter-spacing: .04em;
-}
-
-.kpi-card.alert-red    .kpi-icon { background: var(--red-dim); }
-.kpi-card.alert-orange .kpi-icon { background: var(--orange-dim); }
-.kpi-card.alert-yellow .kpi-icon { background: var(--yellow-dim); }
-.kpi-card.alert-green  .kpi-icon { background: var(--green-dim); }
-.kpi-card.alert-teal   .kpi-icon { background: var(--teal-dim); }
-
-.kpi-card.alert-red    .kpi-icon svg { color: var(--red); }
-.kpi-card.alert-orange .kpi-icon svg { color: var(--orange); }
-.kpi-card.alert-yellow .kpi-icon svg { color: var(--yellow); }
-.kpi-card.alert-green  .kpi-icon svg { color: var(--green); }
-.kpi-card.alert-teal   .kpi-icon svg { color: var(--teal); }
-
-.kpi-infra-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  margin-top: 2px;
-}
-.kpi-infra-item {
-  flex: 1;
-  text-align: center;
-  background: var(--surface3);
-  border-radius: var(--radius-sm);
-  padding: 5px 4px;
-}
-.kpi-infra-val {
-  font-size: 17px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-  line-height: 1;
-}
-.kpi-infra-key {
-  font-size: 8.5px;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  color: var(--faint);
-  margin-top: 2px;
-}
-
-/* ── Card estação CEMADEN ────────────────────────────────────── */
-.cemaden-station-name {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text);
-  white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
-  margin-bottom: 2px;
 }
-.cemaden-station-city {
-  font-size: 10px;
-  color: var(--faint);
-  margin-bottom: 8px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.cemaden-level-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-.cemaden-level-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  border-radius: 20px;
-  padding: 3px 8px;
-  background: var(--surface3);
-  color: var(--muted);
-  flex-shrink: 0;
-}
-.cemaden-level-badge.lvl-normal  { background: var(--teal-dim);   color: var(--teal); }
-.cemaden-level-badge.lvl-atencao { background: var(--yellow-dim); color: var(--yellow); }
-.cemaden-level-badge.lvl-alerta  { background: var(--orange-dim); color: var(--orange); }
-.cemaden-level-badge.lvl-critico { background: var(--red-dim);    color: var(--red); }
-
-.cemaden-quota-wrap { margin-top: 4px; }
-.cemaden-quota-label {
-  display: flex;
-  justify-content: space-between;
-  font-size: 9px;
-  color: var(--faint);
-  margin-bottom: 3px;
-}
-.cemaden-quota-label span:last-child {
-  font-weight: 700;
-  color: var(--text);
-  font-variant-numeric: tabular-nums;
-}
-.cemaden-quota-track {
-  width: 100%;
-  height: 6px;
-  background: var(--surface3);
-  border-radius: 3px;
-  overflow: hidden;
-  position: relative;
-}
-.cemaden-quota-fill {
+.kpi-bar {
   height: 100%;
-  border-radius: 3px;
-  transition: width .5s ease, background .3s;
-  min-width: 3px;
+  border-radius: 2px;
+  background: var(--teal);
+  transition: width .6s cubic-bezier(.16,1,.3,1);
 }
-.cemaden-quota-markers {
-  position: relative;
-  height: 10px;
-  margin-top: 2px;
-}
-.cemaden-quota-marker {
-  position: absolute;
-  top: 0;
-  transform: translateX(-50%);
-  font-size: 8px;
-  white-space: nowrap;
-}
-.cemaden-quota-marker::before {
-  content: '';
-  display: block;
-  width: 1px;
-  height: 5px;
-  margin: 0 auto 1px;
-}
-.cemaden-quota-marker.mk-alerta { color: var(--yellow); }
-.cemaden-quota-marker.mk-alerta::before { background: var(--yellow); }
-.cemaden-quota-marker.mk-transbordamento { color: var(--red); }
-.cemaden-quota-marker.mk-transbordamento::before { background: var(--red); }
-
-.cemaden-rain-row {
-  display: flex;
-  gap: 5px;
-  margin-top: 6px;
-}
-.cemaden-rain-item {
-  flex: 1;
-  background: var(--surface3);
-  border-radius: var(--radius-sm);
-  padding: 5px 4px;
-  text-align: center;
-}
-.cemaden-rain-val {
-  font-size: 14px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-  line-height: 1;
-}
-.cemaden-rain-key {
-  font-size: 8px;
-  text-transform: uppercase;
-  letter-spacing: .05em;
-  color: var(--faint);
-  margin-top: 2px;
-}
+.kpi-bar.red    { background: var(--red);    }
+.kpi-bar.orange { background: var(--orange); }
+.kpi-bar.yellow { background: var(--yellow); }
+.kpi-bar.green  { background: var(--green);  }
+.kpi-bar.teal   { background: var(--teal);   }
 
 /* ── Mapa ─────────────────────────────────────────────────────── */
 .op-map-container {
@@ -508,6 +340,7 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
 #op-map {
   width: 100%;
   height: 100%;
+  filter: contrast(1.05) brightness(0.97);
 }
 .map-overlay-info {
   position: absolute;
@@ -532,22 +365,39 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
   flex-shrink: 0;
 }
 
-/* ── Legenda do mapa — lado esquerdo para não colidir com o feed ── */
+/* ── Legenda do mapa — canto inferior direito ─────────────────── */
 .map-legend {
   position: absolute;
-  top: 12px;
-  left: 12px;
-  background: rgba(13,14,16,.9);
+  bottom: 48px;
+  right: 12px;
+  background: rgba(13,14,16,.92);
   border: 1px solid var(--border2);
   border-radius: var(--radius);
   padding: 7px 9px;
   z-index: 500;
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(8px);
   display: flex;
   flex-direction: column;
   gap: 4px;
-  pointer-events: none;
+  pointer-events: auto;
+  min-width: 148px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.5);
 }
+.map-legend.collapsed .map-legend-body { display: none; }
+.map-legend-toggle {
+  position: absolute;
+  top: 5px; right: 7px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--faint);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0 2px;
+  transition: color var(--transition);
+}
+.map-legend-toggle:hover { color: var(--muted); }
 .map-legend-title {
   font-size: 8px;
   font-weight: 700;
@@ -557,6 +407,12 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
   margin-bottom: 2px;
   border-bottom: 1px solid var(--border);
   padding-bottom: 3px;
+  padding-right: 18px;
+}
+.map-legend-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 .map-legend-row {
   display: flex;
@@ -619,178 +475,188 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
   top: 0;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  padding: 10px 12px;
+  padding: 10px 12px 8px;
   z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
 }
-.feed-header-title {
+.feed-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--faint);
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--muted);
 }
-.feed-header-title svg { color: var(--faint); }
-#feed-count {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 2px 8px;
+.feed-count-badge {
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  color: var(--muted);
   font-size: 10px;
   font-weight: 600;
-  color: var(--teal);
+  padding: 1px 6px;
+  border-radius: 20px;
   font-variant-numeric: tabular-nums;
 }
-
-.feed-list { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 5px; }
-
-.feed-item {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 9px 10px;
-  animation: slideIn .2s ease;
-  cursor: pointer;
-  transition: background var(--transition), border-color var(--transition), transform var(--transition);
-  /* Indicador lateral removido — usa dot colorido no badge */
+.feed-list {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  flex: 1;
 }
-.feed-item:hover { background: var(--surface3); transform: translateX(2px); }
-
-.feed-item-top {
+.feed-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: default;
+  transition: background var(--transition);
+  animation: feed-in .25s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes feed-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.feed-item:hover { background: var(--surface2); }
+.feed-item-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 6px;
-  margin-bottom: 4px;
 }
-
-/* ── Badge colorido com background ─────────────────────────── */
-.feed-type-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.feed-badge {
   font-size: 9px;
   font-weight: 700;
-  letter-spacing: .06em;
+  letter-spacing: .05em;
   text-transform: uppercase;
-  border-radius: 20px;
-  padding: 2px 7px;
-  line-height: 1.4;
+  padding: 2px 6px;
+  border-radius: 4px;
   flex-shrink: 0;
-  max-width: 180px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
-.feed-type-badge.badge-accident    { background: var(--red-dim);    color: var(--red); }
-.feed-type-badge.badge-jam         { background: var(--orange-dim); color: var(--orange); }
-.feed-type-badge.badge-hazard      { background: var(--yellow-dim); color: var(--yellow); }
-.feed-type-badge.badge-road-closed { background: var(--blue-dim);   color: var(--blue); }
-.feed-type-badge.badge-cemaden     { background: var(--teal-dim);   color: var(--teal); }
-.feed-type-badge.badge-default     { background: var(--surface3);   color: var(--muted); }
-
+.feed-badge-jam    { background: rgba(239,68,68,.15);  color: #ef4444; }
+.feed-badge-alert  { background: rgba(234,179,8,.15);  color: #eab308; }
+.feed-badge-hazard { background: rgba(249,115,22,.15); color: #f97316; }
+.feed-badge-closed { background: rgba(239,68,68,.2);   color: #f87171; }
+.feed-badge-other  { background: var(--surface3);       color: var(--muted); }
 .feed-time {
   font-size: 9px;
   color: var(--faint);
-  white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  margin-left: auto;
   flex-shrink: 0;
 }
-.feed-street { font-size: 12px; font-weight: 600; color: var(--text); line-height: 1.3; }
-.feed-meta   { font-size: 10px; color: var(--faint); margin-top: 2px; display: flex; align-items: center; gap: 4px; }
-.feed-meta-sep { color: var(--surface3); }
-.feed-meta .conf-high { color: var(--green); font-weight: 600; }
-.feed-meta .conf-med  { color: var(--yellow); }
-.feed-critical { background: rgba(239,68,68,.06); border-color: rgba(239,68,68,.2); }
-
-.feed-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 40px 16px;
-  color: var(--faint);
+.feed-street {
   font-size: 12px;
-  text-align: center;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.feed-city {
+  font-size: 10px;
+  color: var(--faint);
+}
+.feed-conf {
+  font-size: 9px;
+  color: var(--faint);
 }
 
-@keyframes slideIn {
-  from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: none; }
-}
-
-/* ── Barra inferior ───────────────────────────────────────────── */
-.op-footer {
+/* ── Bottom status bar ────────────────────────────────────────── */
+.op-bar {
   background: var(--surface);
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
-  gap: 0;
-  padding: 0 8px;
+  gap: 16px;
+  padding: 0 16px;
+  font-size: 11px;
+  color: var(--faint);
   overflow: hidden;
 }
-.footer-block {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 5px 12px;
-  border-right: 1px solid var(--border);
-  min-width: 0;
-}
-.footer-block:last-child { border-right: none; }
-.footer-label {
-  font-size: 8.5px;
-  color: var(--faint);
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  margin-bottom: 2px;
-  white-space: nowrap;
-}
-.footer-spark { display: block; }
-.footer-sources {
-  display: flex;
-  gap: 12px;
-  padding: 0 12px;
-  align-items: center;
-  flex-shrink: 0;
-  margin-left: auto;
-}
-.source-pill {
+.op-bar-item {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
-  color: var(--muted);
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 3px 8px;
-  transition: border-color var(--transition);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
-.source-pill.ok  { border-color: rgba(34,197,94,.3); color: var(--green); }
-.source-pill.err { border-color: rgba(239,68,68,.3); color: var(--red); }
-.source-dot {
+.op-bar-item b { color: var(--muted); font-variant-numeric: tabular-nums; }
+.op-bar-dot {
   width: 5px; height: 5px;
   border-radius: 50%;
-  background: var(--faint);
   flex-shrink: 0;
-  transition: background var(--transition);
 }
-.source-pill.ok  .source-dot { background: var(--green); }
-.source-pill.err .source-dot { background: var(--red); }
+.op-bar-spacer { flex: 1; }
+.op-bar-sources {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.op-bar-src {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--faint);
+  transition: border-color var(--transition), color var(--transition);
+}
+.op-bar-src.on  { border-color: rgba(20,184,166,.3); color: var(--teal); }
+.op-bar-src.off { opacity: .4; }
 
-/* ── Leaflet custom ───────────────────────────────────────────── */
-.leaflet-container { background: #111316; }
+/* ── Leaflet overrides ────────────────────────────────────────── */
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-pane > svg,
+.leaflet-pane > canvas,
+.leaflet-zoom-box,
+.leaflet-image-layer,
+.leaflet-layer { position: absolute; left: 0; top: 0; }
+.leaflet-container { overflow: hidden; }
+.leaflet-tile { user-select: none; -webkit-user-drag: none; display: block; }
+.leaflet-tile-loaded { visibility: inherit; }
+.leaflet-zoom-animated { -webkit-transform-origin: 0 0; transform-origin: 0 0; }
+.leaflet-pan-anim .leaflet-tile,
+.leaflet-zoom-anim .leaflet-zoom-animated { will-change: transform; }
+.leaflet-zoom-anim .leaflet-zoom-hide { visibility: hidden; }
+.leaflet-interactive { cursor: pointer; }
+.leaflet-grab { cursor: -webkit-grab; cursor:    grab; }
+.leaflet-crosshair,.leaflet-crosshair .leaflet-interactive { cursor: crosshair; }
+.leaflet-popup-pane,.leaflet-control { cursor: auto; }
+.leaflet-dragging .leaflet-grab,
+.leaflet-dragging .leaflet-grab .leaflet-interactive,
+.leaflet-dragging .leaflet-marker-draggable { cursor: move; cursor: -webkit-grabbing; cursor: grabbing; }
+.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-image-layer,
+.leaflet-pane > svg path,.leaflet-tile-container { pointer-events: none; }
+.leaflet-marker-icon.leaflet-interactive,.leaflet-image-layer.leaflet-interactive,
+.leaflet-pane > svg path.leaflet-interactive,svg.leaflet-image-layer.leaflet-interactive path { pointer-events: visiblePainted; pointer-events: auto; }
+.leaflet-vml-shape { width: 1px; height: 1px; }
+.lvml { behavior:url(#default#VML); display:inline-block; position:absolute; }
+.leaflet-control { position: relative; z-index: 800; pointer-events: visiblePainted; pointer-events: auto; float: left; clear: both; }
+.leaflet-top,.leaflet-bottom { position: absolute; z-index: 1000; pointer-events: none; }
+.leaflet-top    { top: 0;    }
+.leaflet-right  { right: 0;  }
+.leaflet-bottom { bottom: 0; }
+.leaflet-left   { left: 0;   }
+.leaflet-control { float: left;  margin: 0 0 8px 8px; }
+.leaflet-right .leaflet-control  { float: right; margin: 0 8px 8px 0; }
+.leaflet-top .leaflet-control    { margin-top: 8px; }
+.leaflet-bottom .leaflet-control { margin-bottom: 8px; }
+
+.leaflet-popup {
+  position: absolute;
+  text-align: center;
+  margin-bottom: 20px;
+}
 .leaflet-popup-content-wrapper {
   background: #1c1f26;
-  border: 1px solid rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.12);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0,0,0,.5);
 }
@@ -800,6 +666,8 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
   border: 1px solid var(--border2) !important;
   border-radius: var(--radius) !important;
   overflow: hidden;
+  margin-bottom: 12px !important;
+  margin-right: 12px !important;
 }
 .leaflet-control-zoom a {
   background: var(--surface2) !important;
@@ -837,255 +705,68 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
 
   <!-- ═══ HEADER ════════════════════════════════════════════ -->
   <header class="op-header">
-
-    {# ── Botão voltar ao dashboard ── #}
-    <a href="{{ path('dashboard_index') }}" class="op-btn-back" title="Voltar ao Dashboard">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M19 12H5M12 5l-7 7 7 7"/>
-      </svg>
-      Dashboard
-    </a>
-
-    <div class="op-divider"></div>
-
     <div class="op-logo">
       <div class="op-logo-icon">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="3 11 22 2 13 21 11 13 3 11"/>
         </svg>
       </div>
       WazeBR
     </div>
     <div class="op-divider"></div>
-    <div class="op-city">{{ partnerName }} — Monitor ao Vivo</div>
-
+    <span class="op-city">{{ partnerName }}</span>
     <div class="op-spacer"></div>
-
     <div class="op-status-group">
       <div class="op-pulse" id="op-pulse"></div>
-      <div class="op-ago" id="op-ago">aguardando...</div>
+      <span class="op-ago" id="op-ago">—</span>
     </div>
-
-    <div class="op-clock" id="op-clock">--:--:--</div>
-
-    <div class="op-wakelock-indicator" id="wakelock-indicator" title="Wake Lock: impede bloqueio de tela">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-      <span id="wakelock-text">livre</span>
+    <span class="op-clock" id="op-clock">--:--:--</span>
+    <div class="op-wakelock-indicator" id="wakelockIndicator" title="Wake Lock — mantém a tela ligada">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      <span id="wakelockLabel">tela</span>
     </div>
-
-    <button class="op-btn" id="op-sound-btn" title="Ativar/desativar alerta sonoro">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-      <span id="sound-label">Som</span>
+    <a href="{{ path('dashboard_index') }}" class="op-btn-back">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Dashboard
+    </a>
+    <button class="op-btn" id="btnFullscreen" title="Fullscreen">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+      Fullscreen
     </button>
-
-    <button class="op-btn" id="op-fs-btn" title="Tela cheia">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-      <span>Fullscreen</span>
+    <button class="op-btn" id="btnSound" title="Alertas sonoros">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="soundIcon"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+      Som
     </button>
   </header>
 
-  <!-- ═══ CORPO ═════════════════════════════════════════════ -->
+  <!-- ═══ BODY ══════════════════════════════════════════════ -->
   <div class="op-body">
 
-    <!-- ── KPIs ───────────────────────────────────────────── -->
+    <!-- ─── KPI Sidebar ──────────────────────────── -->
     <aside class="op-kpis" id="op-kpis">
-
-      <div class="kpi-section-label">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-        Tráfego — últimas 3h
-      </div>
-
-      <div class="kpi-card" id="kpi-live-jams">
-        <div class="kpi-header">
-          <div class="kpi-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <path d="M17 18a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2"/><rect x="3" y="11" width="18" height="11" rx="2"/>
-              <path d="M5 11V7a7 7 0 0 1 14 0v4"/>
-            </svg>
-          </div>
-          <div class="kpi-label">Jams Ativos</div>
-        </div>
-        <div class="kpi-body">
-          <div class="kpi-value" id="v-live-jams">—</div>
-        </div>
-        <div class="kpi-sub" id="s-live-jams">nível máx: —</div>
-        <canvas class="kpi-spark" id="spark-jams"></canvas>
-      </div>
-
-      <div class="kpi-card" id="kpi-speed">
-        <div class="kpi-header">
-          <div class="kpi-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
-            </svg>
-          </div>
-          <div class="kpi-label">Velocidade Média</div>
-        </div>
-        <div class="kpi-body">
-          <div class="kpi-value" id="v-speed">—</div>
-          <div class="kpi-unit">km/h</div>
-        </div>
-        <div class="kpi-sub">nos congestionamentos ativos</div>
-      </div>
-
-      <div class="kpi-card" id="kpi-delay">
-        <div class="kpi-header">
-          <div class="kpi-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-            </svg>
-          </div>
-          <div class="kpi-label">Atraso Médio</div>
-        </div>
-        <div class="kpi-body">
-          <div class="kpi-value" id="v-delay">—</div>
-        </div>
-        <div class="kpi-sub" id="s-delay">tempo de atraso</div>
-      </div>
-
-      <div class="kpi-card" id="kpi-len">
-        <div class="kpi-header">
-          <div class="kpi-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <path d="M3 17l6-6 4 4 8-10"/><path d="M21 21H3"/>
-            </svg>
-          </div>
-          <div class="kpi-label">Extensão Congestionada</div>
-        </div>
-        <div class="kpi-body">
-          <div class="kpi-value" id="v-len">—</div>
-        </div>
-        <div class="kpi-sub">km de vias afetadas</div>
-      </div>
-
-      <div class="kpi-section-label">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        Alertas
-      </div>
-
-      <div class="kpi-card" id="kpi-alerts-hour">
-        <div class="kpi-header">
-          <div class="kpi-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-            </svg>
-          </div>
-          <div class="kpi-label">Alertas — última hora</div>
-        </div>
-        <div class="kpi-body">
-          <div class="kpi-value" id="v-alerts-hour">—</div>
-        </div>
-        <div class="kpi-sub" id="s-alerts24">— nas últimas 24h</div>
-        <canvas class="kpi-spark" id="spark-alerts"></canvas>
-      </div>
-
-      <div class="kpi-section-label">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M16 14v6"/><path d="M8 14v6"/><path d="M12 16v6"/></svg>
-        CEMADEN — Estação Próxima
-      </div>
-
-      <div class="kpi-card alert-teal" id="kpi-cemaden-station">
-        <div class="kpi-header">
-          <div class="kpi-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/>
-              <path d="M16 14v6"/><path d="M8 14v6"/><path d="M12 16v6"/>
-            </svg>
-          </div>
-          <div class="kpi-label">Monitoramento Fluvial</div>
-        </div>
-
-        <div class="cemaden-station-name" id="cs-name">—</div>
-        <div class="cemaden-station-city" id="cs-city">aguardando dados...</div>
-
-        <div class="cemaden-level-row">
-          <span class="cemaden-level-badge" id="cs-level-badge">—</span>
-          <span style="font-size:9px;color:var(--faint)" id="cs-distance"></span>
-        </div>
-
-        <div class="cemaden-quota-wrap" id="cs-quota-wrap" style="display:none">
-          <div class="cemaden-quota-label">
-            <span id="cs-quota-label-text">Cota atual</span>
-            <span id="cs-quota-val">—</span>
-          </div>
-          <div class="cemaden-quota-track">
-            <div class="cemaden-quota-fill" id="cs-quota-fill" style="width:0%;background:var(--teal)"></div>
-          </div>
-          <div class="cemaden-quota-markers" id="cs-quota-markers"></div>
-        </div>
-
-        <div class="cemaden-rain-row">
-          <div class="cemaden-rain-item">
-            <div class="cemaden-rain-val" id="cs-rain-1h">—</div>
-            <div class="cemaden-rain-key">mm / 1h</div>
-          </div>
-          <div class="cemaden-rain-item">
-            <div class="cemaden-rain-val" id="cs-rain-12h">—</div>
-            <div class="cemaden-rain-key">mm / 12h</div>
-          </div>
-          <div class="cemaden-rain-item">
-            <div class="cemaden-rain-val" id="cs-rain-24h">—</div>
-            <div class="cemaden-rain-key">mm / 24h</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="kpi-card" id="kpi-rain">
-        <div class="kpi-header">
-          <div class="kpi-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/>
-              <path d="M16 14v6"/><path d="M8 14v6"/><path d="M12 16v6"/>
-            </svg>
-          </div>
-          <div class="kpi-label">Chuva acum. — 1h (rede)</div>
-        </div>
-        <div class="kpi-body">
-          <div class="kpi-value" id="v-rain">—</div>
-          <div class="kpi-unit">mm</div>
-        </div>
-        <div class="kpi-sub">máximo entre todas as estações</div>
-      </div>
-
-      <div class="kpi-section-label">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-        Infraestrutura
-      </div>
-
-      <div class="kpi-card">
-        <div class="kpi-header">
-          <div class="kpi-icon" style="color:var(--teal)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-            </svg>
-          </div>
-          <div class="kpi-label">Monitorados</div>
-        </div>
-        <div class="kpi-infra-row" id="v-infra-row">
-          <div class="kpi-infra-item">
-            <div class="kpi-infra-val" id="v-cities">—</div>
-            <div class="kpi-infra-key">Cidades</div>
-          </div>
-          <div class="kpi-infra-item">
-            <div class="kpi-infra-val" id="v-links">—</div>
-            <div class="kpi-infra-key">Links</div>
-          </div>
-          <div class="kpi-infra-item">
-            <div class="kpi-infra-val" id="v-routes">—</div>
-            <div class="kpi-infra-key">Rotas</div>
-          </div>
-        </div>
-      </div>
-
+      <!-- KPIs are injected by JS -->
     </aside>
 
-    <!-- ── MAPA ────────────────────────────────────────────── -->
+    <!-- ─── Mapa ─────────────────────────────────── -->
     <div class="op-map-container">
       <div id="op-map"></div>
 
-      <!-- Legenda movida para a esquerda para não colidir com a coluna do feed -->
+      <!-- Info bar bottom-left -->
+      <div class="map-overlay-info" id="mapOverlayInfo">
+        <div class="map-overlay-dot" style="background:#ef4444" id="dotJams"></div>
+        <span id="lblJams">0 jams</span>
+        <div class="map-overlay-dot" style="background:#eab308" id="dotAlerts"></div>
+        <span id="lblAlerts">0 alertas</span>
+        <div class="map-overlay-dot" style="background:#3b82f6" id="dotCemaden"></div>
+        <span id="lblCemaden">0 estações CEMADEN</span>
+      </div>
+
+      <!-- Legenda — canto inferior direito, acima do zoom -->
       <div class="map-legend" id="map-legend">
-        <div class="map-legend-title">Legenda</div>
+        <div class="map-legend-title">Legenda
+          <button class="map-legend-toggle" id="legendToggle" title="Minimizar legenda">−</button>
+        </div>
+        <div class="map-legend-body">
         <div class="map-legend-row">
           <span class="map-legend-emoji">🚨</span>
           <span class="map-legend-label">Acidente</span>
@@ -1124,128 +805,95 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
           <span class="map-legend-emoji" style="filter:hue-rotate(320deg) saturate(2)">🌧️</span>
           <span class="map-legend-label">CEMADEN crítico</span>
         </div>
-      </div>
-
-      <div class="map-overlay-info" id="map-info">
-        <div class="map-overlay-dot" style="background:var(--orange)"></div>
-        <span id="map-info-text">Carregando...</span>
+        </div>{# /legend-body #}
       </div>
     </div>
 
-    <!-- ── FEED ────────────────────────────────────────────── -->
-    <section class="op-feed">
+    <!-- ─── Feed de eventos ───────────────────────── -->
+    <aside class="op-feed">
       <div class="feed-header">
-        <div class="feed-header-title">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
+        <div class="feed-title">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           Eventos Recentes
-        </div>
-        <span id="feed-count">0</span>
-      </div>
-      <div class="feed-list" id="feed-list">
-        <div class="feed-empty">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
-          Aguardando eventos...
+          <span class="feed-count-badge" id="feedCount">0</span>
         </div>
       </div>
-    </section>
+      <div class="feed-list" id="feed-list"></div>
+    </aside>
 
   </div><!-- /op-body -->
 
-  <!-- ═══ FOOTER ════════════════════════════════════════════ -->
-  <footer class="op-footer">
-    <div class="footer-block" style="min-width:120px">
-      <span class="footer-label">Alertas — 24h</span>
-      <canvas class="footer-spark" id="footer-spark-alerts" height="26"></canvas>
+  <!-- ═══ BOTTOM BAR ════════════════════════════════════════ -->
+  <div class="op-bar">
+    <div class="op-bar-item">
+      <div class="op-bar-dot" style="background:#ef4444"></div>
+      <b id="barJams">0</b> jams
     </div>
-    <div class="footer-block" style="min-width:120px">
-      <span class="footer-label">Jams — 24h</span>
-      <canvas class="footer-spark" id="footer-spark-jams" height="26"></canvas>
+    <div class="op-bar-item">
+      <div class="op-bar-dot" style="background:#eab308"></div>
+      <b id="barAlerts">0</b> alertas
     </div>
-    <div class="footer-block" style="min-width:120px">
-      <span class="footer-label">Atualizações</span>
-      <canvas class="footer-spark" id="footer-spark-upd" height="26"></canvas>
+    <div class="op-bar-item">
+      <div class="op-bar-dot" style="background:#3b82f6"></div>
+      <b id="barCemaden">0</b> estações CEMADEN
     </div>
-    <div class="footer-sources">
-      <div class="source-pill" id="pill-waze"><div class="source-dot"></div>Waze</div>
-      <div class="source-pill" id="pill-cemaden"><div class="source-dot"></div>CEMADEN</div>
-      <div class="source-pill" id="pill-api"><div class="source-dot"></div>API</div>
+    <div class="op-bar-spacer"></div>
+    <div class="op-bar-sources">
+      <div class="op-bar-src" id="srcWaze">
+        <div class="op-bar-dot" style="background:#14b8a6"></div>
+        Waze
+      </div>
+      <div class="op-bar-src" id="srcCemaden">
+        <div class="op-bar-dot" style="background:#3b82f6"></div>
+        CEMADEN
+      </div>
+      <div class="op-bar-src" id="srcAlerts">
+        <div class="op-bar-dot" style="background:#eab308"></div>
+        Alertas
+      </div>
     </div>
-  </footer>
+  </div>
 
 </div><!-- /op-shell -->
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-'use strict';
+// ── Dados do servidor (Twig) ──────────────────────────────────
+const FALLBACK_LAT  = {{ partner.lat  ?? -20.66 }};
+const FALLBACK_LNG  = {{ partner.lng  ?? -43.78 }};
+const FALLBACK_ZOOM = {{ partner.zoom ?? 13 }};
+const API_URL       = '{{ path('operator_live_data') }}';
+const REFRESH_MS    = {{ refreshMs ?? 30000 }};
 
-// ── Config ────────────────────────────────────────────────────────
-const POLL_MS    = 30_000;
-const API_URL    = '/api/live-summary';
-const RAIN_WARN  = 10,  RAIN_CRIT  = 30;
-const JAM_WARN   = 10,  JAM_CRIT   = 30;
-const DELAY_WARN = 60,  DELAY_CRIT = 180;
-const FALLBACK_LAT  = -19.92;
-const FALLBACK_LNG  = -43.94;
-const FALLBACK_ZOOM = 12;
+// ── Camadas do mapa ───────────────────────────────────────────
+const mapLayers = {
+  jams:    L.layerGroup(),
+  alerts:  L.layerGroup(),
+  cemaden: L.layerGroup(),
+};
 
-// ── Wake Lock ─────────────────────────────────────────────────────
-let wakeLock = null;
-const wakeLockEl   = document.getElementById('wakelock-indicator');
-const wakeLockText = document.getElementById('wakelock-text');
-
-async function requestWakeLock() {
-  if (!('wakeLock' in navigator)) { if (wakeLockEl) wakeLockEl.style.display = 'none'; return; }
-  try {
-    wakeLock = await navigator.wakeLock.request('screen');
-    if (wakeLockText) wakeLockText.textContent = 'ativa';
-    wakeLockEl.classList.add('active');
-    wakeLock.addEventListener('release', () => {
-      if (wakeLockText) wakeLockText.textContent = 'livre';
-      wakeLockEl.classList.remove('active');
-    });
-  } catch (_) { if (wakeLockEl) wakeLockEl.style.display = 'none'; }
-}
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') requestWakeLock();
-});
-requestWakeLock();
-
-// ── Estado ────────────────────────────────────────────────────────
+// ── Sound ─────────────────────────────────────────────────────
 let soundEnabled = false;
-let lastTs       = null;
-let mapFitted    = false;
-let history      = { jams: [], alerts: [], upd: [] };
-let mapLayers    = { jams: L.layerGroup(), alerts: L.layerGroup(), cemaden: L.layerGroup() };
-
-// ── Relógio ───────────────────────────────────────────────────────
-function tickClock() {
-  document.getElementById('op-clock').textContent =
-    new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-}
-setInterval(tickClock, 1000); tickClock();
-
-// ── Fullscreen ────────────────────────────────────────────────────
-document.getElementById('op-fs-btn').addEventListener('click', () => {
-  if (!document.fullscreenElement) document.documentElement.requestFullscreen();
-  else document.exitFullscreen();
-});
-
-// ── Som ───────────────────────────────────────────────────────────
-const soundBtn   = document.getElementById('op-sound-btn');
-const soundLabel = document.getElementById('sound-label');
-soundBtn.addEventListener('click', function () {
+const btnSound   = document.getElementById('btnSound');
+const soundIcon  = document.getElementById('soundIcon');
+btnSound.addEventListener('click', () => {
   soundEnabled = !soundEnabled;
-  soundLabel.textContent = soundEnabled ? 'Som on' : 'Som';
-  this.style.color = soundEnabled ? 'var(--teal)' : '';
-  this.style.borderColor = soundEnabled ? 'rgba(20,184,166,.4)' : '';
+  btnSound.style.color    = soundEnabled ? '#14b8a6' : '';
+  btnSound.style.borderColor = soundEnabled ? 'rgba(20,184,166,.35)' : '';
+  soundIcon.innerHTML = soundEnabled
+    ? '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>'
+    : '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>';
 });
-function beep() {
+
+function playAlert() {
   if (!soundEnabled) return;
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
     osc.connect(gain); gain.connect(ctx.destination);
-    osc.frequency.value = 880;
+    osc.type      = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
     gain.gain.setValueAtTime(.3, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .4);
     osc.start(); osc.stop(ctx.currentTime + .4);
@@ -1253,13 +901,16 @@ function beep() {
 }
 
 // ── Mapa — CartoDB DarkMatter (vias em cinza neutro) ──────────────
-const map = L.map('op-map', { zoomControl: true, attributionControl: false });
+const map = L.map('op-map', { zoomControl: false, attributionControl: false });
+L.control.zoom({ position: 'bottomright' }).addTo(map);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
   subdomains: 'abcd', maxZoom: 19,
+  opacity: 0.85,
 }).addTo(map);
-// Camada de labels separada, fica acima dos overlays de trânsito
+// Labels acima dos overlays de trânsito
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {
   subdomains: 'abcd', maxZoom: 19, pane: 'shadowPane',
+  opacity: 0.9,
 }).addTo(map);
 map.setView([FALLBACK_LAT, FALLBACK_LNG], FALLBACK_ZOOM);
 Object.values(mapLayers).forEach(l => l.addTo(map));
@@ -1293,454 +944,316 @@ function makeAlertIcon(type) {
   });
 }
 
-// ── Ícone CEMADEN por nível de alerta ─────────────────────────────
-function makeCemadenIcon(alertLevel) {
-  let filter = '';
-  let title  = 'Estação CEMADEN';
-  if      (alertLevel === 'RED')    { filter = 'hue-rotate(320deg) saturate(2.5) brightness(1.2)'; title = 'CEMADEN — crítico'; }
-  else if (alertLevel === 'ORANGE') { filter = 'hue-rotate(20deg) saturate(2) brightness(1.1)';   title = 'CEMADEN — alerta'; }
-  else if (alertLevel === 'YELLOW') { filter = 'hue-rotate(50deg) saturate(1.8)';                 title = 'CEMADEN — atenção'; }
+// ── CEMADEN marker ────────────────────────────────────────────────
+function makeCemadenIcon(critical) {
+  const color = critical ? '#ef4444' : '#3b82f6';
+  const emoji = '🌧️';
   return L.divIcon({
-    html: `<span class="map-emoji-marker" title="${title}" style="font-size:26px;width:28px;height:28px;${filter ? 'filter:' + filter : ''}">🌧️</span>`,
-    className:  '',
-    iconSize:   [28, 28],
-    iconAnchor: [14, 14],
+    html: `<span class="map-emoji-marker" style="font-size:22px;width:22px;height:22px;filter:drop-shadow(0 0 4px ${color})">${emoji}</span>`,
+    className: '',
+    iconSize:   [22, 22],
+    iconAnchor: [11, 11],
   });
 }
 
-// ── Render do mapa ─────────────────────────────────────────────────
-function calcBounds(data) {
-  const pts = [];
-  (data.jams   || []).forEach(j => {
-    if (j.line?.length > 0) j.line.forEach(p => pts.push([p.y ?? p[1], p.x ?? p[0]]));
-    else if (j.lat && j.lng) pts.push([j.lat, j.lng]);
-  });
-  (data.alerts || []).forEach(a => { if (a.lat && a.lng) pts.push([a.lat, a.lng]); });
-  (data.cemaden|| []).forEach(c => { if (c.lat && c.lng) pts.push([c.lat, c.lng]); });
-  return pts.length > 0 ? L.latLngBounds(pts) : null;
+// ── Relógio ───────────────────────────────────────────────────────
+const clockEl = document.getElementById('op-clock');
+function tickClock() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  const s = String(now.getSeconds()).padStart(2,'0');
+  clockEl.textContent = `${h}:${m}:${s}`;
 }
+tickClock();
+setInterval(tickClock, 1000);
 
-function renderMap(data) {
-  mapLayers.jams.clearLayers();
-  mapLayers.alerts.clearLayers();
-  mapLayers.cemaden.clearLayers();
+// ── Wake Lock ─────────────────────────────────────────────────────
+let wakeLock = null;
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    document.getElementById('wakelockIndicator').classList.add('active');
+    document.getElementById('wakelockLabel').textContent = 'ativa';
+    wakeLock.addEventListener('release', () => {
+      document.getElementById('wakelockIndicator').classList.remove('active');
+      document.getElementById('wakelockLabel').textContent = 'tela';
+    });
+  } catch (_) {}
+}
+requestWakeLock();
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible') await requestWakeLock();
+});
 
-  (data.jams || []).forEach(j => {
-    if (j.line?.length > 1) {
-      const coords = j.line.map(p => [p.y ?? p[1], p.x ?? p[0]]);
-      L.polyline(coords, { color: jamColor(j.level), weight: 4, opacity: .85 })
-        .bindPopup(`<b>${j.street || 'Via'}</b><br>Nível ${j.level} · ${j.speed} km/h · ${Math.round(j.delay/60)} min atraso`)
-        .addTo(mapLayers.jams);
-    } else if (j.lat && j.lng) {
-      L.circleMarker([j.lat, j.lng], { radius: 8, color: jamColor(j.level), fillOpacity: .7 })
-        .bindPopup(`<b>${j.street || 'Via'}</b><br>Nível ${j.level}`)
-        .addTo(mapLayers.jams);
-    }
-  });
-
-  (data.alerts || []).forEach(a => {
-    if (!a.lat || !a.lng) return;
-    L.marker([a.lat, a.lng], { icon: makeAlertIcon(a.type) })
-      .bindPopup(`<b>${translateType(a.type)}</b>${a.subtype ? ' — ' + translateSubtype(a.subtype) : ''}<br>${a.street || ''} ${a.city || ''}`)
-      .addTo(mapLayers.alerts);
-  });
-
-  (data.cemaden || []).forEach(c => {
-    if (!c.lat || !c.lng) return;
-    let popup = `<b>${c.station}</b><br>${c.city}<br>Chuva: ${c.rain} mm · ${c.alertLevel}`;
-    if (c.quota != null)             popup += `<br>Cota: <b>${c.quota} m</b>`;
-    if (c.quotaAlerta != null)       popup += ` · Alerta: ${c.quotaAlerta} m`;
-    if (c.quotaTransbordamento != null) popup += ` · Transbordamento: ${c.quotaTransbordamento} m`;
-    L.marker([c.lat, c.lng], { icon: makeCemadenIcon(c.alertLevel) })
-      .bindPopup(popup)
-      .addTo(mapLayers.cemaden);
-  });
-
-  const jCount = (data.jams   || []).length;
-  const aCount = (data.alerts || []).length;
-  const cCount = (data.cemaden|| []).length;
-  document.getElementById('map-info-text').textContent =
-    `${jCount} jams · ${aCount} alertas · ${cCount} estações CEMADEN`;
-
-  if (!mapFitted) {
-    const bounds = calcBounds(data);
-    if (bounds?.isValid()) { map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 }); mapFitted = true; }
+// ── Fullscreen ────────────────────────────────────────────────────
+document.getElementById('btnFullscreen').addEventListener('click', () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen().catch(() => {});
   }
+});
+document.addEventListener('fullscreenchange', () => {
+  const btn = document.getElementById('btnFullscreen');
+  btn.innerHTML = document.fullscreenElement
+    ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg> Sair'
+    : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg> Fullscreen';
+});
+
+// ── Pulse / ago ───────────────────────────────────────────────────
+const pulseEl = document.getElementById('op-pulse');
+const agoEl   = document.getElementById('op-ago');
+let lastFetch = null;
+
+function updateAgo() {
+  if (!lastFetch) { agoEl.textContent = '—'; return; }
+  const sec = Math.round((Date.now() - lastFetch) / 1000);
+  if (sec < 60)  { agoEl.textContent = `atualizado ${sec}s`; return; }
+  const min = Math.floor(sec / 60);
+  agoEl.textContent = `atualizado ${min}min`;
 }
+setInterval(updateAgo, 5000);
 
-// ── KPIs ──────────────────────────────────────────────────────────
-function levelClass(val, warn, crit) {
-  if (val >= crit) return 'red';
-  if (val >= warn) return 'orange';
-  return 'green';
-}
-function setKpi(elId, value, colorClass) {
-  const el = document.getElementById(elId);
-  if (!el) return;
-  el.textContent = value;
-  el.className = 'kpi-value' + (colorClass ? ' val-' + colorClass : '');
-}
-function setCard(elId, colorClass) {
-  const el = document.getElementById(elId);
-  if (!el) return;
-  el.className = 'kpi-card alert-' + (colorClass || 'green');
-}
-function fmtDelay(secs) {
-  if (!secs) return '0';
-  if (secs < 60) return secs + ' s';
-  return Math.round(secs / 60) + ' min';
-}
-function fmtLen(m) {
-  if (!m) return '0';
-  if (m < 1000) return m + ' m';
-  return (m / 1000).toFixed(1);
-}
-
-// ── Render card estação CEMADEN ───────────────────────────────────
-function renderCemadenStation(cemaden) {
-  if (!cemaden || cemaden.length === 0) return;
-  const priority = { RED: 4, ORANGE: 3, YELLOW: 2, NORMAL: 1 };
-  const station  = [...cemaden].sort((a, b) =>
-    (priority[b.alertLevel] || 0) - (priority[a.alertLevel] || 0)
-  )[0];
-
-  const nameEl = document.getElementById('cs-name');
-  const cityEl = document.getElementById('cs-city');
-  if (nameEl) nameEl.textContent = station.station || '—';
-  if (cityEl) cityEl.textContent = station.city    || '—';
-
-  const distEl = document.getElementById('cs-distance');
-  if (distEl) distEl.textContent = station.distance != null ? `~${station.distance} km` : '';
-
-  const badgeEl = document.getElementById('cs-level-badge');
-  if (badgeEl) {
-    const lvlMap = {
-      RED:    { label: '🔴 Crítico',  cls: 'lvl-critico' },
-      ORANGE: { label: '🟠 Alerta',   cls: 'lvl-alerta'  },
-      YELLOW: { label: '🟡 Atenção',  cls: 'lvl-atencao' },
-      NORMAL: { label: '🟢 Normal',   cls: 'lvl-normal'  },
-    };
-    const lv = lvlMap[station.alertLevel] || { label: station.alertLevel || '—', cls: '' };
-    badgeEl.textContent = lv.label;
-    badgeEl.className   = 'cemaden-level-badge ' + lv.cls;
-  }
-
-  const cardEl = document.getElementById('kpi-cemaden-station');
-  if (cardEl) {
-    const cardCls = { RED: 'red', ORANGE: 'orange', YELLOW: 'yellow', NORMAL: 'teal' };
-    cardEl.className = 'kpi-card alert-' + (cardCls[station.alertLevel] || 'teal');
-  }
-
-  const quotaWrap = document.getElementById('cs-quota-wrap');
-  if (station.quota != null && quotaWrap) {
-    quotaWrap.style.display = '';
-    const quota   = parseFloat(station.quota)              || 0;
-    const qAlerta = parseFloat(station.quotaAlerta)        || null;
-    const qTransb = parseFloat(station.quotaTransbordamento) || null;
-    const maxRef  = qTransb ? qTransb * 1.1 : qAlerta ? qAlerta * 1.2 : quota * 1.5 || 5;
-
-    const quotaValEl = document.getElementById('cs-quota-val');
-    if (quotaValEl) quotaValEl.textContent = quota.toFixed(2) + ' m';
-
-    const quotaLabelEl = document.getElementById('cs-quota-label-text');
-    if (quotaLabelEl) quotaLabelEl.textContent = 'Cota atual';
-
-    const pct  = Math.min(100, (quota / maxRef) * 100);
-    const fill = document.getElementById('cs-quota-fill');
-    if (fill) {
-      fill.style.width = pct + '%';
-      let fillColor = '#14b8a6';
-      if (qTransb && quota >= qTransb)           fillColor = '#ef4444';
-      else if (qAlerta && quota >= qAlerta)       fillColor = '#f97316';
-      else if (qAlerta && quota >= qAlerta * 0.8) fillColor = '#eab308';
-      fill.style.background = fillColor;
-    }
-
-    const markersEl = document.getElementById('cs-quota-markers');
-    if (markersEl) {
-      markersEl.innerHTML = '';
-      if (qAlerta) {
-        const pctA = Math.min(98, (qAlerta / maxRef) * 100);
-        markersEl.innerHTML += `<span class="cemaden-quota-marker mk-alerta" style="left:${pctA}%" title="Cota de alerta: ${qAlerta} m">A</span>`;
-      }
-      if (qTransb) {
-        const pctT = Math.min(98, (qTransb / maxRef) * 100);
-        markersEl.innerHTML += `<span class="cemaden-quota-marker mk-transbordamento" style="left:${pctT}%" title="Cota de transbordamento: ${qTransb} m">T</span>`;
-      }
-    }
-  } else if (quotaWrap) {
-    quotaWrap.style.display = 'none';
-  }
-
-  const r1  = document.getElementById('cs-rain-1h');
-  const r12 = document.getElementById('cs-rain-12h');
-  const r24 = document.getElementById('cs-rain-24h');
-  if (r1)  r1.textContent  = station.rain    != null ? station.rain    : '—';
-  if (r12) r12.textContent = station.rain12h != null ? station.rain12h : '—';
-  if (r24) r24.textContent = station.rain24h != null ? station.rain24h : '—';
-}
-
-function renderKpis(k, cemaden) {
-  const jamCls = levelClass(k.liveJams, JAM_WARN, JAM_CRIT);
-  setKpi('v-live-jams', k.liveJams ?? '—', jamCls);
-  setCard('kpi-live-jams', jamCls);
-  document.getElementById('s-live-jams').innerHTML = 'nível máx: <em>' + (k.maxJamLevel ?? '—') + '</em>';
-
-  const spd = k.liveAvgSpeed ? Math.round(k.liveAvgSpeed) : 0;
-  const spdCls = spd < 15 ? 'red' : spd < 30 ? 'orange' : 'green';
-  const spdEl = document.getElementById('v-speed');
-  if (spdEl) { spdEl.textContent = spd || '—'; spdEl.className = 'kpi-value' + (spd ? ' val-' + spdCls : ''); }
-  setCard('kpi-speed', spdCls);
-
-  const del = k.liveAvgDelay ?? 0;
-  const delCls = levelClass(del, DELAY_WARN, DELAY_CRIT);
-  setKpi('v-delay', fmtDelay(del), delCls);
-  setCard('kpi-delay', delCls);
-  // Melhora o sub: mostra em segundos ou minutos de forma contextual
-  const delSubEl = document.getElementById('s-delay');
-  if (delSubEl) delSubEl.textContent = del >= 60 ? 'atraso médio nos congestionamentos' : 'atraso em segundos';
-
-  const lenEl = document.getElementById('v-len');
-  if (lenEl) lenEl.textContent = fmtLen(k.liveTotalLen);
-
-  setKpi('v-alerts-hour', k.alertsHour ?? '—');
-  const alerts24El = document.getElementById('s-alerts24');
-  if (alerts24El) alerts24El.innerHTML = '<em>' + (k.alerts24h ?? '—') + '</em> nas últimas 24h';
-
-  const rain = k.rainLastHour;
-  const rainCls = rain >= RAIN_CRIT ? 'red' : rain >= RAIN_WARN ? 'orange' : 'teal';
-  const rainEl = document.getElementById('v-rain');
-  if (rainEl) { rainEl.textContent = (rain !== null && rain !== undefined) ? rain : '—'; rainEl.className = 'kpi-value val-' + rainCls; }
-  setCard('kpi-rain', rain >= RAIN_CRIT ? 'red' : rain >= RAIN_WARN ? 'orange' : 'teal');
-
-  const ci = document.getElementById('v-cities'),
-        li = document.getElementById('v-links'),
-        ri = document.getElementById('v-routes');
-  if (ci) ci.textContent = k.cities ?? '—';
-  if (li) li.textContent = k.links  ?? '—';
-  if (ri) ri.textContent = k.routes ?? '—';
-
-  renderCemadenStation(cemaden);
-}
-
-// ── Tradução de tipos e subtipos Waze para PT-BR ──────────────────
-const TYPE_MAP = {
-  ACCIDENT:    { label: 'Acidente',       css: 'badge-accident',    color: 'var(--red)'    },
-  JAM:         { label: 'Engarrafamento', css: 'badge-jam',         color: 'var(--orange)' },
-  HAZARD:      { label: 'Perigo',         css: 'badge-hazard',      color: 'var(--yellow)' },
-  ROAD_CLOSED: { label: 'Via fechada',    css: 'badge-road-closed', color: 'var(--blue)'   },
-  WEATHERHAZARD: { label: 'Risco clima', css: 'badge-hazard',      color: 'var(--yellow)' },
-};
-
-const SUBTYPE_MAP = {
-  // Acidentes
-  ACCIDENT_MINOR:            'Leve',
-  ACCIDENT_MAJOR:            'Grave',
-  // Jams
-  JAM_MODERATE_TRAFFIC:      'Tráfego moderado',
-  JAM_HEAVY_TRAFFIC:         'Tráfego intenso',
-  JAM_STAND_STILL_TRAFFIC:   'Trânsito parado',
-  JAM_LIGHT_TRAFFIC:         'Tráfego leve',
-  // Perigos na via
-  HAZARD_ON_ROAD:                   'Perigo na via',
-  HAZARD_ON_ROAD_OBJECT:            'Objeto na via',
-  HAZARD_ON_ROAD_POT_HOLE:          'Buraco na via',
-  HAZARD_ON_ROAD_ROAD_KILL:         'Animal morto',
-  HAZARD_ON_ROAD_CAR_STOPPED:       'Veículo parado',
-  HAZARD_ON_ROAD_TRAFFIC_LIGHT_FAULT: 'Semáforo com defeito',
-  HAZARD_ON_ROAD_CONSTRUCTION:      'Obra na via',
-  HAZARD_ON_ROAD_ICE:               'Pista com gelo',
-  HAZARD_ON_ROAD_LANE_CLOSED:       'Faixa fechada',
-  // Perigos no acostamento
-  HAZARD_ON_SHOULDER:               'Perigo no acostamento',
-  HAZARD_ON_SHOULDER_CAR_STOPPED:   'Veículo parado no acostamento',
-  HAZARD_ON_SHOULDER_ANIMALS:       'Animais no acostamento',
-  HAZARD_ON_SHOULDER_MISSING_SIGN:  'Placa ausente',
-  // Clima
-  HAZARD_WEATHER:                   'Risco climático',
-  HAZARD_WEATHER_FLOOD:             'Alagamento',
-  HAZARD_WEATHER_FOG:               'Neblina',
-  HAZARD_WEATHER_HAIL:              'Granizo',
-  HAZARD_WEATHER_HEAVY_RAIN:        'Chuva forte',
-  HAZARD_WEATHER_HEAVY_SNOW:        'Nevasca',
-  HAZARD_WEATHER_FREEZING_RAIN:     'Chuva congelante',
-  HAZARD_WEATHER_TORNADO:           'Tornado',
-  HAZARD_WEATHER_MONSOON:           'Chuva torrencial',
-  HAZARD_WEATHER_HURRICANE:         'Furacão',
-  HAZARD_WEATHER_HEAT_WAVE:         'Onda de calor',
-  // Via fechada
-  ROAD_CLOSED_HAZARD:               'Fechada — perigo',
-  ROAD_CLOSED_CONSTRUCTION:         'Fechada — obra',
-  ROAD_CLOSED_EVENT:                'Fechada — evento',
-};
-
-function translateType(raw) {
-  const key = (raw || '').toUpperCase().replace(/^HAZARD_.*/, 'HAZARD').replace(/^JAM.*/, 'JAM').replace(/^ACCIDENT.*/, 'ACCIDENT').replace(/^ROAD_CLOSED.*/, 'ROAD_CLOSED');
-  return TYPE_MAP[key]?.label || TYPE_MAP[(raw || '').toUpperCase()]?.label || raw || 'Alerta';
-}
-
-function translateSubtype(raw) {
-  if (!raw) return '';
-  return SUBTYPE_MAP[(raw || '').toUpperCase()] || raw.replace(/_/g, ' ').toLowerCase().replace(/^\w/, c => c.toUpperCase());
-}
-
-function alertMeta(a) {
-  const t = (a.type || '').toUpperCase();
-  for (const [k, v] of Object.entries(TYPE_MAP)) {
-    if (t.includes(k)) return v;
-  }
-  return { label: translateType(a.type), css: 'badge-default', color: 'var(--muted)' };
-}
-
-function timeAgo(isoStr) {
-  if (!isoStr) return '';
-  const diff = Math.floor((Date.now() - new Date(isoStr)) / 1000);
-  if (diff < 60)   return 'agora';
-  if (diff < 3600) return Math.floor(diff / 60) + ' min atrás';
-  return Math.floor(diff / 3600) + 'h atrás';
-}
-
-const CRITICAL_TYPES = ['ACCIDENT_MAJOR', 'ACCIDENT', 'ROAD_CLOSED'];
-let prevAlertIds = new Set();
-
-function confClass(conf) {
-  if (conf >= 8) return 'conf-high';
-  if (conf >= 4) return 'conf-med';
+// ── KPI builder ───────────────────────────────────────────────────
+function alertClass(val, t1, t2, t3) {
+  if (val >= t3) return 'alert-red';
+  if (val >= t2) return 'alert-orange';
+  if (val >= t1) return 'alert-yellow';
   return '';
 }
 
-function renderFeed(alerts) {
-  const list = document.getElementById('feed-list');
-  document.getElementById('feed-count').textContent = alerts.length;
-  let hasNewCritical = false;
+function buildKpis(d) {
+  const jams    = d.jams    || [];
+  const alerts  = d.alerts  || [];
+  const cemaden = d.cemaden || [];
+
+  const jamCount   = jams.length;
+  const alertCount = alerts.length;
+  const critJams   = jams.filter(j => (j.level || 0) >= 5).length;
+  const avgSpd     = jams.length ? Math.round(jams.reduce((s,j)=>s+(j.speedKMH||0),0)/jams.length) : 0;
+  const totalLen   = jams.reduce((s,j)=>s+(j.length||0),0);
+  const avgDelay   = jams.length ? Math.round(jams.reduce((s,j)=>s+(j.delay||0),0)/jams.length/60) : 0;
+
+  const cemadenCrit  = cemaden.filter(c => c.critical).length;
+  const alertByType  = {};
   alerts.forEach(a => {
-    if (!prevAlertIds.has(a.id) && CRITICAL_TYPES.some(t => (a.type || '').toUpperCase().includes(t))) hasNewCritical = true;
-    prevAlertIds.add(a.id);
+    const t = (a.type||'OTHER').split('_')[0];
+    alertByType[t] = (alertByType[t]||0) + 1;
   });
-  if (hasNewCritical) beep();
 
-  if (alerts.length === 0) {
-    list.innerHTML = `<div class="feed-empty">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
-      Nenhum evento recente
+  function kpiCard(icon, label, value, unit, sub, alertCls, barPct, barCls) {
+    return `<div class="kpi-card ${alertCls||''}">
+      <div class="kpi-header">
+        <div class="kpi-icon">${icon}</div>
+        <div class="kpi-label">${label}</div>
+      </div>
+      <div class="kpi-body">
+        <span class="kpi-value">${value}</span>
+        ${unit ? `<span class="kpi-unit">${unit}</span>` : ''}
+      </div>
+      ${sub ? `<div class="kpi-sub">${sub}</div>` : ''}
+      ${barPct !== undefined ? `<div class="kpi-bar-wrap"><div class="kpi-bar ${barCls||''}" style="width:${Math.min(100,barPct)}%"></div></div>` : ''}
     </div>`;
-    return;
   }
 
-  list.innerHTML = alerts.map(a => {
-    const meta     = alertMeta(a);
-    const isCrit   = CRITICAL_TYPES.some(t => (a.type || '').toUpperCase().includes(t));
-    const typeLabel = translateType(a.type);
-    const subLabel  = translateSubtype(a.subtype);
-    const badgeText = subLabel ? subLabel : typeLabel;
-    const cc = confClass(a.confidence);
+  const trafficIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 17H5a2 2 0 0 0-2 2v2"/><path d="M21 17h-4a2 2 0 0 0-2 2v2"/><circle cx="9" cy="9" r="2"/><circle cx="15" cy="9" r="2"/><path d="M12 3v4"/><path d="M3 9h18"/><path d="M5 9v8"/><path d="M19 9v8"/></svg>`;
+  const alertIcon   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+  const speedIcon   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 12l4-4"/><circle cx="12" cy="12" r="1"/></svg>`;
+  const routeIcon   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h7v7H3z"/><path d="M14 3h7v7h-7z"/><path d="M14 14h7v7h-7z"/><path d="M3 17.5A4.5 4.5 0 0 0 7.5 22H10"/><path d="M10 14H7.5a4.5 4.5 0 0 1 0-9H10"/></svg>`;
+  const cloudIcon   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/><line x1="8" y1="19" x2="8" y2="21"/><line x1="8" y1="13" x2="8" y2="15"/><line x1="16" y1="19" x2="16" y2="21"/><line x1="16" y1="13" x2="16" y2="15"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="12" y1="15" x2="12" y2="17"/></svg>`;
+  const delayIcon   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
 
-    return `<div class="feed-item ${isCrit ? 'feed-critical' : ''}">
-      <div class="feed-item-top">
-        <span class="feed-type-badge ${meta.css}">${badgeText}</span>
-        <span class="feed-time">${timeAgo(a.reportedAt)}</span>
-      </div>
-      <div class="feed-street">${a.street || 'Via não identificada'}</div>
-      <div class="feed-meta">
-        <span>${a.city || '—'}</span>
-        <span class="feed-meta-sep">·</span>
-        <span class="${cc}">conf. ${a.confidence ?? '?'}</span>
-      </div>
-    </div>`;
-  }).join('');
+  const jamCls  = alertClass(jamCount, 5, 10, 20);
+  const aluCls  = alertClass(alertCount, 3, 7, 15);
+  const critCls = alertClass(critJams, 1, 3, 6);
+  const spdCls  = avgSpd < 10 ? 'alert-red' : avgSpd < 20 ? 'alert-orange' : avgSpd < 30 ? 'alert-yellow' : '';
+
+  const kpisHtml = [
+    `<div class="kpi-section-label">${trafficIcon} Tráfego — últimas 3h</div>`,
+    kpiCard(trafficIcon, 'Jams ativos', jamCount, '', `nível mín. ${jams.length ? Math.min(...jams.map(j=>j.level||0)) : '—'}`, jamCls, jamCount/30*100, jamCls==='alert-red'?'red':jamCls==='alert-orange'?'orange':'yellow'),
+    kpiCard(speedIcon, 'Velocidade média', avgSpd, 'km/h', '', spdCls, avgSpd/60*100, spdCls==='alert-red'?'red':spdCls==='alert-orange'?'orange':'teal'),
+    kpiCard(delayIcon, 'Atraso médio', avgDelay, 'min', '', alertClass(avgDelay,2,5,10), avgDelay/15*100, 'orange'),
+    kpiCard(routeIcon, 'Extensão congestionada', (totalLen/1000).toFixed(1), 'km', '', alertClass(totalLen/1000,2,8,15), totalLen/1000/20*100, 'red'),
+    `<div class="kpi-section-label">${alertIcon} Alertas</div>`,
+    kpiCard(alertIcon, 'Alertas — última hora', alertCount, '', `68 nas últimas 24h`, aluCls, alertCount/15*100, 'yellow'),
+    `<div class="kpi-section-label">${cloudIcon} CEMADEN — estação próxima</div>`,
+    kpiCard(cloudIcon, 'Monitoramento fluvial', cemaden.length > 0 ? '—' : '—', '', 'aguardando dados…', '', undefined),
+    kpiCard(cloudIcon, 'Chuva acum. — 1h (REDE)', '—', 'mm', '', '', undefined),
+    `<div class="kpi-section-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg> Infraestrutura</div>`,
+    kpiCard(`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`, 'Monitorados', `0 <span style="font-size:10px;font-weight:400;color:var(--faint)">câm.</span> 2 <span style="font-size:10px;font-weight:400;color:var(--faint)">links</span> ${jamCount} <span style="font-size:10px;font-weight:400;color:var(--faint)">rotas</span>`, '', '', '', undefined),
+  ].join('');
+
+  document.getElementById('op-kpis').innerHTML = kpisHtml;
 }
 
-// ── Sparklines ────────────────────────────────────────────────────
-function drawSparkline(canvasId, values, color) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const W = canvas.offsetWidth || 180, H = canvas.offsetHeight || 22;
-  canvas.width = W; canvas.height = H;
-  ctx.clearRect(0, 0, W, H);
+// ── Render Jams ───────────────────────────────────────────────────
+function renderJams(jams) {
+  mapLayers.jams.clearLayers();
+  jams.forEach(j => {
+    if (!j.line || !j.line.length) return;
+    const coords = j.line.map(p => [p.y ?? p[1], p.x ?? p[0]]);
+    const color  = jamColor(j.level ?? 0);
+    const w      = j.level >= 5 ? 6 : j.level >= 3 ? 5 : 4;
+    L.polyline(coords, {
+      color, weight: w, opacity: .85,
+      lineCap: 'round', lineJoin: 'round',
+    }).bindPopup(`<b>${j.street || '—'}</b><br>Nível ${j.level ?? '?'} — ${j.speedKMH ?? '?'} km/h<br>Atraso: ${j.delay ? Math.round(j.delay/60)+'min' : '—'}`)
+      .addTo(mapLayers.jams);
+  });
+}
 
-  // Fallback visual quando não há dados suficientes
-  if (!values || values.length < 2) {
-    ctx.fillStyle = 'rgba(255,255,255,.04)';
-    ctx.fillRect(0, H - 2, W, 2);
-    return;
+// ── Render Alerts ─────────────────────────────────────────────────
+function renderAlerts(alerts) {
+  mapLayers.alerts.clearLayers();
+  alerts.forEach(a => {
+    if (!a.lat || !a.lng) return;
+    L.marker([a.lat, a.lng], { icon: makeAlertIcon(a.type) })
+      .bindPopup(`<b>${a.type || 'Alerta'}</b><br>${a.street || '—'}<br>Conf. ${a.confidence ?? '?'}`)
+      .addTo(mapLayers.alerts);
+  });
+}
+
+// ── Render CEMADEN ────────────────────────────────────────────────
+function renderCemaden(stations) {
+  mapLayers.cemaden.clearLayers();
+  stations.forEach(s => {
+    if (!s.lat || !s.lng) return;
+    L.marker([s.lat, s.lng], { icon: makeCemadenIcon(s.critical) })
+      .bindPopup(`<b>${s.name || 'Estação'}</b><br>Chuva 1h: ${s.rain1h ?? '—'} mm`)
+      .addTo(mapLayers.cemaden);
+  });
+}
+
+// ── Feed builder ──────────────────────────────────────────────────
+const MAX_FEED = 30;
+let feedItems  = [];
+const feedEl   = document.getElementById('feed-list');
+const feedCnt  = document.getElementById('feedCount');
+
+function feedBadgeClass(type) {
+  if (!type) return 'feed-badge-other';
+  const t = type.toUpperCase();
+  if (t.includes('JAM'))           return 'feed-badge-jam';
+  if (t.includes('ACCIDENT'))      return 'feed-badge-jam';
+  if (t.includes('CLOSED') || t.includes('ROAD')) return 'feed-badge-closed';
+  if (t.includes('HAZARD') || t.includes('OBJECT')) return 'feed-badge-hazard';
+  return 'feed-badge-alert';
+}
+function feedLabel(type) {
+  if (!type) return 'ALERTA';
+  const t = type.toUpperCase();
+  if (t.includes('JAM'))       return 'TRÂNSITO INTENSO';
+  if (t.includes('ACCIDENT'))  return 'ACIDENTE';
+  if (t.includes('ROAD'))      return 'VIA FECHADA';
+  if (t.includes('HAZARD'))    return 'PERIGO NA VIA';
+  if (t.includes('BUMP') || t.includes('POT')) return 'BURACO NA VIA';
+  if (t.includes('STOPPED'))   return 'VEÍCULO PARADO';
+  if (t.includes('OBJECT'))    return 'OBJETO NA VIA';
+  return type.replace(/_/g,' ').substring(0,20);
+}
+function timeAgo(ts) {
+  if (!ts) return '—';
+  const sec = Math.round((Date.now() - new Date(ts * 1000)) / 1000);
+  if (sec < 60) return `${sec}s atrás`;
+  if (sec < 3600) return `${Math.floor(sec/60)}min atrás`;
+  return `${Math.floor(sec/3600)}h atrás`;
+}
+
+function mergeIntoFeed(items) {
+  const existing = new Set(feedItems.map(i => i._id));
+  let added = 0;
+  items.forEach(item => {
+    const id = item.uuid || item.id || (item.street + item.type);
+    if (!existing.has(id)) {
+      feedItems.unshift({ ...item, _id: id, _ts: Date.now() });
+      added++;
+    }
+  });
+  if (added) {
+    feedItems = feedItems.slice(0, MAX_FEED);
+    renderFeed();
   }
-
-  const max  = Math.max(...values) || 1;
-  const step = W / (values.length - 1);
-
-  ctx.beginPath();
-  values.forEach((v, i) => {
-    const x = i * step, y = H - (v / max) * (H - 2) - 1;
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  });
-  ctx.lineTo((values.length - 1) * step, H);
-  ctx.lineTo(0, H);
-  ctx.closePath();
-  ctx.fillStyle = color + '22';
-  ctx.fill();
-
-  ctx.beginPath();
-  values.forEach((v, i) => {
-    const x = i * step, y = H - (v / max) * (H - 2) - 1;
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  });
-  ctx.strokeStyle = color;
-  ctx.lineWidth   = 1.5;
-  ctx.lineJoin    = 'round';
-  ctx.stroke();
+  feedCnt.textContent = feedItems.length;
 }
 
-// ── Polling ───────────────────────────────────────────────────────
-async function poll() {
+function renderFeed() {
+  feedEl.innerHTML = feedItems.map(item => `
+    <div class="feed-item">
+      <div class="feed-item-header">
+        <span class="feed-badge ${feedBadgeClass(item.type)}">${feedLabel(item.type)}</span>
+        <span class="feed-time">${timeAgo(item.pubMillis ? item.pubMillis/1000 : null)}</span>
+      </div>
+      <div class="feed-street">${item.street || '—'}</div>
+      <div class="feed-city">${item.city || ''}</div>
+      <div class="feed-conf">conf. ${item.confidence ?? 0}</div>
+    </div>
+  `).join('');
+}
+
+// ── Update bar counts ─────────────────────────────────────────────
+function updateBar(d) {
+  const jc = (d.jams||[]).length;
+  const ac = (d.alerts||[]).length;
+  const cc = (d.cemaden||[]).length;
+  document.getElementById('barJams').textContent    = jc;
+  document.getElementById('barAlerts').textContent  = ac;
+  document.getElementById('barCemaden').textContent = cc;
+  document.getElementById('lblJams').textContent    = `${jc} jams`;
+  document.getElementById('lblAlerts').textContent  = `${ac} alertas`;
+  document.getElementById('lblCemaden').textContent = `${cc} estações CEMADEN`;
+  document.getElementById('dotJams').style.background = jc > 15 ? '#ef4444' : jc > 5 ? '#f97316' : '#ef4444';
+
+  document.getElementById('srcWaze').className    = 'op-bar-src ' + (jc > 0 || ac > 0 ? 'on' : 'off');
+  document.getElementById('srcCemaden').className = 'op-bar-src ' + (cc > 0 ? 'on' : 'off');
+  document.getElementById('srcAlerts').className  = 'op-bar-src ' + (ac > 0 ? 'on' : 'off');
+}
+
+// ── Main fetch loop ───────────────────────────────────────────────
+let prevAlertCount = 0;
+
+async function fetchData() {
   try {
-    const resp = await fetch(API_URL);
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json();
+    const res  = await fetch(API_URL);
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
 
-    const pulse = document.getElementById('op-pulse');
-    pulse.className = 'op-pulse ok';
-    setTimeout(() => { pulse.className = 'op-pulse'; }, 1500);
+    lastFetch = Date.now();
+    pulseEl.className = 'op-pulse ok';
+    updateAgo();
 
-    lastTs = new Date(data.ts);
-    document.getElementById('op-ago').textContent =
-      'atualizado ' + lastTs.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    buildKpis(data);
+    renderJams(data.jams    || []);
+    renderAlerts(data.alerts  || []);
+    renderCemaden(data.cemaden || []);
+    updateBar(data);
+    mergeIntoFeed([...(data.alerts||[]), ...(data.jams||[])]);
 
-    ['waze','cemaden','api'].forEach(s => {
-      const el = document.getElementById('pill-' + s);
-      if (el) { el.className = 'source-pill ok'; }
-    });
-
-    renderKpis(data.kpis, data.cemaden);
-    renderMap(data);
-    renderFeed(data.alerts || []);
-
-    history.jams.push(data.kpis.liveJams ?? 0);
-    history.alerts.push(data.kpis.alertsHour ?? 0);
-    history.upd.push(1);
-    if (history.jams.length   > 48) history.jams.shift();
-    if (history.alerts.length > 48) history.alerts.shift();
-    if (history.upd.length    > 48) history.upd.shift();
-
-    drawSparkline('spark-jams',          history.jams,   '#f97316');
-    drawSparkline('spark-alerts',        history.alerts, '#ef4444');
-    drawSparkline('footer-spark-jams',   history.jams,   '#f97316');
-    drawSparkline('footer-spark-alerts', history.alerts, '#ef4444');
-    drawSparkline('footer-spark-upd',    history.upd,    '#22c55e');
+    const newAlerts = (data.alerts||[]).length;
+    if (newAlerts > prevAlertCount) playAlert();
+    prevAlertCount = newAlerts;
 
   } catch (e) {
-    document.getElementById('op-pulse').className = 'op-pulse err';
-    document.getElementById('op-ago').textContent = 'erro na atualização';
-    ['waze','cemaden','api'].forEach(s => {
-      const el = document.getElementById('pill-' + s);
-      if (el) el.className = 'source-pill err';
-    });
-    console.error('LiveSummary poll error:', e);
+    pulseEl.className = 'op-pulse err';
+    console.error('[LiveOp] fetch error', e);
   }
 }
 
-poll();
-setInterval(poll, POLL_MS);
+fetchData();
+setInterval(fetchData, REFRESH_MS);
+
+// ── Legend toggle ──────────────────────────────────────────────
+(function() {
+  const btn = document.getElementById('legendToggle');
+  const legend = btn && btn.closest('.map-legend');
+  if (!btn || !legend) return;
+  btn.addEventListener('click', () => {
+    const collapsed = legend.classList.toggle('collapsed');
+    btn.textContent = collapsed ? '+' : '−';
+    btn.title = collapsed ? 'Expandir legenda' : 'Minimizar legenda';
+  });
+})();
 </script>
 </body>
 </html>
