@@ -153,7 +153,6 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
 .op-btn:hover { color: var(--text); border-color: var(--border2); background: var(--surface3); }
 .op-btn svg { flex-shrink: 0; }
 
-/* Botão voltar — destaque sutil em teal */
 .op-btn-back {
   display: inline-flex;
   align-items: center;
@@ -306,19 +305,36 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
 .kpi-value.val-green  { color: var(--green); }
 .kpi-value.val-teal   { color: var(--teal); }
 
+/* ── kpi-sub com hierarquia: info secundária em --faint ─────── */
 .kpi-sub {
   font-size: 10px;
-  color: var(--muted);
+  color: var(--faint);
   margin-top: 4px;
   line-height: 1.3;
 }
-.kpi-sub strong { color: var(--text); font-weight: 600; }
+.kpi-sub strong { color: var(--muted); font-weight: 600; }
+.kpi-sub em     { color: var(--text);  font-style: normal; font-weight: 700; }
 
 .kpi-spark {
   width: 100%;
   height: 22px;
   margin-top: 7px;
   display: block;
+}
+
+/* ── Sparkline empty state ─────────────────────────────────── */
+.kpi-spark-empty {
+  width: 100%;
+  height: 22px;
+  margin-top: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.kpi-spark-empty span {
+  font-size: 9px;
+  color: var(--faint);
+  letter-spacing: .04em;
 }
 
 .kpi-card.alert-red    .kpi-icon { background: var(--red-dim); }
@@ -374,7 +390,7 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
 }
 .cemaden-station-city {
   font-size: 10px;
-  color: var(--muted);
+  color: var(--faint);
   margin-bottom: 8px;
   white-space: nowrap;
   overflow: hidden;
@@ -405,15 +421,12 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
 .cemaden-level-badge.lvl-alerta  { background: var(--orange-dim); color: var(--orange); }
 .cemaden-level-badge.lvl-critico { background: var(--red-dim);    color: var(--red); }
 
-/* Barra de nível de cota */
-.cemaden-quota-wrap {
-  margin-top: 4px;
-}
+.cemaden-quota-wrap { margin-top: 4px; }
 .cemaden-quota-label {
   display: flex;
   justify-content: space-between;
   font-size: 9px;
-  color: var(--muted);
+  color: var(--faint);
   margin-bottom: 3px;
 }
 .cemaden-quota-label span:last-child {
@@ -435,7 +448,6 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
   transition: width .5s ease, background .3s;
   min-width: 3px;
 }
-/* Marcadores de cota de alerta e transbordamento */
 .cemaden-quota-markers {
   position: relative;
   height: 10px;
@@ -455,13 +467,9 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
   height: 5px;
   margin: 0 auto 1px;
 }
-.cemaden-quota-marker.mk-alerta {
-  color: var(--yellow);
-}
+.cemaden-quota-marker.mk-alerta { color: var(--yellow); }
 .cemaden-quota-marker.mk-alerta::before { background: var(--yellow); }
-.cemaden-quota-marker.mk-transbordamento {
-  color: var(--red);
-}
+.cemaden-quota-marker.mk-transbordamento { color: var(--red); }
 .cemaden-quota-marker.mk-transbordamento::before { background: var(--red); }
 
 .cemaden-rain-row {
@@ -524,11 +532,11 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
   flex-shrink: 0;
 }
 
-/* ── Legenda do mapa — só ícones ────────────────────────────── */
+/* ── Legenda do mapa — lado esquerdo para não colidir com o feed ── */
 .map-legend {
   position: absolute;
   top: 12px;
-  right: 12px;
+  left: 12px;
   background: rgba(13,14,16,.9);
   border: 1px solid var(--border2);
   border-radius: var(--radius);
@@ -550,38 +558,37 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
   border-bottom: 1px solid var(--border);
   padding-bottom: 3px;
 }
-/* Grupos de ícones numa linha */
-.map-legend-group {
+.map-legend-row {
   display: flex;
-  gap: 5px;
   align-items: center;
+  gap: 6px;
 }
-/* Cada célula de ícone com tooltip via title */
-.map-legend-cell {
-  width: 26px; height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
+.map-legend-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.map-legend-line {
+  width: 22px; height: 4px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.map-legend-emoji {
+  font-size: 14px;
   line-height: 1;
-  cursor: default;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.map-legend-label {
+  font-size: 9px;
+  color: var(--muted);
+  white-space: nowrap;
 }
 .legend-sep {
   height: 1px;
   background: var(--border);
   margin: 2px 0;
-}
-/* Linha de jams: amostras coloridas */
-.map-legend-jams {
-  display: flex;
-  gap: 5px;
-  align-items: center;
-}
-.legend-jam-line {
-  width: 24px; height: 4px;
-  border-radius: 2px;
-  flex-shrink: 0;
-  cursor: default;
 }
 
 /* ── Ícones emoji do mapa (divIcon) ─────────────────────────── */
@@ -646,46 +653,61 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
 .feed-item {
   background: var(--surface2);
   border: 1px solid var(--border);
-  border-left: 3px solid var(--faint);
   border-radius: var(--radius);
   padding: 9px 10px;
   animation: slideIn .2s ease;
   cursor: pointer;
   transition: background var(--transition), border-color var(--transition), transform var(--transition);
+  /* Indicador lateral removido — usa dot colorido no badge */
 }
 .feed-item:hover { background: var(--surface3); transform: translateX(2px); }
-.feed-item.type-accident    { border-left-color: var(--red); }
-.feed-item.type-jam         { border-left-color: var(--orange); }
-.feed-item.type-hazard      { border-left-color: var(--yellow); }
-.feed-item.type-road-closed { border-left-color: var(--blue); }
-.feed-item.type-cemaden     { border-left-color: var(--teal); }
 
 .feed-item-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  margin-bottom: 3px;
+  margin-bottom: 4px;
 }
+
+/* ── Badge colorido com background ─────────────────────────── */
 .feed-type-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   font-size: 9px;
   font-weight: 700;
-  letter-spacing: .08em;
+  letter-spacing: .06em;
   text-transform: uppercase;
+  border-radius: 20px;
+  padding: 2px 7px;
+  line-height: 1.4;
+  flex-shrink: 0;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+.feed-type-badge.badge-accident    { background: var(--red-dim);    color: var(--red); }
+.feed-type-badge.badge-jam         { background: var(--orange-dim); color: var(--orange); }
+.feed-type-badge.badge-hazard      { background: var(--yellow-dim); color: var(--yellow); }
+.feed-type-badge.badge-road-closed { background: var(--blue-dim);   color: var(--blue); }
+.feed-type-badge.badge-cemaden     { background: var(--teal-dim);   color: var(--teal); }
+.feed-type-badge.badge-default     { background: var(--surface3);   color: var(--muted); }
+
 .feed-time {
   font-size: 9px;
   color: var(--faint);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
 }
 .feed-street { font-size: 12px; font-weight: 600; color: var(--text); line-height: 1.3; }
-.feed-meta   { font-size: 10px; color: var(--muted); margin-top: 2px; display: flex; align-items: center; gap: 4px; }
-.feed-meta-sep { color: var(--faint); }
-.feed-critical { background: rgba(239,68,68,.07); }
+.feed-meta   { font-size: 10px; color: var(--faint); margin-top: 2px; display: flex; align-items: center; gap: 4px; }
+.feed-meta-sep { color: var(--surface3); }
+.feed-meta .conf-high { color: var(--green); font-weight: 600; }
+.feed-meta .conf-med  { color: var(--yellow); }
+.feed-critical { background: rgba(239,68,68,.06); border-color: rgba(239,68,68,.2); }
 
 .feed-empty {
   display: flex;
@@ -765,7 +787,7 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
 .source-pill.err .source-dot { background: var(--red); }
 
 /* ── Leaflet custom ───────────────────────────────────────────── */
-.leaflet-container { background: #1a1d22; }
+.leaflet-container { background: #111316; }
 .leaflet-popup-content-wrapper {
   background: #1c1f26;
   border: 1px solid rgba(255,255,255,.1);
@@ -918,7 +940,7 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
         <div class="kpi-body">
           <div class="kpi-value" id="v-delay">—</div>
         </div>
-        <div class="kpi-sub" id="s-delay">segundos</div>
+        <div class="kpi-sub" id="s-delay">tempo de atraso</div>
       </div>
 
       <div class="kpi-card" id="kpi-len">
@@ -962,7 +984,6 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
         CEMADEN — Estação Próxima
       </div>
 
-      <!-- Card da estação CEMADEN mais próxima -->
       <div class="kpi-card alert-teal" id="kpi-cemaden-station">
         <div class="kpi-header">
           <div class="kpi-icon">
@@ -979,7 +1000,7 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
 
         <div class="cemaden-level-row">
           <span class="cemaden-level-badge" id="cs-level-badge">—</span>
-          <span style="font-size:9px;color:var(--muted)" id="cs-distance"></span>
+          <span style="font-size:9px;color:var(--faint)" id="cs-distance"></span>
         </div>
 
         <div class="cemaden-quota-wrap" id="cs-quota-wrap" style="display:none">
@@ -1009,7 +1030,6 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
         </div>
       </div>
 
-      <!-- Card de chuva acumulada (resumo geral CEMADEN) -->
       <div class="kpi-card" id="kpi-rain">
         <div class="kpi-header">
           <div class="kpi-icon">
@@ -1063,25 +1083,46 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
     <div class="op-map-container">
       <div id="op-map"></div>
 
+      <!-- Legenda movida para a esquerda para não colidir com a coluna do feed -->
       <div class="map-legend" id="map-legend">
         <div class="map-legend-title">Legenda</div>
-        <div class="map-legend-group">
-          <span class="map-legend-cell" title="Acidente">🚨</span>
-          <span class="map-legend-cell" title="Engarrafamento">🚗</span>
-          <span class="map-legend-cell" title="Perigo / Obra">⚠️</span>
-          <span class="map-legend-cell" title="Via fechada">🚫</span>
+        <div class="map-legend-row">
+          <span class="map-legend-emoji">🚨</span>
+          <span class="map-legend-label">Acidente</span>
+        </div>
+        <div class="map-legend-row">
+          <span class="map-legend-emoji">🚗</span>
+          <span class="map-legend-label">Engarrafamento</span>
+        </div>
+        <div class="map-legend-row">
+          <span class="map-legend-emoji">⚠️</span>
+          <span class="map-legend-label">Perigo / Obra</span>
+        </div>
+        <div class="map-legend-row">
+          <span class="map-legend-emoji">🚫</span>
+          <span class="map-legend-label">Via fechada</span>
         </div>
         <div class="legend-sep"></div>
-        <div class="map-legend-group">
-          <span class="map-legend-cell" title="Estação CEMADEN — normal" style="filter:hue-rotate(160deg)">🌧️</span>
-          <span class="map-legend-cell" title="Estação CEMADEN — alerta" style="filter:hue-rotate(30deg) saturate(2)">🌧️</span>
-          <span class="map-legend-cell" title="Estação CEMADEN — crítica" style="filter:hue-rotate(320deg) saturate(2)">🌧️</span>
+        <div class="map-legend-row">
+          <div class="map-legend-line" style="background:#ef4444"></div>
+          <span class="map-legend-label">Jam crítico (5+)</span>
+        </div>
+        <div class="map-legend-row">
+          <div class="map-legend-line" style="background:#f97316"></div>
+          <span class="map-legend-label">Jam moderado (3–4)</span>
+        </div>
+        <div class="map-legend-row">
+          <div class="map-legend-line" style="background:#eab308"></div>
+          <span class="map-legend-label">Jam leve (1–2)</span>
         </div>
         <div class="legend-sep"></div>
-        <div class="map-legend-jams">
-          <div class="legend-jam-line" style="background:#ef4444" title="Jam crítico (nível 5+)"></div>
-          <div class="legend-jam-line" style="background:#f97316" title="Jam moderado (3-4)"></div>
-          <div class="legend-jam-line" style="background:#eab308" title="Jam leve (1-2)"></div>
+        <div class="map-legend-row">
+          <span class="map-legend-emoji" style="filter:hue-rotate(160deg)">🌧️</span>
+          <span class="map-legend-label">CEMADEN normal</span>
+        </div>
+        <div class="map-legend-row">
+          <span class="map-legend-emoji" style="filter:hue-rotate(320deg) saturate(2)">🌧️</span>
+          <span class="map-legend-label">CEMADEN crítico</span>
         </div>
       </div>
 
@@ -1211,10 +1252,14 @@ function beep() {
   } catch (_) {}
 }
 
-// ── Mapa ──────────────────────────────────────────────────────────
+// ── Mapa — CartoDB DarkMatter (vias em cinza neutro) ──────────────
 const map = L.map('op-map', { zoomControl: true, attributionControl: false });
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
   subdomains: 'abcd', maxZoom: 19,
+}).addTo(map);
+// Camada de labels separada, fica acima dos overlays de trânsito
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {
+  subdomains: 'abcd', maxZoom: 19, pane: 'shadowPane',
 }).addTo(map);
 map.setView([FALLBACK_LAT, FALLBACK_LNG], FALLBACK_ZOOM);
 Object.values(mapLayers).forEach(l => l.addTo(map));
@@ -1232,13 +1277,13 @@ function makeAlertIcon(type) {
   type = (type || '').toUpperCase();
   let emoji = '📍';
   let size  = 28;
-  if (type.includes('ACCIDENT'))                                               { emoji = '🚨'; size = 30; }
-  else if (type.includes('JAM'))                                               { emoji = '🚗'; size = 28; }
-  else if (type.includes('CONSTRUCTION'))                                      { emoji = '🚧'; size = 28; }
-  else if (type.includes('POT_HOLE'))                                          { emoji = '🕳️'; size = 26; }
-  else if (type.includes('HAZARD') || type.includes('OBJECT'))                 { emoji = '⚠️'; size = 28; }
-  else if (type.includes('ROAD') || type.includes('CLOSED'))                   { emoji = '🚫'; size = 28; }
-  else if (type.includes('WEATHER') || type.includes('FLOOD'))                 { emoji = '🌊'; size = 28; }
+  if (type.includes('ACCIDENT'))                              { emoji = '🚨'; size = 30; }
+  else if (type.includes('JAM'))                             { emoji = '🚗'; size = 28; }
+  else if (type.includes('CONSTRUCTION'))                    { emoji = '🚧'; size = 28; }
+  else if (type.includes('POT_HOLE'))                        { emoji = '🕳️'; size = 26; }
+  else if (type.includes('HAZARD') || type.includes('OBJECT')) { emoji = '⚠️'; size = 28; }
+  else if (type.includes('ROAD') || type.includes('CLOSED')) { emoji = '🚫'; size = 28; }
+  else if (type.includes('WEATHER') || type.includes('FLOOD')) { emoji = '🌊'; size = 28; }
   const half = Math.round(size / 2);
   return L.divIcon({
     html: `<span class="map-emoji-marker" style="font-size:${size}px;width:${size}px;height:${size}px;">${emoji}</span>`,
@@ -1256,7 +1301,7 @@ function makeCemadenIcon(alertLevel) {
   else if (alertLevel === 'ORANGE') { filter = 'hue-rotate(20deg) saturate(2) brightness(1.1)';   title = 'CEMADEN — alerta'; }
   else if (alertLevel === 'YELLOW') { filter = 'hue-rotate(50deg) saturate(1.8)';                 title = 'CEMADEN — atenção'; }
   return L.divIcon({
-    html: `<span class="map-emoji-marker" title="${title}" style="font-size:26px;width:28px;height:28px;${filter ? 'filter:' + filter : ''}"">🌧️</span>`,
+    html: `<span class="map-emoji-marker" title="${title}" style="font-size:26px;width:28px;height:28px;${filter ? 'filter:' + filter : ''}">🌧️</span>`,
     className:  '',
     iconSize:   [28, 28],
     iconAnchor: [14, 14],
@@ -1296,7 +1341,7 @@ function renderMap(data) {
   (data.alerts || []).forEach(a => {
     if (!a.lat || !a.lng) return;
     L.marker([a.lat, a.lng], { icon: makeAlertIcon(a.type) })
-      .bindPopup(`<b>${a.type || 'Alerta'}</b>${a.subtype ? ' — ' + a.subtype : ''}<br>${a.street || ''} ${a.city || ''}`)
+      .bindPopup(`<b>${translateType(a.type)}</b>${a.subtype ? ' — ' + translateSubtype(a.subtype) : ''}<br>${a.street || ''} ${a.city || ''}`)
       .addTo(mapLayers.alerts);
   });
 
@@ -1439,7 +1484,7 @@ function renderKpis(k, cemaden) {
   const jamCls = levelClass(k.liveJams, JAM_WARN, JAM_CRIT);
   setKpi('v-live-jams', k.liveJams ?? '—', jamCls);
   setCard('kpi-live-jams', jamCls);
-  document.getElementById('s-live-jams').innerHTML = 'nível máx: <strong>' + (k.maxJamLevel ?? '—') + '</strong>';
+  document.getElementById('s-live-jams').innerHTML = 'nível máx: <em>' + (k.maxJamLevel ?? '—') + '</em>';
 
   const spd = k.liveAvgSpeed ? Math.round(k.liveAvgSpeed) : 0;
   const spdCls = spd < 15 ? 'red' : spd < 30 ? 'orange' : 'green';
@@ -1451,12 +1496,16 @@ function renderKpis(k, cemaden) {
   const delCls = levelClass(del, DELAY_WARN, DELAY_CRIT);
   setKpi('v-delay', fmtDelay(del), delCls);
   setCard('kpi-delay', delCls);
+  // Melhora o sub: mostra em segundos ou minutos de forma contextual
+  const delSubEl = document.getElementById('s-delay');
+  if (delSubEl) delSubEl.textContent = del >= 60 ? 'atraso médio nos congestionamentos' : 'atraso em segundos';
 
   const lenEl = document.getElementById('v-len');
   if (lenEl) lenEl.textContent = fmtLen(k.liveTotalLen);
 
   setKpi('v-alerts-hour', k.alertsHour ?? '—');
-  document.getElementById('s-alerts24').textContent = (k.alerts24h ?? '—') + ' nas últimas 24h';
+  const alerts24El = document.getElementById('s-alerts24');
+  if (alerts24El) alerts24El.innerHTML = '<em>' + (k.alerts24h ?? '—') + '</em> nas últimas 24h';
 
   const rain = k.rainLastHour;
   const rainCls = rain >= RAIN_CRIT ? 'red' : rain >= RAIN_WARN ? 'orange' : 'teal';
@@ -1474,20 +1523,75 @@ function renderKpis(k, cemaden) {
   renderCemadenStation(cemaden);
 }
 
-// ── Feed ──────────────────────────────────────────────────────────
-const ALERT_TYPES = {
-  ACCIDENT:    { label: 'Acidente',        css: 'type-accident',    color: 'var(--red)'    },
-  JAM:         { label: 'Engarrafamento',  css: 'type-jam',         color: 'var(--orange)' },
-  HAZARD:      { label: 'Perigo',          css: 'type-hazard',      color: 'var(--yellow)' },
-  ROAD_CLOSED: { label: 'Via fechada',     css: 'type-road-closed', color: 'var(--blue)'   },
+// ── Tradução de tipos e subtipos Waze para PT-BR ──────────────────
+const TYPE_MAP = {
+  ACCIDENT:    { label: 'Acidente',       css: 'badge-accident',    color: 'var(--red)'    },
+  JAM:         { label: 'Engarrafamento', css: 'badge-jam',         color: 'var(--orange)' },
+  HAZARD:      { label: 'Perigo',         css: 'badge-hazard',      color: 'var(--yellow)' },
+  ROAD_CLOSED: { label: 'Via fechada',    css: 'badge-road-closed', color: 'var(--blue)'   },
+  WEATHERHAZARD: { label: 'Risco clima', css: 'badge-hazard',      color: 'var(--yellow)' },
 };
+
+const SUBTYPE_MAP = {
+  // Acidentes
+  ACCIDENT_MINOR:            'Leve',
+  ACCIDENT_MAJOR:            'Grave',
+  // Jams
+  JAM_MODERATE_TRAFFIC:      'Tráfego moderado',
+  JAM_HEAVY_TRAFFIC:         'Tráfego intenso',
+  JAM_STAND_STILL_TRAFFIC:   'Trânsito parado',
+  JAM_LIGHT_TRAFFIC:         'Tráfego leve',
+  // Perigos na via
+  HAZARD_ON_ROAD:                   'Perigo na via',
+  HAZARD_ON_ROAD_OBJECT:            'Objeto na via',
+  HAZARD_ON_ROAD_POT_HOLE:          'Buraco na via',
+  HAZARD_ON_ROAD_ROAD_KILL:         'Animal morto',
+  HAZARD_ON_ROAD_CAR_STOPPED:       'Veículo parado',
+  HAZARD_ON_ROAD_TRAFFIC_LIGHT_FAULT: 'Semáforo com defeito',
+  HAZARD_ON_ROAD_CONSTRUCTION:      'Obra na via',
+  HAZARD_ON_ROAD_ICE:               'Pista com gelo',
+  HAZARD_ON_ROAD_LANE_CLOSED:       'Faixa fechada',
+  // Perigos no acostamento
+  HAZARD_ON_SHOULDER:               'Perigo no acostamento',
+  HAZARD_ON_SHOULDER_CAR_STOPPED:   'Veículo parado no acostamento',
+  HAZARD_ON_SHOULDER_ANIMALS:       'Animais no acostamento',
+  HAZARD_ON_SHOULDER_MISSING_SIGN:  'Placa ausente',
+  // Clima
+  HAZARD_WEATHER:                   'Risco climático',
+  HAZARD_WEATHER_FLOOD:             'Alagamento',
+  HAZARD_WEATHER_FOG:               'Neblina',
+  HAZARD_WEATHER_HAIL:              'Granizo',
+  HAZARD_WEATHER_HEAVY_RAIN:        'Chuva forte',
+  HAZARD_WEATHER_HEAVY_SNOW:        'Nevasca',
+  HAZARD_WEATHER_FREEZING_RAIN:     'Chuva congelante',
+  HAZARD_WEATHER_TORNADO:           'Tornado',
+  HAZARD_WEATHER_MONSOON:           'Chuva torrencial',
+  HAZARD_WEATHER_HURRICANE:         'Furacão',
+  HAZARD_WEATHER_HEAT_WAVE:         'Onda de calor',
+  // Via fechada
+  ROAD_CLOSED_HAZARD:               'Fechada — perigo',
+  ROAD_CLOSED_CONSTRUCTION:         'Fechada — obra',
+  ROAD_CLOSED_EVENT:                'Fechada — evento',
+};
+
+function translateType(raw) {
+  const key = (raw || '').toUpperCase().replace(/^HAZARD_.*/, 'HAZARD').replace(/^JAM.*/, 'JAM').replace(/^ACCIDENT.*/, 'ACCIDENT').replace(/^ROAD_CLOSED.*/, 'ROAD_CLOSED');
+  return TYPE_MAP[key]?.label || TYPE_MAP[(raw || '').toUpperCase()]?.label || raw || 'Alerta';
+}
+
+function translateSubtype(raw) {
+  if (!raw) return '';
+  return SUBTYPE_MAP[(raw || '').toUpperCase()] || raw.replace(/_/g, ' ').toLowerCase().replace(/^\w/, c => c.toUpperCase());
+}
+
 function alertMeta(a) {
   const t = (a.type || '').toUpperCase();
-  for (const [k, v] of Object.entries(ALERT_TYPES)) {
+  for (const [k, v] of Object.entries(TYPE_MAP)) {
     if (t.includes(k)) return v;
   }
-  return { label: a.type || 'Alerta', css: '', color: 'var(--muted)' };
+  return { label: translateType(a.type), css: 'badge-default', color: 'var(--muted)' };
 }
+
 function timeAgo(isoStr) {
   if (!isoStr) return '';
   const diff = Math.floor((Date.now() - new Date(isoStr)) / 1000);
@@ -1495,8 +1599,15 @@ function timeAgo(isoStr) {
   if (diff < 3600) return Math.floor(diff / 60) + ' min atrás';
   return Math.floor(diff / 3600) + 'h atrás';
 }
+
 const CRITICAL_TYPES = ['ACCIDENT_MAJOR', 'ACCIDENT', 'ROAD_CLOSED'];
 let prevAlertIds = new Set();
+
+function confClass(conf) {
+  if (conf >= 8) return 'conf-high';
+  if (conf >= 4) return 'conf-med';
+  return '';
+}
 
 function renderFeed(alerts) {
   const list = document.getElementById('feed-list');
@@ -1517,18 +1628,23 @@ function renderFeed(alerts) {
   }
 
   list.innerHTML = alerts.map(a => {
-    const meta  = alertMeta(a);
-    const isCrit = CRITICAL_TYPES.some(t => (a.type || '').toUpperCase().includes(t));
-    return `<div class="feed-item ${meta.css} ${isCrit ? 'feed-critical' : ''}">
+    const meta     = alertMeta(a);
+    const isCrit   = CRITICAL_TYPES.some(t => (a.type || '').toUpperCase().includes(t));
+    const typeLabel = translateType(a.type);
+    const subLabel  = translateSubtype(a.subtype);
+    const badgeText = subLabel ? subLabel : typeLabel;
+    const cc = confClass(a.confidence);
+
+    return `<div class="feed-item ${isCrit ? 'feed-critical' : ''}">
       <div class="feed-item-top">
-        <div class="feed-type-badge" style="color:${meta.color}">${meta.label}${a.subtype ? ' · ' + a.subtype : ''}</div>
-        <div class="feed-time">${timeAgo(a.reportedAt)}</div>
+        <span class="feed-type-badge ${meta.css}">${badgeText}</span>
+        <span class="feed-time">${timeAgo(a.reportedAt)}</span>
       </div>
       <div class="feed-street">${a.street || 'Via não identificada'}</div>
       <div class="feed-meta">
         <span>${a.city || '—'}</span>
         <span class="feed-meta-sep">·</span>
-        <span>conf. ${a.confidence ?? '?'}</span>
+        <span class="${cc}">conf. ${a.confidence ?? '?'}</span>
       </div>
     </div>`;
   }).join('');
@@ -1542,7 +1658,14 @@ function drawSparkline(canvasId, values, color) {
   const W = canvas.offsetWidth || 180, H = canvas.offsetHeight || 22;
   canvas.width = W; canvas.height = H;
   ctx.clearRect(0, 0, W, H);
-  if (!values || values.length < 2) return;
+
+  // Fallback visual quando não há dados suficientes
+  if (!values || values.length < 2) {
+    ctx.fillStyle = 'rgba(255,255,255,.04)';
+    ctx.fillRect(0, H - 2, W, 2);
+    return;
+  }
+
   const max  = Math.max(...values) || 1;
   const step = W / (values.length - 1);
 
