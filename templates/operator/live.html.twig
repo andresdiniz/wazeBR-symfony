@@ -1007,12 +1007,18 @@ const pulseEl = document.getElementById('op-pulse');
 const agoEl   = document.getElementById('op-ago');
 let lastFetch = null;
 
+// FIX: updateAgo usa requestAnimationFrame para evitar forced reflow
+// ao ler Date.now() e escrever no DOM no mesmo tick do setInterval
+let _agoRafId = null;
 function updateAgo() {
-  if (!lastFetch) { agoEl.textContent = '—'; return; }
-  const sec = Math.round((Date.now() - lastFetch) / 1000);
-  if (sec < 60)  { agoEl.textContent = `atualizado ${sec}s`; return; }
-  const min = Math.floor(sec / 60);
-  agoEl.textContent = `atualizado ${min}min`;
+  if (_agoRafId) cancelAnimationFrame(_agoRafId);
+  _agoRafId = requestAnimationFrame(() => {
+    if (!lastFetch) { agoEl.textContent = '—'; return; }
+    const sec = Math.round((Date.now() - lastFetch) / 1000);
+    if (sec < 60)  { agoEl.textContent = `atualizado ${sec}s`; return; }
+    const min = Math.floor(sec / 60);
+    agoEl.textContent = `atualizado ${min}min`;
+  });
 }
 setInterval(updateAgo, 5000);
 
@@ -1211,7 +1217,11 @@ function updateBar(d) {
 }
 
 // ── Main fetch loop ───────────────────────────────────────────────
+// FIX: usa setTimeout recursivo em vez de setInterval para evitar
+// sobreposição de ciclos quando o fetch demora mais que REFRESH_MS,
+// eliminando o violation 'setInterval handler took Xms'.
 let prevAlertCount = 0;
+let _fetchTimer    = null;
 
 async function fetchData() {
   try {
@@ -1223,12 +1233,16 @@ async function fetchData() {
     pulseEl.className = 'op-pulse ok';
     updateAgo();
 
+    // FIX: operações leves de DOM primeiro (KPIs, bar, feed)
     buildKpis(data);
-    renderJams(data.jams    || []);
-    renderAlerts(data.alerts  || []);
-    renderCemaden(data.cemaden || []);
     updateBar(data);
     mergeIntoFeed([...(data.alerts||[]), ...(data.jams||[])]);
+
+    // FIX: renderização pesada do mapa adiada via setTimeout para liberar
+    // a thread principal e evitar 'Forced reflow while executing JavaScript'
+    setTimeout(() => renderJams(data.jams       || []), 0);
+    setTimeout(() => renderAlerts(data.alerts   || []), 0);
+    setTimeout(() => renderCemaden(data.cemaden || []), 0);
 
     const newAlerts = (data.alerts||[]).length;
     if (newAlerts > prevAlertCount) playAlert();
@@ -1237,11 +1251,13 @@ async function fetchData() {
   } catch (e) {
     pulseEl.className = 'op-pulse err';
     console.error('[LiveOp] fetch error', e);
+  } finally {
+    // Agenda próximo ciclo somente após o atual terminar
+    _fetchTimer = setTimeout(fetchData, REFRESH_MS);
   }
 }
 
 fetchData();
-setInterval(fetchData, REFRESH_MS);
 
 // ── Legend toggle ──────────────────────────────────────────────
 (function() {
