@@ -34,13 +34,23 @@ class DashboardController extends AbstractController
     #[Route('/', name: 'dashboard_index')]
     public function index(): Response
     {
-        $partner = $this->partnerRepo->find(1);
+        $partner = $this->partnerRepo->findOneBy(['isActive' => true]);
         if (!$partner) {
-            throw $this->createNotFoundException('Parceiro não encontrado.');
+            $partner = $this->partnerRepo->find(1);
+        }
+        
+        if (!$partner) {
+            return new Response(
+                '<div style="font-family: sans-serif; padding: 40px; text-align: center;">'.
+                '<h1>Nenhum parceiro configurado</h1>'.
+                '<p>Crie um parceiro no banco de dados para visualizar o dashboard.</p>'.
+                '</div>',
+                200
+            );
         }
 
         // Evita acessar partner.name para não disparar lazy-load quebrado
-        $partnerLabel = $partner->getSlug() ?? 'Parceiro #' . $partner->getId();
+        $partnerLabel = $partner->getName() ?? $partner->getSlug() ?? 'Parceiro #' . $partner->getId();
 
         $alerts = $this->alertRepo->findAll();
         $jams = $this->jamRepo->findAll();
