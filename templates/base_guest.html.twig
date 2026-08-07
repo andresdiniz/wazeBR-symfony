@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}WazeBR{% endblock %}</title>
+    {% block stylesheets %}
+        {# Reutiliza o mesmo CSS global da aplicação #}
+        {% if encore_entry_exists('app') %}
+            {{ encore_entry_link_tags('app') }}
+        {% endif %}
+    {% endblock %}
+</head>
+<body class="guest-shell">
+    {% block body %}{% endblock %}
+    {% block javascripts %}
+        {% if encore_entry_exists('app') %}
+            {{ encore_entry_script_tags('app') }}
+        {% endif %}
+    {% endblock %}
+</body>
+</html>

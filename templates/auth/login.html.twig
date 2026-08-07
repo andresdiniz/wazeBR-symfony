@@ -1,11 +1,11 @@
-{% extends 'base.html.twig' %}
+{% extends 'base_guest.html.twig' %}
 
 {% block title %}Entrar - WazeBR{% endblock %}
 
 {% block stylesheets %}
     {{ parent() }}
     <style>
-        body {
+        body.guest-shell {
             min-height: 100vh;
             margin: 0;
             background: linear-gradient(135deg, #6d7ae6 0%, #8a63d2 100%);
@@ -154,14 +154,6 @@
         .login-input:focus {
             border-color: rgba(115, 214, 231, .75);
             box-shadow: 0 0 0 3px rgba(115, 214, 231, .15);
-        }
-
-        .login-actions {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            margin-top: 18px;
         }
 
         .login-button {
