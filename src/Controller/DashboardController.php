@@ -43,7 +43,6 @@ class DashboardController extends AbstractController
         }
 
         $partnerId = $partner->getId();
-        // Garante string em UTF-8
         $partnerLabel = mb_convert_encoding($partner->getName() ?? $partner->getSlug() ?? 'Parceiro #' . $partnerId, 'UTF-8', 'UTF-8');
 
         $now = time() * 1000;
@@ -51,7 +50,6 @@ class DashboardController extends AbstractController
         $lastDay = $now - 24 * 3600 * 1000;
         $lastWeek = $now - 7 * 24 * 3600 * 1000;
 
-        // Conex\u00e3o para queries manuais
         $conn = $this->alertRepo->getEntityManager()->getConnection();
 
         // Aggregated stats
@@ -114,48 +112,17 @@ class DashboardController extends AbstractController
         $avgReliability = (float)($qualityStats['avg_reliability'] ?? 0);
         $avgConfidence  = (float)($qualityStats['avg_confidence'] ?? 0);
 
-        // WazeCount (semana e picos por level)
-        $wazeCountThisWeek = $conn->fetchOne(<<<'SQL'
-            SELECT COUNT(*) FROM waze_counts wc
-            WHERE wc.pub_millis >= :lastWeek
-        SQL, ['lastWeek' => $lastWeek]);
-
-        $last2Weeks = $now - 14 * 24 * 3600 * 1000;
-        $wazeCountLastWeek = $conn->fetchOne(<<<'SQL'
-            SELECT COUNT(*) FROM waze_counts wc
-            WHERE wc.pub_millis >= :last2Weeks
-              AND wc.pub_millis < :lastWeek
-        SQL, ['last2Weeks' => $last2Weeks, 'lastWeek' => $lastWeek]);
-
-        $peakByLevel = $conn->fetchAllAssociative(<<<'SQL'
-            SELECT wc.level, MAX(wc.count_value) AS max_count
-            FROM waze_counts wc
-            WHERE wc.pub_millis >= :lastWeek
-            GROUP BY wc.level
-        SQL, ['lastWeek' => $lastWeek]);
-
+        // WazeCount — desativado por enquanto (campo pub_millis nao existe em waze_counts)
+        $wazeCountThisWeek = null;
+        $wazeCountLastWeek = null;
         $wazeCountPeak = [
-            'max_level0' => 0,
-            'max_level1' => 0,
-            'max_level2' => 0,
-            'max_level3' => 0,
-            'max_level4' => 0,
-            'max_total'  => 0,
+            'max_level0' => null,
+            'max_level1' => null,
+            'max_level2' => null,
+            'max_level3' => null,
+            'max_level4' => null,
+            'max_total'  => null,
         ];
-        foreach ($peakByLevel as $row) {
-            $lvl = (int)$row['level'];
-            $val = (int)$row['max_count'];
-            if ($lvl >= 0 && $lvl <= 4) {
-                $wazeCountPeak['max_level' . $lvl] = $val;
-            }
-        }
-        $wazeCountPeak['max_total'] = max(
-            $wazeCountPeak['max_level0'],
-            $wazeCountPeak['max_level1'],
-            $wazeCountPeak['max_level2'],
-            $wazeCountPeak['max_level3'],
-            $wazeCountPeak['max_level4'],
-        );
 
         // KPIs
         $kpis = [
@@ -193,8 +160,8 @@ class DashboardController extends AbstractController
             ],
             'tvtAvgSpeed' => 0.0,
             'tvtAvgTravelTime' => 0.0,
-            'wazeCount' => (int)$wazeCountThisWeek,
-            'wazeCountLastWeek' => (int)$wazeCountLastWeek,
+            'wazeCount' => $wazeCountThisWeek,
+            'wazeCountLastWeek' => $wazeCountLastWeek,
             'wazeCountPeak' => $wazeCountPeak,
             'alertLinkedToJamPct' => 0.0,
             'alertOnHighwayPct' => 0.0,
@@ -247,7 +214,6 @@ class DashboardController extends AbstractController
             }
         }
 
-        // Mapas de tipos (UTF-8)
         $typesMap = mb_convert_encoding([
             'ACCIDENT' => 'Acidente',
             'JAM' => 'Congestionamento',
@@ -264,7 +230,6 @@ class DashboardController extends AbstractController
         $alertsPerHourRaw = $this->alertRepo->getAlertsPerHourLast24h();
         $jamsPerHourRaw = $this->jamRepo->getJamsPerHourLast24h();
 
-        // Labels reais (ex.: '10h', '11h', ...)
         $alertsPerHourLabels = array_column($alertsPerHourRaw, 'hour_label');
         $alertsPerHourData = array_map('intval', array_column($alertsPerHourRaw, 'total'));
 
