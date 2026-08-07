@@ -39,7 +39,7 @@ class DashboardController extends AbstractController
         $partner = $user->getPartner();
 
         if (!$partner) {
-            return new Response('<div class="p-5 text-center">Usuário sem parceiro vinculado.</div>', 200);
+            return new Response('<div class="p-5 text-center">Usu\u00e1rio sem parceiro vinculado.</div>', 200);
         }
 
         $partnerId = $partner->getId();
@@ -49,6 +49,9 @@ class DashboardController extends AbstractController
         $lastHour = $now - 3600 * 1000;
         $lastDay = $now - 24 * 3600 * 1000;
         $lastWeek = $now - 7 * 24 * 3600 * 1000;
+
+        // Conex\u00e3o para queries manuais
+        $conn = $this->alertRepo->getEntityManager()->getConnection();
 
         // Aggregated stats
         $alertsStats = $this->alertRepo->createQueryBuilder('a')
@@ -96,6 +99,67 @@ class DashboardController extends AbstractController
             ->getQuery()
             ->getSingleScalarResult();
 
+        // Qualidade dos alertas (reliability / confidence) - u\u00faltimas 24h
+        $qualityStats = $conn->fetchAssociative(<<<'SQL'
+            SELECT
+                AVG(a.reliability) AS avg_reliability,
+                AVG(a.confidence) AS avg_confidence
+            FROM waze_alerts a
+            WHERE a.pub_millis >= :lastDay
+              AND a.reliability IS NOT NULL
+              AND a.confidence IS NOT NULL
+        SQL, ['lastDay' => $lastDay]);
+
+        $avgReliability = (float)($qualityStats['avg_reliability'] ?? 0);
+        $avgConfidence  = (float)($qualityStats['avg_confidence'] ?? 0);
+
+        // WazeCount (semana e picos por level)
+        // Semana atual: contagem de registros em waze_counts nos u\u00faltimos 7 dias
+        $wazeCountThisWeek = $conn->fetchOne(<<<'SQL'
+            SELECT COUNT(*) FROM waze_counts wc
+            WHERE wc.pub_millis >= :lastWeek
+        SQL, ['lastWeek' => $lastWeek]);
+
+        // Semana passada: 7 a 14 dias atr\u00e1s
+        $last2Weeks = $now - 14 * 24 * 3600 * 1000;
+        $wazeCountLastWeek = $conn->fetchOne(<<<'SQL'
+            SELECT COUNT(*) FROM waze_counts wc
+            WHERE wc.pub_millis >= :last2Weeks
+              AND wc.pub_millis < :lastWeek
+        SQL, ['last2Weeks' => $last2Weeks, 'lastWeek' => $lastWeek]);
+
+        // Picos por n\u00edvel de jam (max em waze_counts ou waze_route_snapshots)
+        // Vou usar waze_counts agrupando por level
+        $peakByLevel = $conn->fetchAllAssociative(<<<'SQL'
+            SELECT wc.level, MAX(wc.count_value) AS max_count
+            FROM waze_counts wc
+            WHERE wc.pub_millis >= :lastWeek
+            GROUP BY wc.level
+        SQL, ['lastWeek' => $lastWeek]);
+
+        $wazeCountPeak = [
+            'max_level0' => 0,
+            'max_level1' => 0,
+            'max_level2' => 0,
+            'max_level3' => 0,
+            'max_level4' => 0,
+            'max_total'  => 0,
+        ];
+        foreach ($peakByLevel as $row) {
+            $lvl = (int)$row['level'];
+            $val = (int)$row['max_count'];
+            if ($lvl >= 0 && $lvl <= 4) {
+                $wazeCountPeak['max_level' . $lvl] = $val;
+            }
+        }
+        $wazeCountPeak['max_total'] = max(
+            $wazeCountPeak['max_level0'],
+            $wazeCountPeak['max_level1'],
+            $wazeCountPeak['max_level2'],
+            $wazeCountPeak['max_level3'],
+            $wazeCountPeak['max_level4'],
+        );
+
         // KPIs
         $kpis = [
             'alerts' => (int)($alertsStats['total'] ?? 0),
@@ -132,25 +196,20 @@ class DashboardController extends AbstractController
             ],
             'tvtAvgSpeed' => 0.0,
             'tvtAvgTravelTime' => 0.0,
-            'wazeCount' => null,
-            'wazeCountLastWeek' => null,
-            'wazeCountPeak' => [
-                'max_level0' => null,
-                'max_level1' => null,
-                'max_level2' => null,
-                'max_level3' => null,
-                'max_level4' => null,
-                'max_total' => null,
-            ],
+            'wazeCount' => (int)$wazeCountThisWeek,
+            'wazeCountLastWeek' => (int)$wazeCountLastWeek,
+            'wazeCountPeak' => $wazeCountPeak,
             'alertLinkedToJamPct' => 0.0,
             'alertOnHighwayPct' => 0.0,
             'cifsActiveCount' => (int)($cifsCount ?? 0),
             'anomalyDetected' => false,
             'anomalyRatio' => 1.0,
             'avg6hPerHour' => 0.0,
+            'avgReliability' => $avgReliability,
+            'avgConfidence' => $avgConfidence,
         ];
 
-        // Alerts por tipo (ultimas 24h)
+        // Alerts por tipo (u\u00faltimas 24h)
         $alertsByTypeRaw = $this->alertRepo->createQueryBuilder('a')
             ->select('a.type, COUNT(a.id) as total')
             ->where('a.pubMillis >= :lastDay')
@@ -167,7 +226,7 @@ class DashboardController extends AbstractController
             ];
         }
 
-        // Jams por nivel (ultimas 24h)
+        // Jams por nivel (u\u00faltimas 24h)
         $jamsByLevelRaw = $this->jamRepo->createQueryBuilder('j')
             ->select('j.level, COUNT(j.id) as total')
             ->where('j.pubMillis >= :lastDay')
@@ -198,12 +257,12 @@ class DashboardController extends AbstractController
             'CONSTRUCTION' => 'Obra',
             'ROAD_CLOSED' => 'Via Interditada',
             'HAZARD' => 'Perigo',
-            'WEATHERHAZARD' => 'Perigo climático',
+            'WEATHERHAZARD' => 'Perigo clim\u00e1tico',
         ];
 
         $subtypesMap = [];
 
-        // Dados para gráficos (arrays prontos para Chart.js)
+        // Dados para gr\u00e1ficos (arrays prontos para Chart.js)
         $alertsPerHourRaw = $this->alertRepo->getAlertsPerHourLast24h();
         $jamsPerHourRaw = $this->jamRepo->getJamsPerHourLast24h();
 
@@ -213,11 +272,11 @@ class DashboardController extends AbstractController
         $jamsPerHourLabels = array_column($jamsPerHourRaw, 'hour_label');
         $jamsPerHourData = array_map('intval', array_column($jamsPerHourRaw, 'total'));
 
-        // Recent alerts (ultimos 5)
+        // Recent alerts (u\u00faltimos 5)
         $recentAlertsRaw = $this->alertRepo->createQueryBuilder('a')
-            ->select('a.id, a.type, a.city, a.street, a.pubMillis')
+            ->select('a.id, a.type, a.city, a.street, a.pubMillis, a.latitude, a.longitude')
             ->orderBy('a.pubMillis', 'DESC')
-            ->setMaxResults(5)
+            ->setMaxResults(10)
             ->getQuery()
             ->getArrayResult();
 
@@ -228,26 +287,110 @@ class DashboardController extends AbstractController
                 'city' => $r['city'],
                 'street' => $r['street'],
                 'pubMillis' => $r['pubMillis'],
+                'latitude' => (float)$r['latitude'],
+                'longitude' => (float)$r['longitude'],
             ];
         }, $recentAlertsRaw);
 
-        // Recent jams (ultimos 5)
+        // Recent jams (u\u00faltimos 10)
         $recentJamsRaw = $this->jamRepo->createQueryBuilder('j')
-            ->select('j.id, j.level, j.city, j.street, j.pubMillis')
+            ->select('j.id, j.level, j.city, j.street, j.pubMillis, j.line')
             ->orderBy('j.pubMillis', 'DESC')
-            ->setMaxResults(5)
+            ->setMaxResults(10)
             ->getQuery()
             ->getArrayResult();
 
         $recentJams = array_map(function ($r) {
+            // Tentar extrair linha GeoJSON de j.line (JSON)
+            $line = $r['line'];
+            $coords = [];
+            if (is_string($line) && $line !== '') {
+                $decoded = json_decode($line, true);
+                if (is_array($decoded) && isset($decoded['coordinates'])) {
+                    $coords = $decoded['coordinates'];
+                }
+            }
             return [
                 'id' => $r['id'],
                 'level' => $r['level'],
                 'city' => $r['city'],
                 'street' => $r['street'],
                 'pubMillis' => $r['pubMillis'],
+                'line' => $coords,
             ];
         }, $recentJamsRaw);
+
+        // Irregularidades: jams com level >= 2 (u\u00faltimas 24h)
+        $irregJamsRaw = $conn->fetchAllAssociative(<<<'SQL'
+            SELECT
+                j.id,
+                j.street,
+                j.city,
+                j.level,
+                j.delay,
+                j.speed_kmh,
+                j.pub_millis
+            FROM waze_traffic_jams j
+            WHERE j.pub_millis >= :lastDay
+              AND j.level >= 2
+            ORDER BY j.delay DESC
+            LIMIT 10
+        SQL, ['lastDay' => $lastDay]);
+
+        $irregRecentList = array_map(function ($r) {
+            return [
+                'id' => (int)$r['id'],
+                'street' => $r['street'],
+                'city' => $r['city'],
+                'level' => (int)$r['level'],
+                'delay' => (int)$r['delay'],
+                'speed_kmh' => (float)($r['speed_kmh'] ?? 0),
+            ];
+        }, $irregJamsRaw);
+
+        // Maior perda de velocidade (24h)
+        $speedLossRaw = $conn->fetchAllAssociative(<<<'SQL'
+            SELECT
+                j.street,
+                j.city,
+                j.speed_kmh,
+                60.0 - j.speed_kmh AS loss
+            FROM waze_traffic_jams j
+            WHERE j.pub_millis >= :lastDay
+              AND j.speed_kmh IS NOT NULL
+            ORDER BY loss DESC
+            LIMIT 5
+        SQL, []);
+
+        $irregSpeedLoss = array_map(function ($r) {
+            return [
+                'street' => $r['street'],
+                'city' => $r['city'],
+                'loss' => (float)$r['loss'],
+            ];
+        }, $speedLossRaw);
+
+        // Atraso acumulado por via (24h)
+        $delayByStreetRaw = $conn->fetchAllAssociative(<<<'SQL'
+            SELECT
+                j.street,
+                j.city,
+                SUM(j.delay) AS total_delay
+            FROM waze_traffic_jams j
+            WHERE j.pub_millis >= :lastDay
+              AND j.delay IS NOT NULL
+            GROUP BY j.street, j.city
+            ORDER BY total_delay DESC
+            LIMIT 5
+        SQL, []);
+
+        $irregDelayByStreet = array_map(function ($r) {
+            return [
+                'street' => $r['street'],
+                'city' => $r['city'],
+                'delay' => (int)$r['total_delay'],
+            ];
+        }, $delayByStreetRaw);
 
         return $this->render('dashboard/index.html.twig', [
             'partner' => $partner,
@@ -260,10 +403,10 @@ class DashboardController extends AbstractController
             'alertQualityByType' => [],
             'topEngagedAlerts' => [],
             'irregWorsening' => [],
-            'irregSpeedLoss' => [],
-            'irregDelayByStreet' => [],
+            'irregSpeedLoss' => $irregSpeedLoss,
+            'irregDelayByStreet' => $irregDelayByStreet,
             'irregSeverityCity' => [],
-            'irregRecentList' => [],
+            'irregRecentList' => $irregRecentList,
             'cifsActive' => [],
             'cifsUpcoming' => [],
             'cifsActiveByType' => [],
