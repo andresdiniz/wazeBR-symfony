@@ -20,6 +20,9 @@
     .chart-row-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-top: 24px; }
     .chart-wrapper { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(15,23,42,0.08); }
     #map { height: 450px; border-radius: 12px; box-shadow: 0 2px 8px rgba(15,23,42,0.08); }
+    .map-legend { background: #fff; padding: 8px 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(15,23,42,0.15); font-size: 0.85rem; }
+    .legend-item { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+    .legend-color { width: 16px; height: 16px; border-radius: 3px; }
 </style>
 
 <p class="text-muted mb-4">{{ translations.visao_geral ?? 'Visao geral dos dados monitorados para' }} {{ partnerLabel }}.</p>
@@ -85,6 +88,15 @@
     <div class="chart-wrapper">
         <h5>{{ translations.mapa_alertas_jams ?? 'Mapa de Alertas e Jams (recentes)' }}</h5>
         <div id="map"></div>
+        <div class="mt-2 map-legend">
+            <strong>{{ translations.niveis_jam ?? 'N\u00edveis de Jam' }}:</strong>
+            <div class="legend-item"><span class="legend-color" style="background:#94a3b8"></span> N0</div>
+            <div class="legend-item"><span class="legend-color" style="background:#22c55e"></span> N1</div>
+            <div class="legend-item"><span class="legend-color" style="background:#eab308"></span> N2</div>
+            <div class="legend-item"><span class="legend-color" style="background:#f97316"></span> N3</div>
+            <div class="legend-item"><span class="legend-color" style="background:#ef4444"></span> N4</div>
+            <div class="legend-item"><span class="legend-color" style="background:#7f1d1d"></span> N5 (Interdi\u00e7\u00e3o)</div>
+        </div>
     </div>
 </div>
 
@@ -202,24 +214,28 @@
     const translations = {{ translations|json_encode(constant('JSON_UNESCAPED_UNICODE'))|raw }};
     const locale = {{ locale|json_encode|raw }};
 
-    const debugData = {
-        partnerLabel: {{ partnerLabel|json_encode(constant('JSON_UNESCAPED_UNICODE'))|raw }},
-        kpis: {{ kpis|json_encode(constant('JSON_UNESCAPED_UNICODE'))|raw }},
-        alertsByType: {{ alertsByType|json_encode(constant('JSON_UNESCAPED_UNICODE'))|raw }},
-        jamsByLevel: {{ jamsByLevel|json_encode|raw }},
-        alertsPerHourLabels: {{ alertsPerHourLabels|json_encode(constant('JSON_UNESCAPED_UNICODE'))|raw }},
-        alertsPerHourData: {{ alertsPerHourData|json_encode|raw }},
-        jamsPerHourLabels: {{ jamsPerHourLabels|json_encode(constant('JSON_UNESCAPED_UNICODE'))|raw }},
-        jamsPerHourData: {{ jamsPerHourData|json_encode|raw }},
-        recentAlerts: {{ recentAlerts|json_encode(constant('JSON_UNESCAPED_UNICODE'))|raw }},
-        recentJams: {{ recentJams|json_encode(constant('JSON_UNESCAPED_UNICODE'))|raw }},
-        irregRecentList: {{ irregRecentList|json_encode(constant('JSON_UNESCAPED_UNICODE'))|raw }},
-        irregSpeedLoss: {{ irregSpeedLoss|json_encode(constant('JSON_UNESCAPED_UNICODE'))|raw }},
-        irregDelayByStreet: {{ irregDelayByStreet|json_encode(constant('JSON_UNESCAPED_UNICODE'))|raw }},
+    // Cores Waze para niveis de jam
+    const jamLevelColors = {
+        0: '#94a3b8',
+        1: '#22c55e',
+        2: '#eab308',
+        3: '#f97316',
+        4: '#ef4444',
+        5: '#7f1d1d',
     };
 
-    console.log('=== DASHBOARD DEBUG DATA ===');
-    console.log(debugData);
+    // Cores para alertas por tipo (mesmas do grafico de barras)
+    const alertTypeColors = {
+        'ACCIDENT': '#ef4444',
+        'HAZARD': '#f59e0b',
+        'JAM': '#3b82f6',
+        'WEATHERHAZARD': '#10b981',
+        'ROAD_CLOSED': '#8b5cf6',
+        'CONSTRUCTION': '#6b7280',
+        'MISC': '#64748b',
+    };
+
+    // --- GRÁ¦FICOS ---
 
     // Alerts por tipo (barras)
     (function() {
@@ -231,6 +247,8 @@
 
         const labels = raw.map(r => typesMap[r.type] ?? r.type);
         const data = raw.map(r => r.total);
+        const bgColors = raw.map(r => alertTypeColors[r.type] ?? '#6b7280');
+        const borderColors = raw.map(r => alertTypeColors[r.type] ?? '#6b7280');
 
         if (labels.length === 0) return;
 
@@ -241,18 +259,8 @@
                 datasets: [{
                     label: translations.alertas ?? 'Alertas',
                     data: data,
-                    backgroundColor: [
-                        'rgba(37, 99, 235, 0.7)',
-                        'rgba(245, 158, 11, 0.7)',
-                        'rgba(239, 68, 68, 0.7)',
-                        'rgba(16, 185, 129, 0.7)',
-                        'rgba(59, 130, 246, 0.7)',
-                        'rgba(139, 92, 246, 0.7)',
-                        'rgba(107, 114, 128, 0.7)',
-                    ],
-                    borderColor: [
-                        '#2563eb', '#f59e0b', '#ef4444', '#10b981', '#3b82f6', '#8b5cf6', '#6b7280',
-                    ],
+                    backgroundColor: bgColors,
+                    borderColor: borderColors,
                     borderWidth: 1
                 }]
             },
@@ -267,14 +275,16 @@
         });
     })();
 
-    // Jams por n\u00edvel (barras)
+    // Jams por n\u00edvel (barras, cores Waze)
     (function() {
         const ctx = document.getElementById('jams-by-level-chart');
         if (!ctx) return;
 
         const raw = {{ jamsByLevel|json_encode|raw }};
-        const labels = raw.map(r => translations.nivel ?? 'N' + r.level);
+        const labels = raw.map(r => (translations.nivel ?? 'N') + r.level + (r.level === 5 ? ' (Interdi\u00e7\u00e3o)' : ''));
         const data = raw.map(r => r.total);
+        const bgColors = raw.map(r => jamLevelColors[r.level] ?? '#ef4444');
+        const borderColors = raw.map(r => jamLevelColors[r.level] ?? '#ef4444');
 
         if (labels.length === 0) return;
 
@@ -285,8 +295,8 @@
                 datasets: [{
                     label: translations.jams ?? 'Jams',
                     data: data,
-                    backgroundColor: 'rgba(245, 158, 11, 0.7)',
-                    borderColor: '#f59e0b',
+                    backgroundColor: bgColors,
+                    borderColor: borderColors,
                     borderWidth: 1
                 }]
             },
@@ -373,60 +383,6 @@
         });
     })();
 
-    // Mapa Leaflet
-    (function() {
-        const mapEl = document.getElementById('map');
-        if (!mapEl) return;
-
-        const map = L.map('map').setView([-20.66, -43.81], 12);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: 'OpenStreetMap'
-        }).addTo(map);
-
-        const recentAlerts = {{ recentAlerts|json_encode(constant('JSON_UNESCAPED_UNICODE'))|raw }};
-        const recentJams = {{ recentJams|json_encode(constant('JSON_UNESCAPED_UNICODE'))|raw }};
-
-        const alertColorMap = {
-            'ACCIDENT': '#ef4444',
-            'HAZARD': '#f59e0b',
-            'JAM': '#3b82f6',
-            'WEATHERHAZARD': '#10b981',
-            'ROAD_CLOSED': '#8b5cf6',
-            'CONSTRUCTION': '#6b7280',
-            'MISC': '#64748b',
-        };
-
-        recentAlerts.forEach(a => {
-            if (!a.latitude || !a.longitude) return;
-            const color = alertColorMap[a.type] ?? '#333';
-            L.circleMarker([a.latitude, a.longitude], {
-                radius: 7,
-                color: color,
-                fillColor: color,
-                fillOpacity: 0.7
-            }).addTo(map)
-              .bindPopup(`<strong>${a.type}</strong><br>${a.city ?? ''} ${a.street ?? ''}`);
-        });
-
-        const jamLevelColor = {
-            0: '#94a3b8',
-            1: '#22c55e',
-            2: '#eab308',
-            3: '#f97316',
-            4: '#ef4444',
-            5: '#7f1d1d',
-        };
-
-        recentJams.forEach(j => {
-            if (j.line && Array.isArray(j.line) && j.line.length > 0) {
-                const coords = j.line.map(p => [p[1], p[0]]);
-                const color = jamLevelColor[j.level] ?? '#ef4444';
-                L.polyline(coords, { color, weight: 4 }).addTo(map)
-                 .bindPopup(`<strong>${translations.jam ?? 'Jam'} N${j.level}</strong><br>${j.city ?? ''} ${j.street ?? ''}`);
-            }
-        });
-    })();
-
     // Perda de velocidade (barras)
     (function() {
         const ctx = document.getElementById('speed-loss-chart');
@@ -492,6 +448,49 @@
                     y: { beginAtZero: true }
                 }
             }
+        });
+    })();
+
+    // --- MAPA LEAFLET ---
+    (function() {
+        const mapEl = document.getElementById('map');
+        if (!mapEl) return;
+
+        const map = L.map('map').setView([-20.66, -43.81], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: 'OpenStreetMap'
+        }).addTo(map);
+
+        const recentAlerts = {{ recentAlerts|json_encode(constant('JSON_UNESCAPED_UNICODE'))|raw }};
+        const recentJams = {{ recentJams|json_encode(constant('JSON_UNESCAPED_UNICODE'))|raw }};
+
+        // Alertas: cores do grafico de barras
+        recentAlerts.forEach(a => {
+            if (!a.latitude || !a.longitude) return;
+            const color = alertTypeColors[a.type] ?? '#6b7280';
+            L.circleMarker([a.latitude, a.longitude], {
+                radius: 7,
+                color: color,
+                fillColor: color,
+                fillOpacity: 0.7
+            }).addTo(map)
+              .bindPopup(`<strong>${a.type}</strong><br>${a.city ?? ''} ${a.street ?? ''}`);
+        });
+
+        // Jams: polilines com todas as coordenadas, cores por nivel
+        recentJams.forEach(j => {
+            if (!j.line || !Array.isArray(j.line) || j.line.length === 0) return;
+
+            // j.line eh [[lon,lat], [lon,lat], ...]
+            const coords = j.line.map(p => [p[1], p[0]]);
+            const color = jamLevelColors[j.level] ?? '#ef4444';
+
+            L.polyline(coords, {
+                color: color,
+                weight: 5,
+                opacity: 0.9
+            }).addTo(map)
+             .bindPopup(`<strong>${translations.jam ?? 'Jam'} N${j.level}${j.level === 5 ? ' (Interdi\u00e7\u00e3o)' : ''}</strong><br>${j.city ?? ''} ${j.street ?? ''}`);
         });
     })();
 })();
