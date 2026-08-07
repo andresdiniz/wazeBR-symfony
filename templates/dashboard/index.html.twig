@@ -45,8 +45,8 @@
     </div>
     <div class="kpi-card primary">
         <div class="kpi-label">Cidades monitoradas</div>
-        <div class="kpi-value">{{ kpis.cities|length }}</div>
-        <small>Links {{ kpis.links|length }} · Rotas {{ kpis.routes|length }}</small>
+        <div class="kpi-value">{{ cities|length ?? 0 }}</div>
+        <small>Links {{ links|length ?? 0 }} · Rotas {{ routes|length ?? 0 }}</small>
     </div>
     <div class="kpi-card success">
         <div class="kpi-label">Irregularidades</div>
@@ -248,6 +248,86 @@
     console.log('alertsPerHourData:', debugData.alertsPerHourData);
     console.log('jamsPerHourLabels:', debugData.jamsPerHourLabels);
     console.log('jamsPerHourData:', debugData.jamsPerHourData);
+
+    // --- GRÁ¦FICOS ---
+
+    // Alerts por hora
+    (function() {
+        const ctx = document.getElementById('alerts-per-hour-chart');
+        if (!ctx) return;
+
+        const labels = {{ alertsPerHourLabels|json_encode|raw }};
+        const data   = {{ alertsPerHourData|json_encode|raw }};
+
+        if (!labels || labels.length === 0) {
+            console.warn('Sem dados para o grafico de alerts por hora.');
+            return;
+        }
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Alertas por hora',
+                    data: data,
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.15)',
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 3,
+                    pointBackgroundColor: '#2563eb'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                }
+            }
+        });
+    })();
+
+    // Jams por hora
+    (function() {
+        const ctx = document.getElementById('jams-per-hour-chart');
+        if (!ctx) return;
+
+        const labels = {{ jamsPerHourLabels|json_encode|raw }};
+        const data   = {{ jamsPerHourData|json_encode|raw }};
+
+        if (!labels || labels.length === 0) {
+            console.warn('Sem dados para o grafico de jams por hora.');
+            return;
+        }
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Jams por hora',
+                    data: data,
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 3,
+                    pointBackgroundColor: '#f59e0b'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                }
+            }
+        });
+    })();
 })();
 </script>
 {% endblock %}
