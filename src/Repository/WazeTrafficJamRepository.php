@@ -16,21 +16,25 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
         parent::__construct($registry, WazeTrafficJam::class);
     }
 
-    /**
-     * Retorna agregacao de jams por hora (ultimas 24h)
-     */
     public function getJamsPerHourLast24h(): array
     {
         $now = time() * 1000;
         $lastDay = $now - 24 * 3600 * 1000;
 
-        $qb = $this->createQueryBuilder('j')
-            ->select("CONCAT(DATE_FORMAT(FROM_UNIXTIME(j.pubMillis/1000), '%H'), 'h') AS hour_label, COUNT(j.id) AS total")
-            ->where('j.pubMillis >= :lastDay')
-            ->setParameter('lastDay', $lastDay)
-            ->groupBy('hour_label')
-            ->orderBy('hour_label', 'ASC');
+        $conn = $this->getEntityManager()->getConnection();
 
-        return $qb->getQuery()->getArrayResult();
+        $sql = <<<SQL
+            SELECT
+                CONCAT(DATE_FORMAT(FROM_UNIXTIME(j.pubMillis / 1000), '%H'), 'h') AS hour_label,
+                COUNT(j.id) AS total
+            FROM waze_traffic_jam j
+            WHERE j.pubMillis >= :lastDay
+            GROUP BY hour_label
+            ORDER BY hour_label ASC
+        SQL;
+
+        return $conn->fetchAllAssociative($sql, [
+            'lastDay' => $lastDay,
+        ]);
     }
 }
