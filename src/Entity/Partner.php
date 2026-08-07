@@ -6,6 +6,7 @@ use App\Repository\PartnerRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: PartnerRepository::class)]
 #[ORM\Table(name: 'partners')]
@@ -16,14 +17,15 @@ class Partner
     #[ORM\Column(type: 'integer')]
     private ?int $id = null;
 
-    #[ORM\Column(type: 'string', length: 100, unique: true)]
+    #[ORM\Column(type: 'string', length: 255)]
+    #[Assert\NotBlank]
+    #[Assert\Length(max: 255)]
     private ?string $name = null;
 
-    #[ORM\Column(type: 'string', length: 50, unique: true)]
+    #[ORM\Column(type: 'string', length: 255, unique: true)]
+    #[Assert\NotBlank]
+    #[Assert\Length(max: 255)]
     private ?string $slug = null;
-
-    #[ORM\Column(type: 'string', length: 100, nullable: true)]
-    private ?string $city = null;
 
     #[ORM\Column(type: 'string', length: 2, nullable: true)]
     private ?string $state = null;
@@ -34,52 +36,22 @@ class Partner
     #[ORM\Column(type: 'string', length: 255, nullable: true)]
     private ?string $logoUrl = null;
 
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    #[ORM\Column(type: 'string', length: 20, nullable: true)]
     private ?string $primaryColor = null;
 
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    #[ORM\Column(type: 'string', length: 20, nullable: true)]
     private ?string $secondaryColor = null;
 
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
-    private ?\DateTimeImmutable $createdAt = null;
+    #[ORM\Column(type: 'datetime_immutable')]
+    private \DateTimeImmutable $createdAt;
 
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
-    private ?\DateTimeImmutable $updatedAt = null;
-
-    #[ORM\OneToMany(targetEntity: User::class, mappedBy: 'partner', orphanRemoval: true)]
-    private Collection $users;
-
-    #[ORM\OneToMany(targetEntity: WazeAlert::class, mappedBy: 'partner', orphanRemoval: true)]
-    private Collection $alerts;
-
-    #[ORM\OneToMany(targetEntity: WazeTrafficJam::class, mappedBy: 'partner', orphanRemoval: true)]
-    private Collection $trafficJams;
-
-    #[ORM\OneToMany(targetEntity: CemadenData::class, mappedBy: 'partner', orphanRemoval: true)]
-    private Collection $cemadenData;
-
-    #[ORM\OneToMany(targetEntity: WazeTvtSnapshot::class, mappedBy: 'partner', orphanRemoval: true)]
-    private Collection $tvtSnapshots;
-
-    #[ORM\OneToMany(targetEntity: WazeIrregularity::class, mappedBy: 'partner', orphanRemoval: true)]
-    private Collection $irregularities;
-
-    #[ORM\OneToMany(targetEntity: WazeCount::class, mappedBy: 'partner', orphanRemoval: true)]
-    private Collection $wazeCounts;
-
-    #[ORM\OneToMany(targetEntity: CifsEvent::class, mappedBy: 'partner', orphanRemoval: true)]
-    private Collection $cifsEvents;
+    #[ORM\Column(type: 'datetime_immutable')]
+    private \DateTimeImmutable $updatedAt;
 
     public function __construct()
     {
-        $this->users = new ArrayCollection();
-        $this->alerts = new ArrayCollection();
-        $this->trafficJams = new ArrayCollection();
-        $this->cemadenData = new ArrayCollection();
-        $this->tvtSnapshots = new ArrayCollection();
-        $this->irregularities = new ArrayCollection();
-        $this->wazeCounts = new ArrayCollection();
-        $this->cifsEvents = new ArrayCollection();
+        $this->createdAt = new \DateTimeImmutable();
+        $this->updatedAt = new \DateTimeImmutable();
     }
 
     public function getId(): ?int
@@ -106,17 +78,6 @@ class Partner
     public function setSlug(?string $slug): static
     {
         $this->slug = $slug;
-        return $this;
-    }
-
-    public function getCity(): ?string
-    {
-        return $this->city;
-    }
-
-    public function setCity(?string $city): static
-    {
-        $this->city = $city;
         return $this;
     }
 
@@ -175,89 +136,25 @@ class Partner
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
+    public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
     }
 
-    public function setCreatedAt(?\DateTimeImmutable $createdAt): static
+    public function setCreatedAt(\DateTimeImmutable $createdAt): static
     {
         $this->createdAt = $createdAt;
         return $this;
     }
 
-    public function getUpdatedAt(): ?\DateTimeImmutable
+    public function getUpdatedAt(): \DateTimeImmutable
     {
         return $this->updatedAt;
     }
 
-    public function setUpdatedAt(?\DateTimeImmutable $updatedAt): static
+    public function setUpdatedAt(\DateTimeImmutable $updatedAt): static
     {
         $this->updatedAt = $updatedAt;
         return $this;
-    }
-
-    public function getUsers(): Collection
-    {
-        return $this->users;
-    }
-
-    public function addUser(User $user): static
-    {
-        if (!$this->users->contains($user)) {
-            $this->users->add($user);
-            $user->setPartner($this);
-        }
-        return $this;
-    }
-
-    public function removeUser(User $user): static
-    {
-        if ($this->users->removeElement($user)) {
-            if ($user->getPartner() === $this) {
-                $user->setPartner(null);
-            }
-        }
-        return $this;
-    }
-
-    public function getAlerts(): Collection
-    {
-        return $this->alerts;
-    }
-
-    public function getTrafficJams(): Collection
-    {
-        return $this->trafficJams;
-    }
-
-    public function getCemadenData(): Collection
-    {
-        return $this->cemadenData;
-    }
-
-    public function getTvtSnapshots(): Collection
-    {
-        return $this->tvtSnapshots;
-    }
-
-    public function getIrregularities(): Collection
-    {
-        return $this->irregularities;
-    }
-
-    public function getWazeCounts(): Collection
-    {
-        return $this->wazeCounts;
-    }
-
-    public function getCifsEvents(): Collection
-    {
-        return $this->cifsEvents;
-    }
-
-    public function __toString(): string
-    {
-        return (string) $this->name;
     }
 }
