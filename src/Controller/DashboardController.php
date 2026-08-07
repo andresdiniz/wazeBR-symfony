@@ -83,9 +83,9 @@ class DashboardController extends AbstractController
             ->getQuery()
             ->getArrayResult()[0] ?? [];
 
-        // Queries parciais para links (sem hidratacao full)
+        // Links (sem name, apenas id e url)
         $links = $this->linkRepo->createQueryBuilder('l')
-            ->select('l.id, l.name, l.url')
+            ->select('l.id, l.url')
             ->getQuery()
             ->getArrayResult();
 
