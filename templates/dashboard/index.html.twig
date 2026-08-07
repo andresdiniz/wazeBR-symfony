@@ -5,92 +5,363 @@
 {% block stylesheets %}
     {{ parent() }}
     <style>
-        .db-root {
-            padding: 24px;
+        :root {
+            --db-bg: rgba(14,13,24,0.92);
+            --db-border: rgba(255,255,255,0.06);
+            --db-shadow: 0 18px 40px rgba(0,0,0,0.45);
+            --db-text: #f7f1e8;
+            --db-muted: rgba(244,239,232,0.78);
+            --db-accent: #7fd8e6;
+            --db-accent-2: #59b4c7;
         }
 
-        .db-header {
+        .db-page {
+            padding: 24px;
+            color: var(--db-text);
+        }
+
+        .db-topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
             margin-bottom: 24px;
         }
 
-        .db-header h1 {
-            font-size: 22px;
-            font-weight: 700;
-            color: #f7f1e8;
-            letter-spacing: -0.02em;
+        .db-topbar h1 {
+            font-size: 24px;
+            font-weight: 800;
+            margin: 0;
+            letter-spacing: -0.03em;
         }
 
-        .db-header p {
-            margin-top: 4px;
+        .db-topbar p {
+            margin: 6px 0 0;
+            color: var(--db-muted);
             font-size: 13px;
-            color: rgba(244,239,232,0.8);
+        }
+
+        .db-badges {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .db-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            background: rgba(127,216,230,0.12);
+            color: var(--db-accent);
+            border: 1px solid rgba(127,216,230,0.18);
         }
 
         .db-grid {
+            display: grid;
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .db-card {
+            background: var(--db-bg);
+            border: 1px solid var(--db-border);
+            border-radius: 16px;
+            box-shadow: var(--db-shadow);
+            overflow: hidden;
+        }
+
+        .db-card__head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px 0;
+        }
+
+        .db-card__title {
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: .02em;
+            color: #f4ede0;
+            margin: 0;
+        }
+
+        .db-card__body {
+            padding: 14px 16px 16px;
+        }
+
+        .db-card--full { grid-column: span 12; }
+        .db-card--half { grid-column: span 6; }
+        .db-card--third { grid-column: span 4; }
+        .db-card--quad { grid-column: span 3; }
+
+        .db-kpis {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .db-kpi {
+            padding: 14px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .db-kpi__label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            color: rgba(244,239,232,0.68);
+            margin-bottom: 8px;
+        }
+
+        .db-kpi__value {
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            color: #fff;
+            line-height: 1;
+        }
+
+        .db-kpi__sub {
+            margin-top: 8px;
+            font-size: 11px;
+            color: rgba(244,239,232,0.68);
+        }
+
+        .db-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .db-list__item {
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .db-list__main {
+            min-width: 0;
+        }
+
+        .db-list__title {
+            margin: 0;
+            font-size: 13px;
+            font-weight: 700;
+            color: #f7f1e8;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .db-list__meta {
+            margin-top: 2px;
+            font-size: 11px;
+            color: rgba(244,239,232,0.66);
+        }
+
+        .db-empty {
+            color: rgba(244,239,232,0.66);
+            font-size: 13px;
+            padding: 8px 0;
+        }
+
+        .db-split {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 16px;
         }
 
-        .db-card {
-            background: rgba(14,13,24,0.92);
-            border-radius: 14px;
-            border: 1px solid rgba(255,255,255,0.06);
-            box-shadow: 0 18px 40px rgba(0,0,0,0.45);
-            padding: 16px 18px;
+        @media (max-width: 1100px) {
+            .db-card--quad { grid-column: span 6; }
+            .db-card--third { grid-column: span 6; }
+            .db-card--half { grid-column: span 12; }
+            .db-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
 
-        .db-card--wide,
-        .db-card--full {
-            grid-column: 1 / -1;
-        }
-
-        .db-card--maps {
-            min-height: 260px;
-        }
-
-        @media (max-width: 900px) {
-            .db-grid {
-                grid-template-columns: minmax(0, 1fr);
-            }
+        @media (max-width: 768px) {
+            .db-page { padding: 16px; }
+            .db-topbar { flex-direction: column; }
+            .db-badges { justify-content: flex-start; }
+            .db-card--full,
+            .db-card--third,
+            .db-card--quad,
+            .db-card--half { grid-column: span 12; }
+            .db-kpis { grid-template-columns: 1fr; }
+            .db-split { grid-template-columns: 1fr; }
         }
     </style>
 {% endblock %}
 
 {% block body %}
-<div class="db-root">
-    <div class="db-header">
-        <h1>Dashboard</h1>
-        <p>Visão geral dos alertas, congestionamentos e eventos CIFS.</p>
+<div class="db-page">
+    <div class="db-topbar">
+        <div>
+            <h1>Dashboard WazeBR</h1>
+            <p>Resumo operacional com alertas, congestionamentos, CEMADEN, CIFS e irregularidades.</p>
+        </div>
+        <div class="db-badges">
+            {% if kpis.anomalyDetected %}
+                <span class="db-pill">⚠ Anomalia detectada · {{ kpis.anomalyRatio }}× média</span>
+            {% endif %}
+            <span class="db-pill">🚨 {{ kpis.alerts1h|default(0) }} alertas/1h</span>
+            <span class="db-pill">🚗 {{ kpis.liveJams|default(0) }} jams ao vivo</span>
+            <span class="db-pill">🌧 {{ kpis.rainLastHour|default(0) }} mm/h</span>
+        </div>
     </div>
 
     <div class="db-grid">
-        <section class="db-card db-card--wide">
-            {% include 'dashboard/_anomaly_banner.html.twig' with { anomalies: anomalies|default([]) } %}
-        </section>
-
-        <section class="db-card">
-            {% include 'dashboard/_alert_quality.html.twig' with { quality: quality|default([]) } %}
-        </section>
-
-        <section class="db-card">
-            {% include 'dashboard/_week_comparison.html.twig' with { weekly: weekly|default([]) } %}
-        </section>
-
-        <section class="db-card db-card--maps">
-            {% include 'dashboard/map_traffic.html.twig' with { trafficMap: trafficMap|default([]) } %}
-        </section>
-
-        <section class="db-card db-card--maps">
-            {% include 'dashboard/map_alerts.html.twig' with { alertMap: alertMap|default([]) } %}
+        <section class="db-card db-card--full">
+            <div class="db-card__head"><h2 class="db-card__title">Indicadores principais</h2></div>
+            <div class="db-card__body">
+                <div class="db-kpis">
+                    <div class="db-kpi"><div class="db-kpi__label">Alertas</div><div class="db-kpi__value">{{ kpis.alerts|default(0) }}</div><div class="db-kpi__sub">24h: {{ kpis.alerts24h|default(0) }} · 7d: {{ kpis.alerts7d|default(0) }}</div></div>
+                    <div class="db-kpi"><div class="db-kpi__label">Congestionamentos</div><div class="db-kpi__value">{{ kpis.jams|default(0) }}</div><div class="db-kpi__sub">24h: {{ kpis.jams24h|default(0) }} · 7d: {{ kpis.jams7d|default(0) }}</div></div>
+                    <div class="db-kpi"><div class="db-kpi__label">Cidades</div><div class="db-kpi__value">{{ kpis.cities|default(0) }}</div><div class="db-kpi__sub">Links: {{ kpis.links|default(0) }} · Rotas: {{ kpis.routes|default(0) }}</div></div>
+                    <div class="db-kpi"><div class="db-kpi__label">Irregularidades</div><div class="db-kpi__value">{{ kpis.irregularities|default(0) }}</div><div class="db-kpi__sub">Top severidade por cidade</div></div>
+                </div>
+            </div>
         </section>
 
         <section class="db-card db-card--full">
-            {% include 'dashboard/_cifs_events.html.twig' with { events: events|default([]) } %}
+            <div class="db-card__head"><h2 class="db-card__title">Anomalia / Spike operacional</h2></div>
+            <div class="db-card__body">
+                {% include 'dashboard/_anomaly_banner.html.twig' with { kpis: kpis|default({}) } %}
+                {% if not kpis.anomalyDetected %}
+                    <div class="db-empty">Nenhuma anomalia forte detectada nas últimas horas.</div>
+                {% endif %}
+            </div>
+        </section>
+
+        <section class="db-card db-card--half">
+            <div class="db-card__head"><h2 class="db-card__title">Comparação semanal</h2></div>
+            <div class="db-card__body">
+                {% include 'dashboard/_week_comparison.html.twig' with { current: kpis.wazeCount|default(null), lastWeek: kpis.wazeCountLastWeek|default(null), peak: kpis.wazeCountPeak|default(null) } %}
+            </div>
+        </section>
+
+        <section class="db-card db-card--half">
+            <div class="db-card__head"><h2 class="db-card__title">Qualidade dos alertas</h2></div>
+            <div class="db-card__body">
+                <div class="db-split">
+                    <div>
+                        <div class="db-list">
+                            {% for row in alertQualityByType|default([]) %}
+                                <div class="db-list__item">
+                                    <div class="db-list__main">
+                                        <p class="db-list__title">{{ row.typeLabel ?? row.type ?? 'Tipo' }}</p>
+                                        <div class="db-list__meta">Qualidade média: {{ row.avgQuality ?? row.avg_quality ?? '—' }}</div>
+                                    </div>
+                                    <div class="db-pill">{{ row.total ?? row.count ?? '—' }}</div>
+                                </div>
+                            {% else %}
+                                <div class="db-empty">Sem dados de qualidade.</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div>
+                        <div class="db-list">
+                            <div class="db-list__item"><div class="db-list__main"><p class="db-list__title">Ligados a jams</p><div class="db-list__meta">Percentual de alertas associados a congestionamentos</div></div><div class="db-pill">{{ kpis.alertLinkedToJamPct|default(0) }}%</div></div>
+                            <div class="db-list__item"><div class="db-list__main"><p class="db-list__title">Em rodovias</p><div class="db-list__meta">Alertas localizados em highways</div></div><div class="db-pill">{{ kpis.alertOnHighwayPct|default(0) }}%</div></div>
+                        </div>
+                        <div class="db-empty mt-3">{{ topEngagedAlerts|length|default(0) }} alertas com maior engajamento.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="db-card db-card--half">
+            <div class="db-card__head"><h2 class="db-card__title">Trânsito ao vivo</h2></div>
+            <div class="db-card__body">
+                {% include 'dashboard/map_traffic.html.twig' with { jams: jamsByLevel|default([]), trafficMap: trafficMap|default([]) } %}
+            </div>
+        </section>
+
+        <section class="db-card db-card--half">
+            <div class="db-card__head"><h2 class="db-card__title">Mapa de alertas</h2></div>
+            <div class="db-card__body">
+                {% include 'dashboard/map_alerts.html.twig' with { alerts: alertsByType|default([]), alertMap: alertMap|default([]) } %}
+            </div>
+        </section>
+
+        <section class="db-card db-card--half">
+            <div class="db-card__head"><h2 class="db-card__title">CEMADEN / Hidrologia</h2></div>
+            <div class="db-card__body">
+                <div class="db-kpis" style="grid-template-columns:repeat(2,minmax(0,1fr));">
+                    <div class="db-kpi"><div class="db-kpi__label">Chuva 1h</div><div class="db-kpi__value">{{ kpis.rainLastHour|default(0) }}</div><div class="db-kpi__sub">mm/h</div></div>
+                    <div class="db-kpi"><div class="db-kpi__label">CEMADEN</div><div class="db-kpi__value">{{ kpis.cemaden|default(0) }}</div><div class="db-kpi__sub">registros</div></div>
+                </div>
+                <div class="mt-3">
+                    <div class="db-empty">{{ cemadenData|length|default(0) }} registros de monitoramento hídrico carregados.</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="db-card db-card--half">
+            <div class="db-card__head"><h2 class="db-card__title">CIFS ativos</h2></div>
+            <div class="db-card__body">
+                {% include 'dashboard/_cifs_events.html.twig' with { cifsActive: cifsActive|default([]), cifsUpcoming: cifsUpcoming|default([]), cifsActiveByType: cifsActiveByType|default([]), cifsTopStreets: cifsTopStreets|default([]), kpis: kpis|default({}) } %}
+            </div>
         </section>
 
         <section class="db-card db-card--full">
-            {% include 'dashboard/_irregularities.html.twig' with { irregularities: irregularities|default([]) } %}
+            <div class="db-card__head"><h2 class="db-card__title">Irregularidades</h2></div>
+            <div class="db-card__body">
+                {% include 'dashboard/_irregularities.html.twig' with {
+                    irregSpeedLoss: irregSpeedLoss|default([]),
+                    irregDelayByStreet: irregDelayByStreet|default([]),
+                    irregSeverityCity: irregSeverityCity|default([]),
+                    irregWorsening: irregWorsening|default([]),
+                    irregRecentList: irregRecentList|default([])
+                } %}
+            </div>
+        </section>
+
+        <section class="db-card db-card--full">
+            <div class="db-card__head"><h2 class="db-card__title">Recentes</h2></div>
+            <div class="db-card__body">
+                <div class="db-split">
+                    <div>
+                        <div class="db-list">
+                            {% for row in recentAlerts|default([])|slice(0,5) %}
+                                <div class="db-list__item">
+                                    <div class="db-list__main">
+                                        <p class="db-list__title">{{ row.title ?? row.name ?? 'Alerta' }}</p>
+                                        <div class="db-list__meta">{{ row.city ?? row.street ?? '—' }}</div>
+                                    </div>
+                                    <div class="db-pill">{{ row.createdAt ? row.createdAt|date('d/m H:i') : '—' }}</div>
+                                </div>
+                            {% else %}
+                                <div class="db-empty">Sem alertas recentes.</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div>
+                        <div class="db-list">
+                            {% for row in recentJams|default([])|slice(0,5) %}
+                                <div class="db-list__item">
+                                    <div class="db-list__main">
+                                        <p class="db-list__title">{{ row.street ?? row.title ?? 'Congestionamento' }}</p>
+                                        <div class="db-list__meta">Nível: {{ row.level ?? '—' }} · {{ row.city ?? '—' }}</div>
+                                    </div>
+                                    <div class="db-pill">{{ row.updatedAt ? row.updatedAt|date('d/m H:i') : '—' }}</div>
+                                </div>
+                            {% else %}
+                                <div class="db-empty">Sem jams recentes.</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
         </section>
     </div>
 </div>
