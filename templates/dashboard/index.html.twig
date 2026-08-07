@@ -45,8 +45,8 @@
     </div>
     <div class="kpi-card primary">
         <div class="kpi-label">Cidades monitoradas</div>
-        <div class="kpi-value">{{ cities|length ?? 0 }}</div>
-        <small>Links {{ links|length ?? 0 }} · Rotas {{ routes|length ?? 0 }}</small>
+        <div class="kpi-value">{{ (cities|length) ?: 0 }}</div>
+        <small>Links {{ (links|length) ?: 0 }} · Rotas {{ (routes|length) ?: 0 }}</small>
     </div>
     <div class="kpi-card success">
         <div class="kpi-label">Irregularidades</div>
