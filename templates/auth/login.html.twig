@@ -1,185 +1,280 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Login - WazeBR{% endblock %}
+{% block title %}Entrar - WazeBR{% endblock %}
 
 {% block stylesheets %}
     {{ parent() }}
     <style>
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #6d7ae6 0%, #8a63d2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .login-shell {
+            width: 100%;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 32px;
         }
-        .login-container {
-            max-width: 420px;
+
+        .login-panel {
             width: 100%;
-            padding: 2rem;
-        }
-        .login-card {
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            padding: 2.5rem;
-        }
-        .login-header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        .login-logo {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 1rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 50%;
+            max-width: 1180px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
-            font-size: 2rem;
-            font-weight: bold;
+            position: relative;
         }
-        .login-title {
-            font-size: 1.75rem;
+
+        .login-brand-bar {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: #181714;
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 2px;
+            box-shadow: 0 10px 35px rgba(0, 0, 0, .18);
+            z-index: 1;
+        }
+
+        .brand-badge {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #73d6e7 0%, #63b7ca 100%);
+            display: grid;
+            place-items: center;
             font-weight: 700;
-            color: #1a202c;
-            margin-bottom: 0.5rem;
+            font-size: 18px;
+            color: #f7fffd;
         }
+
+        .brand-name {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: .2px;
+        }
+
+        .brand-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(255,255,255,.08);
+            color: #8ce0ff;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .login-card {
+            width: 360px;
+            background: #1b1814;
+            color: #e8e1d8;
+            border: 1px solid rgba(255,255,255,.06);
+            border-radius: 2px;
+            box-shadow: 0 18px 40px rgba(0, 0, 0, .22);
+            padding: 22px 22px 18px;
+            margin-left: 260px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .login-title {
+            margin: 0 0 6px;
+            font-size: 14px;
+            letter-spacing: .28em;
+            color: rgba(232, 225, 216, .55);
+            text-transform: uppercase;
+        }
+
         .login-subtitle {
-            color: #718096;
-            font-size: 0.95rem;
+            margin: 0 0 18px;
+            font-size: 26px;
+            line-height: 1.1;
+            color: #f2ebe0;
+            font-weight: 700;
         }
-        .form-group {
-            margin-bottom: 1.25rem;
+
+        .login-hint {
+            margin: 0 0 18px;
+            color: rgba(232, 225, 216, .68);
+            font-size: 13px;
         }
-        .form-label {
-            display: block;
-            font-weight: 600;
-            color: #2d3748;
-            margin-bottom: 0.5rem;
-            font-size: 0.9rem;
-        }
-        .form-control {
-            width: 100%;
-            padding: 0.75rem 1rem;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: all 0.2s;
-        }
-        .form-control:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-        .btn-login {
-            width: 100%;
-            padding: 0.875rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .btn-login:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-        }
+
         .alert {
-            padding: 0.875rem 1rem;
+            padding: 12px 14px;
             border-radius: 8px;
-            margin-bottom: 1.25rem;
-            font-size: 0.9rem;
+            margin-bottom: 16px;
+            font-size: 13px;
         }
+
         .alert-danger {
-            background: #fed7d7;
-            color: #c53030;
-            border: 1px solid #feb2b2;
+            background: rgba(169, 67, 67, .22);
+            color: #ffd0d0;
+            border: 1px solid rgba(255, 141, 141, .22);
         }
-        .alert-success {
-            background: #c6f6d5;
-            color: #276749;
-            border: 1px solid #9ae6b4;
+
+        .login-field {
+            margin-bottom: 14px;
         }
-        .form-footer {
-            margin-top: 1.5rem;
-            text-align: center;
+
+        .login-label {
+            display: block;
+            margin-bottom: 6px;
+            color: rgba(232, 225, 216, .78);
+            font-size: 12px;
+            letter-spacing: .08em;
+            text-transform: uppercase;
         }
-        .form-footer a {
-            color: #667eea;
+
+        .login-input {
+            width: 100%;
+            height: 42px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,.08);
+            background: #11100e;
+            color: #f3efe8;
+            padding: 0 14px;
+            outline: none;
+            transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+        }
+
+        .login-input:focus {
+            border-color: rgba(115, 214, 231, .75);
+            box-shadow: 0 0 0 3px rgba(115, 214, 231, .15);
+        }
+
+        .login-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 18px;
+        }
+
+        .login-button {
+            width: 100%;
+            height: 44px;
+            border: 0;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #73d6e7 0%, #5faec0 100%);
+            color: #081013;
+            font-weight: 800;
+            letter-spacing: .04em;
+            cursor: pointer;
+            box-shadow: 0 10px 24px rgba(95, 174, 192, .22);
+        }
+
+        .login-button:hover {
+            filter: brightness(1.03);
+        }
+
+        .login-footer {
+            margin-top: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: rgba(232, 225, 216, .6);
+        }
+
+        .login-footer a {
+            color: #9bdcf0;
             text-decoration: none;
-            font-size: 0.9rem;
         }
-        .form-footer a:hover {
+
+        .login-footer a:hover {
             text-decoration: underline;
+        }
+
+        @media (max-width: 900px) {
+            .login-brand-bar {
+                position: static;
+                transform: none;
+                margin-bottom: 18px;
+            }
+
+            .login-card {
+                margin-left: 0;
+                width: 100%;
+                max-width: 420px;
+            }
+
+            .login-panel {
+                flex-direction: column;
+            }
         }
     </style>
 {% endblock %}
 
 {% block body %}
-<div class="login-container">
-    <div class="login-card">
-        <div class="login-header">
-            <div class="login-logo">W</div>
-            <h1 class="login-title">Bem-vindo ao WazeBR</h1>
-            <p class="login-subtitle">Monitore o tr\u00e2nsito em tempo real</p>
+<div class="login-shell">
+    <div class="login-panel">
+        <div class="login-brand-bar" aria-hidden="true">
+            <div class="brand-badge">W</div>
+            <div class="brand-name">WazeBR</div>
+            <div class="brand-chip">Monitor</div>
         </div>
 
-        {% if error %}
-            <div class="alert alert-danger">
-                {{ error.messageKey|trans(error.messageData, 'security') }}
+        <div class="login-card">
+            <h1 class="login-title">MONITORAMENTO</h1>
+            <p class="login-subtitle">Acesso ao sistema</p>
+            <p class="login-hint">Entre com seu e-mail e senha para continuar.</p>
+
+            {% if error %}
+                <div class="alert alert-danger">
+                    {{ error.messageKey|trans(error.messageData, 'security') }}
+                </div>
+            {% endif %}
+
+            <form method="post" action="{{ path('auth_login') }}" novalidate>
+                <div class="login-field">
+                    <label for="email" class="login-label">E-mail</label>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        class="login-input"
+                        value="{{ last_username|default('') }}"
+                        required
+                        autofocus
+                        autocomplete="email"
+                    >
+                </div>
+
+                <div class="login-field">
+                    <label for="password" class="login-label">Senha</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        class="login-input"
+                        required
+                        autocomplete="current-password"
+                    >
+                </div>
+
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+                <button type="submit" class="login-button">Entrar</button>
+            </form>
+
+            <div class="login-footer">
+                <span>WazeBR Security</span>
+                <a href="{{ path('auth_forgot') }}">Esqueceu sua senha?</a>
             </div>
-        {% endif %}
-
-        {% if app.user %}
-            <div class="alert alert-success">
-                Voc\u00ea j\u00e1 est\u00e1 logado como {{ app.user.userIdentifier }}.
-                <a href="{{ path('auth_logout') }}">Sair</a>
-            </div>
-        {% endif %}
-
-        <form method="post" action="{{ path('auth_login') }}" novalidate>
-            <div class="form-group">
-                <label for="email" class="form-label">E-mail</label>
-                <input 
-                    type="email" 
-                    id="email" 
-                    name="email" 
-                    class="form-control" 
-                    value="{{ last_username|default('') }}" 
-                    required 
-                    autofocus
-                    autocomplete="email"
-                    placeholder="seu@email.com"
-                >
-            </div>
-
-            <div class="form-group">
-                <label for="password" class="form-label">Senha</label>
-                <input 
-                    type="password" 
-                    id="password" 
-                    name="password" 
-                    class="form-control" 
-                    required
-                    autocomplete="current-password"
-                    placeholder="Sua senha"
-                >
-            </div>
-
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
-
-            <button type="submit" class="btn-login">
-                Entrar
-            </button>
-        </form>
-
-        <div class="form-footer">
-            <a href="{{ path('auth_forgot') }}">Esqueceu sua senha?</a>
         </div>
     </div>
 </div>
