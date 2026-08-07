@@ -2,17 +2,17 @@
 
 namespace App\Controller;
 
-use App\Repository\AlertRepository;
+use App\Repository\WazeAlertRepository;
+use App\Repository\WazeTrafficJamRepository;
 use App\Repository\CemadenDataRepository;
-use App\Repository\CemadenHydroDataRepository;
+use App\Repository\MonitoredCityRepository;
+use App\Repository\MonitoredLinkRepository;
+use App\Repository\WazeTvtRouteRepository;
+use App\Repository\WazeIrregularityRepository;
 use App\Repository\CifsEventRepository;
-use App\Repository\CityRepository;
-use App\Repository\IrregularityRepository;
-use App\Repository\JamRepository;
-use App\Repository\LinkRepository;
-use App\Repository\TvtRouteRepository;
 use App\Repository\WazeCountRepository;
-use App\Repository\AlertTypeRepository;
+use App\Repository\CemadenHydroDataRepository;
+use App\Repository\WazeAlertTypeRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,17 +21,17 @@ use Symfony\Component\Routing\Attribute\Route;
 class DashboardController extends AbstractController
 {
     public function __construct(
-        private readonly AlertRepository $alertRepo,
-        private readonly JamRepository $jamRepo,
+        private readonly WazeAlertRepository $alertRepo,
+        private readonly WazeTrafficJamRepository $jamRepo,
         private readonly CemadenDataRepository $cemadenRepo,
-        private readonly CityRepository $cityRepo,
-        private readonly LinkRepository $linkRepo,
-        private readonly TvtRouteRepository $tvtRouteRepo,
-        private readonly IrregularityRepository $irregRepo,
+        private readonly MonitoredCityRepository $cityRepo,
+        private readonly MonitoredLinkRepository $linkRepo,
+        private readonly WazeTvtRouteRepository $tvtRouteRepo,
+        private readonly WazeIrregularityRepository $irregRepo,
         private readonly CifsEventRepository $cifsRepo,
         private readonly WazeCountRepository $wazeCountRepo,
         private readonly CemadenHydroDataRepository $hydroRepo,
-        private readonly AlertTypeRepository $alertTypeRepo,
+        private readonly WazeAlertTypeRepository $alertTypeRepo,
     ) {}
 
     #[Route('/dashboard', name: 'dashboard_index')]
