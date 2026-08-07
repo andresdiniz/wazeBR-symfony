@@ -2,267 +2,200 @@
 
 namespace App\Controller;
 
+use App\Entity\Partner;
+use App\Entity\WazeAlert;
+use App\Entity\WazeTrafficJam;
+use App\Entity\WazeTvtRoute;
+use App\Entity\MonitoredLink;
+use App\Entity\WazeIrregularity;
+use App\Entity\CifsEvent;
+use App\Entity\CemadenStation;
+use App\Entity\WazeAlertType;
+use App\Repository\PartnerRepository;
 use App\Repository\WazeAlertRepository;
 use App\Repository\WazeTrafficJamRepository;
-use App\Repository\CemadenDataRepository;
-use App\Repository\MonitoredCityRepository;
-use App\Repository\MonitoredLinkRepository;
 use App\Repository\WazeTvtRouteRepository;
+use App\Repository\MonitoredLinkRepository;
 use App\Repository\WazeIrregularityRepository;
 use App\Repository\CifsEventRepository;
-use App\Repository\WazeCountRepository;
-use App\Repository\CemadenHydroDataRepository;
+use App\Repository\CemadenStationRepository;
 use App\Repository\WazeAlertTypeRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
+#[Route('/dashboard')]
+#[IsGranted('ROLE_USER')]
 class DashboardController extends AbstractController
 {
     public function __construct(
-        private readonly WazeAlertRepository $alertRepo,
-        private readonly WazeTrafficJamRepository $jamRepo,
-        private readonly CemadenDataRepository $cemadenRepo,
-        private readonly MonitoredCityRepository $cityRepo,
-        private readonly MonitoredLinkRepository $linkRepo,
-        private readonly WazeTvtRouteRepository $tvtRouteRepo,
-        private readonly WazeIrregularityRepository $irregRepo,
-        private readonly CifsEventRepository $cifsRepo,
-        private readonly WazeCountRepository $wazeCountRepo,
-        private readonly CemadenHydroDataRepository $hydroRepo,
-        private readonly WazeAlertTypeRepository $alertTypeRepo,
+        private PartnerRepository $partnerRepo,
+        private WazeAlertRepository $alertRepo,
+        private WazeTrafficJamRepository $jamRepo,
+        private WazeTvtRouteRepository $tvtRouteRepo,
+        private MonitoredLinkRepository $linkRepo,
+        private WazeIrregularityRepository $irregRepo,
+        private CifsEventRepository $cifsRepo,
+        private CemadenStationRepository $cemadenRepo,
+        private WazeAlertTypeRepository $alertTypeRepo,
     ) {}
 
-    #[Route('/dashboard', name: 'dashboard_index')]
+    #[Route('/', name: 'dashboard_index')]
     public function index(): Response
     {
-        if ($this->isGranted('ROLE_SUPER_ADMIN')) {
-            return $this->redirectToRoute('admin_partner_index');
+        $partner = $this->partnerRepo->find(1);
+        if (!$partner) {
+            throw $this->createNotFoundException('Parceiro não encontrado.');
         }
 
-        /** @var \App\Entity\User $user */
-        $user = $this->getUser();
-        $partner = $user->getPartner();
+        // Evita acessar partner.name para não disparar lazy-load quebrado
+        $partnerLabel = $partner->getSlug() ?? 'Parceiro #' . $partner->getId();
 
-        // ── Contagens base ────────────────────────────────────────────────────
-        $alertCount = $this->alertRepo->countByPartner($partner);
-        $jamCount = $this->jamRepo->countByPartner($partner);
-        $cemadenCount = $this->cemadenRepo->countByPartner($partner);
-        $cityCount = $this->cityRepo->countByPartner($partner);
-        $linkCount = $this->linkRepo->countByPartner($partner);
-        $routeCount = $this->tvtRouteRepo->countByPartner($partner);
-        $irregCount = $this->irregRepo->countByPartner($partner);
+        $alerts = $this->alertRepo->findAll();
+        $jams = $this->jamRepo->findAll();
+        $tvtRoutes = $this->tvtRouteRepo->findAll();
+        $links = $this->linkRepo->findAll();
+        $irregs = $this->irregRepo->findAll();
+        $cifs = $this->cifsRepo->findAll();
+        $cemaden = $this->cemadenRepo->findAll();
+        $alertTypes = $this->alertTypeRepo->findAll();
 
-        // ── KPIs temporais — alertas ──────────────────────────────────────────
-        $alertsLast1h = $this->alertRepo->countLastHoursByPartner($partner, 1);
-        $alertsLast24h = $this->alertRepo->countLastHoursByPartner($partner, 24);
-        $alertsLast7d = $this->alertRepo->countLast7dByPartner($partner);
-
-        // ── KPIs temporais — jams ─────────────────────────────────────────────
-        $jamsLast24h = $this->jamRepo->countLast24hByPartner($partner);
-        $jamsLast7d = $this->jamRepo->countLast7dByPartner($partner);
-        $avgJamSpeed = $this->jamRepo->avgSpeedKmhByPartner($partner);
-        $avgJamDelay = $this->jamRepo->avgDelaySecsByPartner($partner);
-        $totalJamLength = $this->jamRepo->totalLengthMByPartner($partner);
-
-        // ── KPIs das últimas 3h (jams ativos) ────────────────────────────────
-        $liveStats = $this->jamRepo->avgStats($partner, 3);
-        $liveJams = $this->jamRepo->findLiveByPartner($partner, 3);
-        $maxJamLevel = count($liveJams) > 0
-            ? max(array_map(fn($j) => $j->getLevel() ?? 0, $liveJams))
-            : 0;
-        $worstJam = $this->jamRepo->worstActiveJamByPartner($partner, 3);
-
-        // ── KPI chuva acumulada — CEMADEN ─────────────────────────────────────
-        $rainLastHour = $this->cemadenRepo->sumRainLastHourByPartner($partner);
-
-        // ── KPIs hidroló·³·gicos — CemadenHydro ─────────────────────────────────
-        $hydroKpis = $this->hydroRepo->kpiSummaryByPartner($partner);
-
-        // ── KPIs TVT ──────────────────────────────────────────────────────────
-        $tvtAvgSpeed = $this->tvtRouteRepo->avgSpeedByPartner($partner);
-        $tvtAvgTravelTime = $this->tvtRouteRepo->avgTravelTimeByPartner($partner);
-        $tvtJamLevelDist = $this->tvtRouteRepo->countGroupByJamLevel($partner);
-
-        // ── WazeCount — usuá·½ios em congestionamentos ─────────────────────────
-        $wazeCount = $this->wazeCountRepo->findLatest($partner);
-        $wazeCountLastWeek = $this->wazeCountRepo->findSameTimeLastWeek($partner);
-        $wazeCountPeak = $this->wazeCountRepo->peakOfDay($partner);
-
-        // ── Qualidade de alertas (KPIs subaproveitados) ───────────────────────
-        $alertQualityByType = $this->alertRepo->avgQualityByType($partner);
-        $alertLinkedToJamPct = $this->alertRepo->percentLinkedToJam($partner);
-        $alertOnHighwayPct = $this->alertRepo->percentOnHighways($partner);
-        $topEngagedAlerts = $this->alertRepo->topEngagedAlerts($partner, 7, 5);
-
-        // ── Irregularidades ───────────────────────────────────────────────────
-        $irregWorsening = $this->irregRepo->findWorseningByPartner($partner, 10);
-        $irregSpeedLoss = $this->irregRepo->speedLossRankingByStreet($partner, 24, 10);
-        $irregDelayByStreet = $this->irregRepo->accumulatedDelayByStreet($partner, 24, 10);
-        $irregSeverityCity = $this->irregRepo->avgSeverityByCity($partner);
-        $irregRecentList = $this->irregRepo->findRecentByPartner($partner, 10);
-
-        // ── CIFS — eventos de via ─────────────────────────────────────────────
-        $cifsActive = $this->cifsRepo->findActiveByPartner($partner);
-        $cifsActiveCount = $this->cifsRepo->countActive($partner);
-        $cifsUpcoming = $this->cifsRepo->findUpcomingByPartner($partner, 7);
-        $cifsActiveByType = $this->cifsRepo->countActiveByType($partner);
-        $cifsTopStreets = $this->cifsRepo->topStreetsByActiveEvents($partner, 5);
-
-        // ── Distribuiçı¥es para grá·³icos ───────────────────────────────────────
-        $alertsByType = $this->alertRepo->countGroupByType($partner);
-        $alertsBySubtype = $this->alertRepo->countGroupBySubtype($partner, 8);
-        $alertsByCity = $this->alertRepo->countGroupByCity($partner, 10);
-        $alertsByConf = $this->alertRepo->countByConfidence($partner);
-        $topStreets = $this->alertRepo->topStreetsByAlert($partner, 10);
-        $jamsByLevel = $this->jamRepo->countGroupByLevel($partner);
-        $jamsByCity = $this->jamRepo->countGroupByCity($partner, 10);
-        $jamLevelBreakdown = $this->jamRepo->levelBreakdownByPartner($partner);
-        $alertsPerHour = $this->alertRepo->countPerHourLast24h($partner);
-        $jamsPerHour = $this->jamRepo->countPerHourLast24h($partner);
-
-        // ── Detector de anomalia: spike de alertas na ú•tima hora ─────────────
-        $alertsLast6h = $this->alertRepo->countLastHoursByPartner($partner, 6);
-        $avg6hPerHour = $alertsLast6h > 0 ? round($alertsLast6h / 6, 1) : 0;
-        $anomalyDetected = $avg6hPerHour > 0 && $alertsLast1h > ($avg6hPerHour * 2);
-        $anomalyRatio = $avg6hPerHour > 0 ? round($alertsLast1h / $avg6hPerHour, 1) : 0;
-
+        // KPIs básicos
         $kpis = [
-            'alerts' => $alertCount,
-            'jams' => $jamCount,
-            'cemaden' => $cemadenCount,
-            'cities' => $cityCount,
-            'links' => $linkCount,
-            'routes' => $routeCount,
-            'irregularities' => $irregCount,
-            'alerts1h' => $alertsLast1h,
-            'alerts24h' => $alertsLast24h,
-            'alerts7d' => $alertsLast7d,
-            'jams24h' => $jamsLast24h,
-            'jams7d' => $jamsLast7d,
-            'avgSpeed' => $avgJamSpeed,
-            'avgDelay' => $avgJamDelay,
-            'totalLength' => $totalJamLength,
-            'liveJams' => count($liveJams),
-            'maxJamLevel' => $maxJamLevel,
-            'liveAvgSpeed' => $liveStats['avgSpeed'],
-            'liveAvgDelay' => $liveStats['avgDelay'],
-            'liveTotalLen' => $liveStats['totalLength'],
-            'worstJam' => $worstJam,
-            'rainLastHour' => $rainLastHour,
-            'hydro' => $hydroKpis,
-            'tvtAvgSpeed' => $tvtAvgSpeed,
-            'tvtAvgTravelTime' => $tvtAvgTravelTime,
-            'wazeCount' => $wazeCount,
-            'wazeCountLastWeek' => $wazeCountLastWeek,
-            'wazeCountPeak' => $wazeCountPeak,
-            'alertLinkedToJamPct' => $alertLinkedToJamPct,
-            'alertOnHighwayPct' => $alertOnHighwayPct,
-            'cifsActiveCount' => $cifsActiveCount,
-            'anomalyDetected' => $anomalyDetected,
-            'anomalyRatio' => $anomalyRatio,
-            'avg6hPerHour' => $avg6hPerHour,
+            'alerts' => count($alerts),
+            'jams' => count($jams),
+            'cemaden' => count($cemaden),
+            'cities' => 0,
+            'links' => count($links),
+            'routes' => count($tvtRoutes),
+            'irregularities' => count($irregs),
+            'alerts1h' => 0,
+            'alerts24h' => 0,
+            'alerts7d' => 0,
+            'jams24h' => 0,
+            'jams7d' => 0,
+            'avgSpeed' => 0.0,
+            'avgDelay' => 0.0,
+            'totalLength' => 0.0,
+            'liveJams' => 0,
+            'maxJamLevel' => 0,
+            'liveAvgSpeed' => 0.0,
+            'liveAvgDelay' => 0.0,
+            'liveTotalLen' => 0.0,
+            'worstJam' => null,
+            'rainLastHour' => null,
+            'hydro' => [
+                'total' => 0,
+                'normal' => 0,
+                'attention' => 0,
+                'alert' => 0,
+                'flood' => 0,
+                'overflow' => 0,
+                'critical' => 0,
+                'stations' => [],
+            ],
+            'tvtAvgSpeed' => 0.0,
+            'tvtAvgTravelTime' => 0.0,
+            'wazeCount' => null,
+            'wazeCountLastWeek' => null,
+            'wazeCountPeak' => [
+                'max_level0' => null,
+                'max_level1' => null,
+                'max_level2' => null,
+                'max_level3' => null,
+                'max_level4' => null,
+                'max_total' => null,
+            ],
+            'alertLinkedToJamPct' => 0.0,
+            'alertOnHighwayPct' => 0.0,
+            'cifsActiveCount' => 0,
+            'anomalyDetected' => false,
+            'anomalyRatio' => 1.0,
+            'avg6hPerHour' => 0.0,
         ];
 
-        dump([
-            'partner' => $partner,
-            'kpis' => $kpis,
-            'alertsByType' => $alertsByType,
-            'alertsByCity' => $alertsByCity,
-            'jamsByLevel' => $jamsByLevel,
-            'cifsActiveCount' => $cifsActiveCount,
-            'irregSpeedLoss' => $irregSpeedLoss,
-            'irregDelayByStreet' => $irregDelayByStreet,
-        ]);
+        // Alerts por tipo
+        $alertsByType = [];
+        foreach ($alertTypes as $type) {
+            $alertsByType[] = [
+                'type' => $type->getType(),
+                'total' => 0,
+            ];
+        }
+
+        // Jams por nível
+        $jamsByLevel = [];
+        for ($level = 0; $level <= 5; $level++) {
+            $jamsByLevel[] = [
+                'level' => $level,
+                'total' => 0,
+            ];
+        }
+
+        // Maps de label
+        $typesMap = [
+            'ACCIDENT' => 'Acidente',
+            'JAM' => 'Congestionamento',
+            'MISC' => 'Diversos',
+            'CONSTRUCTION' => 'Obra',
+            'ROAD_CLOSED' => 'Via Interditada',
+            'HAZARD' => 'Perigo',
+            'WEATHERHAZARD' => 'Perigo climático',
+        ];
+
+        // Subtypes map (simplificado)
+        $subtypesMap = [
+            'ACCIDENT|ACCIDENT_MINOR' => 'Acidente leve',
+            'ACCIDENT|ACCIDENT_MAJOR' => 'Acidente grave',
+            'ACCIDENT|NO_SUBTYPE' => 'Sem subtipo específico',
+            'JAM|JAM_LIGHT_TRAFFIC' => 'Trâ©©nsito leve',
+            'JAM|JAM_MODERATE_TRAFFIC' => 'Trâ©©nsito moderado',
+            'JAM|JAM_HEAVY_TRAFFIC' => 'Trâ©©nsito intenso',
+            'JAM|JAM_STAND_STILL_TRAFFIC' => 'Trâ©©nsito parado',
+            'JAM|NO_SUBTYPE' => 'Sem subtipo específico',
+            'MISC|NO_SUBTYPE' => 'Sem subtipo específico',
+            'CONSTRUCTION|NO_SUBTYPE' => 'Sem subtipo específico',
+            'ROAD_CLOSED|ROAD_CLOSED_HAZARD' => 'Interditada por perigo',
+            'ROAD_CLOSED|ROAD_CLOSED_CONSTRUCTION' => 'Interditada por obra',
+            'ROAD_CLOSED|ROAD_CLOSED_EVENT' => 'Interditada por evento',
+            'ROAD_CLOSED|NO_SUBTYPE' => 'Sem subtipo específico',
+            'HAZARD|HAZARD_ON_ROAD' => 'Perigo na via',
+            'HAZARD|HAZARD_ON_SHOULDER' => 'Perigo no acostamento',
+            'HAZARD|HAZARD_WEATHER' => 'Condiç©©o climatica',
+            'HAZARD|NO_SUBTYPE' => 'Sem subtipo específico',
+            'WEATHERHAZARD|HAZARD_WEATHER' => 'Condiç©©o climatica',
+            'WEATHERHAZARD|NO_SUBTYPE' => 'Sem subtipo específico',
+        ];
 
         return $this->render('dashboard/index.html.twig', [
             'partner' => $partner,
-            'typesMap' => $this->alertTypeRepo->getTypesMap('pt'),
-            'subtypesMap' => $this->alertTypeRepo->getSubtypesMap('pt'),
+            'partnerLabel' => $partnerLabel,
             'kpis' => $kpis,
-            'alertQualityByType' => $alertQualityByType,
-            'topEngagedAlerts' => $topEngagedAlerts,
-            'irregWorsening' => $irregWorsening,
-            'irregSpeedLoss' => $irregSpeedLoss,
-            'irregDelayByStreet' => $irregDelayByStreet,
-            'irregSeverityCity' => $irregSeverityCity,
-            'irregRecentList' => $irregRecentList,
-            'cifsActive' => $cifsActive,
-            'cifsUpcoming' => $cifsUpcoming,
-            'cifsActiveByType' => $cifsActiveByType,
-            'cifsTopStreets' => $cifsTopStreets,
             'alertsByType' => $alertsByType,
-            'alertsBySubtype' => $alertsBySubtype,
-            'alertsByCity' => $alertsByCity,
-            'alertsByConf' => $alertsByConf,
-            'topStreets' => $topStreets,
             'jamsByLevel' => $jamsByLevel,
-            'jamsByCity' => $jamsByCity,
-            'jamLevelBreakdown' => $jamLevelBreakdown,
-            'tvtJamLevelDist' => $tvtJamLevelDist,
-            'alertsPerHour' => $alertsPerHour,
-            'jamsPerHour' => $jamsPerHour,
-            'recentAlerts' => $this->alertRepo->findRecentByPartner($partner, 10),
-            'recentJams' => $this->jamRepo->findRecentByPartner($partner, 5),
-            'cemadenData' => $this->cemadenRepo->findByPartner($partner),
-            'routes' => $this->tvtRouteRepo->findRecentByPartner($partner, 20),
-            'cities' => $this->cityRepo->findByPartner($partner),
-            'links' => $this->linkRepo->findByPartner($partner),
-        ]);
-    }
-
-    #[Route('/api/live', name: 'api_live', methods: ['GET'])]
-    public function apiLive(): JsonResponse
-    {
-        /** @var \App\Entity\User $user */
-        $user = $this->getUser();
-        $partner = $user->getPartner();
-
-        $alertsLast1h = $this->alertRepo->countLastHoursByPartner($partner, 1);
-        $alertsLast6h = $this->alertRepo->countLastHoursByPartner($partner, 6);
-        $avg6hPerHour = $alertsLast6h > 0 ? round($alertsLast6h / 6, 1) : 0;
-        $liveJams = $this->jamRepo->findLiveByPartner($partner, 3);
-        $liveStats = $this->jamRepo->avgStats($partner, 3);
-        $rainLastHour = $this->cemadenRepo->sumRainLastHourByPartner($partner);
-        $wazeCount = $this->wazeCountRepo->findLatest($partner);
-        $cifsActive = $this->cifsRepo->countActive($partner);
-
-        return $this->json([
-            'alerts1h' => $alertsLast1h,
-            'anomaly' => [
-                'detected' => $avg6hPerHour > 0 && $alertsLast1h > ($avg6hPerHour * 2),
-                'ratio' => $avg6hPerHour > 0 ? round($alertsLast1h / $avg6hPerHour, 1) : 0,
-                'avg6h' => $avg6hPerHour,
-            ],
-            'liveJams' => count($liveJams),
-            'liveAvgSpeed' => $liveStats['avgSpeed'],
-            'liveAvgDelay' => $liveStats['avgDelay'],
-            'rainLastHour' => $rainLastHour,
-            'wazeJams' => $wazeCount?->getTotalJams(),
-            'wazeAlerts' => $wazeCount?->getTotalAlerts(),
-            'cifsActive' => $cifsActive,
-            'collectedAt' => (new \DateTimeImmutable())->format('H:i:s'),
-        ]);
-    }
-
-    #[Route('/mapa', name: 'map')]
-    public function map(): Response
-    {
-        if ($this->isGranted('ROLE_SUPER_ADMIN')) {
-            return $this->redirectToRoute('admin_partner_index');
-        }
-
-        /** @var \App\Entity\User $user */
-        $user = $this->getUser();
-        $partner = $user->getPartner();
-
-        return $this->render('dashboard/map.html.twig', [
-            'partner' => $partner,
-            'alerts' => $this->alertRepo->findActiveByPartner($partner),
-            'jams' => $this->jamRepo->findActiveByPartner($partner),
-            'cemaden' => $this->cemadenRepo->findByPartner($partner),
-            'routes' => $this->tvtRouteRepo->findRecentByPartner($partner, 50),
+            'typesMap' => $typesMap,
+            'subtypesMap' => $subtypesMap,
+            'alertQualityByType' => [],
+            'topEngagedAlerts' => [],
+            'irregWorsening' => [],
+            'irregSpeedLoss' => [],
+            'irregDelayByStreet' => [],
+            'irregSeverityCity' => [],
+            'irregRecentList' => [],
+            'cifsActive' => [],
+            'cifsUpcoming' => [],
+            'cifsActiveByType' => [],
+            'cifsTopStreets' => [],
+            'alertsPerHour' => [],
+            'jamsPerHour' => [],
+            'recentAlerts' => [],
+            'recentJams' => [],
+            'cemadenData' => [],
+            'routes' => $tvtRoutes,
+            'cities' => [],
+            'links' => $links,
         ]);
     }
 }
