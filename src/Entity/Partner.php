@@ -3,8 +3,6 @@
 namespace App\Entity;
 
 use App\Repository\PartnerRepository;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -17,57 +15,49 @@ class Partner
     #[ORM\Column(type: 'integer')]
     private ?int $id = null;
 
-    #[ORM\Column(type: 'string', length: 255)]
+    #[ORM\Column(type: 'string', length: 80, unique: true)]
     #[Assert\NotBlank]
-    #[Assert\Length(max: 255)]
-    private ?string $name = null;
-
-    #[ORM\Column(type: 'string', length: 255, unique: true)]
-    #[Assert\NotBlank]
-    #[Assert\Length(max: 255)]
+    #[Assert\Length(max: 80)]
     private ?string $slug = null;
 
-    #[ORM\Column(type: 'string', length: 2, nullable: true)]
-    private ?string $state = null;
+    #[ORM\Column(type: 'string', length: 120)]
+    #[Assert\NotBlank]
+    #[Assert\Length(max: 120)]
+    private ?string $name = null;
 
-    #[ORM\Column(type: 'string', length: 20, nullable: true)]
-    private ?string $cnpj = null;
+    #[ORM\Column(type: 'string', length: 180, unique: true)]
+    #[Assert\NotBlank]
+    #[Assert\Email]
+    private ?string $email = null;
 
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
-    private ?string $logoUrl = null;
+    #[ORM\Column(type: 'string', length: 64, unique: true)]
+    #[Assert\NotBlank]
+    #[Assert\Length(min: 64, max: 64)]
+    private ?string $apiToken = null;
 
-    #[ORM\Column(type: 'string', length: 20, nullable: true)]
-    private ?string $primaryColor = null;
+    #[ORM\Column(type: 'string', length: 100, nullable: true)]
+    private ?string $bbox = null;
 
-    #[ORM\Column(type: 'string', length: 20, nullable: true)]
-    private ?string $secondaryColor = null;
+    #[ORM\Column(type: 'text', nullable: false)]
+    private string $cemadenStates = '[]';
 
-    #[ORM\Column(type: 'datetime_immutable')]
-    private \DateTimeImmutable $createdAt;
+    #[ORM\Column(type: 'boolean')]
+    private bool $isActive = true;
 
-    #[ORM\Column(type: 'datetime_immutable')]
-    private \DateTimeImmutable $updatedAt;
+    #[ORM\Column(type: 'datetime')]
+    private \DateTimeInterface $createdAt;
+
+    #[ORM\Column(type: 'integer', nullable: true)]
+    private ?int $refreshIntervalMinutes = null;
 
     public function __construct()
     {
-        $this->createdAt = new \DateTimeImmutable();
-        $this->updatedAt = new \DateTimeImmutable();
+        $this->createdAt = new \DateTime();
     }
 
     public function getId(): ?int
     {
         return $this->id;
-    }
-
-    public function getName(): ?string
-    {
-        return $this->name;
-    }
-
-    public function setName(?string $name): static
-    {
-        $this->name = $name;
-        return $this;
     }
 
     public function getSlug(): ?string
@@ -81,80 +71,91 @@ class Partner
         return $this;
     }
 
-    public function getState(): ?string
+    public function getName(): ?string
     {
-        return $this->state;
+        return $this->name;
     }
 
-    public function setState(?string $state): static
+    public function setName(?string $name): static
     {
-        $this->state = $state;
+        $this->name = $name;
         return $this;
     }
 
-    public function getCnpj(): ?string
+    public function getEmail(): ?string
     {
-        return $this->cnpj;
+        return $this->email;
     }
 
-    public function setCnpj(?string $cnpj): static
+    public function setEmail(?string $email): static
     {
-        $this->cnpj = $cnpj;
+        $this->email = $email;
         return $this;
     }
 
-    public function getLogoUrl(): ?string
+    public function getApiToken(): ?string
     {
-        return $this->logoUrl;
+        return $this->apiToken;
     }
 
-    public function setLogoUrl(?string $logoUrl): static
+    public function setApiToken(?string $apiToken): static
     {
-        $this->logoUrl = $logoUrl;
+        $this->apiToken = $apiToken;
         return $this;
     }
 
-    public function getPrimaryColor(): ?string
+    public function getBbox(): ?string
     {
-        return $this->primaryColor;
+        return $this->bbox;
     }
 
-    public function setPrimaryColor(?string $primaryColor): static
+    public function setBbox(?string $bbox): static
     {
-        $this->primaryColor = $primaryColor;
+        $this->bbox = $bbox;
         return $this;
     }
 
-    public function getSecondaryColor(): ?string
+    public function getCemadenStates(): string
     {
-        return $this->secondaryColor;
+        return $this->cemadenStates;
     }
 
-    public function setSecondaryColor(?string $secondaryColor): static
+    public function setCemadenStates(string $cemadenStates): static
     {
-        $this->secondaryColor = $secondaryColor;
+        $this->cemadenStates = $cemadenStates;
         return $this;
     }
 
-    public function getCreatedAt(): \DateTimeImmutable
+    public function isActive(): bool
+    {
+        return $this->isActive;
+    }
+
+    public function setIsActive(bool $isActive): static
+    {
+        $this->isActive = $isActive;
+        return $this;
+    }
+
+    public function getCreatedAt(): \DateTimeInterface
     {
         return $this->createdAt;
     }
 
-    public function setCreatedAt(\DateTimeImmutable $createdAt): static
+    public function setCreatedAt(\DateTimeInterface $createdAt): static
     {
         $this->createdAt = $createdAt;
         return $this;
     }
 
-    public function getUpdatedAt(): \DateTimeImmutable
+    public function getRefreshIntervalMinutes(): ?int
     {
-        return $this->updatedAt;
+        return $this->refreshIntervalMinutes;
     }
 
-    public function setUpdatedAt(\DateTimeImmutable $updatedAt): static
+    public function setRefreshIntervalMinutes(?int $refreshIntervalMinutes): static
     {
-        $this->updatedAt = $updatedAt;
+        $this->refreshIntervalMinutes = $refreshIntervalMinutes;
         return $this;
     }
 }
