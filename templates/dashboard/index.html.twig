@@ -33,27 +33,27 @@
     <div class="kpi-card success">
         <div class="kpi-label">CIFS ativos</div>
         <div class="kpi-value">{{ kpis.cifsActiveCount }}</div>
-        <small>Se\u00e7\u00f5es ativas</small>
+        <small>Seç©§es ativas</small>
     </div>
     <div class="kpi-card warning">
         <div class="kpi-label">Alertas (total)</div>
         <div class="kpi-value">{{ kpis.alerts }}</div>
-        <small>24h {{ kpis.alerts24h }} \u00b7 7d {{ kpis.alerts7d }}</small>
+        <small>24h {{ kpis.alerts24h }} · 7d {{ kpis.alerts7d }}</small>
     </div>
     <div class="kpi-card danger">
         <div class="kpi-label">Jams (total)</div>
         <div class="kpi-value">{{ kpis.jams }}</div>
-        <small>24h {{ kpis.jams24h }} \u00b7 7d {{ kpis.jams7d }}</small>
+        <small>24h {{ kpis.jams24h }} · 7d {{ kpis.jams7d }}</small>
     </div>
     <div class="kpi-card primary">
         <div class="kpi-label">Cidades</div>
         <div class="kpi-value">{{ (cities|length) ?: 0 }}</div>
-        <small>Links {{ (links|length) ?: 0 }} \u00b7 Rotas {{ (routes|length) ?: 0 }}</small>
+        <small>Links {{ (links|length) ?: 0 }} · Rotas {{ (routes|length) ?: 0 }}</small>
     </div>
     <div class="kpi-card success">
         <div class="kpi-label">Irregularidades</div>
         <div class="kpi-value">{{ kpis.irregularities }}</div>
-        <small>Se\u00e7\u00f5es ativas</small>
+        <small>Seç©§es ativas</small>
     </div>
 </div>
 
@@ -63,17 +63,17 @@
         <canvas id="alerts-by-type-chart" height="200"></canvas>
     </div>
     <div class="chart-wrapper">
-        <h5>Jams por n\u00edvel (24h)</h5>
+        <h5>Jams por nível (24h)</h5>
         <canvas id="jams-by-level-chart" height="200"></canvas>
     </div>
     <div class="chart-wrapper">
         <h5>Qualidade dos alertas (24h)</h5>
         <div class="mt-3">
-            <h6>Confiabilidade m\u00e9dia (reliability)</h6>
+            <h6>Confiabilidade média (reliability)</h6>
             <div class="progress mb-3" style="height: 24px;">
                 <div class="progress-bar bg-primary" style="width: {{ kpis.avgReliability }}%">{{ kpis.avgReliability|number_format(1) }}%</div>
             </div>
-            <h6>Confian\u00e7a m\u00e9dia (confidence)</h6>
+            <h6>Confianç©§a média (confidence)</h6>
             <div class="progress mb-3" style="height: 24px;">
                 <div class="progress-bar bg-success" style="width: {{ kpis.avgConfidence }}%">{{ kpis.avgConfidence|number_format(1) }}%</div>
             </div>
@@ -100,13 +100,13 @@
 </div>
 
 <div class="card">
-    <div class="card-header">WazeCount \u2014 Semana</div>
+    <div class="card-header">WazeCount — Semana</div>
     <div class="card-body">
         <div class="row mb-3">
             <div class="col-md-6"><strong>Esta semana:</strong> {{ kpis.wazeCount ?? '—' }}</div>
             <div class="col-md-6"><strong>Semana passada:</strong> {{ kpis.wazeCountLastWeek ?? '—' }}</div>
         </div>
-        <h6>Picos por n\u00edvel de jam (max)</h6>
+        <h6>Picos por nível de jam (max)</h6>
         <ul class="list-unstyled">
             <li>Nivel 0: {{ kpis.wazeCountPeak.max_level0 ?? 0 }}</li>
             <li>Nivel 1: {{ kpis.wazeCountPeak.max_level1 ?? 0 }}</li>
@@ -126,7 +126,7 @@
         {% else %}
             <div class="alert alert-warning">Nenhum evento ativo.</div>
         {% endif %}
-        <h6>Pr\u00f3ximos 7 dias</h6>
+        <h6>Pró©§¬ximos 7 dias</h6>
         {% if cifsUpcoming|length > 0 %}
             <ul class="list-unstyled">
                 {% for event in cifsUpcoming|slice(0,5) %}
@@ -140,7 +140,7 @@
 </div>
 
 <div class="card">
-    <div class="card-header">Irregularidades de Tr\u00e1fego</div>
+    <div class="card-header">Irregularidades de Trá©§fego</div>
     <div class="card-body">
         {% if irregRecentList|length > 0 %}
             <div class="alert alert-success">{{ irregRecentList|length }} recentes</div>
@@ -191,7 +191,7 @@
         {% if recentJams|length > 0 %}
             <ul class="list-unstyled">
                 {% for jam in recentJams|slice(0,5) %}
-                    <li>N\u00edvel {{ jam.level }} - {{ jam.city ?? '' }} {{ jam.street ?? '' }}</li>
+                    <li>Ní©§vel {{ jam.level }} - {{ jam.city ?? '' }} {{ jam.street ?? '' }}</li>
                 {% endfor %}
             </ul>
         {% else %}
@@ -225,7 +225,7 @@
     console.log('=== DASHBOARD DEBUG DATA ===');
     console.log(debugData);
 
-    // --- GRÁ¦FICOS ---
+    // --- GRÁ©•FICOS ---
 
     // Alerts por tipo (barras)
     (function() {
@@ -282,7 +282,7 @@
         });
     })();
 
-    // Jams por n\u00edvel (barras)
+    // Jams por nivel (barras)
     (function() {
         const ctx = document.getElementById('jams-by-level-chart');
         if (!ctx) return;
@@ -320,7 +320,7 @@
         });
     })();
 
-    // Alerts por hora
+    // Alerts por hora (u\u00faltimas 24h) - labels reais
     (function() {
         const ctx = document.getElementById('alerts-per-hour-chart');
         if (!ctx) return;
@@ -359,7 +359,7 @@
         });
     })();
 
-    // Jams por hora
+    // Jams por hora (u\u00faltimas 24h) - labels reais
     (function() {
         const ctx = document.getElementById('jams-per-hour-chart');
         if (!ctx) return;
@@ -403,15 +403,14 @@
         const mapEl = document.getElementById('map');
         if (!mapEl) return;
 
-        const map = L.map('map').setView([-20.66, -43.81], 12); // Conselheiro Lafaiete (aprox)
+        const map = L.map('map').setView([-20.66, -43.81], 12);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '\u00a9 OpenStreetMap'
+            attribution: 'OpenStreetMap'
         }).addTo(map);
 
         const recentAlerts = {{ recentAlerts|json_encode|raw }};
         const recentJams = {{ recentJams|json_encode|raw }};
 
-        // Cores por tipo de alerta
         const alertColorMap = {
             'ACCIDENT': '#ef4444',
             'HAZARD': '#f59e0b',
@@ -422,7 +421,6 @@
             'MISC': '#64748b',
         };
 
-        // Marcadores de alertas
         recentAlerts.forEach(a => {
             if (!a.latitude || !a.longitude) return;
             const color = alertColorMap[a.type] ?? '#333';
@@ -435,7 +433,6 @@
             circle.bindPopup(`<strong>${a.type}</strong><br>${a.city ?? ''} ${a.street ?? ''}`);
         });
 
-        // Jams: se tiver linha (GeoJSON), desenha polyline; sen\u00e3o, ponto
         const jamLevelColor = {
             0: '#94a3b8',
             1: '#22c55e',
@@ -447,13 +444,10 @@
 
         recentJams.forEach(j => {
             if (j.line && Array.isArray(j.line) && j.line.length > 0) {
-                // Tenta usar como [[lon,lat],...]
                 const coords = j.line.map(p => [p[1], p[0]]);
                 const color = jamLevelColor[j.level] ?? '#ef4444';
                 L.polyline(coords, { color, weight: 4 }).addTo(map)
                  .bindPopup(`<strong>Jam N${j.level}</strong><br>${j.city ?? ''} ${j.street ?? ''}`);
-            } else {
-                // Sem linha, usa ponto (precisaria de lat/lon, que n\u00e3o temos aqui; pula)
             }
         });
     })();

@@ -43,7 +43,8 @@ class DashboardController extends AbstractController
         }
 
         $partnerId = $partner->getId();
-        $partnerLabel = $partner->getName() ?? $partner->getSlug() ?? 'Parceiro #' . $partnerId;
+        // Garante string em UTF-8
+        $partnerLabel = mb_convert_encoding($partner->getName() ?? $partner->getSlug() ?? 'Parceiro #' . $partnerId, 'UTF-8', 'UTF-8');
 
         $now = time() * 1000;
         $lastHour = $now - 3600 * 1000;
@@ -114,13 +115,11 @@ class DashboardController extends AbstractController
         $avgConfidence  = (float)($qualityStats['avg_confidence'] ?? 0);
 
         // WazeCount (semana e picos por level)
-        // Semana atual: contagem de registros em waze_counts nos u\u00faltimos 7 dias
         $wazeCountThisWeek = $conn->fetchOne(<<<'SQL'
             SELECT COUNT(*) FROM waze_counts wc
             WHERE wc.pub_millis >= :lastWeek
         SQL, ['lastWeek' => $lastWeek]);
 
-        // Semana passada: 7 a 14 dias atr\u00e1s
         $last2Weeks = $now - 14 * 24 * 3600 * 1000;
         $wazeCountLastWeek = $conn->fetchOne(<<<'SQL'
             SELECT COUNT(*) FROM waze_counts wc
@@ -128,8 +127,6 @@ class DashboardController extends AbstractController
               AND wc.pub_millis < :lastWeek
         SQL, ['last2Weeks' => $last2Weeks, 'lastWeek' => $lastWeek]);
 
-        // Picos por n\u00edvel de jam (max em waze_counts ou waze_route_snapshots)
-        // Vou usar waze_counts agrupando por level
         $peakByLevel = $conn->fetchAllAssociative(<<<'SQL'
             SELECT wc.level, MAX(wc.count_value) AS max_count
             FROM waze_counts wc
@@ -250,7 +247,8 @@ class DashboardController extends AbstractController
             }
         }
 
-        $typesMap = [
+        // Mapas de tipos (UTF-8)
+        $typesMap = mb_convert_encoding([
             'ACCIDENT' => 'Acidente',
             'JAM' => 'Congestionamento',
             'MISC' => 'Diversos',
@@ -258,7 +256,7 @@ class DashboardController extends AbstractController
             'ROAD_CLOSED' => 'Via Interditada',
             'HAZARD' => 'Perigo',
             'WEATHERHAZARD' => 'Perigo clim\u00e1tico',
-        ];
+        ], 'UTF-8', 'UTF-8');
 
         $subtypesMap = [];
 
@@ -266,13 +264,14 @@ class DashboardController extends AbstractController
         $alertsPerHourRaw = $this->alertRepo->getAlertsPerHourLast24h();
         $jamsPerHourRaw = $this->jamRepo->getJamsPerHourLast24h();
 
+        // Labels reais (ex.: '10h', '11h', ...)
         $alertsPerHourLabels = array_column($alertsPerHourRaw, 'hour_label');
         $alertsPerHourData = array_map('intval', array_column($alertsPerHourRaw, 'total'));
 
         $jamsPerHourLabels = array_column($jamsPerHourRaw, 'hour_label');
         $jamsPerHourData = array_map('intval', array_column($jamsPerHourRaw, 'total'));
 
-        // Recent alerts (u\u00faltimos 5)
+        // Recent alerts (u\u00faltimos 10)
         $recentAlertsRaw = $this->alertRepo->createQueryBuilder('a')
             ->select('a.id, a.type, a.city, a.street, a.pubMillis, a.latitude, a.longitude')
             ->orderBy('a.pubMillis', 'DESC')
@@ -282,11 +281,11 @@ class DashboardController extends AbstractController
 
         $recentAlerts = array_map(function ($r) {
             return [
-                'id' => $r['id'],
+                'id' => (int)$r['id'],
                 'type' => $r['type'],
                 'city' => $r['city'],
                 'street' => $r['street'],
-                'pubMillis' => $r['pubMillis'],
+                'pubMillis' => (int)$r['pubMillis'],
                 'latitude' => (float)$r['latitude'],
                 'longitude' => (float)$r['longitude'],
             ];
@@ -301,7 +300,6 @@ class DashboardController extends AbstractController
             ->getArrayResult();
 
         $recentJams = array_map(function ($r) {
-            // Tentar extrair linha GeoJSON de j.line (JSON)
             $line = $r['line'];
             $coords = [];
             if (is_string($line) && $line !== '') {
@@ -311,11 +309,11 @@ class DashboardController extends AbstractController
                 }
             }
             return [
-                'id' => $r['id'],
-                'level' => $r['level'],
+                'id' => (int)$r['id'],
+                'level' => (int)$r['level'],
                 'city' => $r['city'],
                 'street' => $r['street'],
-                'pubMillis' => $r['pubMillis'],
+                'pubMillis' => (int)$r['pubMillis'],
                 'line' => $coords,
             ];
         }, $recentJamsRaw);
