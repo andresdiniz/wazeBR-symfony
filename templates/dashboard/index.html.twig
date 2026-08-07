@@ -12,7 +12,7 @@
                     <div>
                         <h1 class="h4 mb-2">Dashboard</h1>
                         <p class="mb-0 text-muted">
-                            Visão geral dos dados monitorados para {{ partner.name ?? 'o parceiro atual' }}.
+                            Visao geral dos dados monitorados para {{ partnerLabel ?? 'o parceiro atual' }}.
                         </p>
                     </div>
                     <div class="d-flex flex-wrap gap-2">
@@ -66,13 +66,13 @@
                 <div class="card-body">
                     <div class="text-muted small">Irregularidades</div>
                     <div class="display-6 fw-bold">{{ kpis.irregularities|default(0) }}</div>
-                    <div class="text-muted small">Seções ativas</div>
+                    <div class="text-muted small">Seç©§es ativas</div>
                 </div>
             </div>
         </div>
     </div>
 
-    {# Distribuições básicas: alertas por tipo, jams por nível #}
+    {# Distribuiç©§es basicas: alertas por tipo, jams por nivel #}
     <div class="row g-4 mb-4">
         <div class="col-12 col-lg-6">
             <div class="card border-0 shadow-sm bg-dark text-light h-100">
@@ -90,7 +90,7 @@
                                 {% for row in alertsByType %}
                                     <tr>
                                         <td>{{ typesMap[row.type] ?? row.type }}</td>
-                                        <td class="text-end">{{ row.total }}</td>
+                                        <td class="text-end">{{ row.total|default(0) }}</td>
                                     </tr>
                                 {% endfor %}
                             </tbody>
@@ -105,12 +105,12 @@
         <div class="col-12 col-lg-6">
             <div class="card border-0 shadow-sm bg-dark text-light h-100">
                 <div class="card-body">
-                    <h2 class="h6 text-uppercase text-muted mb-3">Jams por nível</h2>
+                    <h2 class="h6 text-uppercase text-muted mb-3">Jams por nivel</h2>
                     {% if jamsByLevel|length %}
                         <table class="table table-dark table-sm align-middle mb-0">
                             <thead>
                                 <tr>
-                                    <th>Nível</th>
+                                    <th>Nivel</th>
                                     <th class="text-end">Qtd</th>
                                 </tr>
                             </thead>
@@ -118,7 +118,7 @@
                                 {% for row in jamsByLevel %}
                                     <tr>
                                         <td>{{ row.level }}</td>
-                                        <td class="text-end">{{ row.total }}</td>
+                                        <td class="text-end">{{ row.total|default(0) }}</td>
                                     </tr>
                                 {% endfor %}
                             </tbody>
@@ -229,7 +229,7 @@
                                     <tr>
                                         <th>Via</th>
                                         <th>Cidade</th>
-                                        <th>Nível</th>
+                                        <th>Nivel</th>
                                         <th>Atraso (s)</th>
                                     </tr>
                                 </thead>
@@ -253,12 +253,12 @@
         </div>
     </div>
 
-    {# Contêineres para gráficos de séries temporais #}
+    {# Contê©©ineres para graficos de series temporais #}
     <div class="row g-4 mb-4">
         <div class="col-12 col-lg-6">
             <div class="card border-0 shadow-sm bg-dark text-light h-100">
                 <div class="card-body">
-                    <h2 class="h6 text-uppercase text-muted mb-3">Alertas por hora (últimas 24h)</h2>
+                    <h2 class="h6 text-uppercase text-muted mb-3">Alertas por hora (ultimas 24h)</h2>
                     <div id="alerts-per-hour-chart" style="height:320px;"></div>
                 </div>
             </div>
@@ -266,7 +266,7 @@
         <div class="col-12 col-lg-6">
             <div class="card border-0 shadow-sm bg-dark text-light h-100">
                 <div class="card-body">
-                    <h2 class="h6 text-uppercase text-muted mb-3">Jams por hora (últimas 24h)</h2>
+                    <h2 class="h6 text-uppercase text-muted mb-3">Jams por hora (ultimas 24h)</h2>
                     <div id="jams-per-hour-chart" style="height:320px;"></div>
                 </div>
             </div>
