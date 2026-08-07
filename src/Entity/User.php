@@ -1,27 +1,20 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Entity;
 
 use App\Repository\UserRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Validator\Constraints as Assert;
 
-/**
- * Hierarquia de roles:
- *
- *  ROLE_SUPER_ADMIN   → acesso total à plataforma, cria/gerencia parceiros
- *  ROLE_ACCOUNT_ADMIN → administrador do parceiro ao qual pertence
- *  ROLE_USER          → visualização dos dados do parceiro
- *  ROLE_FIELD_AGENT   → agente de via; permissões configuráveis via fieldAgentPermissions
- */
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-#[ORM\Table(name: 'users')]
-#[ORM\HasLifecycleCallbacks]
-#[UniqueEntity(fields: ['email'], message: 'Este email já está em uso.')]
+#[ORM\Table(name: 'user')]
+#[ORM\UniqueConstraint(name: 'email_unique', columns: ['email'])]
+#[UniqueEntity(fields: ['email'], message: 'Este e-mail já está em uso.')]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
@@ -30,70 +23,86 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?int $id = null;
 
     #[ORM\Column(length: 180, unique: true)]
-    private string $email;
-
-    #[ORM\Column(length: 120)]
-    private string $name;
+    #[Assert\NotBlank(message: 'O e-mail é obrigat\u00f3rio.')]
+    #[Assert\Email(message: 'Por favor, insira um e-mail v\u00e1lido.')]
+    private ?string $email = null;
 
     #[ORM\Column]
     private array $roles = [];
 
     #[ORM\Column]
-    private string $password;
+    private ?string $password = null;
+
+    #[ORM\Column(length: 100)]
+    #[Assert\NotBlank(message: 'O nome é obrigat\u00f3rio.')]
+    private ?string $name = null;
+
+    #[ORM\Column(length: 20, nullable: true)]
+    #[Assert\Regex(pattern: '/^\+?[0-9\s\-\(\)]+$/', message: 'Telefone inv\u00e1lido.')]
+    private ?string $phone = null;
 
     #[ORM\Column]
     private bool $isActive = true;
 
-    #[ORM\Column(type: 'datetime_immutable')]
-    private \DateTimeImmutable $createdAt;
+    #[ORM\Column]
+    private bool $isVerified = false;
 
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    #[ORM\Column]
+    private ?\DateTimeImmutable $createdAt = null;
+
+    #[ORM\Column]
+    private ?\DateTimeImmutable $updatedAt = null;
+
+    #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $lastLoginAt = null;
 
-    /**
-     * Parceiro (tenant) ao qual este usuário pertence.
-     * Nullable: ROLE_SUPER_ADMIN não possui parceiro vinculado.
-     */
-    #[ORM\ManyToOne(targetEntity: Partner::class, inversedBy: 'users')]
-    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
-    private ?Partner $partner = null;
+    #[ORM\Column(length: 45, nullable: true)]
+    private ?string $lastLoginIp = null;
 
-    /**
-     * Permissões customizadas para agentes de via (ROLE_FIELD_AGENT).
-     * Armazenadas como JSON. Ex: ['view_alerts', 'view_jams', 'submit_report']
-     * Se vazio/null, o agente recebe as mesmas permissões de ROLE_USER.
-     */
-    #[ORM\Column(type: 'json', nullable: true)]
-    private ?array $fieldAgentPermissions = null;
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: ActivityLog::class, cascade: ['remove'])]
+    private Collection $activityLogs;
 
-    /**
-     * Token de redefinição de senha (hash aleatório de uso único).
-     * Persistido no banco — sobrevive a múltiplos workers/processos e reinícios.
-     */
-    #[ORM\Column(length: 64, nullable: true, unique: true)]
-    private ?string $resetToken = null;
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: Notification::class, cascade: ['remove'])]
+    private Collection $notifications;
 
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
-    private ?\DateTimeImmutable $resetTokenExpiresAt = null;
-
-    #[ORM\PrePersist]
-    public function onPrePersist(): void
+    public function __construct()
     {
+        $this->activityLogs = new ArrayCollection();
+        $this->notifications = new ArrayCollection();
         $this->createdAt = new \DateTimeImmutable();
+        $this->updatedAt = new \DateTimeImmutable();
     }
 
-    // ── Getters / Setters ────────────────────────────────────────────────────
+    public function getId(): ?int
+    {
+        return $this->id;
+    }
 
-    public function getId(): ?int { return $this->id; }
+    public function getEmail(): ?string
+    {
+        return $this->email;
+    }
 
-    public function getEmail(): string { return $this->email; }
-    public function setEmail(string $email): static { $this->email = $email; return $this; }
+    /**
+     * Set email normalized to lowercase and trimmed
+     */
+    public function setEmail(string $email): static
+    {
+        $this->email = trim(strtolower($email));
+        return $this;
+    }
 
-    public function getUserIdentifier(): string { return $this->email; }
+    /**
+     * @see UserInterface
+     */
+    public function getUserIdentifier(): string
+    {
+        return (string) $this->email;
+    }
 
-    public function getName(): string { return $this->name; }
-    public function setName(string $name): static { $this->name = $name; return $this; }
-
+    /**
+     * @see UserInterface
+     */
     public function getRoles(): array
     {
         $roles = $this->roles;
@@ -101,90 +110,179 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return array_unique($roles);
     }
 
-    public function setRoles(array $roles): static { $this->roles = $roles; return $this; }
-
-    public function getPassword(): string { return $this->password; }
-    public function setPassword(string $password): static { $this->password = $password; return $this; }
-
-    public function isActive(): bool { return $this->isActive; }
-    public function setIsActive(bool $isActive): static { $this->isActive = $isActive; return $this; }
-
-    public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
-
-    public function getLastLoginAt(): ?\DateTimeImmutable { return $this->lastLoginAt; }
-    public function setLastLoginAt(\DateTimeImmutable $lastLoginAt): static { $this->lastLoginAt = $lastLoginAt; return $this; }
-
-    public function eraseCredentials(): void {}
-
-    public function getPartner(): ?Partner { return $this->partner; }
-    public function setPartner(?Partner $partner): static { $this->partner = $partner; return $this; }
-
-    public function getFieldAgentPermissions(): ?array { return $this->fieldAgentPermissions; }
-    public function setFieldAgentPermissions(?array $fieldAgentPermissions): static
+    public function setRoles(array $roles): static
     {
-        $this->fieldAgentPermissions = $fieldAgentPermissions;
+        $this->roles = $roles;
         return $this;
     }
 
-    public function getResetToken(): ?string { return $this->resetToken; }
-    public function setResetToken(?string $resetToken): static { $this->resetToken = $resetToken; return $this; }
-
-    public function getResetTokenExpiresAt(): ?\DateTimeImmutable { return $this->resetTokenExpiresAt; }
-    public function setResetTokenExpiresAt(?\DateTimeImmutable $expiresAt): static
+    /**
+     * @see PasswordAuthenticatedUserInterface
+     */
+    public function getPassword(): ?string
     {
-        $this->resetTokenExpiresAt = $expiresAt;
+        return $this->password;
+    }
+
+    public function setPassword(string $password): static
+    {
+        $this->password = $password;
         return $this;
     }
 
-    // ── Role helpers ─────────────────────────────────────────────────────────
-
-    /** Acesso total à plataforma; cria e gerencia parceiros. Sem parceiro vinculado. */
-    public function isSuperAdmin(): bool
+    /**
+     * @see UserInterface
+     */
+    public function eraseCredentials(): void
     {
-        return in_array('ROLE_SUPER_ADMIN', $this->getRoles(), true);
+        // Clear temporary sensitive data
     }
 
-    /** Administrador do parceiro; gerencia usuários e configurações do próprio parceiro. */
-    public function isAccountAdmin(): bool
+    public function getName(): ?string
     {
-        return in_array('ROLE_ACCOUNT_ADMIN', $this->getRoles(), true);
+        return $this->name;
     }
 
-    /** Usuário padrão; visualiza dados do parceiro ao qual pertence. */
-    public function isRegularUser(): bool
+    public function setName(string $name): static
     {
-        return !$this->isSuperAdmin() && !$this->isAccountAdmin() && !$this->isFieldAgent();
+        $this->name = $name;
+        return $this;
     }
 
-    /** Agente de via; permissões configuráveis individualmente. */
-    public function isFieldAgent(): bool
+    public function getPhone(): ?string
     {
-        return in_array('ROLE_FIELD_AGENT', $this->getRoles(), true);
+        return $this->phone;
+    }
+
+    public function setPhone(?string $phone): static
+    {
+        $this->phone = $phone;
+        return $this;
+    }
+
+    public function isEnabled(): bool
+    {
+        return $this->isActive;
+    }
+
+    public function setIsActive(bool $isActive): static
+    {
+        $this->isActive = $isActive;
+        return $this;
+    }
+
+    public function isVerified(): bool
+    {
+        return $this->isVerified;
+    }
+
+    public function setIsVerified(bool $isVerified): static
+    {
+        $this->isVerified = $isVerified;
+        return $this;
+    }
+
+    public function getCreatedAt(): ?\DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    public function setCreatedAt(\DateTimeImmutable $createdAt): static
+    {
+        $this->createdAt = $createdAt;
+        return $this;
+    }
+
+    public function getUpdatedAt(): ?\DateTimeImmutable
+    {
+        return $this->updatedAt;
+    }
+
+    public function setUpdatedAt(\DateTimeImmutable $updatedAt): static
+    {
+        $this->updatedAt = $updatedAt;
+        return $this;
+    }
+
+    public function getLastLoginAt(): ?\DateTimeImmutable
+    {
+        return $this->lastLoginAt;
+    }
+
+    public function setLastLoginAt(?\DateTimeImmutable $lastLoginAt): static
+    {
+        $this->lastLoginAt = $lastLoginAt;
+        return $this;
+    }
+
+    public function getLastLoginIp(): ?string
+    {
+        return $this->lastLoginIp;
+    }
+
+    public function setLastLoginIp(?string $lastLoginIp): static
+    {
+        $this->lastLoginIp = $lastLoginIp;
+        return $this;
     }
 
     /**
-     * Verifica se o agente de via possui uma permissão específica.
-     * Se fieldAgentPermissions for null/vazio, retorna true (acesso igual a ROLE_USER).
+     * @return Collection<int, ActivityLog>
      */
-    public function hasFieldAgentPermission(string $permission): bool
+    public function getActivityLogs(): Collection
     {
-        if (empty($this->fieldAgentPermissions)) {
-            return true;
-        }
+        return $this->activityLogs;
+    }
 
-        return in_array($permission, $this->fieldAgentPermissions, true);
+    public function addActivityLog(ActivityLog $activityLog): static
+    {
+        if (!$this->activityLogs->contains($activityLog)) {
+            $this->activityLogs->add($activityLog);
+            $activityLog->setUser($this);
+        }
+        return $this;
+    }
+
+    public function removeActivityLog(ActivityLog $activityLog): static
+    {
+        if ($this->activityLogs->removeElement($activityLog)) {
+            if ($activityLog->getUser() === $this) {
+                $activityLog->setUser(null);
+            }
+        }
+        return $this;
     }
 
     /**
-     * Garante que o usuário pertence ao mesmo parceiro que o recurso solicitado.
-     * ROLE_SUPER_ADMIN passa automaticamente (sem restrição de parceiro).
+     * @return Collection<int, Notification>
      */
-    public function belongsToPartner(Partner $partner): bool
+    public function getNotifications(): Collection
     {
-        if ($this->isSuperAdmin()) {
-            return true;
-        }
+        return $this->notifications;
+    }
 
-        return $this->partner !== null && $this->partner->getId() === $partner->getId();
+    public function addNotification(Notification $notification): static
+    {
+        if (!$this->notifications->contains($notification)) {
+            $this->notifications->add($notification);
+            $notification->setUser($this);
+        }
+        return $this;
+    }
+
+    public function removeNotification(Notification $notification): static
+    {
+        if ($this->notifications->removeElement($notification)) {
+            if ($notification->getUser() === $this) {
+                $notification->setUser(null);
+            }
+        }
+        return $this;
+    }
+
+    #[ORM\PreUpdate]
+    public function onPreUpdate(): void
+    {
+        $this->updatedAt = new \DateTimeImmutable();
     }
 }
