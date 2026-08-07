@@ -2,15 +2,6 @@
 
 namespace App\Controller;
 
-use App\Entity\Partner;
-use App\Entity\WazeAlert;
-use App\Entity\WazeTrafficJam;
-use App\Entity\WazeTvtRoute;
-use App\Entity\MonitoredLink;
-use App\Entity\WazeIrregularity;
-use App\Entity\CifsEvent;
-use App\Entity\CemadenStation;
-use App\Entity\WazeAlertType;
 use App\Repository\PartnerRepository;
 use App\Repository\WazeAlertRepository;
 use App\Repository\WazeTrafficJamRepository;
@@ -18,7 +9,6 @@ use App\Repository\WazeTvtRouteRepository;
 use App\Repository\MonitoredLinkRepository;
 use App\Repository\WazeIrregularityRepository;
 use App\Repository\CifsEventRepository;
-use App\Repository\CemadenStationRepository;
 use App\Repository\WazeAlertTypeRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -38,7 +28,6 @@ class DashboardController extends AbstractController
         private MonitoredLinkRepository $linkRepo,
         private WazeIrregularityRepository $irregRepo,
         private CifsEventRepository $cifsRepo,
-        private CemadenStationRepository $cemadenRepo,
         private WazeAlertTypeRepository $alertTypeRepo,
     ) {}
 
@@ -59,14 +48,13 @@ class DashboardController extends AbstractController
         $links = $this->linkRepo->findAll();
         $irregs = $this->irregRepo->findAll();
         $cifs = $this->cifsRepo->findAll();
-        $cemaden = $this->cemadenRepo->findAll();
         $alertTypes = $this->alertTypeRepo->findAll();
 
         // KPIs básicos
         $kpis = [
             'alerts' => count($alerts),
             'jams' => count($jams),
-            'cemaden' => count($cemaden),
+            'cemaden' => 0,
             'cities' => 0,
             'links' => count($links),
             'routes' => count($tvtRoutes),
