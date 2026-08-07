@@ -25,10 +25,10 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
 
         $sql = <<<SQL
             SELECT
-                CONCAT(DATE_FORMAT(FROM_UNIXTIME(j.pubMillis / 1000), '%H'), 'h') AS hour_label,
+                CONCAT(DATE_FORMAT(FROM_UNIXTIME(j.pub_millis / 1000), '%H'), 'h') AS hour_label,
                 COUNT(j.id) AS total
-            FROM waze_traffic_jam j
-            WHERE j.pubMillis >= :lastDay
+            FROM waze_traffic_jams j
+            WHERE j.pub_millis >= :lastDay
             GROUP BY hour_label
             ORDER BY hour_label ASC
         SQL;

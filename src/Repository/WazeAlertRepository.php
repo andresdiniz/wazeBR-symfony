@@ -25,10 +25,10 @@ class WazeAlertRepository extends ServiceEntityRepository
 
         $sql = <<<SQL
             SELECT
-                CONCAT(DATE_FORMAT(FROM_UNIXTIME(a.pubMillis / 1000), '%H'), 'h') AS hour_label,
+                CONCAT(DATE_FORMAT(FROM_UNIXTIME(a.pub_millis / 1000), '%H'), 'h') AS hour_label,
                 COUNT(a.id) AS total
-            FROM waze_alert a
-            WHERE a.pubMillis >= :lastDay
+            FROM waze_alerts a
+            WHERE a.pub_millis >= :lastDay
             GROUP BY hour_label
             ORDER BY hour_label ASC
         SQL;
