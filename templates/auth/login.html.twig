@@ -5,62 +5,54 @@
 {% block stylesheets %}
     <style>
         :root {
-            --bg-start: #7277e8;
-            --bg-end: #8a62d6;
-            --panel: #171512;
-            --panel-soft: rgba(255,255,255,.06);
-            --text-main: #f3eee4;
-            --text-soft: rgba(243,238,228,.68);
-            --brand: #7fd8e8;
-            --brand-strong: #61b8ca;
-            --input: #10100e;
-            --input-border: rgba(255,255,255,.08);
-            --shadow: 0 24px 60px rgba(0,0,0,.22);
+            --bg-start: #7877e3;
+            --bg-end: #8a63d4;
+            --panel: #1c1814;
+            --panel-line: rgba(255,255,255,.06);
+            --text: #f3ece1;
+            --muted: rgba(243,236,225,.66);
+            --accent: #7fd8e6;
+            --accent-strong: #65b9cb;
+            --input: #11100e;
+            --input-line: rgba(255,255,255,.08);
         }
 
-        html, body {
-            height: 100%;
-        }
+        html, body { height: 100%; }
 
         body.guest-shell {
             margin: 0;
             min-height: 100vh;
-            background:
-                radial-gradient(circle at 18% 18%, rgba(255,255,255,.09), transparent 24%),
-                linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
             font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             overflow: hidden;
         }
 
-        .login-stage {
+        .page {
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 42px;
+            padding: 36px;
         }
 
-        .login-canvas {
-            width: min(1240px, 100%);
+        .stage {
+            width: min(1220px, 100%);
             min-height: 640px;
             position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
-        .brand-strip {
+        .brand {
             position: absolute;
             left: 50%;
             top: 50%;
-            transform: translate(-52%, -50%);
+            transform: translate(-48%, -50%);
             display: inline-flex;
             align-items: center;
-            gap: 16px;
-            padding: 13px 18px 13px 14px;
+            gap: 14px;
             background: #171512;
+            padding: 12px 16px 12px 12px;
             border-radius: 2px;
-            box-shadow: 0 16px 34px rgba(0,0,0,.24);
+            box-shadow: 0 16px 32px rgba(0,0,0,.22);
             z-index: 1;
         }
 
@@ -68,113 +60,110 @@
             width: 38px;
             height: 38px;
             border-radius: 9px;
-            background: linear-gradient(135deg, #7ed8e8 0%, #69bfd0 100%);
-            color: #f7fffd;
+            background: linear-gradient(135deg, #84d8e5 0%, #63b8cb 100%);
             display: grid;
             place-items: center;
+            color: #f7fffe;
             font-weight: 800;
-            font-size: 19px;
-            letter-spacing: .02em;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,.22);
+            font-size: 18px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.18);
         }
 
         .brand-name {
-            color: #5bc0d8;
+            color: #6ad0e1;
             font-weight: 800;
+            font-size: 20px;
             letter-spacing: -.02em;
-            font-size: 21px;
+            line-height: 1;
         }
 
-        .brand-tag {
-            color: #8bcfdc;
-            font-size: 12px;
-            font-weight: 700;
+        .brand-chip {
+            color: #8fd1df;
+            background: rgba(127,216,230,.08);
             padding: 4px 10px;
             border-radius: 999px;
-            background: rgba(127,216,232,.09);
+            font-size: 12px;
+            font-weight: 700;
         }
 
-        .login-panel {
-            width: min(470px, 100%);
-            margin-left: 300px;
+        .card {
+            width: min(520px, 100%);
+            margin-left: 284px;
             background: var(--panel);
-            color: var(--text-main);
-            border: 1px solid rgba(255,255,255,.05);
+            color: var(--text);
+            border: 1px solid var(--panel-line);
             border-radius: 3px;
-            box-shadow: var(--shadow);
+            box-shadow: 0 24px 60px rgba(0,0,0,.20);
+            padding: 28px 30px 24px;
             position: relative;
             z-index: 2;
-            padding: 26px 28px 22px;
         }
 
-        .login-kicker {
+        .kicker {
             margin: 0 0 8px;
             font-size: 13px;
-            letter-spacing: .36em;
-            color: rgba(243,238,228,.46);
+            letter-spacing: .28em;
+            color: rgba(243,236,225,.52);
             text-transform: uppercase;
         }
 
-        .login-title {
+        .title {
             margin: 0;
-            font-size: clamp(28px, 3vw, 38px);
-            line-height: 1.06;
-            font-weight: 800;
+            font-size: clamp(30px, 3vw, 40px);
+            line-height: 1.02;
             letter-spacing: -.03em;
+            font-weight: 800;
             color: #f5efe6;
         }
 
-        .login-copy {
-            margin: 14px 0 22px;
-            color: var(--text-soft);
+        .copy {
+            margin: 16px 0 22px;
+            max-width: 36ch;
+            color: var(--muted);
             font-size: 14px;
             line-height: 1.5;
-            max-width: 34ch;
         }
 
         .alert {
-            padding: 12px 14px;
             margin-bottom: 16px;
+            padding: 12px 14px;
             border-radius: 10px;
             font-size: 13px;
         }
 
         .alert-danger {
-            background: rgba(188, 77, 77, .18);
-            color: #ffd6d6;
-            border: 1px solid rgba(255, 146, 146, .20);
+            background: rgba(182, 78, 78, .18);
+            color: #ffd9d9;
+            border: 1px solid rgba(255, 149, 149, .18);
         }
 
-        .field {
-            margin-bottom: 14px;
-        }
+        .field { margin-bottom: 14px; }
 
         .label {
             display: block;
             margin-bottom: 6px;
-            color: rgba(243,238,228,.72);
+            color: rgba(243,236,225,.76);
             font-size: 12px;
-            letter-spacing: .12em;
+            letter-spacing: .10em;
             text-transform: uppercase;
         }
 
         .input {
             width: 100%;
             height: 48px;
-            padding: 0 16px;
-            border: 1px solid var(--input-border);
-            border-radius: 10px;
+            border: 1px solid var(--input-line);
+            border-radius: 11px;
             background: var(--input);
-            color: #f6f2ea;
-            font-size: 15px;
+            color: #f4efe8;
+            padding: 0 16px;
             outline: none;
+            font-size: 15px;
             box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
-            transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
         }
 
         .input:focus {
-            border-color: rgba(127,216,232,.8);
-            box-shadow: 0 0 0 3px rgba(127,216,232,.14);
+            border-color: rgba(127,216,230,.76);
+            box-shadow: 0 0 0 3px rgba(127,216,230,.12);
         }
 
         .submit {
@@ -182,88 +171,55 @@
             height: 48px;
             margin-top: 8px;
             border: 0;
-            border-radius: 10px;
-            background: linear-gradient(135deg, #7fd8e8 0%, #65b8ca 100%);
+            border-radius: 11px;
+            background: linear-gradient(135deg, #83d8e6 0%, #6bb8ca 100%);
             color: #061015;
             font-size: 15px;
             font-weight: 900;
-            letter-spacing: .06em;
-            text-transform: none;
             cursor: pointer;
-            box-shadow: 0 12px 26px rgba(101,184,202,.22);
+            box-shadow: 0 12px 24px rgba(107,184,202,.20);
         }
 
-        .submit:hover {
-            filter: brightness(1.02);
-        }
+        .submit:hover { filter: brightness(1.02); }
 
-        .login-meta {
+        .meta {
             margin-top: 14px;
             display: flex;
             justify-content: space-between;
             gap: 12px;
             font-size: 12px;
-            color: rgba(243,238,228,.58);
+            color: rgba(243,236,225,.58);
         }
 
-        .login-meta a {
-            color: #96dde9;
+        .meta a {
+            color: #95dde8;
             text-decoration: none;
         }
 
-        .login-meta a:hover {
-            text-decoration: underline;
-        }
+        .meta a:hover { text-decoration: underline; }
 
         @media (max-width: 900px) {
-            .login-stage {
-                padding: 20px;
-            }
-
-            .login-canvas {
-                min-height: auto;
-                padding-top: 96px;
-            }
-
-            .brand-strip {
-                top: 0;
-                transform: translateX(-50%);
-            }
-
-            .login-panel {
-                margin-left: 0;
-                width: 100%;
-                max-width: 470px;
-            }
-        }
-
-        @media (max-width: 640px) {
-            .brand-strip {
-                flex-wrap: wrap;
-                justify-content: center;
-                gap: 10px;
-            }
-
-            .login-panel {
-                padding: 22px 18px 18px;
-            }
+            .page { padding: 18px; }
+            .stage { min-height: auto; padding-top: 92px; }
+            .brand { top: 0; transform: translateX(-50%); }
+            .card { margin-left: 0; width: 100%; max-width: 520px; }
         }
     </style>
 {% endblock %}
 
 {% block body %}
-<div class="login-stage">
-    <div class="login-canvas">
-        <div class="brand-strip" aria-hidden="true">
+<div class="page">
+    <div class="stage">
+        <div class="brand" aria-hidden="true">
             <div class="brand-mark">W</div>
             <div class="brand-name">WazeBR</div>
-            <div class="brand-tag">Monitor</div>
+            <div class="brand-chip">Monitor</div>
         </div>
 
-        <section class="login-panel" aria-label="Login">
-            <p class="login-kicker">Monitoramento</p>
-            <h1 class="login-title">Acesso ao sistema</h1>
-            <p class="login-copy">Entre com seu e-mail e senha para continuar no painel de monitoramento.</p>
+        <section class="card" aria-label="Login">
+            <p class="kicker">Monitoramento</p>
+            <h1 class="title">Acesso ao sistema</h1>
+            <p class="copy">Entre com seu e-mail e senha para continuar no painel de monitoramento.</p>
 
             {% if error %}
                 <div class="alert alert-danger">
@@ -274,36 +230,20 @@
             <form method="post" action="{{ path('auth_login') }}" novalidate>
                 <div class="field">
                     <label for="email" class="label">E-mail</label>
-                    <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        class="input"
-                        value="{{ last_username|default('') }}"
-                        autocomplete="email"
-                        autofocus
-                        required
-                    >
+                    <input type="email" id="email" name="email" class="input" value="{{ last_username|default('') }}" autocomplete="email" autofocus required>
                 </div>
 
                 <div class="field">
                     <label for="password" class="label">Senha</label>
-                    <input
-                        type="password"
-                        id="password"
-                        name="password"
-                        class="input"
-                        autocomplete="current-password"
-                        required
-                    >
+                    <input type="password" id="password" name="password" class="input" autocomplete="current-password" required>
                 </div>
 
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
 
-                <button class="submit" type="submit">Entrar</button>
+                <button type="submit" class="submit">Entrar</button>
             </form>
 
-            <div class="login-meta">
+            <div class="meta">
                 <span>WazeBR Security</span>
                 <a href="{{ path('auth_forgot') }}">Esqueceu sua senha?</a>
             </div>
