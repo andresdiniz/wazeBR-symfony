@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Entity\User;
 use App\Repository\PartnerRepository;
 use App\Repository\WazeAlertRepository;
 use App\Repository\WazeTrafficJamRepository;
@@ -34,22 +35,31 @@ class DashboardController extends AbstractController
     #[Route('/', name: 'dashboard_index')]
     public function index(): Response
     {
-        $partner = $this->partnerRepo->findOneBy(['isActive' => true]);
-        if (!$partner) {
-            $partner = $this->partnerRepo->find(1);
-        }
-        
-        if (!$partner) {
+        /** @var User $user */
+        $user = $this->getUser();
+        $partnerId = $user->getPartnerId();
+
+        if (!$partnerId) {
             return new Response(
                 '<div style="font-family: sans-serif; padding: 40px; text-align: center;">'.
-                '<h1>Nenhum parceiro configurado</h1>'.
-                '<p>Crie um parceiro no banco de dados para visualizar o dashboard.</p>'.
+                '<h1>Usu\u00e1rio sem parceiro</h1>'.
+                '<p>Seu usu\u00e1rio n\u00e3o est\u00e1 vinculado a nenhum parceiro.</p>'.
                 '</div>',
                 200
             );
         }
 
-        // Evita acessar partner.name para não disparar lazy-load quebrado
+        $partner = $this->partnerRepo->find($partnerId);
+        if (!$partner) {
+            return new Response(
+                '<div style="font-family: sans-serif; padding: 40px; text-align: center;">'.
+                '<h1>Parceiro n\u00e3o encontrado</h1>'.
+                '<p>O parceiro com ID ' . $partnerId . ' n\u00e3o existe.</p>'.
+                '</div>',
+                200
+            );
+        }
+
         $partnerLabel = $partner->getName() ?? $partner->getSlug() ?? 'Parceiro #' . $partner->getId();
 
         $alerts = $this->alertRepo->findAll();
