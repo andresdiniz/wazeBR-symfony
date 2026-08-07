@@ -19,12 +19,13 @@ security:
                 max_attempts: 5
                 interval: 1 minute
             form_login:
-                authenticator: App\Security\LoginFormAuthenticator
                 login_path: auth_login
                 check_path: auth_login
                 default_target_path: dashboard_index
                 enable_csrf: true
                 csrf_parameter: _csrf_token
+                username_parameter: email
+                password_parameter: password
             logout:
                 path: auth_logout
                 target: auth_login
