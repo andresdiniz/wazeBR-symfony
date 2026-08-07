@@ -1,0 +1,129 @@
+{% extends 'base_guest.html.twig' %}
+
+{% block title %}Recuperar senha - WazeBR{% endblock %}
+
+{% block stylesheets %}
+    <style>
+        body.guest-shell {
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #755be9 0%, #8b63e0 45%, #5b9be9 100%);
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .forgot-shell {
+            width: 100%;
+            max-width: 480px;
+            padding: 24px;
+        }
+
+        .forgot-card {
+            background: rgba(14, 13, 24, 0.90);
+            border-radius: 18px;
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 24px 64px rgba(0,0,0,0.55);
+            padding: 22px 24px 20px;
+            color: #f7f1e8;
+        }
+
+        .forgot-title {
+            margin: 0 0 6px;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .forgot-text {
+            margin: 8px 0 18px;
+            font-size: 13px;
+            color: rgba(244,239,232,0.76);
+        }
+
+        .field {
+            margin-bottom: 12px;
+        }
+
+        .label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 12px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: rgba(244,239,232,0.80);
+        }
+
+        .input {
+            width: 100%;
+            height: 44px;
+            padding: 0 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.10);
+            background: rgba(7,7,12,0.96);
+            color: #f7f1e8;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .input::placeholder { color: rgba(244,239,232,0.42); }
+
+        .input:focus {
+            border-color: rgba(127,216,230,0.90);
+            box-shadow: 0 0 0 2px rgba(127,216,230,0.22);
+        }
+
+        .submit {
+            margin-top: 10px;
+            width: 100%;
+            height: 44px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, #7fd8e6 0%, #59b4c7 100%);
+            color: #041014;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+
+        .submit:hover {
+            filter: brightness(1.03);
+        }
+
+        .footer {
+            margin-top: 14px;
+            font-size: 11px;
+            color: rgba(244,239,232,0.64);
+            text-align: center;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+<div class="forgot-shell">
+    <div class="forgot-card">
+        <h1 class="forgot-title">Recuperar senha</h1>
+        <p class="forgot-text">Informe seu e-mail cadastrado. Se existir uma conta correspondente, enviaremos instruções para redefinir sua senha.</p>
+
+        {% if sent is defined and sent %}
+            <p class="forgot-text">Se o e-mail existir na base, um link de recuperação foi enviado. Verifique sua caixa de entrada.</p>
+        {% endif %}
+
+        <form method="post" action="{{ path('auth_forgot') }}" novalidate>
+            <div class="field">
+                <label for="email" class="label">E-mail</label>
+                <input type="email" id="email" name="email" class="input" required autocomplete="email" placeholder="seu@email.com">
+            </div>
+
+            <button type="submit" class="submit">Enviar link</button>
+        </form>
+
+        <div class="footer">
+            <a href="{{ path('auth_login') }}">Voltar ao login</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
