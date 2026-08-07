@@ -1,134 +1,28 @@
-{% extends 'base.html.twig' %}
-
-{% block title %}WazePortalBR | Inteligência para mobilidade urbana{% endblock %}
-
-{% block stylesheets %}
-    {{ parent() }}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>WazeBR Monitor | Inteligência para mobilidade urbana</title>
+    <meta name="description" content="Monitore trânsito, alertas, rotas e ocorrências em uma plataforma completa para mobilidade urbana.">
     <style>
-        :root {
-            --wp-ink: #101828;
-            --wp-muted: #667085;
-            --wp-primary: #2563eb;
-            --wp-primary-dark: #1d4ed8;
-            --wp-surface: #ffffff;
-            --wp-soft: #eff6ff;
-            --wp-border: #e4e7ec;
-            --wp-radius: 24px;
-        }
-
-        .wp-home { overflow: hidden; color: var(--wp-ink); background: #f8fafc; }
-        .wp-home * { box-sizing: border-box; }
-        .wp-container { width: min(1120px, calc(100% - 32px)); margin-inline: auto; }
-        .wp-nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; }
-        .wp-brand { display: inline-flex; align-items: center; gap: 10px; color: inherit; font-size: 1rem; font-weight: 800; letter-spacing: -.02em; text-decoration: none; }
-        .wp-brand-mark { display: grid; width: 38px; height: 38px; place-items: center; color: #fff; background: linear-gradient(135deg, #2563eb, #06b6d4); border-radius: 12px; box-shadow: 0 10px 22px rgba(37, 99, 235, .24); }
-        .wp-nav-actions { display: flex; align-items: center; gap: 10px; }
-        .wp-btn { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 8px; padding: 0 17px; border: 1px solid transparent; border-radius: 12px; font: inherit; font-size: .92rem; font-weight: 700; text-decoration: none; cursor: pointer; transition: transform .2s ease, box-shadow .2s ease, background .2s ease; }
-        .wp-btn:hover { transform: translateY(-2px); }
-        .wp-btn-primary { color: #fff; background: var(--wp-primary); box-shadow: 0 10px 20px rgba(37, 99, 235, .2); }
-        .wp-btn-primary:hover { background: var(--wp-primary-dark); box-shadow: 0 14px 26px rgba(37, 99, 235, .28); }
-        .wp-btn-ghost { color: var(--wp-ink); border-color: var(--wp-border); background: rgba(255,255,255,.75); }
-        .wp-hero { position: relative; padding: 42px 0 70px; }
-        .wp-hero-grid { display: grid; gap: 34px; align-items: center; }
-        .wp-eyebrow { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 18px; color: var(--wp-primary); font-size: .76rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
-        .wp-eyebrow::before { width: 28px; height: 2px; background: #06b6d4; content: ''; }
-        .wp-title { max-width: 680px; margin: 0; font-size: clamp(2.35rem, 10vw, 5.2rem); line-height: .98; letter-spacing: -.07em; }
-        .wp-title span { color: var(--wp-primary); }
-        .wp-lead { max-width: 590px; margin: 22px 0 28px; color: var(--wp-muted); font-size: 1.05rem; line-height: 1.7; }
-        .wp-hero-actions { display: flex; flex-wrap: wrap; gap: 10px; }
-        .wp-trust { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 24px; color: var(--wp-muted); font-size: .82rem; }
-        .wp-trust span { display: inline-flex; align-items: center; gap: 6px; }
-        .wp-trust i { color: #16a34a; font-style: normal; }
-        .wp-visual { position: relative; min-height: 300px; padding: 20px; background: radial-gradient(circle at 20% 10%, rgba(56,189,248,.35), transparent 34%), linear-gradient(145deg, #0f172a, #172554); border-radius: 30px; box-shadow: 0 26px 70px rgba(15,23,42,.18); transform: rotate(1deg); }
-        .wp-visual::after { position: absolute; inset: 12% -10% auto auto; width: 150px; height: 150px; border: 1px solid rgba(255,255,255,.12); border-radius: 50%; content: ''; }
-        .wp-map { position: relative; display: grid; min-height: 260px; place-items: center; overflow: hidden; border: 1px solid rgba(255,255,255,.12); border-radius: 20px; background: linear-gradient(135deg, rgba(30,64,175,.8), rgba(8,47,73,.9)); }
-        .wp-map::before, .wp-map::after { position: absolute; width: 150%; height: 2px; background: rgba(255,255,255,.13); content: ''; transform: rotate(-25deg); }
-        .wp-map::after { transform: rotate(28deg); }
-        .wp-pin { z-index: 1; display: grid; width: 68px; height: 68px; place-items: center; color: #fff; background: linear-gradient(135deg, #06b6d4, #2563eb); border: 7px solid rgba(255,255,255,.25); border-radius: 50% 50% 50% 8px; box-shadow: 0 0 0 14px rgba(34,211,238,.12), 0 12px 28px rgba(0,0,0,.26); transform: rotate(-45deg); animation: wp-float 3.4s ease-in-out infinite; }
-        .wp-pin svg { transform: rotate(45deg); }
-        .wp-badge { position: absolute; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 11px 13px; color: #fff; border: 1px solid rgba(255,255,255,.14); border-radius: 14px; background: rgba(15,23,42,.78); backdrop-filter: blur(10px); font-size: .78rem; font-weight: 700; animation: wp-float 4s ease-in-out infinite reverse; }
-        .wp-badge strong { display: block; font-size: 1rem; }
-        .wp-badge-one { top: 18px; left: 18px; }
-        .wp-badge-two { right: 18px; bottom: 18px; }
-        .wp-section { padding: 76px 0; }
-        .wp-section-heading { max-width: 650px; margin-bottom: 28px; }
-        .wp-kicker { margin: 0 0 10px; color: var(--wp-primary); font-size: .78rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
-        .wp-heading { margin: 0; font-size: clamp(1.8rem, 5vw, 3rem); letter-spacing: -.05em; }
-        .wp-subheading { margin: 12px 0 0; color: var(--wp-muted); line-height: 1.65; }
-        .wp-cards { display: grid; gap: 14px; }
-        .wp-card { padding: 24px; border: 1px solid var(--wp-border); border-radius: var(--wp-radius); background: var(--wp-surface); box-shadow: 0 8px 30px rgba(16,24,40,.04); transition: transform .25s ease, box-shadow .25s ease; }
-        .wp-card:hover { transform: translateY(-5px); box-shadow: 0 18px 40px rgba(16,24,40,.1); }
-        .wp-icon { display: grid; width: 46px; height: 46px; margin-bottom: 20px; place-items: center; color: var(--wp-primary); background: var(--wp-soft); border-radius: 14px; }
-        .wp-card h3 { margin: 0 0 8px; font-size: 1.05rem; }
-        .wp-card p { margin: 0; color: var(--wp-muted); font-size: .92rem; line-height: 1.65; }
-        .wp-cta { display: grid; gap: 22px; align-items: center; padding: 28px; color: #fff; border-radius: var(--wp-radius); background: linear-gradient(115deg, #1d4ed8, #0891b2); box-shadow: 0 20px 45px rgba(29,78,216,.2); }
-        .wp-cta h2 { margin: 0; font-size: clamp(1.55rem, 5vw, 2.4rem); letter-spacing: -.04em; }
-        .wp-cta p { margin: 8px 0 0; color: rgba(255,255,255,.8); line-height: 1.55; }
-        .wp-cta .wp-btn { color: var(--wp-primary-dark); background: #fff; }
-        .wp-footer { padding: 28px 0; color: var(--wp-muted); border-top: 1px solid var(--wp-border); font-size: .82rem; }
-        .wp-reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s ease; }
-        .wp-reveal.is-visible { opacity: 1; transform: none; }
-        @keyframes wp-float { 0%,100% { transform: translateY(0) rotate(-45deg); } 50% { transform: translateY(-10px) rotate(-45deg); } }
-        @media (min-width: 700px) { .wp-container { width: min(1120px, calc(100% - 64px)); } .wp-hero { padding: 76px 0 100px; } .wp-hero-grid { grid-template-columns: 1.05fr .95fr; } .wp-cards { grid-template-columns: repeat(3, 1fr); } .wp-cta { grid-template-columns: 1fr auto; padding: 38px 42px; } }
-        @media (max-width: 480px) { .wp-nav-actions .wp-btn-ghost { display: none; } .wp-title { font-size: 2.7rem; } .wp-visual { min-height: 270px; } }
-        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } .wp-reveal { opacity: 1; transform: none; } }
+        :root{--ink:#102033;--muted:#607084;--brand:#159bb2;--brand-dark:#08768b;--accent:#8bd34f;--bg:#f7fbfc;--card:#fff;--line:#dfecef;--radius:24px}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--ink);background:var(--bg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.landing{overflow:hidden}.container{width:min(1160px,calc(100% - 32px));margin:auto}.topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 0}.brand{display:flex;align-items:center;gap:10px;color:var(--ink);font-weight:850;letter-spacing:-.04em;text-decoration:none}.brand-mark{display:grid;width:40px;height:40px;place-items:center;color:#fff;background:linear-gradient(145deg,var(--brand),#50c0cb);border-radius:13px;box-shadow:0 9px 22px #159bb240;font-size:1.35rem}.brand small{display:block;margin-top:2px;color:var(--brand);font-size:.65rem;letter-spacing:.12em;text-transform:uppercase}.nav-actions{display:flex;gap:10px;align-items:center}.btn{display:inline-flex;min-height:46px;align-items:center;justify-content:center;gap:8px;padding:0 18px;border:1px solid transparent;border-radius:13px;font:inherit;font-size:.9rem;font-weight:750;text-decoration:none;transition:.22s ease}.btn:hover{transform:translateY(-2px)}.btn-primary{color:#fff;background:var(--brand);box-shadow:0 12px 24px #159bb233}.btn-primary:hover{background:var(--brand-dark)}.btn-light{color:var(--ink);border-color:var(--line);background:#ffffffb8}.hero{padding:48px 0 80px}.hero-grid{display:grid;gap:38px;align-items:center}.eyebrow{display:inline-flex;align-items:center;gap:8px;margin:0 0 18px;color:var(--brand);font-size:.75rem;font-weight:850;letter-spacing:.13em;text-transform:uppercase}.eyebrow:before{width:26px;height:2px;background:var(--accent);content:""}.hero h1{max-width:700px;margin:0;font-size:clamp(2.6rem,11vw,5.8rem);line-height:.95;letter-spacing:-.075em}.hero h1 em{color:var(--brand);font-style:normal}.hero p{max-width:600px;margin:22px 0 28px;color:var(--muted);font-size:1.05rem;line-height:1.7}.hero-actions{display:flex;flex-wrap:wrap;gap:10px}.proof{display:flex;flex-wrap:wrap;gap:18px;margin-top:24px;color:var(--muted);font-size:.82rem}.proof span{display:flex;align-items:center;gap:6px}.proof b{color:#42a83f}.preview{position:relative;padding:18px;border-radius:30px;background:linear-gradient(145deg,#102c3c,#075e73);box-shadow:0 28px 70px #0b526333;transform:rotate(1deg)}.preview-window{min-height:335px;padding:16px;border:1px solid #ffffff2e;border-radius:20px;background:#082331}.window-bar{display:flex;gap:6px;margin-bottom:20px}.window-bar i{width:8px;height:8px;border-radius:50%;background:#ef8354}.window-bar i:nth-child(2){background:#f6c453}.window-bar i:nth-child(3){background:#72c85a}.map{position:relative;display:grid;min-height:250px;place-items:center;overflow:hidden;border-radius:14px;background:linear-gradient(135deg,#14546c,#093144)}.map:before,.map:after{position:absolute;width:160%;height:2px;background:#ffffff20;content:"";transform:rotate(25deg)}.map:after{transform:rotate(-28deg)}.pin{z-index:1;display:grid;width:58px;height:58px;place-items:center;color:#fff;background:linear-gradient(145deg,#55ccd3,var(--brand));border:6px solid #ffffff42;border-radius:50% 50% 50% 8px;box-shadow:0 0 0 14px #45d4d21f;transform:rotate(-45deg);animation:float 3.3s ease-in-out infinite}.pin span{transform:rotate(45deg);font-size:1.3rem}.floating{position:absolute;z-index:2;padding:11px 13px;color:#fff;border:1px solid #ffffff26;border-radius:14px;background:#09202dcc;backdrop-filter:blur(10px);font-size:.72rem}.floating strong{display:block;font-size:1rem}.f-one{top:26px;left:4px}.f-two{right:4px;bottom:26px}@keyframes float{50%{transform:translateY(-9px) rotate(-45deg)}}section{padding:76px 0}.section-head{max-width:650px;margin-bottom:28px}.kicker{margin:0 0 10px;color:var(--brand);font-size:.75rem;font-weight:850;letter-spacing:.13em;text-transform:uppercase}.section-head h2{margin:0;font-size:clamp(1.9rem,6vw,3.25rem);line-height:1;letter-spacing:-.06em}.section-head p{margin:13px 0 0;color:var(--muted);line-height:1.65}.cards{display:grid;gap:14px}.card{padding:25px;border:1px solid var(--line);border-radius:var(--radius);background:var(--card);box-shadow:0 10px 30px #10203308;transition:.24s ease}.card:hover{transform:translateY(-5px);box-shadow:0 18px 38px #10203316}.icon{display:grid;width:48px;height:48px;margin-bottom:20px;place-items:center;color:var(--brand);background:#e8f7f8;border-radius:15px;font-size:1.3rem}.card h3{margin:0 0 8px;font-size:1.08rem}.card p{margin:0;color:var(--muted);font-size:.92rem;line-height:1.65}.band{color:#fff;background:#102d3d}.band .section-head p{color:#b6ced6}.stats{display:grid;gap:14px}.stat{padding:22px;border:1px solid #ffffff20;border-radius:18px;background:#ffffff0b}.stat strong{display:block;color:var(--accent);font-size:2rem;letter-spacing:-.05em}.stat span{color:#c3d8dd;font-size:.86rem}.cta{display:grid;gap:22px;align-items:center;padding:30px;color:#fff;border-radius:var(--radius);background:linear-gradient(115deg,var(--brand-dark),#14718e);box-shadow:0 22px 46px #08768b33}.cta h2{margin:0;font-size:clamp(1.7rem,6vw,2.8rem);letter-spacing:-.05em}.cta p{margin:9px 0 0;color:#d1eef1;line-height:1.55}.cta .btn{color:var(--brand-dark);background:#fff}.footer{padding:28px 0;color:var(--muted);border-top:1px solid var(--line);font-size:.8rem}.reveal{opacity:0;transform:translateY(18px);transition:opacity .7s ease,transform .7s ease}.reveal.visible{opacity:1;transform:none}@media(min-width:720px){.container{width:min(1160px,calc(100% - 64px))}.hero{padding:90px 0 110px}.hero-grid{grid-template-columns:1.08fr .92fr}.cards{grid-template-columns:repeat(3,1fr)}.stats{grid-template-columns:repeat(3,1fr)}.cta{grid-template-columns:1fr auto;padding:40px 44px}}@media(max-width:480px){.nav-actions .btn-light{display:none}.hero h1{font-size:3rem}.preview-window{min-height:290px}.map{min-height:210px}}@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation:none!important;transition:none!important}.reveal{opacity:1;transform:none}}
     </style>
-{% endblock %}
-
-{% block body %}
-<div class="wp-home">
-    <header class="wp-container wp-nav">
-        <a class="wp-brand" href="{{ path('app_home')|default('/') }}" aria-label="WazePortalBR início">
-            <span class="wp-brand-mark" aria-hidden="true">⌁</span>
-            <span>WazePortalBR</span>
-        </a>
-        <nav class="wp-nav-actions" aria-label="Navegação principal">
-            <a class="wp-btn wp-btn-ghost" href="#recursos">Recursos</a>
-            <a class="wp-btn wp-btn-primary" href="/login">Entrar <span aria-hidden="true">→</span></a>
-        </nav>
+</head>
+<body>
+<div class="landing">
+    <header class="container topbar">
+        <a class="brand" href="/" aria-label="WazeBR Monitor início"><span class="brand-mark" aria-hidden="true">⌁</span><span>WazeBR<small>Monitor</small></span></a>
+        <nav class="nav-actions" aria-label="Navegação pública"><a class="btn btn-light" href="#recursos">Recursos</a><a class="btn btn-primary" href="/login">Entrar <span aria-hidden="true">→</span></a></nav>
     </header>
-
     <main>
-        <section class="wp-container wp-hero">
-            <div class="wp-hero-grid">
-                <div class="wp-reveal">
-                    <p class="wp-eyebrow">Mobilidade orientada por dados</p>
-                    <h1 class="wp-title">Mais clareza para cada <span>trajeto.</span></h1>
-                    <p class="wp-lead">Monitore ocorrências, rotas e condições de trânsito em uma plataforma feita para transformar dados do Waze em decisões mais rápidas.</p>
-                    <div class="wp-hero-actions">
-                        <a class="wp-btn wp-btn-primary" href="/login">Acessar painel <span aria-hidden="true">→</span></a>
-                        <a class="wp-btn wp-btn-ghost" href="#recursos">Conhecer recursos</a>
-                    </div>
-                    <div class="wp-trust" aria-label="Benefícios">
-                        <span><i aria-hidden="true">✓</i> Dados centralizados</span>
-                        <span><i aria-hidden="true">✓</i> Visão em tempo real</span>
-                    </div>
-                </div>
-                <div class="wp-visual wp-reveal" aria-label="Ilustração de mapa e monitoramento">
-                    <div class="wp-badge wp-badge-one"><span aria-hidden="true">●</span><span><strong>Ao vivo</strong>Monitoramento ativo</span></div>
-                    <div class="wp-map"><div class="wp-pin" aria-hidden="true"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg></div></div>
-                    <div class="wp-badge wp-badge-two"><span aria-hidden="true">↗</span><span><strong>+24%</strong>visibilidade</span></div>
-                </div>
-            </div>
-        </section>
-
-        <section id="recursos" class="wp-container wp-section">
-            <div class="wp-section-heading wp-reveal"><p class="wp-kicker">Uma visão mais inteligente</p><h2 class="wp-heading">Tudo o que você precisa em um só lugar.</h2><p class="wp-subheading">Acompanhe os principais dados de mobilidade com uma experiência simples, rápida e preparada para qualquer tela.</p></div>
-            <div class="wp-cards">
-                <article class="wp-card wp-reveal"><div class="wp-icon" aria-hidden="true">⌖</div><h3>Rotas monitoradas</h3><p>Visualize os corredores e pontos mais importantes para sua operação.</p></article>
-                <article class="wp-card wp-reveal"><div class="wp-icon" aria-hidden="true">◈</div><h3>Ocorrências organizadas</h3><p>Encontre alertas e eventos com filtros que ajudam na resposta rápida.</p></article>
-                <article class="wp-card wp-reveal"><div class="wp-icon" aria-hidden="true">↗</div><h3>Dados para decidir</h3><p>Transforme informações de trânsito em uma visão prática do cenário.</p></article>
-            </div>
-        </section>
-
-        <section class="wp-container wp-section">
-            <div class="wp-cta wp-reveal"><div><h2>Pronto para enxergar a mobilidade de outro jeito?</h2><p>Entre no painel e tenha uma visão mais clara das suas rotas.</p></div><a class="wp-btn" href="/login">Entrar no painel <span aria-hidden="true">→</span></a></div>
-        </section>
+        <section class="container hero"><div class="hero-grid"><div class="reveal"><p class="eyebrow">Plataforma para mobilidade urbana</p><h1>Transforme dados de trânsito em <em>decisões melhores.</em></h1><p>Tenha uma visão completa de alertas, congestionamentos, rotas e condições das vias em um único ambiente, criado para equipes que precisam agir rápido.</p><div class="hero-actions"><a class="btn btn-primary" href="/login">Conhecer o painel <span aria-hidden="true">→</span></a><a class="btn btn-light" href="#recursos">Ver recursos</a></div><div class="proof"><span><b>✓</b> Visão centralizada</span><span><b>✓</b> Operação mais ágil</span></div></div><div class="preview reveal" aria-label="Prévia do monitoramento de mobilidade"><div class="floating f-one"><strong>Ao vivo</strong>Monitoramento ativo</div><div class="preview-window"><div class="window-bar"><i></i><i></i><i></i></div><div class="map"><div class="pin"><span aria-hidden="true">⌖</span></div></div></div><div class="floating f-two"><strong>+24%</strong>visibilidade operacional</div></div></div></section>
+        <section id="recursos" class="container"><div class="section-head reveal"><p class="kicker">Recursos para sua operação</p><h2>Uma visão clara do que está acontecendo.</h2><p>Informação organizada para reduzir o tempo entre identificar um problema e tomar uma decisão.</p></div><div class="cards"><article class="card reveal"><div class="icon" aria-hidden="true">⌖</div><h3>Monitoramento em tempo real</h3><p>Acompanhe as condições das vias e os pontos críticos com uma visão atualizada.</p></article><article class="card reveal"><div class="icon" aria-hidden="true">◇</div><h3>Alertas e ocorrências</h3><p>Centralize eventos importantes e encontre rapidamente o que exige atenção.</p></article><article class="card reveal"><div class="icon" aria-hidden="true">↗</div><h3>Rotas e indicadores</h3><p>Compare cenários e use dados para planejar ações com mais segurança.</p></article></div></section>
+        <section class="band"><div class="container"><div class="section-head reveal"><p class="kicker">Mais controle, menos ruído</p><h2>Feito para quem precisa enxergar o cenário inteiro.</h2><p>Uma experiência simples para transformar dados dispersos em informação útil para sua equipe.</p></div><div class="stats"><div class="stat reveal"><strong>01</strong><span>Ambiente centralizado</span></div><div class="stat reveal"><strong>24h</strong><span>Informação disponível</span></div><div class="stat reveal"><strong>∞</strong><span>Possibilidades de análise</span></div></div></div></section>
+        <section class="container"><div class="cta reveal"><div><h2>Quer tomar decisões com mais confiança?</h2><p>Acesse o WazeBR Monitor e descubra uma nova forma de acompanhar a mobilidade.</p></div><a class="btn" href="/login">Acessar agora <span aria-hidden="true">→</span></a></div></section>
     </main>
-
-    <footer class="wp-container wp-footer">© {{ 'now'|date('Y') }} WazePortalBR. Dados para uma mobilidade mais inteligente.</footer>
+    <footer class="container footer">© {{ 'now'|date('Y') }} WazeBR Monitor. Inteligência para uma mobilidade mais eficiente.</footer>
 </div>
-<script>
-    (() => { const items = document.querySelectorAll('.wp-reveal'); if (!('IntersectionObserver' in window)) { items.forEach(item => item.classList.add('is-visible')); return; } const observer = new IntersectionObserver(entries => entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('is-visible'); observer.unobserve(entry.target); } }), { threshold: .12 }); items.forEach(item => observer.observe(item)); })();
-</script>
-{% endblock %}
+<script>(()=>{const els=document.querySelectorAll('.reveal');if(!('IntersectionObserver' in window)){els.forEach(e=>e.classList.add('visible'));return}const o=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');o.unobserve(e.target)}}),{threshold:.12});els.forEach(e=>o.observe(e))})()</script>
+</body>
+</html>
