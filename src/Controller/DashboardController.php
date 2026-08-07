@@ -10,7 +10,6 @@ use App\Repository\CityRepository;
 use App\Repository\IrregularityRepository;
 use App\Repository\JamRepository;
 use App\Repository\LinkRepository;
-use App\Repository\TenantContext;
 use App\Repository\TvtRouteRepository;
 use App\Repository\WazeCountRepository;
 use App\Repository\AlertTypeRepository;
@@ -22,7 +21,6 @@ use Symfony\Component\Routing\Attribute\Route;
 class DashboardController extends AbstractController
 {
     public function __construct(
-        private readonly TenantContext $tenantContext,
         private readonly AlertRepository $alertRepo,
         private readonly JamRepository $jamRepo,
         private readonly CemadenDataRepository $cemadenRepo,
@@ -43,7 +41,9 @@ class DashboardController extends AbstractController
             return $this->redirectToRoute('admin_partner_index');
         }
 
-        $partner = $this->tenantContext->requirePartner();
+        /** @var \App\Entity\User $user */
+        $user = $this->getUser();
+        $partner = $user->getPartner();
 
         // ── Contagens base ────────────────────────────────────────────────────
         $alertCount = $this->alertRepo->countByPartner($partner);
@@ -121,18 +121,14 @@ class DashboardController extends AbstractController
         $jamLevelBreakdown = $this->jamRepo->levelBreakdownByPartner($partner);
         $alertsPerHour = $this->alertRepo->countPerHourLast24h($partner);
         $jamsPerHour = $this->jamRepo->countPerHourLast24h($partner);
-        $locale = $request->getLocale() ?: 'pt';
 
         // ── Detector de anomalia: spike de alertas na ú•tima hora ─────────────
-        // Compara alertas da ú•tima 1h com a má—dia das 6 horas anteriores.
-        // Se > 2x a má—dia, sinaliza atividade anormal.
         $alertsLast6h = $this->alertRepo->countLastHoursByPartner($partner, 6);
         $avg6hPerHour = $alertsLast6h > 0 ? round($alertsLast6h / 6, 1) : 0;
         $anomalyDetected = $avg6hPerHour > 0 && $alertsLast1h > ($avg6hPerHour * 2);
         $anomalyRatio = $avg6hPerHour > 0 ? round($alertsLast1h / $avg6hPerHour, 1) : 0;
 
         $kpis = [
-            // base
             'alerts' => $alertCount,
             'jams' => $jamCount,
             'cemaden' => $cemadenCount,
@@ -140,46 +136,35 @@ class DashboardController extends AbstractController
             'links' => $linkCount,
             'routes' => $routeCount,
             'irregularities' => $irregCount,
-            // alertas temporais
             'alerts1h' => $alertsLast1h,
             'alerts24h' => $alertsLast24h,
             'alerts7d' => $alertsLast7d,
-            // jams temporais
             'jams24h' => $jamsLast24h,
             'jams7d' => $jamsLast7d,
             'avgSpeed' => $avgJamSpeed,
             'avgDelay' => $avgJamDelay,
             'totalLength' => $totalJamLength,
-            // jams ao vivo (Ú£ltimas 3h)
             'liveJams' => count($liveJams),
             'maxJamLevel' => $maxJamLevel,
             'liveAvgSpeed' => $liveStats['avgSpeed'],
             'liveAvgDelay' => $liveStats['avgDelay'],
             'liveTotalLen' => $liveStats['totalLength'],
             'worstJam' => $worstJam,
-            // CEMADEN chuva
             'rainLastHour' => $rainLastHour,
-            // hidrologia
             'hydro' => $hydroKpis,
-            // TVT
             'tvtAvgSpeed' => $tvtAvgSpeed,
             'tvtAvgTravelTime' => $tvtAvgTravelTime,
-            // WazeCount
             'wazeCount' => $wazeCount,
             'wazeCountLastWeek' => $wazeCountLastWeek,
             'wazeCountPeak' => $wazeCountPeak,
-            // Qualidade de alertas
             'alertLinkedToJamPct' => $alertLinkedToJamPct,
             'alertOnHighwayPct' => $alertOnHighwayPct,
-            // CIFS
             'cifsActiveCount' => $cifsActiveCount,
-            // Anomalia
             'anomalyDetected' => $anomalyDetected,
             'anomalyRatio' => $anomalyRatio,
             'avg6hPerHour' => $avg6hPerHour,
         ];
 
-        // DEBUG: dump dos KPIs antes de renderizar
         dump([
             'partner' => $partner,
             'kpis' => $kpis,
@@ -193,24 +178,20 @@ class DashboardController extends AbstractController
 
         return $this->render('dashboard/index.html.twig', [
             'partner' => $partner,
-            'typesMap' => $this->alertTypeRepo->getTypesMap($locale),
-            'subtypesMap' => $this->alertTypeRepo->getSubtypesMap($locale),
+            'typesMap' => $this->alertTypeRepo->getTypesMap('pt'),
+            'subtypesMap' => $this->alertTypeRepo->getSubtypesMap('pt'),
             'kpis' => $kpis,
-            // Qualidade
             'alertQualityByType' => $alertQualityByType,
             'topEngagedAlerts' => $topEngagedAlerts,
-            // Irregularidades
             'irregWorsening' => $irregWorsening,
             'irregSpeedLoss' => $irregSpeedLoss,
             'irregDelayByStreet' => $irregDelayByStreet,
             'irregSeverityCity' => $irregSeverityCity,
             'irregRecentList' => $irregRecentList,
-            // CIFS
             'cifsActive' => $cifsActive,
             'cifsUpcoming' => $cifsUpcoming,
             'cifsActiveByType' => $cifsActiveByType,
             'cifsTopStreets' => $cifsTopStreets,
-            // Distribuiçı¥es originais
             'alertsByType' => $alertsByType,
             'alertsBySubtype' => $alertsBySubtype,
             'alertsByCity' => $alertsByCity,
@@ -222,7 +203,6 @@ class DashboardController extends AbstractController
             'tvtJamLevelDist' => $tvtJamLevelDist,
             'alertsPerHour' => $alertsPerHour,
             'jamsPerHour' => $jamsPerHour,
-            // listas recentes
             'recentAlerts' => $this->alertRepo->findRecentByPartner($partner, 10),
             'recentJams' => $this->jamRepo->findRecentByPartner($partner, 5),
             'cemadenData' => $this->cemadenRepo->findByPartner($partner),
@@ -232,16 +212,12 @@ class DashboardController extends AbstractController
         ]);
     }
 
-    /**
-     * Endpoint JSON para polling de dados ao vivo (alertas 1h, jams ativos, chuva, anomalia).
-     * Pode ser consumido a cada 60s via fetch() no frontend sem recarregar a pá—gina.
-     *
-     * GET /dashboard/api/live
-     */
     #[Route('/api/live', name: 'api_live', methods: ['GET'])]
     public function apiLive(): JsonResponse
     {
-        $partner = $this->tenantContext->requirePartner();
+        /** @var \App\Entity\User $user */
+        $user = $this->getUser();
+        $partner = $user->getPartner();
 
         $alertsLast1h = $this->alertRepo->countLastHoursByPartner($partner, 1);
         $alertsLast6h = $this->alertRepo->countLastHoursByPartner($partner, 6);
@@ -277,7 +253,9 @@ class DashboardController extends AbstractController
             return $this->redirectToRoute('admin_partner_index');
         }
 
-        $partner = $this->tenantContext->requirePartner();
+        /** @var \App\Entity\User $user */
+        $user = $this->getUser();
+        $partner = $user->getPartner();
 
         return $this->render('dashboard/map.html.twig', [
             'partner' => $partner,
