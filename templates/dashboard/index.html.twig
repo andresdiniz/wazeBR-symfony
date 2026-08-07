@@ -478,6 +478,7 @@
         });
 
         // Jams: polilines com todas as coordenadas, cores por nivel
+        // Formato do line: [{x: lon, y: lat}, {x: lon, y: lat}, ...]
         recentJams.forEach((j, idx) => {
             console.log(`Jam ${idx}:`, j);
             if (!j.line || !Array.isArray(j.line) || j.line.length === 0) {
@@ -485,8 +486,8 @@
                 return;
             }
 
-            // j.line eh [[lon,lat], [lon,lat], ...]
-            const coords = j.line.map(p => [p[1], p[0]]);
+            // Converter [{x:lon, y:lat}, ...] para [[lat,lon], ...]
+            const coords = j.line.map(p => [p.y, p.x]);
             const color = jamLevelColors[j.level] ?? '#ef4444';
 
             console.log(`Jam ${idx} coords:`, coords);
