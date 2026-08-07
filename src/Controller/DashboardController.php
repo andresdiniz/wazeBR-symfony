@@ -108,12 +108,6 @@ class DashboardController extends AbstractController
             ->getQuery()
             ->getSingleScalarResult();
 
-        // Alert types (somente tipos, sem hidratar tudo)
-        $alertTypes = $this->alertTypeRepo->createQueryBuilder('t')
-            ->select('t.id, t.type')
-            ->getQuery()
-            ->getArrayResult();
-
         // KPIs basicos
         $kpis = [
             'alerts' => (int)($alertsStats['total'] ?? 0),
@@ -168,23 +162,26 @@ class DashboardController extends AbstractController
             'avg6hPerHour' => 0.0,
         ];
 
-        // Alerts por tipo (query otimizadas)
-        $alertsByType = [];
-        foreach ($alertTypes as $type) {
-            $alertsByType[] = [
-                'type' => $type['type'],
-                'total' => 0,
-            ];
-        }
+        // Alerts por tipo (tipos unicos, sem duplicatas)
+        $alertsByType = [
+            ['type' => 'ACCIDENT', 'total' => 0],
+            ['type' => 'JAM', 'total' => 0],
+            ['type' => 'HAZARD', 'total' => 0],
+            ['type' => 'WEATHERHAZARD', 'total' => 0],
+            ['type' => 'ROAD_CLOSED', 'total' => 0],
+            ['type' => 'CONSTRUCTION', 'total' => 0],
+            ['type' => 'MISC', 'total' => 0],
+        ];
 
-        // Jams por nivel (query otimizadas)
-        $jamsByLevel = [];
-        for ($level = 0; $level <= 5; $level++) {
-            $jamsByLevel[] = [
-                'level' => $level,
-                'total' => 0,
-            ];
-        }
+        // Jams por nivel
+        $jamsByLevel = [
+            ['level' => 0, 'total' => 0],
+            ['level' => 1, 'total' => 0],
+            ['level' => 2, 'total' => 0],
+            ['level' => 3, 'total' => 0],
+            ['level' => 4, 'total' => 0],
+            ['level' => 5, 'total' => 0],
+        ];
 
         // Maps de label
         $typesMap = [
