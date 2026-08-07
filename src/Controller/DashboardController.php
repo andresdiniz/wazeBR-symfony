@@ -150,25 +150,46 @@ class DashboardController extends AbstractController
             'avg6hPerHour' => 0.0,
         ];
 
-        // Alerts por tipo (tipos fixos, ate termos agregacao real)
-        $alertsByType = [
-            ['type' => 'ACCIDENT', 'total' => 0],
-            ['type' => 'JAM', 'total' => 0],
-            ['type' => 'HAZARD', 'total' => 0],
-            ['type' => 'WEATHERHAZARD', 'total' => 0],
-            ['type' => 'ROAD_CLOSED', 'total' => 0],
-            ['type' => 'CONSTRUCTION', 'total' => 0],
-            ['type' => 'MISC', 'total' => 0],
-        ];
+        // Alerts por tipo (ultimas 24h)
+        $alertsByTypeRaw = $this->alertRepo->createQueryBuilder('a')
+            ->select('a.type, COUNT(a.id) as total')
+            ->where('a.pubMillis >= :lastDay')
+            ->setParameter('lastDay', $lastDay)
+            ->groupBy('a.type')
+            ->getQuery()
+            ->getArrayResult();
 
-        $jamsByLevel = [
-            ['level' => 0, 'total' => 0],
-            ['level' => 1, 'total' => 0],
-            ['level' => 2, 'total' => 0],
-            ['level' => 3, 'total' => 0],
-            ['level' => 4, 'total' => 0],
-            ['level' => 5, 'total' => 0],
-        ];
+        $alertsByType = [];
+        foreach ($alertsByTypeRaw as $row) {
+            $alertsByType[] = [
+                'type' => $row['type'],
+                'total' => (int)$row['total'],
+            ];
+        }
+
+        // Jams por nivel (ultimas 24h)
+        $jamsByLevelRaw = $this->jamRepo->createQueryBuilder('j')
+            ->select('j.level, COUNT(j.id) as total')
+            ->where('j.pubMillis >= :lastDay')
+            ->setParameter('lastDay', $lastDay)
+            ->groupBy('j.level')
+            ->orderBy('j.level', 'ASC')
+            ->getQuery()
+            ->getArrayResult();
+
+        $jamsByLevel = [];
+        for ($i = 0; $i <= 5; $i++) {
+            $jamsByLevel[] = [
+                'level' => $i,
+                'total' => 0,
+            ];
+        }
+        foreach ($jamsByLevelRaw as $row) {
+            $lvl = (int)$row['level'];
+            if ($lvl >= 0 && $lvl <= 5) {
+                $jamsByLevel[$lvl]['total'] = (int)$row['total'];
+            }
+        }
 
         $typesMap = [
             'ACCIDENT' => 'Acidente',
@@ -191,6 +212,42 @@ class DashboardController extends AbstractController
 
         $jamsPerHourLabels = array_column($jamsPerHourRaw, 'hour_label');
         $jamsPerHourData = array_map('intval', array_column($jamsPerHourRaw, 'total'));
+
+        // Recent alerts (ultimos 5)
+        $recentAlertsRaw = $this->alertRepo->createQueryBuilder('a')
+            ->select('a.id, a.type, a.city, a.street, a.pubMillis')
+            ->orderBy('a.pubMillis', 'DESC')
+            ->setMaxResults(5)
+            ->getQuery()
+            ->getArrayResult();
+
+        $recentAlerts = array_map(function ($r) {
+            return [
+                'id' => $r['id'],
+                'type' => $r['type'],
+                'city' => $r['city'],
+                'street' => $r['street'],
+                'pubMillis' => $r['pubMillis'],
+            ];
+        }, $recentAlertsRaw);
+
+        // Recent jams (ultimos 5)
+        $recentJamsRaw = $this->jamRepo->createQueryBuilder('j')
+            ->select('j.id, j.level, j.city, j.street, j.pubMillis')
+            ->orderBy('j.pubMillis', 'DESC')
+            ->setMaxResults(5)
+            ->getQuery()
+            ->getArrayResult();
+
+        $recentJams = array_map(function ($r) {
+            return [
+                'id' => $r['id'],
+                'level' => $r['level'],
+                'city' => $r['city'],
+                'street' => $r['street'],
+                'pubMillis' => $r['pubMillis'],
+            ];
+        }, $recentJamsRaw);
 
         return $this->render('dashboard/index.html.twig', [
             'partner' => $partner,
@@ -215,8 +272,8 @@ class DashboardController extends AbstractController
             'alertsPerHourData' => $alertsPerHourData,
             'jamsPerHourLabels' => $jamsPerHourLabels,
             'jamsPerHourData' => $jamsPerHourData,
-            'recentAlerts' => [],
-            'recentJams' => [],
+            'recentAlerts' => $recentAlerts,
+            'recentJams' => $recentJams,
             'cemadenData' => [],
             'routes' => $routes,
             'cities' => [],
