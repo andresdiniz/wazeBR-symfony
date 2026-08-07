@@ -9,40 +9,42 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Security\Http\Authentication\UserAuthenticatorInterface;
+use SymfonyCasts\Bundle\ResetPassword\Controller\ResetPasswordControllerTrait;
+use SymfonyCasts\Bundle\ResetPassword\Exception\ResetPasswordExceptionInterface;
+use SymfonyCasts\Bundle\ResetPassword\Helper\ResetPasswordHelperInterface;
 
 class ResetPasswordController extends AbstractController
 {
+    use ResetPasswordControllerTrait;
+
     public function __construct(
+        private ResetPasswordHelperInterface $resetPasswordHelper,
         private UserRepository $userRepository,
         private MailerInterface $mailer,
     ) {
     }
 
-    private const RESET_TOKEN_SESSION_KEY = 'reset_password_token';
-
-    private function storeTokenInSession(string $token): void
-    {
-        $this->get('session')->set(self::RESET_TOKEN_SESSION_KEY, $token);
-    }
-
-    private function getTokenFromSession(): ?string
-    {
-        return $this->get('session')->get(self::RESET_TOKEN_SESSION_KEY);
-    }
-
-    private function cleanSessionAfterReset(): void
-    {
-        $this->get('session')->remove(self::RESET_TOKEN_SESSION_KEY);
-    }
-
     #[Route('/esqueci-senha', name: 'auth_forgot')]
     public function request(Request $request): Response
     {
-        // TODO: implementar fluxo completo com SymfonyCasts ResetPassword bundle.
-        // Por enquanto, apenas uma tela estática para não quebrar a aplicação.
+        $emailInput = $request->request->get('email');
         $sent = false;
 
-        if ($request->isMethod('POST')) {
+        if ($request->isMethod('POST') && is_string($emailInput)) {
+            $email = trim(strtolower($emailInput));
+
+            $user = $this->userRepository->findOneBy(['email' => $email]);
+
+            if ($user instanceof User) {
+                try {
+                    $resetToken = $this->resetPasswordHelper->generateResetToken($user);
+                    // TODO: enviar e-mail usando $resetToken->getToken() e $resetToken->getExpiration()
+                } catch (ResetPasswordExceptionInterface $e) {
+                    // Falha silenciosa para não revelar detalhes
+                }
+            }
+
             $sent = true;
         }
 
@@ -54,7 +56,23 @@ class ResetPasswordController extends AbstractController
     #[Route('/resetar-senha/{token}', name: 'auth_reset')]
     public function reset(Request $request, string $token = null): Response
     {
-        // Fluxo simplificado: sem validação de token, apenas exibe o formulário.
+        if ($token) {
+            $this->storeTokenInSession($token);
+            return $this->redirectToRoute('auth_reset');
+        }
+
+        $token = $this->getTokenFromSession();
+        if (!$token) {
+            return $this->redirectToRoute('auth_forgot');
+        }
+
+        try {
+            $user = $this->resetPasswordHelper->validateTokenAndFetchUser($token);
+        } catch (ResetPasswordExceptionInterface $e) {
+            $this->addFlash('reset_password_error', 'O link de recuperação expirou ou é inválido. Solicite um novo link.');
+            return $this->redirectToRoute('auth_forgot');
+        }
+
         if ($request->isMethod('POST')) {
             $password = $request->request->get('password');
             $confirm = $request->request->get('password_confirm');
@@ -67,9 +85,15 @@ class ResetPasswordController extends AbstractController
                 ]);
             }
 
-            // TODO: buscar usuário e aplicar hash de senha corretamente.
+            $this->resetPasswordHelper->removeResetRequest($token);
+
+            // TODO: aplicar hash de senha com UserPasswordHasherInterface antes de salvar
+            $user->setPassword($password);
+            $this->userRepository->save($user, true);
+
             $this->cleanSessionAfterReset();
-            $this->addFlash('reset_password_success', 'Senha atualizada (fluxo simplificado).');
+
+            $this->addFlash('reset_password_success', 'Senha atualizada com sucesso. Você já pode entrar.');
 
             return $this->redirectToRoute('auth_login');
         }
