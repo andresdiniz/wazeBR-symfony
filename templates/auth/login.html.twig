@@ -8,21 +8,20 @@
             --bg-1: #755be9;
             --bg-2: #8b63e0;
             --bg-3: #5b9be9;
-            --glass: rgba(14, 13, 24, 0.82);
+            --glass: rgba(14, 13, 24, 0.86);
             --glass-border: rgba(255, 255, 255, 0.06);
             --glass-highlight: rgba(255, 255, 255, 0.12);
-            --text-main: #f4efe8;
-            --text-soft: rgba(244, 239, 232, 0.74);
+            --text-main: #f7f1e8;
+            --text-soft: rgba(244, 239, 232, 0.76);
             --accent: #7fd8e6;
             --accent-strong: #59b4c7;
             --danger-bg: rgba(188, 77, 77, 0.18);
             --danger-border: rgba(255, 146, 146, 0.22);
+            --input-bg: rgba(7, 7, 12, 0.96);
+            --input-border: rgba(255, 255, 255, 0.09);
         }
 
-        *, *::before, *::after {
-            box-sizing: border-box;
-        }
-
+        *, *::before, *::after { box-sizing: border-box; }
         html, body { height: 100%; }
 
         body.guest-shell {
@@ -50,24 +49,24 @@
             position: absolute;
             border-radius: 999px;
             filter: blur(40px);
-            opacity: 0.35;
+            opacity: 0.32;
             pointer-events: none;
         }
 
         .orb {
             width: 260px;
             height: 260px;
-            background: radial-gradient(circle, rgba(255,255,255,0.32), transparent 55%);
+            background: radial-gradient(circle, rgba(255,255,255,0.30), transparent 55%);
             top: 8%;
             left: 10%;
-            animation: float 28s infinite alternate ease-in-out;
+            animation: float 30s infinite alternate ease-in-out;
         }
 
         .orb::before {
             content: "";
             width: 220px;
             height: 220px;
-            background: radial-gradient(circle, rgba(127,216,230,0.40), transparent 60%);
+            background: radial-gradient(circle, rgba(127,216,230,0.38), transparent 60%);
             bottom: -16%;
             right: -18%;
         }
@@ -76,14 +75,14 @@
             content: "";
             width: 260px;
             height: 260px;
-            background: radial-gradient(circle, rgba(98,184,216,0.40), transparent 60%);
+            background: radial-gradient(circle, rgba(98,184,216,0.38), transparent 60%);
             top: 40%;
             left: 68%;
         }
 
         @keyframes float {
             0% { transform: translate3d(0, 0, 0) scale(1); }
-            100% { transform: translate3d(18px, 12px, 0) scale(1.03); }
+            100% { transform: translate3d(16px, 10px, 0) scale(1.03); }
         }
 
         .login-frame {
@@ -96,6 +95,12 @@
             position: relative;
             z-index: 1;
             justify-content: flex-end;
+            animation: card-enter 320ms ease-out;
+        }
+
+        @keyframes card-enter {
+            from { opacity: 0; transform: translate3d(0, 14px, 0); }
+            to { opacity: 1; transform: translate3d(0, 0, 0); }
         }
 
         .brand-column {
@@ -128,6 +133,12 @@
             color: #f6ffff;
             font-weight: 800;
             font-size: 18px;
+            animation: pulse 2200ms infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(127,216,230,0.45); }
+            50% { transform: scale(1.06); box-shadow: 0 0 0 8px rgba(127,216,230,0.0); }
         }
 
         .brand-main { display: flex; flex-direction: column; }
@@ -146,7 +157,7 @@
         .brand-heading {
             margin-top: 10px;
             max-width: 260px;
-            color: rgba(247,244,236,0.90);
+            color: rgba(247,244,236,0.92);
             font-size: 24px;
             font-weight: 700;
             letter-spacing: -0.03em;
@@ -219,6 +230,12 @@
         }
 
         .field { margin-bottom: 12px; }
+        .field-error .input { border-color: var(--danger-border); }
+        .field-error .error-message {
+            margin-top: 4px;
+            font-size: 11px;
+            color: #ffd6d6;
+        }
 
         .label {
             display: flex;
@@ -227,7 +244,7 @@
             font-size: 12px;
             letter-spacing: 0.08em;
             text-transform: uppercase;
-            color: rgba(244,239,232,0.76);
+            color: rgba(244,239,232,0.80);
         }
 
         .input-shell { position: relative; }
@@ -235,18 +252,59 @@
         .input {
             width: 100%;
             height: 44px;
-            padding: 0 14px;
+            padding: 0 44px 0 40px;
             border-radius: 12px;
-            border: 1px solid rgba(255,255,255,0.08);
-            background: rgba(7,7,12,0.90);
+            border: 1px solid var(--input-border);
+            background: var(--input-bg);
             color: var(--text-main);
             font-size: 14px;
             outline: none;
         }
 
+        .input::placeholder { color: rgba(244,239,232,0.38); }
+
         .input:focus {
-            border-color: rgba(127,216,230,0.85);
-            box-shadow: 0 0 0 2px rgba(127,216,230,0.20);
+            border-color: rgba(127,216,230,0.90);
+            box-shadow: 0 0 0 2px rgba(127,216,230,0.25);
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            pointer-events: none;
+        }
+
+        .input-icon svg {
+            width: 100%;
+            height: 100%;
+            stroke: rgba(244,239,232,0.66);
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 24px;
+            height: 24px;
+            border-radius: 999px;
+            border: none;
+            background: transparent;
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+            color: rgba(244,239,232,0.66);
+        }
+
+        .toggle-password:hover { color: var(--accent); }
+
+        .toggle-password svg {
+            width: 18px;
+            height: 18px;
         }
 
         .submit {
@@ -267,14 +325,35 @@
             transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
         }
 
-        .submit:hover {
-            transform: translateY(-1px);
-            filter: brightness(1.03);
-        }
+        .submit:hover { transform: translateY(-1px); filter: brightness(1.03); }
 
         .submit:active {
             transform: translateY(0);
             box-shadow: 0 10px 22px rgba(89,180,199,0.30);
+        }
+
+        .submit[data-loading="true"] {
+            opacity: 0.8;
+            cursor: wait;
+            position: relative;
+        }
+
+        .submit[data-loading="true"]::before {
+            content: "";
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            width: 16px;
+            height: 16px;
+            border-radius: 999px;
+            border: 2px solid rgba(4,16,20,0.4);
+            border-top-color: #041014;
+            transform: translateY(-50%);
+            animation: spin 600ms linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: translateY(-50%) rotate(360deg); }
         }
 
         .login-footer {
@@ -284,6 +363,28 @@
             align-items: center;
             font-size: 11px;
             color: rgba(244,239,232,0.64);
+        }
+
+        .login-footer-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .remember-shell {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .remember-shell input {
+            width: 13px;
+            height: 13px;
+        }
+
+        .remember-shell label {
+            font-size: 11px;
+            color: rgba(244,239,232,0.72);
         }
 
         .login-footer a {
@@ -354,10 +455,16 @@
                         </div>
                     {% endif %}
 
-                    <form method="post" action="{{ path('auth_login') }}" novalidate>
+                    <form method="post" action="{{ path('auth_login') }}" novalidate onsubmit="this.querySelector('.submit').dataset.loading = 'true';">
                         <div class="field">
                             <label for="email" class="label">E-mail</label>
                             <div class="input-shell">
+                                <span class="input-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6">
+                                        <path d="M4 6h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z" />
+                                        <path d="M22 8 12 13 2 8" />
+                                    </svg>
+                                </span>
                                 <input
                                     type="email"
                                     id="email"
@@ -374,6 +481,12 @@
                         <div class="field">
                             <label for="password" class="label">Senha</label>
                             <div class="input-shell">
+                                <span class="input-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6">
+                                        <rect x="6" y="11" width="12" height="9" rx="2" />
+                                        <path d="M9 11V8a3 3 0 0 1 6 0v3" />
+                                    </svg>
+                                </span>
                                 <input
                                     type="password"
                                     id="password"
@@ -382,18 +495,31 @@
                                     autocomplete="current-password"
                                     required
                                 >
+                                <button type="button" class="toggle-password" onclick="const input = document.getElementById('password'); const isText = input.type === 'text'; input.type = isText ? 'password' : 'text'; this.setAttribute('aria-pressed', (!isText).toString());">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6">
+                                        <path d="M1 12s3-7 11-7 11 7 11 7-3 7-11 7S1 12 1 12Z" />
+                                        <circle cx="12" cy="12" r="3" />
+                                    </svg>
+                                </button>
                             </div>
                         </div>
 
                         <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
 
-                        <button type="submit" class="submit">Entrar</button>
-                    </form>
+                        <button type="submit" class="submit" data-loading="false">Entrar</button>
 
-                    <div class="login-footer">
-                        <span>WazeBR Security</span>
-                        <a href="{{ path('auth_forgot') }}">Esqueceu sua senha?</a>
-                    </div>
+                        <div class="login-footer">
+                            <div class="login-footer-left">
+                                <div class="remember-shell">
+                                    <input type="checkbox" id="remember_me" name="_remember_me" value="1">
+                                    <label for="remember_me">Manter conectado</label>
+                                </div>
+                                <span>·</span>
+                                <span>WazeBR Security</span>
+                            </div>
+                            <a href="{{ path('auth_forgot') }}">Esqueceu sua senha?</a>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
