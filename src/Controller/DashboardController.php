@@ -37,24 +37,13 @@ class DashboardController extends AbstractController
     {
         /** @var User $user */
         $user = $this->getUser();
-        $partnerId = $user->getPartnerId();
+        $partner = $user->getPartner();
 
-        if (!$partnerId) {
+        if (!$partner) {
             return new Response(
                 '<div style="font-family: sans-serif; padding: 40px; text-align: center;">'.
                 '<h1>Usu\u00e1rio sem parceiro</h1>'.
                 '<p>Seu usu\u00e1rio n\u00e3o est\u00e1 vinculado a nenhum parceiro.</p>'.
-                '</div>',
-                200
-            );
-        }
-
-        $partner = $this->partnerRepo->find($partnerId);
-        if (!$partner) {
-            return new Response(
-                '<div style="font-family: sans-serif; padding: 40px; text-align: center;">'.
-                '<h1>Parceiro n\u00e3o encontrado</h1>'.
-                '<p>O parceiro com ID ' . $partnerId . ' n\u00e3o existe.</p>'.
                 '</div>',
                 200
             );
