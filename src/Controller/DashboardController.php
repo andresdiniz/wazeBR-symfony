@@ -11,7 +11,6 @@ use App\Repository\MonitoredLinkRepository;
 use App\Repository\WazeIrregularityRepository;
 use App\Repository\CifsEventRepository;
 use App\Repository\WazeAlertTypeRepository;
-use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -40,13 +39,7 @@ class DashboardController extends AbstractController
         $partner = $user->getPartner();
 
         if (!$partner) {
-            return new Response(
-                '<div style="font-family: sans-serif; padding: 40px; text-align: center;">'.
-                '<h1>Usu\u00e1rio sem parceiro</h1>'.
-                '<p>Seu usu\u00e1rio n\u00e3o est\u00e1 vinculado a nenhum parceiro.</p>'.
-                '</div>',
-                200
-            );
+            return new Response('<div class="p-5 text-center">Usuário sem parceiro vinculado.</div>', 200);
         }
 
         $partnerId = $partner->getId();
@@ -57,7 +50,7 @@ class DashboardController extends AbstractController
         $lastDay = $now - 24 * 3600 * 1000;
         $lastWeek = $now - 7 * 24 * 3600 * 1000;
 
-        // Queries otimizadas para alerts (agrupa counts)
+        // Aggregated stats
         $alertsStats = $this->alertRepo->createQueryBuilder('a')
             ->select(
                 'COUNT(a.id) as total',
@@ -71,7 +64,6 @@ class DashboardController extends AbstractController
             ->getQuery()
             ->getArrayResult()[0] ?? [];
 
-        // Queries otimizadas para jams (agrupa counts)
         $jamsStats = $this->jamRepo->createQueryBuilder('j')
             ->select(
                 'COUNT(j.id) as total',
@@ -83,32 +75,28 @@ class DashboardController extends AbstractController
             ->getQuery()
             ->getArrayResult()[0] ?? [];
 
-        // Links (sem name, apenas id e url)
         $links = $this->linkRepo->createQueryBuilder('l')
             ->select('l.id, l.url')
             ->getQuery()
             ->getArrayResult();
 
-        // Routes otimizadas (sem colunas JSON pesadas, limit 20)
         $routes = $this->tvtRouteRepo->createQueryBuilder('r')
             ->select('r.id, r.name, r.length, r.time, r.jamLevel, r.isSubRoute')
             ->setMaxResults(20)
             ->getQuery()
             ->getArrayResult();
 
-        // Irregularities - count apenas (evita hidratar campos inexistentes)
         $irregsCount = $this->irregRepo->createQueryBuilder('i')
             ->select('COUNT(i.id) as total')
             ->getQuery()
             ->getSingleScalarResult();
 
-        // Cifs events - count apenas
         $cifsCount = $this->cifsRepo->createQueryBuilder('c')
             ->select('COUNT(c.id) as total')
             ->getQuery()
             ->getSingleScalarResult();
 
-        // KPIs basicos
+        // KPIs
         $kpis = [
             'alerts' => (int)($alertsStats['total'] ?? 0),
             'jams' => (int)($jamsStats['total'] ?? 0),
@@ -116,7 +104,7 @@ class DashboardController extends AbstractController
             'cities' => 0,
             'links' => count($links),
             'routes' => count($routes),
-            'irregularities' => (int)($irregsCount['total'] ?? 0),
+            'irregularities' => (int)($irregsCount ?? 0),
             'alerts1h' => (int)($alertsStats['lastHour'] ?? 0),
             'alerts24h' => (int)($alertsStats['lastDay'] ?? 0),
             'alerts7d' => (int)($alertsStats['lastWeek'] ?? 0),
@@ -156,13 +144,13 @@ class DashboardController extends AbstractController
             ],
             'alertLinkedToJamPct' => 0.0,
             'alertOnHighwayPct' => 0.0,
-            'cifsActiveCount' => (int)($cifsCount['total'] ?? 0),
+            'cifsActiveCount' => (int)($cifsCount ?? 0),
             'anomalyDetected' => false,
             'anomalyRatio' => 1.0,
             'avg6hPerHour' => 0.0,
         ];
 
-        // Alerts por tipo (tipos unicos, sem duplicatas)
+        // Alerts por tipo (tipos fixos, ate termos agregacao real)
         $alertsByType = [
             ['type' => 'ACCIDENT', 'total' => 0],
             ['type' => 'JAM', 'total' => 0],
@@ -173,7 +161,6 @@ class DashboardController extends AbstractController
             ['type' => 'MISC', 'total' => 0],
         ];
 
-        // Jams por nivel
         $jamsByLevel = [
             ['level' => 0, 'total' => 0],
             ['level' => 1, 'total' => 0],
@@ -183,7 +170,6 @@ class DashboardController extends AbstractController
             ['level' => 5, 'total' => 0],
         ];
 
-        // Maps de label
         $typesMap = [
             'ACCIDENT' => 'Acidente',
             'JAM' => 'Congestionamento',
@@ -194,29 +180,17 @@ class DashboardController extends AbstractController
             'WEATHERHAZARD' => 'Perigo climático',
         ];
 
-        // Subtypes map (simplificado)
-        $subtypesMap = [
-            'ACCIDENT|ACCIDENT_MINOR' => 'Acidente leve',
-            'ACCIDENT|ACCIDENT_MAJOR' => 'Acidente grave',
-            'ACCIDENT|NO_SUBTYPE' => 'Sem subtipo específico',
-            'JAM|JAM_LIGHT_TRAFFIC' => 'Trâ©©nsito leve',
-            'JAM|JAM_MODERATE_TRAFFIC' => 'Trâ©©nsito moderado',
-            'JAM|JAM_HEAVY_TRAFFIC' => 'Trâ©©nsito intenso',
-            'JAM|JAM_STAND_STILL_TRAFFIC' => 'Trâ©©nsito parado',
-            'JAM|NO_SUBTYPE' => 'Sem subtipo específico',
-            'MISC|NO_SUBTYPE' => 'Sem subtipo específico',
-            'CONSTRUCTION|NO_SUBTYPE' => 'Sem subtipo específico',
-            'ROAD_CLOSED|ROAD_CLOSED_HAZARD' => 'Interditada por perigo',
-            'ROAD_CLOSED|ROAD_CLOSED_CONSTRUCTION' => 'Interditada por obra',
-            'ROAD_CLOSED|ROAD_CLOSED_EVENT' => 'Interditada por evento',
-            'ROAD_CLOSED|NO_SUBTYPE' => 'Sem subtipo específico',
-            'HAZARD|HAZARD_ON_ROAD' => 'Perigo na via',
-            'HAZARD|HAZARD_ON_SHOULDER' => 'Perigo no acostamento',
-            'HAZARD|HAZARD_WEATHER' => 'Condiç©©o climatica',
-            'HAZARD|NO_SUBTYPE' => 'Sem subtipo específico',
-            'WEATHERHAZARD|HAZARD_WEATHER' => 'Condiç©©o climatica',
-            'WEATHERHAZARD|NO_SUBTYPE' => 'Sem subtipo específico',
-        ];
+        $subtypesMap = [];
+
+        // Dados para gráficos (arrays prontos para Chart.js)
+        $alertsPerHourRaw = $this->alertRepo->getAlertsPerHourLast24h();
+        $jamsPerHourRaw = $this->jamRepo->getJamsPerHourLast24h();
+
+        $alertsPerHourLabels = array_column($alertsPerHourRaw, 'hour_label');
+        $alertsPerHourData = array_map('intval', array_column($alertsPerHourRaw, 'total'));
+
+        $jamsPerHourLabels = array_column($jamsPerHourRaw, 'hour_label');
+        $jamsPerHourData = array_map('intval', array_column($jamsPerHourRaw, 'total'));
 
         return $this->render('dashboard/index.html.twig', [
             'partner' => $partner,
@@ -237,8 +211,10 @@ class DashboardController extends AbstractController
             'cifsUpcoming' => [],
             'cifsActiveByType' => [],
             'cifsTopStreets' => [],
-            'alertsPerHour' => [],
-            'jamsPerHour' => [],
+            'alertsPerHourLabels' => $alertsPerHourLabels,
+            'alertsPerHourData' => $alertsPerHourData,
+            'jamsPerHourLabels' => $jamsPerHourLabels,
+            'jamsPerHourData' => $jamsPerHourData,
             'recentAlerts' => [],
             'recentJams' => [],
             'cemadenData' => [],
