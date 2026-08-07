@@ -3,43 +3,73 @@
 {% block title %}Dashboard - WazeBR{% endblock %}
 
 {% block body %}
-<div class="container-fluid py-4" style="color:#f7f1e8;">
+<div class="container-fluid py-4">
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card border-0 shadow-sm" style="background:#1a1715;color:#f7f1e8;">
+            <div class="card border-0 shadow-sm bg-dark text-light">
                 <div class="card-body d-flex justify-content-between align-items-start flex-wrap gap-3">
                     <div>
                         <h1 class="h4 mb-2">Dashboard</h1>
-                        <p class="mb-0 text-muted">Visão geral dos dados monitorados para o parceiro atual.</p>
+                        <p class="mb-0 text-muted">Visão geral dos dados monitorados para {{ partner.name ?? 'o parceiro atual' }}.</p>
                     </div>
                     <div class="d-flex flex-wrap gap-2">
-                        <span class="badge rounded-pill" style="background:rgba(127,216,230,.12);color:#7fd8e6;border:1px solid rgba(127,216,230,.18)">Alertas 1h: {{ kpis.alerts1h|default(0) }}</span>
-                        <span class="badge rounded-pill" style="background:rgba(127,216,230,.12);color:#7fd8e6;border:1px solid rgba(127,216,230,.18)">Jams ao vivo: {{ kpis.liveJams|default(0) }}</span>
-                        <span class="badge rounded-pill" style="background:rgba(127,216,230,.12);color:#7fd8e6;border:1px solid rgba(127,216,230,.18)">CIFS ativos: {{ kpis.cifsActiveCount|default(0) }}</span>
+                        <span class="badge rounded-pill bg-secondary">Alertas 1h: {{ kpis.alerts1h|default(0) }}</span>
+                        <span class="badge rounded-pill bg-secondary">Jams ao vivo: {{ kpis.liveJams|default(0) }}</span>
+                        <span class="badge rounded-pill bg-secondary">CIFS ativos: {{ kpis.cifsActiveCount|default(0) }}</span>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    {% if kpis.anomalyDetected %}
-    <div class="row mb-4">
+    {# banner de anomalia #}
+    <div class="row mb-3">
         <div class="col-12">
-            <div class="alert alert-warning border-0 shadow-sm mb-0">
-                <strong>Anomalia detectada:</strong> {{ kpis.alerts1h }} alertas na última hora, {{ kpis.anomalyRatio }}× a média das 6h anteriores.
+            {% include 'dashboard/_anomaly_banner.html.twig' with { kpis: kpis } %}
+        </div>
+    </div>
+
+    {# KPIs principais #}
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm bg-dark text-light h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Alertas</div>
+                    <div class="display-6 fw-bold">{{ kpis.alerts|default(0) }}</div>
+                    <div class="text-muted small">24h {{ kpis.alerts24h|default(0) }} · 7d {{ kpis.alerts7d|default(0) }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm bg-dark text-light h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Jams</div>
+                    <div class="display-6 fw-bold">{{ kpis.jams|default(0) }}</div>
+                    <div class="text-muted small">24h {{ kpis.jams24h|default(0) }} · 7d {{ kpis.jams7d|default(0) }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm bg-dark text-light h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Cidades</div>
+                    <div class="display-6 fw-bold">{{ kpis.cities|default(0) }}</div>
+                    <div class="text-muted small">Links {{ kpis.links|default(0) }} · Rotas {{ kpis.routes|default(0) }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm bg-dark text-light h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Irregularidades</div>
+                    <div class="display-6 fw-bold">{{ kpis.irregularities|default(0) }}</div>
+                    <div class="text-muted small">Seções ativas</div>
+                </div>
             </div>
         </div>
     </div>
-    {% endif %}
 
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-xl-3"><div class="card border-0 shadow-sm bg-dark text-light"><div class="card-body"><div class="text-muted small">Alertas</div><div class="display-6 fw-bold">{{ kpis.alerts|default(0) }}</div><div class="text-muted small">24h {{ kpis.alerts24h|default(0) }} · 7d {{ kpis.alerts7d|default(0) }}</div></div></div></div>
-        <div class="col-6 col-xl-3"><div class="card border-0 shadow-sm bg-dark text-light"><div class="card-body"><div class="text-muted small">Jams</div><div class="display-6 fw-bold">{{ kpis.jams|default(0) }}</div><div class="text-muted small">24h {{ kpis.jams24h|default(0) }} · 7d {{ kpis.jams7d|default(0) }}</div></div></div></div>
-        <div class="col-6 col-xl-3"><div class="card border-0 shadow-sm bg-dark text-light"><div class="card-body"><div class="text-muted small">Cidades</div><div class="display-6 fw-bold">{{ kpis.cities|default(0) }}</div><div class="text-muted small">Links {{ kpis.links|default(0) }} · Rotas {{ kpis.routes|default(0) }}</div></div></div></div>
-        <div class="col-6 col-xl-3"><div class="card border-0 shadow-sm bg-dark text-light"><div class="card-body"><div class="text-muted small">Irregularidades</div><div class="display-6 fw-bold">{{ kpis.irregularities|default(0) }}</div><div class="text-muted small">Seções ativas</div></div></div></div>
-    </div>
-
-    <div class="row g-4">
+    <div class="row g-4 mb-4">
         <div class="col-12 col-lg-6">
             <div class="card border-0 shadow-sm bg-dark text-light h-100">
                 <div class="card-body">
@@ -49,12 +79,15 @@
                             <thead><tr><th>Tipo</th><th class="text-end">Qtd</th></tr></thead>
                             <tbody>
                             {% for row in alertsByType %}
-                                <tr><td>{{ row.type }}</td><td class="text-end">{{ row.total }}</td></tr>
+                                <tr>
+                                    <td>{{ typesMap[row.type] ?? row.type }}</td>
+                                    <td class="text-end">{{ row.total }}</td>
+                                </tr>
                             {% endfor %}
                             </tbody>
                         </table>
                     {% else %}
-                        <div class="text-muted">Sem dados disponíveis.</div>
+                        <div class="text-muted">Sem dados de alertas por tipo.</div>
                     {% endif %}
                 </div>
             </div>
@@ -69,72 +102,81 @@
                             <thead><tr><th>Nível</th><th class="text-end">Qtd</th></tr></thead>
                             <tbody>
                             {% for row in jamsByLevel %}
-                                <tr><td>{{ row.level }}</td><td class="text-end">{{ row.total }}</td></tr>
-                            {% endfor %}
-                            </tbody>
-                        </table>
-                    {% else %}
-                        <div class="text-muted">Sem dados disponíveis.</div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12 col-lg-6">
-            <div class="card border-0 shadow-sm bg-dark text-light h-100">
-                <div class="card-body">
-                    <h2 class="h6 text-uppercase text-muted mb-3">CIFS ativos</h2>
-                    <div class="display-6 fw-bold">{{ kpis.cifsActiveCount|default(0) }}</div>
-                    {% if cifsActiveByType|length %}
-                        <ul class="list-group list-group-flush mt-3">
-                            {% for row in cifsActiveByType %}
-                                <li class="list-group-item bg-transparent text-light d-flex justify-content-between px-0">
-                                    <span>{{ row.type|replace({'_':' '})|title }}</span><span>{{ row.total }}</span>
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <div class="text-muted mt-2">Sem eventos ativos.</div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12 col-lg-6">
-            <div class="card border-0 shadow-sm bg-dark text-light h-100">
-                <div class="card-body">
-                    <h2 class="h6 text-uppercase text-muted mb-3">Qualidade dos alertas</h2>
-                    {% if alertQualityByType|length %}
-                        <table class="table table-dark table-sm align-middle mb-0">
-                            <thead><tr><th>Tipo</th><th>Conf.</th><th>Rel.</th><th>Rating</th></tr></thead>
-                            <tbody>
-                            {% for row in alertQualityByType %}
                                 <tr>
-                                    <td>{{ row.type }}</td>
-                                    <td>{{ row.avg_confidence|number_format(1, ',', '.') }}</td>
-                                    <td>{{ row.avg_reliability|number_format(1, ',', '.') }}</td>
-                                    <td>{{ row.avg_rating|number_format(1, ',', '.') }}</td>
+                                    <td>{{ row.level }}</td>
+                                    <td class="text-end">{{ row.total }}</td>
                                 </tr>
                             {% endfor %}
                             </tbody>
                         </table>
                     {% else %}
-                        <div class="text-muted">Sem dados disponíveis.</div>
+                        <div class="text-muted">Sem dados de jams por nível.</div>
                     {% endif %}
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="col-12">
-            <div class="card border-0 shadow-sm bg-dark text-light">
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm bg-dark text-light h-100">
                 <div class="card-body">
-                    <h2 class="h6 text-uppercase text-muted mb-3">Top alertas recentes</h2>
-                    {% if topEngagedAlerts|length %}
+                    <h2 class="h6 text-uppercase text-muted mb-3">Qualidade dos alertas</h2>
+                    {% include 'dashboard/_alert_quality.html.twig' with {
+                        alertQualityByType: alertQualityByType,
+                        topEngagedAlerts: topEngagedAlerts,
+                        kpis: kpis,
+                        typesMap: typesMap
+                    } %}
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm bg-dark text-light h-100">
+                <div class="card-body">
+                    <h2 class="h6 text-uppercase text-muted mb-3">WazeCount — Semana</h2>
+                    {% include 'dashboard/_week_comparison.html.twig' with {
+                        current: kpis.wazeCount,
+                        lastWeek: kpis.wazeCountLastWeek,
+                        peak: kpis.wazeCountPeak
+                    } %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-lg-6">
+            {% include 'dashboard/_cifs_events.html.twig' with {
+                cifsActive: cifsActive,
+                cifsUpcoming: cifsUpcoming,
+                cifsActiveByType: cifsActiveByType,
+                cifsTopStreets: cifsTopStreets,
+                kpis: kpis
+            } %}
+        </div>
+        <div class="col-12 col-lg-6">
+            {% include 'dashboard/_irregularities.html.twig' with {
+                irregSpeedLoss: irregSpeedLoss,
+                irregDelayByStreet: irregDelayByStreet,
+                irregSeverityCity: irregSeverityCity,
+                irregWorsening: irregWorsening,
+                irregRecentList: irregRecentList
+            } %}
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm bg-dark text-light h-100">
+                <div class="card-body">
+                    <h2 class="h6 text-uppercase text-muted mb-3">Alertas recentes</h2>
+                    {% if recentAlerts|length %}
                         <div class="table-responsive">
                             <table class="table table-dark table-sm align-middle mb-0">
-                                <thead><tr><th>Via</th><th>Cidade</th><th>Tipos</th><th>Thumbs</th></tr></thead>
+                                <thead><tr><th>Via</th><th>Cidade</th><th>Tipo</th><th>Thumbs</th></tr></thead>
                                 <tbody>
-                                {% for row in topEngagedAlerts %}
+                                {% for row in recentAlerts %}
                                     <tr>
                                         <td>{{ row.street ?? '—' }}</td>
                                         <td>{{ row.city ?? '—' }}</td>
@@ -151,21 +193,29 @@
                 </div>
             </div>
         </div>
-
         <div class="col-12 col-lg-6">
             <div class="card border-0 shadow-sm bg-dark text-light h-100">
                 <div class="card-body">
-                    <h2 class="h6 text-uppercase text-muted mb-3">Alertas por hora</h2>
-                    <div id="alerts-per-hour-chart" style="height:320px;"></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12 col-lg-6">
-            <div class="card border-0 shadow-sm bg-dark text-light h-100">
-                <div class="card-body">
-                    <h2 class="h6 text-uppercase text-muted mb-3">Jams por hora</h2>
-                    <div id="jams-per-hour-chart" style="height:320px;"></div>
+                    <h2 class="h6 text-uppercase text-muted mb-3">Jams recentes</h2>
+                    {% if recentJams|length %}
+                        <div class="table-responsive">
+                            <table class="table table-dark table-sm align-middle mb-0">
+                                <thead><tr><th>Via</th><th>Cidade</th><th>Nível</th><th>Atraso (s)</th></tr></thead>
+                                <tbody>
+                                {% for row in recentJams %}
+                                    <tr>
+                                        <td>{{ row.street ?? '—' }}</td>
+                                        <td>{{ row.city ?? '—' }}</td>
+                                        <td>{{ row.level ?? '—' }}</td>
+                                        <td>{{ row.delay ?? 0 }}</td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-muted">Sem jams recentes.</div>
+                    {% endif %}
                 </div>
             </div>
         </div>
