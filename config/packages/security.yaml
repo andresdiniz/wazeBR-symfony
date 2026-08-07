@@ -1,65 +1,69 @@
 security:
-  role_hierarchy:
-    ROLE_FIELD_AGENT: ROLE_USER
-    ROLE_ACCOUNT_ADMIN: ROLE_USER
-    ROLE_ADMIN: ROLE_ACCOUNT_ADMIN
-    ROLE_SUPER_ADMIN:
-      - ROLE_ADMIN
-      - ROLE_ALLOWED_TO_SWITCH
+    providers:
+        app_user_provider:
+            entity:
+                class: App\Entity\User
+                property: email
 
-  password_hashers:
-    App\Entity\User:
-      algorithm: bcrypt
-      cost: 12
+    password_hashers:
+        Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
 
-  providers:
-    app_user_provider:
-      entity:
-        class: App\Entity\User
-        property: email
+    firewalls:
+        dev:
+            pattern: ^/(_(profiler|wdt)|css|images|js)/
+            security: false
+        main:
+            lazy: true
+            provider: app_user_provider
+            login_throttling:
+                max_attempts: 5
+                interval: 1 minute
+            form_login:
+                authenticator: App\Security\LoginFormAuthenticator
+                login_path: auth_login
+                check_path: auth_login
+                default_target_path: dashboard_index
+                enable_csrf: true
+                csrf_parameter: _csrf_token
+            logout:
+                path: auth_logout
+                target: auth_login
+            remember_me:
+                secret: '%kernel.secret%'
+                lifetime: 604800
+                path: /
+                always_remember_me: true
+                secure: true
+                samesite: lax
+            user_checker: security.user_checker
 
-  firewalls:
-    dev:
-      pattern: ^/(_(profiler|wdt)|css|images|js)/
-      security: false
+    access_control:
+        - { path: ^/$, roles: PUBLIC_ACCESS }
+        - { path: ^/login, roles: PUBLIC_ACCESS }
+        - { path: ^/register, roles: PUBLIC_ACCESS }
+        - { path: ^/reset-password, roles: PUBLIC_ACCESS }
+        - { path: ^/health, roles: PUBLIC_ACCESS }
+        - { path: ^/api, roles: PUBLIC_ACCESS }
+        - { path: ^/admin, roles: ROLE_ADMIN }
+        - { path: ^/dashboard, roles: ROLE_USER }
+        - { path: ^/account, roles: ROLE_USER }
+        - { path: ^/alerts, roles: ROLE_USER }
+        - { path: ^/routes, roles: ROLE_USER }
+        - { path: ^/traffic, roles: ROLE_USER }
+        - { path: ^/notifications, roles: ROLE_USER }
+        - { path: ^/operator, roles: ROLE_OPERATOR }
+        - { path: ^/cemaden, roles: ROLE_CEMADEN }
+        - { path: ^/cifs, roles: ROLE_CEMADEN }
+        - { path: ^/hydro, roles: ROLE_CEMADEN }
+        - { path: ^/, roles: ROLE_USER }
 
-    api_externa:
-      pattern: ^/api/externa
-      stateless: true
-
-    main:
-      lazy: true
-      provider: app_user_provider
-      form_login:
-        login_path: auth_login
-        check_path: auth_login
-        username_parameter: email
-        password_parameter: password
-        default_target_path: dashboard_index
-        enable_csrf: true
-      logout:
-        path: auth_logout
-        target: auth_login
-      remember_me:
-        secret: '%kernel.secret%'
-        lifetime: 604800
-        path: /
-        remember_me_parameter: _remember_me
-        always_remember_me: false
-
-  access_control:
-    # Rotas públicas
-    - { path: ^/$, roles: PUBLIC_ACCESS }
-    - { path: ^/login, roles: PUBLIC_ACCESS }
-    - { path: ^/senha, roles: PUBLIC_ACCESS }
-    - { path: ^/api/externa, roles: PUBLIC_ACCESS }
-    - { path: ^/cron/run$, roles: PUBLIC_ACCESS }
-
-    # Área exclusiva do super admin
-    - { path: ^/admin/parceiros, roles: ROLE_SUPER_ADMIN }
-
-    # Área administrativa geral
-    - { path: ^/admin, roles: ROLE_ACCOUNT_ADMIN }
-
-    # Todo o restante exige login
-    - { path: ^/, roles: ROLE_USER }
+when@prod:
+    security:
+        firewalls:
+            main:
+                form_login:
+                    require_previous_session: false
+                remember_me:
+                    secure: true
+                    httponly: true
+                    samesite: lax
