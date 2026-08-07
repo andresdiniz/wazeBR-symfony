@@ -12,14 +12,14 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Http\Authentication\UserAuthenticatorInterface;
 use SymfonyCasts\Bundle\ResetPassword\Controller\ResetPasswordControllerTrait;
 use SymfonyCasts\Bundle\ResetPassword\Exception\ResetPasswordExceptionInterface;
-use SymfonyCasts\Bundle\ResetPassword\Helper\ResetPasswordHelperInterface;
+use SymfonyCasts\Bundle\ResetPassword\Helper\ResetPasswordHelper;
 
 class ResetPasswordController extends AbstractController
 {
     use ResetPasswordControllerTrait;
 
     public function __construct(
-        private ResetPasswordHelperInterface $resetPasswordHelper,
+        private ResetPasswordHelper $resetPasswordHelper,
         private UserRepository $userRepository,
         private MailerInterface $mailer,
     ) {
