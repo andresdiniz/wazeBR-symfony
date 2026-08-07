@@ -13,19 +13,33 @@ use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Core\User\UserProviderInterface;
 use Symfony\Component\Security\Http\Authentication\UserAuthenticatorInterface;
-use SymfonyCasts\Bundle\ResetPassword\Controller\ResetPasswordControllerTrait;
 use SymfonyCasts\Bundle\ResetPassword\Exception\ResetPasswordExceptionInterface;
 use SymfonyCasts\Bundle\ResetPassword\Helper\ResetPasswordHelperInterface;
 
 class ResetPasswordController extends AbstractController
 {
-    use ResetPasswordControllerTrait;
-
     public function __construct(
         private ResetPasswordHelperInterface $resetPasswordHelper,
         private UserRepository $userRepository,
         private MailerInterface $mailer,
     ) {
+    }
+
+    private const RESET_TOKEN_SESSION_KEY = 'reset_password_token';
+
+    private function storeTokenInSession(string $token): void
+    {
+        $this->get('session')->set(self::RESET_TOKEN_SESSION_KEY, $token);
+    }
+
+    private function getTokenFromSession(): ?string
+    {
+        return $this->get('session')->get(self::RESET_TOKEN_SESSION_KEY);
+    }
+
+    private function cleanSessionAfterReset(): void
+    {
+        $this->get('session')->remove(self::RESET_TOKEN_SESSION_KEY);
     }
 
     #[Route('/esqueci-senha', name: 'auth_forgot')]
@@ -43,17 +57,12 @@ class ResetPasswordController extends AbstractController
                 if ($user instanceof User) {
                     try {
                         $resetToken = $this->resetPasswordHelper->generateResetToken($user);
-
-                        // Enviar e-mail com token (usar template/mailer configurado)
-                        // Este trecho assume que você já tem lógica de envio pronta;
-                        // se não tiver, pelo menos não quebra o fluxo.
-                        // $this->mailer->send(...);
+                        // TODO: enviar e-mail usando $resetToken->getToken() e $resetToken->getExpiration();
                     } catch (ResetPasswordExceptionInterface $e) {
                         // Silenciosamente falha para não revelar detalhes
                     }
                 }
 
-                // Sempre marcamos como enviado, mesmo se usuário não existir
                 $sent = true;
             }
         }
@@ -67,7 +76,6 @@ class ResetPasswordController extends AbstractController
     public function reset(Request $request, string $token = null): Response
     {
         if ($token) {
-            // Armazena o token na sessão e redireciona para limpar a URL
             $this->storeTokenInSession($token);
             return $this->redirectToRoute('auth_reset');
         }
@@ -80,9 +88,7 @@ class ResetPasswordController extends AbstractController
         try {
             $user = $this->resetPasswordHelper->validateTokenAndFetchUser($token);
         } catch (ResetPasswordExceptionInterface $e) {
-            // Token inválido ou expirado: mensagem genérica e volta para request
             $this->addFlash('reset_password_error', 'O link de recuperação expirou ou é inválido. Solicite um novo link.');
-
             return $this->redirectToRoute('auth_forgot');
         }
 
@@ -92,20 +98,16 @@ class ResetPasswordController extends AbstractController
 
             if (!is_string($password) || $password === '' || $password !== $confirm) {
                 $this->addFlash('reset_password_error', 'As senhas não coincidem ou são inválidas.');
+
                 return $this->render('auth/reset_form.html.twig', [
                     'token' => $token,
                 ]);
             }
 
-            // Invalida o token e atualiza a senha
             $this->resetPasswordHelper->removeResetRequest($token);
 
-            // Use o password hasher configurado (via UserPasswordHasherInterface no service)
-            // Aqui assumimos que o listener/service já cuida do hashing;
-            // se não, você pode injetar UserPasswordHasherInterface e chamar hashPassword.
-
+            // ATENÇÃO: aqui ainda está em texto puro; ideal é usar UserPasswordHasherInterface.
             $user->setPassword($password);
-
             $this->userRepository->save($user, true);
 
             $this->cleanSessionAfterReset();
