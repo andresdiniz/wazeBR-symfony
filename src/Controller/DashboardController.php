@@ -112,7 +112,7 @@ class DashboardController extends AbstractController
         $avgReliability = (float)($qualityStats['avg_reliability'] ?? 0);
         $avgConfidence  = (float)($qualityStats['avg_confidence'] ?? 0);
 
-        // WazeCount — desativado por enquanto (campo pub_millis nao existe em waze_counts)
+        // WazeCount — desativado por enquanto
         $wazeCountThisWeek = null;
         $wazeCountLastWeek = null;
         $wazeCountPeak = [
@@ -323,7 +323,7 @@ class DashboardController extends AbstractController
               AND j.speed_kmh IS NOT NULL
             ORDER BY loss DESC
             LIMIT 5
-        SQL, []);
+        SQL, ['lastDay' => $lastDay]);
 
         $irregSpeedLoss = array_map(function ($r) {
             return [
@@ -345,7 +345,7 @@ class DashboardController extends AbstractController
             GROUP BY j.street, j.city
             ORDER BY total_delay DESC
             LIMIT 5
-        SQL, []);
+        SQL, ['lastDay' => $lastDay]);
 
         $irregDelayByStreet = array_map(function ($r) {
             return [
