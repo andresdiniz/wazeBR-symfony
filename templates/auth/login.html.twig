@@ -1,562 +1,302 @@
-<!DOCTYPE html>
-<html lang="pt-BR" data-theme="dark">
+<!doctype html>
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login — WazeBR</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg:      #0d1117;
-      --surface: #161b22;
-      --border:  rgba(255,255,255,.08);
-      --text:    #e6edf3;
-      --muted:   #7d8590;
-      --faint:   #30363d;
-      --primary: #2da8aa;
-      --p-dim:   rgba(45,168,170,.14);
-      --p-glow:  rgba(45,168,170,.28);
-      --error:   #f85149;
-      --e-dim:   rgba(248,81,73,.1);
-      --t: 200ms cubic-bezier(.16,1,.3,1);
-      --r: .5rem;
-      --r-lg: .875rem;
-    }
-    [data-theme="light"] {
-      --bg:      #f6f8fa;
-      --surface: #ffffff;
-      --border:  rgba(0,0,0,.08);
-      --text:    #1f2328;
-      --muted:   #636c76;
-      --faint:   #d0d7de;
-      --primary: #00696f;
-      --p-dim:   rgba(0,105,111,.1);
-      --p-glow:  rgba(0,105,111,.25);
-      --error:   #cf222e;
-      --e-dim:   rgba(207,34,46,.08);
-    }
-
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { -webkit-font-smoothing: antialiased; text-size-adjust: none; }
-    body {
-      min-height: 100dvh;
-      font-family: 'Inter', sans-serif;
-      font-size: 1rem;
-      color: var(--text);
-      background: var(--bg);
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-    }
-    @media (max-width: 720px) { body { grid-template-columns: 1fr; } }
-    :focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; border-radius: .25rem; }
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
-    }
-
-    /* ─── Painel esquerdo ─── */
-    .side {
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      padding: 2.5rem;
-      min-height: 100dvh;
-      background: #0a1628;
-    }
-    @media (max-width: 720px) { .side { display: none; } }
-
-    .side::before {
-      content: '';
-      position: absolute; inset: 0;
-      background:
-        radial-gradient(ellipse 80% 60% at 20% 20%, rgba(45,168,170,.12) 0%, transparent 60%),
-        radial-gradient(ellipse 60% 80% at 80% 80%, rgba(45,168,170,.07) 0%, transparent 60%);
-      pointer-events: none;
-    }
-
-    .side-svg {
-      position: absolute; inset: 0;
-      width: 100%; height: 100%;
-    }
-
-    .side-top {
-      position: relative; z-index: 2;
-      display: flex; align-items: center; gap: .625rem;
-    }
-    .side-logo-icon {
-      width: 36px; height: 36px; border-radius: .5rem;
-      background: var(--primary);
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
-    }
-    .side-logo-name {
-      font-size: 1.1rem; font-weight: 700; letter-spacing: -.03em;
-      color: rgba(255,255,255,.9);
-    }
-
-    .side-stats {
-      position: relative; z-index: 2;
-      display: flex; flex-direction: column; gap: 1rem;
-    }
-    .stat-card {
-      background: rgba(255,255,255,.04);
-      border: 1px solid rgba(255,255,255,.07);
-      border-radius: var(--r-lg);
-      padding: 1rem 1.25rem;
-      display: flex; align-items: center; gap: 1rem;
-    }
-    .stat-icon {
-      width: 36px; height: 36px; border-radius: .5rem;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
-    }
-    .stat-icon.teal  { background: rgba(45,168,170,.15); color: #2da8aa; }
-    .stat-icon.amber { background: rgba(251,191,36,.12);  color: #fbbf24; }
-    .stat-icon.rose  { background: rgba(251,113,133,.12); color: #fb7185; }
-    .stat-body { flex: 1; }
-    .stat-value {
-      font-size: 1.375rem; font-weight: 700;
-      color: rgba(255,255,255,.9);
-      letter-spacing: -.03em; line-height: 1.2;
-    }
-    .stat-label { font-size: .75rem; color: rgba(255,255,255,.4); margin-top: .1rem; }
-    .live-dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: #2da8aa;
-      animation: livePulse 2.8s ease-in-out infinite;
-      flex-shrink: 0;
-    }
-    @keyframes livePulse {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: .3; }
-    }
-
-    .side-footer { position: relative; z-index: 2; }
-    .side-footer h2 {
-      font-size: clamp(1.4rem, 2.2vw, 1.75rem);
-      font-weight: 700; letter-spacing: -.04em; line-height: 1.25;
-      color: rgba(255,255,255,.92); margin-bottom: .5rem;
-    }
-    .side-footer p {
-      font-size: .8125rem;
-      color: rgba(255,255,255,.38);
-      max-width: 34ch; line-height: 1.6;
-    }
-
-    /* ─── Painel direito ─── */
-    .form-panel {
-      display: flex; flex-direction: column;
-      justify-content: center; align-items: center;
-      padding: 2.5rem 2rem;
-      background: var(--bg);
-      min-height: 100dvh;
-      position: relative;
-    }
-    .theme-btn {
-      position: absolute; top: 1.25rem; right: 1.25rem;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: .5rem; padding: .5rem;
-      cursor: pointer; color: var(--muted);
-      transition: color var(--t);
-    }
-    .theme-btn:hover { color: var(--text); }
-    .form-box { width: 100%; max-width: 360px; }
-
-    .form-logo {
-      display: none;
-      align-items: center; gap: .5rem;
-      margin-bottom: 2rem;
-    }
-    @media (max-width: 720px) { .form-logo { display: flex; } }
-    .form-logo-icon {
-      width: 32px; height: 32px; border-radius: .5rem;
-      background: var(--primary);
-      display: flex; align-items: center; justify-content: center;
-    }
-    .form-logo-name { font-size: 1.1rem; font-weight: 700; letter-spacing: -.03em; }
-
-    .form-head { margin-bottom: 2rem; }
-    .form-head h1 {
-      font-size: 1.5rem; font-weight: 700;
-      letter-spacing: -.035em; margin-bottom: .35rem;
-    }
-    .form-head p { font-size: .875rem; color: var(--muted); }
-
-    .err-box {
-      background: var(--e-dim);
-      border: 1px solid rgba(248,81,73,.2);
-      border-radius: var(--r);
-      padding: .75rem 1rem; font-size: .8125rem;
-      color: var(--error);
-      display: flex; align-items: flex-start; gap: .5rem;
-      margin-bottom: 1.25rem;
-    }
-    [data-theme="light"] .err-box { border-color: rgba(207,34,46,.18); }
-
-    .field { margin-bottom: 1.125rem; }
-    .field > label {
-      display: block; font-size: .8rem; font-weight: 500;
-      color: var(--muted); margin-bottom: .375rem; letter-spacing: .01em;
-    }
-    .fw { position: relative; }
-    .fw .ico {
-      position: absolute; left: .875rem; top: 50%; transform: translateY(-50%);
-      color: var(--faint); pointer-events: none;
-      transition: color var(--t);
-    }
-    .fw:focus-within .ico { color: var(--primary); }
-    .fw input {
-      width: 100%;
-      padding: .75rem .875rem .75rem 2.5rem;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--r);
-      color: var(--text); font-size: .9375rem; font-family: inherit;
-      transition: border-color var(--t), box-shadow var(--t);
-    }
-    .fw input::placeholder { color: var(--faint); }
-    .fw input:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px var(--p-dim);
-    }
-    .pw-toggle {
-      position: absolute; right: .75rem; top: 50%; transform: translateY(-50%);
-      background: none; border: none; cursor: pointer;
-      color: var(--faint); padding: .25rem;
-      transition: color var(--t);
-    }
-    .pw-toggle:hover { color: var(--muted); }
-
-    .row-aux {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 1.5rem; font-size: .8125rem;
-    }
-    .lbl-remember {
-      display: flex; align-items: center; gap: .4rem;
-      color: var(--muted); cursor: pointer;
-    }
-    .lbl-remember input { accent-color: var(--primary); cursor: pointer; }
-    .link-fw { color: var(--primary); text-decoration: none; transition: opacity var(--t); }
-    .link-fw:hover { opacity: .7; }
-
-    .btn {
-      width: 100%; padding: .8125rem;
-      background: var(--primary); color: #fff;
-      border: none; border-radius: var(--r);
-      font-size: .9375rem; font-weight: 600; font-family: inherit;
-      cursor: pointer; position: relative; overflow: hidden;
-      transition: opacity var(--t), box-shadow var(--t), transform var(--t);
-    }
-    .btn:hover { opacity: .88; box-shadow: 0 4px 18px var(--p-glow); transform: translateY(-1px); }
-    .btn:active { transform: translateY(0); }
-    .btn-txt { transition: opacity var(--t); }
-    .btn.loading .btn-txt { opacity: 0; }
-    .btn .spin {
-      position: absolute; inset: 0;
-      display: none; align-items: center; justify-content: center;
-    }
-    .btn.loading .spin { display: flex; }
-    .spin svg { animation: rot .7s linear infinite; }
-    @keyframes rot { to { transform: rotate(360deg); } }
-
-    .form-foot {
-      margin-top: 1.75rem; text-align: center;
-      font-size: .8rem; color: var(--muted);
-    }
-    .form-foot a { color: var(--primary); }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Entrar | WazeBR Monitor</title>
+    <meta name="description" content="Acesse o painel de monitoramento do WazeBR Monitor.">
+    <style>
+        :root {
+            --bg: #f4f8fb;
+            --surface: rgba(255,255,255,.9);
+            --ink: #0f172a;
+            --muted: #64748b;
+            --brand: #159bb2;
+            --brand-dark: #08768b;
+            --line: #d9e4ea;
+            --shadow: 0 24px 70px rgba(15, 23, 42, .12);
+            --radius: 26px;
+        }
+        * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at top left, rgba(21,155,178,.14), transparent 30%),
+                radial-gradient(circle at bottom right, rgba(139,211,79,.12), transparent 28%),
+                var(--bg);
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+        a { color: inherit; }
+        .auth-shell { min-height: 100vh; display: grid; grid-template-columns: 1fr; }
+        .auth-brandbar {
+            padding: 18px 16px 0;
+            display: flex;
+            justify-content: center;
+        }
+        .auth-brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            text-decoration: none;
+            font-weight: 850;
+            letter-spacing: -.04em;
+            border: 1px solid rgba(255,255,255,.7);
+            border-radius: 999px;
+            background: rgba(255,255,255,.65);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(15,23,42,.06);
+        }
+        .auth-brand-mark {
+            display: grid;
+            width: 34px;
+            height: 34px;
+            place-items: center;
+            color: #fff;
+            border-radius: 11px;
+            background: linear-gradient(135deg, var(--brand), #53c6d1);
+        }
+        .auth-layout {
+            width: min(1180px, calc(100% - 24px));
+            margin: 14px auto 24px;
+            display: grid;
+            gap: 18px;
+        }
+        .auth-hero, .auth-card {
+            border: 1px solid rgba(255,255,255,.78);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+        .auth-hero {
+            position: relative;
+            min-height: 220px;
+            padding: 28px;
+            color: #fff;
+            background: linear-gradient(145deg, #0b3143, #0d6b82 55%, #159bb2);
+        }
+        .auth-hero::before,
+        .auth-hero::after {
+            content: "";
+            position: absolute;
+            inset: auto;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,.14);
+        }
+        .auth-hero::before { width: 220px; height: 220px; right: -70px; top: -55px; }
+        .auth-hero::after { width: 300px; height: 300px; right: -110px; bottom: -120px; }
+        .auth-hero-content { position: relative; z-index: 1; display: grid; gap: 16px; max-width: 520px; }
+        .auth-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            width: fit-content;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(255,255,255,.12);
+            border: 1px solid rgba(255,255,255,.14);
+            font-size: .74rem;
+            font-weight: 800;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+        }
+        .auth-hero h1 { margin: 0; font-size: clamp(2.1rem, 7vw, 3.8rem); line-height: .98; letter-spacing: -.06em; }
+        .auth-hero p { margin: 0; max-width: 42ch; color: rgba(255,255,255,.82); font-size: 1rem; line-height: 1.6; }
+        .auth-points { display: grid; gap: 10px; margin-top: 10px; }
+        .auth-point { display: inline-flex; align-items: center; gap: 8px; color: rgba(255,255,255,.92); font-size: .9rem; }
+        .auth-point i { font-style: normal; width: 20px; height: 20px; display: inline-grid; place-items: center; border-radius: 50%; background: rgba(255,255,255,.15); }
+        .auth-card {
+            background: var(--surface);
+            backdrop-filter: blur(14px);
+            padding: 28px 18px;
+        }
+        .auth-card h2 { margin: 0 0 8px; font-size: 1.6rem; letter-spacing: -.04em; }
+        .auth-card .subtitle { margin: 0 0 24px; color: var(--muted); line-height: 1.55; }
+        .form-group { margin-bottom: 16px; }
+        label { display: block; margin-bottom: 8px; font-size: .9rem; font-weight: 700; color: #334155; }
+        .input-wrap { position: relative; }
+        .input-wrap svg {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            pointer-events: none;
+        }
+        input[type="email"],
+        input[type="password"],
+        input[type="text"] {
+            width: 100%;
+            min-height: 50px;
+            padding: 0 16px 0 42px;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: #fff;
+            color: var(--ink);
+            font: inherit;
+            outline: none;
+            transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+        }
+        input:focus {
+            border-color: rgba(21,155,178,.7);
+            box-shadow: 0 0 0 4px rgba(21,155,178,.12);
+        }
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+            margin: 14px 0 18px;
+            flex-wrap: wrap;
+        }
+        .check {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-size: .92rem;
+            color: #334155;
+        }
+        .check input { width: 18px; height: 18px; accent-color: var(--brand); }
+        .forgot {
+            color: var(--brand-dark);
+            text-decoration: none;
+            font-size: .92rem;
+            font-weight: 700;
+        }
+        .forgot:hover { text-decoration: underline; }
+        .alert {
+            margin: 0 0 16px;
+            padding: 14px 16px;
+            border-radius: 14px;
+            background: #fff1f2;
+            border: 1px solid #fecdd3;
+            color: #9f1239;
+            font-size: .94rem;
+            line-height: 1.5;
+        }
+        .btn-submit {
+            width: 100%;
+            min-height: 52px;
+            border: 0;
+            border-radius: 14px;
+            background: linear-gradient(135deg, var(--brand), #53c6d1);
+            color: #fff;
+            font: inherit;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 16px 32px rgba(21,155,178,.22);
+            transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
+        }
+        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 20px 36px rgba(21,155,178,.28); }
+        .btn-submit:focus { outline: none; box-shadow: 0 0 0 4px rgba(21,155,178,.16), 0 16px 32px rgba(21,155,178,.22); }
+        .support {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--line);
+            color: var(--muted);
+            font-size: .9rem;
+            text-align: center;
+        }
+        .support a { color: var(--brand-dark); font-weight: 800; text-decoration: none; }
+        .support a:hover { text-decoration: underline; }
+        .footer-note {
+            margin-top: 14px;
+            color: #94a3b8;
+            font-size: .78rem;
+            text-align: center;
+            line-height: 1.5;
+        }
+        @media (min-width: 860px) {
+            .auth-layout { grid-template-columns: 1.1fr .9fr; align-items: stretch; margin-top: 24px; }
+            .auth-hero { min-height: 650px; display: flex; align-items: flex-end; padding: 40px; }
+            .auth-card { display: flex; align-items: center; padding: 40px; }
+            .auth-card-inner { width: 100%; }
+            .auth-brandbar { justify-content: flex-start; width: min(1180px, calc(100% - 24px)); margin: 0 auto; padding-left: 0; }
+            .auth-card h2 { font-size: 1.95rem; }
+        }
+        @media (max-width: 480px) {
+            .auth-layout { width: min(1180px, calc(100% - 16px)); }
+            .auth-hero { padding: 22px; }
+            .auth-card { padding: 22px 16px; }
+            .auth-hero h1 { font-size: 2.1rem; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
+        }
+    </style>
 </head>
 <body>
+    <div class="auth-shell">
+        <div class="auth-brandbar">
+            <a class="auth-brand" href="/" aria-label="WazeBR Monitor início">
+                <span class="auth-brand-mark" aria-hidden="true">⌁</span>
+                <span>WazeBR Monitor</span>
+            </a>
+        </div>
 
-  {# ──────────────────────────────────────────
-     PAINEL ESQUERDO
-  ────────────────────────────────────────── #}
-  <aside class="side" aria-hidden="true">
+        <main class="auth-layout">
+            <section class="auth-hero" aria-label="Apresentação do sistema">
+                <div class="auth-hero-content">
+                    <div class="auth-kicker">Acesso seguro</div>
+                    <h1>Bem-vindo de volta.</h1>
+                    <p>Acesse o painel de monitoramento para acompanhar alertas, rotas e dados operacionais em tempo real.</p>
+                    <div class="auth-points">
+                        <div class="auth-point"><i aria-hidden="true">✓</i><span>Monitoramento centralizado</span></div>
+                        <div class="auth-point"><i aria-hidden="true">✓</i><span>Interface rápida e responsiva</span></div>
+                        <div class="auth-point"><i aria-hidden="true">✓</i><span>Feito para uso diário da equipe</span></div>
+                    </div>
+                </div>
+            </section>
 
-    <svg class="side-svg" viewBox="0 0 520 800" preserveAspectRatio="xMidYMid slice"
-         xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        {# Rotas que os carros percorrem — reutilizadas pelas vias principais #}
-        <path id="r-h1" d="M-20 220 Q130 200 280 240 Q420 275 540 255"/>
-        <path id="r-h2" d="M540 500 Q420 480 280 508 Q130 535 -20 518"/>
-        <path id="r-v1" d="M185 -10 Q200 200 185 400 Q170 570 185 810"/>
-        <path id="r-v2" d="M390 810 Q395 590 385 430 Q375 220 390 -10"/>
-        <style>
-          .rv { stroke: rgba(255,255,255,.055); stroke-width: 2; fill: none; stroke-linecap: round; }
-          .rp { stroke: rgba(255,255,255,.09);  stroke-width: 3; fill: none; stroke-linecap: round; }
-          .ap  { animation: aop 3.2s ease-in-out infinite; }
-          .ap2 { animation: aop 3.2s ease-in-out 1.1s infinite; }
-          .ap3 { animation: aop 3.2s ease-in-out 2.2s infinite; }
-          @keyframes aop { 0%,100%{opacity:.9} 50%{opacity:.2} }
-        </style>
-      </defs>
+            <section class="auth-card" aria-label="Formulário de login">
+                <div class="auth-card-inner">
+                    <h2>Entrar no sistema</h2>
+                    <p class="subtitle">Use suas credenciais para acessar o painel.</p>
 
-      {# Vias secundárias — estáticas #}
-      <g class="rv">
-        <path d="M40 100 Q200 80 340 130"/>
-        <path d="M260 50 Q280 200 260 350"/>
-        <path d="M420 70 Q450 220 430 380"/>
-        <path d="M80 420 Q200 400 340 440"/>
-        <path d="M50 560 Q170 540 300 570"/>
-        <path d="M390 500 Q430 580 410 680"/>
-        <path d="M140 640 Q260 620 370 660"/>
-        <path d="M470 380 Q500 460 480 580"/>
-        <path d="M60 300 Q100 360 80 460"/>
-        <path d="M320 340 Q370 420 350 520"/>
-      </g>
+                    {% if error %}
+                        <div class="alert">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
+                    {% endif %}
 
-      {# Vias principais — reutilizam os <path> definidos em <defs> #}
-      <use href="#r-h1" class="rp"/>
-      <use href="#r-h2" class="rp"/>
-      <use href="#r-v1" class="rp"/>
-      <use href="#r-v2" class="rp"/>
+                    <form method="post" action="{{ path('app_login') }}" novalidate>
+                        <div class="form-group">
+                            <label for="username">E-mail</label>
+                            <div class="input-wrap">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m3 7 9 6 9-6"></path></svg>
+                                <input type="email" id="username" name="_username" value="{{ last_username }}" autocomplete="email" required autofocus>
+                            </div>
+                        </div>
 
-      {# Alertas — pulso só de opacidade, lento #}
-      <g transform="translate(175,240)">
-        <circle r="9"   fill="rgba(251,113,133,.1)" class="ap"/>
-        <circle r="4.5" fill="#fb7185"              class="ap"/>
-      </g>
-      <g transform="translate(385,255)">
-        <circle r="9"   fill="rgba(251,191,36,.09)" class="ap2"/>
-        <circle r="4"   fill="#fbbf24"              class="ap2"/>
-      </g>
-      <g transform="translate(185,510)">
-        <circle r="9"   fill="rgba(251,113,133,.1)" class="ap3"/>
-        <circle r="4"   fill="#fb7185"              class="ap3"/>
-      </g>
+                        <div class="form-group">
+                            <label for="password">Senha</label>
+                            <div class="input-wrap">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+                                <input type="password" id="password" name="_password" autocomplete="current-password" required>
+                            </div>
+                        </div>
 
-      {#
-        CARROS — círculos pequenos percorrendo as vias suavemente
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
 
-        Fixes anti-vibração:
-          • sem rotate="auto"   → círculo não precisa de orientação, eliminava jitter nas curvas
-          • calcMode="linear"   → interpolação uniforme, sem micro-saltos
-          • dur 14s–22s         → movimento calmo, imperceptível individualmente
-          • begin defasado      → nunca estão no mesmo trecho ao mesmo tempo
-          • r 2.5–3.5px         → pequenos o suficiente pra imprecisões passarem despercebidas
-          • sem drop-shadow     → filter é caro na GPU em paths curvas
-      #}
+                        <div class="toggle-row">
+                            <label class="check">
+                                <input type="checkbox" name="_remember_me">
+                                <span>Lembrar acesso</span>
+                            </label>
+                            <a class="forgot" href="{{ path('app_forgot_password_request') }}">Esqueceu a senha?</a>
+                        </div>
 
-      {# Carro 1 — horizontal superior, esq→dir, teal #}
-      <circle r="3.5" fill="#2da8aa" opacity=".9">
-        <animateMotion dur="16s" repeatCount="indefinite" calcMode="linear">
-          <mpath href="#r-h1"/>
-        </animateMotion>
-      </circle>
+                        <button class="btn-submit" type="submit">Entrar</button>
+                    </form>
 
-      {# Carro 2 — horizontal inferior, dir→esq, branco suave #}
-      <circle r="3" fill="rgba(255,255,255,.55)">
-        <animateMotion dur="14s" repeatCount="indefinite" calcMode="linear" begin="5s">
-          <mpath href="#r-h2"/>
-        </animateMotion>
-      </circle>
-
-      {# Carro 3 — vertical esquerda, cima→baixo, teal claro #}
-      <circle r="3" fill="rgba(45,168,170,.7)">
-        <animateMotion dur="18s" repeatCount="indefinite" calcMode="linear" begin="2s">
-          <mpath href="#r-v1"/>
-        </animateMotion>
-      </circle>
-
-      {# Carro 4 — vertical direita, baixo→cima, amarelo suave #}
-      <circle r="3" fill="rgba(251,191,36,.6)">
-        <animateMotion dur="20s" repeatCount="indefinite" calcMode="linear" begin="9s">
-          <mpath href="#r-v2"/>
-        </animateMotion>
-      </circle>
-
-      {# Carro 5 — horizontal superior, defasado #}
-      <circle r="2.5" fill="rgba(255,255,255,.35)">
-        <animateMotion dur="22s" repeatCount="indefinite" calcMode="linear" begin="11s">
-          <mpath href="#r-h1"/>
-        </animateMotion>
-      </circle>
-    </svg>
-
-    {# Topo: logo #}
-    <div class="side-top">
-      <div class="side-logo-icon">
-        <svg width="20" height="20" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-          <path d="M16 5 L27 25 H5 Z" stroke="#fff" stroke-width="2.5" stroke-linejoin="round" fill="none"/>
-          <circle cx="16" cy="27" r="2.2" fill="#fff"/>
-        </svg>
-      </div>
-      <span class="side-logo-name">WazeBR</span>
+                    <div class="support">
+                        Problemas? <a href="mailto:suporte@wazebr.com">Fale com o suporte</a>
+                    </div>
+                    <div class="footer-note">Ao entrar, você aceita o uso interno da plataforma para operação e monitoramento.</div>
+                </div>
+            </section>
+        </main>
     </div>
-
-    {# Stats #}
-    <div class="side-stats">
-      <div class="stat-card">
-        <div class="stat-icon teal">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
-        </div>
-        <div class="stat-body">
-          <div class="stat-value">248</div>
-          <div class="stat-label">Rotas monitoradas</div>
-        </div>
-        <span class="live-dot"></span>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon amber">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        </div>
-        <div class="stat-body">
-          <div class="stat-value">12</div>
-          <div class="stat-label">Alertas ativos agora</div>
-        </div>
-        <span class="live-dot" style="background:#fbbf24"></span>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon rose">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        </div>
-        <div class="stat-body">
-          <div class="stat-value">&lt; 2 min</div>
-          <div class="stat-label">Latência média de atualização</div>
-        </div>
-      </div>
-    </div>
-
-    {# Rodapé #}
-    <div class="side-footer">
-      <h2>Trânsito inteligente<br>em tempo real</h2>
-      <p>Alertas, congestionamentos e rotas integrados com a rede Waze para sua cidade.</p>
-    </div>
-  </aside>
-
-  {# ──────────────────────────────────────────
-     PAINEL DIREITO — formulário
-  ────────────────────────────────────────── #}
-  <main class="form-panel">
-
-    <button class="theme-btn" data-theme-toggle aria-label="Alternar tema">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-      </svg>
-    </button>
-
-    <div class="form-box">
-
-      <div class="form-logo">
-        <div class="form-logo-icon">
-          <svg width="18" height="18" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-            <path d="M16 5 L27 25 H5 Z" stroke="#fff" stroke-width="2.5" stroke-linejoin="round" fill="none"/>
-            <circle cx="16" cy="27" r="2.2" fill="#fff"/>
-          </svg>
-        </div>
-        <span class="form-logo-name">WazeBR</span>
-      </div>
-
-      <div class="form-head">
-        <h1>Bem-vindo de volta</h1>
-        <p>Acesse o painel de monitoramento.</p>
-      </div>
-
-      {% if error %}
-      <div class="err-box" role="alert">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:.15rem"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        {{ error.messageKey|trans(error.messageData, 'security') }}
-      </div>
-      {% endif %}
-
-      <form method="POST" action="{{ path('auth_login') }}" id="loginForm" novalidate>
-        <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
-
-        <div class="field">
-          <label for="email">E-mail</label>
-          <div class="fw">
-            <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg>
-            <input type="email" id="email" name="email"
-              value="{{ last_username }}"
-              autocomplete="email" autofocus required
-              placeholder="seu@email.com.br">
-          </div>
-        </div>
-
-        <div class="field">
-          <label for="password">Senha</label>
-          <div class="fw">
-            <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            <input type="password" id="password" name="password"
-              autocomplete="current-password" required
-              placeholder="••••••••"
-              style="padding-right:2.75rem">
-            <button type="button" class="pw-toggle" id="pwBtn" aria-label="Mostrar senha">
-              <svg id="eyeIco" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-            </button>
-          </div>
-        </div>
-
-        <div class="row-aux">
-          <label class="lbl-remember">
-            <input type="checkbox" name="_remember_me"> Lembrar acesso
-          </label>
-          <a href="{{ path('auth_password_request') }}" class="link-fw">Esqueceu a senha?</a>
-        </div>
-
-        <button type="submit" class="btn" id="loginBtn">
-          <span class="btn-txt">Entrar</span>
-          <span class="spin" aria-hidden="true">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>
-          </span>
-        </button>
-      </form>
-
-      <div class="form-foot">
-        Problemas? <a href="mailto:suporte@wazebr.com.br">Fale com o suporte</a>
-      </div>
-
-    </div>
-  </main>
-
-  <script>
-    (function () {
-      const btn  = document.querySelector('[data-theme-toggle]');
-      const root = document.documentElement;
-      const sun  = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
-      const moon = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
-      let t = matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light';
-      root.setAttribute('data-theme', t);
-      if (btn) {
-        btn.innerHTML = t === 'dark' ? sun : moon;
-        btn.addEventListener('click', () => {
-          t = t === 'dark' ? 'light' : 'dark';
-          root.setAttribute('data-theme', t);
-          btn.innerHTML = t === 'dark' ? sun : moon;
-          btn.setAttribute('aria-label', t === 'dark' ? 'Modo claro' : 'Modo escuro');
-        });
-      }
-    })();
-
-    (function () {
-      const btn = document.getElementById('pwBtn');
-      const inp = document.getElementById('password');
-      const ico = document.getElementById('eyeIco');
-      if (!btn || !inp) return;
-      btn.addEventListener('click', () => {
-        const show = inp.type === 'password';
-        inp.type = show ? 'text' : 'password';
-        ico.innerHTML = show
-          ? `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>`
-          : `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
-        btn.setAttribute('aria-label', show ? 'Ocultar senha' : 'Mostrar senha');
-      });
-    })();
-
-    (function () {
-      const form = document.getElementById('loginForm');
-      const btn  = document.getElementById('loginBtn');
-      if (!form || !btn) return;
-      form.addEventListener('submit', () => {
-        btn.classList.add('loading');
-        btn.disabled = true;
-      });
-    })();
-  </script>
 </body>
 </html>
