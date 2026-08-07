@@ -113,58 +113,17 @@ class DashboardController extends AbstractController
         $avgReliability = (float)($qualityStats['avg_reliability'] ?? 0);
         $avgConfidence  = (float)($qualityStats['avg_confidence'] ?? 0);
 
-        // WazeCount (semana e picos por level)
-        // Esta semana: \u00faltimos 7 dias
-        $wazeCountThisWeek = $conn->fetchOne(<<<'SQL'
-            SELECT COUNT(*) FROM waze_counts wc
-            WHERE wc.created_at >= FROM_UNIXTIME((:lastWeek / 1000))
-        SQL, ['lastWeek' => $lastWeek]);
-
-        // Semana passada: 7 a 14 dias atr\u00e1s
-        $last2Weeks = $now - 14 * 24 * 3600 * 1000;
-        $wazeCountLastWeek = $conn->fetchOne(<<<'SQL'
-            SELECT COUNT(*) FROM waze_counts wc
-            WHERE wc.created_at >= FROM_UNIXTIME((:last2Weeks / 1000))
-              AND wc.created_at < FROM_UNIXTIME((:lastWeek / 1000))
-        SQL, ['last2Weeks' => $last2Weeks, 'lastWeek' => $lastWeek]);
-
-        // Picos por n\u00edvel de jam (usando JSON em waze_counts)
-        $peakByLevel = $conn->fetchAllAssociative(<<<'SQL'
-            SELECT
-                wc.level,
-                MAX(JSON_EXTRACT(wc.data, '$.wazers_level0')) AS max_level0,
-                MAX(JSON_EXTRACT(wc.data, '$.wazers_level1')) AS max_level1,
-                MAX(JSON_EXTRACT(wc.data, '$.wazers_level2')) AS max_level2,
-                MAX(JSON_EXTRACT(wc.data, '$.wazers_level3')) AS max_level3,
-                MAX(JSON_EXTRACT(wc.data, '$.wazers_level4')) AS max_level4,
-                MAX(JSON_EXTRACT(wc.data, '$.wazers_total'))  AS max_total
-            FROM waze_counts wc
-            WHERE wc.created_at >= FROM_UNIXTIME((:lastWeek / 1000))
-            GROUP BY wc.level
-        SQL, ['lastWeek' => $lastWeek]);
-
+        // WazeCount — desativado (campo de tempo inexistente em waze_counts)
+        $wazeCountThisWeek = null;
+        $wazeCountLastWeek = null;
         $wazeCountPeak = [
-            'max_level0' => 0,
-            'max_level1' => 0,
-            'max_level2' => 0,
-            'max_level3' => 0,
-            'max_level4' => 0,
-            'max_total'  => 0,
+            'max_level0' => null,
+            'max_level1' => null,
+            'max_level2' => null,
+            'max_level3' => null,
+            'max_level4' => null,
+            'max_total'  => null,
         ];
-        foreach ($peakByLevel as $row) {
-            $lvl = (int)$row['level'];
-            if ($lvl >= 0 && $lvl <= 4) {
-                $wazeCountPeak['max_level' . $lvl] = (int)($row['max_level' . $lvl] ?? 0);
-            }
-        }
-        $wazeCountPeak['max_total'] = max(
-            $wazeCountPeak['max_level0'],
-            $wazeCountPeak['max_level1'],
-            $wazeCountPeak['max_level2'],
-            $wazeCountPeak['max_level3'],
-            $wazeCountPeak['max_level4'],
-            (int)($peakByLevel[0]['max_total'] ?? 0),
-        );
 
         // KPIs
         $kpis = [
@@ -202,8 +161,8 @@ class DashboardController extends AbstractController
             ],
             'tvtAvgSpeed' => 0.0,
             'tvtAvgTravelTime' => 0.0,
-            'wazeCount' => (int)$wazeCountThisWeek,
-            'wazeCountLastWeek' => (int)$wazeCountLastWeek,
+            'wazeCount' => $wazeCountThisWeek,
+            'wazeCountLastWeek' => $wazeCountLastWeek,
             'wazeCountPeak' => $wazeCountPeak,
             'alertLinkedToJamPct' => 0.0,
             'alertOnHighwayPct' => 0.0,
