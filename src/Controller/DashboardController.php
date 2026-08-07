@@ -96,19 +96,17 @@ class DashboardController extends AbstractController
             ->getQuery()
             ->getArrayResult();
 
-        // Irregularities (limit 20)
-        $irregs = $this->irregRepo->createQueryBuilder('i')
-            ->select('i.id, i.street, i.city, i.speedLoss, i.delay')
-            ->setMaxResults(20)
+        // Irregularities - count apenas (evita hidratar campos inexistentes)
+        $irregsCount = $this->irregRepo->createQueryBuilder('i')
+            ->select('COUNT(i.id) as total')
             ->getQuery()
-            ->getArrayResult();
+            ->getSingleScalarResult();
 
-        // Cifs events (limit 20)
-        $cifs = $this->cifsRepo->createQueryBuilder('c')
-            ->select('c.id, c.street, c.city, c.type, c.status')
-            ->setMaxResults(20)
+        // Cifs events - count apenas
+        $cifsCount = $this->cifsRepo->createQueryBuilder('c')
+            ->select('COUNT(c.id) as total')
             ->getQuery()
-            ->getArrayResult();
+            ->getSingleScalarResult();
 
         // Alert types (somente tipos, sem hidratar tudo)
         $alertTypes = $this->alertTypeRepo->createQueryBuilder('t')
@@ -124,7 +122,7 @@ class DashboardController extends AbstractController
             'cities' => 0,
             'links' => count($links),
             'routes' => count($routes),
-            'irregularities' => count($irregs),
+            'irregularities' => (int)($irregsCount['total'] ?? 0),
             'alerts1h' => (int)($alertsStats['lastHour'] ?? 0),
             'alerts24h' => (int)($alertsStats['lastDay'] ?? 0),
             'alerts7d' => (int)($alertsStats['lastWeek'] ?? 0),
@@ -164,7 +162,7 @@ class DashboardController extends AbstractController
             ],
             'alertLinkedToJamPct' => 0.0,
             'alertOnHighwayPct' => 0.0,
-            'cifsActiveCount' => 0,
+            'cifsActiveCount' => (int)($cifsCount['total'] ?? 0),
             'anomalyDetected' => false,
             'anomalyRatio' => 1.0,
             'avg6hPerHour' => 0.0,
@@ -237,8 +235,8 @@ class DashboardController extends AbstractController
             'irregSpeedLoss' => [],
             'irregDelayByStreet' => [],
             'irregSeverityCity' => [],
-            'irregRecentList' => $irregs,
-            'cifsActive' => $cifs,
+            'irregRecentList' => [],
+            'cifsActive' => [],
             'cifsUpcoming' => [],
             'cifsActiveByType' => [],
             'cifsTopStreets' => [],
