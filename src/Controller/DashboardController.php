@@ -39,7 +39,7 @@ class DashboardController extends AbstractController
         $partner = $user->getPartner();
 
         if (!$partner) {
-            return new Response('<div class="p-5 text-center">Usu\u00e1rio sem parceiro vinculado.</div>', 200, ['Content-Type' => 'text/html; charset=UTF-8']);
+            return new Response('<div class="p-5 text-center">Usu&aacute;rio sem parceiro vinculado.</div>', 200, ['Content-Type' => 'text/html; charset=UTF-8']);
         }
 
         $partnerId = $partner->getId();
@@ -174,12 +174,12 @@ class DashboardController extends AbstractController
             'avgConfidence' => $avgConfidence,
         ];
 
-        // Alerts por tipo (u\u00faltimas 24h)
+        // Alerts por tipo (u\u00faltimas 24h) - agrupar SO por type
         $alertsByTypeRaw = $this->alertRepo->createQueryBuilder('a')
-            ->select('a.type, a.subtype, COUNT(a.id) as total')
+            ->select('a.type, COUNT(a.id) as total')
             ->where('a.pubMillis >= :lastDay')
             ->setParameter('lastDay', $lastDay)
-            ->groupBy('a.type', 'a.subtype')
+            ->groupBy('a.type')
             ->getQuery()
             ->getArrayResult();
 
@@ -187,7 +187,6 @@ class DashboardController extends AbstractController
         foreach ($alertsByTypeRaw as $row) {
             $alertsByType[] = [
                 'type' => $row['type'],
-                'subtype' => $row['subtype'],
                 'total' => (int)$row['total'],
             ];
         }
@@ -223,22 +222,12 @@ class DashboardController extends AbstractController
             'CONSTRUCTION' => 'Obra',
             'ROAD_CLOSED' => 'Via Interditada',
             'HAZARD' => 'Perigo',
-            'WEATHERHAZARD' => 'Perigo clim\u00e1tico',
+            'WEATHERHAZARD' => 'Perigo clim&aacute;tico',
         ], 'UTF-8', 'UTF-8');
 
-        $subtypesMap = mb_convert_encoding([
-            'ACCIDENT' => 'Acidente',
-            'HAZARD_ON_ROAD' => 'Perigo na via',
-            'HAZARD_ON_SHOULDER' => 'Perigo no acostamento',
-            'HAZARD_WEATHER' => 'Perigo clim\u00e1tico',
-            'ROAD_CLOSED_CONSTRUCTION' => 'Via interditada (obra)',
-            'ROAD_CLOSED_ACCIDENT' => 'Via interditada (acidente)',
-            'JAM_STAND_TRAFFIC' => 'Tr\u00e1fego parado',
-            'JAM_HEAVY_TRAFFIC' => 'Tr\u00e1fego intenso',
-            'MISC' => 'Diversos',
-        ], 'UTF-8', 'UTF-8');
+        $subtypesMap = [];
 
-        // Dados para gr\u00e1ficos (alerts/jams por hora)
+        // Dados para gr&aacute;ficos (alerts/jams por hora)
         $alertsPerHourRaw = $this->alertRepo->getAlertsPerHourLast24h();
         $jamsPerHourRaw = $this->jamRepo->getJamsPerHourLast24h();
 
@@ -250,7 +239,7 @@ class DashboardController extends AbstractController
 
         // Recent alerts (u\u00faltimos 10)
         $recentAlertsRaw = $this->alertRepo->createQueryBuilder('a')
-            ->select('a.id, a.type, a.subtype, a.city, a.street, a.pubMillis, a.latitude, a.longitude')
+            ->select('a.id, a.type, a.city, a.street, a.pubMillis, a.latitude, a.longitude')
             ->orderBy('a.pubMillis', 'DESC')
             ->setMaxResults(10)
             ->getQuery()
@@ -260,7 +249,6 @@ class DashboardController extends AbstractController
             return [
                 'id' => (int)$r['id'],
                 'type' => $r['type'],
-                'subtype' => $r['subtype'],
                 'city' => $r['city'],
                 'street' => $r['street'],
                 'pubMillis' => (int)$r['pubMillis'],
@@ -284,6 +272,9 @@ class DashboardController extends AbstractController
                 $decoded = json_decode($line, true);
                 if (is_array($decoded) && isset($decoded['coordinates'])) {
                     $coords = $decoded['coordinates'];
+                } elseif (is_array($decoded)) {
+                    // Se for array direto de coordenadas [[lon,lat],...]
+                    $coords = $decoded;
                 }
             }
             return [

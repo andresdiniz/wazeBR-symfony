@@ -36,27 +36,27 @@
     <div class="kpi-card success">
         <div class="kpi-label">{{ translations.cifs_ativos ?? 'CIFS ativos' }}</div>
         <div class="kpi-value">{{ kpis.cifsActiveCount }}</div>
-        <small>{{ translations.secoes_ativas ?? 'Seç©§es ativas' }}</small>
+        <small>{{ translations.secoes_ativas ?? 'Se&ccedil;&otilde;es ativas' }}</small>
     </div>
     <div class="kpi-card warning">
         <div class="kpi-label">{{ translations.alertas_total ?? 'Alertas (total)' }}</div>
         <div class="kpi-value">{{ kpis.alerts }}</div>
-        <small>24h {{ kpis.alerts24h }} · 7d {{ kpis.alerts7d }}</small>
+        <small>24h {{ kpis.alerts24h }} &middot; 7d {{ kpis.alerts7d }}</small>
     </div>
     <div class="kpi-card danger">
         <div class="kpi-label">{{ translations.jams_total ?? 'Jams (total)' }}</div>
         <div class="kpi-value">{{ kpis.jams }}</div>
-        <small>24h {{ kpis.jams24h }} · 7d {{ kpis.jams7d }}</small>
+        <small>24h {{ kpis.jams24h }} &middot; 7d {{ kpis.jams7d }}</small>
     </div>
     <div class="kpi-card primary">
         <div class="kpi-label">{{ translations.cidades ?? 'Cidades' }}</div>
         <div class="kpi-value">{{ (cities|length) ?: 0 }}</div>
-        <small>{{ translations.links ?? 'Links' }} {{ (links|length) ?: 0 }} · {{ translations.rotas ?? 'Rotas' }} {{ (routes|length) ?: 0 }}</small>
+        <small>{{ translations.links ?? 'Links' }} {{ (links|length) ?: 0 }} &middot; {{ translations.rotas ?? 'Rotas' }} {{ (routes|length) ?: 0 }}</small>
     </div>
     <div class="kpi-card success">
         <div class="kpi-label">{{ translations.irregularidades ?? 'Irregularidades' }}</div>
         <div class="kpi-value">{{ kpis.irregularities }}</div>
-        <small>{{ translations.secoes_ativas ?? 'Seç©§es ativas' }}</small>
+        <small>{{ translations.secoes_ativas ?? 'Se&ccedil;&otilde;es ativas' }}</small>
     </div>
 </div>
 
@@ -66,17 +66,17 @@
         <canvas id="alerts-by-type-chart" height="200"></canvas>
     </div>
     <div class="chart-wrapper">
-        <h5>{{ translations.jams_por_nivel ?? 'Jams por n\u00edvel (24h)' }}</h5>
+        <h5>{{ translations.jams_por_nivel ?? 'Jams por n&iacute;vel (24h)' }}</h5>
         <canvas id="jams-by-level-chart" height="200"></canvas>
     </div>
     <div class="chart-wrapper">
         <h5>{{ translations.qualidade_dos_alertas ?? 'Qualidade dos alertas (24h)' }}</h5>
         <div class="mt-3">
-            <h6>{{ translations.confiabilidade_media ?? 'Confiabilidade m\u00e9dia (reliability)' }}</h6>
+            <h6>{{ translations.confiabilidade_media ?? 'Confiabilidade m&eacute;dia (reliability)' }}</h6>
             <div class="progress mb-3" style="height: 24px;">
                 <div class="progress-bar bg-primary" style="width: {{ kpis.avgReliability }}%">{{ kpis.avgReliability|number_format(1) }}%</div>
             </div>
-            <h6>{{ translations.confianca_media ?? 'Confian\u00e7a m\u00e9dia (confidence)' }}</h6>
+            <h6>{{ translations.confianca_media ?? 'Confian&ccedil;a m&eacute;dia (confidence)' }}</h6>
             <div class="progress mb-3" style="height: 24px;">
                 <div class="progress-bar bg-success" style="width: {{ kpis.avgConfidence }}%">{{ kpis.avgConfidence|number_format(1) }}%</div>
             </div>
@@ -89,36 +89,36 @@
         <h5>{{ translations.mapa_alertas_jams ?? 'Mapa de Alertas e Jams (recentes)' }}</h5>
         <div id="map"></div>
         <div class="mt-2 map-legend">
-            <strong>{{ translations.niveis_jam ?? 'N\u00edveis de Jam' }}:</strong>
+            <strong>{{ translations.niveis_jam ?? 'N&iacute;veis de Jam' }}:</strong>
             <div class="legend-item"><span class="legend-color" style="background:#94a3b8"></span> N0</div>
             <div class="legend-item"><span class="legend-color" style="background:#22c55e"></span> N1</div>
             <div class="legend-item"><span class="legend-color" style="background:#eab308"></span> N2</div>
             <div class="legend-item"><span class="legend-color" style="background:#f97316"></span> N3</div>
             <div class="legend-item"><span class="legend-color" style="background:#ef4444"></span> N4</div>
-            <div class="legend-item"><span class="legend-color" style="background:#7f1d1d"></span> N5 (Interdi\u00e7\u00e3o)</div>
+            <div class="legend-item"><span class="legend-color" style="background:#7f1d1d"></span> N5 (Interdi&ccedil;&atilde;o)</div>
         </div>
     </div>
 </div>
 
 <div class="chart-row">
     <div class="chart-wrapper">
-        <h5>{{ translations.alertas_por_hora ?? 'Alertas por hora (u\u00faltimas 24h)' }}</h5>
+        <h5>{{ translations.alertas_por_hora ?? 'Alertas por hora (&uacute;ltimas 24h)' }}</h5>
         <canvas id="alerts-per-hour-chart" height="160"></canvas>
     </div>
     <div class="chart-wrapper">
-        <h5>{{ translations.jams_por_hora ?? 'Jams por hora (u\u00faltimas 24h)' }}</h5>
+        <h5>{{ translations.jams_por_hora ?? 'Jams por hora (&uacute;ltimas 24h)' }}</h5>
         <canvas id="jams-per-hour-chart" height="160"></canvas>
     </div>
 </div>
 
 <div class="card">
-    <div class="card-header">{{ translations.wazecount_semana ?? 'WazeCount — Semana' }}</div>
+    <div class="card-header">{{ translations.wazecount_semana ?? 'WazeCount &mdash; Semana' }}</div>
     <div class="card-body">
         <div class="row mb-3">
             <div class="col-md-6"><strong>{{ translations.esta_semana ?? 'Esta semana' }}:</strong> {{ kpis.wazeCount ?? '—' }}</div>
             <div class="col-md-6"><strong>{{ translations.semana_passada ?? 'Semana passada' }}:</strong> {{ kpis.wazeCountLastWeek ?? '—' }}</div>
         </div>
-        <h6>{{ translations.picos_por_nivel ?? 'Picos por n\u00edvel de jam (max)' }}</h6>
+        <h6>{{ translations.picos_por_nivel ?? 'Picos por n&iacute;vel de jam (max)' }}</h6>
         <ul class="list-unstyled">
             <li>{{ translations.nivel_0 ?? 'Nivel 0' }}: {{ kpis.wazeCountPeak.max_level0 ?? 0 }}</li>
             <li>{{ translations.nivel_1 ?? 'Nivel 1' }}: {{ kpis.wazeCountPeak.max_level1 ?? 0 }}</li>
@@ -138,7 +138,7 @@
         {% else %}
             <div class="alert alert-warning">{{ translations.nenhum_evento_ativo ?? 'Nenhum evento ativo.' }}</div>
         {% endif %}
-        <h6>{{ translations.proximos_7_dias ?? 'Pr\u00f3ximos 7 dias' }}</h6>
+        <h6>{{ translations.proximos_7_dias ?? 'Pr&oacute;ximos 7 dias' }}</h6>
         {% if cifsUpcoming|length > 0 %}
             <ul class="list-unstyled">
                 {% for event in cifsUpcoming|slice(0,5) %}
@@ -152,7 +152,7 @@
 </div>
 
 <div class="card">
-    <div class="card-header">{{ translations.irregularidades_trafego ?? 'Irregularidades de Tr\u00e1fego' }}</div>
+    <div class="card-header">{{ translations.irregularidades_trafego ?? 'Irregularidades de Tr&aacute;fego' }}</div>
     <div class="card-body">
         {% if irregRecentList|length > 0 %}
             <div class="alert alert-success">{{ irregRecentList|length }} {{ translations.recentes ?? 'recentes' }}</div>
@@ -197,7 +197,7 @@
         {% if recentJams|length > 0 %}
             <ul class="list-unstyled">
                 {% for jam in recentJams|slice(0,5) %}
-                    <li>{{ translations.nivel ?? 'N\u00edvel' }} {{ jam.level }} - {{ jam.city ?? '' }} {{ jam.street ?? '' }}</li>
+                    <li>{{ translations.nivel ?? 'N&iacute;vel' }} {{ jam.level }} - {{ jam.city ?? '' }} {{ jam.street ?? '' }}</li>
                 {% endfor %}
             </ul>
         {% else %}
@@ -211,9 +211,6 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function() {
-    const translations = {{ translations|json_encode(constant('JSON_UNESCAPED_UNICODE'))|raw }};
-    const locale = {{ locale|json_encode|raw }};
-
     // Cores Waze para niveis de jam
     const jamLevelColors = {
         0: '#94a3b8',
@@ -257,7 +254,7 @@
             data: {
                 labels: labels,
                 datasets: [{
-                    label: translations.alertas ?? 'Alertas',
+                    label: 'Alertas',
                     data: data,
                     backgroundColor: bgColors,
                     borderColor: borderColors,
@@ -275,13 +272,13 @@
         });
     })();
 
-    // Jams por n\u00edvel (barras, cores Waze)
+    // Jams por n&iacute;vel (barras, cores Waze)
     (function() {
         const ctx = document.getElementById('jams-by-level-chart');
         if (!ctx) return;
 
         const raw = {{ jamsByLevel|json_encode|raw }};
-        const labels = raw.map(r => (translations.nivel ?? 'N') + r.level + (r.level === 5 ? ' (Interdi\u00e7\u00e3o)' : ''));
+        const labels = raw.map(r => 'N' + r.level + (r.level === 5 ? ' (Interdi&ccedil;&atilde;o)' : ''));
         const data = raw.map(r => r.total);
         const bgColors = raw.map(r => jamLevelColors[r.level] ?? '#ef4444');
         const borderColors = raw.map(r => jamLevelColors[r.level] ?? '#ef4444');
@@ -293,7 +290,7 @@
             data: {
                 labels: labels,
                 datasets: [{
-                    label: translations.jams ?? 'Jams',
+                    label: 'Jams',
                     data: data,
                     backgroundColor: bgColors,
                     borderColor: borderColors,
@@ -326,7 +323,7 @@
             data: {
                 labels: labels,
                 datasets: [{
-                    label: translations.alertas_por_hora ?? 'Alertas por hora',
+                    label: 'Alertas por hora',
                     data: data,
                     borderColor: '#2563eb',
                     backgroundColor: 'rgba(37, 99, 235, 0.15)',
@@ -362,7 +359,7 @@
             data: {
                 labels: labels,
                 datasets: [{
-                    label: translations.jams_por_hora ?? 'Jams por hora',
+                    label: 'Jams por hora',
                     data: data,
                     borderColor: '#f59e0b',
                     backgroundColor: 'rgba(245, 158, 11, 0.15)',
@@ -399,7 +396,7 @@
             data: {
                 labels: labels,
                 datasets: [{
-                    label: translations.perda_velocidade_kmh ?? 'Perda (km/h)',
+                    label: 'Perda (km/h)',
                     data: data,
                     backgroundColor: 'rgba(239, 68, 68, 0.7)',
                     borderColor: '#ef4444',
@@ -433,7 +430,7 @@
             data: {
                 labels: labels,
                 datasets: [{
-                    label: translations.atraso_min ?? 'Atraso (min)',
+                    label: 'Atraso (min)',
                     data: data,
                     backgroundColor: 'rgba(59, 130, 246, 0.7)',
                     borderColor: '#3b82f6',
@@ -481,8 +478,14 @@
         recentJams.forEach(j => {
             if (!j.line || !Array.isArray(j.line) || j.line.length === 0) return;
 
-            // j.line eh [[lon,lat], [lon,lat], ...]
-            const coords = j.line.map(p => [p[1], p[0]]);
+            // j.line eh [[lon,lat], [lon,lat], ...] ou as vezes apenas [lon,lat] se for ponto
+            let coords;
+            if (Array.isArray(j.line[0])) {
+                coords = j.line.map(p => [p[1], p[0]]);
+            } else {
+                coords = [[j.line[1], j.line[0]]];
+            }
+
             const color = jamLevelColors[j.level] ?? '#ef4444';
 
             L.polyline(coords, {
@@ -490,7 +493,7 @@
                 weight: 5,
                 opacity: 0.9
             }).addTo(map)
-             .bindPopup(`<strong>${translations.jam ?? 'Jam'} N${j.level}${j.level === 5 ? ' (Interdi\u00e7\u00e3o)' : ''}</strong><br>${j.city ?? ''} ${j.street ?? ''}`);
+             .bindPopup(`<strong>Jam N${j.level}${j.level === 5 ? ' (Interdi&ccedil;&atilde;o)' : ''}</strong><br>${j.city ?? ''} ${j.street ?? ''}`);
         });
     })();
 })();
