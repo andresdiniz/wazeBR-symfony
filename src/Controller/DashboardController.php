@@ -49,30 +49,87 @@ class DashboardController extends AbstractController
             );
         }
 
-        $partnerLabel = $partner->getName() ?? $partner->getSlug() ?? 'Parceiro #' . $partner->getId();
+        $partnerId = $partner->getId();
+        $partnerLabel = $partner->getName() ?? $partner->getSlug() ?? 'Parceiro #' . $partnerId;
 
-        $alerts = $this->alertRepo->findAll();
-        $jams = $this->jamRepo->findAll();
-        $tvtRoutes = $this->tvtRouteRepo->findAll();
-        $links = $this->linkRepo->findAll();
-        $irregs = $this->irregRepo->findAll();
-        $cifs = $this->cifsRepo->findAll();
-        $alertTypes = $this->alertTypeRepo->findAll();
+        $now = time() * 1000;
+        $lastHour = $now - 3600 * 1000;
+        $lastDay = $now - 24 * 3600 * 1000;
+        $lastWeek = $now - 7 * 24 * 3600 * 1000;
 
-        // KPIs básicos
+        // Queries otimizadas para alerts (agrupa counts)
+        $alertsStats = $this->alertRepo->createQueryBuilder('a')
+            ->select(
+                'COUNT(a.id) as total',
+                'SUM(CASE WHEN a.pubMillis >= :lastHour THEN 1 ELSE 0 END) as lastHour',
+                'SUM(CASE WHEN a.pubMillis >= :lastDay THEN 1 ELSE 0 END) as lastDay',
+                'SUM(CASE WHEN a.pubMillis >= :lastWeek THEN 1 ELSE 0 END) as lastWeek'
+            )
+            ->setParameter('lastHour', $lastHour)
+            ->setParameter('lastDay', $lastDay)
+            ->setParameter('lastWeek', $lastWeek)
+            ->getQuery()
+            ->getArrayResult()[0] ?? [];
+
+        // Queries otimizadas para jams (agrupa counts)
+        $jamsStats = $this->jamRepo->createQueryBuilder('j')
+            ->select(
+                'COUNT(j.id) as total',
+                'SUM(CASE WHEN j.pubMillis >= :lastDay THEN 1 ELSE 0 END) as lastDay',
+                'SUM(CASE WHEN j.pubMillis >= :lastWeek THEN 1 ELSE 0 END) as lastWeek'
+            )
+            ->setParameter('lastDay', $lastDay)
+            ->setParameter('lastWeek', $lastWeek)
+            ->getQuery()
+            ->getArrayResult()[0] ?? [];
+
+        // Queries parciais para links (sem hidratacao full)
+        $links = $this->linkRepo->createQueryBuilder('l')
+            ->select('l.id, l.name, l.url')
+            ->getQuery()
+            ->getArrayResult();
+
+        // Routes otimizadas (sem colunas JSON pesadas, limit 20)
+        $routes = $this->tvtRouteRepo->createQueryBuilder('r')
+            ->select('r.id, r.name, r.length, r.time, r.jamLevel, r.isSubRoute')
+            ->setMaxResults(20)
+            ->getQuery()
+            ->getArrayResult();
+
+        // Irregularities (limit 20)
+        $irregs = $this->irregRepo->createQueryBuilder('i')
+            ->select('i.id, i.street, i.city, i.speedLoss, i.delay')
+            ->setMaxResults(20)
+            ->getQuery()
+            ->getArrayResult();
+
+        // Cifs events (limit 20)
+        $cifs = $this->cifsRepo->createQueryBuilder('c')
+            ->select('c.id, c.street, c.city, c.type, c.status')
+            ->setMaxResults(20)
+            ->getQuery()
+            ->getArrayResult();
+
+        // Alert types (somente tipos, sem hidratar tudo)
+        $alertTypes = $this->alertTypeRepo->createQueryBuilder('t')
+            ->select('t.id, t.type')
+            ->getQuery()
+            ->getArrayResult();
+
+        // KPIs basicos
         $kpis = [
-            'alerts' => count($alerts),
-            'jams' => count($jams),
+            'alerts' => (int)($alertsStats['total'] ?? 0),
+            'jams' => (int)($jamsStats['total'] ?? 0),
             'cemaden' => 0,
             'cities' => 0,
             'links' => count($links),
-            'routes' => count($tvtRoutes),
+            'routes' => count($routes),
             'irregularities' => count($irregs),
-            'alerts1h' => 0,
-            'alerts24h' => 0,
-            'alerts7d' => 0,
-            'jams24h' => 0,
-            'jams7d' => 0,
+            'alerts1h' => (int)($alertsStats['lastHour'] ?? 0),
+            'alerts24h' => (int)($alertsStats['lastDay'] ?? 0),
+            'alerts7d' => (int)($alertsStats['lastWeek'] ?? 0),
+            'jams24h' => (int)($jamsStats['lastDay'] ?? 0),
+            'jams7d' => (int)($jamsStats['lastWeek'] ?? 0),
             'avgSpeed' => 0.0,
             'avgDelay' => 0.0,
             'totalLength' => 0.0,
@@ -113,16 +170,16 @@ class DashboardController extends AbstractController
             'avg6hPerHour' => 0.0,
         ];
 
-        // Alerts por tipo
+        // Alerts por tipo (query otimizadas)
         $alertsByType = [];
         foreach ($alertTypes as $type) {
             $alertsByType[] = [
-                'type' => $type->getType(),
+                'type' => $type['type'],
                 'total' => 0,
             ];
         }
 
-        // Jams por nível
+        // Jams por nivel (query otimizadas)
         $jamsByLevel = [];
         for ($level = 0; $level <= 5; $level++) {
             $jamsByLevel[] = [
@@ -180,8 +237,8 @@ class DashboardController extends AbstractController
             'irregSpeedLoss' => [],
             'irregDelayByStreet' => [],
             'irregSeverityCity' => [],
-            'irregRecentList' => [],
-            'cifsActive' => [],
+            'irregRecentList' => $irregs,
+            'cifsActive' => $cifs,
             'cifsUpcoming' => [],
             'cifsActiveByType' => [],
             'cifsTopStreets' => [],
@@ -190,7 +247,7 @@ class DashboardController extends AbstractController
             'recentAlerts' => [],
             'recentJams' => [],
             'cemadenData' => [],
-            'routes' => $tvtRoutes,
+            'routes' => $routes,
             'cities' => [],
             'links' => $links,
         ]);
