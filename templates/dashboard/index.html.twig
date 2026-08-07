@@ -2,138 +2,19 @@
 
 {% block title %}Dashboard - WazeBR{% endblock %}
 
-{% block stylesheets %}
-    {{ parent() }}
-    <style>
-        .db-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 24px;
-        }
-
-        .db-header-main h1 {
-            font-size: 22px;
-            font-weight: 700;
-            color: #f7f1e8;
-            letter-spacing: -0.02em;
-        }
-
-        .db-header-main p {
-            margin-top: 4px;
-            font-size: 13px;
-            color: rgba(244,239,232,0.8);
-        }
-
-        .status-pill {
-            display: inline-flex;
-            align-items: center;
-            padding: 4px 10px;
-            border-radius: 999px;
-            font-size: 11px;
-            margin-left: 8px;
-        }
-
-        .status-pill--ok {
-            background: rgba(127,216,230,0.15);
-            color: #7fd8e6;
-        }
-
-        .status-pill--info {
-            background: rgba(244,239,232,0.12);
-            color: rgba(244,239,232,0.82);
-        }
-
-        .db-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 16px;
-        }
-
-        .db-card {
-            background: rgba(14,13,24,0.92);
-            border-radius: 14px;
-            border: 1px solid rgba(255,255,255,0.06);
-            box-shadow: 0 18px 40px rgba(0,0,0,0.45);
-            padding: 16px 18px;
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
-        }
-
-        .db-card:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 22px 46px rgba(0,0,0,0.5);
-        }
-
-        .db-card--wide {
-            grid-column: 1 / -1;
-        }
-
-        .db-card--full {
-            grid-column: 1 / -1;
-        }
-
-        .db-card--maps {
-            min-height: 260px;
-        }
-
-        @media (max-width: 900px) {
-            .db-grid {
-                grid-template-columns: minmax(0, 1fr);
-            }
-        }
-    </style>
-{% endblock %}
-
 {% block body %}
-    <div class="container-fluid mt-4">
-        <header class="db-header">
-            <div class="db-header-main">
-                <h1>WazeBR Monitor · {{ partner.name ?? 'Parceiro não definido' }}</h1>
-                <p>
-                    Cidades monitoradas:
-                    {% if monitoredCities is defined and monitoredCities|length > 0 %}
-                        {{ monitoredCities|map(c => c.name)|join(', ') }}
-                    {% else %}
-                        nenhuma cidade configurada
-                    {% endif %}
-                </p>
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm bg-dark text-light">
+                <div class="card-body">
+                    <h1 class="h4 mb-2">Dashboard</h1>
+                    <p class="mb-0 text-muted">
+                        Selecione uma seção no menu lateral para visualizar os dados de monitoramento.
+                    </p>
+                </div>
             </div>
-            <div class="db-header-meta">
-                <span class="status-pill status-pill--ok">Coletas ativas</span>
-                {% if lastUpdateAt is defined %}
-                    <span class="status-pill status-pill--info">Última atualização: {{ lastUpdateAt|date('H:i') }}</span>
-                {% endif %}
-            </div>
-        </header>
-
-        <div class="db-grid">
-            <section class="db-card db-card--wide">
-                {% include 'dashboard/_anomaly_banner.html.twig' with { anomalies: anomalies|default([]) } %}
-            </section>
-
-            <section class="db-card">
-                {% include 'dashboard/_alert_quality.html.twig' with { quality: alertQuality|default([]) } %}
-            </section>
-
-            <section class="db-card">
-                {% include 'dashboard/_week_comparison.html.twig' with { weekly: weeklyComparison|default([]) } %}
-            </section>
-
-            <section class="db-card db-card--maps">
-                {% include 'dashboard/map_traffic.html.twig' with { trafficMap: trafficMapData|default([]) } %}
-            </section>
-
-            <section class="db-card db-card--maps">
-                {% include 'dashboard/map_alerts.html.twig' with { alertMap: alertMapData|default([]) } %}
-            </section>
-
-            <section class="db-card db-card--full">
-                {% include 'dashboard/_cifs_events.html.twig' with { events: cifsEvents|default([]) } %}
-            </section>
-
-            <section class="db-card db-card--full">
-                {% include 'dashboard/_irregularities.html.twig' with { irregularities: irregularities|default([]) } %}
-            </section>
         </div>
     </div>
+</div>
 {% endblock %}
