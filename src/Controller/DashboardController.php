@@ -269,35 +269,46 @@ class DashboardController extends AbstractController
             ];
         }, $recentAlertsRaw);
 
-        // Recent jams (u\u00faltimos 10)
+        // Recent jams (u\u00faltimos 10) - parsing de line
         $recentJamsRaw = $this->jamRepo->createQueryBuilder('j')
-            ->select('j.id, j.level, j.city, j.street, j.pubMillis, j.line')
+            ->select('j.id, j.level, j.city, j.street, j.pubMillis, j.line, j.segments')
             ->orderBy('j.pubMillis', 'DESC')
             ->setMaxResults(10)
             ->getQuery()
             ->getArrayResult();
 
         $recentJams = array_map(function ($r) {
-            $line = $r['line'];
+            $lineStr = $r['line'];
+            $segmentsStr = $r['segments'];
             $coords = [];
-            if (is_string($line) && $line !== '') {
-                $decoded = json_decode($line, true);
-                if (is_array($decoded)) {
-                    if (isset($decoded['type']) && $decoded['type'] === 'LineString' && isset($decoded['coordinates'])) {
-                        // GeoJSON LineString
-                        $coords = $decoded['coordinates'];
-                    } elseif (isset($decoded['coordinates'])) {
-                        // GeoJSON gen&eacute;rico
-                        $coords = $decoded['coordinates'];
-                    } elseif (is_array($decoded[0])) {
-                        // Array de coordenadas [[lon,lat],...]
+
+            // Tentar line primeiro
+            if (is_string($lineStr) && strlen($lineStr) > 2) {
+                $decoded = json_decode($lineStr, true);
+                if (is_array($decoded) && !empty($decoded)) {
+                    // Formato: [{x:lon, y:lat}, ...]
+                    if (isset($decoded[0]['x']) && isset($decoded[0]['y'])) {
                         $coords = $decoded;
-                    } else {
-                        // Array simples [lon,lat]
-                        $coords = [$decoded];
+                    } elseif (is_array($decoded[0]) && count($decoded[0]) === 2) {
+                        // Formato: [[lon,lat], ...]
+                        $coords = $decoded;
                     }
                 }
             }
+
+            // Fallback: tentar segments
+            if (empty($coords) && is_string($segmentsStr) && strlen($segmentsStr) > 2) {
+                $decodedSegments = json_decode($segmentsStr, true);
+                if (is_array($decodedSegments) && !empty($decodedSegments)) {
+                    // Extrair coordenadas dos segments
+                    foreach ($decodedSegments as $seg) {
+                        if (isset($seg['x']) && isset($seg['y'])) {
+                            $coords[] = ['x' => $seg['x'], 'y' => $seg['y']];
+                        }
+                    }
+                }
+            }
+
             return [
                 'id' => (int)$r['id'],
                 'level' => (int)$r['level'],
