@@ -2,19 +2,96 @@
 
 {% block title %}Dashboard - WazeBR{% endblock %}
 
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        .db-root {
+            padding: 24px;
+        }
+
+        .db-header {
+            margin-bottom: 24px;
+        }
+
+        .db-header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            color: #f7f1e8;
+            letter-spacing: -0.02em;
+        }
+
+        .db-header p {
+            margin-top: 4px;
+            font-size: 13px;
+            color: rgba(244,239,232,0.8);
+        }
+
+        .db-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .db-card {
+            background: rgba(14,13,24,0.92);
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.06);
+            box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+            padding: 16px 18px;
+        }
+
+        .db-card--wide,
+        .db-card--full {
+            grid-column: 1 / -1;
+        }
+
+        .db-card--maps {
+            min-height: 260px;
+        }
+
+        @media (max-width: 900px) {
+            .db-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+    </style>
+{% endblock %}
+
 {% block body %}
-<div class="container-fluid py-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm bg-dark text-light">
-                <div class="card-body">
-                    <h1 class="h4 mb-2">Dashboard</h1>
-                    <p class="mb-0 text-muted">
-                        Selecione uma seção no menu lateral para visualizar os dados de monitoramento.
-                    </p>
-                </div>
-            </div>
-        </div>
+<div class="db-root">
+    <div class="db-header">
+        <h1>Dashboard</h1>
+        <p>Visão geral dos alertas, congestionamentos e eventos CIFS.</p>
+    </div>
+
+    <div class="db-grid">
+        <section class="db-card db-card--wide">
+            {% include 'dashboard/_anomaly_banner.html.twig' with { anomalies: anomalies|default([]) } %}
+        </section>
+
+        <section class="db-card">
+            {% include 'dashboard/_alert_quality.html.twig' with { quality: quality|default([]) } %}
+        </section>
+
+        <section class="db-card">
+            {% include 'dashboard/_week_comparison.html.twig' with { weekly: weekly|default([]) } %}
+        </section>
+
+        <section class="db-card db-card--maps">
+            {% include 'dashboard/map_traffic.html.twig' with { trafficMap: trafficMap|default([]) } %}
+        </section>
+
+        <section class="db-card db-card--maps">
+            {% include 'dashboard/map_alerts.html.twig' with { alertMap: alertMap|default([]) } %}
+        </section>
+
+        <section class="db-card db-card--full">
+            {% include 'dashboard/_cifs_events.html.twig' with { events: events|default([]) } %}
+        </section>
+
+        <section class="db-card db-card--full">
+            {% include 'dashboard/_irregularities.html.twig' with { irregularities: irregularities|default([]) } %}
+        </section>
     </div>
 </div>
 {% endblock %}
