@@ -4,222 +4,230 @@
 
 {% block stylesheets %}
     <style>
-        :root {
-            --bg-start: #7877e3;
-            --bg-end: #8a63d4;
-            --panel: #1c1814;
-            --panel-line: rgba(255,255,255,.06);
-            --text: #f3ece1;
-            --muted: rgba(243,236,225,.66);
-            --accent: #7fd8e6;
-            --accent-strong: #65b9cb;
-            --input: #11100e;
-            --input-line: rgba(255,255,255,.08);
-        }
-
-        html, body { height: 100%; }
-
         body.guest-shell {
-            margin: 0;
             min-height: 100vh;
-            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
-            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            margin: 0;
+            background: linear-gradient(135deg, #6d7ae6 0%, #8a63d2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             overflow: hidden;
         }
 
-        .page {
+        .login-shell {
+            width: 100%;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 36px;
+            padding: 32px;
         }
 
-        .stage {
-            width: min(1220px, 100%);
-            min-height: 640px;
+        .login-panel {
+            width: 100%;
+            max-width: 1180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             position: relative;
         }
 
-        .brand {
+        .login-brand-bar {
             position: absolute;
             left: 50%;
             top: 50%;
-            transform: translate(-48%, -50%);
-            display: inline-flex;
+            transform: translate(-50%, -50%);
+            display: flex;
             align-items: center;
             gap: 14px;
-            background: #171512;
-            padding: 12px 16px 12px 12px;
+            background: #181714;
+            color: #fff;
+            padding: 12px 16px;
             border-radius: 2px;
-            box-shadow: 0 16px 32px rgba(0,0,0,.22);
+            box-shadow: 0 10px 35px rgba(0, 0, 0, .18);
             z-index: 1;
         }
 
-        .brand-mark {
-            width: 38px;
-            height: 38px;
-            border-radius: 9px;
-            background: linear-gradient(135deg, #84d8e5 0%, #63b8cb 100%);
+        .brand-badge {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #73d6e7 0%, #63b7ca 100%);
             display: grid;
             place-items: center;
-            color: #f7fffe;
-            font-weight: 800;
+            font-weight: 700;
             font-size: 18px;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,.18);
+            color: #f7fffd;
         }
 
         .brand-name {
-            color: #6ad0e1;
-            font-weight: 800;
-            font-size: 20px;
-            letter-spacing: -.02em;
-            line-height: 1;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: .2px;
         }
 
         .brand-chip {
-            color: #8fd1df;
-            background: rgba(127,216,230,.08);
+            display: inline-flex;
+            align-items: center;
             padding: 4px 10px;
             border-radius: 999px;
-            font-size: 12px;
-            font-weight: 700;
+            background: rgba(255,255,255,.08);
+            color: #8ce0ff;
+            font-size: 13px;
+            font-weight: 600;
         }
 
-        .card {
-            width: min(520px, 100%);
-            margin-left: 284px;
-            background: var(--panel);
-            color: var(--text);
-            border: 1px solid var(--panel-line);
-            border-radius: 3px;
-            box-shadow: 0 24px 60px rgba(0,0,0,.20);
-            padding: 28px 30px 24px;
+        .login-card {
+            width: 360px;
+            background: #1b1814;
+            color: #e8e1d8;
+            border: 1px solid rgba(255,255,255,.06);
+            border-radius: 2px;
+            box-shadow: 0 18px 40px rgba(0, 0, 0, .22);
+            padding: 22px 22px 18px;
+            margin-left: 260px;
             position: relative;
             z-index: 2;
         }
 
-        .kicker {
-            margin: 0 0 8px;
-            font-size: 13px;
+        .login-title {
+            margin: 0 0 6px;
+            font-size: 14px;
             letter-spacing: .28em;
-            color: rgba(243,236,225,.52);
+            color: rgba(232, 225, 216, .55);
             text-transform: uppercase;
         }
 
-        .title {
-            margin: 0;
-            font-size: clamp(30px, 3vw, 40px);
-            line-height: 1.02;
-            letter-spacing: -.03em;
-            font-weight: 800;
-            color: #f5efe6;
+        .login-subtitle {
+            margin: 0 0 18px;
+            font-size: 26px;
+            line-height: 1.1;
+            color: #f2ebe0;
+            font-weight: 700;
         }
 
-        .copy {
-            margin: 16px 0 22px;
-            max-width: 36ch;
-            color: var(--muted);
-            font-size: 14px;
-            line-height: 1.5;
+        .login-hint {
+            margin: 0 0 18px;
+            color: rgba(232, 225, 216, .68);
+            font-size: 13px;
         }
 
         .alert {
-            margin-bottom: 16px;
             padding: 12px 14px;
-            border-radius: 10px;
+            border-radius: 8px;
+            margin-bottom: 16px;
             font-size: 13px;
         }
 
         .alert-danger {
-            background: rgba(182, 78, 78, .18);
-            color: #ffd9d9;
-            border: 1px solid rgba(255, 149, 149, .18);
+            background: #fed7d7;
+            color: #c53030;
+            border: 1px solid #feb2b2;
         }
 
-        .field { margin-bottom: 14px; }
+        .alert-success {
+            background: #c6f6d5;
+            color: #276749;
+            border: 1px solid #9ae6b4;
+        }
 
-        .label {
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
             display: block;
-            margin-bottom: 6px;
-            color: rgba(243,236,225,.76);
-            font-size: 12px;
-            letter-spacing: .10em;
-            text-transform: uppercase;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
         }
 
-        .input {
+        .form-control {
             width: 100%;
-            height: 48px;
-            border: 1px solid var(--input-line);
-            border-radius: 11px;
-            background: var(--input);
-            color: #f4efe8;
-            padding: 0 16px;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .form-control:focus {
             outline: none;
-            font-size: 15px;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
-        .input:focus {
-            border-color: rgba(127,216,230,.76);
-            box-shadow: 0 0 0 3px rgba(127,216,230,.12);
-        }
-
-        .submit {
+        .btn-login {
             width: 100%;
-            height: 48px;
-            margin-top: 8px;
-            border: 0;
-            border-radius: 11px;
-            background: linear-gradient(135deg, #83d8e6 0%, #6bb8ca 100%);
-            color: #061015;
-            font-size: 15px;
-            font-weight: 900;
+            padding: 0.875rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
             cursor: pointer;
-            box-shadow: 0 12px 24px rgba(107,184,202,.20);
+            transition: transform 0.2s, box-shadow 0.2s;
         }
 
-        .submit:hover { filter: brightness(1.02); }
-
-        .meta {
-            margin-top: 14px;
-            display: flex;
-            justify-content: space-between;
-            gap: 12px;
-            font-size: 12px;
-            color: rgba(243,236,225,.58);
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
         }
 
-        .meta a {
-            color: #95dde8;
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        .form-footer {
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+
+        .form-footer a {
+            color: #667eea;
             text-decoration: none;
+            font-size: 0.9rem;
         }
 
-        .meta a:hover { text-decoration: underline; }
+        .form-footer a:hover {
+            text-decoration: underline;
+        }
 
         @media (max-width: 900px) {
-            .page { padding: 18px; }
-            .stage { min-height: auto; padding-top: 92px; }
-            .brand { top: 0; transform: translateX(-50%); }
-            .card { margin-left: 0; width: 100%; max-width: 520px; }
+            .login-brand-bar {
+                position: static;
+                transform: none;
+                margin-bottom: 18px;
+            }
+
+            .login-card {
+                margin-left: 0;
+                width: 100%;
+                max-width: 420px;
+            }
+
+            .login-panel {
+                flex-direction: column;
+            }
         }
     </style>
 {% endblock %}
 
 {% block body %}
-<div class="page">
-    <div class="stage">
-        <div class="brand" aria-hidden="true">
-            <div class="brand-mark">W</div>
+<div class="login-shell">
+    <div class="login-panel">
+        <div class="login-brand-bar" aria-hidden="true">
+            <div class="brand-badge">W</div>
             <div class="brand-name">WazeBR</div>
             <div class="brand-chip">Monitor</div>
         </div>
 
-        <section class="card" aria-label="Login">
-            <p class="kicker">Monitoramento</p>
-            <h1 class="title">Acesso ao sistema</h1>
-            <p class="copy">Entre com seu e-mail e senha para continuar no painel de monitoramento.</p>
+        <div class="login-card">
+            <h1 class="login-title">MONITORAMENTO</h1>
+            <p class="login-subtitle">Acesso ao sistema</p>
+            <p class="login-hint">Entre com seu e-mail e senha para continuar.</p>
 
             {% if error %}
                 <div class="alert alert-danger">
@@ -228,26 +236,43 @@
             {% endif %}
 
             <form method="post" action="{{ path('auth_login') }}" novalidate>
-                <div class="field">
-                    <label for="email" class="label">E-mail</label>
-                    <input type="email" id="email" name="email" class="input" value="{{ last_username|default('') }}" autocomplete="email" autofocus required>
+                <div class="form-group">
+                    <label for="email" class="form-label">E-mail</label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email" 
+                        class="form-control" 
+                        value="{{ last_username|default('') }}" 
+                        required 
+                        autofocus
+                        autocomplete="email"
+                    >
                 </div>
 
-                <div class="field">
-                    <label for="password" class="label">Senha</label>
-                    <input type="password" id="password" name="password" class="input" autocomplete="current-password" required>
+                <div class="form-group">
+                    <label for="password" class="form-label">Senha</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        class="form-control" 
+                        required
+                        autocomplete="current-password"
+                    >
                 </div>
 
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
 
-                <button type="submit" class="submit">Entrar</button>
+                <button type="submit" class="btn-login">
+                    Entrar
+                </button>
             </form>
 
-            <div class="meta">
-                <span>WazeBR Security</span>
+            <div class="form-footer">
                 <a href="{{ path('auth_forgot') }}">Esqueceu sua senha?</a>
             </div>
-        </section>
+        </div>
     </div>
 </div>
 {% endblock %}
