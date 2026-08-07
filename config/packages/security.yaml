@@ -31,11 +31,14 @@ security:
                 target: auth_login
             remember_me:
                 secret: '%kernel.secret%'
-                lifetime: 604800
+                lifetime: 604800 # 7 days
                 path: /
-                always_remember_me: true
                 secure: true
+                httponly: true
                 samesite: lax
+                always_remember_me: true
+                signature_properties:
+                    - password
             user_checker: security.user_checker
 
     access_control:
@@ -68,3 +71,10 @@ when@prod:
                     secure: true
                     httponly: true
                     samesite: lax
+
+when@dev:
+    security:
+        firewalls:
+            main:
+                remember_me:
+                    secure: false # Permite HTTP em dev
