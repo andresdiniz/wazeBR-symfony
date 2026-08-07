@@ -113,7 +113,7 @@ class DashboardController extends AbstractController
         $avgReliability = (float)($qualityStats['avg_reliability'] ?? 0);
         $avgConfidence  = (float)($qualityStats['avg_confidence'] ?? 0);
 
-        // WazeCount — desativado (campo de tempo inexistente em waze_counts)
+        // WazeCount — desativado
         $wazeCountThisWeek = null;
         $wazeCountLastWeek = null;
         $wazeCountPeak = [
@@ -174,12 +174,12 @@ class DashboardController extends AbstractController
             'avgConfidence' => $avgConfidence,
         ];
 
-        // Alerts por tipo (u\u00faltimas 24h) - agrupar SO por type
+        // Alerts por tipo + subtipo (u\u00faltimas 24h)
         $alertsByTypeRaw = $this->alertRepo->createQueryBuilder('a')
-            ->select('a.type, COUNT(a.id) as total')
+            ->select('a.type, a.subtype, COUNT(a.id) as total')
             ->where('a.pubMillis >= :lastDay')
             ->setParameter('lastDay', $lastDay)
-            ->groupBy('a.type')
+            ->groupBy('a.type', 'a.subtype')
             ->getQuery()
             ->getArrayResult();
 
@@ -187,6 +187,7 @@ class DashboardController extends AbstractController
         foreach ($alertsByTypeRaw as $row) {
             $alertsByType[] = [
                 'type' => $row['type'],
+                'subtype' => $row['subtype'],
                 'total' => (int)$row['total'],
             ];
         }
@@ -225,7 +226,17 @@ class DashboardController extends AbstractController
             'WEATHERHAZARD' => 'Perigo clim&aacute;tico',
         ], 'UTF-8', 'UTF-8');
 
-        $subtypesMap = [];
+        $subtypesMap = mb_convert_encoding([
+            'ACCIDENT' => 'Acidente',
+            'HAZARD_ON_ROAD' => 'Perigo na via',
+            'HAZARD_ON_SHOULDER' => 'Perigo no acostamento',
+            'HAZARD_WEATHER' => 'Perigo clim&aacute;tico',
+            'ROAD_CLOSED_CONSTRUCTION' => 'Obra',
+            'ROAD_CLOSED_ACCIDENT' => 'Acidente',
+            'JAM_STAND_TRAFFIC' => 'Tr&acirc;nsito parado',
+            'JAM_HEAVY_TRAFFIC' => 'Tr&acirc;nsito intenso',
+            'MISC' => 'Diversos',
+        ], 'UTF-8', 'UTF-8');
 
         // Dados para gr&aacute;ficos (alerts/jams por hora)
         $alertsPerHourRaw = $this->alertRepo->getAlertsPerHourLast24h();
@@ -239,7 +250,7 @@ class DashboardController extends AbstractController
 
         // Recent alerts (u\u00faltimos 10)
         $recentAlertsRaw = $this->alertRepo->createQueryBuilder('a')
-            ->select('a.id, a.type, a.city, a.street, a.pubMillis, a.latitude, a.longitude')
+            ->select('a.id, a.type, a.subtype, a.city, a.street, a.pubMillis, a.latitude, a.longitude')
             ->orderBy('a.pubMillis', 'DESC')
             ->setMaxResults(10)
             ->getQuery()
@@ -249,6 +260,7 @@ class DashboardController extends AbstractController
             return [
                 'id' => (int)$r['id'],
                 'type' => $r['type'],
+                'subtype' => $r['subtype'],
                 'city' => $r['city'],
                 'street' => $r['street'],
                 'pubMillis' => (int)$r['pubMillis'],
@@ -270,11 +282,20 @@ class DashboardController extends AbstractController
             $coords = [];
             if (is_string($line) && $line !== '') {
                 $decoded = json_decode($line, true);
-                if (is_array($decoded) && isset($decoded['coordinates'])) {
-                    $coords = $decoded['coordinates'];
-                } elseif (is_array($decoded)) {
-                    // Se for array direto de coordenadas [[lon,lat],...]
-                    $coords = $decoded;
+                if (is_array($decoded)) {
+                    if (isset($decoded['type']) && $decoded['type'] === 'LineString' && isset($decoded['coordinates'])) {
+                        // GeoJSON LineString
+                        $coords = $decoded['coordinates'];
+                    } elseif (isset($decoded['coordinates'])) {
+                        // GeoJSON gen&eacute;rico
+                        $coords = $decoded['coordinates'];
+                    } elseif (is_array($decoded[0])) {
+                        // Array de coordenadas [[lon,lat],...]
+                        $coords = $decoded;
+                    } else {
+                        // Array simples [lon,lat]
+                        $coords = [$decoded];
+                    }
                 }
             }
             return [

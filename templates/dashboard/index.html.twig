@@ -36,7 +36,7 @@
     <div class="kpi-card success">
         <div class="kpi-label">{{ translations.cifs_ativos ?? 'CIFS ativos' }}</div>
         <div class="kpi-value">{{ kpis.cifsActiveCount }}</div>
-        <small>{{ translations.secoes_ativas ?? 'Se&ccedil;&otilde;es ativas' }}</small>
+        <small>Se&ccedil;&otilde;es ativas</small>
     </div>
     <div class="kpi-card warning">
         <div class="kpi-label">{{ translations.alertas_total ?? 'Alertas (total)' }}</div>
@@ -56,7 +56,7 @@
     <div class="kpi-card success">
         <div class="kpi-label">{{ translations.irregularidades ?? 'Irregularidades' }}</div>
         <div class="kpi-value">{{ kpis.irregularities }}</div>
-        <small>{{ translations.secoes_ativas ?? 'Se&ccedil;&otilde;es ativas' }}</small>
+        <small>Se&ccedil;&otilde;es ativas</small>
     </div>
 </div>
 
@@ -182,7 +182,7 @@
         {% if recentAlerts|length > 0 %}
             <ul class="list-unstyled">
                 {% for alert in recentAlerts|slice(0,5) %}
-                    <li>{{ alert.type }} - {{ alert.city ?? '' }} {{ alert.street ?? '' }}</li>
+                    <li>{{ alert.type }} - {{ alert.subtype ?? '' }} - {{ alert.city ?? '' }} {{ alert.street ?? '' }}</li>
                 {% endfor %}
             </ul>
         {% else %}
@@ -234,15 +234,17 @@
 
     // --- GRÁ¦FICOS ---
 
-    // Alerts por tipo (barras)
+    // Alerts por tipo + subtipo (barras)
     (function() {
         const ctx = document.getElementById('alerts-by-type-chart');
         if (!ctx) return;
 
         const raw = {{ alertsByType|json_encode(constant('JSON_UNESCAPED_UNICODE'))|raw }};
         const typesMap = {{ typesMap|json_encode(constant('JSON_UNESCAPED_UNICODE'))|raw }};
+        const subtypesMap = {{ subtypesMap|json_encode(constant('JSON_UNESCAPED_UNICODE'))|raw }};
 
-        const labels = raw.map(r => typesMap[r.type] ?? r.type);
+        // Usar subtipo se existir, senao tipo
+        const labels = raw.map(r => (subtypesMap[r.subtype] ?? typesMap[r.type] ?? r.type));
         const data = raw.map(r => r.total);
         const bgColors = raw.map(r => alertTypeColors[r.type] ?? '#6b7280');
         const borderColors = raw.map(r => alertTypeColors[r.type] ?? '#6b7280');
@@ -478,14 +480,8 @@
         recentJams.forEach(j => {
             if (!j.line || !Array.isArray(j.line) || j.line.length === 0) return;
 
-            // j.line eh [[lon,lat], [lon,lat], ...] ou as vezes apenas [lon,lat] se for ponto
-            let coords;
-            if (Array.isArray(j.line[0])) {
-                coords = j.line.map(p => [p[1], p[0]]);
-            } else {
-                coords = [[j.line[1], j.line[0]]];
-            }
-
+            // j.line eh [[lon,lat], [lon,lat], ...]
+            const coords = j.line.map(p => [p[1], p[0]]);
             const color = jamLevelColors[j.level] ?? '#ef4444';
 
             L.polyline(coords, {
