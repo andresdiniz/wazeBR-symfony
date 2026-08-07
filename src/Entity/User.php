@@ -41,6 +41,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column]
     private ?\DateTimeImmutable $createdAt = null;
 
+    #[ORM\ManyToOne(targetEntity: Partner::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?Partner $partner = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
@@ -127,6 +131,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setCreatedAt(\DateTimeImmutable $createdAt): static
     {
         $this->createdAt = $createdAt;
+        return $this;
+    }
+
+    public function getPartner(): ?Partner
+    {
+        return $this->partner;
+    }
+
+    public function setPartner(?Partner $partner): static
+    {
+        $this->partner = $partner;
         return $this;
     }
 }
