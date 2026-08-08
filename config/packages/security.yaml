@@ -12,12 +12,13 @@ security:
         dev:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
+
         main:
             lazy: true
             provider: app_user_provider
             login_throttling:
                 max_attempts: 5
-                interval: 1 minute
+                interval: '1 minute'
             form_login:
                 login_path: auth_login
                 check_path: auth_login
@@ -30,51 +31,32 @@ security:
                 path: auth_logout
                 target: auth_login
             remember_me:
-                secret: '%kernel.secret%'
-                lifetime: 604800 # 7 days
+                secret: '%env(APP_SECRET)%'
+                lifetime: 604800
                 path: /
                 secure: true
                 httponly: true
                 samesite: lax
                 always_remember_me: true
-                signature_properties:
-                    - password
+                signature_properties: [password]
             user_checker: security.user_checker
 
     access_control:
-        - { path: ^/$, roles: PUBLIC_ACCESS }
-        - { path: ^/login, roles: PUBLIC_ACCESS }
-        - { path: ^/register, roles: PUBLIC_ACCESS }
-        - { path: ^/(esqueci-senha|redefinir-senha), roles: PUBLIC_ACCESS }
-        - { path: ^/health, roles: PUBLIC_ACCESS }
-        - { path: ^/api, roles: PUBLIC_ACCESS }
-        - { path: ^/admin, roles: ROLE_ADMIN }
-        - { path: ^/dashboard, roles: ROLE_USER }
-        - { path: ^/account, roles: ROLE_USER }
-        - { path: ^/alerts, roles: ROLE_USER }
-        - { path: ^/routes, roles: ROLE_USER }
-        - { path: ^/traffic, roles: ROLE_USER }
-        - { path: ^/notifications, roles: ROLE_USER }
-        - { path: ^/operator, roles: ROLE_OPERATOR }
-        - { path: ^/cemaden, roles: ROLE_CEMADEN }
-        - { path: ^/cifs, roles: ROLE_CEMADEN }
-        - { path: ^/hydro, roles: ROLE_CEMADEN }
-        - { path: ^/, roles: ROLE_USER }
-
-when@prod:
-    security:
-        firewalls:
-            main:
-                form_login:
-                    require_previous_session: false
-                remember_me:
-                    secure: true
-                    httponly: true
-                    samesite: lax
-
-when@dev:
-    security:
-        firewalls:
-            main:
-                remember_me:
-                    secure: false # Permite HTTP em dev
+        - { path: '^/$', roles: PUBLIC_ACCESS }
+        - { path: '^/login', roles: PUBLIC_ACCESS }
+        - { path: '^/register', roles: PUBLIC_ACCESS }
+        - { path: '^/(esqueci-senha|redefinir-senha)', roles: PUBLIC_ACCESS }
+        - { path: '^/health', roles: PUBLIC_ACCESS }
+        - { path: '^/api', roles: PUBLIC_ACCESS }
+        - { path: '^/admin', roles: ROLE_ADMIN }
+        - { path: '^/dashboard', roles: ROLE_USER }
+        - { path: '^/account', roles: ROLE_USER }
+        - { path: '^/alerts', roles: ROLE_USER }
+        - { path: '^/routes', roles: ROLE_USER }
+        - { path: '^/traffic', roles: ROLE_USER }
+        - { path: '^/notifications', roles: ROLE_USER }
+        - { path: '^/operator', roles: ROLE_OPERATOR }
+        - { path: '^/cemaden', roles: ROLE_CEMADEN }
+        - { path: '^/cifs', roles: ROLE_CEMADEN }
+        - { path: '^/hydro', roles: ROLE_CEMADEN }
+        - { path: '^/', roles: ROLE_USER }
