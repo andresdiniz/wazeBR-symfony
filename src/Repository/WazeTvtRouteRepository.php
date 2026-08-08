@@ -32,6 +32,24 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
             ->getSingleScalarResult();
     }
 
+    /**
+     * Rotas principais (distintas) coletadas dentro do período, via snapshot.collectedAt.
+     */
+    public function countInPeriod(Partner $partner, \DateTimeInterface $from, \DateTimeInterface $to): int
+    {
+        return (int) $this->createQueryBuilder('r')
+            ->select('COUNT(DISTINCT r.wazeRouteId)')
+            ->join('r.snapshot', 's')
+            ->where('s.partner = :partner')
+            ->andWhere('r.isSubRoute = false')
+            ->andWhere('s.collectedAt BETWEEN :from AND :to')
+            ->setParameter('partner', $partner)
+            ->setParameter('from', $from)
+            ->setParameter('to', $to)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
     // ── KPIs ──────────────────────────────────────────────────────────────────
 
     /**

@@ -50,6 +50,18 @@ class WazeIrregularityRepository extends ServiceEntityRepository
             ->getQuery()->getSingleScalarResult();
     }
 
+    public function countInPeriod(Partner $partner, \DateTimeInterface $from, \DateTimeInterface $to): int
+    {
+        return (int) $this->createQueryBuilder('i')
+            ->select('COUNT(i.id)')
+            ->where('i.partner = :partner')
+            ->andWhere('i.collectedAt BETWEEN :from AND :to')
+            ->setParameter('partner', $partner)
+            ->setParameter('from', $from)
+            ->setParameter('to', $to)
+            ->getQuery()->getSingleScalarResult();
+    }
+
     // ── KPIs ──────────────────────────────────────────────────────────────────
 
     /**

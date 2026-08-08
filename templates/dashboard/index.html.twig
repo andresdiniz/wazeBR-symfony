@@ -4,9 +4,60 @@
 {% block header_title %}Dashboard{% endblock %}
 {% block title %}Dashboard - {{ partnerLabel }}{% endblock %}
 
+{% block stylesheets %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+<style>
+    /* ── filtro de período ── */
+    .period-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .period-bar-label { font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; margin-right: 4px; }
+    .period-btn { padding: 6px 14px; font-size: .82rem; font-weight: 600; border-radius: 999px; border: 1px solid #e5e7eb; background: #fff; color: #4b5563; text-decoration: none; transition: all .15s ease; }
+    .period-btn:hover { border-color: var(--primary-color); color: var(--primary-color); text-decoration: none; }
+    .period-btn.active { background: var(--primary-color); color: #fff; border-color: var(--primary-color); }
+    .period-range { font-size: .75rem; color: #9ca3af; margin-left: 4px; }
+
+    /* ── mini stat cards do período ── */
+    .mini-stat { background: #fff; border-radius: 12px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(15,23,42,.06); border-left: 4px solid var(--primary-color); }
+    .mini-stat .mini-value { font-size: 1.5rem; font-weight: 700; color: #111827; line-height: 1.1; }
+    .mini-stat .mini-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: #9ca3af; margin-top: 2px; }
+
+    /* ── gráficos ── */
+    .chart-wrap { position: relative; height: 280px; }
+    .chart-empty { display:flex; align-items:center; justify-content:center; height:280px; color:#9ca3af; font-size:.9rem; }
+
+    /* ── ranking de ruas ── */
+    .street-rank-item { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid #f1f5f9; }
+    .street-rank-item:last-child { border-bottom:none; }
+    .street-rank-pos { width:24px; height:24px; border-radius:50%; background:#eef2ff; color:var(--primary-color); font-weight:700; font-size:.75rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .street-rank-name { font-weight:600; font-size:.88rem; color:#111827; }
+    .street-rank-city { font-size:.75rem; color:#9ca3af; }
+    .street-rank-meta { font-size:.72rem; color:#9ca3af; white-space:nowrap; }
+
+    /* ── mapa ── */
+    #dashMap { height: 420px; width: 100%; border-radius: 12px; }
+    .map-legend { position:absolute; bottom:14px; right:14px; z-index:1000; background:#fff; border:1px solid #e5e7eb; border-radius:10px; box-shadow:0 2px 8px rgba(15,23,42,.12); padding:8px 12px; font-size:.72rem; pointer-events:none; }
+    .map-legend-item { display:flex; align-items:center; gap:6px; margin-bottom:3px; }
+    .map-legend-item:last-child { margin-bottom:0; }
+    .map-legend-swatch { width:18px; height:4px; border-radius:2px; flex-shrink:0; }
+    .map-wrap { position: relative; }
+    .map-note { font-size:.75rem; color:#9ca3af; margin-top:8px; }
+</style>
+{% endblock %}
+
 {% block body %}
 
-<div class="row g-4 mb-4">
+{# ───────────────────── Filtro de período ───────────────────── #}
+<div class="period-bar">
+    <span class="period-bar-label">Período:</span>
+    {% for key, p in periods %}
+        <a href="{{ path('dashboard_index', {period: key}) }}" class="period-btn {{ periodKey == key ? 'active' : '' }}">{{ p.label }}</a>
+    {% endfor %}
+    <span class="period-range">{{ periodFrom|date('d/m/Y H:i') }} → {{ periodTo|date('d/m/Y H:i') }}</span>
+</div>
+
+{# ───────────────────── KPIs gerais (total do parceiro) ───────────────────── #}
+<div class="row g-4 mb-2">
     <div class="col-md-3">
         <div class="card h-100 bg-primary text-white">
             <div class="card-body">
@@ -35,7 +86,118 @@
         <div class="card h-100 bg-warning text-dark">
             <div class="card-body">
                 <h5 class="card-title">Irregularidades</h5>
-                <p class="card-text display-6">{{ irregularities|length }}</p>
+                <p class="card-text display-6">{{ partnerStats.irregularities ?? 0 }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ───────────────────── Resumo do período selecionado ───────────────────── #}
+<div class="mb-2" style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;">
+    No período — {{ periods[periodKey].label }}
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-6" style="flex:1 0 18%;max-width:20%;">
+        <div class="mini-stat" style="border-left-color:#2563eb;">
+            <div class="mini-value">{{ periodStats.alerts }}</div>
+            <div class="mini-label">Alertas</div>
+        </div>
+    </div>
+    <div class="col-6" style="flex:1 0 18%;max-width:20%;">
+        <div class="mini-stat" style="border-left-color:#dd6b20;">
+            <div class="mini-value">{{ periodStats.jams }}</div>
+            <div class="mini-label">Congestionamentos</div>
+        </div>
+    </div>
+    <div class="col-6" style="flex:1 0 18%;max-width:20%;">
+        <div class="mini-stat" style="border-left-color:#16a34a;">
+            <div class="mini-value">{{ periodStats.tvtRoutes }}</div>
+            <div class="mini-label">Rotas TVT coletadas</div>
+        </div>
+    </div>
+    <div class="col-6" style="flex:1 0 18%;max-width:20%;">
+        <div class="mini-stat" style="border-left-color:#f59e0b;">
+            <div class="mini-value">{{ periodStats.irregularities }}</div>
+            <div class="mini-label">Irregularidades</div>
+        </div>
+    </div>
+    <div class="col-6" style="flex:1 0 18%;max-width:20%;">
+        <div class="mini-stat" style="border-left-color:#6b7280;">
+            <div class="mini-value">{{ periodStats.cifsEvents }}</div>
+            <div class="mini-label">Eventos CIFS</div>
+        </div>
+    </div>
+</div>
+
+{# ───────────────────── Gráficos ───────────────────── #}
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">Alertas por subtipo</div>
+            <div class="card-body">
+                {% if alertsBySubtype|length > 0 %}
+                    <div class="chart-wrap"><canvas id="chartSubtypes"></canvas></div>
+                {% else %}
+                    <div class="chart-empty">Nenhum alerta no período selecionado.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">Congestionamentos por nível</div>
+            <div class="card-body">
+                <div class="chart-wrap"><canvas id="chartLevels"></canvas></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ───────────────────── Ranking de ruas + Mapa ───────────────────── #}
+<div class="row g-4 mb-4">
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header">Principais ruas com congestionamento</div>
+            <div class="card-body">
+                {% for s in topStreets %}
+                    <div class="street-rank-item">
+                        <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+                            <div class="street-rank-pos">{{ loop.index }}</div>
+                            <div style="min-width:0;">
+                                <div class="street-rank-name text-truncate">{{ s.street ?? 'Sem nome' }}</div>
+                                <div class="street-rank-city">{{ s.city ?? '—' }}</div>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-{{ s.avgLevel >= 4 ? 'danger' : s.avgLevel >= 2 ? 'warning' : 'success' }}">nível {{ s.avgLevel }}</span>
+                            <div class="street-rank-meta">{{ s.occurrences }} ocorrência(s){% if s.avgDelay %} · atraso médio {{ s.avgDelay }}s{% endif %}</div>
+                        </div>
+                    </div>
+                {% else %}
+                    <p class="text-muted mb-0">Nenhum congestionamento registrado no período selecionado.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card h-100" style="padding:0;">
+            <div class="card-header">Mapa — congestionamentos e alertas</div>
+            <div class="card-body" style="padding:12px;">
+                <div class="map-wrap">
+                    <div id="dashMap"></div>
+                    <div class="map-legend">
+                        <div style="font-weight:700;margin-bottom:4px;">Nível de congestionamento</div>
+                        <div class="map-legend-item"><span class="map-legend-swatch" style="background:#48bb78"></span> Livre (0–1)</div>
+                        <div class="map-legend-item"><span class="map-legend-swatch" style="background:#ecc94b"></span> Leve (2)</div>
+                        <div class="map-legend-item"><span class="map-legend-swatch" style="background:#dd6b20"></span> Moderado (3–4)</div>
+                        <div class="map-legend-item"><span class="map-legend-swatch" style="background:#e53e3e"></span> Parado (5)</div>
+                    </div>
+                </div>
+                <p class="map-note">
+                    {{ mapJams|length }} congestionamento(s) e {{ mapAlerts|length }} alerta(s) exibidos no período
+                    {% if mapJamsTruncated or mapAlertsTruncated %} (limite de exibição atingido — refine o período para ver tudo){% endif %}.
+                    Alertas próximos são agrupados automaticamente conforme o zoom.
+                </p>
             </div>
         </div>
     </div>
@@ -64,7 +226,7 @@
                             <td class="font-monospace small">{{ alert.pubAt ?? '—' }}</td>
                         </tr>
                     {% else %}
-                        <tr><td colspan="4" class="text-center text-muted">Nenhum alerta recente registrado.</td></tr>
+                        <tr><td colspan="4" class="text-center text-muted">Nenhum alerta no período selecionado.</td></tr>
                     {% endfor %}
                     </tbody>
                 </table>
@@ -74,14 +236,14 @@
 
     <div class="col-lg-6">
         <div class="card">
-            <div class="card-header"> LentidÃµes recentes</div>
+            <div class="card-header">Lentidões recentes</div>
             <div class="card-body">
                 <table class="table table-sm table-hover mb-0">
                     <thead>
                     <tr>
                         <th>Via</th>
                         <th>Cidade</th>
-                        <th>NÃ�vel</th>
+                        <th>Nível</th>
                         <th>Hora</th>
                     </tr>
                     </thead>
@@ -94,7 +256,7 @@
                             <td class="font-monospace small">{{ jam.pubAt ?? '—' }}</td>
                         </tr>
                     {% else %}
-                        <tr><td colspan="4" class="text-center text-muted">Nenhuma lentidÃ£o recente registrada.</td></tr>
+                        <tr><td colspan="4" class="text-center text-muted">Nenhuma lentidão no período selecionado.</td></tr>
                     {% endfor %}
                     </tbody>
                 </table>
@@ -111,9 +273,9 @@
                 <ul class="list-group list-group-flush">
                 {% for irr in irregularities %}
                     <li class="list-group-item">
-                        <strong>{{ irr.type }}</strong>
-                        {% if irr.description %} — {{ irr.description }}{% endif %}
-                        <small class="text-muted float-end">{{ irr.createdAt|date('d/m/Y H:i') }}</small>
+                        <strong>{{ irr.name ?? 'Irregularidade' }}</strong>
+                        {% if irr.fromName or irr.toName %} — {{ irr.fromName }} → {{ irr.toName }}{% endif %}
+                        <small class="text-muted float-end">{{ irr.collectedAt ? irr.collectedAt|date('d/m/Y H:i') : '—' }}</small>
                     </li>
                 {% else %}
                     <li class="list-group-item text-muted">Nenhuma irregularidade registrada.</li>
@@ -130,8 +292,8 @@
                 <ul class="list-group list-group-flush">
                 {% for evt in cifsEvents %}
                     <li class="list-group-item">
-                        <strong>{{ evt.title }}</strong>
-                        <small class="text-muted float-end">{{ evt.createdAt|date('d/m/Y H:i') }}</small>
+                        <strong>{{ evt.street is not empty ? evt.street : evt.type.label }}</strong>
+                        <small class="text-muted float-end">{{ evt.creationTime ? evt.creationTime|date('d/m/Y H:i') : '—' }}</small>
                     </li>
                 {% else %}
                     <li class="list-group-item text-muted">Nenhum evento CIFS registrado.</li>
@@ -142,4 +304,147 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block javascripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    /* ═══════════════════ Gráfico: alertas por subtipo ═══════════════════ */
+    var subtypeData = {{ alertsBySubtype|json_encode|raw }};
+    var elSubtypes = document.getElementById('chartSubtypes');
+    if (elSubtypes && subtypeData.length) {
+        new Chart(elSubtypes, {
+            type: 'bar',
+            data: {
+                labels: subtypeData.map(function (d) { return d.label; }),
+                datasets: [{
+                    label: 'Ocorrências',
+                    data: subtypeData.map(function (d) { return d.total; }),
+                    backgroundColor: '#2563eb',
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
+        });
+    }
+
+    /* ═══════════════════ Gráfico: congestionamentos por nível ═══════════════════ */
+    var levelData = {{ jamsByLevel|json_encode|raw }};
+    var levelLabels = ['0 — Livre', '1 — Livre', '2 — Leve', '3 — Moderado', '4 — Moderado', '5 — Parado'];
+    var levelColors = ['#48bb78', '#48bb78', '#ecc94b', '#dd6b20', '#dd6b20', '#e53e3e'];
+    var elLevels = document.getElementById('chartLevels');
+    if (elLevels) {
+        new Chart(elLevels, {
+            type: 'bar',
+            data: {
+                labels: levelLabels,
+                datasets: [{
+                    label: 'Ocorrências',
+                    data: [0, 1, 2, 3, 4, 5].map(function (l) { return levelData[l] || 0; }),
+                    backgroundColor: levelColors,
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
+        });
+    }
+
+    /* ═══════════════════ Mapa ═══════════════════ */
+    var jams = {{ mapJams|json_encode|raw }};
+    var alerts = {{ mapAlerts|json_encode|raw }};
+
+    function levelColor(l) {
+        if (l >= 5) return '#e53e3e';
+        if (l >= 3) return '#dd6b20';
+        if (l >= 1) return '#ecc94b';
+        return '#48bb78';
+    }
+
+    var ALERT_COLORS = {
+        JAM: '#dd6b20',
+        HAZARD: '#e53e3e',
+        ROAD_CLOSED: '#1f2937',
+        ACCIDENT: '#7c3aed',
+        WEATHERHAZARD: '#2563eb',
+        CONSTRUCTION: '#92400e',
+        MISC: '#6b7280',
+    };
+
+    function alertIcon(type) {
+        var color = ALERT_COLORS[type] || '#2563eb';
+        return L.divIcon({
+            className: '',
+            html: '<div style="width:12px;height:12px;border-radius:50%;background:' + color + ';border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)"></div>',
+            iconSize: [12, 12],
+            iconAnchor: [6, 6],
+        });
+    }
+
+    var map = L.map('dashMap', { zoomControl: true }).setView([-20.66, -43.79], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+    }).addTo(map);
+
+    var allBounds = [];
+
+    // Congestionamentos (polylines coloridas por nível)
+    var jamsLayer = L.layerGroup();
+    jams.forEach(function (j) {
+        if (j.line && j.line.length > 1) {
+            var pts = j.line.map(function (p) { return [p.y, p.x]; });
+            pts.forEach(function (p) { allBounds.push(p); });
+            L.polyline(pts, { color: levelColor(j.level), weight: 4, opacity: 0.85 })
+                .bindPopup(
+                    '<strong>' + (j.street || 'Sem nome') + '</strong>' +
+                    '<br>' + (j.city || '') +
+                    '<br>Nível: ' + j.level +
+                    (j.speed != null ? ' | ' + j.speed + ' km/h' : '') +
+                    (j.delay != null ? ' | Atraso: ' + j.delay + 's' : '')
+                )
+                .addTo(jamsLayer);
+        }
+    });
+    jamsLayer.addTo(map);
+
+    // Alertas (marcadores agrupados por proximidade)
+    var alertsLayer = L.markerClusterGroup({ maxClusterRadius: 50 });
+    alerts.forEach(function (a) {
+        if (a.lat && a.lng) {
+            allBounds.push([a.lat, a.lng]);
+            L.marker([a.lat, a.lng], { icon: alertIcon(a.type) })
+                .bindPopup(
+                    '<strong>' + (a.label || a.type) + '</strong>' +
+                    '<br>' + (a.city || '') + ' — ' + (a.street || 'Via não informada')
+                )
+                .addTo(alertsLayer);
+        }
+    });
+    alertsLayer.addTo(map);
+
+    L.control.layers(null, {
+        'Congestionamentos': jamsLayer,
+        'Alertas': alertsLayer,
+    }, { collapsed: false }).addTo(map);
+
+    if (allBounds.length) {
+        map.fitBounds(allBounds, { padding: [30, 30] });
+    }
+})();
+</script>
 {% endblock %}

@@ -143,6 +143,21 @@ class CifsEventRepository extends ServiceEntityRepository
     }
 
     /**
+     * Eventos criados/reportados dentro do período (usa creationTime).
+     */
+    public function countInPeriod(Partner $partner, \DateTimeInterface $from, \DateTimeInterface $to): int
+    {
+        return (int) $this->createQueryBuilder('e')
+            ->select('COUNT(e.id)')
+            ->where('e.partner = :partner')
+            ->andWhere('e.creationTime BETWEEN :from AND :to')
+            ->setParameter('partner', $partner)
+            ->setParameter('from', $from)
+            ->setParameter('to', $to)
+            ->getQuery()->getSingleScalarResult();
+    }
+
+    /**
      * Total de eventos ativos agora.
      */
     public function countActive(Partner $partner): int
