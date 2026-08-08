@@ -1,504 +1,147 @@
 {% extends 'base.html.twig' %}
 
 {% block active_dashboard %}active{% endblock %}
-
 {% block header_title %}{{ translations.dashboard_title ?? 'Dashboard' }}{% endblock %}
-
 {% block title %}{{ translations.dashboard_title ?? 'Dashboard' }} - {{ partnerLabel }}{% endblock %}
 
 {% block body %}
 <style>
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
-    .kpi-card { border-radius: 12px; padding: 20px; color: #fff; box-shadow: 0 2px 8px rgba(15,23,42,0.15); }
-    .kpi-card.primary { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); }
-    .kpi-card.success { background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); }
-    .kpi-card.warning { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
-    .kpi-card.danger { background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); }
-    .kpi-value { font-size: 2rem; font-weight: 700; margin: 8px 0; }
-    .kpi-label { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.9; }
-    .chart-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-top: 24px; }
-    .chart-row-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-top: 24px; }
-    .chart-wrapper { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(15,23,42,0.08); }
-    #map { height: 450px; border-radius: 12px; box-shadow: 0 2px 8px rgba(15,23,42,0.08); }
-    .map-legend { background: #fff; padding: 8px 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(15,23,42,0.15); font-size: 0.85rem; }
-    .legend-item { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
-    .legend-color { width: 16px; height: 16px; border-radius: 3px; }
+    .stats-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:24px; }
+    .kpi-card { border-radius:12px;padding:20px;color:#fff;box-shadow:0 2px 8px rgba(15,23,42,.15); }
+    .kpi-card.primary { background:linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%); }
+    .kpi-card.success { background:linear-gradient(135deg,#16a34a 0%,#15803d 100%); }
+    .kpi-card.warning { background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%); }
+    .kpi-card.danger { background:linear-gradient(135deg,#ef4444 0%,#b91c1c 100%); }
+    .kpi-value { font-size:2rem;font-weight:700;margin:8px 0; }
+    .kpi-label { font-size:.85rem;text-transform:uppercase;letter-spacing:.06em;opacity:.9; }
+    .chart-row,.chart-row-3 { display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;margin-top:24px; }
+    .chart-wrapper { background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(15,23,42,.08); }
+    #map { height:450px;border-radius:12px;box-shadow:0 2px 8px rgba(15,23,42,.08); }
+    .map-legend { background:#fff;padding:8px 12px;border-radius:8px;box-shadow:0 2px 8px rgba(15,23,42,.15);font-size:.85rem; }
+    .legend-item { display:flex;align-items:center;gap:8px;margin:4px 0; }
+    .legend-color { width:16px;height:16px;border-radius:3px; }
 </style>
 
 <p class="text-muted mb-4">Vis&atilde;o geral dos dados monitorados para {{ partnerLabel }}.</p>
 
 <div class="stats-grid">
-    <div class="kpi-card primary">
-        <div class="kpi-label">Alertas 1h</div>
-        <div class="kpi-value">{{ kpis.alerts1h }}</div>
-        <small>Jams ao vivo: {{ kpis.liveJams }}</small>
-    </div>
-    <div class="kpi-card success">
-        <div class="kpi-label">CIFS ativos</div>
-        <div class="kpi-value">{{ kpis.cifsActiveCount }}</div>
-        <small>Se&ccedil;&otilde;es ativas</small>
-    </div>
-    <div class="kpi-card warning">
-        <div class="kpi-label">Alertas (total)</div>
-        <div class="kpi-value">{{ kpis.alerts }}</div>
-        <small>24h {{ kpis.alerts24h }} &middot; 7d {{ kpis.alerts7d }}</small>
-    </div>
-    <div class="kpi-card danger">
-        <div class="kpi-label">Jams (total)</div>
-        <div class="kpi-value">{{ kpis.jams }}</div>
-        <small>24h {{ kpis.jams24h }} &middot; 7d {{ kpis.jams7d }}</small>
-    </div>
-    <div class="kpi-card primary">
-        <div class="kpi-label">Cidades</div>
-        <div class="kpi-value">{{ (cities|length) ?: 0 }}</div>
-        <small>Links {{ (links|length) ?: 0 }} &middot; Rotas {{ (routes|length) ?: 0 }}</small>
-    </div>
-    <div class="kpi-card success">
-        <div class="kpi-label">Irregularidades</div>
-        <div class="kpi-value">{{ kpis.irregularities }}</div>
-        <small>Se&ccedil;&otilde;es ativas</small>
-    </div>
+    <div class="kpi-card primary"><div class="kpi-label">Alertas 1h</div><div class="kpi-value">{{ kpis.alerts1h }}</div><small>Jams ao vivo: {{ kpis.liveJams }}</small></div>
+    <div class="kpi-card success"><div class="kpi-label">CIFS ativos</div><div class="kpi-value">{{ kpis.cifsActiveCount }}</div><small>Se&ccedil;&otilde;es ativas</small></div>
+    <div class="kpi-card warning"><div class="kpi-label">Alertas (total)</div><div class="kpi-value">{{ kpis.alerts }}</div><small>24h {{ kpis.alerts24h }} &middot; 7d {{ kpis.alerts7d }}</small></div>
+    <div class="kpi-card danger"><div class="kpi-label">Jams (total)</div><div class="kpi-value">{{ kpis.jams }}</div><small>24h {{ kpis.jams24h }} &middot; 7d {{ kpis.jams7d }}</small></div>
+    <div class="kpi-card primary"><div class="kpi-label">Cidades</div><div class="kpi-value">{{ (cities|length) ?: 0 }}</div><small>Links {{ (links|length) ?: 0 }} &middot; Rotas {{ (routes|length) ?: 0 }}</small></div>
+    <div class="kpi-card success"><div class="kpi-label">Irregularidades</div><div class="kpi-value">{{ kpis.irregularities }}</div><small>Se&ccedil;&otilde;es ativas</small></div>
 </div>
 
 <div class="chart-row-3">
-    <div class="chart-wrapper">
-        <h5>Alertas por tipo (24h)</h5>
-        <canvas id="alerts-by-type-chart" height="200"></canvas>
-    </div>
-    <div class="chart-wrapper">
-        <h5>Jams por n&iacute;vel (24h)</h5>
-        <canvas id="jams-by-level-chart" height="200"></canvas>
-    </div>
-    <div class="chart-wrapper">
-        <h5>Qualidade dos alertas (24h)</h5>
-        <div class="mt-3">
-            <h6>Confiabilidade m&eacute;dia (reliability)</h6>
-            <div class="progress mb-3" style="height: 24px;">
-                <div class="progress-bar bg-primary" style="width: {{ kpis.avgReliability }}%">{{ kpis.avgReliability|number_format(1) }}%</div>
-            </div>
-            <h6>Confian&ccedil;a m&eacute;dia (confidence)</h6>
-            <div class="progress mb-3" style="height: 24px;">
-                <div class="progress-bar bg-success" style="width: {{ kpis.avgConfidence }}%">{{ kpis.avgConfidence|number_format(1) }}%</div>
-            </div>
-        </div>
-    </div>
+    <div class="chart-wrapper"><h5>Alertas por tipo (24h)</h5><canvas id="alerts-by-type-chart" height="200"></canvas></div>
+    <div class="chart-wrapper"><h5>Jams por n&iacute;vel (24h)</h5><canvas id="jams-by-level-chart" height="200"></canvas></div>
+    <div class="chart-wrapper"><h5>Qualidade dos alertas (24h)</h5><div class="mt-3"><h6>Confiabilidade m&eacute;dia (reliability)</h6><div class="progress mb-3" style="height:24px;"><div class="progress-bar bg-primary" style="width: {{ kpis.avgReliability }}%">{{ kpis.avgReliability|number_format(1) }}%</div></div><h6>Confian&ccedil;a m&eacute;dia (confidence)</h6><div class="progress mb-3" style="height:24px;"><div class="progress-bar bg-success" style="width: {{ kpis.avgConfidence }}%">{{ kpis.avgConfidence|number_format(1) }}%</div></div></div></div>
 </div>
 
 <div class="chart-row">
-    <div class="chart-wrapper">
-        <h5>Mapa de Alertas e Jams (recentes)</h5>
-        <div id="map"></div>
-        <div class="mt-2 map-legend">
-            <strong>N&iacute;veis de Jam:</strong>
-            <div class="legend-item"><span class="legend-color" style="background:#94a3b8"></span> N0</div>
-            <div class="legend-item"><span class="legend-color" style="background:#22c55e"></span> N1</div>
-            <div class="legend-item"><span class="legend-color" style="background:#eab308"></span> N2</div>
-            <div class="legend-item"><span class="legend-color" style="background:#f97316"></span> N3</div>
-            <div class="legend-item"><span class="legend-color" style="background:#ef4444"></span> N4</div>
-            <div class="legend-item"><span class="legend-color" style="background:#7f1d1d"></span> N5 (Interdi&ccedil;&atilde;o)</div>
-        </div>
-    </div>
+    <div class="chart-wrapper"><h5>Mapa de Alertas e Jams (recentes)</h5><div id="map"></div><div class="mt-2 map-legend"><strong>N&iacute;veis de Jam:</strong><div class="legend-item"><span class="legend-color" style="background:#94a3b8"></span> N0</div><div class="legend-item"><span class="legend-color" style="background:#22c55e"></span> N1</div><div class="legend-item"><span class="legend-color" style="background:#eab308"></span> N2</div><div class="legend-item"><span class="legend-color" style="background:#f97316"></span> N3</div><div class="legend-item"><span class="legend-color" style="background:#ef4444"></span> N4</div><div class="legend-item"><span class="legend-color" style="background:#7f1d1d"></span> N5 (Interdi&ccedil;&atilde;o)</div></div></div>
 </div>
 
 <div class="chart-row">
-    <div class="chart-wrapper">
-        <h5>Alertas por hora (&uacute;ltimas 24h)</h5>
-        <canvas id="alerts-per-hour-chart" height="160"></canvas>
-    </div>
-    <div class="chart-wrapper">
-        <h5>Jams por hora (&uacute;ltimas 24h)</h5>
-        <canvas id="jams-per-hour-chart" height="160"></canvas>
-    </div>
+    <div class="chart-wrapper"><h5>Alertas por hora (&uacute;ltimas 24h)</h5><canvas id="alerts-per-hour-chart" height="160"></canvas></div>
+    <div class="chart-wrapper"><h5>Jams por hora (&uacute;ltimas 24h)</h5><canvas id="jams-per-hour-chart" height="160"></canvas></div>
 </div>
 
-<div class="card">
-    <div class="card-header">WazeCount &mdash; Semana</div>
-    <div class="card-body">
-        <div class="row mb-3">
-            <div class="col-md-6"><strong>Esta semana:</strong> {{ kpis.wazeCount ?? '—' }}</div>
-            <div class="col-md-6"><strong>Semana passada:</strong> {{ kpis.wazeCountLastWeek ?? '—' }}</div>
-        </div>
-        <h6>Picos por n&iacute;vel de jam (max)</h6>
-        <ul class="list-unstyled">
-            <li>Nivel 0: {{ kpis.wazeCountPeak.max_level0 ?? 0 }}</li>
-            <li>Nivel 1: {{ kpis.wazeCountPeak.max_level1 ?? 0 }}</li>
-            <li>Nivel 2: {{ kpis.wazeCountPeak.max_level2 ?? 0 }}</li>
-            <li>Nivel 3: {{ kpis.wazeCountPeak.max_level3 ?? 0 }}</li>
-            <li>Nivel 4: {{ kpis.wazeCountPeak.max_level4 ?? 0 }}</li>
-            <li><strong>Total (max): {{ kpis.wazeCountPeak.max_total ?? 0 }}</strong></li>
-        </ul>
-    </div>
-</div>
+<div class="card"><div class="card-header">WazeCount &mdash; Semana</div><div class="card-body"><div class="row mb-3"><div class="col-md-6"><strong>Esta semana:</strong> {{ kpis.wazeCount ?? '—' }}</div><div class="col-md-6"><strong>Semana passada:</strong> {{ kpis.wazeCountLastWeek ?? '—' }}</div></div><h6>Picos por n&iacute;vel de jam (max)</h6><ul class="list-unstyled"><li>Nivel 0: {{ kpis.wazeCountPeak.max_level0 ?? 0 }}</li><li>Nivel 1: {{ kpis.wazeCountPeak.max_level1 ?? 0 }}</li><li>Nivel 2: {{ kpis.wazeCountPeak.max_level2 ?? 0 }}</li><li>Nivel 3: {{ kpis.wazeCountPeak.max_level3 ?? 0 }}</li><li>Nivel 4: {{ kpis.wazeCountPeak.max_level4 ?? 0 }}</li><li><strong>Total (max): {{ kpis.wazeCountPeak.max_total ?? 0 }}</strong></li></ul></div></div>
 
-<div class="card">
-    <div class="card-header">Eventos de Via (CIFS)</div>
-    <div class="card-body">
-        {% if cifsActive|length > 0 %}
-            <div class="alert alert-info">{{ cifsActive|length }} ativos</div>
-        {% else %}
-            <div class="alert alert-warning">Nenhum evento ativo.</div>
-        {% endif %}
-        <h6>Pr&oacute;ximos 7 dias</h6>
-        {% if cifsUpcoming|length > 0 %}
-            <ul class="list-unstyled">
-                {% for event in cifsUpcoming|slice(0,5) %}
-                    <li>{{ event.title ?? 'Evento' }} - {{ event.start ?? '' }}</li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p class="text-muted">Nenhum evento programado.</p>
-        {% endif %}
-    </div>
-</div>
+<div class="card"><div class="card-header">Eventos de Via (CIFS)</div><div class="card-body">{% if cifsActive|length > 0 %}<div class="alert alert-info">{{ cifsActive|length }} ativos</div>{% else %}<div class="alert alert-warning">Nenhum evento ativo.</div>{% endif %}<h6>Pr&oacute;ximos 7 dias</h6>{% if cifsUpcoming|length > 0 %}<ul class="list-unstyled">{% for event in cifsUpcoming|slice(0,5) %}<li>{{ event.title ?? 'Evento' }} - {{ event.start ?? '' }}</li>{% endfor %}</ul>{% else %}<p class="text-muted">Nenhum evento programado.</p>{% endif %}</div></div>
 
-<div class="card">
-    <div class="card-header">Irregularidades de Tr&aacute;fego</div>
-    <div class="card-body">
-        {% if irregRecentList|length > 0 %}
-            <div class="alert alert-success">{{ irregRecentList|length }} recentes</div>
-        {% else %}
-            <div class="alert alert-warning">Sem irregularidades recentes.</div>
-        {% endif %}
+<div class="card"><div class="card-header">Irregularidades de Tr&aacute;fego</div><div class="card-body">{% if irregRecentList|length > 0 %}<div class="alert alert-success">{{ irregRecentList|length }} recentes</div>{% else %}<div class="alert alert-warning">Sem irregularidades recentes.</div>{% endif %}<h6>Maior Perda de Velocidade (24h)</h6>{% if irregSpeedLoss|length > 0 %}<canvas id="speed-loss-chart" height="160"></canvas>{% else %}<p class="text-muted">Sem dados de irregularidade.</p>{% endif %}<h6 class="mt-3">Atraso Acumulado por Via (24h)</h6>{% if irregDelayByStreet|length > 0 %}<canvas id="delay-street-chart" height="160"></canvas>{% else %}<p class="text-muted">Sem dados de atraso.</p>{% endif %}</div></div>
 
-        <h6>Maior Perda de Velocidade (24h)</h6>
-        {% if irregSpeedLoss|length > 0 %}
-            <canvas id="speed-loss-chart" height="160"></canvas>
-        {% else %}
-            <p class="text-muted">Sem dados de irregularidade.</p>
-        {% endif %}
-
-        <h6 class="mt-3">Atraso Acumulado por Via (24h)</h6>
-        {% if irregDelayByStreet|length > 0 %}
-            <canvas id="delay-street-chart" height="160"></canvas>
-        {% else %}
-            <p class="text-muted">Sem dados de atraso.</p>
-        {% endif %}
-    </div>
-</div>
-
-<div class="card">
-    <div class="card-header">Alertas recentes</div>
-    <div class="card-body">
-        {% if recentAlerts|length > 0 %}
-            <ul class="list-unstyled">
-                {% for alert in recentAlerts|slice(0,5) %}
-                    <li>{{ alert.type }} - {{ alert.subtype ?? '' }} - {{ alert.city ?? '' }} {{ alert.street ?? '' }}</li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p class="text-muted">Sem alertas recentes.</p>
-        {% endif %}
-    </div>
-</div>
-
-<div class="card">
-    <div class="card-header">Jams recentes</div>
-    <div class="card-body">
-        {% if recentJams|length > 0 %}
-            <ul class="list-unstyled">
-                {% for jam in recentJams|slice(0,5) %}
-                    <li>N&iacute;vel {{ jam.level }} - {{ jam.city ?? '' }} {{ jam.street ?? '' }}</li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p class="text-muted">Sem jams recentes.</p>
-        {% endif %}
-    </div>
-</div>
+<div class="card"><div class="card-header">Alertas recentes</div><div class="card-body">{% if recentAlerts|length > 0 %}<ul class="list-unstyled">{% for alert in recentAlerts|slice(0,5) %}<li>{{ alert.type }} - {{ alert.subtype ?? '' }} - {{ alert.city ?? '' }} {{ alert.street ?? '' }}</li>{% endfor %}</ul>{% else %}<p class="text-muted">Sem alertas recentes.</p>{% endif %}</div></div>
+<div class="card"><div class="card-header">Jams recentes</div><div class="card-body">{% if recentJams|length > 0 %}<ul class="list-unstyled">{% for jam in recentJams|slice(0,5) %}<li>N&iacute;vel {{ jam.level }} - {{ jam.city ?? '' }} {{ jam.street ?? '' }}</li>{% endfor %}</ul>{% else %}<p class="text-muted">Sem jams recentes.</p>{% endif %}</div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function() {
-    // Cores Waze para niveis de jam
-    const jamLevelColors = {
-        0: '#94a3b8',
-        1: '#22c55e',
-        2: '#eab308',
-        3: '#f97316',
-        4: '#ef4444',
-        5: '#7f1d1d',
-    };
+    const jamLevelColors = {0:'#94a3b8',1:'#22c55e',2:'#eab308',3:'#f97316',4:'#ef4444',5:'#7f1d1d'};
+    const alertTypeColors = {'ACCIDENT':'#ef4444','HAZARD':'#f59e0b','JAM':'#3b82f6','WEATHERHAZARD':'#10b981','ROAD_CLOSED':'#8b5cf6','CONSTRUCTION':'#6b7280','MISC':'#64748b'};
+    const alertSubtypeColors = {'ACCIDENT':'#ef4444','HAZARD_ON_ROAD':'#f59e0b','HAZARD_ON_SHOULDER':'#fb923c','HAZARD_WEATHER':'#10b981','ROAD_CLOSED_CONSTRUCTION':'#8b5cf6','ROAD_CLOSED_ACCIDENT':'#a855f7','JAM_STAND_TRAFFIC':'#3b82f6','JAM_HEAVY_TRAFFIC':'#2563eb','MISC':'#64748b'};
 
-    // Cores para alertas por tipo (mesmas do grafico de barras)
-    const alertTypeColors = {
-        'ACCIDENT': '#ef4444',
-        'HAZARD': '#f59e0b',
-        'JAM': '#3b82f6',
-        'WEATHERHAZARD': '#10b981',
-        'ROAD_CLOSED': '#8b5cf6',
-        'CONSTRUCTION': '#6b7280',
-        'MISC': '#64748b',
-    };
+    function chronBucket(values) {
+        const seen = new Map();
+        values.forEach(v => seen.set(v.hour_label, Number(v.total || 0)));
+        return values.map(v => v.hour_label).filter((v, i, a) => a.indexOf(v) === i).map(h => ({hour_label:h, total:seen.get(h) || 0}));
+    }
 
-    // --- GRÁ¦FICOS ---
-
-    // Alerts por tipo + subtipo (barras)
     (function() {
-        const ctx = document.getElementById('alerts-by-type-chart');
-        if (!ctx) return;
-
+        const ctx = document.getElementById('alerts-by-type-chart'); if (!ctx) return;
         const raw = {{ alertsByType|json_encode|raw }};
         const typesMap = {{ typesMap|json_encode|raw }};
         const subtypesMap = {{ subtypesMap|json_encode|raw }};
-
-        const labels = raw.map(r => (subtypesMap[r.subtype] ?? typesMap[r.type] ?? r.type));
+        const labels = raw.map(r => subtypesMap[r.subtype] ?? typesMap[r.type] ?? r.type);
         const data = raw.map(r => r.total);
-        const bgColors = raw.map(r => alertTypeColors[r.type] ?? '#6b7280');
-        const borderColors = raw.map(r => alertTypeColors[r.type] ?? '#6b7280');
-
-        if (labels.length === 0) return;
-
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Alertas',
-                    data: data,
-                    backgroundColor: bgColors,
-                    borderColor: borderColors,
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { grid: { display: false } },
-                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
-                }
-            }
-        });
+        const bgColors = raw.map(r => alertSubtypeColors[r.subtype] ?? alertTypeColors[r.type] ?? '#6b7280');
+        new Chart(ctx, {type:'bar', data:{labels, datasets:[{label:'Alertas', data, backgroundColor:bgColors, borderColor:bgColors, borderWidth:1}]}, options:{responsive:true, plugins:{legend:{display:false}}, scales:{x:{grid:{display:false}}, y:{beginAtZero:true, ticks:{stepSize:1}}}}});
     })();
 
-    // Jams por n&iacute;vel (barras, cores Waze)
     (function() {
-        const ctx = document.getElementById('jams-by-level-chart');
-        if (!ctx) return;
-
+        const ctx = document.getElementById('jams-by-level-chart'); if (!ctx) return;
         const raw = {{ jamsByLevel|json_encode|raw }};
         const labels = raw.map(r => 'N' + r.level + (r.level === 5 ? ' (Interdi&ccedil;&atilde;o)' : ''));
         const data = raw.map(r => r.total);
         const bgColors = raw.map(r => jamLevelColors[r.level] ?? '#ef4444');
-        const borderColors = raw.map(r => jamLevelColors[r.level] ?? '#ef4444');
-
-        if (labels.length === 0) return;
-
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Jams',
-                    data: data,
-                    backgroundColor: bgColors,
-                    borderColor: borderColors,
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { grid: { display: false } },
-                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
-                }
-            }
-        });
+        new Chart(ctx, {type:'bar', data:{labels, datasets:[{label:'Jams', data, backgroundColor:bgColors, borderColor:bgColors, borderWidth:1}]}, options:{responsive:true, plugins:{legend:{display:true}}, scales:{x:{grid:{display:false}}, y:{beginAtZero:true, ticks:{stepSize:1}}}}});
     })();
 
-    // Alerts por hora
     (function() {
-        const ctx = document.getElementById('alerts-per-hour-chart');
-        if (!ctx) return;
-
+        const ctx = document.getElementById('alerts-per-hour-chart'); if (!ctx) return;
         const labels = {{ alertsPerHourLabels|json_encode|raw }};
         const data = {{ alertsPerHourData|json_encode|raw }};
-
         if (!labels || labels.length === 0) return;
-
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Alertas por hora',
-                    data: data,
-                    borderColor: '#2563eb',
-                    backgroundColor: 'rgba(37, 99, 235, 0.15)',
-                    tension: 0.3,
-                    fill: true,
-                    pointRadius: 3,
-                    pointBackgroundColor: '#2563eb'
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { grid: { display: false } },
-                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
-                }
-            }
-        });
+        new Chart(ctx, {type:'line', data:{labels, datasets:[{label:'Alertas por hora', data, borderColor:'#2563eb', backgroundColor:'rgba(37,99,235,.15)', tension:0.3, fill:true, pointRadius:3, pointBackgroundColor:'#2563eb'}]}, options:{responsive:true, plugins:{legend:{display:false}}, scales:{x:{grid:{display:false}}, y:{beginAtZero:true, ticks:{stepSize:1}}}}});
     })();
 
-    // Jams por hora
     (function() {
-        const ctx = document.getElementById('jams-per-hour-chart');
-        if (!ctx) return;
-
+        const ctx = document.getElementById('jams-per-hour-chart'); if (!ctx) return;
         const labels = {{ jamsPerHourLabels|json_encode|raw }};
         const data = {{ jamsPerHourData|json_encode|raw }};
-
         if (!labels || labels.length === 0) return;
-
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Jams por hora',
-                    data: data,
-                    borderColor: '#f59e0b',
-                    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-                    tension: 0.3,
-                    fill: true,
-                    pointRadius: 3,
-                    pointBackgroundColor: '#f59e0b'
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { grid: { display: false } },
-                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
-                }
-            }
-        });
+        new Chart(ctx, {type:'line', data:{labels, datasets:[{label:'Jams por hora', data, borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,.15)', tension:0.3, fill:true, pointRadius:3, pointBackgroundColor:'#f59e0b'}]}, options:{responsive:true, plugins:{legend:{display:false}}, scales:{x:{grid:{display:false}}, y:{beginAtZero:true, ticks:{stepSize:1}}}}});
     })();
 
-    // Perda de velocidade (barras)
     (function() {
-        const ctx = document.getElementById('speed-loss-chart');
-        if (!ctx) return;
-
+        const ctx = document.getElementById('speed-loss-chart'); if (!ctx) return;
         const raw = {{ irregSpeedLoss|json_encode|raw }};
         const labels = raw.map(r => (r.street ?? 'Via') + (r.city ? ' (' + r.city + ')' : ''));
         const data = raw.map(r => r.loss);
-
         if (labels.length === 0) return;
-
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Perda (km/h)',
-                    data: data,
-                    backgroundColor: 'rgba(239, 68, 68, 0.7)',
-                    borderColor: '#ef4444',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { grid: { display: false } },
-                    y: { beginAtZero: true }
-                }
-            }
-        });
+        new Chart(ctx, {type:'bar', data:{labels, datasets:[{label:'Perda (km/h)', data, backgroundColor:'rgba(239,68,68,.7)', borderColor:'#ef4444', borderWidth:1}]}, options:{responsive:true, plugins:{legend:{display:false}}, scales:{x:{grid:{display:false}}, y:{beginAtZero:true}}}});
     })();
 
-    // Atraso acumulado por via (barras)
     (function() {
-        const ctx = document.getElementById('delay-street-chart');
-        if (!ctx) return;
-
+        const ctx = document.getElementById('delay-street-chart'); if (!ctx) return;
         const raw = {{ irregDelayByStreet|json_encode|raw }};
         const labels = raw.map(r => (r.street ?? 'Via') + (r.city ? ' (' + r.city + ')' : ''));
         const data = raw.map(r => r.delay);
-
         if (labels.length === 0) return;
-
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Atraso (min)',
-                    data: data,
-                    backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                    borderColor: '#3b82f6',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { grid: { display: false } },
-                    y: { beginAtZero: true }
-                }
-            }
-        });
+        new Chart(ctx, {type:'bar', data:{labels, datasets:[{label:'Atraso (min)', data, backgroundColor:'rgba(59,130,246,.7)', borderColor:'#3b82f6', borderWidth:1}]}, options:{responsive:true, plugins:{legend:{display:false}}, scales:{x:{grid:{display:false}}, y:{beginAtZero:true}}}});
     })();
 
-    // --- MAPA LEAFLET ---
     (function() {
-        const mapEl = document.getElementById('map');
-        if (!mapEl) return;
-
+        const mapEl = document.getElementById('map'); if (!mapEl) return;
         const map = L.map('map').setView([-20.66, -43.81], 12);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: 'OpenStreetMap'
-        }).addTo(map);
-
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'OpenStreetMap' }).addTo(map);
         const recentAlerts = {{ recentAlerts|json_encode|raw }};
         const recentJams = {{ recentJams|json_encode|raw }};
-
-        console.log('recentJams:', recentJams);
-
-        // Alertas: cores do grafico de barras
         recentAlerts.forEach(a => {
             if (!a.latitude || !a.longitude) return;
-            const color = alertTypeColors[a.type] ?? '#6b7280';
-            L.circleMarker([a.latitude, a.longitude], {
-                radius: 7,
-                color: color,
-                fillColor: color,
-                fillOpacity: 0.7
-            }).addTo(map)
-              .bindPopup(`<strong>${a.type}</strong><br>${a.city ?? ''} ${a.street ?? ''}`);
+            const color = alertSubtypeColors[a.subtype] ?? alertTypeColors[a.type] ?? '#6b7280';
+            L.circleMarker([a.latitude, a.longitude], {radius:7, color, fillColor:color, fillOpacity:.7}).addTo(map).bindPopup(`<strong>${a.type}</strong><br>${a.subtype ?? ''}<br>${a.city ?? ''} ${a.street ?? ''}`);
         });
-
-        // Jams: polilines com todas as coordenadas, cores por nivel
-        // Formato do line: [{x: lon, y: lat}, {x: lon, y: lat}, ...]
         recentJams.forEach((j, idx) => {
-            console.log(`Jam ${idx}:`, j);
-            if (!j.line || !Array.isArray(j.line) || j.line.length === 0) {
-                console.warn(`Jam ${idx} sem linha valida`);
-                return;
-            }
-
-            // Converter [{x:lon, y:lat}, ...] para [[lat,lon], ...]
+            if (!j.line || !Array.isArray(j.line) || j.line.length === 0) return;
             const coords = j.line.map(p => [p.y, p.x]);
             const color = jamLevelColors[j.level] ?? '#ef4444';
-
-            console.log(`Jam ${idx} coords:`, coords);
-
-            const polyline = L.polyline(coords, {
-                color: color,
-                weight: 5,
-                opacity: 0.9
-            }).addTo(map);
-
-            polyline.bindPopup(`<strong>Jam N${j.level}${j.level === 5 ? ' (Interdi&ccedil;&atilde;o)' : ''}</strong><br>${j.city ?? ''} ${j.street ?? ''}`);
+            L.polyline(coords, {color, weight:5, opacity:.9}).addTo(map).bindPopup(`<strong>Jam N${j.level}${j.level === 5 ? ' (Interdi&ccedil;&atilde;o)' : ''}</strong><br>${j.city ?? ''} ${j.street ?? ''}`);
         });
     })();
 })();
