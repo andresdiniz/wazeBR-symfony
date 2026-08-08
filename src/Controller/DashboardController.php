@@ -42,14 +42,69 @@ class DashboardController extends AbstractController
             return new Response('<div class="p-5 text-center">Usu&aacute;rio sem parceiro vinculado.</div>', 200, ['Content-Type' => 'text/html; charset=UTF-8']);
         }
 
+        $partnerId = $partner->getId();
+
         // Label amigavel do parceiro
-        $partnerLabel = $partner->getName() ?: $partner->getId();
+        $partnerLabel = $partner->getName() ?: $partnerId;
 
-        // --- Agregados originais (mantidos) ---
+        // --- Stats calculados aqui (sem getPartnerStats) ---
 
-        $partnerStats = $this->partnerRepo->getPartnerStats($partner->getId());
-        $tvtRoutesCount = $this->tvtRouteRepo->count(['partner' => $partner]);
-        $monitoredLinksCount = $this->linkRepo->count(['partner' => $partner]);
+        $alertsCount = (int)$this->alertRepo->createQueryBuilder('a')
+            ->select('COUNT(a.id)')
+            ->where('a.partner = :partnerId')
+            ->setParameter('partnerId', $partnerId)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        $jamsCount = (int)$this->jamRepo->createQueryBuilder('j')
+            ->select('COUNT(j.id)')
+            ->where('j.partner = :partnerId')
+            ->setParameter('partnerId', $partnerId)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        $tvtRoutesCount = (int)$this->tvtRouteRepo->createQueryBuilder('r')
+            ->select('COUNT(r.id)')
+            ->where('r.partner = :partnerId')
+            ->setParameter('partnerId', $partnerId)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        $monitoredLinksCount = (int)$this->linkRepo->createQueryBuilder('l')
+            ->select('COUNT(l.id)')
+            ->where('l.partner = :partnerId')
+            ->setParameter('partnerId', $partnerId)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        $irregularitiesCount = (int)$this->irregRepo->createQueryBuilder('i')
+            ->select('COUNT(i.id)')
+            ->where('i.partner = :partnerId')
+            ->setParameter('partnerId', $partnerId)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        $cifsEventsCount = (int)$this->cifsRepo->createQueryBuilder('e')
+            ->select('COUNT(e.id)')
+            ->where('e.partner = :partnerId')
+            ->setParameter('partnerId', $partnerId)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        // --- Agregados usados no template ---
+
+        $partnerStats = [
+            'alerts' => $alertsCount,
+            'jams' => $jamsCount,
+            'tvtRoutes' => $tvtRoutesCount,
+            'monitoredLinks' => $monitoredLinksCount,
+            'irregularities' => $irregularitiesCount,
+            'cifsEvents' => $cifsEventsCount,
+        ];
+
+        $tvtRoutesCountForCard = $tvtRoutesCount;
+        $monitoredLinksCountForCard = $monitoredLinksCount;
+
         $irregularities = $this->irregRepo->findBy(['partner' => $partner], ['createdAt' => 'DESC'], 10);
         $cifsEvents = $this->cifsRepo->findBy(['partner' => $partner], ['createdAt' => 'DESC'], 10);
         $alertTypes = $this->alertTypeRepo->findAll();
@@ -81,7 +136,7 @@ class DashboardController extends AbstractController
             ];
         }, $recentAlertsRaw);
 
-        // Recent jams (mantem como antes)
+        // Recent jams (ultimos 10) — formata pubMillis como data
         $recentJamsRaw = $this->jamRepo->createQueryBuilder('j')
             ->select('j.id, j.street, j.city, j.level, j.length, j.delay, j.speed, j.type, j.turnType, j.pubMillis')
             ->orderBy('j.pubMillis', 'DESC')
@@ -115,8 +170,8 @@ class DashboardController extends AbstractController
         return $this->render('dashboard/index.html.twig', [
             'partnerLabel' => $partnerLabel,
             'partnerStats' => $partnerStats,
-            'tvtRoutesCount' => $tvtRoutesCount,
-            'monitoredLinksCount' => $monitoredLinksCount,
+            'tvtRoutesCount' => $tvtRoutesCountForCard,
+            'monitoredLinksCount' => $monitoredLinksCountForCard,
             'irregularities' => $irregularities,
             'cifsEvents' => $cifsEvents,
             'alertTypes' => $alertTypes,
