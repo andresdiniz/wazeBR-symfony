@@ -105,7 +105,11 @@ class DashboardController extends AbstractController
 
         // WazeIrregularity tem campo collectedAt, nao createdAt
         $irregularities = $this->irregRepo->findBy(['partner' => $partner], ['collectedAt' => 'DESC'], 10);
-        $cifsEvents = $this->cifsRepo->findBy(['partner' => $partner], ['createdAt' => 'DESC'], 10);
+
+        // CifsEvent: sem ordenacao por enquanto (campo de data pode ser outro)
+        $allCifs = $this->cifsRepo->findBy(['partner' => $partner]);
+        $cifsEvents = array_slice($allCifs, 0, 10);
+
         $alertTypes = $this->alertTypeRepo->findAll();
 
         // Recent alerts (ultimos 10) — formata pubMillis como data
