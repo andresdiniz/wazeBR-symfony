@@ -6,33 +6,139 @@
 
 {% block body %}
 
-{# ... resto do template do dashboard ... #}
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card h-100 bg-primary text-white">
+            <div class="card-body">
+                <h5 class="card-title">Alertas</h5>
+                <p class="card-text display-6">{{ partnerStats.alerts ?? 0 }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 bg-success text-white">
+            <div class="card-body">
+                <h5 class="card-title">Rotas TVT</h5>
+                <p class="card-text display-6">{{ tvtRoutesCount }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 bg-info text-white">
+            <div class="card-body">
+                <h5 class="card-title">Links monitorados</h5>
+                <p class="card-text display-6">{{ monitoredLinksCount }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 bg-warning text-dark">
+            <div class="card-body">
+                <h5 class="card-title">Irregularidades</h5>
+                <p class="card-text display-6">{{ irregularities|length }}</p>
+            </div>
+        </div>
+    </div>
+</div>
 
-<div class="card">
-    <div class="card-header">Alertas recentes</div>
-    <div class="card-body">
-        <table class="table table-sm table-hover mb-0">
-            <thead>
-            <tr>
-                <th>Tipo</th>
-                <th>Subtipo</th>
-                <th>Local</th>
-                <th>Hora</th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for alert in recentAlerts %}
-                <tr>
-                    <td><span class="badge bg-secondary">{{ alert.type }}</span></td>
-                    <td>{{ alert.subtype ?? '—' }}</td>
-                    <td class="text-muted">{{ alert.city ?? '' }} — {{ alert.street ?? 'Via não informada' }}</td>
-                    <td class="font-monospace small">{{ alert.pubAt ?? '—' }}</td>
-                </tr>
-            {% else %}
-                <tr><td colspan="4" class="text-center text-muted">Nenhum alerta recente registrado.</td></tr>
-            {% endfor %}
-            </tbody>
-        </table>
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">Alertas recentes</div>
+            <div class="card-body">
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Subtipo</th>
+                        <th>Local</th>
+                        <th>Hora</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for alert in recentAlerts %}
+                        <tr>
+                            <td><span class="badge bg-secondary">{{ alert.type }}</span></td>
+                            <td>{{ alert.subtype ?? '—' }}</td>
+                            <td class="text-muted">{{ alert.city ?? '' }} — {{ alert.street ?? 'Via não informada' }}</td>
+                            <td class="font-monospace small">{{ alert.pubAt ?? '—' }}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="4" class="text-center text-muted">Nenhum alerta recente registrado.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header"> LentidÃµes recentes</div>
+            <div class="card-body">
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                    <tr>
+                        <th>Via</th>
+                        <th>Cidade</th>
+                        <th>NÃ�vel</th>
+                        <th>Hora</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for jam in recentJams %}
+                        <tr>
+                            <td>{{ jam.street ?? 'Sem nome' }}</td>
+                            <td>{{ jam.city ?? '—' }}</td>
+                            <td><span class="badge bg-{{ jam.level >= 4 ? 'danger' : jam.level >= 2 ? 'warning' : 'success' }}">{{ jam.level }}</span></td>
+                            <td class="font-monospace small">{{ jam.pubAt ?? '—' }}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="4" class="text-center text-muted">Nenhuma lentidÃ£o recente registrada.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">Irregularidades</div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                {% for irr in irregularities %}
+                    <li class="list-group-item">
+                        <strong>{{ irr.type }}</strong>
+                        {% if irr.description %} — {{ irr.description }}{% endif %}
+                        <small class="text-muted float-end">{{ irr.createdAt|date('d/m/Y H:i') }}</small>
+                    </li>
+                {% else %}
+                    <li class="list-group-item text-muted">Nenhuma irregularidade registrada.</li>
+                {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">Eventos CIFS</div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                {% for evt in cifsEvents %}
+                    <li class="list-group-item">
+                        <strong>{{ evt.title }}</strong>
+                        <small class="text-muted float-end">{{ evt.createdAt|date('d/m/Y H:i') }}</small>
+                    </li>
+                {% else %}
+                    <li class="list-group-item text-muted">Nenhum evento CIFS registrado.</li>
+                {% endfor %}
+                </ul>
+            </div>
+        </div>
     </div>
 </div>
 

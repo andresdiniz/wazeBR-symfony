@@ -42,10 +42,17 @@ class DashboardController extends AbstractController
             return new Response('<div class="p-5 text-center">Usu&aacute;rio sem parceiro vinculado.</div>', 200, ['Content-Type' => 'text/html; charset=UTF-8']);
         }
 
-        // Label amigavel do parceiro (pode ser ajustado depois se tiver "displayName")
+        // Label amigavel do parceiro
         $partnerLabel = $partner->getName() ?: $partner->getId();
 
-        // TODO: aqui entram os outros agregados do dashboard (mantidos como estao no repo original)
+        // --- Agregados originais (mantidos) ---
+
+        $partnerStats = $this->partnerRepo->getPartnerStats($partner->getId());
+        $tvtRoutesCount = $this->tvtRouteRepo->count(['partner' => $partner]);
+        $monitoredLinksCount = $this->linkRepo->count(['partner' => $partner]);
+        $irregularities = $this->irregRepo->findBy(['partner' => $partner], ['createdAt' => 'DESC'], 10);
+        $cifsEvents = $this->cifsRepo->findBy(['partner' => $partner], ['createdAt' => 'DESC'], 10);
+        $alertTypes = $this->alertTypeRepo->findAll();
 
         // Recent alerts (ultimos 10) — formata pubMillis como data
         $recentAlertsRaw = $this->alertRepo->createQueryBuilder('a')
@@ -74,9 +81,47 @@ class DashboardController extends AbstractController
             ];
         }, $recentAlertsRaw);
 
+        // Recent jams (mantem como antes)
+        $recentJamsRaw = $this->jamRepo->createQueryBuilder('j')
+            ->select('j.id, j.street, j.city, j.level, j.length, j.delay, j.speed, j.type, j.turnType, j.pubMillis')
+            ->orderBy('j.pubMillis', 'DESC')
+            ->setMaxResults(10)
+            ->getQuery()
+            ->getArrayResult();
+
+        $recentJams = array_map(function (array $r) {
+            $pubMillis = (int)($r['pubMillis'] ?? 0);
+            $pubAt = null;
+            if ($pubMillis > 0) {
+                $dt = (new \DateTimeImmutable())->setTimestamp((int)floor($pubMillis / 1000));
+                $pubAt = $dt->format('d/m H:i');
+            }
+
+            return [
+                'id'        => (int)$r['id'],
+                'street'    => $r['street'],
+                'city'      => $r['city'],
+                'level'     => (int)($r['level'] ?? 0),
+                'length'    => (int)($r['length'] ?? 0),
+                'delay'     => (int)($r['delay'] ?? 0),
+                'speed'     => (int)($r['speed'] ?? 0),
+                'type'      => $r['type'],
+                'turnType'  => $r['turnType'],
+                'pubMillis' => $pubMillis,
+                'pubAt'     => $pubAt,
+            ];
+        }, $recentJamsRaw);
+
         return $this->render('dashboard/index.html.twig', [
             'partnerLabel' => $partnerLabel,
+            'partnerStats' => $partnerStats,
+            'tvtRoutesCount' => $tvtRoutesCount,
+            'monitoredLinksCount' => $monitoredLinksCount,
+            'irregularities' => $irregularities,
+            'cifsEvents' => $cifsEvents,
+            'alertTypes' => $alertTypes,
             'recentAlerts' => $recentAlerts,
+            'recentJams' => $recentJams,
         ]);
     }
 }
