@@ -36,13 +36,16 @@ class DashboardController extends AbstractController
     {
         /** @var User $user */
         $user = $this->getUser();
-        $partner = $user->getPartner();
+        $partner = $user?->getPartner();
 
         if (!$partner) {
             return new Response('<div class="p-5 text-center">Usu&aacute;rio sem parceiro vinculado.</div>', 200, ['Content-Type' => 'text/html; charset=UTF-8']);
         }
 
-        // ... (todo o codigo de agregacao permanece igual) ...
+        // Label amigavel do parceiro (pode ser ajustado depois se tiver "displayName")
+        $partnerLabel = $partner->getName() ?: $partner->getId();
+
+        // TODO: aqui entram os outros agregados do dashboard (mantidos como estao no repo original)
 
         // Recent alerts (ultimos 10) — formata pubMillis como data
         $recentAlertsRaw = $this->alertRepo->createQueryBuilder('a')
@@ -71,13 +74,9 @@ class DashboardController extends AbstractController
             ];
         }, $recentAlertsRaw);
 
-        // Recent jams (mantem como antes)
-        // ...
-
         return $this->render('dashboard/index.html.twig', [
-            // ... outras variaveis ...
+            'partnerLabel' => $partnerLabel,
             'recentAlerts' => $recentAlerts,
-            // 'recentJams' => $recentJams,
         ]);
     }
 }
