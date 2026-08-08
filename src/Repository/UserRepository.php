@@ -104,4 +104,43 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
             ->getQuery()
             ->getOneOrNullResult();
     }
+
+    /**
+     * Gera um token de redefinição de senha criptograficamente seguro,
+     * persiste no usuário com prazo de expiração e retorna o token em texto puro
+     * (o único momento em que ele existe fora do banco, para ir no e-mail).
+     */
+    public function generateResetToken(User $user, int $ttlMinutes = 60): string
+    {
+        $token = bin2hex(random_bytes(32));
+
+        $user->setResetToken($token);
+        $user->setResetTokenExpiresAt(new \DateTimeImmutable(sprintf('+%d minutes', $ttlMinutes)));
+
+        $this->save($user);
+
+        return $token;
+    }
+
+    /**
+     * Busca um usuário por token de reset, apenas se ainda válido (não expirado).
+     */
+    public function findByResetToken(string $token): ?User
+    {
+        return $this->findByValidResetToken($token);
+    }
+
+    public function isResetTokenValid(User $user): bool
+    {
+        return $user->getResetToken() !== null
+            && $user->getResetTokenExpiresAt() !== null
+            && $user->getResetTokenExpiresAt() > new \DateTimeImmutable();
+    }
+
+    public function clearResetToken(User $user): void
+    {
+        $user->setResetToken(null);
+        $user->setResetTokenExpiresAt(null);
+        $this->save($user);
+    }
 }
