@@ -4,6 +4,7 @@ namespace App\Security;
 
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -85,7 +86,10 @@ class LoginFormAuthenticator extends AbstractAuthenticator implements Authentica
         }
 
         return new Passport(
-            new UserBadge($email),
+            // Passa o usuário já carregado via callback, evitando uma segunda
+            // consulta ao banco que o UserBadge faria internamente se recebesse
+            // apenas a string do e-mail (o provider buscaria o mesmo registro de novo).
+            new UserBadge($email, fn (string $userIdentifier): User => $user),
             new PasswordCredentials($password),
             [new RememberMeBadge()]
         );
@@ -93,16 +97,16 @@ class LoginFormAuthenticator extends AbstractAuthenticator implements Authentica
 
     public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): ?Response
     {
-        // Regenerate session to prevent session fixation
-        $request->getSession()->invalidate();
-        
-        if ($targetPath = $this->getTargetPath($request->getSession(), $firewallName)) {
-            if ($this->isSafeTarget($targetPath)) {
-                return new Response($targetPath);
-            }
+        // Read the pre-login target path BEFORE touching the session, then
+        // regenerate the session ID (keeping its data) to prevent session fixation.
+        $targetPath = $this->getTargetPath($request->getSession(), $firewallName);
+        $request->getSession()->migrate(true);
+
+        if ($targetPath && $this->isSafeTarget($targetPath)) {
+            return new RedirectResponse($targetPath);
         }
 
-        return new Response($this->urlGenerator->generate('dashboard_index'));
+        return new RedirectResponse($this->urlGenerator->generate('dashboard_index'));
     }
 
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): ?Response
@@ -116,13 +120,13 @@ class LoginFormAuthenticator extends AbstractAuthenticator implements Authentica
         ));
 
         $request->getSession()->set(Security::AUTHENTICATION_ERROR, $exception);
-        
-        return new Response($this->urlGenerator->generate('auth_login'));
+
+        return new RedirectResponse($this->urlGenerator->generate('auth_login'));
     }
 
     public function start(Request $request, AuthenticationException $authException = null): Response
     {
-        return new Response($this->urlGenerator->generate('auth_login'));
+        return new RedirectResponse($this->urlGenerator->generate('auth_login'));
     }
 
     private function isSafeTarget(string $path): bool
