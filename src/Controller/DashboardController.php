@@ -64,15 +64,16 @@ class DashboardController extends AbstractController
             ->getQuery()
             ->getSingleScalarResult();
 
-        // TVT Routes e MonitoredLinks (vinculados a User via owner, nao a Partner)
+        // TVT Routes: via snapshot -> partner
         $tvtRoutesCount = (int)$this->tvtRouteRepo->createQueryBuilder('r')
             ->select('COUNT(r.id)')
-            ->innerJoin('r.owner', 'u')
-            ->where('u.partner = :partnerId')
+            ->innerJoin('r.snapshot', 's')
+            ->where('s.partner = :partnerId')
             ->setParameter('partnerId', $partnerId)
             ->getQuery()
             ->getSingleScalarResult();
 
+        // MonitoredLinks: via owner (User) -> partner
         $monitoredLinksCount = (int)$this->linkRepo->createQueryBuilder('l')
             ->select('COUNT(l.id)')
             ->innerJoin('l.owner', 'u')
