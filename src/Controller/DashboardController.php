@@ -11,6 +11,7 @@ use App\Repository\MonitoredLinkRepository;
 use App\Repository\WazeIrregularityRepository;
 use App\Repository\CifsEventRepository;
 use App\Repository\WazeAlertTypeRepository;
+use App\Repository\WazeCountRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -29,6 +30,7 @@ class DashboardController extends AbstractController
         private WazeIrregularityRepository $irregRepo,
         private CifsEventRepository $cifsRepo,
         private WazeAlertTypeRepository $alertTypeRepo,
+        private WazeCountRepository $wazeCountRepo,
     ) {}
 
     #[Route('/', name: 'dashboard_index', methods: ['GET'])]
@@ -39,7 +41,7 @@ class DashboardController extends AbstractController
         $partner = $user->getPartner();
 
         if (!$partner) {
-            return new Response('<div class="p-5 text-center">Usu&aacute;rio sem parceiro vinculado.</div>', 200, ['Content-Type' => 'text/html; charset=UTF-8']);
+            return new Response('<div class="p-5 text-center text-white bg-dark">Usuário sem parceiro vinculado.</div>', 200, ['Content-Type' => 'text/html; charset=UTF-8']);
         }
 
         $partnerId = $partner->getId();
@@ -52,7 +54,7 @@ class DashboardController extends AbstractController
 
         $conn = $this->alertRepo->getEntityManager()->getConnection();
 
-        // Agregados de alerts e jams (queries unificadas)
+        // Agregados de alerts e jams
         $alertsStats = $this->alertRepo->createQueryBuilder('a')
             ->select(
                 'COUNT(a.id) as total',
@@ -77,7 +79,7 @@ class DashboardController extends AbstractController
             ->getQuery()
             ->getArrayResult()[0] ?? [];
 
-        // Links e rotas (listas leves)
+        // Links e rotas
         $links = $this->linkRepo->createQueryBuilder('l')
             ->select('l.id, l.url')
             ->getQuery()
@@ -99,7 +101,7 @@ class DashboardController extends AbstractController
             ->getQuery()
             ->getSingleScalarResult();
 
-        // Qualidade dos alertas (reliability / confidence)
+        // Qualidade dos alertas
         $qualityStats = $conn->fetchAssociative(<<<'SQL'
             SELECT
                 AVG(a.reliability) AS avg_reliability,
@@ -113,17 +115,14 @@ class DashboardController extends AbstractController
         $avgReliability = (float)($qualityStats['avg_reliability'] ?? 0);
         $avgConfidence  = (float)($qualityStats['avg_confidence'] ?? 0);
 
-        // WazeCount — desativado
-        $wazeCountThisWeek = null;
-        $wazeCountLastWeek = null;
-        $wazeCountPeak = [
-            'max_level0' => null,
-            'max_level1' => null,
-            'max_level2' => null,
-            'max_level3' => null,
-            'max_level4' => null,
-            'max_total'  => null,
-        ];
+        // WazeCount Real
+        $latestWazeCount = $this->wazeCountRepo->findLatest($partner);
+        $sameTimeLastWeekWazeCount = $this->wazeCountRepo->findSameTimeLastWeek($partner);
+        $peakWazeCount = $this->wazeCountRepo->peakOfDay($partner);
+
+        $wazeCountThisWeek = $latestWazeCount ? (int)$latestWazeCount->getWazersTotal() : null;
+        $wazeCountLastWeek = $sameTimeLastWeekWazeCount ? (int)$sameTimeLastWeekWazeCount->getWazersTotal() : null;
+        $wazeCountPeak = $peakWazeCount;
 
         // KPIs
         $kpis = [
@@ -149,32 +148,15 @@ class DashboardController extends AbstractController
             'liveTotalLen' => 0.0,
             'worstJam' => null,
             'rainLastHour' => null,
-            'hydro' => [
-                'total' => 0,
-                'normal' => 0,
-                'attention' => 0,
-                'alert' => 0,
-                'flood' => 0,
-                'overflow' => 0,
-                'critical' => 0,
-                'stations' => [],
-            ],
-            'tvtAvgSpeed' => 0.0,
-            'tvtAvgTravelTime' => 0.0,
+            'cifsActiveCount' => (int)($cifsCount ?? 0),
+            'avgReliability' => $avgReliability,
+            'avgConfidence' => $avgConfidence,
             'wazeCount' => $wazeCountThisWeek,
             'wazeCountLastWeek' => $wazeCountLastWeek,
             'wazeCountPeak' => $wazeCountPeak,
-            'alertLinkedToJamPct' => 0.0,
-            'alertOnHighwayPct' => 0.0,
-            'cifsActiveCount' => (int)($cifsCount ?? 0),
-            'anomalyDetected' => false,
-            'anomalyRatio' => 1.0,
-            'avg6hPerHour' => 0.0,
-            'avgReliability' => $avgReliability,
-            'avgConfidence' => $avgConfidence,
         ];
 
-        // Alerts por tipo + subtipo (u\u00faltimas 24h)
+        // Alertas por tipo
         $alertsByTypeRaw = $this->alertRepo->createQueryBuilder('a')
             ->select('a.type, a.subtype, COUNT(a.id) as total')
             ->where('a.pubMillis >= :lastDay')
@@ -192,7 +174,7 @@ class DashboardController extends AbstractController
             ];
         }
 
-        // Jams por nivel (u\u00faltimas 24h)
+        // Jams por nível
         $jamsByLevelRaw = $this->jamRepo->createQueryBuilder('j')
             ->select('j.level, COUNT(j.id) as total')
             ->where('j.pubMillis >= :lastDay')
@@ -216,31 +198,57 @@ class DashboardController extends AbstractController
             }
         }
 
-        $typesMap = mb_convert_encoding([
+        $typesMap = [
             'ACCIDENT' => 'Acidente',
             'JAM' => 'Congestionamento',
             'MISC' => 'Diversos',
             'CONSTRUCTION' => 'Obra',
             'ROAD_CLOSED' => 'Via Interditada',
             'HAZARD' => 'Perigo',
-            'WEATHERHAZARD' => 'Perigo clim&aacute;tico',
-        ], 'UTF-8', 'UTF-8');
+            'WEATHERHAZARD' => 'Perigo climático',
+        ];
 
-        $subtypesMap = mb_convert_encoding([
+        $subtypesMap = [
             'ACCIDENT' => 'Acidente',
             'HAZARD_ON_ROAD' => 'Perigo na via',
             'HAZARD_ON_SHOULDER' => 'Perigo no acostamento',
-            'HAZARD_WEATHER' => 'Perigo clim&aacute;tico',
+            'HAZARD_WEATHER' => 'Perigo climático',
             'ROAD_CLOSED_CONSTRUCTION' => 'Obra',
             'ROAD_CLOSED_ACCIDENT' => 'Acidente',
-            'JAM_STAND_TRAFFIC' => 'Tr&acirc;nsito parado',
-            'JAM_HEAVY_TRAFFIC' => 'Tr&acirc;nsito intenso',
+            'JAM_STAND_TRAFFIC' => 'Trânsito parado',
+            'JAM_HEAVY_TRAFFIC' => 'Trânsito intenso',
             'MISC' => 'Diversos',
-        ], 'UTF-8', 'UTF-8');
+        ];
 
-        // Dados para gr&aacute;ficos (alerts/jams por hora)
-        $alertsPerHourRaw = $this->alertRepo->getAlertsPerHourLast24h();
-        $jamsPerHourRaw = $this->jamRepo->getJamsPerHourLast24h();
+        // 24h hourly buckets (horas reais formatadas HH:00)
+        $getHourlyBuckets = function(string $tableName) use ($conn, $lastDay) {
+            $buckets = [];
+            $now = new \DateTimeImmutable();
+            for ($i = 23; $i >= 0; $i--) {
+                $t = $now->modify("-{$i} hours");
+                $key = $t->format('Y-m-d H:00:00');
+                $label = $t->format('H:00');
+                $buckets[$key] = ['hour_label' => $label, 'total' => 0];
+            }
+            $sql = "
+                SELECT 
+                    DATE_FORMAT(FROM_UNIXTIME(pub_millis / 1000), '%Y-%m-%d %H:00:00') as bucket,
+                    COUNT(id) as total
+                FROM {$tableName}
+                WHERE pub_millis >= :lastDay
+                GROUP BY bucket
+            ";
+            $res = $conn->fetchAllAssociative($sql, ['lastDay' => $lastDay]);
+            foreach ($res as $row) {
+                if (isset($buckets[$row['bucket']])) {
+                    $buckets[$row['bucket']]['total'] = (int)$row['total'];
+                }
+            }
+            return array_values($buckets);
+        };
+
+        $alertsPerHourRaw = $getHourlyBuckets('waze_alerts');
+        $jamsPerHourRaw = $getHourlyBuckets('waze_traffic_jams');
 
         $alertsPerHourLabels = array_column($alertsPerHourRaw, 'hour_label');
         $alertsPerHourData = array_map('intval', array_column($alertsPerHourRaw, 'total'));
@@ -248,11 +256,11 @@ class DashboardController extends AbstractController
         $jamsPerHourLabels = array_column($jamsPerHourRaw, 'hour_label');
         $jamsPerHourData = array_map('intval', array_column($jamsPerHourRaw, 'total'));
 
-        // Recent alerts (u\u00faltimos 10)
+        // Recent alerts
         $recentAlertsRaw = $this->alertRepo->createQueryBuilder('a')
             ->select('a.id, a.type, a.subtype, a.city, a.street, a.pubMillis, a.latitude, a.longitude')
             ->orderBy('a.pubMillis', 'DESC')
-            ->setMaxResults(10)
+            ->setMaxResults(15)
             ->getQuery()
             ->getArrayResult();
 
@@ -269,7 +277,7 @@ class DashboardController extends AbstractController
             ];
         }, $recentAlertsRaw);
 
-        // Recent jams (u\u00faltimos 10 COM LINE) - SQL direto
+        // Recent jams
         $recentJamsRaw = $conn->fetchAllAssociative(<<<'SQL'
             SELECT
                 j.id,
@@ -284,29 +292,23 @@ class DashboardController extends AbstractController
               AND j.line != ''
               AND j.line != '[]'
             ORDER BY j.pub_millis DESC
-            LIMIT 10
+            LIMIT 15
         SQL, []);
 
         $recentJams = array_map(function ($r) {
             $lineStr = $r['line'];
             $segmentsStr = $r['segments'];
             $coords = [];
-
-            // Tentar line primeiro
             if (is_string($lineStr) && strlen($lineStr) > 2) {
                 $decoded = json_decode($lineStr, true);
                 if (is_array($decoded) && !empty($decoded)) {
-                    // Formato: [{x:lon, y:lat}, ...]
                     if (isset($decoded[0]['x']) && isset($decoded[0]['y'])) {
                         $coords = $decoded;
                     } elseif (is_array($decoded[0]) && count($decoded[0]) === 2) {
-                        // Formato: [[lon,lat], ...]
                         $coords = $decoded;
                     }
                 }
             }
-
-            // Fallback: tentar segments
             if (empty($coords) && is_string($segmentsStr) && strlen($segmentsStr) > 2) {
                 $decodedSegments = json_decode($segmentsStr, true);
                 if (is_array($decodedSegments) && !empty($decodedSegments)) {
@@ -317,7 +319,6 @@ class DashboardController extends AbstractController
                     }
                 }
             }
-
             return [
                 'id' => (int)$r['id'],
                 'level' => (int)$r['level'],
@@ -328,7 +329,7 @@ class DashboardController extends AbstractController
             ];
         }, $recentJamsRaw);
 
-        // Irregularidades: jams com level >= 2 (u\u00faltimas 24h)
+        // Irregularidades
         $irregJamsRaw = $conn->fetchAllAssociative(<<<'SQL'
             SELECT
                 j.id,
@@ -356,7 +357,6 @@ class DashboardController extends AbstractController
             ];
         }, $irregJamsRaw);
 
-        // Maior perda de velocidade (24h)
         $speedLossRaw = $conn->fetchAllAssociative(<<<'SQL'
             SELECT
                 j.street,
@@ -378,7 +378,6 @@ class DashboardController extends AbstractController
             ];
         }, $speedLossRaw);
 
-        // Atraso acumulado por via (24h)
         $delayByStreetRaw = $conn->fetchAllAssociative(<<<'SQL'
             SELECT
                 j.street,
@@ -400,12 +399,10 @@ class DashboardController extends AbstractController
             ];
         }, $delayByStreetRaw);
 
-        // Carregar traducoes (exemplo: pt como padrao)
-        $locale = 'pt';
-        $translationsFile = $this->getParameter('kernel.project_dir') . '/translations/dashboard.' . $locale . '.json';
-        $translations = [];
-        if (file_exists($translationsFile)) {
-            $translations = json_decode(file_get_contents($translationsFile), true, 512, JSON_THROW_ON_ERROR);
+        $avgAccumulatedDelay = 0;
+        if (!empty($delayByStreetRaw)) {
+            $sumDelays = array_sum(array_column($delayByStreetRaw, 'total_delay'));
+            $avgAccumulatedDelay = round($sumDelays / count($delayByStreetRaw), 1);
         }
 
         $response = $this->render('dashboard/index.html.twig', [
@@ -416,32 +413,20 @@ class DashboardController extends AbstractController
             'jamsByLevel' => $jamsByLevel,
             'typesMap' => $typesMap,
             'subtypesMap' => $subtypesMap,
-            'alertQualityByType' => [],
-            'topEngagedAlerts' => [],
-            'irregWorsening' => [],
             'irregSpeedLoss' => $irregSpeedLoss,
             'irregDelayByStreet' => $irregDelayByStreet,
-            'irregSeverityCity' => [],
+            'avgAccumulatedDelay' => $avgAccumulatedDelay,
             'irregRecentList' => $irregRecentList,
-            'cifsActive' => [],
-            'cifsUpcoming' => [],
-            'cifsActiveByType' => [],
-            'cifsTopStreets' => [],
             'alertsPerHourLabels' => $alertsPerHourLabels,
             'alertsPerHourData' => $alertsPerHourData,
             'jamsPerHourLabels' => $jamsPerHourLabels,
             'jamsPerHourData' => $jamsPerHourData,
             'recentAlerts' => $recentAlerts,
             'recentJams' => $recentJams,
-            'cemadenData' => [],
             'routes' => $routes,
-            'cities' => [],
             'links' => $links,
-            'translations' => $translations,
-            'locale' => $locale,
         ]);
 
-        // Cache HTTP: 5 minutos, privado
         $response->setSharedMaxAge(300);
         $response->setPrivate();
         $response->headers->set('Content-Type', 'text/html; charset=UTF-8');
