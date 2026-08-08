@@ -47,8 +47,9 @@ class DashboardController extends AbstractController
         // Label amigavel do parceiro
         $partnerLabel = $partner->getName() ?: $partnerId;
 
-        // --- Stats calculados aqui (sem getPartnerStats) ---
+        // --- Stats ---
 
+        // Alerts e Jams (tem campo partner direto)
         $alertsCount = (int)$this->alertRepo->createQueryBuilder('a')
             ->select('COUNT(a.id)')
             ->where('a.partner = :partnerId')
@@ -63,20 +64,25 @@ class DashboardController extends AbstractController
             ->getQuery()
             ->getSingleScalarResult();
 
+        // TVT Routes e MonitoredLinks (vinculados a User, nao a Partner)
+        // Conta via join em user.partner
         $tvtRoutesCount = (int)$this->tvtRouteRepo->createQueryBuilder('r')
             ->select('COUNT(r.id)')
-            ->where('r.partner = :partnerId')
+            ->innerJoin('r.user', 'u')
+            ->where('u.partner = :partnerId')
             ->setParameter('partnerId', $partnerId)
             ->getQuery()
             ->getSingleScalarResult();
 
         $monitoredLinksCount = (int)$this->linkRepo->createQueryBuilder('l')
             ->select('COUNT(l.id)')
-            ->where('l.partner = :partnerId')
+            ->innerJoin('l.user', 'u')
+            ->where('u.partner = :partnerId')
             ->setParameter('partnerId', $partnerId)
             ->getQuery()
             ->getSingleScalarResult();
 
+        // Irregularities e CifsEvents (tem campo partner direto)
         $irregularitiesCount = (int)$this->irregRepo->createQueryBuilder('i')
             ->select('COUNT(i.id)')
             ->where('i.partner = :partnerId')
@@ -90,8 +96,6 @@ class DashboardController extends AbstractController
             ->setParameter('partnerId', $partnerId)
             ->getQuery()
             ->getSingleScalarResult();
-
-        // --- Agregados usados no template ---
 
         $partnerStats = [
             'alerts' => $alertsCount,
