@@ -1,25 +1,13 @@
 framework:
     secret: '%env(APP_SECRET)%'
-    http_method_override: true
-    handle_all_throwables: true
-
+    http_method_override: false
     session:
         handler_id: null
         cookie_secure: auto
         cookie_samesite: lax
-        storage_factory_id: session.storage.factory.native
+    trusted_proxies: '127.0.0.1,::1'
+    trusted_headers: ['x-forwarded-for','x-forwarded-proto','x-forwarded-host','x-forwarded-port','x-forwarded-prefix']
 
-    php_errors:
-        log: true
-
-    csrf_protection: true
-
-    # Symfony Scheduler — configurado aqui dentro (não existe namespace "scheduler:" separado)
-    scheduler:
-        enabled: true
-
-when@test:
-    framework:
-        test: true
-        session:
-            storage_factory_id: session.storage.factory.mock_file
+# Headers de seguranca basicos (pode ser ajustado em um listener se quiser mais controle)
+# Para complementar, voce pode instalar o nelmio/security-bundle via Composer:
+# composer require nelmio/security-bundle

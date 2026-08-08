@@ -15,22 +15,3 @@ framework:
         cookie_httponly: true
         cookie_samesite: 'lax'
         gc_maxlifetime: 604800 # 7 days
-
-# Security configuration
-security:
-    # ... existing security config ...
-    
-    # Headers de segurança adicionais
-    headers:
-        x_frame_options:
-            enabled: true
-            value: 'DENY'
-        x_content_type_options:
-            enabled: true
-            value: 'nosniff'
-        x_xss_protection:
-            enabled: true
-            value: '1; mode=block'
-        referrer_policy:
-            enabled: true
-            value: 'strict-origin-when-cross-origin'
