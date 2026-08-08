@@ -73,14 +73,8 @@ class DashboardController extends AbstractController
             ->getQuery()
             ->getSingleScalarResult();
 
-        // MonitoredLinks: via owner (User) -> partner
-        $monitoredLinksCount = (int)$this->linkRepo->createQueryBuilder('l')
-            ->select('COUNT(l.id)')
-            ->innerJoin('l.owner', 'u')
-            ->where('u.partner = :partnerId')
-            ->setParameter('partnerId', $partnerId)
-            ->getQuery()
-            ->getSingleScalarResult();
+        // MonitoredLinks: temporariamente 0 ate mapearmos a relacao correta
+        $monitoredLinksCount = 0;
 
         // Irregularities e CifsEvents (tem campo partner direto)
         $irregularitiesCount = (int)$this->irregRepo->createQueryBuilder('i')
