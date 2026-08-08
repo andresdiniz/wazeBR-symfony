@@ -103,7 +103,8 @@ class DashboardController extends AbstractController
         $tvtRoutesCountForCard = $tvtRoutesCount;
         $monitoredLinksCountForCard = $monitoredLinksCount;
 
-        $irregularities = $this->irregRepo->findBy(['partner' => $partner], ['createdAt' => 'DESC'], 10);
+        // WazeIrregularity tem campo collectedAt, nao createdAt
+        $irregularities = $this->irregRepo->findBy(['partner' => $partner], ['collectedAt' => 'DESC'], 10);
         $cifsEvents = $this->cifsRepo->findBy(['partner' => $partner], ['createdAt' => 'DESC'], 10);
         $alertTypes = $this->alertTypeRepo->findAll();
 
