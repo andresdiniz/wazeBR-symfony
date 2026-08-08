@@ -1,0 +1,14 @@
+nelmio_security:
+  clickjacking:
+    paths:
+      '^/': DENY
+
+  content_type:
+    nosniff: true
+
+  xss_protection:
+    enabled: true
+    mode_block: true
+
+  referrer_policy:
+    policies: ['strict-origin-when-cross-origin']
