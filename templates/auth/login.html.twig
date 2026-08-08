@@ -33,7 +33,8 @@
                 radial-gradient(circle at 15% 20%, rgba(255,255,255,0.16), transparent 32%),
                 radial-gradient(circle at 80% 80%, rgba(0,0,0,0.30), transparent 40%),
                 linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 45%, var(--bg-3) 100%);
-            overflow: hidden;
+            overflow-x: hidden;
+            overflow-y: auto;
         }
 
         .login-scene {
@@ -421,6 +422,14 @@
             .brand-pill { justify-content: center; }
             .login-card { padding: 20px 18px 18px; border-radius: 16px; }
         }
+
+        @media (max-width: 480px) {
+            .login-footer {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+        }
     </style>
 {% endblock %}
 
@@ -429,7 +438,7 @@
     <div class="orb"></div>
 
     <div class="login-frame">
-        <div class="brand-column" aria-hidden="true">
+        <div class="brand-column">
             <div class="brand-pill">
                 <div class="brand-avatar">W</div>
                 <div class="brand-main">
