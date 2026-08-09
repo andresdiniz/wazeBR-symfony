@@ -8,9 +8,12 @@ use App\Repository\WazeAlertRepository;
 use App\Repository\WazeTrafficJamRepository;
 use App\Repository\WazeTvtRouteRepository;
 use App\Repository\MonitoredLinkRepository;
+use App\Repository\MonitoredCityRepository;
 use App\Repository\WazeIrregularityRepository;
 use App\Repository\CifsEventRepository;
 use App\Repository\WazeAlertTypeRepository;
+use App\Repository\CemadenDataRepository;
+use App\Repository\CemadenHydroDataRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -35,15 +38,28 @@ class DashboardController extends AbstractController
 
     private const DEFAULT_PERIOD = 'week';
 
+    /** Rótulos de nível de congestionamento (0..5), mesma convenção de WazeTvtRoute::getJamLevelLabel(). */
+    private const LEVEL_LABELS = [
+        0 => 'Livre',
+        1 => 'Lento',
+        2 => 'Moderado',
+        3 => 'Pesado',
+        4 => 'Muito Pesado',
+        5 => 'Parado',
+    ];
+
     public function __construct(
         private PartnerRepository $partnerRepo,
         private WazeAlertRepository $alertRepo,
         private WazeTrafficJamRepository $jamRepo,
         private WazeTvtRouteRepository $tvtRouteRepo,
         private MonitoredLinkRepository $linkRepo,
+        private MonitoredCityRepository $cityRepo,
         private WazeIrregularityRepository $irregRepo,
         private CifsEventRepository $cifsRepo,
         private WazeAlertTypeRepository $alertTypeRepo,
+        private CemadenDataRepository $cemadenDataRepo,
+        private CemadenHydroDataRepository $cemadenHydroRepo,
     ) {}
 
     #[Route('/', name: 'dashboard_index', methods: ['GET'])]
@@ -117,6 +133,38 @@ class DashboardController extends AbstractController
             'tvtRoutes'      => $this->tvtRouteRepo->countInPeriod($partner, $from, $to),
             'irregularities' => $this->irregRepo->countInPeriod($partner, $from, $to),
             'cifsEvents'     => $this->cifsRepo->countInPeriod($partner, $from, $to),
+        ];
+
+        // --- Banda "ao vivo" (KPIs em destaque no topo do dashboard) ---
+        // Usa o instante real (independente do filtro de período escolhido).
+        $liveNow = new \DateTimeImmutable('now', new \DateTimeZone('America/Sao_Paulo'));
+        $last24hFrom = $liveNow->modify('-24 hours');
+        $jamsLive = $this->jamRepo->liveSnapshot($partner, 3); // últimas 3h = "ativos"
+        $jamsBaseline = $this->jamRepo->historicalBaseline($partner);
+
+        $cemadenReadings = $this->cemadenDataRepo->countByPartner($partner)
+            + $this->cemadenHydroRepo->countByPartner($partner);
+        $cemadenCities = $this->cemadenDataRepo->countDistinctMunicipalities($partner)
+            + $this->cemadenHydroRepo->countDistinctMunicipalities($partner);
+
+        $hero = [
+            'alertsTotal'     => $alertsCount,
+            'alertsLast24h'   => $this->alertRepo->countInPeriod($partner, $last24hFrom, $liveNow),
+            'jamsTotal'       => $jamsCount,
+            'jamsLast24h'     => $this->jamRepo->countInPeriod($partner, $last24hFrom, $liveNow),
+            'jamsLiveTotal'   => $jamsLive['total'],
+            'jamsLiveMaxLevel' => $jamsLive['maxLevel'],
+            'jamsLiveMaxLevelLabel' => $jamsLive['maxLevel'] !== null ? (self::LEVEL_LABELS[$jamsLive['maxLevel']] ?? null) : null,
+            'avgSpeedLive'    => $jamsLive['avgSpeedKmh'],
+            'avgSpeedHist'    => $jamsBaseline['avgSpeedKmh'],
+            'avgDelayLive'    => $jamsLive['avgDelaySec'],
+            'lengthLiveKm'    => $jamsLive['lengthKm'],
+            'lengthHistKm'    => $jamsBaseline['lengthKm'],
+            'routesMonitored' => $this->tvtRouteRepo->countByPartner($partner),
+            'monitoredLinks'  => $monitoredLinksCount,
+            'monitoredCities' => $this->cityRepo->countByPartner($partner),
+            'cemadenReadings' => $cemadenReadings,
+            'cemadenCities'   => $cemadenCities,
         ];
 
         // --- Gráfico: alertas por subtipo (traduzido para pt-BR) ---
@@ -193,7 +241,11 @@ class DashboardController extends AbstractController
             $pubMillis = (int)($r['pubMillis'] ?? 0);
             $pubAt = null;
             if ($pubMillis > 0) {
-                $dt = (new \DateTimeImmutable())->setTimestamp((int)floor($pubMillis / 1000));
+                // pubMillis é epoch UTC; converte explicitamente para o fuso de
+                // Brasília antes de formatar (o app não define date.timezone,
+                // então o padrão do PHP é UTC e ficava 3h adiantado).
+                $dt = (new \DateTimeImmutable('@' . intdiv($pubMillis, 1000)))
+                    ->setTimezone(new \DateTimeZone('America/Sao_Paulo'));
                 $pubAt = $dt->format('d/m H:i');
             }
 
@@ -225,7 +277,11 @@ class DashboardController extends AbstractController
             $pubMillis = (int)($r['pubMillis'] ?? 0);
             $pubAt = null;
             if ($pubMillis > 0) {
-                $dt = (new \DateTimeImmutable())->setTimestamp((int)floor($pubMillis / 1000));
+                // pubMillis é epoch UTC; converte explicitamente para o fuso de
+                // Brasília antes de formatar (o app não define date.timezone,
+                // então o padrão do PHP é UTC e ficava 3h adiantado).
+                $dt = (new \DateTimeImmutable('@' . intdiv($pubMillis, 1000)))
+                    ->setTimezone(new \DateTimeZone('America/Sao_Paulo'));
                 $pubAt = $dt->format('d/m H:i');
             }
 
@@ -254,6 +310,7 @@ class DashboardController extends AbstractController
             'alertTypes' => $alertTypes,
             'recentAlerts' => $recentAlerts,
             'recentJams' => $recentJams,
+            'hero' => $hero,
 
             // período
             'periods' => self::PERIODS,
@@ -282,7 +339,10 @@ class DashboardController extends AbstractController
      */
     private function resolvePeriodRange(string $periodKey): array
     {
-        $now = new \DateTimeImmutable();
+        // "now" em horário de Brasília, para que os limites de "ontem"/"hoje"
+        // batam com o calendário local do usuário e não com o dia em UTC
+        // (que já pode ter virado até 3h antes da meia-noite local).
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('America/Sao_Paulo'));
 
         if ($periodKey === 'yesterday') {
             $yesterday = $now->modify('-1 day');

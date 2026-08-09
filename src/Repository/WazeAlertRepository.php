@@ -37,6 +37,16 @@ class WazeAlertRepository extends ServiceEntityRepository
             ->getSingleScalarResult();
     }
 
+    public function countByPartner(Partner $partner): int
+    {
+        return (int) $this->createQueryBuilder('a')
+            ->select('COUNT(a.id)')
+            ->where('a.partner = :partner')
+            ->setParameter('partner', $partner)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
     /**
      * Distribuição de alertas por type + subtype dentro do período.
      * Retorna [['type'=>'JAM','subtype'=>'JAM_HEAVY_TRAFFIC','total'=>42], ...] ordenado desc.

@@ -1,6 +1,14 @@
 twig:
     file_name_pattern: '*.html.twig'
     default_path: '%kernel.project_dir%/templates'
+    date:
+        # Todas as datas do banco (createdAt, collectedAt, pubDate, etc.) são
+        # armazenadas/hidratadas em UTC (timezone padrão do PHP no servidor,
+        # que não define date.timezone). Sem isso, o filtro |date() exibia
+        # tudo 3h à frente do horário de Brasília (e virava o dia perto da
+        # meia-noite). Isso NÃO altera como as datas são armazenadas ou
+        # comparadas no backend — só a exibição no template.
+        timezone: America/Sao_Paulo
 
 when@test:
     twig:

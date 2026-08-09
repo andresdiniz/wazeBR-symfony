@@ -19,6 +19,24 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
         parent::__construct($registry, CemadenHydroData::class);
     }
 
+    // ── Contagens simples (usam os campos reais da entidade) ────────────────
+
+    public function countByPartner(Partner $partner): int
+    {
+        return (int) $this->createQueryBuilder('h')
+            ->select('COUNT(h.id)')
+            ->where('h.partner = :p')->setParameter('p', $partner)
+            ->getQuery()->getSingleScalarResult();
+    }
+
+    public function countDistinctMunicipalities(Partner $partner): int
+    {
+        return (int) $this->createQueryBuilder('h')
+            ->select('COUNT(DISTINCT h.municipality)')
+            ->where('h.partner = :p')->setParameter('p', $partner)
+            ->getQuery()->getSingleScalarResult();
+    }
+
     // ── KPI: sumário geral ─────────────────────────────────────────────────
 
     /**

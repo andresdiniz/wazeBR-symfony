@@ -24,6 +24,14 @@ class CemadenDataRepository extends ServiceEntityRepository
             ->getQuery()->getSingleScalarResult();
     }
 
+    public function countDistinctMunicipalities(Partner $partner): int
+    {
+        return (int) $this->createQueryBuilder('c')
+            ->select('COUNT(DISTINCT c.municipality)')
+            ->where('c.partner = :p')->setParameter('p', $partner)
+            ->getQuery()->getSingleScalarResult();
+    }
+
     public function findByPartner(Partner $partner): array
     {
         return $this->createQueryBuilder('c')

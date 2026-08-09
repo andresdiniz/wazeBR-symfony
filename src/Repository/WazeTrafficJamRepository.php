@@ -24,6 +24,74 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
         return (int) $dt->getTimestamp() * 1000;
     }
 
+    public function countByPartner(Partner $partner): int
+    {
+        return (int) $this->createQueryBuilder('j')
+            ->select('COUNT(j.id)')
+            ->where('j.partner = :partner')
+            ->setParameter('partner', $partner)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * Snapshot "ao vivo" dos congestionamentos reportados nas últimas $hours horas:
+     * contagem, nível máximo, velocidade média, atraso médio e extensão somada.
+     * Uma única query agregada (evita várias idas ao banco para o mesmo cartão).
+     */
+    public function liveSnapshot(Partner $partner, int $hours = 3): array
+    {
+        $since = self::toMillis(new \DateTimeImmutable("-{$hours} hours"));
+
+        $rows = $this->createQueryBuilder('j')
+            ->select(
+                'COUNT(j.id) AS total',
+                'MAX(j.level) AS maxLevel',
+                'AVG(j.speedKmh) AS avgSpeed',
+                'AVG(j.delay) AS avgDelay',
+                'SUM(j.length) AS sumLength',
+            )
+            ->where('j.partner = :partner')
+            ->andWhere('j.pubMillis >= :since')
+            ->setParameter('partner', $partner)
+            ->setParameter('since', $since)
+            ->getQuery()
+            ->getArrayResult();
+
+        $row = $rows[0] ?? [];
+
+        return [
+            'total'       => (int) ($row['total'] ?? 0),
+            'maxLevel'    => $row['maxLevel'] !== null ? (int) $row['maxLevel'] : null,
+            'avgSpeedKmh' => $row['avgSpeed'] !== null ? round((float) $row['avgSpeed'], 1) : null,
+            'avgDelaySec' => $row['avgDelay'] !== null ? round((float) $row['avgDelay']) : null,
+            'lengthKm'    => round(((float) ($row['sumLength'] ?? 0)) / 1000, 1),
+        ];
+    }
+
+    /**
+     * Linha de base histórica (todo o período monitorado) para comparar com o "ao vivo".
+     */
+    public function historicalBaseline(Partner $partner): array
+    {
+        $rows = $this->createQueryBuilder('j')
+            ->select(
+                'AVG(j.speedKmh) AS avgSpeed',
+                'SUM(j.length) AS sumLength',
+            )
+            ->where('j.partner = :partner')
+            ->setParameter('partner', $partner)
+            ->getQuery()
+            ->getArrayResult();
+
+        $row = $rows[0] ?? [];
+
+        return [
+            'avgSpeedKmh' => $row['avgSpeed'] !== null ? round((float) $row['avgSpeed'], 1) : null,
+            'lengthKm'    => round(((float) ($row['sumLength'] ?? 0)) / 1000, 1),
+        ];
+    }
+
     public function countInPeriod(Partner $partner, \DateTimeInterface $from, \DateTimeInterface $to): int
     {
         return (int) $this->createQueryBuilder('j')
