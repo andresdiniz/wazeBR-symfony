@@ -2,264 +2,302 @@
 {% block title %}Alertas{% endblock %}
 
 {% block stylesheets %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<style>
-  /* Garante que o card do mapa não corte as camadas do Leaflet */
-  #map-card { overflow: visible; }
-  #alert-map { height: 420px; border-radius: 0 0 var(--radius-lg) var(--radius-lg); z-index: 0; }
-
-  /* Popup do mapa */
-  .leaflet-popup-content-wrapper { border-radius: var(--radius-md); box-shadow: var(--shadow-md); font-family: var(--font-body); }
-  .popup-inner { font-size: 13px; line-height: 1.5; min-width: 180px; }
-  .popup-type  { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
-  .popup-sub   { font-size: 11px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
-  .popup-street{ font-weight: 500; margin-bottom: 2px; }
-  .popup-city  { font-size: 12px; color: var(--color-text-muted); margin-bottom: 6px; }
-  .popup-meta  { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--color-text-muted); margin-bottom: 8px; }
-  .popup-link  { display: inline-block; font-size: 12px; color: var(--color-primary); text-decoration: none; font-weight: 500; }
-  .popup-link:hover { text-decoration: underline; }
-
-  /* Badges coloridos */
-  .badge-red    { background: oklch(from var(--color-error)   l c h / .12); color: var(--color-error);   }
-  .badge-orange { background: oklch(from var(--color-orange)  l c h / .12); color: var(--color-orange);  }
-  .badge-yellow { background: oklch(from var(--color-warning) l c h / .12); color: var(--color-warning); }
-  .badge-green  { background: oklch(from var(--color-success) l c h / .12); color: var(--color-success); }
-
-  /* Paginação */
-  .pagination { display: flex; align-items: center; gap: var(--space-1); }
-  .pagination a, .pagination span {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 32px; height: 32px; border-radius: var(--radius-md);
-    font-size: var(--text-sm); border: 1px solid var(--color-border);
-    color: var(--color-text-muted); text-decoration: none;
-    transition: all var(--transition);
-  }
-  .pagination a:hover { background: var(--color-surface-offset); color: var(--color-text); }
-  .pagination .current { background: var(--color-primary); color: #fff; border-color: var(--color-primary); font-weight: 600; }
-
-  /* form-input e form-select (alias de form-control) */
-  .form-input, .form-select {
-    width: 100%; padding: var(--space-2) var(--space-3);
-    font-size: var(--text-sm); border: 1px solid var(--color-border);
-    border-radius: var(--radius-md); background: var(--color-surface-2);
-    color: var(--color-text); transition: border-color var(--transition), box-shadow var(--transition);
-  }
-  .form-input:focus, .form-select:focus {
-    outline: none; border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px oklch(from var(--color-primary) l c h / .15);
-  }
-  .card-body { padding: var(--space-4) var(--space-5); }
-</style>
+  {{ parent() }}
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    .alerts-shell { display:block; }
+    #map-card { overflow: visible; margin-bottom: var(--space-6); }
+    #alert-map { display:block; width:100%; min-height:420px; height:420px; background: var(--color-surface-offset); border-radius: 0 0 var(--radius-lg) var(--radius-lg); z-index: 0; }
+    .chart-wrap { position: relative; height: 280px; }
+    .leaflet-popup-content-wrapper { border-radius: var(--radius-md); box-shadow: var(--shadow-md); font-family: var(--font-body); }
+    .popup-inner { font-size: 13px; line-height: 1.5; min-width: 180px; }
+    .popup-type  { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+    .popup-sub   { font-size: 11px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+    .popup-street{ font-weight: 500; margin-bottom: 2px; }
+    .popup-city  { font-size: 12px; color: var(--color-text-muted); margin-bottom: 6px; }
+    .popup-meta  { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--color-text-muted); margin-bottom: 8px; }
+    .badge-red    { background: oklch(from var(--color-error)   l c h / .12); color: var(--color-error); }
+    .badge-orange { background: oklch(from var(--color-orange)  l c h / .12); color: var(--color-orange); }
+    .badge-yellow { background: oklch(from var(--color-warning) l c h / .12); color: var(--color-warning); }
+    .badge-green  { background: oklch(from var(--color-success) l c h / .12); color: var(--color-success); }
+    .badge-gray   { background: oklch(from var(--color-text) l c h / .06); color: var(--color-text); }
+    .pagination { display:flex; align-items:center; gap:var(--space-1); }
+    .pagination a, .pagination span { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:var(--radius-md); font-size:var(--text-sm); border:1px solid var(--color-border); color:var(--color-text-muted); text-decoration:none; }
+    .pagination a:hover { background:var(--color-surface-offset); color:var(--color-text); }
+    .pagination .current { background:var(--color-primary); color:#fff; border-color:var(--color-primary); font-weight:600; }
+    .form-input, .form-select { width:100%; padding:var(--space-2) var(--space-3); font-size:var(--text-sm); border:1px solid var(--color-border); border-radius:var(--radius-md); background:var(--color-surface-2); color:var(--color-text); }
+    .card-body { padding: var(--space-4) var(--space-5); }
+    .empty-state-inline { padding: var(--space-8) var(--space-5); color: var(--color-text-muted); text-align:center; }
+    .grid-2 { display:grid; gap:var(--space-6); grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: var(--space-6); }
+    @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+  </style>
 {% endblock %}
 
 {% block content %}
-<div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-4)">
-  <div>
-    <h1 class="page-title">Alertas Waze</h1>
-    <p class="page-subtitle">{{ total|number_format(0, ',', '.') }} alerta(s) encontrado(s)</p>
+<div class="alerts-shell">
+  <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-4)">
+    <div>
+      <h1 class="page-title">Alertas Waze</h1>
+      <p class="page-subtitle">{{ total|number_format(0, ',', '.') }} alerta(s) encontrado(s)</p>
+    </div>
   </div>
-</div>
 
-{# Filtros #}
-<div class="card" style="margin-bottom:var(--space-6)">
-  <div class="card-body">
-    <form method="get" style="display:flex;flex-wrap:wrap;gap:var(--space-4);align-items:flex-end">
-      <div class="form-group" style="margin:0;flex:1;min-width:140px">
-        <label class="form-label">Tipo</label>
-        <select name="type" class="form-select">
-          <option value="">Todos</option>
-          {% for t in types %}
-            <option value="{{ t }}" {{ type == t ? 'selected' : '' }}>{{ t }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="form-group" style="margin:0;flex:1;min-width:140px">
-        <label class="form-label">Subtipo</label>
-        <input type="text" name="subtype" class="form-input" value="{{ subtype }}" placeholder="ex: HAZARD_ON_ROAD">
-      </div>
-      <div class="form-group" style="margin:0;flex:1;min-width:140px">
-        <label class="form-label">Cidade</label>
-        <input type="text" name="city" class="form-input" value="{{ city }}" placeholder="ex: Belo Horizonte">
-      </div>
-      <div class="form-group" style="margin:0;flex:1;min-width:130px">
-        <label class="form-label">De (UTC)</label>
-        <input type="date" name="dateFrom" class="form-input" value="{{ dateFrom }}"
-               title="Filtro por data UTC — a conversão para seu fuso é feita na exibição">
-      </div>
-      <div class="form-group" style="margin:0;flex:1;min-width:130px">
-        <label class="form-label">Até (UTC)</label>
-        <input type="date" name="dateTo" class="form-input" value="{{ dateTo }}"
-               title="Filtro por data UTC">
-      </div>
-      <button type="submit" class="btn btn-primary">Filtrar</button>
-      <a href="{{ path('alert_index') }}" class="btn btn-ghost">Limpar</a>
-    </form>
+  <div class="card" style="margin-bottom:var(--space-6)">
+    <div class="card-body">
+      <form method="get" style="display:flex;flex-wrap:wrap;gap:var(--space-4);align-items:flex-end">
+        <div class="form-group" style="margin:0;flex:1;min-width:140px">
+          <label class="form-label">Tipo</label>
+          <select name="type" class="form-select">
+            <option value="">Todos</option>
+            {% for t in types %}
+              <option value="{{ t }}" {{ type == t ? 'selected' : '' }}>{{ t }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group" style="margin:0;flex:1;min-width:140px">
+          <label class="form-label">Subtipo</label>
+          <input type="text" name="subtype" class="form-input" value="{{ subtype }}" placeholder="ex: HAZARD_ON_ROAD">
+        </div>
+        <div class="form-group" style="margin:0;flex:1;min-width:140px">
+          <label class="form-label">Cidade</label>
+          <input type="text" name="city" class="form-input" value="{{ city }}" placeholder="ex: Belo Horizonte">
+        </div>
+        <div class="form-group" style="margin:0;flex:1;min-width:130px">
+          <label class="form-label">De (UTC)</label>
+          <input type="date" name="dateFrom" class="form-input" value="{{ dateFrom }}">
+        </div>
+        <div class="form-group" style="margin:0;flex:1;min-width:130px">
+          <label class="form-label">Até (UTC)</label>
+          <input type="date" name="dateTo" class="form-input" value="{{ dateTo }}">
+        </div>
+        <button type="submit" class="btn btn-primary">Filtrar</button>
+        <a href="{{ path('alert_index') }}" class="btn btn-ghost">Limpar</a>
+      </form>
+    </div>
   </div>
-</div>
 
-{% if alerts is empty %}
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Alertas por tipo</span></div>
+      <div class="card-body">
+        <div class="chart-wrap"><canvas id="alerts-type-chart"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Confiança dos alertas</span></div>
+      <div class="card-body">
+        <div class="chart-wrap"><canvas id="alerts-confidence-chart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="map-card">
+    <div class="card-header"><span class="card-title">Mapa de alertas</span></div>
+    <div id="alert-map"></div>
+  </div>
+
   <div class="card">
-    <div class="card-body" style="text-align:center;padding:var(--space-16);color:var(--color-text-muted)">
-      Nenhum alerta encontrado.
+    <div class="card-header">
+      <span class="card-title">Lista de alertas</span>
+      <span style="font-size:var(--text-xs);color:var(--color-text-muted)">Página {{ page }} de {{ pages }}</span>
     </div>
-  </div>
-{% else %}
 
-{# Mapa — overflow:visible para o Leaflet não ser cortado pelo card #}
-<div class="card" id="map-card" style="margin-bottom:var(--space-6);overflow:visible">
-  <div class="card-header"><span class="card-title">Mapa de alertas</span></div>
-  <div id="alert-map"></div>
-</div>
+    {% if alerts is empty %}
+      <div class="empty-state-inline">Nenhum alerta encontrado para os filtros atuais.</div>
+    {% else %}
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>Tipo</th>
+            <th>Subtipo</th>
+            <th>Via</th>
+            <th>Cidade</th>
+            <th style="text-align:center">Conf.</th>
+            <th style="text-align:center">👍</th>
+            <th>Publicado</th>
+            <th></th>
+          </tr></thead>
+          <tbody>
+          {% for a in alerts %}
+            <tr>
+              <td><span class="badge badge-{{ a.type == 'ACCIDENT' ? 'red' : (a.type == 'JAM' ? 'orange' : (a.type == 'HAZARD' or a.type == 'WEATHERHAZARD' ? 'yellow' : 'gray')) }}">{{ typesMap[a.type] ?? a.type }}</span></td>
+              <td style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ a.subtype ? (subtypesMap[a.type ~ '|' ~ a.subtype] ?? a.subtype) : '—' }}</td>
+              <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ a.street ?? '—' }}</td>
+              <td style="font-size:var(--text-xs)">{{ a.city ?? '—' }}</td>
+              <td style="text-align:center;font-size:var(--text-xs)">{% if a.confidence is not null %}{% set c = a.confidence %}<span class="badge {{ c >= 7 ? 'badge-green' : (c >= 4 ? 'badge-orange' : 'badge-red') }}">{{ c }}</span>{% else %}—{% endif %}</td>
+              <td style="text-align:center;font-size:var(--text-xs);color:var(--color-text-muted)">{{ a.nThumbsUp ?? 0 }}</td>
+              <td style="font-size:var(--text-xs);color:var(--color-text-muted);white-space:nowrap">{{ a.pubDate|date('d/m H:i') }}</td>
+              <td><a href="{{ path('alert_show', {id: a.id}) }}" class="btn btn-ghost btn-sm">Ver</a></td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
 
-{# Tabela #}
-<div class="card">
-  <div class="card-header">
-    <span class="card-title">Lista de alertas</span>
-    <span style="font-size:var(--text-xs);color:var(--color-text-muted)">Página {{ page }} de {{ pages }}</span>
-  </div>
-  <div style="overflow-x:auto">
-    <table>
-      <thead><tr>
-        <th>Tipo</th>
-        <th>Subtipo</th>
-        <th>Via</th>
-        <th>Cidade</th>
-        <th style="text-align:center">Conf.</th>
-        <th style="text-align:center">👍</th>
-        <th>Publicado</th>
-        <th></th>
-      </tr></thead>
-      <tbody>
-      {% for a in alerts %}
-        <tr>
-          <td><span class="badge badge-{{ a.type == 'ACCIDENT' ? 'red' : (a.type == 'JAM' ? 'orange' : (a.type == 'HAZARD' or a.type == 'WEATHERHAZARD' ? 'yellow' : 'gray')) }}">{{ typesMap[a.type] ?? a.type }}</span></td>
-          <td style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ a.subtype ? (subtypesMap[a.type ~ '|' ~ a.subtype] ?? a.subtype) : '—' }}</td>
-          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ a.street ?? '—' }}</td>
-          <td style="font-size:var(--text-xs)">{{ a.city ?? '—' }}</td>
-          <td style="text-align:center;font-size:var(--text-xs)">
-            {% if a.confidence is not null %}
-              {% set c = a.confidence %}
-              <span class="badge {{ c >= 7 ? 'badge-green' : (c >= 4 ? 'badge-orange' : 'badge-red') }}">{{ c }}</span>
-            {% else %}—{% endif %}
-          </td>
-          <td style="text-align:center;font-size:var(--text-xs);color:var(--color-text-muted)">
-            {{ a.nThumbsUp ?? 0 }}
-          </td>
-          <td style="font-size:var(--text-xs);color:var(--color-text-muted);white-space:nowrap">
-            <time data-utc="{{ a.pubDate|date('c') }}" data-fmt="datetime">{{ a.pubDate|date('d/m H:i') }}</time>
-          </td>
-          <td>
-            <a href="{{ path('alert_show', {id: a.id}) }}" class="btn btn-ghost btn-sm">
-              <i data-lucide="eye" style="width:13px;height:13px"></i> Ver
-            </a>
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>{# /overflow-x:auto #}
-
-  {# Paginação #}
-  {% if pages > 1 %}
-  <div style="padding:var(--space-4) var(--space-5);border-top:1px solid var(--color-divider)">
-    <div class="pagination">
-      {% if page > 1 %}
-        <a href="?{{ app.request.query.all|merge({page: page - 1})|url_encode }}">&#8249;</a>
-      {% endif %}
-      {% for p in max(1, page-2)..min(pages, page+2) %}
-        {% if p == page %}
-          <span class="current">{{ p }}</span>
-        {% else %}
-          <a href="?{{ app.request.query.all|merge({page: p})|url_encode }}">{{ p }}</a>
+    {% if pages > 1 %}
+    <div style="padding:var(--space-4) var(--space-5);border-top:1px solid var(--color-divider)">
+      <div class="pagination">
+        {% if page > 1 %}
+          <a href="?{{ app.request.query.all|merge({page: page - 1})|url_encode }}">&#8249;</a>
         {% endif %}
-      {% endfor %}
-      {% if page < pages %}
-        <a href="?{{ app.request.query.all|merge({page: page + 1})|url_encode }}">&#8250;</a>
-      {% endif %}
+        {% for p in max(1, page-2)..min(pages, page+2) %}
+          {% if p == page %}
+            <span class="current">{{ p }}</span>
+          {% else %}
+            <a href="?{{ app.request.query.all|merge({page: p})|url_encode }}">{{ p }}</a>
+          {% endif %}
+        {% endfor %}
+        {% if page < pages %}
+          <a href="?{{ app.request.query.all|merge({page: page + 1})|url_encode }}">&#8250;</a>
+        {% endif %}
+      </div>
     </div>
+    {% endif %}
   </div>
-  {% endif %}
-
-</div>{# /card tabela #}
-{% endif %}
+</div>
 {% endblock %}
 
 {% block javascripts %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-// Aguarda o DOM (e o WazeTZ definido no base.html.twig) estar pronto
-document.addEventListener('DOMContentLoaded', function() {
+  {{ parent() }}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    (function(){
+      const alerts = {{ alerts|map(a => { id:a.id, lat:a.latitude, lng:a.longitude, type:a.type, subtype:a.subtype, street:a.street, city:a.city, conf:a.confidence, thumbs:a.nThumbsUp, pubIso:a.pubDate|date('c') })|json_encode|raw }};
+      const TYPE_LABEL = {{ typesMap|json_encode|raw }};
+      const SUBTYPE_LABEL = {{ subtypesMap|json_encode|raw }};
+      const TYPE_COLOR = {
+        ACCIDENT:'#a12c7b', HAZARD:'#d19900', WEATHERHAZARD:'#006494',
+        JAM:'#da7101', ROAD_CLOSED:'#7a7974', CONSTRUCTION:'#437a22',
+        POLICE:'#01696f', MISC:'#7a39bb'
+      };
 
-  var FMT = WazeTZ.FMT_FULL;
+      console.log('[alert_index] controller payload', {
+        total: {{ total|json_encode|raw }},
+        page: {{ page|json_encode|raw }},
+        pages: {{ pages|json_encode|raw }},
+        alertsCount: alerts.length,
+        alertsSample: alerts.slice(0, 5)
+      });
 
-  var alerts = {{ alerts|map(a => {
-    id:      a.id,
-    lat:     a.latitude,
-    lng:     a.longitude,
-    type:    a.type,
-    subtype: a.subtype,
-    street:  a.street,
-    city:    a.city,
-    conf:    a.confidence,
-    thumbs:  a.nThumbsUp,
-    pubIso:  a.pubDate|date('c')
-  })|json_encode|raw }};
+      const waitForElement = (sel, tries = 80, delay = 50) => new Promise((resolve, reject) => {
+        const tick = () => {
+          const el = document.querySelector(sel);
+          if (el) return resolve(el);
+          if (!tries--) return reject(new Error(sel + ' not found'));
+          setTimeout(tick, delay);
+        };
+        tick();
+      });
 
-  var TYPE_COLOR = {
-    ACCIDENT:'#a12c7b', HAZARD:'#d19900', WEATHERHAZARD:'#006494',
-    JAM:'#da7101', ROAD_CLOSED:'#7a7974', CONSTRUCTION:'#437a22',
-    POLICE:'#01696f', MISC:'#7a39bb'
-  };
-  var TYPE_LABEL = {{ typesMap|json_encode|raw }};
-  var SUBTYPE_LABEL = {{ subtypesMap|json_encode|raw }};
+      const buildCharts = () => {
+        const typeCounts = alerts.reduce((acc, item) => {
+          const key = item.type || 'UNKNOWN';
+          acc[key] = (acc[key] || 0) + 1;
+          return acc;
+        }, {});
 
-  var mapEl = document.getElementById('alert-map');
-  if (!mapEl) { return; }
+        const confidenceBuckets = { '0-3': 0, '4-6': 0, '7-10': 0, 'Sem valor': 0 };
+        alerts.forEach((item) => {
+          const c = item.conf;
+          if (c === null || c === undefined || c === '') confidenceBuckets['Sem valor']++;
+          else if (c <= 3) confidenceBuckets['0-3']++;
+          else if (c <= 6) confidenceBuckets['4-6']++;
+          else confidenceBuckets['7-10']++;
+        });
 
-  var map = L.map('alert-map', {zoomControl:true});
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    {attribution:'\u00a9 OpenStreetMap',maxZoom:19}).addTo(map);
+        const typeCanvas = document.getElementById('alerts-type-chart');
+        if (typeCanvas && window.Chart) {
+          new Chart(typeCanvas, {
+            type: 'bar',
+            data: {
+              labels: Object.keys(typeCounts).map((k) => TYPE_LABEL[k] || k),
+              datasets: [{
+                label: 'Alertas',
+                data: Object.keys(typeCounts).map((k) => typeCounts[k]),
+                backgroundColor: Object.keys(typeCounts).map((k) => TYPE_COLOR[k] || '#7a7974'),
+                borderRadius: 8
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
+          });
+        }
 
-  var markers = [];
-  alerts.forEach(function(a) {
-    var lat = parseFloat(a.lat);
-    var lng = parseFloat(a.lng);
-    if (isNaN(lat) || isNaN(lng)) return;
-    var color = TYPE_COLOR[a.type] || '#7a7974';
-    var icon = L.divIcon({
-      html: '<div style="width:12px;height:12px;border-radius:50%;background:' + color + ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>',
-      className: '', iconSize: [12, 12], iconAnchor: [6, 6]
-    });
+        const confCanvas = document.getElementById('alerts-confidence-chart');
+        if (confCanvas && window.Chart) {
+          new Chart(confCanvas, {
+            type: 'doughnut',
+            data: {
+              labels: Object.keys(confidenceBuckets),
+              datasets: [{
+                data: Object.values(confidenceBuckets),
+                backgroundColor: ['#a12c7b', '#da7101', '#437a22', '#7a7974']
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { position: 'bottom' } }
+            }
+          });
+        }
+      };
 
-    var subtypeClean = a.subtype ? (SUBTYPE_LABEL[a.type + '|' + a.subtype] || a.subtype.replace(/_/g, ' ')) : '';
-    var pubFormatted = a.pubIso ? FMT.format(new Date(a.pubIso)) : '\u2014';
-    var popup = '<div class="popup-inner">'
-      + '<div class="popup-type" style="color:' + color + '">' + (TYPE_LABEL[a.type] || a.type) + '</div>'
-      + (subtypeClean ? '<div class="popup-sub">' + subtypeClean + '</div>' : '')
-      + '<div class="popup-street">' + (a.street || 'Via n\u00e3o identificada') + '</div>'
-      + (a.city ? '<div class="popup-city">' + a.city + '</div>' : '')
-      + '<div class="popup-meta">'
-      + (a.conf !== null ? '<span class="pm">&#9733; Conf. ' + a.conf + '</span>' : '')
-      + (a.thumbs ? '<span class="pm">&#128077; ' + a.thumbs + '</span>' : '')
-      + '<span class="pm">&#128197; ' + pubFormatted + '</span>'
-      + '</div>'
-      + '<a class="popup-link" href="/alertas/' + a.id + '">&#128279; Ver detalhes</a>'
-      + '</div>';
+      const buildMap = (mapEl) => {
+        const map = L.map(mapEl, { zoomControl: true });
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '\u00a9 OpenStreetMap',
+          maxZoom: 19
+        }).addTo(map);
 
-    var m = L.marker([lat, lng], {icon: icon}).bindPopup(popup, {maxWidth: 260});
-    m.addTo(map);
-    markers.push(m);
-  });
+        const markers = [];
+        alerts.forEach((a) => {
+          const lat = parseFloat(a.lat);
+          const lng = parseFloat(a.lng);
+          if (Number.isNaN(lat) || Number.isNaN(lng)) return;
 
-  if (markers.length) {
-    map.fitBounds(L.featureGroup(markers).getBounds().pad(0.15));
-  } else {
-    map.setView([-19.92, -43.94], 10);
-  }
+          const marker = L.circleMarker([lat, lng], {
+            radius: 8,
+            fillColor: TYPE_COLOR[a.type] || '#7a7974',
+            color: '#ffffff',
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 0.9
+          }).addTo(map);
 
-  /* Força resize caso o mapa tenha sido inicializado antes do layout estabilizar */
-  setTimeout(function() { map.invalidateSize(); }, 200);
+          const popupHtml = '<div class="popup-inner">'
+            + '<div class="popup-type">' + (TYPE_LABEL[a.type] || a.type) + '</div>'
+            + (a.subtype ? ('<div class="popup-sub">' + (SUBTYPE_LABEL[a.type + '|' + a.subtype] || a.subtype) + '</div>') : '')
+            + (a.street ? ('<div class="popup-street">' + a.street + '</div>') : '')
+            + (a.city ? ('<div class="popup-city">' + a.city + '</div>') : '')
+            + '<div class="popup-meta">'
+            + (a.conf !== null ? ('<span>Conf: ' + a.conf + '</span>') : '')
+            + (a.thumbs !== null ? ('<span>👍 ' + a.thumbs + '</span>') : '')
+            + '</div>'
+            + '</div>';
 
-}); // fim DOMContentLoaded
-</script>
+          marker.bindPopup(popupHtml);
+          markers.push(marker);
+        });
+
+        console.log('[alert_index] markers created', markers.length);
+        if (markers.length) map.fitBounds(L.featureGroup(markers).getBounds().pad(0.2));
+        else map.setView([-15.7801, -47.9292], 4);
+      };
+
+      buildCharts();
+      waitForElement('#alert-map')
+        .then((mapEl) => {
+          console.log('[alert_index] map element', mapEl);
+          buildMap(mapEl);
+        })
+        .catch((err) => console.error('[alert_index] map init failed', err));
+    })();
+  </script>
 {% endblock %}
