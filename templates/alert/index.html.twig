@@ -1,14 +1,16 @@
 {% extends 'base.html.twig' %}
-{% block title %}Alertas{% endblock %}
+{% block title %}Alertas — Análise histórica{% endblock %}
 
 {% block stylesheets %}
   {{ parent() }}
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
   <style>
-    .alerts-shell { display:block; }
     #map-card { overflow: visible; margin-bottom: var(--space-6); }
     #alert-map { display:block; width:100%; min-height:420px; height:420px; background: var(--color-surface-offset); border-radius: 0 0 var(--radius-lg) var(--radius-lg); z-index: 0; }
-    .chart-wrap { position: relative; height: 280px; }
+    .chart-wrap { position: relative; height: 260px; }
+    .chart-wrap.sm { height: 200px; }
     .leaflet-popup-content-wrapper { border-radius: var(--radius-md); box-shadow: var(--shadow-md); font-family: var(--font-body); }
     .popup-inner { font-size: 13px; line-height: 1.5; min-width: 180px; }
     .popup-type  { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
@@ -16,288 +18,372 @@
     .popup-street{ font-weight: 500; margin-bottom: 2px; }
     .popup-city  { font-size: 12px; color: var(--color-text-muted); margin-bottom: 6px; }
     .popup-meta  { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--color-text-muted); margin-bottom: 8px; }
-    .badge-red    { background: oklch(from var(--color-error)   l c h / .12); color: var(--color-error); }
-    .badge-orange { background: oklch(from var(--color-orange)  l c h / .12); color: var(--color-orange); }
-    .badge-yellow { background: oklch(from var(--color-warning) l c h / .12); color: var(--color-warning); }
-    .badge-green  { background: oklch(from var(--color-success) l c h / .12); color: var(--color-success); }
-    .badge-gray   { background: oklch(from var(--color-text) l c h / .06); color: var(--color-text); }
-    .pagination { display:flex; align-items:center; gap:var(--space-1); }
-    .pagination a, .pagination span { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:var(--radius-md); font-size:var(--text-sm); border:1px solid var(--color-border); color:var(--color-text-muted); text-decoration:none; }
+    .badge-red    { background: rgba(239,68,68,.12); color: var(--color-error); }
+    .badge-orange { background: rgba(249,115,22,.12); color: var(--color-orange); }
+    .badge-yellow { background: rgba(234,179,8,.12); color: var(--color-warning); }
+    .badge-green  { background: rgba(34,197,94,.12); color: var(--color-success); }
+    .badge-gray   { background: var(--color-surface-offset); color: var(--color-text-muted); }
+    .pagination { display:flex; align-items:center; gap:var(--space-1); flex-wrap:wrap; }
+    .pagination a, .pagination span { display:inline-flex; align-items:center; justify-content:center; min-width:32px; height:32px; padding:0 6px; border-radius:var(--radius-md); font-size:var(--text-sm); border:1px solid var(--color-border); color:var(--color-text-muted); text-decoration:none; }
     .pagination a:hover { background:var(--color-surface-offset); color:var(--color-text); }
     .pagination .current { background:var(--color-primary); color:#fff; border-color:var(--color-primary); font-weight:600; }
-    .form-input, .form-select { width:100%; padding:var(--space-2) var(--space-3); font-size:var(--text-sm); border:1px solid var(--color-border); border-radius:var(--radius-md); background:var(--color-surface-2); color:var(--color-text); }
     .card-body { padding: var(--space-4) var(--space-5); }
     .empty-state-inline { padding: var(--space-8) var(--space-5); color: var(--color-text-muted); text-align:center; }
     .grid-2 { display:grid; gap:var(--space-6); grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: var(--space-6); }
-    @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+    .grid-3 { display:grid; gap:var(--space-6); grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: var(--space-6); }
+    @media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+    .street-rank-item { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid var(--color-divider); }
+    .street-rank-item:last-child { border-bottom:none; }
+    .street-rank-pos { width:22px; height:22px; border-radius:50%; background:var(--color-surface-offset); color:var(--color-primary); font-weight:700; font-size:.7rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .hotspot-item { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--color-divider); }
+    .hotspot-item:last-child { border-bottom:none; }
+    .hotspot-badge { min-width:28px; height:28px; border-radius:8px; background:rgba(239,68,68,.12); color:var(--color-error); font-weight:700; font-size:.75rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:0 6px; }
   </style>
 {% endblock %}
 
-{% block content %}
-<div class="alerts-shell">
-  <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-4)">
-    <div>
-      <h1 class="page-title">Alertas Waze</h1>
-      <p class="page-subtitle">{{ total|number_format(0, ',', '.') }} alerta(s) encontrado(s)</p>
-    </div>
+{% block body %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Análise histórica de alertas</h1>
+    <p class="page-subtitle">{{ total|number_format(0, ',', '.') }} alerta(s) encontrado(s) com os filtros atuais</p>
   </div>
+</div>
 
-  <div class="card" style="margin-bottom:var(--space-6)">
-    <div class="card-body">
-      <form method="get" style="display:flex;flex-wrap:wrap;gap:var(--space-4);align-items:flex-end">
-        <div class="form-group" style="margin:0;flex:1;min-width:140px">
+{# Períodos fixos — atalhos que preenchem De/Até automaticamente (dia civil de Brasília) #}
+<div class="btn-row" style="margin-bottom:var(--space-4)">
+  {% for key, p in periods %}
+    <a href="?{{ app.request.query.all|merge({period: key, dateFrom: null, dateTo: null, page: null})|url_encode }}"
+       class="btn btn-sm {{ period == key and not dateFrom ? 'btn-primary' : 'btn-ghost' }}">{{ p.label }}</a>
+  {% endfor %}
+  <a href="{{ path('alert_index') }}" class="btn btn-sm btn-ghost"><i class="bi bi-x-circle me-1"></i>Limpar tudo</a>
+</div>
+
+{# Filtros #}
+<div class="card" style="margin-bottom:var(--space-6)">
+  <div class="card-body">
+    <form method="get" style="display:flex;flex-direction:column;gap:var(--space-4)">
+      <div style="display:flex;flex-wrap:wrap;gap:var(--space-4)">
+        <div class="form-group" style="margin:0;flex:1;min-width:150px">
           <label class="form-label">Tipo</label>
           <select name="type" class="form-select">
             <option value="">Todos</option>
             {% for t in types %}
-              <option value="{{ t }}" {{ type == t ? 'selected' : '' }}>{{ t }}</option>
+              <option value="{{ t }}" {{ type == t ? 'selected' : '' }}>{{ typesMap[t] ?? t }}</option>
             {% endfor %}
           </select>
         </div>
-        <div class="form-group" style="margin:0;flex:1;min-width:140px">
+        <div class="form-group" style="margin:0;flex:1;min-width:160px">
           <label class="form-label">Subtipo</label>
-          <input type="text" name="subtype" class="form-input" value="{{ subtype }}" placeholder="ex: HAZARD_ON_ROAD">
+          <select name="subtype" class="form-select">
+            <option value="">Todos</option>
+            {% for s in subtypes %}
+              <option value="{{ s }}" {{ subtype == s ? 'selected' : '' }}>{{ subtypesMap[(type ?? '') ~ '|' ~ s] ?? s }}</option>
+            {% endfor %}
+          </select>
         </div>
-        <div class="form-group" style="margin:0;flex:1;min-width:140px">
+        <div class="form-group" style="margin:0;flex:1;min-width:150px">
           <label class="form-label">Cidade</label>
-          <input type="text" name="city" class="form-input" value="{{ city }}" placeholder="ex: Belo Horizonte">
+          <input type="text" name="city" class="form-input" value="{{ city }}" placeholder="ex: Conselheiro Lafaiete" list="cityList">
+          <datalist id="cityList">{% for c in cities %}<option value="{{ c }}">{% endfor %}</datalist>
         </div>
         <div class="form-group" style="margin:0;flex:1;min-width:130px">
-          <label class="form-label">De (UTC)</label>
+          <label class="form-label">De</label>
           <input type="date" name="dateFrom" class="form-input" value="{{ dateFrom }}">
         </div>
         <div class="form-group" style="margin:0;flex:1;min-width:130px">
-          <label class="form-label">Até (UTC)</label>
+          <label class="form-label">Até</label>
           <input type="date" name="dateTo" class="form-input" value="{{ dateTo }}">
         </div>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:var(--space-4)">
+        <div class="form-group" style="margin:0;flex:1;min-width:220px">
+          <label class="form-label"><i class="bi bi-signpost-split me-1"></i>Incluir apenas esta via</label>
+          <input type="text" name="street" class="form-input" value="{{ street }}" placeholder="ex: BR-040" list="streetList">
+        </div>
+        <div class="form-group" style="margin:0;flex:1;min-width:220px">
+          <label class="form-label"><i class="bi bi-slash-circle me-1"></i>Excluir vias (separe por vírgula)</label>
+          <input type="text" name="excludeStreet" class="form-input" value="{{ excludeStreet }}" placeholder="ex: BR-040, Av. Central" list="streetList">
+        </div>
+        <datalist id="streetList">{% for s in streets %}<option value="{{ s }}">{% endfor %}</datalist>
+      </div>
+
+      <div class="btn-row">
         <button type="submit" class="btn btn-primary">Filtrar</button>
         <a href="{{ path('alert_index') }}" class="btn btn-ghost">Limpar</a>
-      </form>
-    </div>
-  </div>
-
-  <div class="grid-2">
-    <div class="card">
-      <div class="card-header"><span class="card-title">Alertas por tipo</span></div>
-      <div class="card-body">
-        <div class="chart-wrap"><canvas id="alerts-type-chart"></canvas></div>
+        <span class="form-hint" style="margin-left:auto">Datas e horários consideram o fuso de Brasília.</span>
       </div>
-    </div>
-    <div class="card">
-      <div class="card-header"><span class="card-title">Confiança dos alertas</span></div>
-      <div class="card-body">
-        <div class="chart-wrap"><canvas id="alerts-confidence-chart"></canvas></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card" id="map-card">
-    <div class="card-header"><span class="card-title">Mapa de alertas</span></div>
-    <div id="alert-map"></div>
-  </div>
-
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">Lista de alertas</span>
-      <span style="font-size:var(--text-xs);color:var(--color-text-muted)">Página {{ page }} de {{ pages }}</span>
-    </div>
-
-    {% if alerts is empty %}
-      <div class="empty-state-inline">Nenhum alerta encontrado para os filtros atuais.</div>
-    {% else %}
-      <div style="overflow-x:auto">
-        <table>
-          <thead><tr>
-            <th>Tipo</th>
-            <th>Subtipo</th>
-            <th>Via</th>
-            <th>Cidade</th>
-            <th style="text-align:center">Conf.</th>
-            <th style="text-align:center">👍</th>
-            <th>Publicado</th>
-            <th></th>
-          </tr></thead>
-          <tbody>
-          {% for a in alerts %}
-            <tr>
-              <td><span class="badge badge-{{ a.type == 'ACCIDENT' ? 'red' : (a.type == 'JAM' ? 'orange' : (a.type == 'HAZARD' or a.type == 'WEATHERHAZARD' ? 'yellow' : 'gray')) }}">{{ typesMap[a.type] ?? a.type }}</span></td>
-              <td style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ a.subtype ? (subtypesMap[a.type ~ '|' ~ a.subtype] ?? a.subtype) : '—' }}</td>
-              <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ a.street ?? '—' }}</td>
-              <td style="font-size:var(--text-xs)">{{ a.city ?? '—' }}</td>
-              <td style="text-align:center;font-size:var(--text-xs)">{% if a.confidence is not null %}{% set c = a.confidence %}<span class="badge {{ c >= 7 ? 'badge-green' : (c >= 4 ? 'badge-orange' : 'badge-red') }}">{{ c }}</span>{% else %}—{% endif %}</td>
-              <td style="text-align:center;font-size:var(--text-xs);color:var(--color-text-muted)">{{ a.nThumbsUp ?? 0 }}</td>
-              <td style="font-size:var(--text-xs);color:var(--color-text-muted);white-space:nowrap">{{ a.pubDate|date('d/m H:i') }}</td>
-              <td><a href="{{ path('alert_show', {id: a.id}) }}" class="btn btn-ghost btn-sm">Ver</a></td>
-            </tr>
-          {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% endif %}
-
-    {% if pages > 1 %}
-    <div style="padding:var(--space-4) var(--space-5);border-top:1px solid var(--color-divider)">
-      <div class="pagination">
-        {% if page > 1 %}
-          <a href="?{{ app.request.query.all|merge({page: page - 1})|url_encode }}">&#8249;</a>
-        {% endif %}
-        {% for p in max(1, page-2)..min(pages, page+2) %}
-          {% if p == page %}
-            <span class="current">{{ p }}</span>
-          {% else %}
-            <a href="?{{ app.request.query.all|merge({page: p})|url_encode }}">{{ p }}</a>
-          {% endif %}
-        {% endfor %}
-        {% if page < pages %}
-          <a href="?{{ app.request.query.all|merge({page: page + 1})|url_encode }}">&#8250;</a>
-        {% endif %}
-      </div>
-    </div>
-    {% endif %}
+    </form>
   </div>
 </div>
+
+{% if alerts is empty %}
+  <div class="card"><div class="empty-state-inline">Nenhum alerta encontrado para os filtros atuais.</div></div>
+{% else %}
+
+{# ── Análises temporais ── #}
+<div class="grid-2">
+  <div class="card" style="margin-bottom:0">
+    <div class="card-header"><span class="card-title">Por subtipo</span></div>
+    <div class="card-body"><div class="chart-wrap"><canvas id="chart-subtype"></canvas></div></div>
+  </div>
+  <div class="card" style="margin-bottom:0">
+    <div class="card-header"><span class="card-title">Ao longo do tempo</span></div>
+    <div class="card-body"><div class="chart-wrap"><canvas id="chart-trend"></canvas></div></div>
+  </div>
+</div>
+
+<div class="grid-3">
+  <div class="card" style="margin-bottom:0">
+    <div class="card-header"><span class="card-title">Por hora do dia</span></div>
+    <div class="card-body"><div class="chart-wrap sm"><canvas id="chart-hour"></canvas></div></div>
+  </div>
+  <div class="card" style="margin-bottom:0">
+    <div class="card-header"><span class="card-title">Por dia da semana</span></div>
+    <div class="card-body"><div class="chart-wrap sm"><canvas id="chart-weekday"></canvas></div></div>
+  </div>
+  <div class="card" style="margin-bottom:0">
+    <div class="card-header"><span class="card-title">Confiança dos alertas</span></div>
+    <div class="card-body"><div class="chart-wrap sm"><canvas id="chart-confidence"></canvas></div></div>
+  </div>
+</div>
+
+{# ── Mapa ── #}
+<div class="card" id="map-card">
+  <div class="card-header">
+    <span class="card-title">Mapa de alertas</span>
+    <span style="font-size:var(--text-xs);color:var(--color-text-muted)">
+      {{ mapAlerts|length }} ponto(s) exibido(s){% if mapAlerts|length >= 500 %} (limite atingido — refine o filtro para ver todos){% endif %}
+    </span>
+  </div>
+  <div id="alert-map"></div>
+</div>
+
+{# ── Correlação geográfica e por via ── #}
+<div class="grid-2">
+  <div class="card" style="margin-bottom:0">
+    <div class="card-header">
+      <span class="card-title"><i class="bi bi-geo-alt me-1"></i>Hotspots (correlação por coordenadas)</span>
+    </div>
+    <div class="card-body">
+      <p class="form-hint" style="margin-top:0">Pontos onde vários alertas caem na mesma área (~110m), mesmo com nomes de via diferentes ou ausentes.</p>
+      {% for h in hotspots %}
+        <div class="hotspot-item">
+          <div class="hotspot-badge">{{ h.total }}×</div>
+          <div style="min-width:0;flex:1">
+            <div style="font-weight:600;font-size:var(--text-sm)" class="text-truncate">{{ h.street ?? 'Via não identificada' }}</div>
+            <div style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ h.city ?? '—' }}</div>
+          </div>
+          <a class="btn btn-ghost btn-sm" target="_blank" rel="noopener"
+             href="https://www.google.com/maps?q={{ h.lat }},{{ h.lng }}"><i class="bi bi-box-arrow-up-right"></i></a>
+        </div>
+      {% else %}
+        <p class="text-muted mb-0">Nenhum ponto com 3+ ocorrências próximas no filtro atual.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:0">
+    <div class="card-header"><span class="card-title">Principais vias (texto)</span></div>
+    <div class="card-body">
+      {% for s in topStreets %}
+        <div class="street-rank-item">
+          <div style="display:flex;align-items:center;gap:10px;min-width:0">
+            <div class="street-rank-pos">{{ loop.index }}</div>
+            <div style="min-width:0">
+              <div style="font-weight:600;font-size:var(--text-sm)" class="text-truncate">{{ s.street ?? 'Sem nome' }}</div>
+              <div style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ s.city ?? '—' }}</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+            <span class="badge badge-gray">{{ s.total }}</span>
+            <a class="btn btn-ghost btn-sm" title="Focar nesta via"
+               href="?{{ app.request.query.all|merge({street: s.street, page: null})|url_encode }}"><i class="bi bi-funnel"></i></a>
+            <a class="btn btn-ghost btn-sm" title="Excluir esta via"
+               href="?{{ app.request.query.all|merge({excludeStreet: (excludeStreet ? excludeStreet ~ ', ' ~ s.street : s.street), page: null})|url_encode }}"><i class="bi bi-slash-circle"></i></a>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{# ── Lista ── #}
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Lista de alertas</span>
+    <span style="font-size:var(--text-xs);color:var(--color-text-muted)">Página {{ page }} de {{ pages }}</span>
+  </div>
+
+  <div style="overflow-x:auto">
+    <table>
+      <thead><tr>
+        <th>Tipo</th><th>Subtipo</th><th>Via</th><th>Cidade</th>
+        <th style="text-align:center">Conf.</th><th style="text-align:center">👍</th>
+        <th>Publicado</th><th></th>
+      </tr></thead>
+      <tbody>
+      {% for a in alerts %}
+        <tr>
+          <td><span class="badge badge-{{ a.type == 'ACCIDENT' ? 'red' : (a.type == 'JAM' ? 'orange' : (a.type == 'HAZARD' or a.type == 'WEATHERHAZARD' ? 'yellow' : 'gray')) }}">{{ typesMap[a.type] ?? a.type }}</span></td>
+          <td style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ a.subtype ? (subtypesMap[a.type ~ '|' ~ a.subtype] ?? a.subtype) : '—' }}</td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ a.street ?? '—' }}</td>
+          <td style="font-size:var(--text-xs)">{{ a.city ?? '—' }}</td>
+          <td style="text-align:center;font-size:var(--text-xs)">
+            {% if a.confidence is not null %}{% set c = a.confidence %}<span class="badge {{ c >= 7 ? 'badge-green' : (c >= 4 ? 'badge-orange' : 'badge-red') }}">{{ c }}</span>{% else %}—{% endif %}
+          </td>
+          <td style="text-align:center;font-size:var(--text-xs);color:var(--color-text-muted)">{{ a.nThumbsUp ?? 0 }}</td>
+          <td style="font-size:var(--text-xs);color:var(--color-text-muted);white-space:nowrap">{{ a.pubDate|date('d/m H:i') }}</td>
+          <td><a href="{{ path('alert_show', {id: a.id}) }}" class="btn btn-ghost btn-sm"><i class="bi bi-eye"></i> Ver</a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pages > 1 %}
+  <div style="padding:var(--space-4) var(--space-5);border-top:1px solid var(--color-divider)">
+    <div class="pagination">
+      {% if page > 1 %}<a href="?{{ app.request.query.all|merge({page: page - 1})|url_encode }}">&#8249;</a>{% endif %}
+      {% for p in max(1, page-2)..min(pages, page+2) %}
+        {% if p == page %}<span class="current">{{ p }}</span>
+        {% else %}<a href="?{{ app.request.query.all|merge({page: p})|url_encode }}">{{ p }}</a>{% endif %}
+      {% endfor %}
+      {% if page < pages %}<a href="?{{ app.request.query.all|merge({page: page + 1})|url_encode }}">&#8250;</a>{% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
 {% endblock %}
 
 {% block javascripts %}
   {{ parent() }}
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script>
-    (function(){
-      const alerts = {{ alerts|map(a => { id:a.id, lat:a.latitude, lng:a.longitude, type:a.type, subtype:a.subtype, street:a.street, city:a.city, conf:a.confidence, thumbs:a.nThumbsUp, pubIso:a.pubDate|date('c') })|json_encode|raw }};
-      const TYPE_LABEL = {{ typesMap|json_encode|raw }};
-      const SUBTYPE_LABEL = {{ subtypesMap|json_encode|raw }};
-      const TYPE_COLOR = {
-        ACCIDENT:'#a12c7b', HAZARD:'#d19900', WEATHERHAZARD:'#006494',
-        JAM:'#da7101', ROAD_CLOSED:'#7a7974', CONSTRUCTION:'#437a22',
-        POLICE:'#01696f', MISC:'#7a39bb'
-      };
+  (function () {
+    var TYPE_LABEL = {{ typesMap|json_encode|raw }};
+    var SUBTYPE_LABEL = {{ subtypesMap|json_encode|raw }};
+    var TYPE_COLOR = {
+      ACCIDENT:'#a12c7b', HAZARD:'#d19900', WEATHERHAZARD:'#006494',
+      JAM:'#da7101', ROAD_CLOSED:'#7a7974', CONSTRUCTION:'#437a22',
+      POLICE:'#01696f', MISC:'#7a39bb'
+    };
 
-      console.log('[alert_index] controller payload', {
-        total: {{ total|json_encode|raw }},
-        page: {{ page|json_encode|raw }},
-        pages: {{ pages|json_encode|raw }},
-        alertsCount: alerts.length,
-        alertsSample: alerts.slice(0, 5)
+    /* ── Gráficos (dados já agregados no servidor sobre o total filtrado) ── */
+    var bySubtype = {{ bySubtype|json_encode|raw }};
+    var elSub = document.getElementById('chart-subtype');
+    if (elSub && bySubtype.length) {
+      new Chart(elSub, {
+        type: 'bar',
+        data: { labels: bySubtype.map(function (d) { return d.label; }),
+                datasets: [{ data: bySubtype.map(function (d) { return d.total; }), backgroundColor: '#2563eb', borderRadius: 4 }] },
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                   plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } }
       });
+    }
 
-      const waitForElement = (sel, tries = 80, delay = 50) => new Promise((resolve, reject) => {
-        const tick = () => {
-          const el = document.querySelector(sel);
-          if (el) return resolve(el);
-          if (!tries--) return reject(new Error(sel + ' not found'));
-          setTimeout(tick, delay);
-        };
-        tick();
+    var byDay = {{ byDay|json_encode|raw }};
+    var elTrend = document.getElementById('chart-trend');
+    if (elTrend && byDay.length) {
+      new Chart(elTrend, {
+        type: 'line',
+        data: {
+          labels: byDay.map(function (d) { var p = d.day.split('-'); return p[2] + '/' + p[1]; }),
+          datasets: [{ data: byDay.map(function (d) { return parseInt(d.total, 10); }),
+                       borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,.12)', fill: true, tension: .3,
+                       pointRadius: byDay.length > 40 ? 0 : 2 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                   scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
       });
+    }
 
-      const buildCharts = () => {
-        const typeCounts = alerts.reduce((acc, item) => {
-          const key = item.type || 'UNKNOWN';
-          acc[key] = (acc[key] || 0) + 1;
-          return acc;
-        }, {});
+    var byHour = {{ byHour|json_encode|raw }};
+    var elHour = document.getElementById('chart-hour');
+    if (elHour) {
+      new Chart(elHour, {
+        type: 'bar',
+        data: { labels: byHour.map(function (_, h) { return h + 'h'; }),
+                datasets: [{ data: byHour, backgroundColor: '#8b5cf6', borderRadius: 3 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                   scales: { x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } }, y: { beginAtZero: true, ticks: { precision: 0 } } } }
+      });
+    }
 
-        const confidenceBuckets = { '0-3': 0, '4-6': 0, '7-10': 0, 'Sem valor': 0 };
-        alerts.forEach((item) => {
-          const c = item.conf;
-          if (c === null || c === undefined || c === '') confidenceBuckets['Sem valor']++;
-          else if (c <= 3) confidenceBuckets['0-3']++;
-          else if (c <= 6) confidenceBuckets['4-6']++;
-          else confidenceBuckets['7-10']++;
+    var byWeekday = {{ byWeekday|json_encode|raw }};
+    var WD_LABEL = { 1: 'Dom', 2: 'Seg', 3: 'Ter', 4: 'Qua', 5: 'Qui', 6: 'Sex', 7: 'Sáb' };
+    var elWeekday = document.getElementById('chart-weekday');
+    if (elWeekday) {
+      var wdKeys = [1,2,3,4,5,6,7];
+      new Chart(elWeekday, {
+        type: 'bar',
+        data: { labels: wdKeys.map(function (k) { return WD_LABEL[k]; }),
+                datasets: [{ data: wdKeys.map(function (k) { return byWeekday[k] || 0; }), backgroundColor: '#0ea5e9', borderRadius: 4 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                   scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+      });
+    }
+
+    var byConfidence = {{ byConfidence|json_encode|raw }};
+    var elConf = document.getElementById('chart-confidence');
+    if (elConf) {
+      var confKeys = Object.keys(byConfidence);
+      new Chart(elConf, {
+        type: 'doughnut',
+        data: { labels: confKeys, datasets: [{ data: confKeys.map(function (k) { return byConfidence[k]; }),
+                backgroundColor: ['#ef4444', '#f97316', '#22c55e', '#9ca3af'] }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } } }
+      });
+    }
+
+    /* ── Mapa (conjunto filtrado, não só a página atual da tabela) ── */
+    var mapAlerts = {{ mapAlerts|map(a => {
+      id: a.id, lat: a.latitude, lng: a.longitude, type: a.type, subtype: a.subtype,
+      street: a.street, city: a.city, conf: a.confidence, thumbs: a.nThumbsUp
+    })|json_encode|raw }};
+
+    var mapEl = document.getElementById('alert-map');
+    if (mapEl) {
+      var map = L.map(mapEl, { zoomControl: true });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(map);
+
+      var cluster = L.markerClusterGroup({ maxClusterRadius: 45 });
+      var bounds = [];
+
+      mapAlerts.forEach(function (a) {
+        var lat = parseFloat(a.lat), lng = parseFloat(a.lng);
+        if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) return;
+        bounds.push([lat, lng]);
+
+        var color = TYPE_COLOR[a.type] || '#7a7974';
+        var icon = L.divIcon({
+          className: '', iconSize: [14, 14], iconAnchor: [7, 7],
+          html: '<div style="width:14px;height:14px;border-radius:50%;background:' + color + ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>'
         });
 
-        const typeCanvas = document.getElementById('alerts-type-chart');
-        if (typeCanvas && window.Chart) {
-          new Chart(typeCanvas, {
-            type: 'bar',
-            data: {
-              labels: Object.keys(typeCounts).map((k) => TYPE_LABEL[k] || k),
-              datasets: [{
-                label: 'Alertas',
-                data: Object.keys(typeCounts).map((k) => typeCounts[k]),
-                backgroundColor: Object.keys(typeCounts).map((k) => TYPE_COLOR[k] || '#7a7974'),
-                borderRadius: 8
-              }]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: { legend: { display: false } },
-              scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
-            }
-          });
-        }
+        var popupHtml = '<div class="popup-inner">'
+          + '<div class="popup-type">' + (TYPE_LABEL[a.type] || a.type) + '</div>'
+          + (a.subtype ? ('<div class="popup-sub">' + (SUBTYPE_LABEL[a.type + '|' + a.subtype] || a.subtype) + '</div>') : '')
+          + (a.street ? ('<div class="popup-street">' + a.street + '</div>') : '')
+          + (a.city ? ('<div class="popup-city">' + a.city + '</div>') : '')
+          + '<div class="popup-meta">'
+          + (a.conf !== null ? ('<span>Conf: ' + a.conf + '</span>') : '')
+          + (a.thumbs !== null ? ('<span>👍 ' + a.thumbs + '</span>') : '')
+          + '</div>'
+          + '<a href="/alertas/' + a.id + '" style="font-size:12px">Ver detalhes →</a>'
+          + '</div>';
 
-        const confCanvas = document.getElementById('alerts-confidence-chart');
-        if (confCanvas && window.Chart) {
-          new Chart(confCanvas, {
-            type: 'doughnut',
-            data: {
-              labels: Object.keys(confidenceBuckets),
-              datasets: [{
-                data: Object.values(confidenceBuckets),
-                backgroundColor: ['#a12c7b', '#da7101', '#437a22', '#7a7974']
-              }]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: { legend: { position: 'bottom' } }
-            }
-          });
-        }
-      };
+        L.marker([lat, lng], { icon: icon }).bindPopup(popupHtml).addTo(cluster);
+      });
 
-      const buildMap = (mapEl) => {
-        const map = L.map(mapEl, { zoomControl: true });
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '\u00a9 OpenStreetMap',
-          maxZoom: 19
-        }).addTo(map);
-
-        const markers = [];
-        alerts.forEach((a) => {
-          const lat = parseFloat(a.lat);
-          const lng = parseFloat(a.lng);
-          if (Number.isNaN(lat) || Number.isNaN(lng)) return;
-
-          const marker = L.circleMarker([lat, lng], {
-            radius: 8,
-            fillColor: TYPE_COLOR[a.type] || '#7a7974',
-            color: '#ffffff',
-            weight: 1,
-            opacity: 1,
-            fillOpacity: 0.9
-          }).addTo(map);
-
-          const popupHtml = '<div class="popup-inner">'
-            + '<div class="popup-type">' + (TYPE_LABEL[a.type] || a.type) + '</div>'
-            + (a.subtype ? ('<div class="popup-sub">' + (SUBTYPE_LABEL[a.type + '|' + a.subtype] || a.subtype) + '</div>') : '')
-            + (a.street ? ('<div class="popup-street">' + a.street + '</div>') : '')
-            + (a.city ? ('<div class="popup-city">' + a.city + '</div>') : '')
-            + '<div class="popup-meta">'
-            + (a.conf !== null ? ('<span>Conf: ' + a.conf + '</span>') : '')
-            + (a.thumbs !== null ? ('<span>👍 ' + a.thumbs + '</span>') : '')
-            + '</div>'
-            + '</div>';
-
-          marker.bindPopup(popupHtml);
-          markers.push(marker);
-        });
-
-        console.log('[alert_index] markers created', markers.length);
-        if (markers.length) map.fitBounds(L.featureGroup(markers).getBounds().pad(0.2));
-        else map.setView([-15.7801, -47.9292], 4);
-      };
-
-      buildCharts();
-      waitForElement('#alert-map')
-        .then((mapEl) => {
-          console.log('[alert_index] map element', mapEl);
-          buildMap(mapEl);
-        })
-        .catch((err) => console.error('[alert_index] map init failed', err));
-    })();
+      map.addLayer(cluster);
+      if (bounds.length) map.fitBounds(bounds, { padding: [30, 30] });
+      else map.setView([-15.7801, -47.9292], 4);
+      setTimeout(function () { map.invalidateSize(); }, 150);
+    }
+  })();
   </script>
 {% endblock %}

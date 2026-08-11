@@ -5,6 +5,7 @@ namespace App\Repository;
 use App\Entity\Partner;
 use App\Entity\WazeAlert;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -12,136 +13,408 @@ use Doctrine\Persistence\ManagerRegistry;
  */
 class WazeAlertRepository extends ServiceEntityRepository
 {
+    private const TZ = 'America/Sao_Paulo';
+
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, WazeAlert::class);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private static function toMillis(\DateTimeInterface $dt): int
     {
         return (int) $dt->getTimestamp() * 1000;
     }
 
-    // ── Filtro paginado (página de histórico) ─────────────────────────────────
+    /**
+     * Aplica os filtros comuns da tela de histórico (/alertas) num QueryBuilder
+     * já com alias 'a'. Todas as chaves são opcionais (null/vazio = sem filtro):
+     *   type, subtype, city, street (LIKE, via a incluir),
+     *   excludeStreet (termos separados por vírgula, vias a excluir via NOT LIKE),
+     *   dateFrom, dateTo ('Y-m-d', interpretados em America/Sao_Paulo).
+     */
+    private function applyFilters(QueryBuilder $qb, Partner $partner, array $f): void
+    {
+        $qb->andWhere('a.partner = :partner')->setParameter('partner', $partner);
+
+        if (!empty($f['type'])) {
+            $qb->andWhere('a.type = :type')->setParameter('type', $f['type']);
+        }
+        if (!empty($f['subtype'])) {
+            $qb->andWhere('a.subtype = :subtype')->setParameter('subtype', $f['subtype']);
+        }
+        if (!empty($f['city'])) {
+            $qb->andWhere('LOWER(a.city) LIKE :city')->setParameter('city', '%' . mb_strtolower($f['city']) . '%');
+        }
+        if (!empty($f['street'])) {
+            $qb->andWhere('LOWER(a.street) LIKE :street')->setParameter('street', '%' . mb_strtolower($f['street']) . '%');
+        }
+        if (!empty($f['excludeStreet'])) {
+            foreach (self::splitTerms($f['excludeStreet']) as $i => $term) {
+                $qb->andWhere("LOWER(a.street) NOT LIKE :exclStreet{$i}")
+                   ->setParameter("exclStreet{$i}", '%' . mb_strtolower($term) . '%');
+            }
+        }
+
+        $tz = new \DateTimeZone(self::TZ);
+        if (!empty($f['dateFrom'])) {
+            $from = \DateTimeImmutable::createFromFormat('!Y-m-d', $f['dateFrom'], $tz);
+            if ($from) {
+                $qb->andWhere('a.pubMillis >= :dateFromMs')->setParameter('dateFromMs', self::toMillis($from));
+            }
+        }
+        if (!empty($f['dateTo'])) {
+            $to = \DateTimeImmutable::createFromFormat('!Y-m-d', $f['dateTo'], $tz);
+            if ($to) {
+                $qb->andWhere('a.pubMillis <= :dateToMs')->setParameter('dateToMs', self::toMillis($to->setTime(23, 59, 59)));
+            }
+        }
+    }
+
+    /** @return string[] */
+    private static function splitTerms(string $csv): array
+    {
+        return array_values(array_filter(array_map('trim', explode(',', $csv)), static fn($t) => $t !== ''));
+    }
 
     /**
-     * Retorna ['items' => WazeAlert[], 'total' => int, 'pages' => int]
+     * Mesma lógica de applyFilters(), mas em SQL nativo (usado pelos métodos
+     * que precisam de funções que o DQL não tem, como CONVERT_TZ/HOUR/DAYOFWEEK).
+     *
+     * @return array{0: string, 1: array<string, mixed>}
      */
-    public function findFilteredByPartner(
-        Partner $partner,
-        ?string $type     = null,
-        ?string $subtype  = null,
-        ?string $city     = null,
-        ?string $dateFrom = null,
-        ?string $dateTo   = null,
-        int     $page     = 1,
-        int     $limit    = 30,
-    ): array {
-        $qb = $this->createQueryBuilder('a')
-            ->where('a.partner = :partner')
-            ->setParameter('partner', $partner)
-            ->orderBy('a.pubMillis', 'DESC');
+    private function buildNativeWhere(Partner $partner, array $f): array
+    {
+        $where = ['a.partner_id = :partnerId'];
+        $params = ['partnerId' => $partner->getId()];
 
-        if ($type) {
-            $qb->andWhere('a.type = :type')->setParameter('type', $type);
+        if (!empty($f['type'])) {
+            $where[] = 'a.type = :type';
+            $params['type'] = $f['type'];
+        }
+        if (!empty($f['subtype'])) {
+            $where[] = 'a.subtype = :subtype';
+            $params['subtype'] = $f['subtype'];
+        }
+        if (!empty($f['city'])) {
+            $where[] = 'LOWER(a.city) LIKE :city';
+            $params['city'] = '%' . mb_strtolower($f['city']) . '%';
+        }
+        if (!empty($f['street'])) {
+            $where[] = 'LOWER(a.street) LIKE :street';
+            $params['street'] = '%' . mb_strtolower($f['street']) . '%';
+        }
+        if (!empty($f['excludeStreet'])) {
+            foreach (self::splitTerms($f['excludeStreet']) as $i => $term) {
+                $where[] = "LOWER(a.street) NOT LIKE :exclStreet{$i}";
+                $params["exclStreet{$i}"] = '%' . mb_strtolower($term) . '%';
+            }
         }
 
-        if ($subtype) {
-            $qb->andWhere('a.subtype = :subtype')->setParameter('subtype', $subtype);
+        $tz = new \DateTimeZone(self::TZ);
+        if (!empty($f['dateFrom'])) {
+            $from = \DateTimeImmutable::createFromFormat('!Y-m-d', $f['dateFrom'], $tz);
+            if ($from) {
+                $where[] = 'a.pub_millis >= :dateFromMs';
+                $params['dateFromMs'] = self::toMillis($from);
+            }
+        }
+        if (!empty($f['dateTo'])) {
+            $to = \DateTimeImmutable::createFromFormat('!Y-m-d', $f['dateTo'], $tz);
+            if ($to) {
+                $where[] = 'a.pub_millis <= :dateToMs';
+                $params['dateToMs'] = self::toMillis($to->setTime(23, 59, 59));
+            }
         }
 
-        if ($city) {
-            $qb->andWhere('a.city = :city')->setParameter('city', $city);
-        }
+        return [implode(' AND ', $where), $params];
+    }
 
-        if ($dateFrom) {
-            $from = new \DateTimeImmutable($dateFrom . ' 00:00:00');
-            $qb->andWhere('a.pubMillis >= :from')
-               ->setParameter('from', self::toMillis($from));
-        }
+    // ── Listagem paginada (página de histórico) ─────────────────────────────
 
-        if ($dateTo) {
-            $to = new \DateTimeImmutable($dateTo . ' 23:59:59');
-            $qb->andWhere('a.pubMillis <= :to')
-               ->setParameter('to', self::toMillis($to));
-        }
+    /**
+     * @param array{type?:?string,subtype?:?string,city?:?string,street?:?string,excludeStreet?:?string,dateFrom?:?string,dateTo?:?string} $filters
+     * @return array{items: WazeAlert[], total: int, pages: int}
+     */
+    public function findFilteredByPartner(Partner $partner, array $filters = [], int $page = 1, int $limit = 30): array
+    {
+        $page = max(1, $page);
+        $limit = max(1, $limit);
 
-        $total = (int) (clone $qb)
-            ->select('COUNT(a.id)')
-            ->getQuery()
-            ->getSingleScalarResult();
+        $qb = $this->createQueryBuilder('a');
+        $this->applyFilters($qb, $partner, $filters);
 
+        $total = (int) (clone $qb)->select('COUNT(a.id)')->getQuery()->getSingleScalarResult();
         $pages = max(1, (int) ceil($total / $limit));
-        $page  = max(1, min($page, $pages));
+        $page = min($page, $pages);
 
-        $items = $qb
+        $items = $qb->orderBy('a.pubMillis', 'DESC')
             ->setFirstResult(($page - 1) * $limit)
             ->setMaxResults($limit)
             ->getQuery()
             ->getResult();
 
-        return [
-            'items' => $items,
-            'total' => $total,
-            'pages' => $pages,
-        ];
+        return ['items' => $items, 'total' => $total, 'pages' => $pages];
     }
 
-    // ── Helpers para filtros (listas de opções) ───────────────────────────────
+    /**
+     * Alertas com coordenadas válidas do conjunto filtrado, para o mapa —
+     * decoupled da paginação da tabela (senão o mapa só mostraria a página
+     * atual). Limitado a $limit pontos, mais recentes primeiro.
+     *
+     * @param array $filters mesmo formato de findFilteredByPartner()
+     */
+    public function findForMapFiltered(Partner $partner, array $filters = [], int $limit = 500): array
+    {
+        $qb = $this->createQueryBuilder('a')
+            ->select('a.id, a.type, a.subtype, a.street, a.city, a.latitude, a.longitude, a.confidence, a.nThumbsUp, a.pubMillis')
+            ->andWhere('a.latitude IS NOT NULL')
+            ->andWhere('a.longitude IS NOT NULL')
+            ->orderBy('a.pubMillis', 'DESC')
+            ->setMaxResults($limit);
+        $this->applyFilters($qb, $partner, $filters);
 
+        return $qb->getQuery()->getArrayResult();
+    }
+
+    // ── Opções de filtro ─────────────────────────────────────────────────────
+
+    /** @return string[] */
     public function findDistinctTypes(Partner $partner): array
     {
         $rows = $this->createQueryBuilder('a')
             ->select('DISTINCT a.type AS type')
-            ->where('a.partner = :partner')
-            ->setParameter('partner', $partner)
+            ->where('a.partner = :partner')->setParameter('partner', $partner)
             ->orderBy('a.type', 'ASC')
-            ->getQuery()
-            ->getArrayResult();
+            ->getQuery()->getArrayResult();
 
         return array_column($rows, 'type');
     }
 
+    /** @return string[] */
     public function findDistinctSubtypes(Partner $partner, ?string $type = null): array
     {
         $qb = $this->createQueryBuilder('a')
             ->select('DISTINCT a.subtype AS subtype')
-            ->where('a.partner = :partner')
+            ->where('a.partner = :partner')->setParameter('partner', $partner)
             ->andWhere('a.subtype IS NOT NULL')
-            ->setParameter('partner', $partner)
             ->orderBy('a.subtype', 'ASC');
 
         if ($type) {
             $qb->andWhere('a.type = :type')->setParameter('type', $type);
         }
 
-        $rows = $qb->getQuery()->getArrayResult();
-
-        return array_column($rows, 'subtype');
+        return array_column($qb->getQuery()->getArrayResult(), 'subtype');
     }
 
+    /** @return string[] */
     public function findDistinctCities(Partner $partner): array
     {
         $rows = $this->createQueryBuilder('a')
             ->select('DISTINCT a.city AS city')
-            ->where('a.partner = :partner')
+            ->where('a.partner = :partner')->setParameter('partner', $partner)
             ->andWhere('a.city IS NOT NULL')
-            ->setParameter('partner', $partner)
             ->orderBy('a.city', 'ASC')
-            ->getQuery()
-            ->getArrayResult();
+            ->getQuery()->getArrayResult();
 
         return array_column($rows, 'city');
     }
 
-    // ── Mapa ao vivo ──────────────────────────────────────────────────────────
+    /** @return string[] — datalist de autocomplete pros campos de rua */
+    public function findDistinctStreets(Partner $partner, int $limit = 800): array
+    {
+        $rows = $this->createQueryBuilder('a')
+            ->select('DISTINCT a.street AS street')
+            ->where('a.partner = :partner')->setParameter('partner', $partner)
+            ->andWhere('a.street IS NOT NULL')
+            ->orderBy('a.street', 'ASC')
+            ->setMaxResults($limit)
+            ->getQuery()->getArrayResult();
+
+        return array_column($rows, 'street');
+    }
+
+    // ── Análises do conjunto filtrado (não só da página atual) ──────────────
+
+    /** Distribuição por type+subtype. Retorna [['type','subtype','total'], ...] desc. */
+    public function countBySubtypeFiltered(Partner $partner, array $filters = [], int $limit = 10): array
+    {
+        $qb = $this->createQueryBuilder('a')
+            ->select('a.type AS type, a.subtype AS subtype, COUNT(a.id) AS total')
+            ->groupBy('a.type, a.subtype')
+            ->orderBy('total', 'DESC')
+            ->setMaxResults(max(1, $limit));
+        $this->applyFilters($qb, $partner, $filters);
+
+        return array_map(static fn(array $r) => [
+            'type' => $r['type'], 'subtype' => $r['subtype'], 'total' => (int) $r['total'],
+        ], $qb->getQuery()->getArrayResult());
+    }
+
+    /** Distribuição de confiança (0-3 / 4-6 / 7-10 / sem valor) do conjunto filtrado. */
+    public function countByConfidenceFiltered(Partner $partner, array $filters = []): array
+    {
+        $qb = $this->createQueryBuilder('a')->select('a.confidence AS confidence, COUNT(a.id) AS total')->groupBy('a.confidence');
+        $this->applyFilters($qb, $partner, $filters);
+        $rows = $qb->getQuery()->getArrayResult();
+
+        $buckets = ['0-3' => 0, '4-6' => 0, '7-10' => 0, 'Sem valor' => 0];
+        foreach ($rows as $r) {
+            $c = $r['confidence'];
+            $n = (int) $r['total'];
+            if ($c === null) $buckets['Sem valor'] += $n;
+            elseif ($c <= 3) $buckets['0-3'] += $n;
+            elseif ($c <= 6) $buckets['4-6'] += $n;
+            else $buckets['7-10'] += $n;
+        }
+
+        return $buckets;
+    }
 
     /**
-     * Alertas recentes (últimas $hours horas) agrupados por cidade/região.
-     * Retorna [['city' => string, 'count' => int], ...]
+     * Ranking de vias no conjunto filtrado — quais mais aparecem. Serve tanto
+     * como análise quanto pra guiar o preenchimento do filtro de exclusão.
      */
+    public function topStreetsFiltered(Partner $partner, array $filters = [], int $limit = 12): array
+    {
+        $qb = $this->createQueryBuilder('a')
+            ->select('a.street AS street', 'a.city AS city', 'COUNT(a.id) AS total')
+            ->andWhere('a.street IS NOT NULL')
+            ->groupBy('a.street, a.city')
+            ->orderBy('total', 'DESC')
+            ->setMaxResults(max(1, $limit));
+        $this->applyFilters($qb, $partner, $filters);
+
+        return array_map(static fn(array $r) => [
+            'street' => $r['street'], 'city' => $r['city'], 'total' => (int) $r['total'],
+        ], $qb->getQuery()->getArrayResult());
+    }
+
+    /**
+     * Série diária (dia civil de Brasília) do conjunto filtrado — correlação
+     * por data. Doctrine DQL não tem CONVERT_TZ, então usa SQL nativo aqui.
+     * Retorna [['day' => 'Y-m-d', 'total' => n], ...] ordenado por dia.
+     */
+    public function countByDayFiltered(Partner $partner, array $filters = [], int $maxDays = 180): array
+    {
+        [$whereSql, $params] = $this->buildNativeWhere($partner, $filters);
+        $params['maxDays'] = $maxDays;
+
+        $sql = <<<SQL
+            SELECT DATE(CONVERT_TZ(FROM_UNIXTIME(a.pub_millis / 1000), '+00:00', '-03:00')) AS day,
+                   COUNT(a.id) AS total
+            FROM waze_alerts a
+            WHERE {$whereSql}
+            GROUP BY day
+            ORDER BY day ASC
+            LIMIT :maxDays
+        SQL;
+
+        return $this->getEntityManager()->getConnection()->fetchAllAssociative($sql, $params);
+    }
+
+    /**
+     * Distribuição por hora do dia (0-23, horário de Brasília) do conjunto
+     * filtrado — correlação por data/horário: revela em que horas os alertas
+     * se concentram (ex. rush da manhã vs. da tarde).
+     * Sempre retorna as 24 chaves, mesmo com total 0, pra manter a escala do
+     * gráfico estável entre filtros diferentes.
+     */
+    public function countByHourOfDayFiltered(Partner $partner, array $filters = []): array
+    {
+        [$whereSql, $params] = $this->buildNativeWhere($partner, $filters);
+
+        $sql = <<<SQL
+            SELECT HOUR(CONVERT_TZ(FROM_UNIXTIME(a.pub_millis / 1000), '+00:00', '-03:00')) AS hour,
+                   COUNT(a.id) AS total
+            FROM waze_alerts a
+            WHERE {$whereSql}
+            GROUP BY hour
+        SQL;
+
+        $rows = $this->getEntityManager()->getConnection()->fetchAllAssociative($sql, $params);
+
+        $byHour = array_fill(0, 24, 0);
+        foreach ($rows as $r) {
+            $h = (int) $r['hour'];
+            if ($h >= 0 && $h <= 23) $byHour[$h] = (int) $r['total'];
+        }
+
+        return $byHour;
+    }
+
+    /**
+     * Distribuição por dia da semana (1=domingo..7=sábado, horário de Brasília)
+     * do conjunto filtrado — complementa a análise por hora.
+     */
+    public function countByWeekdayFiltered(Partner $partner, array $filters = []): array
+    {
+        [$whereSql, $params] = $this->buildNativeWhere($partner, $filters);
+
+        $sql = <<<SQL
+            SELECT DAYOFWEEK(CONVERT_TZ(FROM_UNIXTIME(a.pub_millis / 1000), '+00:00', '-03:00')) AS wd,
+                   COUNT(a.id) AS total
+            FROM waze_alerts a
+            WHERE {$whereSql}
+            GROUP BY wd
+        SQL;
+
+        $rows = $this->getEntityManager()->getConnection()->fetchAllAssociative($sql, $params);
+
+        $byWeekday = array_fill(1, 7, 0);
+        foreach ($rows as $r) {
+            $wd = (int) $r['wd'];
+            if ($wd >= 1 && $wd <= 7) $byWeekday[$wd] = (int) $r['total'];
+        }
+
+        return $byWeekday;
+    }
+
+    /**
+     * Hotspots geográficos do conjunto filtrado — correlação por coordenadas.
+     * Agrupa alertas numa grade de ~110m (3 casas decimais de lat/lng) em vez
+     * de depender do texto da via, que às vezes vem nulo ou inconsistente
+     * entre relatos do mesmo ponto físico. Retorna o centro médio de cada
+     * célula com ocorrências, ordenado por contagem desc.
+     */
+    public function findHotspotsFiltered(Partner $partner, array $filters = [], int $limit = 15, int $minOccurrences = 3): array
+    {
+        [$whereSql, $params] = $this->buildNativeWhere($partner, $filters);
+        $params['minOccurrences'] = $minOccurrences;
+        $params['limit'] = $limit;
+
+        $sql = <<<SQL
+            SELECT
+                ROUND(a.latitude, 3)  AS grid_lat,
+                ROUND(a.longitude, 3) AS grid_lng,
+                AVG(a.latitude)       AS lat,
+                AVG(a.longitude)      AS lng,
+                COUNT(a.id)           AS total,
+                SUBSTRING_INDEX(GROUP_CONCAT(a.street ORDER BY a.id SEPARATOR '||'), '||', 1) AS sample_street,
+                SUBSTRING_INDEX(GROUP_CONCAT(a.city   ORDER BY a.id SEPARATOR '||'), '||', 1) AS sample_city
+            FROM waze_alerts a
+            WHERE {$whereSql} AND a.latitude IS NOT NULL AND a.longitude IS NOT NULL
+              AND a.latitude != 0 AND a.longitude != 0
+            GROUP BY grid_lat, grid_lng
+            HAVING total >= :minOccurrences
+            ORDER BY total DESC
+            LIMIT :limit
+        SQL;
+
+        $rows = $this->getEntityManager()->getConnection()->fetchAllAssociative($sql, $params);
+
+        return array_map(static fn(array $r) => [
+            'lat' => (float) $r['lat'],
+            'lng' => (float) $r['lng'],
+            'total' => (int) $r['total'],
+            'street' => $r['sample_street'],
+            'city' => $r['sample_city'],
+        ], $rows);
+    }
+
+    // ── Mapa ao vivo (/alertas/ao-vivo) ──────────────────────────────────────
+
     public function findLiveGroupedByRegion(Partner $partner, int $hours = 3): array
     {
         $since = (time() - $hours * 3600) * 1000;
@@ -157,17 +430,10 @@ class WazeAlertRepository extends ServiceEntityRepository
             ->getQuery()
             ->getArrayResult();
 
-        return array_map(static fn(array $r) => [
-            'city'  => $r['city'],
-            'count' => (int) $r['count'],
-        ], $rows);
+        return array_map(static fn(array $r) => ['city' => $r['city'], 'count' => (int) $r['count']], $rows);
     }
 
-    /**
-     * Alertas das últimas $hours horas para o mapa ao vivo (com coordenadas).
-     *
-     * @return WazeAlert[]
-     */
+    /** @return WazeAlert[] */
     public function findLiveByPartner(Partner $partner, int $hours = 3): array
     {
         $since = (time() - $hours * 3600) * 1000;
@@ -182,7 +448,7 @@ class WazeAlertRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    // ── Detalhe de um alerta ──────────────────────────────────────────────────
+    // ── Detalhe de um alerta ─────────────────────────────────────────────────
 
     public function findOneByPartner(int $id, Partner $partner): ?WazeAlert
     {
@@ -195,7 +461,7 @@ class WazeAlertRepository extends ServiceEntityRepository
             ->getOneOrNullResult();
     }
 
-    // ── Contagem e estatísticas ───────────────────────────────────────────────
+    // ── Usados pelo dashboard (não remover / não mudar assinatura) ──────────
 
     public function countInPeriod(Partner $partner, \DateTimeInterface $from, \DateTimeInterface $to): int
     {
@@ -220,10 +486,6 @@ class WazeAlertRepository extends ServiceEntityRepository
             ->getSingleScalarResult();
     }
 
-    /**
-     * Distribuição de alertas por type + subtype dentro do período.
-     * Retorna [['type'=>'JAM','subtype'=>'JAM_HEAVY_TRAFFIC','total'=>42], ...] ordenado desc.
-     */
     public function countBySubtypeInPeriod(Partner $partner, \DateTimeInterface $from, \DateTimeInterface $to, int $limit = 12): array
     {
         $limit = max(1, $limit);
@@ -242,15 +504,10 @@ class WazeAlertRepository extends ServiceEntityRepository
             ->getArrayResult();
 
         return array_map(static fn(array $r) => [
-            'type'    => $r['type'],
-            'subtype' => $r['subtype'],
-            'total'   => (int) $r['total'],
+            'type' => $r['type'], 'subtype' => $r['subtype'], 'total' => (int) $r['total'],
         ], $rows);
     }
 
-    /**
-     * Alertas com coordenadas dentro do período, para exibição no mapa.
-     */
     public function findForMapInPeriod(Partner $partner, \DateTimeInterface $from, \DateTimeInterface $to, int $limit = 600): array
     {
         return $this->createQueryBuilder('a')
@@ -268,10 +525,8 @@ class WazeAlertRepository extends ServiceEntityRepository
 
     public function getAlertsPerHourLast24h(): array
     {
-        $now     = time() * 1000;
+        $now = time() * 1000;
         $lastDay = $now - 24 * 3600 * 1000;
-
-        $conn = $this->getEntityManager()->getConnection();
 
         $sql = <<<SQL
             SELECT
@@ -283,8 +538,6 @@ class WazeAlertRepository extends ServiceEntityRepository
             ORDER BY hour_label ASC
         SQL;
 
-        return $conn->fetchAllAssociative($sql, [
-            'lastDay' => $lastDay,
-        ]);
+        return $this->getEntityManager()->getConnection()->fetchAllAssociative($sql, ['lastDay' => $lastDay]);
     }
 }

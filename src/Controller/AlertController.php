@@ -18,52 +18,97 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_USER')]
 class AlertController extends AbstractController
 {
+    /** Períodos fixos do filtro (além de datas manuais). */
+    private const PERIOD_PRESETS = [
+        'today'      => ['label' => 'Hoje',   'days' => 0],
+        'yesterday'  => ['label' => 'Ontem',  'days' => 1],
+        'week'       => ['label' => '7 dias', 'days' => 7],
+        'month'      => ['label' => '30 dias','days' => 30],
+        'six_months' => ['label' => '6 meses','days' => 182],
+        'year'       => ['label' => '1 ano',  'days' => 365],
+    ];
+
     public function __construct(
         private readonly TenantContext           $tenantContext,
         private readonly WazeAlertRepository      $alertRepo,
         private readonly WazeAlertTypeRepository  $alertTypeRepo,
     ) {}
 
-    /** Histórico de alertas com filtros e paginação */
+    /** Histórico de alertas: filtros, paginação e análises (gráficos, ranking de vias, hotspots) */
     #[Route('', name: 'index')]
     public function index(Request $request): Response
     {
         $partner  = $this->tenantContext->requirePartner();
         $locale   = $request->getLocale() ?: 'pt';
-        $type     = $request->query->get('type') ?: null;
-        $subtype  = $request->query->get('subtype') ?: null;
-        $city     = $request->query->get('city') ?: null;
-        $dateFrom = $request->query->get('dateFrom') ?: null;
-        $dateTo   = $request->query->get('dateTo') ?: null;
-        $page     = max(1, (int) $request->query->get('page', 1));
 
-        $result = $this->alertRepo->findFilteredByPartner(
-            partner:  $partner,
-            type:     $type,
-            subtype:  $subtype,
-            city:     $city,
-            dateFrom: $dateFrom,
-            dateTo:   $dateTo,
-            page:     $page,
-            limit:    30,
-        );
+        $type          = $request->query->get('type') ?: null;
+        $subtype       = $request->query->get('subtype') ?: null;
+        $city          = $request->query->get('city') ?: null;
+        $street        = $request->query->get('street') ?: null;
+        $excludeStreet = $request->query->get('excludeStreet') ?: null;
+        $period        = $request->query->get('period') ?: null;
+        $dateFrom      = $request->query->get('dateFrom') ?: null;
+        $dateTo        = $request->query->get('dateTo') ?: null;
+        $page          = max(1, (int) $request->query->get('page', 1));
+
+        // Período fixo preenche dateFrom/dateTo (dia civil de Brasília) se não houver datas manuais
+        if ($period && isset(self::PERIOD_PRESETS[$period]) && !$dateFrom && !$dateTo) {
+            $tz = new \DateTimeZone('America/Sao_Paulo');
+            $today = new \DateTimeImmutable('now', $tz);
+
+            if ($period === 'yesterday') {
+                $dateFrom = $dateTo = $today->modify('-1 day')->format('Y-m-d');
+            } else {
+                $dateFrom = $today->modify('-' . self::PERIOD_PRESETS[$period]['days'] . ' days')->format('Y-m-d');
+                $dateTo = $today->format('Y-m-d');
+            }
+        }
+
+        $filters = compact('type', 'subtype', 'city', 'street', 'excludeStreet', 'dateFrom', 'dateTo');
+
+        $result = $this->alertRepo->findFilteredByPartner($partner, $filters, $page, 30);
+
+        $typesMap = $this->alertTypeRepo->getTypesMap($locale);
+        $subtypesMap = $this->alertTypeRepo->getSubtypesMap($locale);
+
+        $bySubtypeRaw = $this->alertRepo->countBySubtypeFiltered($partner, $filters, 10);
+        $bySubtype = array_map(function (array $r) use ($typesMap, $subtypesMap) {
+            $key = $r['type'] . '|' . $r['subtype'];
+            $label = $r['subtype'] ? ($subtypesMap[$key] ?? $r['subtype']) : ($typesMap[$r['type']] ?? $r['type']);
+            return ['label' => $label, 'total' => $r['total']];
+        }, $bySubtypeRaw);
 
         return $this->render('alert/index.html.twig', [
-            'partner'      => $partner,
-            'alerts'       => $result['items'],
-            'total'        => $result['total'],
-            'pages'        => $result['pages'],
-            'page'         => $page,
-            'type'         => $type,
-            'subtype'      => $subtype,
-            'city'         => $city,
-            'dateFrom'     => $dateFrom,
-            'dateTo'       => $dateTo,
-            'types'        => $this->alertRepo->findDistinctTypes($partner),
-            'subtypes'     => $this->alertRepo->findDistinctSubtypes($partner, $type),
-            'cities'       => $this->alertRepo->findDistinctCities($partner),
-            'typesMap'     => $this->alertTypeRepo->getTypesMap($locale),
-            'subtypesMap'  => $this->alertTypeRepo->getSubtypesMap($locale),
+            'partner'       => $partner,
+            'alerts'        => $result['items'],
+            'total'         => $result['total'],
+            'pages'         => $result['pages'],
+            'page'          => $page,
+            'type'          => $type,
+            'subtype'       => $subtype,
+            'city'          => $city,
+            'street'        => $street,
+            'excludeStreet' => $excludeStreet,
+            'period'        => $period,
+            'periods'       => self::PERIOD_PRESETS,
+            'dateFrom'      => $dateFrom,
+            'dateTo'        => $dateTo,
+            'types'         => $this->alertRepo->findDistinctTypes($partner),
+            'subtypes'      => $this->alertRepo->findDistinctSubtypes($partner, $type),
+            'cities'        => $this->alertRepo->findDistinctCities($partner),
+            'streets'       => $this->alertRepo->findDistinctStreets($partner),
+            'typesMap'      => $typesMap,
+            'subtypesMap'   => $subtypesMap,
+
+            // análises do conjunto filtrado inteiro (não só a página atual)
+            'bySubtype'     => $bySubtype,
+            'byConfidence'  => $this->alertRepo->countByConfidenceFiltered($partner, $filters),
+            'byDay'         => $this->alertRepo->countByDayFiltered($partner, $filters),
+            'byHour'        => $this->alertRepo->countByHourOfDayFiltered($partner, $filters),
+            'byWeekday'     => $this->alertRepo->countByWeekdayFiltered($partner, $filters),
+            'topStreets'    => $this->alertRepo->topStreetsFiltered($partner, $filters, 10),
+            'hotspots'      => $this->alertRepo->findHotspotsFiltered($partner, $filters, 15),
+            'mapAlerts'     => $this->alertRepo->findForMapFiltered($partner, $filters, 500),
         ]);
     }
 
