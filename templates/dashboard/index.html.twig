@@ -4,7 +4,6 @@
 
 {% block stylesheets %}
     {{ parent() }}
-    <link rel="stylesheet" href="{{ asset('styles/dashboard.css') }}">
 {% endblock %}
 
 {% block body %}
@@ -551,6 +550,5 @@
         window.solicDiarias   = {{ solicDiarias is defined and solicDiarias is iterable ? solicDiarias|json_encode|raw : '[]' }};
     </script>
 
-    {# Lógica do dashboard (gráficos, refresh, etc.) #}
-    <script src="{{ asset('js/dashboard.js') }}" defer></script>
+    {# Removido dashboard.js inexistente #}
 {% endblock %}
