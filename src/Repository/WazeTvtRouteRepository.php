@@ -388,19 +388,36 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    public function findRecentByPartner(Partner $partner, int $limit = 20): array
-    {
-        return $this->createQueryBuilder('r')
-            ->join('r.snapshot', 's')
-            ->where('s.partner = :partner')
-            ->andWhere('r.isSubRoute = false')
-            ->setParameter('partner', $partner)
-            ->orderBy('s.collectedAt', 'DESC')
-            ->addOrderBy('r.jamLevel', 'DESC')
-            ->setMaxResults($limit)
-            ->getQuery()
-            ->getResult();
+    public function findRecentByPartner(
+    Partner $partner,
+    int $limit = 20
+): array {
+    $limit = max(1, min($limit, 100));
+
+    $snapshot = $this->getEntityManager()
+        ->getRepository(WazeTvtSnapshot::class)
+        ->createQueryBuilder('s')
+        ->where('s.partner = :partner')
+        ->setParameter('partner', $partner)
+        ->orderBy('s.collectedAt', 'DESC')
+        ->setMaxResults(1)
+        ->getQuery()
+        ->getOneOrNullResult();
+
+    if ($snapshot === null) {
+        return [];
     }
+
+    return $this->createQueryBuilder('r')
+        ->where('r.snapshot = :snapshot')
+        ->andWhere('r.isSubRoute = false')
+        ->setParameter('snapshot', $snapshot)
+        ->orderBy('r.jamLevel', 'DESC')
+        ->addOrderBy('r.name', 'ASC')
+        ->setMaxResults($limit)
+        ->getQuery()
+        ->getResult();
+}
 
     /**
      * Registro mais recente de uma rota TVT, ignorando qualquer filtro de
