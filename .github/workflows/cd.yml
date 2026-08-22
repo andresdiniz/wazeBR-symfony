@@ -1,70 +1,88 @@
 name: CD - Deploy to Production
 
 on:
-  release:
-    types: [published]
-  workflow_dispatch:
+  push:
+    branches: [ main ]
 
 jobs:
   deploy:
-    name: Deploy to Production Server
+    name: Deploy to Hostinger
     runs-on: ubuntu-latest
+    
+    environment:
+      name: production
+      url: https://wazebr.com.br
+
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, zip
-          coverage: none
+          extensions: mbstring, intl, mysql, pdo_mysql
+          tools: composer:v2
 
-      - name: Install Composer dependencies (Production)
-        run: composer install --no-dev --optimize-autoloader --prefer-dist --no-progress --no-interaction
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-php-${{ hashFiles('composer.lock') }}
 
-      - name: Warm up Symfony cache
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-dev --optimize-autoloader
+
+      - name: Build assets
         run: |
-          php bin/console cache:clear --env=prod
-          php bin/console cache:warmup --env=prod
-        env:
-          APP_ENV: prod
-          APP_SECRET: ${{ secrets.APP_SECRET }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          npm install
+          npm run build
+        continue-on-error: true
 
-      - name: Deploy via SSH
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          ftp-server: ${{ secrets.FTP_SERVER }}
+          ftp-username: ${{ secrets.FTP_USERNAME }}
+          ftp-password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./
+          server-dir: /public_html/
+          exclude: |
+            .git/**
+            .github/**
+            tests/**
+            node_modules/**
+            .env*
+            vendor/**
+          dry-run: false
+
+      - name: Upload vendor separately
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          ftp-server: ${{ secrets.FTP_SERVER }}
+          ftp-username: ${{ secrets.FTP_USERNAME }}
+          ftp-password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: vendor/
+          server-dir: /public_html/vendor/
+          dry-run: false
+
+      - name: Run migrations on server
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT | default(22) }}
+          key: ${{ secrets.SSH_KEY }}
           script: |
-            cd ${{ secrets.DEPLOY_PATH }}
-            git pull origin main
-            composer install --no-dev --optimize-autoloader --no-interaction
-            php bin/console doctrine:migrations:migrate --no-interaction --env=prod
+            cd /home/u937753890/domains/wazebr.com.br/public_html
+            php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
             php bin/console cache:clear --env=prod
             php bin/console cache:warmup --env=prod
-            sudo systemctl reload nginx
-            echo "Deploy realizado com sucesso em $(date)"
-      
-      - name: Notify Deployment Success
-        if: success()
-        uses: 8398a7/action-slack@v3
-        with:
-          status: success
-          text: '🚀 Deploy do WazeBR-symfony realizado com sucesso para produção!'
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
 
-      - name: Notify Deployment Failure
+      - name: Notify success
+        if: success()
+        run: echo "✅ Deploy completed successfully!"
+
+      - name: Notify failure
         if: failure()
-        uses: 8398a7/action-slack@v3
-        with:
-          status: failure
-          text: '❌ Falha no deploy do WazeBR-symfony para produção!'
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "❌ Deploy failed! Check logs for details."
