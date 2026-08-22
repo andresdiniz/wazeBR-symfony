@@ -3,3 +3,9 @@ controllers:
         path: ../src/Controller/
         namespace: App\Controller
     type: attribute
+
+    # config/routes.yaml
+wme_ur_sync:
+  path: /api/wme/urs
+  controller: App\Controller\WmeUrSyncController::receive
+  methods: [POST]

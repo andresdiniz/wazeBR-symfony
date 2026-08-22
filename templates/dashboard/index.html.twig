@@ -1,528 +1,566 @@
 {% extends 'base.html.twig' %}
 
-{% block header_title %}Dashboard{% endblock %}
-{% block title %}Dashboard - {{ partnerLabel }}{% endblock %}
+{% block title %}Dashboard — ToolboxWaze{% endblock %}
 
 {% block stylesheets %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
-<style>
-    /* ── filtro de período ── */
-    .period-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
-    .period-bar-label { font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--text-secondary); margin-right: 4px; }
-    .period-btn { padding: 6px 14px; font-size: .82rem; font-weight: 600; border-radius: 999px; border: 1px solid var(--border-color); background: var(--surface); color: var(--text-secondary); text-decoration: none; transition: all .15s ease; }
-    .period-btn:hover { border-color: var(--primary-color); color: var(--primary-color); text-decoration: none; }
-    .period-btn.active { background: var(--primary-color); color: #fff; border-color: var(--primary-color); }
-    .period-range { font-size: .75rem; color: var(--text-muted); margin-left: 4px; }
-
-    /* ── hero: banda de KPIs ao vivo (tema claro, alinhado ao resto do dashboard) ── */
-    .hero-band {
-        margin-bottom: 24px;
-    }
-    .hero-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-        gap: 14px;
-    }
-    .hero-card {
-        position: relative;
-        background: var(--surface);
-        border: 1px solid var(--border-color);
-        border-left: 4px solid var(--hero-accent, #6b7280);
-        border-radius: 12px;
-        padding: 16px 16px 14px;
-        min-width: 0;
-        box-shadow: var(--card-shadow);
-    }
-    .hero-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-    .hero-label { font-size: .68rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); line-height: 1.3; }
-    .hero-icon {
-        width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
-        display: flex; align-items: center; justify-content: center;
-        background: var(--hero-accent-bg, rgba(148,163,184,.14));
-        color: var(--hero-accent, #6b7280);
-    }
-    .hero-icon svg { width: 14px; height: 14px; }
-    .hero-value { margin-top: 10px; font-size: 1.65rem; font-weight: 700; color: var(--text-primary); line-height: 1.15; letter-spacing: -.01em; }
-    .hero-value .unit { font-size: .95rem; font-weight: 600; color: var(--text-muted); margin-left: 3px; }
-    .hero-sub { margin-top: 4px; font-size: .74rem; color: var(--text-secondary); line-height: 1.4; }
-    .hero-sub strong { color: var(--text-secondary); font-weight: 600; }
-    .hero-sub .hl { color: var(--text-primary); font-weight: 700; }
-
-    /* ── mini stat cards do período ── */
-    .mini-stat { background: var(--surface); border-radius: 12px; padding: 14px 16px; box-shadow: var(--card-shadow); border-left: 4px solid var(--primary-color); }
-    .mini-stat .mini-value { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); line-height: 1.1; }
-    .mini-stat .mini-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin-top: 2px; }
-
-    /* ── gráficos ── */
-    .chart-wrap { position: relative; height: 280px; }
-    .chart-empty { display:flex; align-items:center; justify-content:center; height:280px; color:var(--text-muted); font-size:.9rem; }
-
-    /* ── ranking de ruas ── */
-    .street-rank-item { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid var(--border-color); }
-    .street-rank-item:last-child { border-bottom:none; }
-    .street-rank-pos { width:24px; height:24px; border-radius:50%; background:var(--sidebar-active-bg, #eef2ff); color:var(--primary-color); font-weight:700; font-size:.75rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-    .street-rank-name { font-weight:600; font-size:.88rem; color:var(--text-primary); }
-    .street-rank-city { font-size:.75rem; color:var(--text-muted); }
-    .street-rank-meta { font-size:.72rem; color:var(--text-muted); white-space:nowrap; }
-
-    /* ── mapa ── */
-    #dashMap { height: 420px; width: 100%; border-radius: 12px; }
-    .map-legend { position:absolute; bottom:14px; right:14px; z-index:1000; background:var(--surface); border:1px solid var(--border-color); border-radius:10px; box-shadow:0 2px 8px rgba(15,23,42,.18); padding:8px 12px; font-size:.72rem; pointer-events:none; color:var(--text-primary); }
-    .map-legend-item { display:flex; align-items:center; gap:6px; margin-bottom:3px; }
-    .map-legend-item:last-child { margin-bottom:0; }
-    .map-legend-swatch { width:18px; height:4px; border-radius:2px; flex-shrink:0; }
-    .map-wrap { position: relative; }
-    .map-note { font-size:.75rem; color:var(--text-muted); margin-top:8px; }
-</style>
+    {{ parent() }}
+    {# CSS específico do dashboard #}
+    <link rel="stylesheet" href="{{ asset('styles/dashboard.css') }}">
 {% endblock %}
 
 {% block body %}
-
-{# ───────────────────── Filtro de período ───────────────────── #}
-<div class="period-bar">
-    <span class="period-bar-label">Período:</span>
-    {% for key, p in periods %}
-        <a href="{{ path('dashboard_index', {period: key}) }}" class="period-btn {{ periodKey == key ? 'active' : '' }}">{{ p.label }}</a>
-    {% endfor %}
-    <span class="period-range">{{ periodFrom|date('d/m/Y H:i') }} → {{ periodTo|date('d/m/Y H:i') }}</span>
-</div>
-
-{# ───────────────────── Banda "ao vivo" (KPIs em destaque) ───────────────────── #}
-<div class="hero-band">
-    <div class="hero-grid">
-
-        <div class="hero-card" style="--hero-accent:#f97316;--hero-accent-bg:rgba(249,115,22,.16)">
-            <div class="hero-card-top">
-                <div class="hero-label">Alertas totais</div>
-                <div class="hero-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 21 19H3z"/><path d="M12 9.5v4.5"/><circle cx="12" cy="16.8" r=".6" fill="currentColor" stroke="none"/></svg></div>
-            </div>
-            <div class="hero-value">{{ hero.alertsTotal|number_format(0, ',', '.') }}</div>
-            <div class="hero-sub"><span class="hl">{{ hero.alertsLast24h|number_format(0, ',', '.') }}</span> nas últimas 24h</div>
-        </div>
-
-        <div class="hero-card" style="--hero-accent:#fb923c;--hero-accent-bg:rgba(251,146,60,.16)">
-            <div class="hero-card-top">
-                <div class="hero-label">Congestionamentos</div>
-                <div class="hero-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 4h3l3.5 14h-10z"/><path d="M9 12h6"/><path d="M7.8 18h8.4"/><path d="M4 21h16"/></svg></div>
-            </div>
-            <div class="hero-value">{{ hero.jamsTotal|number_format(0, ',', '.') }}</div>
-            <div class="hero-sub"><span class="hl">{{ hero.jamsLast24h|number_format(0, ',', '.') }}</span> nas últimas 24h</div>
-        </div>
-
-        <div class="hero-card" style="--hero-accent:#ec4899;--hero-accent-bg:rgba(236,72,153,.16)">
-            <div class="hero-card-top">
-                <div class="hero-label">Jams ativos (3h)</div>
-                <div class="hero-icon"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></div>
-            </div>
-            <div class="hero-value">{{ hero.jamsLiveTotal|number_format(0, ',', '.') }}</div>
-            <div class="hero-sub">
-                {% if hero.jamsLiveMaxLevelLabel %}Nível máx. <span class="hl">{{ hero.jamsLiveMaxLevelLabel }} ({{ hero.jamsLiveMaxLevel }})</span>{% else %}Sem jams no período{% endif %}
-            </div>
-        </div>
-
-        <div class="hero-card" style="--hero-accent:#22d3ee;--hero-accent-bg:rgba(34,211,238,.16)">
-            <div class="hero-card-top">
-                <div class="hero-label">Velocidade média</div>
-                <div class="hero-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15a8 8 0 1 1 16 0"/><path d="M12 15 15.5 9.5"/><circle cx="12" cy="15" r="1" fill="currentColor" stroke="none"/></svg></div>
-            </div>
-            <div class="hero-value">{{ (hero.avgSpeedLive ?? 0)|number_format(1, ',', '.') }}<span class="unit">km/h</span></div>
-            <div class="hero-sub">Ao vivo · histórico: {{ (hero.avgSpeedHist ?? 0)|number_format(1, ',', '.') }} km/h</div>
-        </div>
-
-        <div class="hero-card" style="--hero-accent:#eab308;--hero-accent-bg:rgba(234,179,8,.16)">
-            <div class="hero-card-top">
-                <div class="hero-label">Atraso médio</div>
-                <div class="hero-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></div>
-            </div>
-            <div class="hero-value">{{ ((hero.avgDelayLive ?? 0) / 60)|round(1) }}<span class="unit">min</span></div>
-            <div class="hero-sub">{{ (hero.avgDelayLive ?? 0)|number_format(0, ',', '.') }}s · jams ativos (3h)</div>
-        </div>
-
-        <div class="hero-card" style="--hero-accent:#3b82f6;--hero-accent-bg:rgba(59,130,246,.16)">
-            <div class="hero-card-top">
-                <div class="hero-label">Extensão congestionada</div>
-                <div class="hero-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 5 21"/><path d="M16 3l3 18"/><path d="M11 9h.01M10.3 14h.01M9.6 19h.01"/></svg></div>
-            </div>
-            <div class="hero-value">{{ (hero.lengthLiveKm ?? 0)|number_format(1, ',', '.') }}<span class="unit">km</span></div>
-            <div class="hero-sub">Ao vivo · total hist.: {{ (hero.lengthHistKm ?? 0)|number_format(1, ',', '.') }} km</div>
-        </div>
-
-        <div class="hero-card" style="--hero-accent:#2dd4bf;--hero-accent-bg:rgba(45,212,191,.16)">
-            <div class="hero-card-top">
-                <div class="hero-label">CEMADEN</div>
-                <div class="hero-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 15a4 4 0 0 1 .5-7.97A5.5 5.5 0 0 1 18 9.5 4 4 0 0 1 17 17H7z"/><path d="M9 19v1.2M12.5 19v1.2M16 19v1.2"/></svg></div>
-            </div>
-            <div class="hero-value">{{ hero.cemadenReadings|number_format(0, ',', '.') }}</div>
-            <div class="hero-sub">Leituras · {{ hero.cemadenCities }} cidade(s) monitorada(s)</div>
-        </div>
-
-        <div class="hero-card" style="--hero-accent:#4ade80;--hero-accent-bg:rgba(74,222,128,.16)">
-            <div class="hero-card-top">
-                <div class="hero-label">Rotas monitoradas</div>
-                <div class="hero-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 4 6v14l5-2 6 2 5-2V4l-5 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg></div>
-            </div>
-            <div class="hero-value">{{ hero.routesMonitored|number_format(0, ',', '.') }}</div>
-            <div class="hero-sub">{{ hero.monitoredLinks }} link(s) · {{ hero.monitoredCities }} cidade(s)</div>
-        </div>
-
-    </div>
-</div>
-
-{# ───────────────────── Resumo do período selecionado ───────────────────── #}
-<div class="mb-2" style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-secondary);">
-    No período — {{ periods[periodKey].label }}
-</div>
-<div class="row g-3 mb-4">
-    <div class="col-6" style="flex:1 0 18%;max-width:20%;">
-        <div class="mini-stat" style="border-left-color:#2563eb;">
-            <div class="mini-value">{{ periodStats.alerts }}</div>
-            <div class="mini-label">Alertas</div>
-        </div>
-    </div>
-    <div class="col-6" style="flex:1 0 18%;max-width:20%;">
-        <div class="mini-stat" style="border-left-color:#dd6b20;">
-            <div class="mini-value">{{ periodStats.jams }}</div>
-            <div class="mini-label">Congestionamentos</div>
-        </div>
-    </div>
-    <div class="col-6" style="flex:1 0 18%;max-width:20%;">
-        <div class="mini-stat" style="border-left-color:#16a34a;">
-            <div class="mini-value">{{ periodStats.tvtRoutes }}</div>
-            <div class="mini-label">Rotas TVT coletadas</div>
-        </div>
-    </div>
-    <div class="col-6" style="flex:1 0 18%;max-width:20%;">
-        <div class="mini-stat" style="border-left-color:#f59e0b;">
-            <div class="mini-value">{{ periodStats.irregularities }}</div>
-            <div class="mini-label">Irregularidades</div>
-        </div>
-    </div>
-    <div class="col-6" style="flex:1 0 18%;max-width:20%;">
-        <div class="mini-stat" style="border-left-color:#6b7280;">
-            <div class="mini-value">{{ periodStats.cifsEvents }}</div>
-            <div class="mini-label">Eventos CIFS</div>
-        </div>
-    </div>
-</div>
-
-{# ───────────────────── Gráficos ───────────────────── #}
-<div class="row g-4 mb-4">
-    <div class="col-lg-6">
-        <div class="card h-100">
-            <div class="card-header">Alertas por subtipo</div>
-            <div class="card-body">
-                {% if alertsBySubtype|length > 0 %}
-                    <div class="chart-wrap"><canvas id="chartSubtypes"></canvas></div>
-                {% else %}
-                    <div class="chart-empty">Nenhum alerta no período selecionado.</div>
+<div class="container-fluid py-4">
+    {# Cabeçalho #}
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <div>
+            <h4 class="mb-0 fw-bold">
+                <i class="bi bi-speedometer2 me-2 text-primary"></i>
+                Dashboard
+            </h4>
+            <p class="text-muted small mb-0">
+                Visão geral do WazeToolbox{% if allowedUfs is not null %}
+                    <span class="text-info"> — {{ allowedUfs|join(', ') }}</span>
                 {% endif %}
-            </div>
+            </p>
         </div>
-    </div>
-    <div class="col-lg-6">
-        <div class="card h-100">
-            <div class="card-header">Congestionamentos por nível</div>
-            <div class="card-body">
-                <div class="chart-wrap"><canvas id="chartLevels"></canvas></div>
-            </div>
-        </div>
-    </div>
-</div>
+        <div class="d-flex flex-wrap gap-2">
+            <button id="refresh-dashboard" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-arrow-clockwise"></i>
+                Atualizar
+            </button>
 
-{# ───────────────────── Ranking de ruas + Mapa ───────────────────── #}
-<div class="row g-4 mb-4">
-    <div class="col-lg-5">
-        <div class="card h-100">
-            <div class="card-header">Principais ruas com congestionamento</div>
-            <div class="card-body">
-                {% for s in topStreets %}
-                    <div class="street-rank-item">
-                        <div style="display:flex;align-items:center;gap:10px;min-width:0;">
-                            <div class="street-rank-pos">{{ loop.index }}</div>
-                            <div style="min-width:0;">
-                                <div class="street-rank-name text-truncate">{{ s.street ?? 'Sem nome' }}</div>
-                                <div class="street-rank-city">{{ s.city ?? '—' }}</div>
+            {% if showRadar %}
+                <a href="{{ path('radar_index') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-broadcast me-1"></i>Radares
+                </a>
+            {% endif %}
+            {% if showPosto %}
+                <a href="{{ path('posto_index') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-fuel-pump me-1"></i>Postos
+                </a>
+            {% endif %}
+            {% if showEscola %}
+                <a href="{{ path('escola_inep_index') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-building me-1"></i>Escolas
+                </a>
+            {% endif %}
+            {% if showSolicitacao %}
+                <a href="{{ path('solicitacao_hub') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-inbox me-1"></i>Solicitações
+                </a>
+            {% endif %}
+            {% if isAdmin %}
+                <a href="{{ path('admin_users_index') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-people me-1"></i>Usuários
+                </a>
+            {% endif %}
+            {% if showRadar %}
+                <a href="{{ path('cobertura_radar') }}" class="btn btn-sm btn-outline-danger">
+                    <i class="bi bi-broadcast me-1"></i>Cobertura
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Cards de alerta #}
+    {% if showRadar or showSolicitacao %}
+        {# Nº de cards varia por permissão: radar contribui 3 (vencidos, vencendo, cobertura),
+           solicitação contribui 1 (pendentes). A largura da coluna se adapta pra não sobrar
+           espaço vazio quando o usuário só tem parte das permissões. #}
+        {% set alertCount = (showRadar ? 3 : 0) + (showSolicitacao ? 1 : 0) %}
+        {% set alertColClass = alertCount >= 4 ? 'col-6 col-xl-3' : (alertCount == 3 ? 'col-md-4' : 'col-md-6') %}
+
+        <div class="row g-3 mb-4 dashboard-alert-card">
+            {% if showRadar %}
+                <div class="{{ alertColClass }}">
+                    <div class="card border-danger border-2 shadow-sm">
+                        <div class="card-body d-flex align-items-center">
+                            <i class="bi bi-exclamation-triangle-fill text-danger fs-1 me-3"></i>
+                            <div>
+                                <div class="text-uppercase small text-muted">Radares Vencidos</div>
+                                <div class="fs-2 fw-bold text-danger count-up"
+                                     data-key="radaresvencidos"
+                                     data-target="{{ radarKpis.vencidos ?? 0 }}">
+                                    0
+                                </div>
                             </div>
                         </div>
-                        <div class="text-end">
-                            <span class="badge bg-{{ s.avgLevel >= 4 ? 'danger' : s.avgLevel >= 2 ? 'warning' : 'success' }}">nível {{ s.avgLevel }}</span>
-                            <div class="street-rank-meta">{{ s.occurrences }} ocorrência(s){% if s.avgDelay %} · atraso médio {{ s.avgDelay }}s{% endif %}</div>
-                        </div>
-                    </div>
-                {% else %}
-                    <p class="text-muted mb-0">Nenhum congestionamento registrado no período selecionado.</p>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-7">
-        <div class="card h-100" style="padding:0;">
-            <div class="card-header">Mapa — congestionamentos e alertas</div>
-            <div class="card-body" style="padding:12px;">
-                <div class="map-wrap">
-                    <div id="dashMap"></div>
-                    <div class="map-legend">
-                        <div style="font-weight:700;margin-bottom:4px;">Nível de congestionamento</div>
-                        <div class="map-legend-item"><span class="map-legend-swatch" style="background:#48bb78"></span> Livre (0–1)</div>
-                        <div class="map-legend-item"><span class="map-legend-swatch" style="background:#ecc94b"></span> Leve (2)</div>
-                        <div class="map-legend-item"><span class="map-legend-swatch" style="background:#dd6b20"></span> Moderado (3–4)</div>
-                        <div class="map-legend-item"><span class="map-legend-swatch" style="background:#e53e3e"></span> Parado (5)</div>
                     </div>
                 </div>
-                <p class="map-note">
-                    {{ mapJams|length }} congestionamento(s) e {{ mapAlerts|length }} alerta(s) exibidos no período
-                    {% if mapJamsTruncated or mapAlertsTruncated %} (limite de exibição atingido — refine o período para ver tudo){% endif %}.
-                    Alertas próximos são agrupados automaticamente conforme o zoom.
-                </p>
+
+                <div class="{{ alertColClass }}">
+                    <div class="card border-warning border-2 shadow-sm">
+                        <div class="card-body d-flex align-items-center">
+                            <i class="bi bi-hourglass-split text-warning fs-1 me-3"></i>
+                            <div>
+                                <div class="text-uppercase small text-muted">Radares a Vencer</div>
+                                <div class="fs-2 fw-bold text-warning count-up"
+                                     data-key="radaresvencendo"
+                                     data-target="{{ radarKpis.vencendo ?? 0 }}">
+                                    0
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if showSolicitacao %}
+                <div class="{{ alertColClass }}">
+                    <div class="card border-warning border-2 shadow-sm">
+                        <div class="card-body d-flex align-items-center">
+                            <i class="bi bi-inbox-fill text-warning fs-1 me-3"></i>
+                            <div>
+                                <div class="text-uppercase small text-muted">Solicitações Pendentes</div>
+                                <div class="fs-2 fw-bold text-warning count-up"
+                                     data-key="solicpendentes"
+                                     data-target="{{ solicKpis.geral.pendentes ?? 0 }}">
+                                    0
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if showRadar %}
+                <div class="{{ alertColClass }}">
+                    <div class="card border-success border-2 shadow-sm">
+                        <div class="card-body d-flex align-items-center">
+                            <i class="bi bi-broadcast text-success fs-1 me-3"></i>
+                            <div>
+                                <div class="text-uppercase small text-muted">Cobertura Waze</div>
+                                <div class="fs-2 fw-bold text-success">
+                                    {{ radarKpis.pctWaze|round(1) }}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {# KPIs cards animados #}
+    <div class="row g-3 mb-4">
+        {% set kpiitems = [] %}
+        {% if showRadar %}
+            {% set kpiitems = kpiitems|merge([
+                {
+                    label: 'Radares',
+                    icon: 'bi-broadcast',
+                    value: radarKpis.total,
+                    color: 'primary',
+                    subtitle: (radarKpis.reprovados ?? 0) ~ ' reprovados',
+                    key: 'radarestotal'
+                }
+            ]) %}
+        {% endif %}
+        {% if showPosto %}
+            {% set kpiitems = kpiitems|merge([
+                {
+                    label: 'Postos',
+                    icon: 'bi-fuel-pump',
+                    value: postoKpis.total,
+                    color: 'warning',
+                    subtitle: (postoKpis.comWaze ?? 0) ~ ' com Waze',
+                    key: 'postostotal'
+                }
+            ]) %}
+        {% endif %}
+        {% if showEscola %}
+            {% set kpiitems = kpiitems|merge([
+                {
+                    label: 'Escolas',
+                    icon: 'bi-building',
+                    value: escolaKpis.total ?? 0,
+                    color: 'info',
+                    subtitle: (escolaKpis.estados ?? 0) ~ ' estados',
+                    key: 'escolastotal'
+                }
+            ]) %}
+        {% endif %}
+        {% if showSolicitacao %}
+            {% set kpiitems = kpiitems|merge([
+                {
+                    label: 'Solicitações',
+                    icon: 'bi-inbox',
+                    value: solicKpis.geral.total,
+                    color: 'secondary',
+                    subtitle: (solicKpis.geral.hoje ?? 0) ~ ' hoje',
+                    key: 'solictotal'
+                }
+            ]) %}
+        {% endif %}
+        {% if isAdmin %}
+            {% set kpiitems = kpiitems|merge([
+                {
+                    label: 'Usuários',
+                    icon: 'bi-people',
+                    value: usuarioKpis.total ?? 0,
+                    color: 'dark',
+                    subtitle: (usuarioKpis.pendentes ?? 0) ~ ' pendentes',
+                    key: 'usuariostotal'
+                }
+            ]) %}
+        {% endif %}
+
+        {# Largura da coluna se adapta à quantidade real de KPIs visíveis para este usuário #}
+        {% set kpiCount = kpiitems|length %}
+        {% set kpiColClass = kpiCount >= 5 ? 'col-6 col-sm-3 col-xl-2'
+            : (kpiCount == 4 ? 'col-6 col-sm-3'
+            : (kpiCount == 3 ? 'col-6 col-md-4'
+            : (kpiCount == 2 ? 'col-6 col-sm-6 col-md-4'
+            : 'col-6 col-sm-4 col-md-3'))) %}
+
+        {% for item in kpiitems %}
+            <div class="{{ kpiColClass }} card-dashboard">
+                {% include 'components/kpi_card.html.twig' with {
+                    color: item.color,
+                    icon: item.icon,
+                    label: item.label,
+                    value: item.value,
+                    suffix: item.suffix|default(null),
+                    subtitle: item.subtitle|default(null),
+                    datakey: item.key
+                } %}
+            </div>
+        {% endfor %}
+    </div>
+
+    {# GRÁFICOS Radares (se showRadar) #}
+    {% if showRadar %}
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-xl-8">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                        <span class="fw-semibold">
+                            <i class="bi bi-bar-chart-fill me-1 text-primary"></i>Radares por Estados
+                        </span>
+                        <a href="{{ path('radar_index') }}" class="btn btn-sm btn-outline-secondary">Ver todos</a>
+                    </div>
+                    <div class="card-body chart-container">
+                        <canvas id="chartRadarUf"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-xl-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-transparent">
+                        <span class="fw-semibold">
+                            <i class="bi bi-pie-chart-fill me-1 text-success"></i>Resultado Geral
+                        </span>
+                    </div>
+                    <div class="card-body d-flex align-items-center justify-content-center chart-container">
+                        <canvas id="chartRadarResultado"></canvas>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-xl-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-transparent">
+                        <span class="fw-semibold">
+                            <i class="bi bi-graph-up me-1 text-primary"></i>Verificações Mensais (12 meses)
+                        </span>
+                    </div>
+                    <div class="card-body chart-container">
+                        <canvas id="chartVerifMensais"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-xl-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                        <span class="fw-semibold">
+                            <i class="bi bi-broadcast me-1 text-danger"></i>Cobertura Waze por Estados
+                        </span>
+                        <a href="{{ path('cobertura_radar') }}" class="btn btn-sm btn-outline-danger">Relatório</a>
+                    </div>
+                    <div class="card-body chart-container">
+                        <canvas id="chartCoberturaUf"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    {# POSTOS / ESCOLAS (se showPosto / showEscola) #}
+    {% if showPosto or showEscola %}
+        <div class="row g-3 mb-4">
+            {% if showPosto %}
+                <div class="col-12 col-xl-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                            <span class="fw-semibold">
+                                <i class="bi bi-fuel-pump me-1 text-warning"></i>Postos de Combustível
+                            </span>
+                            <div>
+                                <a href="{{ path('posto_index') }}" class="btn btn-sm btn-outline-secondary">Ver lista</a>
+                                <a href="{{ path('cobertura_posto') }}" class="btn btn-sm btn-outline-warning ms-1">Cobertura</a>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <div class="p-2 rounded bg-body-secondary text-center">
+                                        <div class="small text-muted">Total</div>
+                                        <div class="fw-bold fs-5 count-up" data-key="postostotal" data-target="{{ postoKpis.total ?? 0 }}">0</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-2 rounded bg-success bg-opacity-10 text-center">
+                                        <div class="small text-success">Com Waze</div>
+                                        <div class="fw-bold fs-5 text-success count-up" data-key="postoscomwaze" data-target="{{ postoKpis.comWaze ?? 0 }}">0</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-2 rounded bg-danger bg-opacity-10 text-center">
+                                        <div class="small text-danger">Sem Waze</div>
+                                        <div class="fw-bold fs-5 text-danger count-up" data-key="postossemwaze" data-target="{{ postoKpis.semWaze ?? 0 }}">0</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-2 rounded bg-info bg-opacity-10 text-center">
+                                        <div class="small text-info">Cobertura</div>
+                                        <div class="fw-bold fs-5 text-info">{{ postoKpis.pct ?? 0 }}%</div>
+                                        <div class="progress mt-1" style="height: 3px;">
+                                            <div class="progress-bar bg-info" style="width: {{ postoKpis.pct ?? 0 }}%;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="chart-container chart-container-sm">
+                                <canvas id="chartPostoAtividade"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if showEscola %}
+                <div class="col-12 col-xl-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                            <span class="fw-semibold">
+                                <i class="bi bi-building me-1 text-warning"></i>Escolas INEP
+                            </span>
+                            <a href="{{ path('escola_inep_index') }}" class="btn btn-sm btn-outline-secondary">Ver lista</a>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <div class="p-2 rounded bg-body-secondary text-center">
+                                        <div class="small text-muted">Total</div>
+                                        <div class="fw-bold fs-5 count-up" data-key="escolastotal" data-target="{{ escolaKpis.total ?? 0 }}">0</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-2 rounded bg-primary bg-opacity-10 text-center">
+                                        <div class="small text-primary">Estados</div>
+                                        <div class="fw-bold fs-5 text-primary count-up" data-key="escolasestados" data-target="{{ escolaKpis.estados ?? 0 }}">0</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {# SOLICITAÇÕES (se showSolicitacao) #}
+    {% if showSolicitacao %}
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-xl-5">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                        <span class="fw-semibold">
+                            <i class="bi bi-inbox me-1 text-info"></i>Solicitações por Tipos
+                        </span>
+                        <a href="{{ path('solicitacao_hub') }}" class="btn btn-sm btn-outline-secondary">Ver todas</a>
+                    </div>
+                    <div class="card-body p-0">
+                        {% if solicKpis.geral.total is defined %}
+                            <div class="px-3 py-2 border-bottom d-flex gap-3 flex-wrap">
+                                <span class="small">Total
+                                    <strong class="count-up" data-key="solictotal" data-target="{{ solicKpis.geral.total }}">0</strong>
+                                </span>
+                                <span class="small text-success">Atendidas
+                                    <strong class="count-up text-success" data-key="solicatendidas" data-target="{{ solicKpis.geral.atendidas ?? 0 }}">0</strong>
+                                </span>
+                                <span class="small text-warning">Pendentes
+                                    <strong class="count-up text-warning" data-key="solicpendentes" data-target="{{ solicKpis.geral.pendentes ?? 0 }}">0</strong>
+                                </span>
+                                {% if (solicKpis.geral.atrasadas ?? 0) > 0 %}
+                                <span class="small text-danger" title="Pendentes há mais de 3 dias">
+                                    <i class="bi bi-alarm-fill me-1"></i>Atrasadas
+                                    <strong class="count-up text-danger" data-key="solicatrasadas" data-target="{{ solicKpis.geral.atrasadas ?? 0 }}">0</strong>
+                                </span>
+                                {% endif %}
+                                <span class="small text-danger">Recusadas
+                                    <strong class="count-up text-danger" data-key="solicrecusadas" data-target="{{ solicKpis.geral.recusadas ?? 0 }}">0</strong>
+                                </span>
+                            </div>
+                        {% endif %}
+
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead class="sticky-top">
+                                <tr>
+                                    <th>Tipo</th>
+                                    <th class="text-end">Total</th>
+                                    <th class="text-end text-success">Atend.</th>
+                                    <th>Taxa</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {% for t in solicKpis.totais ?? [] %}
+                                    {% set taxa = t.total > 0 ? (t.atendidas / t.total * 100)|round(0) : 0 %}
+                                    <tr>
+                                        <td><span class="badge bg-secondary">{{ t.tipo }}</span></td>
+                                        <td class="text-end fw-semibold">{{ t.total }}</td>
+                                        <td class="text-end text-success">{{ t.atendidas ?? 0 }}</td>
+                                        <td style="min-width: 80px;">
+                                            <div class="progress mb-1" style="height: 5px;">
+                                                <div class="progress-bar bg-{{ taxa >= 75 ? 'success' : (taxa >= 40 ? 'warning' : 'danger') }}" style="width: {{ taxa }}%;"></div>
+                                            </div>
+                                            <small class="text-muted">{{ taxa }}%</small>
+                                        </td>
+                                    </tr>
+                                {% else %}
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted py-3">Nenhuma solicitação.</td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-xl-7">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-transparent">
+                        <span class="fw-semibold">
+                            <i class="bi bi-graph-up-arrow me-1 text-info"></i>Solicitações Diárias (30 dias)
+                        </span>
+                    </div>
+                    <div class="card-body chart-container">
+                        <canvas id="chartSolicDiarias"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    {# Radares sem Waze + Usuários (admin) #}
+    {% if showRadar %}
+        <div class="row g-3 mb-2">
+            <div class="col-12 col-xl-8">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                        <span class="fw-semibold">
+                            <i class="bi bi-exclamation-triangle-fill me-1 text-danger"></i>Radares APROVADOS sem Link Waze
+                        </span>
+                        <a href="{{ path('cobertura_radar') }}" class="btn btn-sm btn-outline-warning">Ver todos</a>
+                    </div>
+                    <div class="card-body p-0" style="max-height: 280px; overflow-y: auto;">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead class="sticky-top">
+                            <tr>
+                                <th>UF</th>
+                                <th>Município</th>
+                                <th>Logradouro</th>
+                                <th class="text-end">Ação</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                              {% for r in radarSemWaze %}
+                              <tr>
+                                  <td><span class="badge bg-secondary">{{ r.sigla_uf }}</span></td>
+                                  <td class="small">{{ r.municipio }}</td>
+                                  <td class="small text-muted text-truncate" style="max-width: 180px;">
+                                      {{ r.logradouro ?? '' }}
+                                  </td>
+                                  <td class="text-end">
+                                      <a href="{{ path('radar_show', { id: r.id }) }}" class="btn btn-sm btn-outline-primary py-0 px-2">
+                                          <i class="bi bi-link-45deg"></i>
+                                      </a>
+                                  </td>
+                              </tr>
+                          {% else %}
+                              <tr>
+                                  <td colspan="4" class="text-center py-4 text-success">
+                                      <i class="bi bi-check-circle-fill fs-3 d-block mb-1"></i>
+                                      Todos vinculados!
+                                  </td>
+                              </tr>
+                          {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {% if isAdmin and usuarioKpis.total is defined %}
+                <div class="col-12 col-xl-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                            <span class="fw-semibold">
+                                <i class="bi bi-people me-1 text-secondary"></i>Usuários
+                            </span>
+                            <a href="{{ path('admin_users_index') }}" class="btn btn-sm btn-outline-secondary">Gerenciar</a>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-2">
+                                {% for u in [
+                                    { label: 'Total',     val: usuarioKpis.total ?? 0,      color: 'secondary', key: 'usuariostotal' },
+                                    { label: 'Ativos',    val: usuarioKpis.ativos ?? 0,     color: 'success',   key: 'usuariosativos' },
+                                    { label: 'Aprovados', val: usuarioKpis.aprovados ?? 0,  color: 'primary',   key: 'usuariosaprovados' },
+                                    { label: 'Pendentes', val: usuarioKpis.pendentes ?? 0,  color: 'warning',   key: 'usuariospendentes' }
+                                ] %}
+                                    <div class="col-6">
+                                        <div class="p-2 rounded bg-{{ u.color }} bg-opacity-10 text-center">
+                                            <div class="small text-{{ u.color }}">{{ u.label }}</div>
+                                            <div class="fw-bold fs-5 text-{{ u.color }} count-up" data-key="{{ u.key }}" data-target="{{ u.val }}">0</div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
 </div>
-
-<div class="row g-4 mb-4">
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header">Alertas recentes</div>
-            <div class="card-body">
-                <table class="table table-sm table-hover mb-0">
-                    <thead>
-                    <tr>
-                        <th>Tipo</th>
-                        <th>Subtipo</th>
-                        <th>Local</th>
-                        <th>Hora</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {% for alert in recentAlerts %}
-                        <tr>
-                            <td><span class="badge bg-secondary">{{ alert.type }}</span></td>
-                            <td>{{ alert.subtype ?? '—' }}</td>
-                            <td class="text-muted">{{ alert.city ?? '' }} — {{ alert.street ?? 'Via não informada' }}</td>
-                            <td class="font-monospace small">{{ alert.pubAt ?? '—' }}</td>
-                        </tr>
-                    {% else %}
-                        <tr><td colspan="4" class="text-center text-muted">Nenhum alerta no período selecionado.</td></tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header">Lentidões recentes</div>
-            <div class="card-body">
-                <table class="table table-sm table-hover mb-0">
-                    <thead>
-                    <tr>
-                        <th>Via</th>
-                        <th>Cidade</th>
-                        <th>Nível</th>
-                        <th>Hora</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {% for jam in recentJams %}
-                        <tr>
-                            <td>{{ jam.street ?? 'Sem nome' }}</td>
-                            <td>{{ jam.city ?? '—' }}</td>
-                            <td><span class="badge bg-{{ jam.level >= 4 ? 'danger' : jam.level >= 2 ? 'warning' : 'success' }}">{{ jam.level }}</span></td>
-                            <td class="font-monospace small">{{ jam.pubAt ?? '—' }}</td>
-                        </tr>
-                    {% else %}
-                        <tr><td colspan="4" class="text-center text-muted">Nenhuma lentidão no período selecionado.</td></tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row g-4">
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header">Irregularidades</div>
-            <div class="card-body">
-                <ul class="list-group list-group-flush">
-                {% for irr in irregularities %}
-                    <li class="list-group-item">
-                        <strong>{{ irr.name ?? 'Irregularidade' }}</strong>
-                        {% if irr.fromName or irr.toName %} — {{ irr.fromName }} → {{ irr.toName }}{% endif %}
-                        <small class="text-muted float-end">{{ irr.collectedAt ? irr.collectedAt|date('d/m/Y H:i') : '—' }}</small>
-                    </li>
-                {% else %}
-                    <li class="list-group-item text-muted">Nenhuma irregularidade registrada.</li>
-                {% endfor %}
-                </ul>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header">Eventos CIFS</div>
-            <div class="card-body">
-                <ul class="list-group list-group-flush">
-                {% for evt in cifsEvents %}
-                    <li class="list-group-item">
-                        <strong>{{ evt.street is not empty ? evt.street : evt.type.label }}</strong>
-                        <small class="text-muted float-end">{{ evt.creationTime ? evt.creationTime|date('d/m/Y H:i') : '—' }}</small>
-                    </li>
-                {% else %}
-                    <li class="list-group-item text-muted">Nenhum evento CIFS registrado.</li>
-                {% endfor %}
-                </ul>
-            </div>
-        </div>
-    </div>
-</div>
-
 {% endblock %}
 
 {% block javascripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-<script>
-(function () {
-    'use strict';
+    {{ parent() }}
 
-    /* ═══════════════════ Gráfico: alertas por subtipo ═══════════════════ */
-    var subtypeData = {{ alertsBySubtype|json_encode|raw }};
-    var elSubtypes = document.getElementById('chartSubtypes');
-    if (elSubtypes && subtypeData.length) {
-        new Chart(elSubtypes, {
-            type: 'bar',
-            data: {
-                labels: subtypeData.map(function (d) { return d.label; }),
-                datasets: [{
-                    label: 'Ocorrências',
-                    data: subtypeData.map(function (d) { return d.total; }),
-                    backgroundColor: '#2563eb',
-                    borderRadius: 4,
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
-            }
-        });
-    }
+    {# Chart.js CDN #}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 
-    /* ═══════════════════ Gráfico: congestionamentos por nível ═══════════════════ */
-    var levelData = {{ jamsByLevel|json_encode|raw }};
-    var levelLabels = ['0 — Livre', '1 — Livre', '2 — Leve', '3 — Moderado', '4 — Moderado', '5 — Parado'];
-    var levelColors = ['#48bb78', '#48bb78', '#ecc94b', '#dd6b20', '#dd6b20', '#e53e3e'];
-    var elLevels = document.getElementById('chartLevels');
-    if (elLevels) {
-        new Chart(elLevels, {
-            type: 'bar',
-            data: {
-                labels: levelLabels,
-                datasets: [{
-                    label: 'Ocorrências',
-                    data: [0, 1, 2, 3, 4, 5].map(function (l) { return levelData[l] || 0; }),
-                    backgroundColor: levelColors,
-                    borderRadius: 4,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
-            }
-        });
-    }
+    {# Dados dos gráficos como variáveis globais #}
+    <script>
+        window.radarUf       = {{ radarPorUf is iterable ? radarPorUf|json_encode|raw : '[]' }};
+        window.radarResultado = {{ radarResultado is iterable ? radarResultado|json_encode|raw : '[]' }};
+        window.radarMensais   = {{ radarMensais is iterable ? radarMensais|json_encode|raw : '[]' }};
+        window.radarCobertura = {{ radarCobertura is iterable ? radarCobertura|json_encode|raw : '[]' }};
+        window.postoAtividade = {{ postoAtividade is iterable ? postoAtividade|json_encode|raw : '[]' }};
+        window.solicDiarias   = {{ solicDiarias is iterable ? solicDiarias|json_encode|raw : '[]' }};
+    </script>
 
-    /* ═══════════════════ Mapa ═══════════════════ */
-    var jams = {{ mapJams|json_encode|raw }};
-    var alerts = {{ mapAlerts|json_encode|raw }};
-
-    function levelColor(l) {
-        if (l >= 5) return '#e53e3e';
-        if (l >= 3) return '#dd6b20';
-        if (l >= 1) return '#ecc94b';
-        return '#48bb78';
-    }
-
-    var ALERT_COLORS = {
-        JAM: '#dd6b20',
-        HAZARD: '#e53e3e',
-        ROAD_CLOSED: '#1f2937',
-        ACCIDENT: '#7c3aed',
-        WEATHERHAZARD: '#2563eb',
-        CONSTRUCTION: '#92400e',
-        MISC: '#6b7280',
-    };
-
-    function alertIcon(type) {
-        var color = ALERT_COLORS[type] || '#2563eb';
-        return L.divIcon({
-            className: '',
-            html: '<div style="width:12px;height:12px;border-radius:50%;background:' + color + ';border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)"></div>',
-            iconSize: [12, 12],
-            iconAnchor: [6, 6],
-        });
-    }
-
-    var map = L.map('dashMap', { zoomControl: true }).setView([-20.66, -43.79], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
-    }).addTo(map);
-
-    var allBounds = [];
-
-    // Congestionamentos (polylines coloridas por nível)
-    var jamsLayer = L.layerGroup();
-    jams.forEach(function (j) {
-        if (j.line && j.line.length > 1) {
-            var pts = j.line.map(function (p) { return [p.y, p.x]; });
-            pts.forEach(function (p) { allBounds.push(p); });
-            L.polyline(pts, { color: levelColor(j.level), weight: 4, opacity: 0.85 })
-                .bindPopup(
-                    '<strong>' + (j.street || 'Sem nome') + '</strong>' +
-                    '<br>' + (j.city || '') +
-                    '<br>Nível: ' + j.level +
-                    (j.speed != null ? ' | ' + j.speed + ' km/h' : '') +
-                    (j.delay != null ? ' | Atraso: ' + j.delay + 's' : '')
-                )
-                .addTo(jamsLayer);
-        }
-    });
-    jamsLayer.addTo(map);
-
-    // Alertas (marcadores agrupados por proximidade)
-    var alertsLayer = L.markerClusterGroup({ maxClusterRadius: 50 });
-    alerts.forEach(function (a) {
-        if (a.lat && a.lng) {
-            allBounds.push([a.lat, a.lng]);
-            L.marker([a.lat, a.lng], { icon: alertIcon(a.type) })
-                .bindPopup(
-                    '<strong>' + (a.label || a.type) + '</strong>' +
-                    '<br>' + (a.city || '') + ' — ' + (a.street || 'Via não informada')
-                )
-                .addTo(alertsLayer);
-        }
-    });
-    alertsLayer.addTo(map);
-
-    L.control.layers(null, {
-        'Congestionamentos': jamsLayer,
-        'Alertas': alertsLayer,
-    }, { collapsed: false }).addTo(map);
-
-    if (allBounds.length) {
-        map.fitBounds(allBounds, { padding: [30, 30] });
-    }
-})();
-</script>
+    {# Lógica do dashboard (gráficos, refresh, etc.) #}
+    {# assets/js/charts.js estava vazio (0 bytes) e não fazia nada —
+       removido daqui. Toda a config de tema dos gráficos agora vive
+       em dashboard.js. #}
+    <script src="{{ asset('js/dashboard.js') }}" defer></script>
 {% endblock %}
