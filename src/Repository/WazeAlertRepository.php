@@ -17,81 +17,35 @@ class WazeAlertRepository extends ServiceEntityRepository
         parent::__construct($registry, WazeAlert::class);
     }
 
-    private static function toMillis(\DateTimeInterface $dt): int
+    public function findActiveByPartner(Partner $partner, int $minutes = 10): array
     {
-        return $dt->getTimestamp() * 1000;
+        $since = new \DateTimeImmutable(sprintf('-%d minutes', max(1, $minutes)));
+
+        return $this->createQueryBuilder('a')
+            ->where('a.partner = :partner')
+            ->andWhere('a.updatedAt >= :since')
+            ->andWhere('a.sourceLink IS NOT NULL')
+            ->setParameter('partner', $partner)
+            ->setParameter('since', $since)
+            ->orderBy('a.updatedAt', 'DESC')
+            ->getQuery()
+            ->getResult();
     }
 
-    private static function splitTerms(string $csv): array
-    {
-        return array_values(array_filter(array_map('trim', explode(',', $csv)), static fn ($term) => $term !== ''));
-    }
-
-    private function applyFilters(QueryBuilder $qb, Partner $partner, array $filters): void
-    {
-        $qb->andWhere('a.partner = :partner')->setParameter('partner', $partner);
-        if (!empty($filters['type'])) $qb->andWhere('a.type = :type')->setParameter('type', $filters['type']);
-        if (!empty($filters['subtype'])) $qb->andWhere('a.subtype = :subtype')->setParameter('subtype', $filters['subtype']);
-        if (!empty($filters['city'])) $qb->andWhere('LOWER(a.city) LIKE :city')->setParameter('city', '%' . mb_strtolower($filters['city']) . '%');
-        if (!empty($filters['street'])) $qb->andWhere('LOWER(a.street) LIKE :street')->setParameter('street', '%' . mb_strtolower($filters['street']) . '%');
-        if (!empty($filters['excludeStreet'])) foreach (self::splitTerms($filters['excludeStreet']) as $index => $term) $qb->andWhere("LOWER(a.street) NOT LIKE :excludeStreet{$index}")->setParameter("excludeStreet{$index}", '%' . mb_strtolower($term) . '%');
-        $timezone = new \DateTimeZone(self::TZ);
-        if (!empty($filters['dateFrom'])) { $from = \DateTimeImmutable::createFromFormat('!Y-m-d', $filters['dateFrom'], $timezone); if ($from) $qb->andWhere('a.pubMillis >= :dateFromMs')->setParameter('dateFromMs', self::toMillis($from)); }
-        if (!empty($filters['dateTo'])) { $to = \DateTimeImmutable::createFromFormat('!Y-m-d', $filters['dateTo'], $timezone); if ($to) $qb->andWhere('a.pubMillis <= :dateToMs')->setParameter('dateToMs', self::toMillis($to->setTime(23, 59, 59))); }
-    }
-
-    private function buildNativeWhere(Partner $partner, array $filters): array
-    {
-        $where = ['a.partner_id = :partnerId'];
-        $params = ['partnerId' => $partner->getId()];
-        if (!empty($filters['type'])) { $where[] = 'a.type = :type'; $params['type'] = $filters['type']; }
-        if (!empty($filters['subtype'])) { $where[] = 'a.subtype = :subtype'; $params['subtype'] = $filters['subtype']; }
-        if (!empty($filters['city'])) { $where[] = 'LOWER(a.city) LIKE :city'; $params['city'] = '%' . mb_strtolower($filters['city']) . '%'; }
-        if (!empty($filters['street'])) { $where[] = 'LOWER(a.street) LIKE :street'; $params['street'] = '%' . mb_strtolower($filters['street']) . '%'; }
-        if (!empty($filters['excludeStreet'])) foreach (self::splitTerms($filters['excludeStreet']) as $index => $term) { $where[] = "LOWER(a.street) NOT LIKE :excludeStreet{$index}"; $params["excludeStreet{$index}"] = '%' . mb_strtolower($term) . '%'; }
-        $timezone = new \DateTimeZone(self::TZ);
-        if (!empty($filters['dateFrom'])) { $from = \DateTimeImmutable::createFromFormat('!Y-m-d', $filters['dateFrom'], $timezone); if ($from) { $where[] = 'a.pub_millis >= :dateFromMs'; $params['dateFromMs'] = self::toMillis($from); } }
-        if (!empty($filters['dateTo'])) { $to = \DateTimeImmutable::createFromFormat('!Y-m-d', $filters['dateTo'], $timezone); if ($to) { $where[] = 'a.pub_millis <= :dateToMs'; $params['dateToMs'] = self::toMillis($to->setTime(23, 59, 59)); } }
-        return [implode(' AND ', $where), $params];
-    }
-
-    public function findAllFilteredByPartnerForExport(Partner $partner, array $filters = []): array
-    {
-        $qb = $this->createQueryBuilder('a')->orderBy('a.pubMillis', 'DESC');
-        $this->applyFilters($qb, $partner, $filters);
-        return $qb->getQuery()->getResult();
-    }
-
-    public function findFilteredByPartner(Partner $partner, array $filters = [], int $page = 1, int $limit = 30): array
-    {
-        $page = max(1, $page);
-        $limit = max(1, min(200, $limit));
-        $qb = $this->createQueryBuilder('a');
-        $this->applyFilters($qb, $partner, $filters);
-        $total = (int) (clone $qb)->select('COUNT(a.id)')->getQuery()->getSingleScalarResult();
-        $pages = max(1, (int) ceil($total / $limit));
-        $page = min($page, $pages);
-        $items = $qb->orderBy('a.pubMillis', 'DESC')->setFirstResult(($page - 1) * $limit)->setMaxResults($limit)->getQuery()->getResult();
-        return ['items' => $items, 'total' => $total, 'pages' => $pages];
-    }
-
-    public function findForMapFiltered(Partner $partner, array $filters = [], int $limit = 500): array
-    {
-        $limit = max(1, min(5000, $limit));
-        $qb = $this->createQueryBuilder('a')->select('a.id, a.type, a.subtype, a.street, a.city, a.latitude, a.longitude, a.confidence, a.nThumbsUp, a.pubMillis')->andWhere('a.latitude IS NOT NULL')->andWhere('a.longitude IS NOT NULL')->orderBy('a.pubMillis', 'DESC')->setMaxResults($limit);
-        $this->applyFilters($qb, $partner, $filters);
-        return $qb->getQuery()->getArrayResult();
-    }
-
+    private static function toMillis(\DateTimeInterface $dt): int { return $dt->getTimestamp() * 1000; }
+    private static function splitTerms(string $csv): array { return array_values(array_filter(array_map('trim', explode(',', $csv)), static fn($term) => $term !== '')); }
+    private function applyFilters(QueryBuilder $qb, Partner $partner, array $filters): void { $qb->andWhere('a.partner = :partner')->setParameter('partner', $partner); if (!empty($filters['type'])) $qb->andWhere('a.type = :type')->setParameter('type', $filters['type']); if (!empty($filters['subtype'])) $qb->andWhere('a.subtype = :subtype')->setParameter('subtype', $filters['subtype']); if (!empty($filters['city'])) $qb->andWhere('LOWER(a.city) LIKE :city')->setParameter('city', '%' . mb_strtolower($filters['city']) . '%'); if (!empty($filters['street'])) $qb->andWhere('LOWER(a.street) LIKE :street')->setParameter('street', '%' . mb_strtolower($filters['street']) . '%'); if (!empty($filters['excludeStreet'])) foreach (self::splitTerms($filters['excludeStreet']) as $index => $term) $qb->andWhere("LOWER(a.street) NOT LIKE :excludeStreet{$index}")->setParameter("excludeStreet{$index}", '%' . mb_strtolower($term) . '%'); $timezone = new \DateTimeZone(self::TZ); if (!empty($filters['dateFrom'])) { $from = \DateTimeImmutable::createFromFormat('!Y-m-d', $filters['dateFrom'], $timezone); if ($from) $qb->andWhere('a.pubMillis >= :dateFromMs')->setParameter('dateFromMs', self::toMillis($from)); } if (!empty($filters['dateTo'])) { $to = \DateTimeImmutable::createFromFormat('!Y-m-d', $filters['dateTo'], $timezone); if ($to) $qb->andWhere('a.pubMillis <= :dateToMs')->setParameter('dateToMs', self::toMillis($to->setTime(23, 59, 59))); } }
+    private function buildNativeWhere(Partner $partner, array $filters): array { $where = ['a.partner_id = :partnerId']; $params = ['partnerId' => $partner->getId()]; if (!empty($filters['type'])) { $where[] = 'a.type = :type'; $params['type'] = $filters['type']; } if (!empty($filters['subtype'])) { $where[] = 'a.subtype = :subtype'; $params['subtype'] = $filters['subtype']; } if (!empty($filters['city'])) { $where[] = 'LOWER(a.city) LIKE :city'; $params['city'] = '%' . mb_strtolower($filters['city']) . '%'; } if (!empty($filters['street'])) { $where[] = 'LOWER(a.street) LIKE :street'; $params['street'] = '%' . mb_strtolower($filters['street']) . '%'; } if (!empty($filters['excludeStreet'])) foreach (self::splitTerms($filters['excludeStreet']) as $index => $term) { $where[] = "LOWER(a.street) NOT LIKE :excludeStreet{$index}"; $params["excludeStreet{$index}"] = '%' . mb_strtolower($term) . '%'; } $timezone = new \DateTimeZone(self::TZ); if (!empty($filters['dateFrom'])) { $from = \DateTimeImmutable::createFromFormat('!Y-m-d', $filters['dateFrom'], $timezone); if ($from) { $where[] = 'a.pub_millis >= :dateFromMs'; $params['dateFromMs'] = self::toMillis($from); } } if (!empty($filters['dateTo'])) { $to = \DateTimeImmutable::createFromFormat('!Y-m-d', $filters['dateTo'], $timezone); if ($to) { $where[] = 'a.pub_millis <= :dateToMs'; $params['dateToMs'] = self::toMillis($to->setTime(23, 59, 59)); } } return [implode(' AND ', $where), $params]; }
+    public function findAllFilteredByPartnerForExport(Partner $partner, array $filters = []): array { $qb = $this->createQueryBuilder('a')->orderBy('a.pubMillis', 'DESC'); $this->applyFilters($qb, $partner, $filters); return $qb->getQuery()->getResult(); }
+    public function findFilteredByPartner(Partner $partner, array $filters = [], int $page = 1, int $limit = 30): array { $page = max(1, $page); $limit = max(1, min(200, $limit)); $qb = $this->createQueryBuilder('a'); $this->applyFilters($qb, $partner, $filters); $total = (int) (clone $qb)->select('COUNT(a.id)')->getQuery()->getSingleScalarResult(); $pages = max(1, (int) ceil($total / $limit)); $page = min($page, $pages); $items = $qb->orderBy('a.pubMillis', 'DESC')->setFirstResult(($page - 1) * $limit)->setMaxResults($limit)->getQuery()->getResult(); return ['items' => $items, 'total' => $total, 'pages' => $pages]; }
+    public function findForMapFiltered(Partner $partner, array $filters = [], int $limit = 500): array { $limit = max(1, min(5000, $limit)); $qb = $this->createQueryBuilder('a')->select('a.id, a.type, a.subtype, a.street, a.city, a.latitude, a.longitude, a.confidence, a.nThumbsUp, a.pubMillis')->andWhere('a.latitude IS NOT NULL')->andWhere('a.longitude IS NOT NULL')->orderBy('a.pubMillis', 'DESC')->setMaxResults($limit); $this->applyFilters($qb, $partner, $filters); return $qb->getQuery()->getArrayResult(); }
     public function findDistinctTypes(Partner $partner): array { return array_column($this->createQueryBuilder('a')->select('DISTINCT a.type AS type')->where('a.partner = :partner')->setParameter('partner', $partner)->orderBy('a.type', 'ASC')->getQuery()->getArrayResult(), 'type'); }
     public function findDistinctSubtypes(Partner $partner, ?string $type = null): array { $qb = $this->createQueryBuilder('a')->select('DISTINCT a.subtype AS subtype')->where('a.partner = :partner')->setParameter('partner', $partner)->andWhere('a.subtype IS NOT NULL')->orderBy('a.subtype', 'ASC'); if ($type) $qb->andWhere('a.type = :type')->setParameter('type', $type); return array_column($qb->getQuery()->getArrayResult(), 'subtype'); }
     public function findDistinctCities(Partner $partner): array { return array_column($this->createQueryBuilder('a')->select('DISTINCT a.city AS city')->where('a.partner = :partner')->setParameter('partner', $partner)->andWhere('a.city IS NOT NULL')->orderBy('a.city', 'ASC')->getQuery()->getArrayResult(), 'city'); }
     public function findDistinctStreets(Partner $partner, int $limit = 800): array { $limit = max(1, min(5000, $limit)); return array_column($this->createQueryBuilder('a')->select('DISTINCT a.street AS street')->where('a.partner = :partner')->setParameter('partner', $partner)->andWhere('a.street IS NOT NULL')->orderBy('a.street', 'ASC')->setMaxResults($limit)->getQuery()->getArrayResult(), 'street'); }
-
     public function countBySubtypeFiltered(Partner $partner, array $filters = [], int $limit = 10): array { $qb = $this->createQueryBuilder('a')->select('a.type AS type, a.subtype AS subtype, COUNT(a.id) AS total')->groupBy('a.type, a.subtype')->orderBy('total', 'DESC')->setMaxResults(max(1, $limit)); $this->applyFilters($qb, $partner, $filters); return array_map(static fn(array $row) => ['type' => $row['type'], 'subtype' => $row['subtype'], 'total' => (int) $row['total']], $qb->getQuery()->getArrayResult()); }
     public function countByConfidenceFiltered(Partner $partner, array $filters = []): array { $qb = $this->createQueryBuilder('a')->select('a.confidence AS confidence, COUNT(a.id) AS total')->groupBy('a.confidence'); $this->applyFilters($qb, $partner, $filters); $rows = $qb->getQuery()->getArrayResult(); $buckets = ['0-3' => 0, '4-6' => 0, '7-10' => 0, 'Sem valor' => 0]; foreach ($rows as $row) { $confidence = $row['confidence']; $total = (int) $row['total']; if ($confidence === null) $buckets['Sem valor'] += $total; elseif ($confidence <= 3) $buckets['0-3'] += $total; elseif ($confidence <= 6) $buckets['4-6'] += $total; else $buckets['7-10'] += $total; } return $buckets; }
     public function topStreetsFiltered(Partner $partner, array $filters = [], int $limit = 12): array { $qb = $this->createQueryBuilder('a')->select('a.street AS street', 'a.city AS city', 'COUNT(a.id) AS total')->andWhere('a.street IS NOT NULL')->groupBy('a.street, a.city')->orderBy('total', 'DESC')->setMaxResults(max(1, $limit)); $this->applyFilters($qb, $partner, $filters); return array_map(static fn(array $row) => ['street' => $row['street'], 'city' => $row['city'], 'total' => (int) $row['total']], $qb->getQuery()->getArrayResult()); }
-
     public function countByDayFiltered(Partner $partner, array $filters = [], int $maxDays = 180): array { [$whereSql, $params] = $this->buildNativeWhere($partner, $filters); $maxDays = max(1, min(366, $maxDays)); $sql = <<<SQL
 SELECT DATE(CONVERT_TZ(FROM_UNIXTIME(a.pub_millis / 1000), '+00:00', '-03:00')) AS day, COUNT(a.id) AS total FROM waze_alerts a WHERE {$whereSql} GROUP BY day ORDER BY day ASC LIMIT {$maxDays}
 SQL; return $this->getEntityManager()->getConnection()->fetchAllAssociative($sql, $params); }
@@ -114,23 +68,4 @@ SQL; $rows = $this->getEntityManager()->getConnection()->fetchAllAssociative($sq
     public function getAlertsPerHourLast24h(): array { $lastDay = time() * 1000 - 24 * 3600 * 1000; return $this->getEntityManager()->getConnection()->fetchAllAssociative(<<<SQL
 SELECT CONCAT(DATE_FORMAT(FROM_UNIXTIME(a.pub_millis / 1000), '%H'), 'h') AS hour_label, COUNT(a.id) AS total FROM waze_alerts a WHERE a.pub_millis >= :lastDay GROUP BY hour_label ORDER BY hour_label ASC
 SQL, ['lastDay' => $lastDay]); }
-
-    /**
-     * Retorna contagem de alertas agrupados por hora exata (timestamp) dentro do período.
-     * Usado para gráfico de tendência quando o período é menor que 1 dia.
-     */
-    public function countByHourInPeriodFiltered(Partner $partner, array $filters = []): array
-    {
-        [$whereSql, $params] = $this->buildNativeWhere($partner, $filters);
-        $sql = <<<SQL
-            SELECT
-                DATE_FORMAT(CONVERT_TZ(FROM_UNIXTIME(a.pub_millis / 1000), '+00:00', '-03:00'), '%Y-%m-%d %H:00:00') AS hour_label,
-                COUNT(a.id) AS total
-            FROM waze_alerts a
-            WHERE {$whereSql}
-            GROUP BY hour_label
-            ORDER BY hour_label ASC
-        SQL;
-        return $this->getEntityManager()->getConnection()->fetchAllAssociative($sql, $params);
-    }
 }
