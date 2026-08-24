@@ -29,51 +29,34 @@ class AlertController extends AbstractController
     public function index(Request $request): Response
     {
         $partner = $this->tenantContext->requirePartner();
-        return $this->render('alert/index.html.twig', [
-            'partner' => $partner,
-            'alerts' => [],
-            'total' => 0,
-            'page' => 1,
-            'pages' => 1,
-            'types' => [],
-            'subtypes' => [],
-            'cities' => [],
-            'streets' => [],
-            'bySubtype' => [],
-            'byConfidence' => [],
-            'byDay' => [],
-            'byHour' => [],
-            'byWeekday' => [],
-            'topStreets' => [],
-            'hotspots' => [],
-            'mapAlerts' => [],
-            'type' => null,
-            'subtype' => null,
-            'city' => null,
-            'street' => null,
-            'excludeStreet' => null,
-            'period' => null,
-            'periods' => [],
-            'dateFrom' => null,
-            'dateTo' => null,
-            'typesMap' => [],
-            'subtypesMap' => [],
-        ]);
+        return $this->render('alert/index.html.twig', ['partner' => $partner, 'alerts' => [], 'total' => 0, 'page' => 1, 'pages' => 1, 'types' => [], 'subtypes' => [], 'cities' => [], 'streets' => [], 'bySubtype' => [], 'byConfidence' => [], 'byDay' => [], 'byHour' => [], 'byWeekday' => [], 'topStreets' => [], 'hotspots' => [], 'mapAlerts' => [], 'type' => null, 'subtype' => null, 'city' => null, 'street' => null, 'excludeStreet' => null, 'period' => null, 'periods' => [], 'dateFrom' => null, 'dateTo' => null, 'typesMap' => [], 'subtypesMap' => []]);
+    }
+
+    #[Route('/export.csv', name: 'export', methods: ['GET'])]
+    public function export(Request $request): StreamedResponse
+    {
+        $partner = $this->tenantContext->requirePartner();
+        $alerts = $this->alertRepo->findAllByPartner($partner);
+        $response = new StreamedResponse(function () use ($alerts): void {
+            $output = fopen('php://output', 'wb');
+            fwrite($output, "\xEF\xBB\xBF");
+            fputcsv($output, ['ID', 'Tipo', 'Subtipo', 'Via', 'Cidade', 'Publicado', 'Latitude', 'Longitude'], ';');
+            foreach ($alerts as $alert) {
+                fputcsv($output, [$alert->getId(), $alert->getType(), $alert->getSubtype(), $alert->getStreet(), $alert->getCity(), $alert->getPubMillis(), $alert->getLatitude(), $alert->getLongitude()], ';');
+            }
+            fclose($output);
+        });
+        $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
+        $response->headers->set('Content-Disposition', 'attachment; filename="alertas.csv"');
+        return $response;
     }
 
     #[Route('/ao-vivo', name: 'live', methods: ['GET'])]
     public function live(Request $request): Response
     {
-        $partner = $this->tenantContext->requirePartner();
-        $locale = $request->getLocale() ?: 'pt';
-        $alerts = $this->alertRepo->findActiveByPartner($partner, 10);
-        $regions = [];
-        foreach ($alerts as $alert) {
-            $city = $alert->getCity() ?: 'Sem cidade';
-            $regions[$city] = ($regions[$city] ?? 0) + 1;
-        }
-        arsort($regions);
-        $regionRows = array_map(static fn ($city, $count) => ['city' => $city, 'count' => $count], array_keys($regions), array_values($regions));
+        $partner = $this->tenantContext->requirePartner(); $locale = $request->getLocale() ?: 'pt'; $alerts = $this->alertRepo->findActiveByPartner($partner, 10); $regions = [];
+        foreach ($alerts as $alert) { $city = $alert->getCity() ?: 'Sem cidade'; $regions[$city] = ($regions[$city] ?? 0) + 1; }
+        arsort($regions); $regionRows = array_map(static fn ($city, $count) => ['city' => $city, 'count' => $count], array_keys($regions), array_values($regions));
         dump(['rota' => 'alert_live', 'total_alertas_ativos' => count($alerts), 'regioes' => $regionRows, 'ids' => array_map(static fn ($alert) => $alert->getId(), $alerts), 'pub_millis' => array_map(static fn ($alert) => $alert->getPubMillis(), $alerts), 'agora_millis' => time() * 1000, 'limite_millis' => (time() - 600) * 1000]);
         return $this->render('alert/live.html.twig', ['partner' => $partner, 'regions' => $regionRows, 'alerts' => $alerts, 'hours' => 0, 'total' => count($alerts), 'typesMap' => $this->alertTypeRepo->getTypesMap($locale), 'subtypesMap' => $this->alertTypeRepo->getSubtypesMap($locale)]);
     }
