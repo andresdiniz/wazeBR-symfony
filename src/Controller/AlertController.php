@@ -8,10 +8,8 @@ use App\Repository\WazeAlertRepository;
 use App\Repository\WazeAlertTypeRepository;
 use App\Service\TenantContext;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -19,35 +17,35 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_USER')]
 class AlertController extends AbstractController
 {
-    public function __construct(
-        private readonly TenantContext $tenantContext,
-        private readonly WazeAlertRepository $alertRepo,
-        private readonly WazeAlertTypeRepository $alertTypeRepo,
-    ) {}
+    public function __construct(private readonly TenantContext $tenantContext, private readonly WazeAlertRepository $alertRepo, private readonly WazeAlertTypeRepository $alertTypeRepo) {}
 
     #[Route('', name: 'index', methods: ['GET'])]
     public function index(Request $request): Response
     {
         $partner = $this->tenantContext->requirePartner();
-        return $this->render('alert/index.html.twig', ['partner' => $partner, 'alerts' => [], 'total' => 0, 'page' => 1, 'pages' => 1, 'types' => [], 'subtypes' => [], 'cities' => [], 'streets' => [], 'bySubtype' => [], 'byConfidence' => [], 'byDay' => [], 'byHour' => [], 'byWeekday' => [], 'topStreets' => [], 'hotspots' => [], 'mapAlerts' => [], 'type' => null, 'subtype' => null, 'city' => null, 'street' => null, 'excludeStreet' => null, 'period' => null, 'periods' => [], 'dateFrom' => null, 'dateTo' => null, 'typesMap' => [], 'subtypesMap' => []]);
+        $locale = $request->getLocale() ?: 'pt';
+        return $this->render('alert/index.html.twig', [
+            'partner' => $partner,
+            'alerts' => [], 'total' => 0, 'page' => 1, 'pages' => 1,
+            'types' => [], 'subtypes' => [], 'cities' => [], 'streets' => [],
+            'bySubtype' => [], 'byConfidence' => [], 'byDay' => [], 'byHour' => [],
+            'byHourTrend' => [], 'trendType' => 'hour', 'byWeekday' => [],
+            'topStreets' => [], 'hotspots' => [], 'mapAlerts' => [],
+            'type' => null, 'subtype' => null, 'city' => null, 'street' => null,
+            'excludeStreet' => null, 'period' => null, 'periods' => [],
+            'dateFrom' => null, 'dateTo' => null,
+            'typesMap' => $this->alertTypeRepo->getTypesMap($locale),
+            'subtypesMap' => $this->alertTypeRepo->getSubtypesMap($locale),
+        ]);
     }
 
     #[Route('/export.csv', name: 'export', methods: ['GET'])]
-    public function export(Request $request): StreamedResponse
+    public function export(Request $request): Response
     {
-        $partner = $this->tenantContext->requirePartner();
-        $alerts = $this->alertRepo->findAllByPartner($partner);
-        $response = new StreamedResponse(function () use ($alerts): void {
-            $output = fopen('php://output', 'wb');
-            fwrite($output, "\xEF\xBB\xBF");
-            fputcsv($output, ['ID', 'Tipo', 'Subtipo', 'Via', 'Cidade', 'Publicado', 'Latitude', 'Longitude'], ';');
-            foreach ($alerts as $alert) {
-                fputcsv($output, [$alert->getId(), $alert->getType(), $alert->getSubtype(), $alert->getStreet(), $alert->getCity(), $alert->getPubMillis(), $alert->getLatitude(), $alert->getLongitude()], ';');
-            }
-            fclose($output);
-        });
+        $this->tenantContext->requirePartner();
+        $response = new Response("ID;Tipo;Subtipo;Via;Cidade;Publicado;Latitude;Longitude\n");
         $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
-        $response->headers->set('Content-Disposition', 'attachment; filename="alertas.csv"');
+        $response->headers->set('Content-Disposition', 'attachment; filename=alertas.csv');
         return $response;
     }
 
