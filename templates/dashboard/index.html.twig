@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Dashboard — ToolboxWaze{% endblock %}
+{% block title %}Dashboard — {{ partnerLabel }}{% endblock %}
 
 {% block stylesheets %}
     {{ parent() }}
@@ -16,425 +16,373 @@
                 <i class="bi bi-speedometer2"></i>
                 <h1>Dashboard</h1>
             </div>
-            <p class="header-subtitle">Visão geral do WazeToolbox</p>
+            <p class="header-subtitle">Visão geral — {{ partnerLabel }}</p>
         </div>
         <div class="header-actions">
             <button id="refresh-dashboard" class="btn btn-outline-primary btn-sm">
                 <i class="bi bi-arrow-clockwise"></i>
                 Atualizar
             </button>
-            {% if showRadar|default(false) %}
-                <a href="{{ path('radar_index') }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="bi bi-broadcast"></i> Radares
-                </a>
-            {% endif %}
-            {% if showPosto|default(false) %}
-                <a href="{{ path('posto_index') }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="bi bi-fuel-pump"></i> Postos
-                </a>
-            {% endif %}
-            {% if showEscola|default(false) %}
-                <a href="{{ path('escola_inep_index') }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="bi bi-building"></i> Escolas
-                </a>
-            {% endif %}
-            {% if showSolicitacao|default(false) %}
-                <a href="{{ path('solicitacao_hub') }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="bi bi-inbox"></i> Solicitações
-                </a>
-            {% endif %}
-            {% if isAdmin|default(false) %}
-                <a href="{{ path('admin_users_index') }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="bi bi-people"></i> Usuários
-                </a>
-            {% endif %}
         </div>
     </header>
 
-    {# Cards de alerta #}
-    {% if showRadar|default(false) or showSolicitacao|default(false) %}
-    <section class="alerts-section">
-        <div class="alerts-grid">
-            {% if showRadar|default(false) %}
-            <div class="alert-card alert-danger">
-                <div class="alert-icon">
+    {# Stats do parceiro (total geral) #}
+    <section class="stats-section">
+        <div class="stats-grid">
+            <div class="stat-card stat-primary">
+                <div class="stat-icon">
                     <i class="bi bi-exclamation-triangle-fill"></i>
                 </div>
-                <div class="alert-content">
-                    <span class="alert-label">Radares Vencidos</span>
-                    <span class="alert-value count-up" data-key="radaresvencidos" data-target="{{ radarKpis.vencidos ?? 0 }}">0</span>
+                <div class="stat-content">
+                    <span class="stat-label">Alertas Totais</span>
+                    <span class="stat-value">{{ partnerStats.alerts|number_format(0, ',', '.') }}</span>
                 </div>
             </div>
 
-            <div class="alert-card alert-warning">
-                <div class="alert-icon">
-                    <i class="bi bi-hourglass-split"></i>
-                </div>
-                <div class="alert-content">
-                    <span class="alert-label">Radares a Vencer</span>
-                    <span class="alert-value count-up" data-key="radaresvencendo" data-target="{{ radarKpis.vencendo ?? 0 }}">0</span>
-                </div>
-            </div>
-            {% endif %}
-
-            {% if showSolicitacao|default(false) %}
-            <div class="alert-card alert-warning">
-                <div class="alert-icon">
-                    <i class="bi bi-inbox-fill"></i>
-                </div>
-                <div class="alert-content">
-                    <span class="alert-label">Solicitações Pendentes</span>
-                    <span class="alert-value count-up" data-key="solicpendentes" data-target="{{ solicKpis.geral.pendentes ?? 0 }}">0</span>
-                </div>
-            </div>
-            {% endif %}
-
-            {% if showRadar|default(false) %}
-            <div class="alert-card alert-success">
-                <div class="alert-icon">
+            <div class="stat-card stat-warning">
+                <div class="stat-icon">
                     <i class="bi bi-broadcast"></i>
                 </div>
-                <div class="alert-content">
-                    <span class="alert-label">Cobertura Waze</span>
-                    <span class="alert-value">{{ radarKpis.pctWaze|default(0)|round(1) }}%</span>
+                <div class="stat-content">
+                    <span class="stat-label">Congestionamentos</span>
+                    <span class="stat-value">{{ partnerStats.jams|number_format(0, ',', '.') }}</span>
                 </div>
             </div>
-            {% endif %}
-        </div>
-    </section>
-    {% endif %}
 
-    {# KPIs principais #}
-    <section class="kpi-section">
-        <div class="kpi-grid">
-            {% if showRadar|default(false) %}
-            <div class="kpi-card kpi-primary">
-                <div class="kpi-icon">
-                    <i class="bi bi-broadcast"></i>
+            <div class="stat-card stat-info">
+                <div class="stat-icon">
+                    <i class="bi bi-map"></i>
                 </div>
-                <div class="kpi-content">
-                    <span class="kpi-label">Radares</span>
-                    <span class="kpi-value count-up" data-key="radarestotal" data-target="{{ radarKpis.total ?? 0 }}">0</span>
-                    <span class="kpi-subtitle">{{ radarKpis.reprovados ?? 0 }} reprovados</span>
+                <div class="stat-content">
+                    <span class="stat-label">Rotas TVT</span>
+                    <span class="stat-value">{{ partnerStats.tvtRoutes|number_format(0, ',', '.') }}</span>
                 </div>
             </div>
-            {% endif %}
 
-            {% if showPosto|default(false) %}
-            <div class="kpi-card kpi-warning">
-                <div class="kpi-icon">
-                    <i class="bi bi-fuel-pump"></i>
+            <div class="stat-card stat-success">
+                <div class="stat-icon">
+                    <i class="bi bi-link-45deg"></i>
                 </div>
-                <div class="kpi-content">
-                    <span class="kpi-label">Postos</span>
-                    <span class="kpi-value count-up" data-key="postostotal" data-target="{{ postoKpis.total ?? 0 }}">0</span>
-                    <span class="kpi-subtitle">{{ postoKpis.comWaze ?? 0 }} com Waze</span>
+                <div class="stat-content">
+                    <span class="stat-label">Links Monitorados</span>
+                    <span class="stat-value">{{ partnerStats.monitoredLinks|number_format(0, ',', '.') }}</span>
                 </div>
             </div>
-            {% endif %}
 
-            {% if showEscola|default(false) %}
-            <div class="kpi-card kpi-info">
-                <div class="kpi-icon">
-                    <i class="bi bi-building"></i>
+            <div class="stat-card stat-danger">
+                <div class="stat-icon">
+                    <i class="bi bi-exclamation-circle"></i>
                 </div>
-                <div class="kpi-content">
-                    <span class="kpi-label">Escolas</span>
-                    <span class="kpi-value count-up" data-key="escolastotal" data-target="{{ escolaKpis.total ?? 0 }}">0</span>
-                    <span class="kpi-subtitle">{{ escolaKpis.estados ?? 0 }} estados</span>
+                <div class="stat-content">
+                    <span class="stat-label">Irregularidades</span>
+                    <span class="stat-value">{{ partnerStats.irregularities|number_format(0, ',', '.') }}</span>
                 </div>
             </div>
-            {% endif %}
 
-            {% if showSolicitacao|default(false) %}
-            <div class="kpi-card kpi-secondary">
-                <div class="kpi-icon">
-                    <i class="bi bi-inbox"></i>
+            <div class="stat-card stat-dark">
+                <div class="stat-icon">
+                    <i class="bi bi-calendar-event"></i>
                 </div>
-                <div class="kpi-content">
-                    <span class="kpi-label">Solicitações</span>
-                    <span class="kpi-value count-up" data-key="solictotal" data-target="{{ solicKpis.geral.total ?? 0 }}">0</span>
-                    <span class="kpi-subtitle">{{ solicKpis.geral.hoje ?? 0 }} hoje</span>
+                <div class="stat-content">
+                    <span class="stat-label">Eventos CIFS</span>
+                    <span class="stat-value">{{ partnerStats.cifsEvents|number_format(0, ',', '.') }}</span>
                 </div>
             </div>
-            {% endif %}
-
-            {% if isAdmin|default(false) %}
-            <div class="kpi-card kpi-dark">
-                <div class="kpi-icon">
-                    <i class="bi bi-people"></i>
-                </div>
-                <div class="kpi-content">
-                    <span class="kpi-label">Usuários</span>
-                    <span class="kpi-value count-up" data-key="usuariostotal" data-target="{{ usuarioKpis.total ?? 0 }}">0</span>
-                    <span class="kpi-subtitle">{{ usuarioKpis.pendentes ?? 0 }} pendentes</span>
-                </div>
-            </div>
-            {% endif %}
         </div>
     </section>
 
-    {# Gráficos de Radares #}
-    {% if showRadar|default(false) %}
+    {# Banda "ao vivo" (KPIs em destaque) #}
+    <section class="hero-section">
+        <h2 class="section-title">Ao Vivo</h2>
+        <div class="hero-grid">
+            <div class="hero-card hero-alert">
+                <div class="hero-icon">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                </div>
+                <div class="hero-content">
+                    <span class="hero-label">Alertas (24h)</span>
+                    <span class="hero-value">{{ hero.alertsLast24h|number_format(0, ',', '.') }}</span>
+                    <span class="hero-subtitle">Total: {{ hero.alertsTotal|number_format(0, ',', '.') }}</span>
+                </div>
+            </div>
+
+            <div class="hero-card hero-jam">
+                <div class="hero-icon">
+                    <i class="bi bi-broadcast"></i>
+                </div>
+                <div class="hero-content">
+                    <span class="hero-label">Jams (24h)</span>
+                    <span class="hero-value">{{ hero.jamsLast24h|number_format(0, ',', '.') }}</span>
+                    <span class="hero-subtitle">Total: {{ hero.jamsTotal|number_format(0, ',', '.') }}</span>
+                </div>
+            </div>
+
+            <div class="hero-card hero-live">
+                <div class="hero-icon">
+                    <i class="bi bi-activity"></i>
+                </div>
+                <div class="hero-content">
+                    <span class="hero-label">Jams Ativos (3h)</span>
+                    <span class="hero-value">{{ hero.jamsLiveTotal|number_format(0, ',', '.') }}</span>
+                    <span class="hero-subtitle">
+                        {% if hero.jamsLiveMaxLevelLabel %}
+                            Máx: {{ hero.jamsLiveMaxLevelLabel }} ({{ hero.jamsLiveMaxLevel }})
+                        {% else %}
+                            Sem jams ativos
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <div class="hero-card hero-speed">
+                <div class="hero-icon">
+                    <i class="bi bi-speedometer"></i>
+                </div>
+                <div class="hero-content">
+                    <span class="hero-label">Velocidade Média</span>
+                    <span class="hero-value">{{ (hero.avgSpeedLive ?? 0)|round(1) }} km/h</span>
+                    <span class="hero-subtitle">Histórico: {{ (hero.avgSpeedHist ?? 0)|round(1) }} km/h</span>
+                </div>
+            </div>
+
+            <div class="hero-card hero-delay">
+                <div class="hero-icon">
+                    <i class="bi bi-clock"></i>
+                </div>
+                <div class="hero-content">
+                    <span class="hero-label">Atraso Médio</span>
+                    <span class="hero-value">{{ ((hero.avgDelayLive ?? 0) / 60)|round(1) }} min</span>
+                    <span class="hero-subtitle">{{ (hero.avgDelayLive ?? 0)|number_format(0, ',', '.') }}s</span>
+                </div>
+            </div>
+
+            <div class="hero-card hero-length">
+                <div class="hero-icon">
+                    <i class="bi bi-arrows-alt-h"></i>
+                </div>
+                <div class="hero-content">
+                    <span class="hero-label">Extensão Congestionada</span>
+                    <span class="hero-value">{{ (hero.lengthLiveKm ?? 0)|round(1) }} km</span>
+                    <span class="hero-subtitle">Histórico: {{ (hero.lengthHistKm ?? 0)|round(1) }} km</span>
+                </div>
+            </div>
+
+            <div class="hero-card hero-routes">
+                <div class="hero-icon">
+                    <i class="bi bi-map"></i>
+                </div>
+                <div class="hero-content">
+                    <span class="hero-label">Rotas Monitoradas</span>
+                    <span class="hero-value">{{ hero.routesMonitored|number_format(0, ',', '.') }}</span>
+                    <span class="hero-subtitle">{{ hero.monitoredLinks }} links · {{ hero.monitoredCities }} cidades</span>
+                </div>
+            </div>
+
+            <div class="hero-card hero-cemaden">
+                <div class="hero-icon">
+                    <i class="bi bi-cloud-rain"></i>
+                </div>
+                <div class="hero-content">
+                    <span class="hero-label">CEMADEN</span>
+                    <span class="hero-value">{{ hero.cemadenReadings|number_format(0, ',', '.') }}</span>
+                    <span class="hero-subtitle">{{ hero.cemadenCities }} cidade(s)</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {# Stats do período #}
+    <section class="period-section">
+        <h2 class="section-title">
+            Período: {{ periods[periodKey].label }}
+            <small class="period-range">({{ periodFrom|date('d/m/Y H:i') }} → {{ periodTo|date('d/m/Y H:i') }})</small>
+        </h2>
+        <div class="period-grid">
+            <div class="period-card">
+                <span class="period-value">{{ periodStats.alerts|number_format(0, ',', '.') }}</span>
+                <span class="period-label">Alertas</span>
+            </div>
+            <div class="period-card">
+                <span class="period-value">{{ periodStats.jams|number_format(0, ',', '.') }}</span>
+                <span class="period-label">Congestionamentos</span>
+            </div>
+            <div class="period-card">
+                <span class="period-value">{{ periodStats.tvtRoutes|number_format(0, ',', '.') }}</span>
+                <span class="period-label">Rotas TVT</span>
+            </div>
+            <div class="period-card">
+                <span class="period-value">{{ periodStats.irregularities|number_format(0, ',', '.') }}</span>
+                <span class="period-label">Irregularidades</span>
+            </div>
+            <div class="period-card">
+                <span class="period-value">{{ periodStats.cifsEvents|number_format(0, ',', '.') }}</span>
+                <span class="period-label">Eventos CIFS</span>
+            </div>
+        </div>
+    </section>
+
+    {# Gráficos #}
     <section class="charts-section">
         <div class="chart-grid">
-            <div class="chart-card chart-large">
-                <div class="chart-header">
-                    <span><i class="bi bi-bar-chart-fill"></i> Radares por Estados</span>
-                    <a href="{{ path('radar_index') }}" class="btn btn-sm btn-outline-secondary">Ver todos</a>
-                </div>
-                <div class="chart-body">
-                    <canvas id="chartRadarUf"></canvas>
-                </div>
-            </div>
-
             <div class="chart-card">
                 <div class="chart-header">
-                    <span><i class="bi bi-pie-chart-fill"></i> Resultado Geral</span>
+                    <span><i class="bi bi-bar-chart-fill"></i> Alertas por Subtipo</span>
                 </div>
                 <div class="chart-body">
-                    <canvas id="chartRadarResultado"></canvas>
-                </div>
-            </div>
-
-            <div class="chart-card">
-                <div class="chart-header">
-                    <span><i class="bi bi-graph-up"></i> Verificações Mensais</span>
-                </div>
-                <div class="chart-body">
-                    <canvas id="chartVerifMensais"></canvas>
-                </div>
-            </div>
-
-            <div class="chart-card">
-                <div class="chart-header">
-                    <span><i class="bi bi-broadcast"></i> Cobertura Waze por Estados</span>
-                    <a href="{{ path('cobertura_radar') }}" class="btn btn-sm btn-outline-danger">Relatório</a>
-                </div>
-                <div class="chart-body">
-                    <canvas id="chartCoberturaUf"></canvas>
-                </div>
-            </div>
-        </div>
-    </section>
-    {% endif %}
-
-    {# Postos e Escolas #}
-    {% if showPosto|default(false) or showEscola|default(false) %}
-    <section class="modules-section">
-        <div class="modules-grid">
-            {% if showPosto|default(false) %}
-            <div class="module-card">
-                <div class="module-header">
-                    <span><i class="bi bi-fuel-pump"></i> Postos de Combustível</span>
-                    <div class="module-actions">
-                        <a href="{{ path('posto_index') }}" class="btn btn-sm btn-outline-secondary">Ver lista</a>
-                        <a href="{{ path('cobertura_posto') }}" class="btn btn-sm btn-outline-warning">Cobertura</a>
-                    </div>
-                </div>
-                <div class="module-body">
-                    <div class="stats-grid">
-                        <div class="stat-item">
-                            <span class="stat-label">Total</span>
-                            <span class="stat-value count-up" data-key="postostotal" data-target="{{ postoKpis.total ?? 0 }}">0</span>
-                        </div>
-                        <div class="stat-item stat-success">
-                            <span class="stat-label">Com Waze</span>
-                            <span class="stat-value count-up" data-key="postoscomwaze" data-target="{{ postoKpis.comWaze ?? 0 }}">0</span>
-                        </div>
-                        <div class="stat-item stat-danger">
-                            <span class="stat-label">Sem Waze</span>
-                            <span class="stat-value count-up" data-key="postossemwaze" data-target="{{ postoKpis.semWaze ?? 0 }}">0</span>
-                        </div>
-                        <div class="stat-item stat-info">
-                            <span class="stat-label">Cobertura</span>
-                            <span class="stat-value">{{ postoKpis.pct ?? 0 }}%</span>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: {{ postoKpis.pct ?? 0 }}%;"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="chart-mini">
-                        <canvas id="chartPostoAtividade"></canvas>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-
-            {% if showEscola|default(false) %}
-            <div class="module-card">
-                <div class="module-header">
-                    <span><i class="bi bi-building"></i> Escolas INEP</span>
-                    <a href="{{ path('escola_inep_index') }}" class="btn btn-sm btn-outline-secondary">Ver lista</a>
-                </div>
-                <div class="module-body">
-                    <div class="stats-grid">
-                        <div class="stat-item">
-                            <span class="stat-label">Total</span>
-                            <span class="stat-value count-up" data-key="escolastotal" data-target="{{ escolaKpis.total ?? 0 }}">0</span>
-                        </div>
-                        <div class="stat-item stat-primary">
-                            <span class="stat-label">Estados</span>
-                            <span class="stat-value count-up" data-key="escolasestados" data-target="{{ escolaKpis.estados ?? 0 }}">0</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-        </div>
-    </section>
-    {% endif %}
-
-    {# Solicitações #}
-    {% if showSolicitacao|default(false) %}
-    <section class="solic-section">
-        <div class="solic-grid">
-            <div class="solic-card">
-                <div class="solic-header">
-                    <span><i class="bi bi-inbox"></i> Solicitações por Tipos</span>
-                    <a href="{{ path('solicitacao_hub') }}" class="btn btn-sm btn-outline-secondary">Ver todas</a>
-                </div>
-                <div class="solic-body">
-                    {% if solicKpis.geral.total is defined %}
-                    <div class="solic-summary">
-                        <span>Total: <strong class="count-up" data-key="solictotal" data-target="{{ solicKpis.geral.total }}">0</strong></span>
-                        <span class="text-success">Atendidas: <strong class="count-up" data-key="solicatendidas" data-target="{{ solicKpis.geral.atendidas ?? 0 }}">0</strong></span>
-                        <span class="text-warning">Pendentes: <strong class="count-up" data-key="solicpendentes" data-target="{{ solicKpis.geral.pendentes ?? 0 }}">0</strong></span>
-                        {% if (solicKpis.geral.atrasadas ?? 0) > 0 %}
-                        <span class="text-danger">Atrasadas: <strong class="count-up" data-key="solicatrasadas" data-target="{{ solicKpis.geral.atrasadas ?? 0 }}">0</strong></span>
-                        {% endif %}
-                        <span class="text-danger">Recusadas: <strong class="count-up" data-key="solicrecusadas" data-target="{{ solicKpis.geral.recusadas ?? 0 }}">0</strong></span>
-                    </div>
+                    {% if alertsBySubtype|length > 0 %}
+                        <canvas id="chartAlertsBySubtype"></canvas>
+                    {% else %}
+                        <div class="chart-empty">Nenhum alerta no período.</div>
                     {% endif %}
-
-                    <table class="solic-table">
-                        <thead>
-                            <tr>
-                                <th>Tipo</th>
-                                <th class="text-end">Total</th>
-                                <th class="text-end">Atend.</th>
-                                <th>Taxa</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        {% for t in solicKpis.totais ?? [] %}
-                            {% set taxa = t.total > 0 ? (t.atendidas / t.total * 100)|round(0) : 0 %}
-                            <tr>
-                                <td><span class="badge">{{ t.tipo }}</span></td>
-                                <td class="text-end fw-semibold">{{ t.total }}</td>
-                                <td class="text-end">{{ t.atendidas ?? 0 }}</td>
-                                <td>
-                                    <div class="rate-bar">
-                                        <div class="rate-fill rate-{{ taxa >= 75 ? 'success' : (taxa >= 40 ? 'warning' : 'danger') }}" style="width: {{ taxa }}%;"></div>
-                                    </div>
-                                    <small>{{ taxa }}%</small>
-                                </td>
-                            </tr>
-                        {% else %}
-                            <tr>
-                                <td colspan="4" class="text-center">Nenhuma solicitação.</td>
-                            </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
                 </div>
             </div>
 
             <div class="chart-card">
                 <div class="chart-header">
-                    <span><i class="bi bi-graph-up-arrow"></i> Solicitações Diárias (30 dias)</span>
+                    <span><i class="bi bi-pie-chart-fill"></i> Congestionamentos por Nível</span>
                 </div>
                 <div class="chart-body">
-                    <canvas id="chartSolicDiarias"></canvas>
+                    <canvas id="chartJamsByLevel"></canvas>
                 </div>
             </div>
         </div>
     </section>
-    {% endif %}
 
-    {# Radares sem Waze + Usuários #}
-    {% if showRadar|default(false) %}
-    <section class="radar-extra-section">
-        <div class="radar-extra-grid">
-            <div class="radar-table-card">
-                <div class="table-header">
-                    <span><i class="bi bi-exclamation-triangle-fill"></i> Radares APROVADOS sem Link Waze</span>
-                    <a href="{{ path('cobertura_radar') }}" class="btn btn-sm btn-outline-warning">Ver todos</a>
-                </div>
-                <div class="table-body">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>UF</th>
-                                <th>Município</th>
-                                <th>Logradouro</th>
-                                <th class="text-end">Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        {% for r in radarSemWaze ?? [] %}
+    {# Ranking de ruas #}
+    <section class="ranking-section">
+        <h2 class="section-title">Principais Ruas com Congestionamento</h2>
+        <div class="ranking-card">
+            {% if topStreets|length > 0 %}
+                <table class="ranking-table">
+                    <thead>
                         <tr>
-                            <td><span class="badge">{{ r.sigla_uf }}</span></td>
-                            <td>{{ r.municipio }}</td>
-                            <td class="text-truncate" title="{{ r.logradouro ?? '' }}">{{ r.logradouro ?? '' }}</td>
-                            <td class="text-end">
-                                <a href="{{ path('radar_show', { id: r.id }) }}" class="btn btn-sm btn-outline-primary">
-                                    <i class="bi bi-link-45deg"></i>
-                                </a>
-                            </td>
+                            <th>#</th>
+                            <th>Rua</th>
+                            <th>Cidade</th>
+                            <th>Nível Médio</th>
+                            <th>Ocorrências</th>
+                            <th>Atraso Médio</th>
                         </tr>
-                        {% else %}
+                    </thead>
+                    <tbody>
+                    {% for street in topStreets %}
                         <tr>
-                            <td colspan="4" class="text-center text-success">
-                                <i class="bi bi-check-circle-fill"></i>
-                                Todos vinculados!
+                            <td><span class="rank-badge">{{ loop.index }}</span></td>
+                            <td class="fw-semibold">{{ street.street ?? 'Sem nome' }}</td>
+                            <td>{{ street.city ?? '—' }}</td>
+                            <td>
+                                <span class="badge badge-{{ street.avgLevel >= 4 ? 'danger' : (street.avgLevel >= 2 ? 'warning' : 'success') }}">
+                                    {{ street.avgLevel }}
+                                </span>
                             </td>
+                            <td>{{ street.occurrences }}</td>
+                            <td>{{ street.avgDelay ? (street.avgDelay / 60)|round(1) ~ ' min' : '—' }}</td>
                         </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            {% if isAdmin|default(false) and usuarioKpis.total is defined %}
-            <div class="users-card">
-                <div class="module-header">
-                    <span><i class="bi bi-people"></i> Usuários</span>
-                    <a href="{{ path('admin_users_index') }}" class="btn btn-sm btn-outline-secondary">Gerenciar</a>
-                </div>
-                <div class="module-body">
-                    <div class="stats-grid">
-                        {% for u in [
-                            { label: 'Total',     val: usuarioKpis.total ?? 0,      color: 'secondary', key: 'usuariostotal' },
-                            { label: 'Ativos',    val: usuarioKpis.ativos ?? 0,     color: 'success',   key: 'usuariosativos' },
-                            { label: 'Aprovados', val: usuarioKpis.aprovados ?? 0,  color: 'primary',   key: 'usuariosaprovados' },
-                            { label: 'Pendentes', val: usuarioKpis.pendentes ?? 0,  color: 'warning',   key: 'usuariospendentes' }
-                        ] %}
-                        <div class="stat-item stat-{{ u.color }}">
-                            <span class="stat-label">{{ u.label }}</span>
-                            <span class="stat-value count-up" data-key="{{ u.key }}" data-target="{{ u.val }}">0</span>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="empty-state">Nenhum congestionamento no período.</div>
             {% endif %}
         </div>
     </section>
-    {% endif %}
+
+    {# Mapa #}
+    <section class="map-section">
+        <h2 class="section-title">Mapa — Congestionamentos e Alertas</h2>
+        <div class="map-card">
+            <div id="dashboard-map"></div>
+            <p class="map-note">
+                {{ mapJams|length }} congestionamento(s) e {{ mapAlerts|length }} alerta(s) exibidos
+                {% if mapJamsTruncated or mapAlertsTruncated %}
+                    (limite atingido — refine o período)
+                {% endif %}
+            </p>
+        </div>
+    </section>
+
+    {# Alertas recentes #}
+    <section class="recent-section">
+        <h2 class="section-title">Alertas Recentes</h2>
+        <div class="recent-card">
+            {% if recentAlerts|length > 0 %}
+                <table class="recent-table">
+                    <thead>
+                        <tr>
+                            <th>Tipo</th>
+                            <th>Subtipo</th>
+                            <th>Local</th>
+                            <th>Hora</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for alert in recentAlerts %}
+                        <tr>
+                            <td><span class="badge">{{ alert.type }}</span></td>
+                            <td>{{ alert.subtype ?? '—' }}</td>
+                            <td>{{ alert.city ?? '' }} — {{ alert.street ?? 'Via não informada' }}</td>
+                            <td class="font-mono">{{ alert.pubAt ?? '—' }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="empty-state">Nenhum alerta no período.</div>
+            {% endif %}
+        </div>
+    </section>
+
+    {# Jams recentes #}
+    <section class="recent-section">
+        <h2 class="section-title">Lentidões Recentes</h2>
+        <div class="recent-card">
+            {% if recentJams|length > 0 %}
+                <table class="recent-table">
+                    <thead>
+                        <tr>
+                            <th>Via</th>
+                            <th>Cidade</th>
+                            <th>Nível</th>
+                            <th>Hora</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for jam in recentJams %}
+                        <tr>
+                            <td>{{ jam.street ?? 'Sem nome' }}</td>
+                            <td>{{ jam.city ?? '—' }}</td>
+                            <td>
+                                <span class="badge badge-{{ jam.level >= 4 ? 'danger' : (jam.level >= 2 ? 'warning' : 'success') }}">
+                                    {{ jam.level }}
+                                </span>
+                            </td>
+                            <td class="font-mono">{{ jam.pubAt ?? '—' }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="empty-state">Nenhuma lentidão no período.</div>
+            {% endif %}
+        </div>
+    </section>
 </div>
 {% endblock %}
 
 {% block javascripts %}
     {{ parent() }}
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-    <script>
-        window.radarUf        = {{ radarPorUf is defined and radarPorUf is iterable ? radarPorUf|json_encode|raw : '[]' }};
-        window.radarResultado = {{ radarResultado is defined and radarResultado is iterable ? radarResultado|json_encode|raw : '[]' }};
-        window.radarMensais   = {{ radarMensais is defined and radarMensais is iterable ? radarMensais|json_encode|raw : '[]' }};
-        window.radarCobertura = {{ radarCobertura is defined and radarCobertura is iterable ? radarCobertura|json_encode|raw : '[]' }};
-        window.postoAtividade = {{ postoAtividade is defined and postoAtividade is iterable ? postoAtividade|json_encode|raw : '[]' }};
-        window.solicDiarias   = {{ solicDiarias is defined and solicDiarias is iterable ? solicDiarias|json_encode|raw : '[]' }};
-    </script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="{{ asset('js/dashboard.js') }}" defer></script>
+    <script>
+        // Dados para os gráficos
+        window.dashboardData = {
+            alertsBySubtype: {{ alertsBySubtype|json_encode|raw }},
+            jamsByLevel: {{ jamsByLevel|json_encode|raw }},
+            topStreets: {{ topStreets|json_encode|raw }},
+            mapJams: {{ mapJams|json_encode|raw }},
+            mapAlerts: {{ mapAlerts|json_encode|raw }},
+        };
+    </script>
 {% endblock %}

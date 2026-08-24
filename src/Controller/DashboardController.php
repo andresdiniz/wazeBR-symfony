@@ -354,6 +354,7 @@ class DashboardController extends AbstractController
 
         $hours = self::PERIODS[$periodKey]['hours'] ?? self::PERIODS[self::DEFAULT_PERIOD]['hours'];
         $from = $now->modify("-{$hours} hours");
+        
 
         return [$from, $now];
     }
