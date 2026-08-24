@@ -82,7 +82,7 @@
             const theme = this.colors();
             Chart.defaults.color = theme.muted;
             Chart.defaults.borderColor = theme.border;
-            Chart.defaults.font.family = 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+            Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
             this.renderAlertsChart(data, theme);
             this.renderLevelsChart(data, theme);
             this.renderTopStreetsChart(data, theme);
@@ -92,10 +92,42 @@
             const canvas = document.getElementById('chartAlertsBySubtype');
             const rows = Array.isArray(data.alertsBySubtype) ? data.alertsBySubtype : [];
             if (!canvas || !rows.length) return;
+            const total = rows.reduce((sum, r) => sum + Number(r.total), 0);
             this.charts.push(new Chart(canvas, {
                 type: 'bar',
-                data: { labels: rows.map((row) => row.label || 'Sem subtipo'), datasets: [{ label: 'Alertas', data: rows.map((row) => Number(row.total || 0)), backgroundColor: theme.primary, borderRadius: 8, borderSkipped: false, maxBarThickness: 34 }] },
-                options: { responsive: true, maintainAspectRatio: false, animation: this.chartAnimation(), plugins: { legend: { display: false }, tooltip: { displayColors: false, callbacks: { label: (context) => ` ${context.parsed.y.toLocaleString('pt-BR')} alertas` } } }, scales: { x: { ticks: { color: theme.muted, maxRotation: 35, minRotation: 0 }, grid: { color: theme.border } }, y: { beginAtZero: true, ticks: { precision: 0, color: theme.muted }, grid: { color: theme.border } } } },
+                data: {
+                    labels: rows.map((row) => row.label || 'Sem subtipo'),
+                    datasets: [{
+                        label: 'Alertas',
+                        data: rows.map((row) => Number(row.total || 0)),
+                        backgroundColor: theme.primary,
+                        borderRadius: 8,
+                        borderSkipped: false,
+                        maxBarThickness: 34,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: this.chartAnimation(),
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            displayColors: false,
+                            callbacks: {
+                                label: (context) => {
+                                    const value = context.parsed.y;
+                                    const percent = total ? ((value / total) * 100).toFixed(1) : 0;
+                                    return ` ${value} alertas (${percent}%)`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { ticks: { color: theme.muted, maxRotation: 35, minRotation: 0 }, grid: { color: theme.border } },
+                        y: { beginAtZero: true, ticks: { precision: 0, color: theme.muted }, grid: { color: theme.border } }
+                    }
+                }
             }));
         },
 
@@ -108,8 +140,35 @@
             if (!values.some(Boolean)) return;
             this.charts.push(new Chart(canvas, {
                 type: 'doughnut',
-                data: { labels, datasets: [{ data: values, backgroundColor: theme.palette, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--color-bg-card').trim() || '#fff', borderWidth: 3, hoverOffset: 8 }] },
-                options: { responsive: true, maintainAspectRatio: false, cutout: '62%', animation: this.chartAnimation(), plugins: { legend: { position: 'bottom', labels: { color: theme.muted, boxWidth: 11, padding: 13, usePointStyle: true } }, tooltip: { callbacks: { label: (context) => ` ${context.label}: ${context.parsed.toLocaleString('pt-BR')}` } } } },
+                data: {
+                    labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: theme.palette,
+                        borderColor: getComputedStyle(document.documentElement).getPropertyValue('--color-bg-card').trim() || '#fff',
+                        borderWidth: 3,
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '62%',
+                    animation: this.chartAnimation(),
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: theme.muted, boxWidth: 11, padding: 13, usePointStyle: true } },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    const total = context.dataset.data.reduce((a,b) => a+b, 0);
+                                    const value = context.parsed;
+                                    const percent = total ? ((value / total) * 100).toFixed(1) : 0;
+                                    return ` ${context.label}: ${value} (${percent}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
             }));
         },
 
@@ -120,56 +179,184 @@
             const rows = [...source].sort((a, b) => Number(b.occurrences || 0) - Number(a.occurrences || 0)).slice(0, 10).reverse();
             this.charts.push(new Chart(canvas, {
                 type: 'bar',
-                data: { labels: rows.map((row) => row.street || 'Sem nome'), datasets: [{ label: 'Ocorrências', data: rows.map((row) => Number(row.occurrences || 0)), backgroundColor: '#0ea5a5', borderRadius: 8, borderSkipped: false, maxBarThickness: 30 }] },
-                options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, animation: this.chartAnimation(), plugins: { legend: { display: false }, tooltip: { displayColors: false, callbacks: { title: (items) => rows[items[0].dataIndex]?.street || 'Sem nome', label: (context) => ` ${context.parsed.x.toLocaleString('pt-BR')} ocorrências`, afterLabel: (context) => { const row = rows[context.dataIndex]; return [row.city ? `Cidade: ${row.city}` : '', row.avgLevel !== undefined ? `Nível médio: ${row.avgLevel}` : '', row.avgDelay ? `Atraso médio: ${(Number(row.avgDelay) / 60).toFixed(1)} min` : ''].filter(Boolean); } } } }, scales: { x: { beginAtZero: true, ticks: { precision: 0, color: theme.muted }, grid: { color: theme.border } }, y: { ticks: { color: theme.muted }, grid: { display: false } } } },
+                data: {
+                    labels: rows.map((row) => row.street || 'Sem nome'),
+                    datasets: [{
+                        label: 'Ocorrências',
+                        data: rows.map((row) => Number(row.occurrences || 0)),
+                        backgroundColor: '#0ea5a5',
+                        borderRadius: 8,
+                        borderSkipped: false,
+                        maxBarThickness: 30
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: this.chartAnimation(),
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            displayColors: false,
+                            callbacks: {
+                                title: (items) => rows[items[0].dataIndex]?.street || 'Sem nome',
+                                label: (context) => ` ${context.parsed.x.toLocaleString('pt-BR')} ocorrências`,
+                                afterLabel: (context) => {
+                                    const row = rows[context.dataIndex];
+                                    const lines = [];
+                                    if (row.city) lines.push(`Cidade: ${row.city}`);
+                                    if (row.avgLevel !== undefined) lines.push(`Nível médio: ${row.avgLevel}`);
+                                    if (row.avgDelay) lines.push(`Atraso médio: ${(Number(row.avgDelay) / 60).toFixed(1)} min`);
+                                    return lines;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { beginAtZero: true, ticks: { precision: 0, color: theme.muted }, grid: { color: theme.border } },
+                        y: { ticks: { color: theme.muted }, grid: { display: false } }
+                    }
+                }
             }));
         },
 
+        // ---- MAPA SIMPLES E ROBUSTO ----
         initMapWhenReady(attempt = 0) {
             const element = document.getElementById('dashboard-map');
-            if (!element) return;
-            if (typeof L === 'undefined') {
-                if (attempt < 20) window.setTimeout(() => this.initMapWhenReady(attempt + 1), 100);
+            if (!element) {
+                if (attempt < 10) setTimeout(() => this.initMapWhenReady(attempt + 1), 200);
                 return;
             }
-            this.initMap(element);
+            if (typeof L === 'undefined') {
+                if (attempt < 20) setTimeout(() => this.initMapWhenReady(attempt + 1), 100);
+                return;
+            }
+            try {
+                this.initMap(element);
+            } catch (err) {
+                console.error('Erro ao inicializar mapa:', err);
+                element.innerHTML = `
+                    <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--color-text-muted);flex-direction:column;gap:0.5rem;">
+                        <i class="bi bi-map" style="font-size:2rem;"></i>
+                        <span>Erro: ${err.message}</span>
+                    </div>
+                `;
+            }
         },
 
         initMap(element) {
             const data = window.dashboardData || {};
-            if (this.map) this.map.remove();
-            this.map = L.map(element, { zoomControl: true, preferCanvas: true }).setView([-20.6603, -43.7862], 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(this.map);
-            const jamsLayer = L.layerGroup();
-            const alertsLayer = typeof L.markerClusterGroup === 'function' ? L.markerClusterGroup({ maxClusterRadius: 50, showCoverageOnHover: false }) : L.layerGroup();
+            if (this.map) {
+                this.map.remove();
+                this.map = null;
+            }
+
+            const hasJams = Array.isArray(data.mapJams) && data.mapJams.length > 0;
+            const hasAlerts = Array.isArray(data.mapAlerts) && data.mapAlerts.length > 0;
+
+            if (!hasJams && !hasAlerts) {
+                element.innerHTML = `
+                    <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--color-text-muted);flex-direction:column;gap:0.5rem;">
+                        <i class="bi bi-map" style="font-size:2rem;"></i>
+                        <span>Nenhum dado para exibir no período.</span>
+                    </div>
+                `;
+                return;
+            }
+
+            // Cria o mapa com view central (Brasil)
+            this.map = L.map(element, { zoomControl: true, preferCanvas: true })
+                .setView([-15.7939, -47.8828], 4);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(this.map);
+
             const bounds = [];
+
+            // Adiciona Jams (polylines)
             (Array.isArray(data.mapJams) ? data.mapJams : []).forEach((jam) => {
-                const line = Array.isArray(jam.line) ? jam.line.map((point) => [Number(point.y ?? point.lat), Number(point.x ?? point.lng)]).filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng)) : [];
+                const line = Array.isArray(jam.line) ? jam.line.map((point) => [Number(point.lat), Number(point.lng)]).filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng)) : [];
                 if (line.length < 2) return;
-                line.forEach((point) => bounds.push(point));
+                line.forEach((p) => bounds.push(p));
                 const level = Number(jam.level || 0);
                 const color = level >= 5 ? '#b91c1c' : level >= 4 ? '#ef4444' : level >= 3 ? '#f97316' : level >= 2 ? '#f59e0b' : '#10b981';
-                L.polyline(line, { color, weight: level >= 4 ? 6 : 5, opacity: .9, lineCap: 'round', lineJoin: 'round' }).bindPopup(`<strong>${this.escape(jam.street || 'Sem nome')}</strong><br>${this.escape(jam.city || '')}<br>Nível: ${level}${jam.speed ? `<br>Velocidade: ${jam.speed} km/h` : ''}${jam.delay ? `<br>Atraso: ${Math.round(Number(jam.delay) / 60)} min` : ''}`).addTo(jamsLayer);
+                L.polyline(line, {
+                    color,
+                    weight: level >= 4 ? 6 : 4,
+                    opacity: 0.8,
+                    lineCap: 'round',
+                    lineJoin: 'round'
+                }).bindPopup(`
+                    <strong>${this.escape(jam.street || 'Sem nome')}</strong><br>
+                    ${this.escape(jam.city || '')}<br>
+                    Nível: ${level}
+                    ${jam.speed ? `<br>Velocidade: ${jam.speed} km/h` : ''}
+                    ${jam.delay ? `<br>Atraso: ${Math.round(Number(jam.delay) / 60)} min` : ''}
+                `).addTo(this.map);
             });
+
+            // Adiciona Alertas (marcadores simples)
             (Array.isArray(data.mapAlerts) ? data.mapAlerts : []).forEach((alert) => {
                 const lat = Number(alert.lat), lng = Number(alert.lng);
                 if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
                 bounds.push([lat, lng]);
-                const color = alert.type === 'JAM' ? '#f97316' : alert.type === 'ACCIDENT' ? '#8b5cf6' : alert.type === 'ROAD_CLOSED' ? '#64748b' : '#3379f3';
-                L.marker([lat, lng], { icon: L.divIcon({ className: 'dashboard-map-marker', html: `<span style="--marker-color:${color}"></span>`, iconSize: [18, 18], iconAnchor: [9, 9] }) }).bindPopup(`<strong>${this.escape(alert.label || alert.type || 'Alerta')}</strong><br>${this.escape(alert.city || '')} — ${this.escape(alert.street || 'Via não informada')}`).addTo(alertsLayer);
+                const color = alert.type === 'JAM' ? '#f97316' :
+                              alert.type === 'ACCIDENT' ? '#8b5cf6' :
+                              alert.type === 'ROAD_CLOSED' ? '#64748b' : '#3379f3';
+                L.marker([lat, lng], {
+                    icon: L.divIcon({
+                        className: 'dashboard-map-marker',
+                        html: `<span style="--marker-color:${color}"></span>`,
+                        iconSize: [18, 18],
+                        iconAnchor: [9, 9]
+                    })
+                }).bindPopup(`
+                    <strong>${this.escape(alert.label || alert.type || 'Alerta')}</strong><br>
+                    ${this.escape(alert.city || '')} — ${this.escape(alert.street || 'Via não informada')}
+                `).addTo(this.map);
             });
-            jamsLayer.addTo(this.map);
-            alertsLayer.addTo(this.map);
-            L.control.layers(null, { Congestionamentos: jamsLayer, Alertas: alertsLayer }, { collapsed: false }).addTo(this.map);
-            if (bounds.length) this.map.fitBounds(bounds, { padding: [30, 30], maxZoom: 16, animate: !this.reduceMotion });
-            window.setTimeout(() => this.map?.invalidateSize({ animate: false }), 100);
+
+            // Ajusta os limites
+            if (bounds.length > 0) {
+                const latLngBounds = L.latLngBounds(bounds);
+                this.map.fitBounds(latLngBounds, { padding: [30, 30], maxZoom: 16, animate: !this.reduceMotion });
+            } else {
+                this.map.setView([-15.7939, -47.8828], 4);
+            }
+
+            // Força redimensionamento com múltiplos delays
+            const forceResize = () => {
+                if (this.map) {
+                    this.map.invalidateSize({ animate: false });
+                }
+            };
+            setTimeout(forceResize, 100);
+            setTimeout(forceResize, 300);
+            setTimeout(forceResize, 600);
         },
 
-        escape(value) { const node = document.createElement('span'); node.textContent = String(value); return node.innerHTML; },
-        debounce(callback, delay) { let timeout; return (...args) => { window.clearTimeout(timeout); timeout = window.setTimeout(() => callback(...args), delay); }; },
+        escape(value) {
+            const node = document.createElement('span');
+            node.textContent = String(value);
+            return node.innerHTML;
+        },
+
+        debounce(callback, delay) {
+            let timeout;
+            return (...args) => {
+                window.clearTimeout(timeout);
+                timeout = window.setTimeout(() => callback(...args), delay);
+            };
+        },
     };
 
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => Dashboard.init(), { once: true });
-    else Dashboard.init();
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => Dashboard.init(), { once: true });
+    } else {
+        Dashboard.init();
+    }
     window.WazeBRDashboard = Dashboard;
 })();
