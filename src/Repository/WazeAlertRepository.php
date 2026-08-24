@@ -114,4 +114,23 @@ SQL; $rows = $this->getEntityManager()->getConnection()->fetchAllAssociative($sq
     public function getAlertsPerHourLast24h(): array { $lastDay = time() * 1000 - 24 * 3600 * 1000; return $this->getEntityManager()->getConnection()->fetchAllAssociative(<<<SQL
 SELECT CONCAT(DATE_FORMAT(FROM_UNIXTIME(a.pub_millis / 1000), '%H'), 'h') AS hour_label, COUNT(a.id) AS total FROM waze_alerts a WHERE a.pub_millis >= :lastDay GROUP BY hour_label ORDER BY hour_label ASC
 SQL, ['lastDay' => $lastDay]); }
+
+    /**
+     * Retorna contagem de alertas agrupados por hora exata (timestamp) dentro do período.
+     * Usado para gráfico de tendência quando o período é menor que 1 dia.
+     */
+    public function countByHourInPeriodFiltered(Partner $partner, array $filters = []): array
+    {
+        [$whereSql, $params] = $this->buildNativeWhere($partner, $filters);
+        $sql = <<<SQL
+            SELECT
+                DATE_FORMAT(CONVERT_TZ(FROM_UNIXTIME(a.pub_millis / 1000), '+00:00', '-03:00'), '%Y-%m-%d %H:00:00') AS hour_label,
+                COUNT(a.id) AS total
+            FROM waze_alerts a
+            WHERE {$whereSql}
+            GROUP BY hour_label
+            ORDER BY hour_label ASC
+        SQL;
+        return $this->getEntityManager()->getConnection()->fetchAllAssociative($sql, $params);
+    }
 }

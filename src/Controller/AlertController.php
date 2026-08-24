@@ -20,12 +20,12 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class AlertController extends AbstractController
 {
     private const PERIOD_PRESETS = [
-        'today' => ['label' => 'Hoje', 'days' => 0],
-        'yesterday' => ['label' => 'Ontem', 'days' => 1],
-        'week' => ['label' => '7 dias', 'days' => 7],
-        'month' => ['label' => '30 dias', 'days' => 30],
+        'today'      => ['label' => 'Hoje', 'days' => 0],
+        'yesterday'  => ['label' => 'Ontem', 'days' => 1],
+        'week'       => ['label' => '7 dias', 'days' => 7],
+        'month'      => ['label' => '30 dias', 'days' => 30],
         'six_months' => ['label' => '6 meses', 'days' => 182],
-        'year' => ['label' => '1 ano', 'days' => 365],
+        'year'       => ['label' => '1 ano', 'days' => 365],
     ];
 
     public function __construct(
@@ -73,10 +73,15 @@ class AlertController extends AbstractController
         $dateFrom = $request->query->get('dateFrom') ?: null;
         $dateTo = $request->query->get('dateTo') ?: null;
         $page = max(1, (int) $request->query->get('page', 1));
+
         $filters = $this->filtersFromRequest($request);
         $result = $this->alertRepo->findFilteredByPartner($partner, $filters, $page, 30);
+
+        // Mapas de tradução
         $typesMap = $this->alertTypeRepo->getTypesMap($locale);
         $subtypesMap = $this->alertTypeRepo->getSubtypesMap($locale);
+
+        // Gráficos básicos
         $bySubtypeRaw = $this->alertRepo->countBySubtypeFiltered($partner, $filters, 10);
         $bySubtype = array_map(static function (array $row) use ($typesMap, $subtypesMap): array {
             $key = $row['type'] . '|' . $row['subtype'];
@@ -84,35 +89,70 @@ class AlertController extends AbstractController
             return ['label' => $label, 'total' => $row['total']];
         }, $bySubtypeRaw);
 
+        // ---- GRÁFICO DE TENDÊNCIA: DIA ou HORA ----
+        $byDay = [];
+        $byHourTrend = [];
+        $trendType = 'day'; // 'day' ou 'hour'
+
+        // Calcula a diferença em dias entre dateFrom e dateTo
+        $tz = new \DateTimeZone('America/Sao_Paulo');
+        $fromDate = $filters['dateFrom'] ? \DateTimeImmutable::createFromFormat('!Y-m-d', $filters['dateFrom'], $tz) : null;
+        $toDate = $filters['dateTo'] ? \DateTimeImmutable::createFromFormat('!Y-m-d', $filters['dateTo'], $tz) : null;
+
+        if ($fromDate && $toDate) {
+            $diff = $fromDate->diff($toDate)->days;
+            if ($diff < 1) {
+                // Período menor que 1 dia → gráfico por hora
+                $trendType = 'hour';
+                $byHourTrend = $this->alertRepo->countByHourInPeriodFiltered($partner, $filters);
+            } else {
+                $trendType = 'day';
+                $byDay = $this->alertRepo->countByDayFiltered($partner, $filters);
+            }
+        } else {
+            // Sem datas definidas → usa o padrão (dias)
+            $byDay = $this->alertRepo->countByDayFiltered($partner, $filters);
+        }
+
+        // Demais dados
+        $byConfidence = $this->alertRepo->countByConfidenceFiltered($partner, $filters);
+        $byHour = $this->alertRepo->countByHourOfDayFiltered($partner, $filters);
+        $byWeekday = $this->alertRepo->countByWeekdayFiltered($partner, $filters);
+        $topStreets = $this->alertRepo->topStreetsFiltered($partner, $filters, 10);
+        $hotspots = $this->alertRepo->findHotspotsFiltered($partner, $filters, 15);
+        $mapAlerts = $this->alertRepo->findForMapFiltered($partner, $filters, 500);
+
         return $this->render('alert/index.html.twig', [
-            'partner' => $partner,
-            'alerts' => $result['items'],
-            'total' => $result['total'],
-            'pages' => $result['pages'],
-            'page' => $page,
-            'type' => $type,
-            'subtype' => $subtype,
-            'city' => $city,
-            'street' => $street,
-            'excludeStreet' => $excludeStreet,
-            'period' => $period,
-            'periods' => self::PERIOD_PRESETS,
-            'dateFrom' => $dateFrom,
-            'dateTo' => $dateTo,
-            'types' => $this->alertRepo->findDistinctTypes($partner),
-            'subtypes' => $this->alertRepo->findDistinctSubtypes($partner, $type),
-            'cities' => $this->alertRepo->findDistinctCities($partner),
-            'streets' => $this->alertRepo->findDistinctStreets($partner),
-            'typesMap' => $typesMap,
-            'subtypesMap' => $subtypesMap,
-            'bySubtype' => $bySubtype,
-            'byConfidence' => $this->alertRepo->countByConfidenceFiltered($partner, $filters),
-            'byDay' => $this->alertRepo->countByDayFiltered($partner, $filters),
-            'byHour' => $this->alertRepo->countByHourOfDayFiltered($partner, $filters),
-            'byWeekday' => $this->alertRepo->countByWeekdayFiltered($partner, $filters),
-            'topStreets' => $this->alertRepo->topStreetsFiltered($partner, $filters, 10),
-            'hotspots' => $this->alertRepo->findHotspotsFiltered($partner, $filters, 15),
-            'mapAlerts' => $this->alertRepo->findForMapFiltered($partner, $filters, 500),
+            'partner'      => $partner,
+            'alerts'       => $result['items'],
+            'total'        => $result['total'],
+            'pages'        => $result['pages'],
+            'page'         => $page,
+            'type'         => $type,
+            'subtype'      => $subtype,
+            'city'         => $city,
+            'street'       => $street,
+            'excludeStreet'=> $excludeStreet,
+            'period'       => $period,
+            'periods'      => self::PERIOD_PRESETS,
+            'dateFrom'     => $dateFrom,
+            'dateTo'       => $dateTo,
+            'types'        => $this->alertRepo->findDistinctTypes($partner),
+            'subtypes'     => $this->alertRepo->findDistinctSubtypes($partner, $type),
+            'cities'       => $this->alertRepo->findDistinctCities($partner),
+            'streets'      => $this->alertRepo->findDistinctStreets($partner),
+            'typesMap'     => $typesMap,
+            'subtypesMap'  => $subtypesMap,
+            'bySubtype'    => $bySubtype,
+            'byConfidence' => $byConfidence,
+            'byDay'        => $byDay,
+            'byHourTrend'  => $byHourTrend,
+            'trendType'    => $trendType,
+            'byHour'       => $byHour,
+            'byWeekday'    => $byWeekday,
+            'topStreets'   => $topStreets,
+            'hotspots'     => $hotspots,
+            'mapAlerts'    => $mapAlerts,
         ]);
     }
 
@@ -128,7 +168,7 @@ class AlertController extends AbstractController
 
         $response = new StreamedResponse(function () use ($alerts, $typesMap, $subtypesMap): void {
             $output = fopen('php://output', 'wb');
-            fwrite($output, "\xEF\xBB\xBF");
+            fwrite($output, "\xEF\xBB\xBF"); // BOM para UTF-8
             fputcsv($output, ['ID', 'Tipo', 'Subtipo', 'Via', 'Cidade', 'Publicado', 'Confiança', 'Curtidas', 'Latitude', 'Longitude'], ';');
             $timezone = new \DateTimeZone('America/Sao_Paulo');
 
@@ -168,12 +208,12 @@ class AlertController extends AbstractController
         $alerts = $this->alertRepo->findLiveByPartner($partner, $hours);
 
         return $this->render('alert/live.html.twig', [
-            'partner' => $partner,
-            'regions' => $regions,
-            'alerts' => $alerts,
-            'hours' => $hours,
-            'total' => array_sum(array_column($regions, 'count')),
-            'typesMap' => $this->alertTypeRepo->getTypesMap($locale),
+            'partner'     => $partner,
+            'regions'     => $regions,
+            'alerts'      => $alerts,
+            'hours'       => $hours,
+            'total'       => array_sum(array_column($regions, 'count')),
+            'typesMap'    => $this->alertTypeRepo->getTypesMap($locale),
             'subtypesMap' => $this->alertTypeRepo->getSubtypesMap($locale),
         ]);
     }
@@ -192,17 +232,17 @@ class AlertController extends AbstractController
             $type = $alert->getType();
             $subtype = $alert->getSubtype();
             return [
-                'id' => $alert->getId(),
-                'lat' => (float) $alert->getLatitude(),
-                'lng' => (float) $alert->getLongitude(),
-                'type' => $type,
-                'typeLabel' => $typesMap[$type] ?? $type,
-                'subtype' => $subtype,
-                'subtypeLabel' => $subtype ? ($subtypesMap[$type . '|' . $subtype] ?? $subtype) : null,
-                'street' => $alert->getStreet(),
-                'city' => $alert->getCity(),
-                'conf' => $alert->getConfidence(),
-                'pub' => $alert->getPubMillis(),
+                'id'          => $alert->getId(),
+                'lat'         => (float) $alert->getLatitude(),
+                'lng'         => (float) $alert->getLongitude(),
+                'type'        => $type,
+                'typeLabel'   => $typesMap[$type] ?? $type,
+                'subtype'     => $subtype,
+                'subtypeLabel'=> $subtype ? ($subtypesMap[$type . '|' . $subtype] ?? $subtype) : null,
+                'street'      => $alert->getStreet(),
+                'city'        => $alert->getCity(),
+                'conf'        => $alert->getConfidence(),
+                'pub'         => $alert->getPubMillis(),
             ];
         }, $alerts);
 
@@ -221,9 +261,9 @@ class AlertController extends AbstractController
         }
 
         return $this->render('alert/show.html.twig', [
-            'partner' => $partner,
-            'alert' => $alert,
-            'typesMap' => $this->alertTypeRepo->getTypesMap($locale),
+            'partner'     => $partner,
+            'alert'       => $alert,
+            'typesMap'    => $this->alertTypeRepo->getTypesMap($locale),
             'subtypesMap' => $this->alertTypeRepo->getSubtypesMap($locale),
         ]);
     }
