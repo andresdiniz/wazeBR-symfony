@@ -19,6 +19,12 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_USER')]
 class AlertController extends AbstractController
 {
+    public function __construct(
+        private readonly TenantContext $tenantContext,
+        private readonly WazeAlertRepository $alertRepo,
+        private readonly WazeAlertTypeRepository $alertTypeRepo,
+    ) {}
+
     #[Route('/ao-vivo', name: 'live', methods: ['GET'])]
     public function live(Request $request): Response
     {
