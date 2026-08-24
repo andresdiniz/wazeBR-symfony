@@ -245,6 +245,19 @@
                     <canvas id="chartJamsByLevel"></canvas>
                 </div>
             </div>
+
+            <div class="chart-card chart-card-wide">
+                <div class="chart-header">
+                    <span><i class="bi bi-signpost-split-fill"></i> Top Ruas com Congestionamento</span>
+                </div>
+                <div class="chart-body chart-body-tall">
+                    {% if topStreets|length > 0 %}
+                        <canvas id="chartTopStreets"></canvas>
+                    {% else %}
+                        <div class="chart-empty">Nenhum congestionamento no período.</div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </section>
 

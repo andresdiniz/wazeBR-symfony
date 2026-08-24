@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
     <script>
         // Aplica o tema salvo (ou preferência do sistema) ANTES do primeiro
         // paint, para não piscar o tema errado ao carregar a página.
@@ -321,6 +322,5 @@
     })();
 </script>
 {% block javascripts %}{% endblock %}
-            {% block importmap %}{{ importmap('app') }}{% endblock %}
 </body>
 </html>
