@@ -25,6 +25,42 @@ class AlertController extends AbstractController
         private readonly WazeAlertTypeRepository $alertTypeRepo,
     ) {}
 
+    #[Route('', name: 'index', methods: ['GET'])]
+    public function index(Request $request): Response
+    {
+        $partner = $this->tenantContext->requirePartner();
+        return $this->render('alert/index.html.twig', [
+            'partner' => $partner,
+            'alerts' => [],
+            'total' => 0,
+            'page' => 1,
+            'pages' => 1,
+            'types' => [],
+            'subtypes' => [],
+            'cities' => [],
+            'streets' => [],
+            'bySubtype' => [],
+            'byConfidence' => [],
+            'byDay' => [],
+            'byHour' => [],
+            'byWeekday' => [],
+            'topStreets' => [],
+            'hotspots' => [],
+            'mapAlerts' => [],
+            'type' => null,
+            'subtype' => null,
+            'city' => null,
+            'street' => null,
+            'excludeStreet' => null,
+            'period' => null,
+            'periods' => [],
+            'dateFrom' => null,
+            'dateTo' => null,
+            'typesMap' => [],
+            'subtypesMap' => [],
+        ]);
+    }
+
     #[Route('/ao-vivo', name: 'live', methods: ['GET'])]
     public function live(Request $request): Response
     {
@@ -38,23 +74,7 @@ class AlertController extends AbstractController
         }
         arsort($regions);
         $regionRows = array_map(static fn ($city, $count) => ['city' => $city, 'count' => $count], array_keys($regions), array_values($regions));
-        dump([
-            'rota' => 'alert_live',
-            'total_alertas_ativos' => count($alerts),
-            'regioes' => $regionRows,
-            'ids' => array_map(static fn ($alert) => $alert->getId(), $alerts),
-            'pub_millis' => array_map(static fn ($alert) => $alert->getPubMillis(), $alerts),
-            'agora_millis' => time() * 1000,
-            'limite_millis' => (time() - 600) * 1000,
-        ]);
-        return $this->render('alert/live.html.twig', [
-            'partner' => $partner,
-            'regions' => $regionRows,
-            'alerts' => $alerts,
-            'hours' => 0,
-            'total' => count($alerts),
-            'typesMap' => $this->alertTypeRepo->getTypesMap($locale),
-            'subtypesMap' => $this->alertTypeRepo->getSubtypesMap($locale),
-        ]);
+        dump(['rota' => 'alert_live', 'total_alertas_ativos' => count($alerts), 'regioes' => $regionRows, 'ids' => array_map(static fn ($alert) => $alert->getId(), $alerts), 'pub_millis' => array_map(static fn ($alert) => $alert->getPubMillis(), $alerts), 'agora_millis' => time() * 1000, 'limite_millis' => (time() - 600) * 1000]);
+        return $this->render('alert/live.html.twig', ['partner' => $partner, 'regions' => $regionRows, 'alerts' => $alerts, 'hours' => 0, 'total' => count($alerts), 'typesMap' => $this->alertTypeRepo->getTypesMap($locale), 'subtypesMap' => $this->alertTypeRepo->getSubtypesMap($locale)]);
     }
 }
