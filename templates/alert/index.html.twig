@@ -24,7 +24,7 @@
 
             <div class="alert-toolbar">
                 <a href="{{ path('alert_export', app.request.query.all|filter((value, key) => key != 'page')) }}"
-                   class="alert-export-button btn btn-primary">
+                   class="alert-export-button btn btn-primary js-download-btn">
                     <i class="bi bi-download"></i>
                     Exportar CSV
                 </a>

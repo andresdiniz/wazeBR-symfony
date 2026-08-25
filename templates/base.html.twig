@@ -65,6 +65,38 @@
 document.getElementById('sidebarToggle')?.addEventListener('click',function(){document.getElementById('sidebar').classList.toggle('show');document.getElementById('sidebarBackdrop').classList.toggle('show');});document.getElementById('sidebarBackdrop')?.addEventListener('click',function(){document.getElementById('sidebar').classList.remove('show');this.classList.remove('show');});
 (function(){var switchEl=document.getElementById('themeSwitch');if(!switchEl)return;function applyActiveButton(theme){switchEl.querySelectorAll('button').forEach(function(btn){btn.classList.toggle('active',btn.dataset.theme===theme);});}applyActiveButton(document.documentElement.getAttribute('data-theme')||'light');switchEl.addEventListener('click',function(e){var btn=e.target.closest('button[data-theme]');if(!btn)return;var theme=btn.dataset.theme;document.documentElement.setAttribute('data-theme',theme);document.documentElement.setAttribute('data-bs-theme',theme);try{localStorage.setItem('wazebr-theme',theme);}catch(e){}applyActiveButton(theme);});})();
 (function(){var alertToggle=document.querySelector('.alerts-toggle');var submenu=document.getElementById('alertsSubmenu');if(!alertToggle||!submenu)return;alertToggle.addEventListener('click',function(e){if(window.matchMedia('(max-width:768px)').matches){e.preventDefault();}var open=alertToggle.getAttribute('aria-expanded')==='true';alertToggle.setAttribute('aria-expanded',String(!open));submenu.classList.toggle('is-open',!open);});})();
+/*
+ * Botões de download/export (.js-download-btn) em qualquer página: mostra um
+ * spinner enquanto o servidor gera o arquivo e restaura o texto original
+ * assim que a resposta chega (detectado via cookie 'dl_<token>' setado pelo
+ * backend), com um fallback de segurança caso o cookie nunca apareça.
+ */
+document.addEventListener('click', function (e) {
+  var link = e.target.closest('.js-download-btn');
+  if (!link || link.classList.contains('is-loading')) return;
+  var token = 'dl' + Date.now() + Math.random().toString(36).slice(2, 8);
+  try {
+    var url = new URL(link.href, window.location.origin);
+    url.searchParams.set('dlToken', token);
+    link.setAttribute('href', url.toString());
+  } catch (err) { return; }
+  var originalHtml = link.innerHTML;
+  link.classList.add('is-loading');
+  link.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Gerando...';
+  var poll = setInterval(function () {
+    if (document.cookie.indexOf('dl_' + token + '=') !== -1) {
+      document.cookie = 'dl_' + token + '=; Max-Age=0; path=/';
+      restore();
+    }
+  }, 300);
+  var fallback = setTimeout(restore, 20000);
+  function restore() {
+    clearInterval(poll);
+    clearTimeout(fallback);
+    link.classList.remove('is-loading');
+    link.innerHTML = originalHtml;
+  }
+});
 </script>
 {% block javascripts %}{% endblock %}
 </body>

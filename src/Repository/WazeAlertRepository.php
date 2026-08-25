@@ -39,7 +39,33 @@ class WazeAlertRepository extends ServiceEntityRepository
     }
 
     public function findFilteredByPartner(Partner $partner, array $filters = [], int $page = 1, int $limit = 30): array { $base = $this->createQueryBuilder('a'); $this->applyFilters($base, $partner, $filters); $total = (int) (clone $base)->select('COUNT(a.id)')->getQuery()->getSingleScalarResult(); $pages = max(1, (int) ceil($total / $limit)); $page = min(max(1, $page), $pages); $items = $base->orderBy('a.pubMillis', 'DESC')->setFirstResult(($page - 1) * $limit)->setMaxResults($limit)->getQuery()->getResult(); return ['items' => $items, 'total' => $total, 'pages' => $pages]; }
-    public function findAllFilteredByPartnerForExport(Partner $partner, array $filters = []): array { $qb = $this->createQueryBuilder('a'); $this->applyFilters($qb, $partner, $filters); return $qb->orderBy('a.pubMillis', 'DESC')->getQuery()->getResult(); }
+    /** Contagem total de alertas que o filtro atual retornaria (sem paginação) — usado para avisar quando um export foi truncado pelo teto de segurança. */
+    public function countFilteredByPartner(Partner $partner, array $filters = []): int
+    {
+        $qb = $this->createQueryBuilder('a')->select('COUNT(a.id)');
+        $this->applyFilters($qb, $partner, $filters);
+
+        return (int) $qb->getQuery()->getSingleScalarResult();
+    }
+
+    /**
+     * Iterável para exportação: não hidrata tudo em memória de uma vez
+     * (usa Doctrine::toIterable, que lê em blocos), e aplica um teto de
+     * segurança de $limit linhas — evita travar o processo/memória num
+     * export sem filtro de data num partner com histórico muito grande.
+     *
+     * @return iterable<WazeAlert>
+     */
+    public function iterateFilteredByPartnerForExport(Partner $partner, array $filters = [], int $limit = 200000): iterable
+    {
+        $qb = $this->createQueryBuilder('a');
+        $this->applyFilters($qb, $partner, $filters);
+
+        return $qb->orderBy('a.pubMillis', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->toIterable();
+    }
     public function findActiveByPartner(Partner $partner, int $minutes = 10): array { return $this->createQueryBuilder('a')->where('a.partner = :partner')->andWhere('a.pubMillis >= :since')->setParameter('partner', $partner)->setParameter('since', (time() - max(1, $minutes) * 60) * 1000)->orderBy('a.pubMillis', 'DESC')->getQuery()->getResult(); }
     public function findOneByPartner(int $id, Partner $partner): ?WazeAlert { return $this->createQueryBuilder('a')->where('a.id = :id')->andWhere('a.partner = :partner')->setParameter('id', $id)->setParameter('partner', $partner)->getQuery()->getOneOrNullResult(); }
 

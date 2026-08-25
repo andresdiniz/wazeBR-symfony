@@ -323,6 +323,9 @@ a { color: inherit; }
 
 .content { padding: 24px; flex: 1; min-width: 0; }
 
+/* Botões de download/export (.js-download-btn, ver script em base.html.twig) */
+.btn.is-loading { pointer-events: none; opacity: .75; cursor: wait; }
+
 /* ── Responsivo ──────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .sidebar {
