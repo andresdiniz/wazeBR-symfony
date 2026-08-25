@@ -42,6 +42,7 @@
             this.bindFilters();
             this.renderCharts();
             this.initMap();
+            this.bindHotspotButtons();
         },
 
         bindFilters() {
@@ -125,9 +126,43 @@
                 L.marker([lat, lng]).bindPopup(`<strong>${this.escape(alert.type || 'Alerta')}</strong><br>${this.escape(alert.street || 'Via não informada')}<br>${this.escape(alert.city || 'Sem cidade')}<br><a href="/alertas/${encodeURIComponent(alert.id)}">Ver detalhes</a>`).addTo(cluster);
             });
             map.addLayer(cluster);
+
+            // Aglomerados (hotspots): círculo proporcional à quantidade de alertas
+            // na mesma coordenada, desenhado por cima da camada de clusters —
+            // permanece visível em qualquer zoom, ao contrário de um pino comum.
+            this.hotspotLayer = L.layerGroup().addTo(map);
+            this.hotspotMarkers = [];
+            (data.hotspots || []).forEach(h => {
+                const lat = Number(h.lat), lng = Number(h.lng), total = Number(h.total || 0);
+                if (!Number.isFinite(lat) || !Number.isFinite(lng)) { this.hotspotMarkers.push(null); return; }
+                const radius = Math.min(10 + total * 3, 40);
+                const marker = L.circleMarker([lat, lng], {
+                    radius,
+                    color: '#ef4444',
+                    weight: 2,
+                    fillColor: '#ef4444',
+                    fillOpacity: 0.25
+                }).bindPopup(`<strong>${total}× alertas nesta área</strong><br>${this.escape(h.street || 'Via não identificada')}<br>${this.escape(h.city || '')}`);
+                marker.addTo(this.hotspotLayer);
+                this.hotspotMarkers.push(marker);
+            });
+
             if (bounds.length) map.fitBounds(bounds, { padding: [30, 30], maxZoom: 16 });
             setTimeout(() => map.invalidateSize(), 150);
             this.map = map;
+        },
+
+        bindHotspotButtons() {
+            document.querySelectorAll('.js-hotspot-locate').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const idx = Number(btn.dataset.index);
+                    const marker = this.hotspotMarkers && this.hotspotMarkers[idx];
+                    if (!marker || !this.map) return;
+                    document.getElementById('alert-map')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    this.map.setView(marker.getLatLng(), 17);
+                    setTimeout(() => marker.openPopup(), 300);
+                });
+            });
         },
 
         escape(value) { const node = document.createElement('span'); node.textContent = String(value ?? ''); return node.innerHTML; }

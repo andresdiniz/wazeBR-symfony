@@ -263,12 +263,11 @@
                                         {{ hotspot.city ?? '—' }}
                                     </div>
                                 </div>
-                                <a class="btn btn-ghost btn-sm"
-                                   target="_blank"
-                                   rel="noopener"
-                                   href="https://www.google.com/maps?q={{ hotspot.lat }},{{ hotspot.lng }}">
-                                    <i class="bi bi-box-arrow-up-right"></i>
-                                </a>
+                                <button type="button" class="btn btn-ghost btn-sm js-hotspot-locate"
+                                   data-index="{{ loop.index0 }}"
+                                   title="Ver aglomerado no mapa">
+                                    <i class="bi bi-geo-alt-fill"></i>
+                                </button>
                             </div>
                         {% else %}
                             <p class="text-muted mb-0">
@@ -433,6 +432,7 @@
                 conf: alert.confidence,
                 thumbs: alert.nThumbsUp
             })|json_encode|raw }},
+            hotspots: {{ hotspots|json_encode|raw }},
             typesMap: {{ typesMap|json_encode|raw }},
             subtypesMap: {{ subtypesMap|json_encode|raw }},
             dateFrom: '{{ dateFrom|e('js') }}',
