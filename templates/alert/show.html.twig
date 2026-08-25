@@ -2,8 +2,35 @@
 {% block title %}Alerta #{{ alert.id }}{% endblock %}
 
 {% block stylesheets %}
+{{ parent() }}
+<link rel="stylesheet" href="{{ asset('styles/alert.css') }}">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
+/*
+ * Compatibilidade: este template usa um vocabulário de tokens
+ * (--space-*, --text-*, --radius-*, --color-surface, --color-divider,
+ * --color-text-faint) que não existe em app.css/dashboard.css/alert.css
+ * (que definem --color-bg, --color-bg-card, --color-text-muted,
+ * --color-border, --shadow-sm/md, --radius). Sem isso, os cards e o
+ * texto ficam sem estilo (var() indefinida = declaração inválida).
+ * Mesmo padrão de compatibilidade usado em route/history.html.twig.
+ */
+html[data-theme='dark'], body.dark, body[data-theme='dark'] {
+  --color-surface: var(--color-bg-card);
+  --color-surface-offset: var(--color-bg-muted);
+  --color-divider: var(--color-border);
+  --color-text-faint: #5b6b84;
+}
+:root {
+  --color-surface: var(--color-bg-card);
+  --color-surface-offset: var(--color-bg-muted);
+  --color-divider: var(--color-border);
+  --color-text-faint: #94a3b8;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px; --space-6:24px;
+  --radius-lg: 14px;
+  --radius-full: 999px;
+  --text-xs:.72rem; --text-sm:.82rem;
+}
 .show-grid{
   display:grid;
   grid-template-columns:1fr 420px;
@@ -87,7 +114,7 @@
 </style>
 {% endblock %}
 
-{% block content %}
+{% block body %}
 
 {% set typeColors = {
   'ACCIDENT':      'badge-red',
@@ -115,10 +142,12 @@
   14:'Rua 4x4', 15:'Via de pedestres', 17:'Private road'
 } %}
 
+<div class="alerts-page">
+
 {# Cabeçalho #}
 <div style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-6);flex-wrap:wrap">
   <a href="{{ path('alert_index') }}" class="btn btn-ghost btn-sm">
-    <i data-lucide="arrow-left" style="width:14px;height:14px"></i> Voltar
+    <i class="bi bi-arrow-left"></i> Voltar
   </a>
   <div style="flex:1">
     <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap">
@@ -131,11 +160,11 @@
       {% endif %}
     </div>
     <div style="margin-top:var(--space-2);display:flex;gap:var(--space-3);flex-wrap:wrap">
-      <span class="meta-pill"><i data-lucide="clock" style="width:11px;height:11px"></i> Publicado <time data-utc="{{ alert.pubDate|date('c') }}" data-fmt="datetime">{{ alert.pubDate|date('d/m/Y H:i:s') }}</time></span>
-      <span class="meta-pill"><i data-lucide="database" style="width:11px;height:11px"></i> Coletado <time data-utc="{{ alert.createdAt|date('c') }}" data-fmt="datetime">{{ alert.createdAt|date('d/m/Y H:i:s') }}</time></span>
+      <span class="meta-pill"><i class="bi bi-clock"></i> Publicado <time data-utc="{{ alert.pubDate|date('c') }}" data-fmt="datetime">{{ alert.pubDate|date('d/m/Y H:i:s') }}</time></span>
+      <span class="meta-pill"><i class="bi bi-hdd-stack"></i> Coletado <time data-utc="{{ alert.createdAt|date('c') }}" data-fmt="datetime">{{ alert.createdAt|date('d/m/Y H:i:s') }}</time></span>
       {% if alert.confidence is not null %}
         <span class="meta-pill {{ alert.confidence >= 7 ? 'badge-green' : (alert.confidence >= 4 ? 'badge-orange' : 'badge-red') }}">
-          <i data-lucide="shield" style="width:11px;height:11px"></i> Confiança {{ alert.confidence }}/10
+          <i class="bi bi-shield-check"></i> Confiança {{ alert.confidence }}/10
         </span>
       {% endif %}
     </div>
@@ -175,7 +204,7 @@
                  target="_blank" rel="noopener">
                 {{ alert.latitude|number_format(6,'.','') }},
                 {{ alert.longitude|number_format(6,'.','') }}
-                <i data-lucide="external-link" style="width:11px;height:11px;vertical-align:middle"></i>
+                <i class="bi bi-box-arrow-up-right"></i>
               </a>
             {% else %}—{% endif %}
           </span>
@@ -315,9 +344,12 @@
 
   </div>
 </div>
+
+</div>
 {% endblock %}
 
 {% block javascripts %}
+{{ parent() }}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function(){
