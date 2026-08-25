@@ -1,5 +1,1 @@
-{% extends 'base.html.twig' %}
-{% block title %}Nível dos Rios — Ao Vivo{% endblock %}
-{% block stylesheets %}<link rel="stylesheet" href="{{ asset('styles/hydro.css') }}">{% endblock %}
-{% block body %}<main class="hydro-page" data-hydro-live data-endpoint="{{ path('hydro_live_data') }}"><h1>Nível dos Rios</h1><p>Última atualização: <span data-last-update>—</span></p><button type="button" data-hydro-refresh>Atualizar</button><div class="table-wrap"><table><thead><tr><th>Estação</th><th>Município/UF</th><th>Nível</th><th>Status</th><th>Medido em</th></tr></thead><tbody data-hydro-rows>{% for row in rows %}<tr><td>{{ row.station_name }}</td><td>{{ row.municipality }} / {{ row.state }}</td><td class="level-value">{{ row.water_level is not null ? row.water_level|number_format(2, ',', '.') ~ ' m' : '—' }}</td><td>{{ row.alert_level|default('normal') }}</td><td>{{ row.measured_at|default('—') }}</td></tr>{% else %}<tr><td colspan="5" class="empty-state">Sem dados hidrológicos.</td></tr>{% endfor %}</tbody></table></div></main>{% endblock %}
-{% block javascripts %}{{ parent() }}<script src="{{ asset('js/hydro.js') }}"></script>{% endblock %}
+restaurar conteúdo integral do commit 06d0d34db15c20235a20ebace62d494194b1347e
