@@ -42,6 +42,24 @@ class WazeAlertRepository extends ServiceEntityRepository
     public function findAllFilteredByPartnerForExport(Partner $partner, array $filters = []): array { $qb = $this->createQueryBuilder('a'); $this->applyFilters($qb, $partner, $filters); return $qb->orderBy('a.pubMillis', 'DESC')->getQuery()->getResult(); }
     public function findActiveByPartner(Partner $partner, int $minutes = 10): array { return $this->createQueryBuilder('a')->where('a.partner = :partner')->andWhere('a.pubMillis >= :since')->setParameter('partner', $partner)->setParameter('since', (time() - max(1, $minutes) * 60) * 1000)->orderBy('a.pubMillis', 'DESC')->getQuery()->getResult(); }
     public function findOneByPartner(int $id, Partner $partner): ?WazeAlert { return $this->createQueryBuilder('a')->where('a.id = :id')->andWhere('a.partner = :partner')->setParameter('id', $id)->setParameter('partner', $partner)->getQuery()->getOneOrNullResult(); }
+
+    /**
+     * Contagem de alertas publicados nas últimas $hours horas — usado para
+     * detectar anomalias (comparando o volume da última hora com a média).
+     */
+    public function countLastHoursByPartner(Partner $partner, int $hours): int
+    {
+        $since = (time() - max(1, $hours) * 3600) * 1000;
+
+        return (int) $this->createQueryBuilder('a')
+            ->select('COUNT(a.id)')
+            ->where('a.partner = :partner')
+            ->andWhere('a.pubMillis >= :since')
+            ->setParameter('partner', $partner)
+            ->setParameter('since', $since)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
     public function findDistinctTypes(Partner $partner): array { return array_column($this->createQueryBuilder('a')->select('DISTINCT a.type AS type')->where('a.partner = :partner')->setParameter('partner', $partner)->orderBy('a.type')->getQuery()->getArrayResult(), 'type'); }
     public function findDistinctSubtypes(Partner $partner, ?string $type = null): array { $qb = $this->createQueryBuilder('a')->select('DISTINCT a.subtype AS subtype')->where('a.partner = :partner')->andWhere('a.subtype IS NOT NULL')->setParameter('partner', $partner)->orderBy('a.subtype'); if ($type) $qb->andWhere('a.type = :type')->setParameter('type', $type); return array_column($qb->getQuery()->getArrayResult(), 'subtype'); }
     public function findDistinctCities(Partner $partner): array { return array_column($this->createQueryBuilder('a')->select('DISTINCT a.city AS city')->where('a.partner = :partner')->andWhere('a.city IS NOT NULL')->setParameter('partner', $partner)->orderBy('a.city')->getQuery()->getArrayResult(), 'city'); }

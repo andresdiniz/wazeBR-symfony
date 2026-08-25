@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
 <title>Operador — {{ partnerName }}</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
@@ -1043,6 +1044,7 @@ function buildKpis(d) {
   const avgDelay   = jams.length ? Math.round(jams.reduce((s,j)=>s+(j.delay||0),0)/jams.length/60) : 0;
 
   const cemadenCrit  = cemaden.filter(c => c.critical).length;
+  const maxRain1h    = cemaden.length ? Math.max(...cemaden.map(c => c.rain1h || 0)) : null;
   const alertByType  = {};
   alerts.forEach(a => {
     const t = (a.type||'OTHER').split('_')[0];
@@ -1083,10 +1085,10 @@ function buildKpis(d) {
     kpiCard(delayIcon, 'Atraso médio', avgDelay, 'min', '', alertClass(avgDelay,2,5,10), avgDelay/15*100, 'orange'),
     kpiCard(routeIcon, 'Extensão congestionada', (totalLen/1000).toFixed(1), 'km', '', alertClass(totalLen/1000,2,8,15), totalLen/1000/20*100, 'red'),
     `<div class="kpi-section-label">${alertIcon} Alertas</div>`,
-    kpiCard(alertIcon, 'Alertas — última hora', alertCount, '', `68 nas últimas 24h`, aluCls, alertCount/15*100, 'yellow'),
-    `<div class="kpi-section-label">${cloudIcon} CEMADEN — estação próxima</div>`,
-    kpiCard(cloudIcon, 'Monitoramento fluvial', cemaden.length > 0 ? '—' : '—', '', 'aguardando dados…', '', undefined),
-    kpiCard(cloudIcon, 'Chuva acum. — 1h (REDE)', '—', 'mm', '', '', undefined),
+    kpiCard(alertIcon, 'Alertas — última hora', alertCount, '', '', aluCls, alertCount/15*100, 'yellow'),
+    `<div class="kpi-section-label">${cloudIcon} CEMADEN — estações do parceiro</div>`,
+    kpiCard(cloudIcon, 'Estações críticas', cemaden.length ? cemadenCrit : '—', '', cemaden.length ? `de ${cemaden.length} monitoradas` : 'aguardando dados…', cemadenCrit > 0 ? 'alert-red' : '', cemaden.length ? cemadenCrit/cemaden.length*100 : undefined, 'red'),
+    kpiCard(cloudIcon, 'Chuva acum. (máx. estação)', maxRain1h !== null ? maxRain1h.toFixed(1) : '—', 'mm', '', maxRain1h !== null ? alertClass(maxRain1h,15,30,50) : '', undefined),
     `<div class="kpi-section-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg> Infraestrutura</div>`,
     kpiCard(`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`, 'Monitorados', `0 <span style="font-size:10px;font-weight:400;color:var(--faint)">câm.</span> 2 <span style="font-size:10px;font-weight:400;color:var(--faint)">links</span> ${jamCount} <span style="font-size:10px;font-weight:400;color:var(--faint)">rotas</span>`, '', '', '', undefined),
   ].join('');
@@ -1209,7 +1211,7 @@ function updateBar(d) {
   document.getElementById('lblJams').textContent    = `${jc} jams`;
   document.getElementById('lblAlerts').textContent  = `${ac} alertas`;
   document.getElementById('lblCemaden').textContent = `${cc} estações CEMADEN`;
-  document.getElementById('dotJams').style.background = jc > 15 ? '#ef4444' : jc > 5 ? '#f97316' : '#ef4444';
+  document.getElementById('dotJams').style.background = jc > 15 ? '#ef4444' : jc > 5 ? '#f97316' : jc > 0 ? '#eab308' : '#22c55e';
 
   document.getElementById('srcWaze').className    = 'op-bar-src ' + (jc > 0 || ac > 0 ? 'on' : 'off');
   document.getElementById('srcCemaden').className = 'op-bar-src ' + (cc > 0 ? 'on' : 'off');

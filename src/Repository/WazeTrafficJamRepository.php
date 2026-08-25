@@ -24,6 +24,60 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
         return (int) $dt->getTimestamp() * 1000;
     }
 
+    /**
+     * Congestionamentos ativos (entidades completas, com geometria) nas
+     * últimas $hours horas — usado pelas telas "ao vivo" (operador,
+     * mapa de congestionamentos, resumo ao vivo).
+     *
+     * @return WazeTrafficJam[]
+     */
+    public function findLiveByPartner(Partner $partner, int $hours = 3, int $limit = 500): array
+    {
+        $since = self::toMillis(new \DateTimeImmutable("-{$hours} hours"));
+
+        return $this->createQueryBuilder('j')
+            ->where('j.partner = :partner')
+            ->andWhere('j.pubMillis >= :since')
+            ->setParameter('partner', $partner)
+            ->setParameter('since', $since)
+            ->orderBy('j.pubMillis', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Médias/soma dos congestionamentos ao vivo (últimas $hours horas):
+     * velocidade média, atraso médio e extensão total congestionada.
+     *
+     * @return array{avgSpeed: ?float, avgDelay: ?float, totalLength: float}
+     */
+    public function avgStats(Partner $partner, int $hours = 3): array
+    {
+        $since = self::toMillis(new \DateTimeImmutable("-{$hours} hours"));
+
+        $rows = $this->createQueryBuilder('j')
+            ->select(
+                'AVG(j.speedKmh) AS avgSpeed',
+                'AVG(j.delay) AS avgDelay',
+                'SUM(j.length) AS totalLength',
+            )
+            ->where('j.partner = :partner')
+            ->andWhere('j.pubMillis >= :since')
+            ->setParameter('partner', $partner)
+            ->setParameter('since', $since)
+            ->getQuery()
+            ->getArrayResult();
+
+        $row = $rows[0] ?? [];
+
+        return [
+            'avgSpeed'    => $row['avgSpeed'] !== null ? round((float) $row['avgSpeed'], 1) : null,
+            'avgDelay'    => $row['avgDelay'] !== null ? round((float) $row['avgDelay']) : null,
+            'totalLength' => (float) ($row['totalLength'] ?? 0),
+        ];
+    }
+
     public function countByPartner(Partner $partner): int
     {
         return (int) $this->createQueryBuilder('j')
