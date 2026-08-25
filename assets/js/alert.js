@@ -10,6 +10,25 @@
         return '';
     };
 
+    const subtypeValueLabels = {
+        id: 'subtype-value-labels',
+        afterDatasetsDraw(chart) {
+            const dataset = chart.data.datasets[0];
+            if (!dataset) return;
+            const ctx = chart.ctx;
+            const meta = chart.getDatasetMeta(0);
+            ctx.save();
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--color-text').trim() || '#334155';
+            ctx.font = '600 12px sans-serif';
+            ctx.textBaseline = 'middle';
+            meta.data.forEach((bar, index) => {
+                const value = Number(dataset.data[index] || 0);
+                ctx.fillText(String(value), bar.x + 8, bar.y);
+            });
+            ctx.restore();
+        }
+    };
+
     const AlertPage = {
         charts: [],
         map: null,
@@ -58,7 +77,7 @@
         renderSubtypeChart(rows, theme) {
             const el = document.getElementById('chart-subtype'); if (!el) return;
             const normalized = rows.map(row => ({ label: row.label || row.subtype || 'Sem subtipo', total: Number(row.total || 0) }));
-            this.charts.push(new Chart(el, { type: 'bar', data: { labels: normalized.map(row => row.label), datasets: [{ data: normalized.map(row => row.total), backgroundColor: theme.primary, borderRadius: 7 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, animation: this.chartAnimation(), plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } }, y: { grid: { display: false } } } } }));
+            this.charts.push(new Chart(el, { type: 'bar', plugins: [subtypeValueLabels], data: { labels: normalized.map(row => row.label), datasets: [{ data: normalized.map(row => row.total), backgroundColor: theme.primary, borderRadius: 7 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, animation: this.chartAnimation(), layout: { padding: { right: 28 } }, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } }, y: { grid: { display: false } } } } }));
         },
 
         renderTrendChart(data, theme) {
