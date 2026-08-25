@@ -1,1 +1,5 @@
-TEMPLATE UNIFICADO DE CHUVAS E NÍVEIS A SER GERADO A PARTIR DOS CONTEÚDOS ENVIADOS
+{% extends 'base.html.twig' %}
+{% block title %}CEMADEN{% endblock %}
+{% block stylesheets %}<link rel="stylesheet" href="{{ asset('styles/cemaden.css') }}">{% endblock %}
+{% block body %}<main class="cemaden-page" data-cemaden-page><h1>Dados CEMADEN</h1><div class="table-wrap"><table><thead><tr><th>Estação</th><th>Município</th><th>Estado</th><th>Chuva acumulada</th><th>Nível</th><th>Medido em</th></tr></thead><tbody>{% for item in data %}<tr><td>{{ item.stationCode|default('—') }}</td><td>{{ item.municipality|default('—') }}</td><td>{{ item.state|default('—') }}</td><td class="rain-value" data-rain-value="{{ item.accumulatedRain|default('') }}">{{ item.accumulatedRain is not null ? item.accumulatedRain|number_format(1, ',', '.') : '—' }} <span class="rain-unit">mm</span></td><td class="rain-status">{{ item.alertLevel|default('—') }}</td><td>{{ item.measuredAt|default('—') }}</td></tr>{% else %}<tr><td colspan="6" class="empty-state">Nenhum dado pluviométrico encontrado.</td></tr>{% endfor %}</tbody></table></div></main>{% endblock %}
+{% block javascripts %}{{ parent() }}<script src="{{ asset('js/cemaden.js') }}"></script>{% endblock %}
