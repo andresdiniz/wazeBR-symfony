@@ -6,5 +6,5 @@
         window.alertData = window.alertData || {};
         window.alertData.byHourTrend = Array.isArray(window.alertData.byHourTrend) ? window.alertData.byHourTrend : [];
     </script>
-    <script src="{{ asset('build/alert.js') }}"></script>
+    {{ importmap('app') }}
 {% endblock %}
