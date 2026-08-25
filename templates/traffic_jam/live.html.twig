@@ -5,6 +5,27 @@
 {% block stylesheets %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
+/*
+ * Compatibilidade: tokens que não existem em app.css/dashboard.css/alert.css
+ * (mesmo padrão de alert/show.html.twig e traffic_jam/index.html.twig).
+ */
+html[data-theme='dark'], body.dark, body[data-theme='dark'] {
+  --color-surface-offset: var(--color-bg-muted);
+  --color-divider: var(--color-border);
+  --color-error: var(--color-danger);
+  --color-text-faint: #5b6b84;
+}
+:root {
+  --color-surface-offset: var(--color-bg-muted);
+  --color-divider: var(--color-border);
+  --color-error: var(--color-danger);
+  --color-text-faint: #94a3b8;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-6:24px; --space-8:32px; --space-16:64px;
+  --radius-lg: 14px;
+  --radius-md: 8px;
+  --text-xs:.72rem; --text-sm:.82rem;
+  --transition: .15s ease;
+}
   .live-shell { display:grid; grid-template-columns:1fr 340px; gap:var(--space-6); height:calc(100vh - var(--header-h) - var(--space-16)); min-height:500px; }
   @media(max-width:1100px){ .live-shell{ grid-template-columns:1fr; height:auto; } }
   #live-map { border-radius:var(--radius-lg); border:1px solid var(--color-border); box-shadow:var(--shadow-md); height:100%; min-height:480px; }
@@ -27,7 +48,7 @@
 </style>
 {% endblock %}
 
-{% block content %}
+{% block body %}
 <div class="page-header" style="margin-bottom:var(--space-4)">
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-3)">
     <div style="display:flex;align-items:center;gap:var(--space-3)">
@@ -40,7 +61,7 @@
         <a href="{{ path('jam_live', {hours: h}) }}" class="hours-btn {{ hours == h ? 'active' }}">{{ h }}h</a>
       {% endfor %}
       <a href="{{ path('jam_index') }}" class="btn btn-ghost btn-sm" style="margin-left:var(--space-2)">
-        <i data-lucide="table-2" style="width:13px;height:13px"></i> Histórico
+        <i class="bi bi-table"></i> Histórico
       </a>
     </div>
   </div>

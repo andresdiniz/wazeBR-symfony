@@ -5,6 +5,28 @@
 {% block stylesheets %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
+/*
+ * Compatibilidade: tokens (--space-*, --text-*, --radius-*, --color-surface,
+ * --color-surface-offset, --color-divider, --color-orange) que não existem
+ * em app.css/dashboard.css/alert.css. Mesmo padrão usado em
+ * route/history.html.twig e alert/show.html.twig.
+ */
+html[data-theme='dark'], body.dark, body[data-theme='dark'] {
+  --color-surface: var(--color-bg-card);
+  --color-surface-offset: var(--color-bg-muted);
+  --color-divider: var(--color-border);
+  --color-orange: #f97316;
+}
+:root {
+  --color-surface: var(--color-bg-card);
+  --color-surface-offset: var(--color-bg-muted);
+  --color-divider: var(--color-border);
+  --color-orange: #ea580c;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px; --space-6:24px;
+  --radius-lg: 14px;
+  --radius-full: 999px;
+  --text-xs:.72rem; --text-sm:.82rem;
+}
   /* Layout mapa + lista */
   .jam-layout {
     display: grid;
@@ -30,7 +52,7 @@
     padding: var(--space-3) var(--space-4);
     background: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     margin-bottom: var(--space-4);
     font-size: var(--text-xs);
   }
@@ -51,7 +73,7 @@
     font-size: var(--text-xs);
     background: var(--color-surface-offset);
     padding: 2px 6px;
-    border-radius: var(--radius-sm);
+    border-radius: 6px;
     white-space: nowrap;
   }
 
@@ -69,7 +91,7 @@
   }
   .jam-table td { border-bottom: 1px solid var(--color-divider); font-size: var(--text-sm); }
   .jam-table tr:last-child td { border-bottom: none; }
-  .jam-table tr[data-jam-id]:hover td { background: oklch(from var(--color-primary) l c h / 0.05); cursor: pointer; }
+  .jam-table tr[data-jam-id]:hover td { background: var(--color-bg-muted); cursor: pointer; }
 
   /* Larguras das colunas */
   .col-via   { width: auto; }
@@ -109,15 +131,13 @@
     padding: var(--space-2) var(--space-3);
     font-size: var(--text-sm);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-surface-2);
+    border-radius: 8px;
+    background: var(--color-bg-card);
     color: var(--color-text);
-    transition: border-color var(--transition-interactive), box-shadow var(--transition-interactive);
   }
   .form-select:focus, .form-input:focus {
     outline: none;
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px oklch(from var(--color-primary) l c h / .15);
   }
 
   /* Paginação */
@@ -132,12 +152,11 @@
     align-items: center;
     justify-content: center;
     width: 32px; height: 32px;
-    border-radius: var(--radius-md);
+    border-radius: 8px;
     font-size: var(--text-sm);
     border: 1px solid var(--color-border);
     color: var(--color-text-muted);
     text-decoration: none;
-    transition: all var(--transition-interactive);
   }
   .pagination a:hover { background: var(--color-surface-offset); color: var(--color-text); }
   .pagination .current {
@@ -148,11 +167,11 @@
   }
 
   /* Row highlight ao focar pelo mapa */
-  tr.jam-focused td { background: oklch(from var(--color-primary) l c h / 0.10) !important; }
+  tr.jam-focused td { background: var(--color-bg-muted) !important; }
 </style>
 {% endblock %}
 
-{% block content %}
+{% block body %}
 <div class="page-header">
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-4)">
     <div>
@@ -160,7 +179,7 @@
       <p class="page-subtitle">{{ total }} registro{{ total != 1 ? 's' }} encontrado{{ total != 1 ? 's' }}</p>
     </div>
     <a href="{{ path('jam_live') }}" class="btn btn-primary">
-      <i data-lucide="radio" style="width:14px;height:14px"></i> Ao Vivo
+      <i class="bi bi-broadcast"></i> Ao Vivo
     </a>
   </div>
 </div>
@@ -182,7 +201,7 @@
   <input type="date" name="dateFrom" class="form-input" style="width:auto" value="{{ dateFrom }}">
   <input type="date" name="dateTo"   class="form-input" style="width:auto" value="{{ dateTo }}">
   <button type="submit" class="btn btn-primary btn-sm">
-    <i data-lucide="search" style="width:13px;height:13px"></i> Filtrar
+    <i class="bi bi-search"></i> Filtrar
   </button>
   <a href="{{ path('jam_index') }}" class="btn btn-ghost btn-sm">Limpar</a>
 </form>
@@ -200,7 +219,7 @@
   {# Mapa #}
   <div class="card" style="overflow:visible">
     <div class="card-header">
-      <span class="card-title"><i data-lucide="map" style="width:14px;height:14px;display:inline"></i> Mapa do Histórico</span>
+      <span class="card-title"><i class="bi bi-map"></i> Mapa do Histórico</span>
       <span style="font-size:var(--text-xs);color:var(--color-text-muted)">{{ total }} jam{{ total != 1 ? 's' }} filtrado{{ total != 1 ? 's' }}</span>
     </div>
     <div id="hist-map"></div>
@@ -211,8 +230,8 @@
     <div class="card">
       <div class="card-header"><span class="card-title">Lista</span></div>
       {% if jams is empty %}
-        <div style="text-align:center;padding:var(--space-10);color:var(--color-text-muted)">
-          <i data-lucide="traffic-cone" style="width:36px;height:36px;color:var(--color-text-faint);margin-bottom:var(--space-3)"></i>
+        <div style="text-align:center;padding:40px;color:var(--color-text-muted)">
+          <i class="bi bi-cone-striped" style="font-size:2rem;margin-bottom:8px;display:block"></i>
           <p>Nenhum congestionamento. Ajuste os filtros.</p>
         </div>
       {% else %}
@@ -241,7 +260,7 @@
                 </div>
               </td>
               <td class="col-vel">
-                <span class="speed-chip">{{ jam.speedKMH is not null ? jam.speedKMH|number_format(0) ~ ' km/h' : '—' }}</span>
+                <span class="speed-chip">{{ jam.speedKmh is not null ? jam.speedKmh|number_format(0) ~ ' km/h' : '—' }}</span>
               </td>
               <td class="col-ext" style="color:var(--color-text-muted)">
                 {{ jam.length ? jam.length ~ ' m' : '—' }}
@@ -289,7 +308,7 @@ const JAM_DATA = [
     street: {{ jam.street|json_encode|raw }},
     city: {{ jam.city|json_encode|raw }},
     level: {{ jam.level }},
-    speedKmh: {{ jam.speedKMH ?? 'null' }},
+    speedKmh: {{ jam.speedKmh ?? 'null' }},
     length: {{ jam.length ?? 'null' }},
     delay: {{ jam.delay ?? 'null' }},
     blocking: {{ jam.blocking ? 'true' : 'false' }},

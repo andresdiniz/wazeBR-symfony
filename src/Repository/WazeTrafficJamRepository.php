@@ -78,6 +78,102 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
         ];
     }
 
+    /**
+     * Filtros comuns às telas de congestionamento: nível mínimo, cidade
+     * (contém, case-insensitive), tipo exato e intervalo de datas (dia
+     * inteiro, fuso America/Sao_Paulo) — mesmo padrão do WazeAlertRepository.
+     */
+    private function applyFilters(\Doctrine\ORM\QueryBuilder $qb, Partner $partner, ?int $minLevel, ?string $city, ?string $type, ?string $dateFrom, ?string $dateTo): void
+    {
+        $qb->andWhere('j.partner = :partner')->setParameter('partner', $partner);
+
+        if ($minLevel !== null) {
+            $qb->andWhere('j.level >= :minLevel')->setParameter('minLevel', $minLevel);
+        }
+        if ($city) {
+            $qb->andWhere('LOWER(j.city) LIKE :city')->setParameter('city', '%' . mb_strtolower($city) . '%');
+        }
+        if ($type) {
+            $qb->andWhere('j.type = :type')->setParameter('type', $type);
+        }
+
+        $timezone = new \DateTimeZone('America/Sao_Paulo');
+        if ($dateFrom) {
+            $from = new \DateTimeImmutable($dateFrom, $timezone);
+            $qb->andWhere('j.pubMillis >= :dateFrom')->setParameter('dateFrom', self::toMillis($from->setTime(0, 0, 0)));
+        }
+        if ($dateTo) {
+            $to = new \DateTimeImmutable($dateTo, $timezone);
+            $qb->andWhere('j.pubMillis <= :dateTo')->setParameter('dateTo', self::toMillis($to->setTime(23, 59, 59)));
+        }
+    }
+
+    /**
+     * Histórico paginado com filtros — usado por TrafficJamController::index().
+     *
+     * @return array{items: WazeTrafficJam[], total: int, pages: int}
+     */
+    public function findFilteredByPartner(Partner $partner, ?int $minLevel = null, ?string $city = null, ?string $type = null, ?string $dateFrom = null, ?string $dateTo = null, int $page = 1, int $limit = 30): array
+    {
+        $base = $this->createQueryBuilder('j');
+        $this->applyFilters($base, $partner, $minLevel, $city, $type, $dateFrom, $dateTo);
+
+        $total = (int) (clone $base)->select('COUNT(j.id)')->getQuery()->getSingleScalarResult();
+        $pages = max(1, (int) ceil($total / $limit));
+        $page = min(max(1, $page), $pages);
+
+        $items = $base->orderBy('j.pubMillis', 'DESC')
+            ->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+
+        return ['items' => $items, 'total' => $total, 'pages' => $pages];
+    }
+
+    /** @return string[] */
+    public function findDistinctCities(Partner $partner): array
+    {
+        return array_column(
+            $this->createQueryBuilder('j')
+                ->select('DISTINCT j.city AS city')
+                ->where('j.partner = :partner')
+                ->andWhere('j.city IS NOT NULL')
+                ->setParameter('partner', $partner)
+                ->orderBy('j.city')
+                ->getQuery()
+                ->getArrayResult(),
+            'city'
+        );
+    }
+
+    /** @return string[] */
+    public function findDistinctTypes(Partner $partner): array
+    {
+        return array_column(
+            $this->createQueryBuilder('j')
+                ->select('DISTINCT j.type AS type')
+                ->where('j.partner = :partner')
+                ->andWhere('j.type IS NOT NULL')
+                ->setParameter('partner', $partner)
+                ->orderBy('j.type')
+                ->getQuery()
+                ->getArrayResult(),
+            'type'
+        );
+    }
+
+    public function findOneByPartner(int $id, Partner $partner): ?WazeTrafficJam
+    {
+        return $this->createQueryBuilder('j')
+            ->where('j.id = :id')
+            ->andWhere('j.partner = :partner')
+            ->setParameter('id', $id)
+            ->setParameter('partner', $partner)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
     public function countByPartner(Partner $partner): int
     {
         return (int) $this->createQueryBuilder('j')

@@ -4,6 +4,26 @@
 {% block stylesheets %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
+/*
+ * Compatibilidade: tokens que não existem em app.css/dashboard.css/alert.css
+ * (mesmo padrão de alert/show.html.twig e traffic_jam/index.html.twig).
+ */
+html[data-theme='dark'], body.dark, body[data-theme='dark'] {
+  --color-surface: var(--color-bg-card);
+  --color-surface-offset: var(--color-bg-muted);
+  --color-divider: var(--color-border);
+  --color-orange: #f97316;
+}
+:root {
+  --color-surface: var(--color-bg-card);
+  --color-surface-offset: var(--color-bg-muted);
+  --color-divider: var(--color-border);
+  --color-orange: #ea580c;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px; --space-6:24px;
+  --radius-lg: 14px;
+  --radius-full: 999px;
+  --text-xs:.72rem; --text-sm:.82rem;
+}
 .show-grid{
   display:grid;
   grid-template-columns:1fr 380px;
@@ -79,20 +99,20 @@
 </style>
 {% endblock %}
 
-{% block content %}
+{% block body %}
 <div style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-6);flex-wrap:wrap">
-  <a href="{{ path('traffic_jam_index') }}" class="btn btn-ghost btn-sm">
-    <i data-lucide="arrow-left" style="width:14px;height:14px"></i> Voltar
+  <a href="{{ path('jam_index') }}" class="btn btn-ghost btn-sm">
+    <i class="bi bi-arrow-left"></i> Voltar
   </a>
   <div style="flex:1">
     <h1 class="page-title" style="margin:0">Congestionamento #{{ jam.id }}</h1>
     <div style="margin-top:var(--space-2);display:flex;gap:var(--space-3);flex-wrap:wrap">
       <span class="meta-pill">
-        <i data-lucide="clock" style="width:11px;height:11px"></i>
+        <i class="bi bi-clock"></i>
         <time data-utc="{{ jam.pubDate|date('c') }}" data-fmt="datetime">{{ jam.pubDate|date('d/m/Y H:i:s') }}</time>
       </span>
-      {% if jam.speedKMH is not null %}
-        <span class="meta-pill">🚗 {{ jam.speedKMH }} km/h</span>
+      {% if jam.speedKmh is not null %}
+        <span class="meta-pill">🚗 {{ jam.speedKmh }} km/h</span>
       {% endif %}
       {% if jam.length is not null %}
         <span class="meta-pill">📏 {{ (jam.length / 1000)|number_format(1, ',') }} km</span>
@@ -103,6 +123,12 @@
     </div>
   </div>
 </div>
+
+{% set roadTypes = {
+  1:'Rua local', 2:'Via primária', 3:'Rodovia', 4:'Via rápida', 5:'Freeway',
+  6:'Passagem múnicipal', 7:'Via secundária', 8:'Trilha / Caminho',
+  14:'Rua 4x4', 15:'Via de pedestres', 17:'Private road'
+} %}
 
 {# Mapa #}
 <div id="jam-map"></div>
@@ -122,13 +148,13 @@
     <div class="detail-card">
       <div class="detail-section-title">Tráfego</div>
       <div class="detail-rows">
-        <div class="detail-row"><span class="detail-label">Velocidade</span><span class="detail-value">{{ jam.speedKMH is not null ? jam.speedKMH ~ ' km/h' : '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Velocidade</span><span class="detail-value">{{ jam.speedKmh is not null ? jam.speedKmh ~ ' km/h' : '—' }}</span></div>
         <div class="detail-row"><span class="detail-label">Velocidade (m/s)</span><span class="detail-value">{{ jam.speed is not null ? jam.speed|number_format(1,',') ~ ' m/s' : '—' }}</span></div>
         <div class="detail-row"><span class="detail-label">Comprimento</span><span class="detail-value">{{ jam.length is not null ? (jam.length / 1000)|number_format(1,',') ~ ' km (' ~ jam.length ~ ' m)' : '—' }}</span></div>
         <div class="detail-row"><span class="detail-label">Atraso</span><span class="detail-value">{{ jam.delay is not null ? jam.delay ~ 's' : '—' }}</span></div>
         <div class="detail-row"><span class="detail-label">Nível</span><span class="detail-value">{{ jam.level is not null ? jam.level ~ '/5' : '—' }}</span></div>
-        <div class="detail-row"><span class="detail-label">Tipo de via</span><span class="detail-value">{{ jam.roadType is not null ? jam.roadType : '—' }}</span></div>
-        <div class="detail-row"><span class="detail-label">Causa</span><span class="detail-value">{{ jam.causeType ?? '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Tipo de via</span><span class="detail-value">{{ jam.roadType is not null ? (roadTypes[jam.roadType] ?? ('Código ' ~ jam.roadType)) : '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Causado por</span><span class="detail-value" style="font-family:monospace;font-size:var(--text-xs);word-break:break-all">{{ jam.causedBy ?? '—' }}</span></div>
         <div class="detail-row"><span class="detail-label">Bloqueio</span><span class="detail-value">{{ jam.blocking ? 'Sim' : 'Não' }}</span></div>
       </div>
     </div>
