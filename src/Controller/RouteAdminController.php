@@ -19,39 +19,33 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_USER')]
 class RouteAdminController extends AbstractController
 {
-    /** Períodos fixos do filtro (além de datas manuais) — mesmo padrão de AlertController. */
     private const PERIOD_PRESETS = [
-        'today'      => ['label' => 'Hoje',    'days' => 0],
-        'yesterday'  => ['label' => 'Ontem',   'days' => 1],
-        'week'       => ['label' => '7 dias',  'days' => 7],
-        'month'      => ['label' => '30 dias', 'days' => 30],
-        'six_months' => ['label' => '6 meses', 'days' => 182],
-        'year'       => ['label' => '1 ano',   'days' => 365],
+        'last8h'     => ['label' => 'Últimas 8h', 'hours' => 8],
+        'today'      => ['label' => 'Hoje',       'days' => 0],
+        'yesterday'  => ['label' => 'Ontem',      'days' => 1],
+        'week'       => ['label' => '7 dias',     'days' => 7],
+        'month'      => ['label' => '30 dias',    'days' => 30],
+        'six_months' => ['label' => '6 meses',    'days' => 182],
+        'year'       => ['label' => '1 ano',      'days' => 365],
     ];
 
-    /** Nomes (em português) dos dias da semana retornados por DAYOFWEEK (1=domingo..7=sábado). */
     private const WEEKDAY_LABELS = [1 => 'Dom', 2 => 'Seg', 3 => 'Ter', 4 => 'Qua', 5 => 'Qui', 6 => 'Sex', 7 => 'Sáb'];
     private const WEEKDAY_LABELS_FULL = [
         1 => 'Domingo', 2 => 'Segunda', 3 => 'Terça', 4 => 'Quarta',
         5 => 'Quinta', 6 => 'Sexta', 7 => 'Sábado',
     ];
 
-    /** Cores de congestionamento (mesma paleta usada no mapa/badges jam-0..5 do template). */
     private const JAM_COLORS = ['#437a22', '#65a30d', '#d19900', '#da7101', '#a12c7b', '#dc2626'];
-
-    /** Teto de segurança para a listagem/gráfico de linha (não afeta heatmap nem exportação). */
     private const MAX_DISPLAY_LIMIT = 3000;
-
-    /** Teto de segurança para exportação (evita travar em rotas com muitos anos de coleta). */
     private const MAX_EXPORT_ROWS = 20000;
 
     public function __construct(
-        private readonly TenantContext              $tenantContext,
-        private readonly WazeTvtRouteRepository     $tvtRouteRepo,
-        private readonly WazeTvtSnapshotRepository  $snapshotRepo,
+        private readonly TenantContext             $tenantContext,
+        private readonly WazeTvtRouteRepository    $tvtRouteRepo,
+        private readonly WazeTvtSnapshotRepository $snapshotRepo,
     ) {}
 
-    // ─── Listagem / histórico TVT ─────────────────────────────────────────────
+    // ─── Listagem ─────────────────────────────────────────────────────────────
 
     #[Route('', name: 'index')]
     public function index(Request $request): Response
@@ -84,26 +78,6 @@ class RouteAdminController extends AbstractController
         $avgDelaySec = $routesWithDelay > 0 ? (int) ($totalDelaySec / $routesWithDelay) : 0;
         $congested   = ($levels[3] ?? 0) + ($levels[4] ?? 0) + ($levels[5] ?? 0);
 
-        // Build routesJs: JSON array consumed by the Leaflet map at line 303
-        $routesJs = array_map(static function ($r): array {
-            $line = $r->getLine();
-            // line is stored as JSON string or array
-            $lineDecoded = is_string($line) ? json_decode($line, true) : $line;
-
-            return [
-                'id'          => $r->getId(),
-                'wazeRouteId' => $r->getWazeRouteId(),
-                'name'        => $r->getName(),
-                'fromName'    => $r->getFromName(),
-                'toName'      => $r->getToName(),
-                'jamLevel'    => $r->getJamLevel() ?? 0,
-                'time'        => $r->getTime(),
-                'historicTime'=> $r->getHistoricTime(),
-                'length'      => $r->getLength(),
-                'line'        => $lineDecoded ?? [],
-            ];
-        }, $routes);
-
         return $this->render('route/index.html.twig', [
             'partner'      => $partner,
             'routes'       => $routes,
@@ -114,12 +88,11 @@ class RouteAdminController extends AbstractController
                 'avgDelaySec' => $avgDelaySec,
                 'levels'      => $levels,
             ],
-            'jamFilter'  => $jamFilter,
-            'routesJs'   => $routesJs,
+            'jamFilter' => $jamFilter,
         ]);
     }
 
-    // ─── Série histórica de uma rota TVT ──────────────────────────────────────
+    // ─── Histórico de uma rota (com gráficos e mapa) ────────────────────────
 
     #[Route('/historico/{wazeRouteId}', name: 'history')]
     public function history(string $wazeRouteId, Request $request): Response
@@ -133,21 +106,39 @@ class RouteAdminController extends AbstractController
 
         [$filters, $period] = $this->resolveFilters($request);
 
-        $limit = (int) $request->query->get('limit', 300);
-        $limit = max(10, min($limit, self::MAX_DISPLAY_LIMIT));
+        // Limite reduzido para 30 (rápido)
+        $limit = (int) $request->query->get('limit', 30);
+        $limit = max(5, min($limit, 200));
 
-        $history      = $this->tvtRouteRepo->findHistoryByWazeIdFiltered($partner, $wazeRouteId, $filters, $limit);
+        // Histórico (objetos) para o gráfico e tabela
+        $history = $this->tvtRouteRepo->findHistoryByWazeIdFiltered($partner, $wazeRouteId, $filters, $limit);
         $totalInRange = $this->tvtRouteRepo->countHistoryFiltered($partner, $wazeRouteId, $filters);
         $byJamLevel   = $this->tvtRouteRepo->countByJamLevelForRoute($partner, $wazeRouteId, $filters);
         $weekdayHour  = $this->tvtRouteRepo->weekdayHourProfile($partner, $wazeRouteId, $filters);
+
+        // ─── KPIs dinâmicos ──────────────────────────────────────────────
+        $times = array_filter(array_column($history, 'getTime'));
+        $delays = array_map(fn($r) => $r->getDelaySeconds(), $history);
+        $delays = array_filter($delays, fn($d) => $d !== null);
+
+        $kpis = [
+            'total' => $totalInRange,
+            'avgTime' => !empty($times) ? round(array_sum($times) / count($times) / 60, 1) : null,
+            'minTime' => !empty($times) ? round(min($times) / 60, 1) : null,
+            'maxTime' => !empty($times) ? round(max($times) / 60, 1) : null,
+            'avgDelay' => !empty($delays) ? round(array_sum($delays) / count($delays) / 60, 1) : null,
+            'maxDelay' => !empty($delays) ? round(max($delays) / 60, 1) : null,
+            'pctOnTime' => !empty($delays) ? round((count(array_filter($delays, fn($d) => $d <= 0)) / count($delays)) * 100, 1) : null,
+            'jamDist' => $byJamLevel,
+            'latest' => $latest,
+            'sazonal' => $this->calculateSazonalKpis($partner, $wazeRouteId, $latest),
+        ];
 
         return $this->render('route/history.html.twig', [
             'partner'       => $partner,
             'latest'        => $latest,
             'history'       => $history,
             'wazeRouteId'   => $wazeRouteId,
-
-            // filtros
             'period'        => $period,
             'periods'       => self::PERIOD_PRESETS,
             'dateFrom'      => $filters['dateFrom'],
@@ -155,18 +146,18 @@ class RouteAdminController extends AbstractController
             'minJam'        => $filters['minJam'],
             'limit'         => $limit,
             'totalInRange'  => $totalInRange,
-
-            // gráficos
             'byJamLevel'    => $byJamLevel,
             'jamColors'     => self::JAM_COLORS,
-            'heatmap'           => $this->buildHeatmapGrid($weekdayHour),
-            'hourlyProfile'     => $this->buildHourlyProfile($weekdayHour),
-            'weekdayLabels'     => self::WEEKDAY_LABELS,
+            'heatmap'       => $this->buildHeatmapGrid($weekdayHour),
+            'hourlyProfile' => $this->buildHourlyProfile($weekdayHour),
+            'weekdayLabels' => self::WEEKDAY_LABELS,
             'weekdayLabelsFull' => self::WEEKDAY_LABELS_FULL,
+            'kpis'          => $kpis,
         ]);
     }
 
-    /** Exporta o histórico filtrado da rota em CSV (padrão Excel BR: `;` + BOM UTF-8). */
+    // ─── Exportação CSV ──────────────────────────────────────────────────────
+
     #[Route('/historico/{wazeRouteId}/exportar', name: 'history_export')]
     public function historyExport(string $wazeRouteId, Request $request): StreamedResponse
     {
@@ -184,7 +175,7 @@ class RouteAdminController extends AbstractController
 
         $response = new StreamedResponse(function () use ($rows, $tz) {
             $out = fopen('php://output', 'w');
-            fwrite($out, "\xEF\xBB\xBF"); // BOM p/ o Excel reconhecer UTF-8
+            fwrite($out, "\xEF\xBB\xBF"); // BOM
 
             fputcsv($out, [
                 'coletado_em', 'dia_semana', 'nome', 'de', 'para',
@@ -233,16 +224,8 @@ class RouteAdminController extends AbstractController
         return $response;
     }
 
-    // ─── Helpers privados ──────────────────────────────────────────────────────
+    // ─── Helpers ─────────────────────────────────────────────────────────────
 
-    /**
-     * Resolve os filtros de data/congestionamento da querystring, preenchendo
-     * dateFrom/dateTo a partir de um período fixo (?period=) quando não há
-     * datas manuais. Padrão: 30 dias (o suficiente para o heatmap semana×hora
-     * já mostrar um padrão minimamente estável).
-     *
-     * @return array{0:array{dateFrom:?string,dateTo:?string,minJam:?int},1:?string}
-     */
     private function resolveFilters(Request $request): array
     {
         $period   = $request->query->get('period') ?: null;
@@ -252,31 +235,116 @@ class RouteAdminController extends AbstractController
         $minJam   = ($minJam !== null && $minJam !== '') ? max(0, min(5, (int) $minJam)) : null;
 
         if (!$dateFrom && !$dateTo && !$period) {
-            $period = 'month';
+            $period = 'last8h';
         }
 
-        if ($period && isset(self::PERIOD_PRESETS[$period]) && !$dateFrom && !$dateTo) {
-            $tz    = new \DateTimeZone('America/Sao_Paulo');
-            $today = new \DateTimeImmutable('now', $tz);
+        $presets = self::PERIOD_PRESETS;
 
-            if ($period === 'yesterday') {
-                $dateFrom = $dateTo = $today->modify('-1 day')->format('Y-m-d');
+        if ($period && isset($presets[$period]) && !$dateFrom && !$dateTo) {
+            $tz    = new \DateTimeZone('America/Sao_Paulo');
+            $now   = new \DateTimeImmutable('now', $tz);
+
+            if ($period === 'last8h') {
+                $dateFrom = $now->modify('-8 hours')->format('Y-m-d H:i:s');
+                $dateTo   = $now->format('Y-m-d H:i:s');
+            } elseif ($period === 'yesterday') {
+                $dateFrom = $dateTo = $now->modify('-1 day')->format('Y-m-d');
             } else {
-                $dateFrom = $today->modify('-' . self::PERIOD_PRESETS[$period]['days'] . ' days')->format('Y-m-d');
-                $dateTo   = $today->format('Y-m-d');
+                $dateFrom = $now->modify('-' . $presets[$period]['days'] . ' days')->format('Y-m-d');
+                $dateTo   = $now->format('Y-m-d');
             }
+        }
+
+        if (!$dateFrom && !$dateTo) {
+            $tz = new \DateTimeZone('America/Sao_Paulo');
+            $now = new \DateTimeImmutable('now', $tz);
+            $dateFrom = $now->modify('-30 days')->format('Y-m-d');
+            $dateTo   = $now->format('Y-m-d');
         }
 
         return [compact('dateFrom', 'dateTo', 'minJam'), $period];
     }
 
     /**
-     * Monta a grade completa 7 (domingo..sábado) × 12 (faixas de 2h) a partir
-     * das linhas agregadas pelo repository, preenchendo com null onde não há
-     * dados — para o template não precisar tratar "buraco" na grade.
-     *
-     * @param list<array{wd:int,bucket:int,avgTime:float,avgHist:float,avgDelay:float,avgJam:float,total:int}> $rows
+     * Calcula KPIs sazonais baseados nos últimos 7 dias, agrupados por hora.
      */
+    private function calculateSazonalKpis(\App\Entity\Partner $partner, string $wazeRouteId, \App\Entity\WazeTvtRoute $latest): array
+    {
+        $tz = new \DateTimeZone('America/Sao_Paulo');
+        $now = new \DateTimeImmutable('now', $tz);
+        $sevenDaysAgo = $now->modify('-7 days');
+
+        // Busca dados dos últimos 7 dias (sem filtros adicionais)
+        $historySevenDays = $this->tvtRouteRepo->findHistoryByWazeIdFiltered(
+            $partner,
+            $wazeRouteId,
+            ['dateFrom' => $sevenDaysAgo->format('Y-m-d'), 'dateTo' => $now->format('Y-m-d')],
+            5000
+        );
+
+        // Agrupa por hora
+        $hourlyStats = [];
+        foreach ($historySevenDays as $r) {
+            $collected = $r->getSnapshot()->getCollectedAt();
+            if (!$collected) continue;
+            $hour = (int) $collected->setTimezone($tz)->format('H');
+            if (!isset($hourlyStats[$hour])) {
+                $hourlyStats[$hour] = ['times' => [], 'histTimes' => []];
+            }
+            if ($r->getTime() !== null) {
+                $hourlyStats[$hour]['times'][] = $r->getTime();
+            }
+            if ($r->getHistoricTime() !== null) {
+                $hourlyStats[$hour]['histTimes'][] = $r->getHistoricTime();
+            }
+        }
+
+        $hourlyAvg = [];
+        foreach ($hourlyStats as $hour => $data) {
+            $hourlyAvg[$hour] = [
+                'avgTime' => !empty($data['times']) ? round(array_sum($data['times']) / count($data['times']) / 60, 1) : null,
+                'avgHist' => !empty($data['histTimes']) ? round(array_sum($data['histTimes']) / count($data['histTimes']) / 60, 1) : null,
+                'count' => count($data['times']),
+            ];
+        }
+
+        $currentHour = (int) $now->format('H');
+        $avgCurrentHour = $hourlyAvg[$currentHour] ?? null;
+        $currentTime = $latest->getTime();
+        $currentHist = $latest->getHistoricTime();
+
+        $peakHour = null;
+        $bestHour = null;
+        $maxAvg = -INF;
+        $minAvg = INF;
+        foreach ($hourlyAvg as $hour => $data) {
+            if ($data['avgTime'] !== null && $data['avgTime'] > $maxAvg) {
+                $maxAvg = $data['avgTime'];
+                $peakHour = $hour;
+            }
+            if ($data['avgTime'] !== null && $data['avgTime'] < $minAvg) {
+                $minAvg = $data['avgTime'];
+                $bestHour = $hour;
+            }
+        }
+
+        return [
+            'hour' => $currentHour,
+            'avgTime' => $avgCurrentHour ? $avgCurrentHour['avgTime'] : null,
+            'avgHist' => $avgCurrentHour ? $avgCurrentHour['avgHist'] : null,
+            'currentTime' => $currentTime !== null ? round($currentTime / 60, 1) : null,
+            'currentHist' => $currentHist !== null ? round($currentHist / 60, 1) : null,
+            'delayVsAvg' => ($currentTime !== null && $avgCurrentHour && $avgCurrentHour['avgTime'] !== null)
+                ? round(($currentTime / 60) - $avgCurrentHour['avgTime'], 1)
+                : null,
+            'sampleCount' => $avgCurrentHour ? $avgCurrentHour['count'] : 0,
+            'peakHour' => $peakHour !== null ? sprintf('%02d:00', $peakHour) : null,
+            'bestHour' => $bestHour !== null ? sprintf('%02d:00', $bestHour) : null,
+            'peakAvg' => $peakHour !== null ? $maxAvg : null,
+            'bestAvg' => $bestHour !== null ? $minAvg : null,
+        ];
+    }
+
     private function buildHeatmapGrid(array $rows): array
     {
         $grid = [];
@@ -302,14 +370,6 @@ class RouteAdminController extends AbstractController
         return $grid;
     }
 
-    /**
-     * Agrega o weekdayHourProfile (que já vem por dia×hora) só por faixa de
-     * 2h, ponderando pela contagem de cada dia — dá o "perfil típico do dia"
-     * da rota ao longo do período filtrado, sem precisar de outra consulta.
-     *
-     * @param list<array{wd:int,bucket:int,avgTime:float,avgHist:float,avgDelay:float,avgJam:float,total:int}> $rows
-     * @return list<array{bucket:int,avgTimeMin:?float,avgHistMin:?float,total:int}>
-     */
     private function buildHourlyProfile(array $rows): array
     {
         $acc = [];

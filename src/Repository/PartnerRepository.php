@@ -67,6 +67,25 @@ class PartnerRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+    /**
+     * Alias de findAllActive(), usado pelos comandos de cron
+     * (cemaden:collect, cemaden:collect-hydro, notifications:dispatch)
+     * e pelos controllers de admin de monitoramento.
+     *
+     * NOTA: este método era chamado em 5 lugares do código
+     * (3 admin controllers + 2 commands) sem existir aqui, o que
+     * causava BadMethodCallException / Error em toda execução —
+     * inclusive em cemaden:collect via cron.php. Mantido como alias
+     * explícito (em vez de renomear as chamadas) para não quebrar
+     * nada que já dependa do nome findActivePartners().
+     *
+     * @return Partner[]
+     */
+    public function findActivePartners(): array
+    {
+        return $this->findAllActive();
+    }
+
     public function findWithLinks(int $id): ?Partner
     {
         return $this->createQueryBuilder('p')

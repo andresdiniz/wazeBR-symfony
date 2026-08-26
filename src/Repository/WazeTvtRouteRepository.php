@@ -23,6 +23,8 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
         parent::__construct($registry, WazeTvtRoute::class);
     }
 
+    // ─── Contagens ─────────────────────────────────────────────────────────────
+
     public function countByPartner(Partner $partner): int
     {
         return (int) $this->createQueryBuilder('r')
@@ -35,9 +37,6 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
             ->getSingleScalarResult();
     }
 
-    /**
-     * Rotas principais (distintas) coletadas dentro do período, via snapshot.collectedAt.
-     */
     public function countInPeriod(Partner $partner, \DateTimeInterface $from, \DateTimeInterface $to): int
     {
         return (int) $this->createQueryBuilder('r')
@@ -53,13 +52,8 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
             ->getSingleScalarResult();
     }
 
-    // ── KPIs ──────────────────────────────────────────────────────────────────
+    // ─── KPIs ──────────────────────────────────────────────────────────────────
 
-    /**
-     * Velocidade média calculada (km/h) das rotas principais do snapshot mais recente.
-     * Fórmula: (length_metros / time_segundos) * 3.6
-     * Retorna 0.0 quando não há snapshot ou rotas com dados válidos.
-     */
     public function avgSpeedByPartner(Partner $partner): float
     {
         $latestId = $this->latestSnapshotId($partner);
@@ -67,7 +61,6 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
             return 0.0;
         }
 
-        // Busca length e time de todas as rotas válidas do snapshot
         $rows = $this->createQueryBuilder('r')
             ->select('r.length AS length_m, r.time AS time_s')
             ->where('r.snapshot = :snap')
@@ -94,11 +87,6 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
         return $count > 0 ? round($totalSpeed / $count, 1) : 0.0;
     }
 
-    /**
-     * Tempo de viagem médio (segundos) das rotas principais do snapshot mais recente.
-     * Usa o campo `time` da entity (tempo atual de percurso em segundos).
-     * Retorna 0.0 quando não há snapshot.
-     */
     public function avgTravelTimeByPartner(Partner $partner): float
     {
         $latestId = $this->latestSnapshotId($partner);
@@ -118,11 +106,6 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
         return round((float)($val ?? 0));
     }
 
-    /**
-     * Atraso médio (segundos) em relação ao tempo histórico no snapshot mais recente.
-     * delay = time - historicTime  (positivo = mais lento que o normal)
-     * Retorna 0.0 quando não há snapshot ou dados válidos.
-     */
     public function avgDelayByPartner(Partner $partner): float
     {
         $latestId = $this->latestSnapshotId($partner);
@@ -144,10 +127,6 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
         return round((float)($val ?? 0));
     }
 
-    /**
-     * Contagem de rotas por jamLevel no snapshot mais recente.
-     * Retorna [['jam_level' => 3, 'total' => 4], ...]
-     */
     public function countGroupByJamLevel(Partner $partner): array
     {
         $latestId = $this->latestSnapshotId($partner);
@@ -171,9 +150,8 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
         ], $rows);
     }
 
-    // ── Listagens ─────────────────────────────────────────────────────────────
+    // ─── Listagens ─────────────────────────────────────────────────────────────
 
-    /** Rotas do snapshot mais recente, filtráveis por jamLevel */
     public function findTvtByPartner(Partner $partner, ?int $jamLevel = null): array
     {
         $latestId = $this->latestSnapshotId($partner);
@@ -195,10 +173,6 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
         return $qb->getQuery()->getResult();
     }
 
-    /**
-     * Série histórica de uma rota TVT específica (por wazeRouteId),
-     * do mais recente para o mais antigo, limitada a $limit registros.
-     */
     public function findHistoryByWazeId(Partner $partner, string $wazeRouteId, int $limit = 100): array
     {
         return $this->createQueryBuilder('r')
@@ -214,15 +188,6 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    /**
-     * Série histórica de uma rota TVT filtrável por período (America/Sao_Paulo)
-     * e por nível mínimo de congestionamento — usada na tela /rotas/historico.
-     * Mais recente primeiro, limitada a $limit registros (a agregação usada
-     * pelo mapa de calor e pelo gráfico de perfil por hora NÃO usa esse
-     * limite; ele serve só para não sobrecarregar a tabela/gráfico de linha).
-     *
-     * @param array{dateFrom?:?string,dateTo?:?string,minJam?:?int} $filters
-     */
     public function findHistoryByWazeIdFiltered(Partner $partner, string $wazeRouteId, array $filters = [], int $limit = 300): array
     {
         $qb = $this->createQueryBuilder('r')
@@ -240,12 +205,6 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
         return $qb->getQuery()->getResult();
     }
 
-    /**
-     * Total de registros no período filtrado, sem aplicar o limite de exibição —
-     * usado para avisar quando a tabela/gráfico não mostram tudo que existe.
-     *
-     * @param array{dateFrom?:?string,dateTo?:?string,minJam?:?int} $filters
-     */
     public function countHistoryFiltered(Partner $partner, string $wazeRouteId, array $filters = []): int
     {
         $qb = $this->createQueryBuilder('r')
@@ -262,13 +221,6 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
         return (int) $qb->getQuery()->getSingleScalarResult();
     }
 
-    /**
-     * Distribuição por nível de congestionamento (0-5) da rota no período
-     * filtrado. Sempre retorna as 6 chaves, mesmo com total 0 (mantém a
-     * legenda do gráfico estável entre filtros diferentes).
-     *
-     * @param array{dateFrom?:?string,dateTo?:?string} $filters
-     */
     public function countByJamLevelForRoute(Partner $partner, string $wazeRouteId, array $filters = []): array
     {
         $qb = $this->createQueryBuilder('r')
@@ -296,16 +248,6 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
         return $byLevel;
     }
 
-    /**
-     * Perfil histórico da rota por dia da semana × faixa de 2 horas (horário
-     * de Brasília) — base do mapa de calor e do gráfico de "perfil típico do
-     * dia" da tela de histórico. Usa SQL nativo pois o DQL não tem
-     * CONVERT_TZ/HOUR/DAYOFWEEK (mesmo padrão do WazeAlertRepository).
-     *
-     * @param array{dateFrom?:?string,dateTo?:?string,minJam?:?int} $filters
-     * @return list<array{wd:int,bucket:int,avgTime:float,avgHist:float,avgDelay:float,avgJam:float,total:int}>
-     *         wd: 1=domingo..7=sábado (DAYOFWEEK). bucket: 0,2,4,...,22 (início da faixa de 2h).
-     */
     public function weekdayHourProfile(Partner $partner, string $wazeRouteId, array $filters = []): array
     {
         $where  = [
@@ -333,7 +275,6 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
 
         $whereSql = implode(' AND ', $where);
 
-        // -03:00 = America/Sao_Paulo (sem horário de verão desde 2019).
         $sql = <<<SQL
             SELECT
                 DAYOFWEEK(CONVERT_TZ(s.collected_at, '+00:00', '-03:00')) AS wd,
@@ -388,43 +329,35 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    public function findRecentByPartner(
-    Partner $partner,
-    int $limit = 20
-): array {
-    $limit = max(1, min($limit, 100));
+    public function findRecentByPartner(Partner $partner, int $limit = 20): array
+    {
+        $limit = max(1, min($limit, 100));
 
-    $snapshot = $this->getEntityManager()
-        ->getRepository(WazeTvtSnapshot::class)
-        ->createQueryBuilder('s')
-        ->where('s.partner = :partner')
-        ->setParameter('partner', $partner)
-        ->orderBy('s.collectedAt', 'DESC')
-        ->setMaxResults(1)
-        ->getQuery()
-        ->getOneOrNullResult();
+        $snapshot = $this->getEntityManager()
+            ->getRepository(WazeTvtSnapshot::class)
+            ->createQueryBuilder('s')
+            ->where('s.partner = :partner')
+            ->setParameter('partner', $partner)
+            ->orderBy('s.collectedAt', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
 
-    if ($snapshot === null) {
-        return [];
+        if ($snapshot === null) {
+            return [];
+        }
+
+        return $this->createQueryBuilder('r')
+            ->where('r.snapshot = :snapshot')
+            ->andWhere('r.isSubRoute = false')
+            ->setParameter('snapshot', $snapshot)
+            ->orderBy('r.jamLevel', 'DESC')
+            ->addOrderBy('r.name', 'ASC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
     }
 
-    return $this->createQueryBuilder('r')
-        ->where('r.snapshot = :snapshot')
-        ->andWhere('r.isSubRoute = false')
-        ->setParameter('snapshot', $snapshot)
-        ->orderBy('r.jamLevel', 'DESC')
-        ->addOrderBy('r.name', 'ASC')
-        ->setMaxResults($limit)
-        ->getQuery()
-        ->getResult();
-}
-
-    /**
-     * Registro mais recente de uma rota TVT, ignorando qualquer filtro de
-     * data — usado para o cabeçalho/KPIs/mapa da tela de histórico, que
-     * sempre refletem o estado atual da rota mesmo quando a tabela/gráficos
-     * estão filtrados para um período no passado.
-     */
     public function findLatestByWazeId(Partner $partner, string $wazeRouteId): ?WazeTvtRoute
     {
         $rows = $this->createQueryBuilder('r')
@@ -442,7 +375,28 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
         return $rows[0] ?? null;
     }
 
-    // ── Helper privado ────────────────────────────────────────────────────────
+    // ─── CORRIGIDO: findOneByPartner ─────────────────────────────────────────
+
+    /**
+     * Busca uma rota pelo ID e parceiro.
+     * Como a entidade WazeTvtRoute NÃO tem campo 'partner' diretamente,
+     * usamos o relacionamento via snapshot: r.snapshot.partner.
+     *
+     * Este método é usado em RouteAdminController::show() e toggle().
+     */
+    public function findOneByPartner(int $id, Partner $partner): ?WazeTvtRoute
+    {
+        return $this->createQueryBuilder('r')
+            ->join('r.snapshot', 's')
+            ->where('r.id = :id')
+            ->andWhere('s.partner = :partner')
+            ->setParameter('id', $id)
+            ->setParameter('partner', $partner)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    // ─── Helpers privados ─────────────────────────────────────────────────────
 
     private function latestSnapshotId(Partner $partner): ?int
     {
@@ -457,12 +411,6 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
         return $id ? (int) $id : null;
     }
 
-    /**
-     * Aplica os filtros de data (America/Sao_Paulo) e nível mínimo de
-     * congestionamento num QueryBuilder já com alias 'r' + join 's' (snapshot).
-     *
-     * @param array{dateFrom?:?string,dateTo?:?string,minJam?:?int} $filters
-     */
     private function applyDateAndJamFilters(\Doctrine\ORM\QueryBuilder $qb, array $filters, bool $includeMinJam = true): void
     {
         [$from, $to] = self::dateBoundsFromFilters($filters);
@@ -481,15 +429,6 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
         }
     }
 
-    /**
-     * Converte dateFrom/dateTo ('Y-m-d', interpretados em America/Sao_Paulo)
-     * em instantes UTC comparáveis com snapshot.collectedAt — mesma lógica de
-     * WazeAlertRepository::applyFilters(), adaptada de milissegundos para
-     * DateTimeImmutable.
-     *
-     * @param array{dateFrom?:?string,dateTo?:?string} $filters
-     * @return array{0:?\DateTimeImmutable,1:?\DateTimeImmutable}
-     */
     private static function dateBoundsFromFilters(array $filters): array
     {
         $tz = new \DateTimeZone(self::TZ);

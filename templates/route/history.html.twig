@@ -1,7 +1,6 @@
 {% extends 'base.html.twig' %}
 {% block title %}Histórico — {{ latest.name ?? wazeRouteId }}{% endblock %}
 
-{# Usa json_encode para serializar strings — garante escapes válidos dentro de data-attribute #}
 {% set jsFromName = (latest.fromName ?? 'Início')|json_encode %}
 {% set jsToName   = (latest.toName   ?? 'Fim')|json_encode %}
 {% set jsJamLevel = latest.jamLevel ?? 0 %}
@@ -10,96 +9,53 @@
   t:    r.snapshot.collectedAt|date('c'),
   time: r.time,
   hist: r.historicTime,
-  jam:  r.jamLevel
+  jam:  r.jamLevel,
+  delay: r.delaySeconds
 })|json_encode %}
 {% set jsByJam    = byJamLevel|json_encode %}
 {% set jsHourly   = hourlyProfile|json_encode %}
 {% set jsJamColors= jamColors|json_encode %}
 
 {% block stylesheets %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<link rel="stylesheet" href="{{ asset('styles/history.css') }}?v={{ 'now'|date('U') }}">
 <style>
-  /*
-   * Compatibilidade: este template (e os demais em route/*, alert/*, tvt_route/*)
-   * usa um vocabulário de tokens (--color-*, --space-*, --radius-*, --text-*,
-   * --shadow-*, --font-body) que NÃO existe em base.html.twig (que só define
-   * --primary-color, --surface, --text-primary/secondary/muted, --border-color,
-   * --card-shadow). Sem isso, badges/cards ficam sem cor (var() indefinida =
-   * declaração inválida). Mapeamos aqui para os tokens reais até isso virar um
-   * design system único em base.html.twig.
-   */
-  :root, [data-bs-theme="light"] {
-    --color-primary: var(--primary-color);
-    --color-border: var(--border-color);
-    --color-text: var(--text-primary);
-    --color-text-muted: var(--text-secondary);
-    --color-text-faint: var(--text-muted);
-    --color-surface-offset: #f1f5f9;
-    --color-divider: var(--border-color);
-    --color-success: #16a34a;
-    --color-gold: #ca8a04;
-    --color-orange: #ea580c;
-    --color-error: #dc2626;
-    --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px; --space-6:24px; --space-8:32px;
-    --radius-md:8px; --radius-lg:12px;
-    --shadow-lg:0 8px 24px rgba(15,23,42,.12);
-    --font-body:'Segoe UI', system-ui, sans-serif;
-    --text-xs:.72rem; --text-sm:.82rem;
+  .page-header .page-title {
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0;
   }
-  [data-bs-theme="dark"] {
-    --color-primary: var(--primary-color);
-    --color-border: var(--border-color);
-    --color-text: var(--text-primary);
-    --color-text-muted: var(--text-secondary);
-    --color-text-faint: var(--text-muted);
-    --color-surface-offset: #171c25;
-    --color-divider: var(--border-color);
-    --color-success: #22c55e;
-    --color-gold: #eab308;
-    --color-orange: #f97316;
-    --color-error: #ef4444;
-    --shadow-lg:0 10px 28px rgba(0,0,0,.5);
+  .page-header .page-subtitle {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
   }
-
-  .jam-0{background:oklch(from var(--color-success) l c h/.12);color:var(--color-success)}
-  .jam-1{background:oklch(from var(--color-gold) l c h/.12);color:var(--color-gold)}
-  .jam-2{background:oklch(from var(--color-orange) l c h/.15);color:var(--color-orange)}
-  .jam-3{background:oklch(from var(--color-error) l c h/.12);color:var(--color-error)}
-  .jam-4{background:oklch(from var(--color-error) l c h/.2);color:var(--color-error)}
-  .jam-5{background:var(--color-error);color:#fff}
-  .delay-pos{color:var(--color-error)}
-  .delay-neg{color:var(--color-success)}
-  .delay-zero{color:var(--color-text-faint)}
-
-  .viz-grid,.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6);margin-bottom:var(--space-6)}
-  @media(max-width:768px){.viz-grid,.grid-2{grid-template-columns:1fr}}
-  .chart-wrap{position:relative;height:260px}
-  .chart-wrap.sm{height:220px}
-  #history-map{height:340px;border-radius:var(--radius-lg);z-index:1;border:1px solid var(--color-border)}
-  .leaflet-popup-content-wrapper{border-radius:var(--radius-md)!important;box-shadow:var(--shadow-lg)!important;font-family:var(--font-body)!important;font-size:var(--text-xs)!important}
-  .empty-state-inline{padding:var(--space-8) var(--space-5);color:var(--color-text-muted);text-align:center}
-  .form-hint{font-size:var(--text-xs);color:var(--color-text-muted)}
-
-  /* Mapa de calor dia da semana × faixa de 2h */
-  .heatmap-scroll{overflow-x:auto}
-  .heatmap-grid{display:grid;grid-template-columns:52px repeat(12,minmax(48px,1fr));gap:3px;font-size:var(--text-xs);min-width:680px}
-  .heatmap-cell{display:flex;align-items:center;justify-content:center;border-radius:6px;padding:6px 2px;min-height:32px;color:#fff;font-variant-numeric:tabular-nums;font-weight:600}
-  .heatmap-corner{background:transparent}
-  .heatmap-col-label,.heatmap-row-label{background:transparent;color:var(--color-text-muted);font-weight:600;min-height:auto}
-  .heatmap-row-label{justify-content:flex-start;padding-left:2px}
-  .heatmap-data.is-empty{background:var(--color-surface-offset);color:var(--color-text-faint);font-weight:400}
-  .heatmap-legend{display:flex;align-items:center;gap:4px;margin-top:var(--space-3);font-size:var(--text-xs);color:var(--color-text-muted)}
-  .heatmap-legend-swatch{width:18px;height:10px;border-radius:2px;display:inline-block}
-  @media(max-width:600px){.heatmap-grid{grid-template-columns:40px repeat(12,34px)}}
+  .custom-tooltip .leaflet-tooltip-content {
+    font-weight: 600;
+    color: var(--color-text);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 4px 12px;
+    box-shadow: var(--shadow-sm);
+  }
+  .leaflet-tooltip-top::before {
+    border-top-color: var(--color-border);
+  }
+  .kpi-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .kpi-sazonal {
+    grid-column: span 2;
+    background: var(--color-surface-offset) !important;
+    border: 2px solid var(--color-primary) !important;
+  }
+  @media (max-width: 768px) {
+    .kpi-sazonal { grid-column: span 1; }
+  }
 </style>
 {% endblock %}
 
 {% block body %}
-{#
-  Dados passados via data-attributes.
-  jsFromName e jsToName já são strings JSON (com aspas), ex: "Prç. Barão de Queluz"
-  Usamos |e('html_attr') só para escapar as aspas duplas dentro do atributo HTML.
-#}
 <div id="js-data"
   data-history="{{ jsHistory|e('html_attr') }}"
   data-line="{{ jsLine|e('html_attr') }}"
@@ -112,51 +68,56 @@
   style="display:none"
 ></div>
 
-<div class="page-header" style="display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap">
-  <a href="{{ path('route_admin_index') }}" class="btn btn-outline-secondary btn-sm">
-    <i class="bi bi-arrow-left me-1"></i>Voltar
-  </a>
-  <div>
-    <h1 class="page-title">{{ latest.name ?? 'Rota' }}</h1>
-    <div class="page-subtitle">
-      {{ latest.fromName ?? '' }}{% if latest.fromName and latest.toName %} &rarr; {% endif %}{{ latest.toName ?? '' }}
-      &mdash;
-      {% if dateFrom and dateTo %}{{ dateFrom|date('d/m/Y') }} a {{ dateTo|date('d/m/Y') }}{% else %}todo o período{% endif %}
-      &mdash;
-      {% if history|length < totalInRange %}{{ history|length }} de {{ totalInRange|number_format(0, ',', '.') }} registro(s){% else %}{{ totalInRange|number_format(0, ',', '.') }} registro(s){% endif %}
+<div class="history-page">
+  {# Header #}
+  <div class="history-header">
+    <div class="history-header-left">
+      <a href="{{ path('route_admin_index') }}" class="back-btn" title="Voltar">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <div>
+        <h1>{{ latest.name ?? 'Rota' }}</h1>
+        <div class="subtitle">
+          {{ latest.fromName ?? '' }}{% if latest.fromName and latest.toName %} → {% endif %}{{ latest.toName ?? '' }}
+          &mdash;
+          {% if dateFrom and dateTo %}{{ dateFrom|date('d/m/Y') }} a {{ dateTo|date('d/m/Y') }}{% else %}todo o período{% endif %}
+          &mdash;
+          {{ totalInRange|number_format(0, ',', '.') }} registro(s)
+        </div>
+      </div>
+    </div>
+    <div class="history-header-right">
+      <a href="{{ path('route_admin_history_export', {wazeRouteId: wazeRouteId}) }}?{{ app.request.query.all|merge({limit: null})|url_encode }}"
+         class="btn btn-primary btn-sm" target="_blank" rel="noopener">
+        <i class="bi bi-download me-1"></i>Exportar CSV
+      </a>
     </div>
   </div>
-  <div style="margin-left:auto">
-    <a href="{{ path('route_admin_history_export', {wazeRouteId: wazeRouteId}) }}?{{ app.request.query.all|merge({limit: null})|url_encode }}"
-       class="btn btn-primary btn-sm" target="_blank" rel="noopener">
-      <i class="bi bi-download me-1"></i>Exportar CSV
-    </a>
+
+  {# Períodos #}
+  <div class="period-row">
+    <a href="?{{ app.request.query.all|merge({period: 'last8h', dateFrom: null, dateTo: null})|url_encode }}"
+       class="btn {{ period == 'last8h' ? 'btn-primary' : 'btn-outline-secondary' }}">Últimas 8h</a>
+    {% for key, p in periods %}
+      <a href="?{{ app.request.query.all|merge({period: key, dateFrom: null, dateTo: null})|url_encode }}"
+         class="btn {{ period == key ? 'btn-primary' : 'btn-outline-secondary' }}">{{ p.label }}</a>
+    {% endfor %}
+    <a href="?{{ app.request.query.all|merge({period: 'all', dateFrom: null, dateTo: null})|url_encode }}"
+       class="btn {{ period == 'all' ? 'btn-primary' : 'btn-outline-secondary' }}">Tudo</a>
   </div>
-</div>
 
-{# Períodos fixos — atalhos que preenchem De/Até automaticamente (dia civil de Brasília) #}
-<div class="btn-row" style="display:flex;flex-wrap:wrap;gap:var(--space-2);margin-bottom:var(--space-4)">
-  {% for key, p in periods %}
-    <a href="?{{ app.request.query.all|merge({period: key, dateFrom: null, dateTo: null})|url_encode }}"
-       class="btn btn-sm {{ period == key ? 'btn-primary' : 'btn-outline-secondary' }}">{{ p.label }}</a>
-  {% endfor %}
-  <a href="?{{ app.request.query.all|merge({period: 'all', dateFrom: null, dateTo: null})|url_encode }}"
-     class="btn btn-sm {{ period == 'all' ? 'btn-primary' : 'btn-outline-secondary' }}">Tudo</a>
-</div>
-
-{# Filtros #}
-<div class="card" style="margin-bottom:var(--space-6)">
-  <div class="card-body">
-    <form method="get" style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--space-4)">
-      <div style="flex:1;min-width:140px">
+  {# Filtros #}
+  <div class="filter-card">
+    <form method="get" class="form-row">
+      <div class="form-group">
         <label class="form-label">De</label>
         <input type="date" name="dateFrom" class="form-control" value="{{ dateFrom }}">
       </div>
-      <div style="flex:1;min-width:140px">
+      <div class="form-group">
         <label class="form-label">Até</label>
         <input type="date" name="dateTo" class="form-control" value="{{ dateTo }}">
       </div>
-      <div style="flex:1;min-width:190px">
+      <div class="form-group">
         <label class="form-label">Congestionamento mínimo</label>
         <select name="minJam" class="form-select">
           <option value="">Qualquer</option>
@@ -167,296 +128,216 @@
           <option value="5" {{ minJam == 5 ? 'selected' : '' }}>Parado</option>
         </select>
       </div>
-      <div style="flex:1;min-width:160px">
-        <label class="form-label">Registros na tabela/gráfico</label>
+      <div class="form-group">
+        <label class="form-label">Registros</label>
         <select name="limit" class="form-select">
-          {% for opt in [100, 300, 1000, 3000] %}
+          {% for opt in [15, 30, 50, 100, 200] %}
             <option value="{{ opt }}" {{ limit == opt ? 'selected' : '' }}>{{ opt }}</option>
           {% endfor %}
         </select>
       </div>
-      <div style="display:flex;gap:var(--space-2)">
-        <button type="submit" class="btn btn-primary">Filtrar</button>
-        <a href="{{ path('route_admin_history', {wazeRouteId: wazeRouteId}) }}" class="btn btn-outline-secondary">Limpar</a>
+      <div class="filter-actions">
+        <button type="submit" class="btn btn-primary btn-sm">Filtrar</button>
+        <a href="{{ path('route_admin_history', {wazeRouteId: wazeRouteId}) }}" class="btn btn-outline-secondary btn-sm">Limpar</a>
       </div>
-      <div class="form-hint" style="flex-basis:100%">
-        Datas consideram o fuso de Brasília. O mapa de calor e a distribuição de congestionamento usam <strong>todo o período filtrado</strong>;
-        o limite acima afeta só a tabela e o gráfico de evolução temporal.
+      <div class="form-hint">
+        Datas consideram o fuso de Brasília. O mapa de calor e a distribuição usam <strong>todo o período filtrado</strong>;
+        o limite afeta apenas a tabela e o gráfico de evolução.
       </div>
     </form>
   </div>
-</div>
 
-<div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));margin-bottom:var(--space-6)">
-  <div class="kpi-card">
-    <div class="kpi-label">Jam atual</div>
-    <div class="kpi-value"><span class="badge jam-{{ latest.jamLevel ?? 0 }}">{{ latest.jamLevelLabel }}</span></div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-label">Tempo atual</div>
-    <div class="kpi-value">{% if latest.time is not null %}{{ (latest.time/60)|round(1) }} min{% else %}&mdash;{% endif %}</div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-label">Tempo hist&oacute;rico</div>
-    <div class="kpi-value" style="color:var(--color-text-muted)">{% if latest.historicTime is not null %}{{ (latest.historicTime/60)|round(1) }} min{% else %}&mdash;{% endif %}</div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-label">Extens&atilde;o</div>
-    <div class="kpi-value">{{ latest.length ? (latest.length/1000)|round(2) ~ ' km' : '&mdash;' }}</div>
-  </div>
-</div>
-
-{% if totalInRange == 0 %}
-  <div class="card"><div class="empty-state-inline">Nenhum registro no período selecionado. Ajuste os filtros acima (o KPI e o mapa acima mostram sempre o estado mais recente da rota).</div></div>
-{% else %}
-
-<div class="viz-grid">
-  <div class="card" style="margin-bottom:0">
-    <div class="card-header"><span class="card-title">Evolução temporal</span></div>
-    <div class="card-body"><div class="chart-wrap"><canvas id="chart-history"></canvas></div></div>
-  </div>
-  <div class="card" style="margin-bottom:0">
-    <div class="card-header">
-      <span class="card-title"><i class="bi bi-geo-alt me-1"></i>Trajeto da rota</span>
-    </div>
-    <div class="card-body">
-      <div id="history-map"></div>
-    </div>
-  </div>
-</div>
-
-<div class="grid-2">
-  <div class="card" style="margin-bottom:0">
-    <div class="card-header"><span class="card-title">Distribuição de congestionamento no período</span></div>
-    <div class="card-body"><div class="chart-wrap sm"><canvas id="chart-byjam"></canvas></div></div>
-  </div>
-  <div class="card" style="margin-bottom:0">
-    <div class="card-header"><span class="card-title">Perfil típico do dia (faixas de 2h)</span></div>
-    <div class="card-body"><div class="chart-wrap sm"><canvas id="chart-hourly"></canvas></div></div>
-  </div>
-</div>
-
-<div class="card">
-  <div class="card-header">
-    <span class="card-title">Mapa de calor — dia da semana × horário</span>
-    <span class="form-hint">Cor = congestionamento médio · número = atraso médio (min)</span>
-  </div>
-  <div class="card-body heatmap-scroll">
-    <div class="heatmap-grid">
-      <div class="heatmap-cell heatmap-corner"></div>
-      {% for bucket in range(0, 22, 2) %}
-        <div class="heatmap-cell heatmap-col-label">{{ '%02d'|format(bucket) }}h</div>
-      {% endfor %}
-
-      {% for wd in range(1, 7) %}
-        <div class="heatmap-cell heatmap-row-label">{{ weekdayLabels[wd] }}</div>
-        {% for bucket in range(0, 22, 2) %}
-          {% set cell = heatmap[wd][bucket] %}
-          <div class="heatmap-cell heatmap-data {{ cell is null ? 'is-empty' : '' }}"
-            {% if cell %}
-              style="background:{{ cell.color }}"
-              title="{{ weekdayLabelsFull[wd] ?? '' }} {{ '%02d'|format(bucket) }}–{{ '%02d'|format(bucket + 2) }}h · {{ cell.total }} registro(s) · tempo médio {{ cell.avgTimeMin }} min · atraso médio {{ cell.avgDelayMin }} min"
-            {% else %}
-              title="Sem registros nesta faixa"
-            {% endif %}>
-            {% if cell %}{{ cell.avgDelayMin > 0 ? '+' : '' }}{{ cell.avgDelayMin }}{% endif %}
+  {# ─── KPIs sazonais ─── #}
+  <div class="kpi-grid">
+    <div class="kpi-card kpi-sazonal">
+      <div class="kpi-label" style="font-size: var(--text-sm);">
+        📊 Média dos últimos 7 dias para o horário <strong>{{ '%02d:00'|format(kpis.sazonal.hour) }}</strong>
+        <span style="font-weight: normal; font-size: var(--text-xs); color: var(--color-text-muted);">({{ kpis.sazonal.sampleCount }} registros)</span>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: var(--space-4); justify-content: center; margin-top: var(--space-2);">
+        <div>
+          <span style="font-size: var(--text-xs); color: var(--color-text-muted);">Tempo atual</span>
+          <div style="font-size: var(--text-xl); font-weight: 700;">{{ kpis.sazonal.currentTime ?? '—' }} min</div>
+        </div>
+        <div>
+          <span style="font-size: var(--text-xs); color: var(--color-text-muted);">Média 7d (mesmo horário)</span>
+          <div style="font-size: var(--text-xl); font-weight: 700;">{{ kpis.sazonal.avgTime ?? '—' }} min</div>
+        </div>
+        <div>
+          <span style="font-size: var(--text-xs); color: var(--color-text-muted);">Diferença</span>
+          <div style="font-size: var(--text-xl); font-weight: 700; {% if kpis.sazonal.delayVsAvg > 0 %}color: var(--color-error);{% elseif kpis.sazonal.delayVsAvg < 0 %}color: var(--color-success);{% else %}color: var(--color-text-muted);{% endif %}">
+            {% if kpis.sazonal.delayVsAvg is not null %}
+              {{ kpis.sazonal.delayVsAvg > 0 ? '+' : '' }}{{ kpis.sazonal.delayVsAvg }} min
+            {% else %}—{% endif %}
           </div>
-        {% endfor %}
-      {% endfor %}
-    </div>
-    <div class="heatmap-legend">
-      <span>Fluindo</span>
-      {% for c in jamColors %}<span class="heatmap-legend-swatch" style="background:{{ c }}"></span>{% endfor %}
-      <span>Parado</span>
+        </div>
+        <div>
+          <span style="font-size: var(--text-xs); color: var(--color-text-muted);">🏔️ Horário de pico</span>
+          <div style="font-size: var(--text-base); font-weight: 600;">{{ kpis.sazonal.peakHour ?? '—' }}</div>
+          <span style="font-size: var(--text-xs); color: var(--color-text-muted);">média {{ kpis.sazonal.peakAvg ?? '—' }} min</span>
+        </div>
+        <div>
+          <span style="font-size: var(--text-xs); color: var(--color-text-muted);">🌿 Melhor horário</span>
+          <div style="font-size: var(--text-base); font-weight: 600;">{{ kpis.sazonal.bestHour ?? '—' }}</div>
+          <span style="font-size: var(--text-xs); color: var(--color-text-muted);">média {{ kpis.sazonal.bestAvg ?? '—' }} min</span>
+        </div>
+      </div>
     </div>
   </div>
-</div>
 
-<div class="card">
-  <div class="card-header"><span class="card-title">Registros</span></div>
-  <div style="overflow-x:auto">
-    <table>
-      <thead>
-        <tr>
-          <th>Coletado em</th>
-          <th>Jam</th>
-          <th style="text-align:right">Atual</th>
-          <th style="text-align:right">Hist&oacute;rico</th>
-          <th style="text-align:right">Atraso</th>
-        </tr>
-      </thead>
-      <tbody>
-      {% for r in history %}
-        {% set delay = r.delaySeconds %}
-        <tr>
-          <td style="font-variant-numeric:tabular-nums;font-size:var(--text-xs)">
-            <time data-utc="{{ r.snapshot.collectedAt|date('c') }}" data-fmt="datetime">{{ r.snapshot.collectedAt|date('d/m/Y H:i') }}</time>
-          </td>
-          <td><span class="badge jam-{{ r.jamLevel ?? 0 }}">{{ r.jamLevelLabel }}</span></td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums">
-            {% if r.time is not null %}{{ (r.time/60)|round(1) }} min{% else %}&mdash;{% endif %}
-          </td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--color-text-muted)">
-            {% if r.historicTime is not null %}{{ (r.historicTime/60)|round(1) }} min{% else %}&mdash;{% endif %}
-          </td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums" class="{% if delay is not null %}{% if delay > 0 %}delay-pos{% elseif delay < 0 %}delay-neg{% else %}delay-zero{% endif %}{% endif %}">
-            {% if delay is null %}&mdash;
-            {% elseif delay == 0 %}0s
-            {% elseif delay > 0 %}+{{ delay < 60 ? delay ~ 's' : (delay/60)|round(1) ~ ' min' }}
-            {% else %}{{ delay < -60 ? (delay/60)|round(1) ~ ' min' : delay ~ 's' }}{% endif %}
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
+  {# ─── KPIs gerais ─── #}
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:oklch(from var(--color-primary) l c h/.1);color:var(--color-primary)">📊</div>
+      <div class="kpi-label">Registros</div>
+      <div class="kpi-value">{{ kpis.total|number_format(0, ',', '.') }}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:oklch(from var(--color-success) l c h/.1);color:var(--color-success)">⏱️</div>
+      <div class="kpi-label">Tempo médio</div>
+      <div class="kpi-value">{{ kpis.avgTime ?? '—' }} min</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:oklch(from var(--color-orange) l c h/.1);color:var(--color-orange)">📈</div>
+      <div class="kpi-label">Máximo</div>
+      <div class="kpi-value">{{ kpis.maxTime ?? '—' }} min</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:oklch(from var(--color-teal) l c h/.1);color:var(--color-teal)">📉</div>
+      <div class="kpi-label">Mínimo</div>
+      <div class="kpi-value">{{ kpis.minTime ?? '—' }} min</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:oklch(from var(--color-error) l c h/.1);color:var(--color-error)">🐢</div>
+      <div class="kpi-label">Atraso médio</div>
+      <div class="kpi-value">{{ kpis.avgDelay ?? '—' }} min</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:oklch(from var(--color-error) l c h/.1);color:var(--color-error)">🐌</div>
+      <div class="kpi-label">Maior atraso</div>
+      <div class="kpi-value">{{ kpis.maxDelay ?? '—' }} min</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:oklch(from var(--color-success) l c h/.1);color:var(--color-success)">✅</div>
+      <div class="kpi-label">No tempo (%)</div>
+      <div class="kpi-value">{{ kpis.pctOnTime ?? '—' }}%</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:oklch(from var(--color-gold) l c h/.1);color:var(--color-gold)">📌</div>
+      <div class="kpi-label">Jam atual</div>
+      <div class="kpi-value"><span class="badge jam-{{ latest.jamLevel ?? 0 }}">{{ latest.jamLevelLabel }}</span></div>
+    </div>
   </div>
+
+  {% if totalInRange == 0 %}
+    <div class="card">
+      <div class="empty-state-inline">
+        <i class="bi bi-inbox"></i>
+        <h3>Nenhum registro no período</h3>
+        <p>Ajuste os filtros acima para visualizar os dados.</p>
+      </div>
+    </div>
+  {% else %}
+
+  <div class="viz-grid">
+    <div class="card">
+      <div class="card-header"><span class="card-title"><i class="bi bi-graph-up-arrow"></i> Evolução temporal</span></div>
+      <div class="card-body"><div class="chart-wrap"><canvas id="chart-history"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title"><i class="bi bi-geo-alt"></i> Trajeto da rota</span></div>
+      <div class="card-body"><div id="history-map"></div></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header"><span class="card-title"><i class="bi bi-pie-chart"></i> Distribuição de congestionamento</span></div>
+      <div class="card-body"><div class="chart-wrap sm"><canvas id="chart-byjam"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title"><i class="bi bi-clock-history"></i> Perfil típico do dia (2h)</span></div>
+      <div class="card-body"><div class="chart-wrap sm"><canvas id="chart-hourly"></canvas></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="bi bi-calendar-heat"></i> Mapa de calor — dia da semana × horário</span>
+      <span class="form-hint">Cor = congestionamento médio · número = atraso médio (min)</span>
+    </div>
+    <div class="card-body heatmap-scroll">
+      <div class="heatmap-grid">
+        <div class="heatmap-cell heatmap-corner"></div>
+        {% for bucket in range(0, 22, 2) %}
+          <div class="heatmap-cell heatmap-col-label">{{ '%02d'|format(bucket) }}h</div>
+        {% endfor %}
+
+        {% for wd in range(1, 7) %}
+          <div class="heatmap-cell heatmap-row-label">{{ weekdayLabels[wd] }}</div>
+          {% for bucket in range(0, 22, 2) %}
+            {% set cell = heatmap[wd][bucket] %}
+            <div class="heatmap-cell heatmap-data {{ cell is null ? 'is-empty' : '' }}"
+              {% if cell %}
+                style="background:{{ cell.color }}"
+                title="{{ weekdayLabelsFull[wd] ?? '' }} {{ '%02d'|format(bucket) }}–{{ '%02d'|format(bucket + 2) }}h · {{ cell.total }} registros · tempo médio {{ cell.avgTimeMin }} min · atraso médio {{ cell.avgDelayMin }} min"
+              {% else %}
+                title="Sem registros nesta faixa"
+              {% endif %}>
+              {% if cell %}{{ cell.avgDelayMin > 0 ? '+' : '' }}{{ cell.avgDelayMin }}{% endif %}
+            </div>
+          {% endfor %}
+        {% endfor %}
+      </div>
+      <div class="heatmap-legend">
+        <span>Fluindo</span>
+        {% for c in jamColors %}<span class="heatmap-legend-swatch" style="background:{{ c }}"></span>{% endfor %}
+        <span>Parado</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title"><i class="bi bi-table"></i> Registros</span></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Coletado em</th>
+            <th>Jam</th>
+            <th style="text-align:right">Atual (min)</th>
+            <th style="text-align:right">Atraso</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for r in history %}
+          {% set delay = r.delaySeconds %}
+          <tr>
+            <td style="font-variant-numeric:tabular-nums;font-size:var(--text-xs)">
+              <time data-utc="{{ r.snapshot.collectedAt|date('c') }}" data-fmt="datetime">{{ r.snapshot.collectedAt|date('d/m/Y H:i') }}</time>
+            </td>
+            <td><span class="badge jam-{{ r.jamLevel ?? 0 }}">{{ r.jamLevelLabel }}</span></td>
+            <td style="text-align:right;font-variant-numeric:tabular-nums">
+              {% if r.time is not null %}{{ (r.time/60)|round(1) }}{% else %}—{% endif %}
+            </td>
+            <td style="text-align:right;font-variant-numeric:tabular-nums" class="{% if delay is not null %}{% if delay > 0 %}delay-pos{% elseif delay < 0 %}delay-neg{% else %}delay-zero{% endif %}{% endif %}">
+              {% if delay is null %}—
+              {% elseif delay == 0 %}0s
+              {% elseif delay > 0 %}+{{ delay < 60 ? delay ~ 's' : (delay/60)|round(1) ~ ' min' }}
+              {% else %}{{ delay < -60 ? (delay/60)|round(1) ~ ' min' : delay ~ 's' }}{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
 </div>
-{% endif %}
 {% endblock %}
 
 {% block javascripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-(function(){
-  var ds        = document.getElementById('js-data').dataset;
-  var raw       = JSON.parse(ds.history);
-  var routeLine = JSON.parse(ds.line);
-  var jamLevel  = parseInt(ds.jamLevel, 10) || 0;
-  // fromName e toName chegam como strings JSON com aspas, ex: ""Prç. Barão""
-  // JSON.parse remove as aspas e devolve a string pura com acentos corretos
-  var fromName    = JSON.parse(ds.from);
-  var toName      = JSON.parse(ds.to);
-  var byJam       = JSON.parse(ds.byJam);
-  var hourly      = JSON.parse(ds.hourly);
-  var jamColors   = JSON.parse(ds.jamColors);
-  var jamLabels   = ['Livre', 'Lento', 'Moderado', 'Pesado', 'Muito Pesado', 'Parado'];
-
-  var tz  = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  var FMT = new Intl.DateTimeFormat('pt-BR', { timeZone: tz, day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
-
-  // --- Gráfico de linha: evolução temporal ---
-  var elHistory = document.getElementById('chart-history');
-  if (elHistory) {
-    var ordered = raw.slice().reverse();
-    var labels  = ordered.map(function(r){ return FMT.format(new Date(r.t)); });
-    var times   = ordered.map(function(r){ return r.time !== null ? +(r.time/60).toFixed(1) : null; });
-    var hists   = ordered.map(function(r){ return r.hist !== null ? +(r.hist/60).toFixed(1) : null; });
-
-    new Chart(elHistory, {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [
-          { label: 'Tempo atual (min)', data: times, borderColor: '#a12c7b', backgroundColor: 'oklch(0.5 0.2 330 / 0.08)', tension: 0.3, fill: true, pointRadius: 2 },
-          { label: 'Hist\u00f3rico (min)', data: hists, borderColor: '#437a22', borderDash: [4,3], tension: 0.3, pointRadius: 2 }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: { legend: { position: 'top' } },
-        scales: {
-          x: { ticks: { maxTicksLimit: 10, maxRotation: 45 } },
-          y: { beginAtZero: true, title: { display: true, text: 'minutos' } }
-        }
-      }
-    });
-  }
-
-  // --- Doughnut: distribuição por nível de congestionamento no período ---
-  var elByJam = document.getElementById('chart-byjam');
-  if (elByJam) {
-    new Chart(elByJam, {
-      type: 'doughnut',
-      data: {
-        labels: jamLabels,
-        datasets: [{ data: byJam, backgroundColor: jamColors, borderWidth: 0 }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } }
-      }
-    });
-  }
-
-  // --- Barras: perfil típico do dia por faixa de 2h ---
-  var elHourly = document.getElementById('chart-hourly');
-  if (elHourly) {
-    new Chart(elHourly, {
-      type: 'bar',
-      data: {
-        labels: hourly.map(function(h){ return String(h.bucket).padStart(2, '0') + 'h'; }),
-        datasets: [
-          { label: 'Tempo atual (min)', data: hourly.map(function(h){ return h.avgTimeMin; }), backgroundColor: '#a12c7b', borderRadius: 3 },
-          { label: 'Hist\u00f3rico (min)', data: hourly.map(function(h){ return h.avgHistMin; }), backgroundColor: '#437a22', borderRadius: 3 }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { position: 'top' } },
-        scales: { y: { beginAtZero: true, title: { display: true, text: 'minutos' } } }
-      }
-    });
-  }
-
-  // --- Mapa Leaflet ---
-  var mapEl = document.getElementById('history-map');
-
-  if (mapEl && routeLine && routeLine.length) {
-    var map = L.map('history-map', { zoomControl: true, scrollWheelZoom: false });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '\u00a9 OpenStreetMap contributors', maxZoom: 18
-    }).addTo(map);
-
-    var color     = jamColors[jamLevel] || '#888';
-    var latlngs   = routeLine.map(function(p){ return [p.y, p.x]; });
-    var pl        = L.polyline(latlngs, { color: color, weight: 5, opacity: 0.85 }).addTo(map);
-
-    if (latlngs.length >= 2) {
-      var mkPin = function(letter, bg) {
-        var w = 28, h = 36;
-        var svg =
-          '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 28 36">' +
-            '<path d="M14 0 C6.268 0 0 6.268 0 14 C0 22 14 36 14 36 C14 36 28 22 28 14 C28 6.268 21.732 0 14 0 Z"' +
-            ' fill="' + bg + '" stroke="rgba(0,0,0,0.25)" stroke-width="1"/>' +
-            '<text x="14" y="19" text-anchor="middle" dominant-baseline="middle"' +
-            ' font-family="system-ui,sans-serif" font-size="13" font-weight="700" fill="#fff">' +
-            letter +
-            '</text>' +
-          '</svg>';
-        return L.divIcon({
-          html: svg,
-          className: '',
-          iconSize:   [w, h],
-          iconAnchor: [w / 2, h],
-          popupAnchor:[0, -h]
-        });
-      };
-
-      L.marker(latlngs[0], { icon: mkPin('A', '#01696f') })
-        .bindTooltip(fromName, { permanent: false, direction: 'top' })
-        .addTo(map);
-
-      L.marker(latlngs[latlngs.length - 1], { icon: mkPin('B', '#a12c7b') })
-        .bindTooltip(toName, { permanent: false, direction: 'top' })
-        .addTo(map);
-    }
-
-    map.fitBounds(pl.getBounds(), { padding: [28, 28] });
-  } else if (mapEl) {
-    mapEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--color-text-muted);font-size:var(--text-sm)">Geometria da rota n\u00e3o dispon\u00edvel</div>';
-  }
-
-  document.querySelectorAll('time[data-utc][data-fmt]').forEach(function(el) {
-    try {
-      var d = new Date(el.dataset.utc);
-      if (el.dataset.fmt === 'datetime') el.textContent = FMT.format(d);
-    } catch(e) {}
-  });
-})();
-</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" crossorigin=""></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="{{ asset('js/history.js') }}?v={{ 'now'|date('U') }}"></script>
 {% endblock %}

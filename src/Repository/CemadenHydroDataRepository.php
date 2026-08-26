@@ -93,7 +93,7 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
 
     public function levelSeriesByStation(int $stationId, int $hours = 48): array
     {
-        $since = new \\DateTimeImmutable("-{$hours} hours");
+        $since = new \DateTimeImmutable("-{$hours} hours");
 
         $rows = $this->createQueryBuilder('h')
             ->select('h.waterLevel AS level, h.measuredAt AS collected_at')
@@ -106,7 +106,7 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
 
         return array_map(static fn($r) => [
             'level'        => (float)$r['level'],
-            'collected_at' => $r['collected_at'] instanceof \\DateTimeInterface
+            'collected_at' => $r['collected_at'] instanceof \DateTimeInterface
                 ? $r['collected_at']->format('Y-m-d H:i')
                 : (string)$r['collected_at'],
         ], $rows);
@@ -238,12 +238,23 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
         ]));
 
         $qb = $this->createQueryBuilder('h')
-            ->select('\n                h.stationCode,\n                h.stationName,\n                h.municipality,\n                h.state,\n                h.waterLevel,\n                h.alertLevel,\n                h.cotaAtencao,\n                h.cotaAlerta,\n                h.cotaTransbordamento,\n                h.measuredAt\n            ')
+            ->select('
+                h.stationCode,
+                h.stationName,
+                h.municipality,
+                h.state,
+                h.waterLevel,
+                h.alertLevel,
+                h.cotaAtencao,
+                h.cotaAlerta,
+                h.cotaTransbordamento,
+                h.measuredAt
+            ')
             ->where('h.partner = :partner')
             ->setParameter('partner', $partner)
             ->andWhere('h.measuredAt BETWEEN :from AND :to')
-            ->setParameter('from', new \\DateTimeImmutable($dateFrom . ' 00:00:00'))
-            ->setParameter('to',   new \\DateTimeImmutable($dateTo   . ' 23:59:59'));
+            ->setParameter('from', new \DateTimeImmutable($dateFrom . ' 00:00:00'))
+            ->setParameter('to',   new \DateTimeImmutable($dateTo   . ' 23:59:59'));
 
         if ($stationCode) {
             $qb->andWhere('h.stationCode = :station')
@@ -278,7 +289,7 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
                 'cota_atencao'           => $row['cotaAtencao'],
                 'cota_alerta'            => $row['cotaAlerta'],
                 'cota_transbordamento'   => $row['cotaTransbordamento'],
-                'measured_at'            => $row['measuredAt'] instanceof \\DateTimeInterface
+                'measured_at'            => $row['measuredAt'] instanceof \DateTimeInterface
                     ? $row['measuredAt']->format('Y-m-d H:i:s')
                     : $row['measuredAt'],
             ];
@@ -298,7 +309,12 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
         $this->logger->debug('[HydroRepo] findStationsByPartner chamado para partner ID: ' . $partner->getId());
 
         $qb = $this->createQueryBuilder('h')
-            ->select('\n                h.stationCode,\n                h.stationName,\n                h.municipality,\n                h.state\n            ')
+            ->select('
+                h.stationCode,
+                h.stationName,
+                h.municipality,
+                h.state
+            ')
             ->where('h.partner = :partner')
             ->setParameter('partner', $partner)
             ->groupBy('h.stationCode')
@@ -320,4 +336,3 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
         return $result;
     }
 }
-
