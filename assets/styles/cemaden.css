@@ -1,0 +1,6 @@
+/* Dedicated styles for rainfall screens. */
+.cemaden-page .rain-value{font-variant-numeric:tabular-nums;font-weight:700}
+.cemaden-page .rain-unit{color:var(--color-text-muted);font-size:var(--text-xs)}
+.cemaden-page .rain-status{white-space:nowrap}
+.cemaden-page .empty-state{padding:3rem 1rem;text-align:center;color:var(--color-text-muted)}
+.cemaden-page .table-wrap{overflow-x:auto}

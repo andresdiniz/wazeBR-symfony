@@ -34,7 +34,7 @@ class HydroController extends AbstractController
             $partner = $this->tenantContext->requirePartner();
             $rows = $this->hydroRepo->findLatestByPartner($partner);
             $error = null;
-        } catch (\Exception $e) {
+        } catch (\\Exception $e) {
             $this->logger->error('[Hydro] Erro ao obter partner: ' . $e->getMessage());
             $rows = [];
             $error = 'Partner não encontrado. Verifique sua conta.';
@@ -55,7 +55,7 @@ class HydroController extends AbstractController
             $partner = $this->tenantContext->requirePartner();
             $rows = $this->hydroRepo->findLatestByPartner($partner);
             return $this->json($rows);
-        } catch (\Exception $e) {
+        } catch (\\Exception $e) {
             $this->logger->error('[Hydro] Erro ao obter partner em liveData: ' . $e->getMessage());
             return $this->json(['error' => 'Partner não encontrado'], 403);
         }
@@ -66,7 +66,7 @@ class HydroController extends AbstractController
     {
         try {
             $partner = $this->tenantContext->requirePartner();
-        } catch (\Exception $e) {
+        } catch (\\Exception $e) {
             $this->logger->error('[Hydro] Erro ao obter partner no histórico: ' . $e->getMessage());
             throw $this->createAccessDeniedException('Partner não encontrado.');
         }
@@ -110,7 +110,7 @@ class HydroController extends AbstractController
     {
         try {
             $partner = $this->tenantContext->requirePartner();
-        } catch (\Exception $e) {
+        } catch (\\Exception $e) {
             throw $this->createAccessDeniedException('Partner não encontrado.');
         }
 
@@ -178,3 +178,4 @@ class HydroController extends AbstractController
         return $response;
     }
 }
+

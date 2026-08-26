@@ -1,0 +1,8 @@
+/* Dedicated styles for river level screens. */
+.hydro-page .status-updated{color:var(--color-success)}
+.hydro-page .status-stale{color:var(--color-warning)}
+.hydro-page .status-offline{color:var(--color-text-muted)}
+.hydro-page .level-value,.hydro-page .rain-value{font-variant-numeric:tabular-nums;font-weight:700}
+.hydro-page .empty-state{padding:3rem 1rem;text-align:center;color:var(--color-text-muted)}
+.hydro-page .table-wrap{overflow-x:auto}
+.hydro-page .level-bar{height:4px;border-radius:999px;background:var(--color-primary);max-width:140px}
