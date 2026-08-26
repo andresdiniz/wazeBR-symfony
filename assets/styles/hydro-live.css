@@ -1,0 +1,232 @@
+/* assets/css/hydro-live.css */
+
+/* ── Variáveis (herda do base, mas reforça) ── */
+:root {
+  --hydro-card-radius: 16px;
+  --hydro-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Container principal ── */
+.hydro-live-container {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-3);
+}
+
+/* ── Header ── */
+.hydro-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-3);
+  border-bottom: 2px solid var(--color-border);
+}
+.hydro-header-left h1 {
+  font-family: var(--font-display, 'Inter', sans-serif);
+  font-size: var(--text-2xl, 1.8rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.hydro-header-left .badge-live {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-success);
+  background: oklch(from var(--color-success) l c h / 0.12);
+  padding: 4px 12px;
+  border-radius: 100px;
+  margin-left: var(--space-2);
+}
+.hydro-header-left .badge-live .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-success);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+.hydro-header-left small {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+}
+.hydro-header-right {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* ── KPIs Grid ── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+.kpi-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--hydro-card-radius);
+  padding: var(--space-4);
+  text-align: center;
+  transition: var(--hydro-transition);
+  box-shadow: var(--shadow-sm);
+}
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.kpi-card .kpi-icon { font-size: 2rem; line-height: 1; margin-bottom: var(--space-2); }
+.kpi-card .kpi-value {
+  font-family: var(--font-display, 'Inter', sans-serif);
+  font-size: var(--text-3xl, 2rem);
+  font-weight: 700;
+  line-height: 1.2;
+}
+.kpi-card .kpi-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+  font-weight: 500;
+}
+.kpi-normal .kpi-value { color: var(--color-success); }
+.kpi-atencao .kpi-value { color: var(--color-gold, #f59e0b); }
+.kpi-alerta .kpi-value { color: var(--color-warning, #f97316); }
+.kpi-transb .kpi-value { color: var(--color-error, #dc2626); }
+
+/* ── Cards de gráfico e tabela ── */
+.hydro-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--hydro-card-radius);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--space-5);
+  overflow: hidden;
+  transition: var(--hydro-transition);
+}
+.hydro-card-header {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.hydro-card-header .card-title {
+  font-weight: 600;
+  font-size: var(--text-lg);
+}
+.hydro-card-header .badge-count {
+  background: var(--color-surface-offset);
+  padding: 2px 12px;
+  border-radius: 100px;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+.hydro-card-body {
+  padding: var(--space-4) var(--space-5);
+}
+
+/* ── Tabela ── */
+.hydro-table-wrap {
+  overflow-x: auto;
+  margin: 0;
+}
+.hydro-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+.hydro-table th {
+  background: var(--color-surface-offset);
+  font-weight: 600;
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  border-bottom: 2px solid var(--color-border);
+}
+.hydro-table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+.hydro-table .text-right { text-align: right; }
+.hydro-table .text-center { text-align: center; }
+.hydro-table .station-name { font-weight: 600; }
+.hydro-table .station-code { font-size: var(--text-xs); color: var(--color-text-muted); }
+.hydro-table .level-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.hydro-table .level-bar-wrap {
+  margin-top: 4px;
+  height: 4px;
+  background: var(--color-surface-offset);
+  border-radius: 100px;
+  overflow: hidden;
+  width: 100%;
+  min-width: 60px;
+}
+.hydro-table .level-bar {
+  height: 100%;
+  border-radius: 100px;
+  transition: width 0.6s ease;
+}
+.hydro-table .bar-normal { background: var(--color-success); }
+.hydro-table .bar-atencao { background: var(--color-gold, #f59e0b); }
+.hydro-table .bar-alerta { background: var(--color-warning, #f97316); }
+.hydro-table .bar-transb { background: var(--color-error, #dc2626); }
+
+/* Linhas de alerta */
+.row-atencao td { background: oklch(from var(--color-gold) l c h / 0.06); }
+.row-alerta td { background: oklch(from var(--color-warning) l c h / 0.08); }
+.row-transbordamento td { background: oklch(from var(--color-error) l c h / 0.08); }
+.row-atencao:hover td { background: oklch(from var(--color-gold) l c h / 0.12); }
+.row-alerta:hover td { background: oklch(from var(--color-warning) l c h / 0.14); }
+.row-transbordamento:hover td { background: oklch(from var(--color-error) l c h / 0.14); }
+
+/* ── Gráfico ── */
+.chart-container {
+  position: relative;
+  height: 250px;
+  width: 100%;
+}
+@media (min-width: 768px) {
+  .chart-container {
+    height: 300px;
+  }
+}
+
+/* ── Empty state ── */
+.hydro-empty {
+  padding: var(--space-16) var(--space-8);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+.hydro-empty .empty-icon { font-size: 4rem; margin-bottom: var(--space-4); }
+.hydro-empty h3 { font-size: var(--text-xl); color: var(--color-text); margin-bottom: var(--space-2); }
+
+/* ── Responsividade ── */
+@media (max-width: 768px) {
+  .hydro-header-left h1 { font-size: var(--text-xl); }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .hydro-card-header { flex-direction: column; align-items: flex-start; }
+}
+@media (max-width: 480px) {
+  .kpi-grid { grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+  .hydro-table td, .hydro-table th { padding: var(--space-2) var(--space-2); font-size: var(--text-xs); }
+}

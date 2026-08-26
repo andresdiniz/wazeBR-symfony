@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use Doctrine\DBAL\Connection;
+use App\Entity\CemadenHydroData;
+use App\Entity\CemadenStation;
+use App\Repository\CemadenStationRepository;
+use App\Repository\PartnerRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -13,29 +17,17 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-/**
- * Coleta níveis de rios para estações hidrológicas do CEMADEN.
- *
- * Lógica de nível:
- *   offset  = distância do fundo do rio até o sensor (em metros)
- *   valor   = leitura do sensor (distância da lâmina d'água ao sensor)
- *   nível_rio = offset - valor   (quanto de água acima do fundo)
- *
- *   Se offset = null  => sensor offline / sem calibração => nível = null
- *   Se valor  = null  => leitura ausente                 => nível = null
- *
- * Salva na tabela: cemaden_hydro_readings
- *   id | station_id | measured_at | sensor_value | offset_value | river_level | is_offline | created_at
- */
 #[AsCommand(
     name: 'cemaden:collect-hydro',
-    description: 'Coleta níveis de rios das estações hidrológicas CEMADEN.',
+    description: 'Coleta níveis de rios das estações hidrológicas CEMADEN e persiste na tabela cemaden_hydro_data.',
 )]
 class CemadenCollectHydroCommand extends Command
 {
     public function __construct(
-        private readonly Connection          $db,
-        private readonly HttpClientInterface $httpClient,
+        private readonly EntityManagerInterface $em,
+        private readonly CemadenStationRepository $stationRepo,
+        private readonly PartnerRepository      $partnerRepo,
+        private readonly HttpClientInterface    $httpClient,
     ) {
         parent::__construct();
     }
@@ -44,10 +36,16 @@ class CemadenCollectHydroCommand extends Command
     {
         $this
             ->addOption(
+                'partner',
+                'p',
+                InputOption::VALUE_REQUIRED,
+                'ID do parceiro (obrigatório)',
+            )
+            ->addOption(
                 'station',
                 's',
                 InputOption::VALUE_OPTIONAL,
-                'ID da estação hidrológica (omitir = todas as ativas)',
+                'ID da estação hidrológica (omitir = todas as ativas do parceiro)',
             )
             ->addOption(
                 'dry-run',
@@ -61,29 +59,27 @@ class CemadenCollectHydroCommand extends Command
     {
         $io     = new SymfonyStyle($input, $output);
         $dryRun = (bool) $input->getOption('dry-run');
-        $idFilter = $input->getOption('station');
+        $partnerId = (int) $input->getOption('partner');
+        $stationId = $input->getOption('station');
 
         $io->title('CEMADEN Collect Hydro' . ($dryRun ? ' [DRY-RUN]' : ''));
 
-        // Busca estações hidrológicas ativas com hydro_url preenchida
-        $where  = "station_type = 'hydrological' AND is_active = 1 AND hydro_url IS NOT NULL AND hydro_url != ''";
-        $params = [];
-
-        if ($idFilter !== null) {
-            $where   .= ' AND id = ?';
-            $params[] = (int) $idFilter;
+        $partner = $this->partnerRepo->find($partnerId);
+        if (!$partner) {
+            $io->error('Parceiro com ID ' . $partnerId . ' não encontrado.');
+            return Command::FAILURE;
         }
 
-        $stations = $this->db->fetchAllAssociative(
-            "SELECT id, cod_estacao, nome, municipio, uf, partner_slug, hydro_url
-             FROM cemaden_stations
-             WHERE {$where}
-             ORDER BY partner_slug, nome",
-            $params,
-        );
+        $io->text('Parceiro: ' . $partner->getName() . ' (ID: ' . $partner->getId() . ')');
+
+        $stations = $stationId
+            ? [$this->stationRepo->findActiveHydrologicalByIdAndPartner((int) $stationId, $partner)]
+            : $this->stationRepo->findActiveHydrologicalByPartner($partner);
+
+        $stations = array_filter($stations);
 
         if (empty($stations)) {
-            $io->warning('Nenhuma estação hidrológica ativa com URL configurada encontrada.');
+            $io->warning('Nenhuma estação hidrológica ativa com URL configurada encontrada para este parceiro.');
             return Command::SUCCESS;
         }
 
@@ -93,10 +89,10 @@ class CemadenCollectHydroCommand extends Command
         foreach ($stations as $station) {
             $io->section(sprintf(
                 '[%s] %s — %s/%s',
-                $station['partner_slug'],
-                $station['nome'],
-                $station['municipio'],
-                $station['uf'],
+                $station->getPartner()->getSlug(),
+                $station->getNome(),
+                $station->getMunicipio(),
+                $station->getUf(),
             ));
 
             try {
@@ -117,22 +113,14 @@ class CemadenCollectHydroCommand extends Command
         return Command::SUCCESS;
     }
 
-    /**
-     * Remove caracteres CR, LF e TAB da URL (evita Malformed URL).
-     * Isso acontece quando a URL foi copiada com texto extra no banco.
-     */
     private function sanitizeUrl(string $url): string
     {
         return trim(preg_replace('/[\r\n\t]+/', '', $url));
     }
 
-    /**
-     * Busca a URL da estação, processa cada leitura e insere novas na tabela.
-     * Retorna o número de registros novos inseridos.
-     */
-    private function processStation(array $station, SymfonyStyle $io, bool $dryRun): int
+    private function processStation(CemadenStation $station, SymfonyStyle $io, bool $dryRun): int
     {
-        $url = $this->sanitizeUrl($station['hydro_url']);
+        $url = $this->sanitizeUrl($station->getHydroUrl());
 
         $response = $this->httpClient->request('GET', $url, [
             'timeout' => 20,
@@ -147,58 +135,90 @@ class CemadenCollectHydroCommand extends Command
             return 0;
         }
 
-        $stationId = (int) $station['id'];
-        $inserted  = 0;
+        $partner = $station->getPartner();
+        $inserted = 0;
 
         foreach ($rows as $raw) {
-            // datahora: "2026-06-27 01:00:00"
             $measuredAt = $raw['datahora'] ?? null;
             if (!$measuredAt) continue;
 
-            // Evita duplicata por (station_id + measured_at)
-            $exists = $this->db->fetchOne(
-                'SELECT 1 FROM cemaden_hydro_readings WHERE station_id = ? AND measured_at = ?',
-                [$stationId, $measuredAt],
-            );
-            if ($exists) continue;
+            // Evita duplicatas
+            $existing = $this->em->getRepository(CemadenHydroData::class)->findOneBy([
+                'stationCode' => $station->getCodEstacao(),
+                'measuredAt'  => new \DateTimeImmutable($measuredAt),
+            ]);
+            if ($existing) continue;
 
-            // Calcula nível do rio
-            // offset = distância fundo-sensor; valor = distância lâmina-sensor
-            // nível = offset - valor (metros de água acima do fundo)
-            $rawOffset = $raw['offset'];             // pode ser null => sensor offline
-            $rawValor  = $raw['valor'];              // string numérica ou null
+            // --- CÁLCULO CORRETO DO NÍVEL ---
+            // offset = distância do fundo do rio até o sensor
+            // valor  = distância da lâmina d'água até o sensor
+            // nível  = offset - valor (metros de água acima do fundo)
+            $offset = isset($raw['offset']) ? (float) $raw['offset'] : null;
+            $valor  = isset($raw['valor'])  ? (float) $raw['valor']  : null;
+            $waterLevel = ($offset !== null && $valor !== null) ? round($offset - $valor, 3) : null;
 
-            $isOffline  = ($rawOffset === null);     // true se sensor não calibrado
-            $offset     = $isOffline ? null : (float) $rawOffset;
-            $valor      = ($rawValor !== null) ? (float) $rawValor : null;
-            $riverLevel = (!$isOffline && $valor !== null) ? round($offset - $valor, 3) : null;
+            // Extrai cotas
+            $cotaAtencao = isset($raw['cota_atencao']) ? (float) $raw['cota_atencao'] : null;
+            $cotaAlerta  = isset($raw['cota_alerta'])  ? (float) $raw['cota_alerta']  : null;
+            $cotaTransb  = isset($raw['cota_transbordamento']) ? (float) $raw['cota_transbordamento'] : null;
+
+            // Determina alerta com base no nível calculado
+            $alertLevel = $this->determineAlertLevel($waterLevel, $cotaAtencao, $cotaAlerta, $cotaTransb);
+
+            // Cria entidade
+            $hydro = new CemadenHydroData();
+            $hydro->setStationCode($station->getCodEstacao());
+            $hydro->setStationName($station->getNome());
+            $hydro->setMunicipality($station->getMunicipio());
+            $hydro->setState($station->getUf());
+            $hydro->setWaterLevel($waterLevel);      // nível real em metros
+            $hydro->setOffsetValue($offset);         // guarda offset para referência
+            $hydro->setQualificacao($raw['qualificacao'] ?? null);
+            $hydro->setCotaAtencao($cotaAtencao);
+            $hydro->setCotaAlerta($cotaAlerta);
+            $hydro->setCotaTransbordamento($cotaTransb);
+            $hydro->setAlertLevel($alertLevel);
+            $hydro->setPartner($partner);
+            $hydro->setMeasuredAt(new \DateTimeImmutable($measuredAt));
 
             if ($io->isVerbose()) {
                 $io->text(sprintf(
-                    '  %s | sensor=%.3f | offset=%s | nível=%s%s',
+                    '  %s | offset=%.3f | valor=%.3f | nível=%.3f | alerta=%s',
                     $measuredAt,
+                    $offset ?? 0,
                     $valor ?? 0,
-                    $offset !== null ? number_format($offset, 3) : 'null',
-                    $riverLevel !== null ? number_format($riverLevel, 3) . ' m' : 'null',
-                    $isOffline ? ' [OFFLINE]' : '',
+                    $waterLevel ?? 0,
+                    $alertLevel ?? 'normal',
                 ));
             }
 
             if (!$dryRun) {
-                $this->db->insert('cemaden_hydro_readings', [
-                    'station_id'   => $stationId,
-                    'measured_at'  => $measuredAt,
-                    'sensor_value' => $valor,
-                    'offset_value' => $offset,
-                    'river_level'  => $riverLevel,
-                    'is_offline'   => $isOffline ? 1 : 0,
-                    'created_at'   => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
-                ]);
+                $this->em->persist($hydro);
+                $this->em->flush();
             }
 
             $inserted++;
         }
 
         return $inserted;
+    }
+
+    private function determineAlertLevel(?float $level, ?float $cotaAtencao, ?float $cotaAlerta, ?float $cotaTransb): ?string
+    {
+        if ($level === null) {
+            return 'normal';
+        }
+
+        if ($cotaTransb !== null && $level >= $cotaTransb) {
+            return 'transbordamento';
+        }
+        if ($cotaAlerta !== null && $level >= $cotaAlerta) {
+            return 'alerta';
+        }
+        if ($cotaAtencao !== null && $level >= $cotaAtencao) {
+            return 'atencao';
+        }
+
+        return 'normal';
     }
 }

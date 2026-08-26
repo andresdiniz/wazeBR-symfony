@@ -14,7 +14,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/cemaden', name: 'cemaden_')]
-#[IsGranted('ROLE_USER')]
+#[IsGranted('ROLE_USER')] // ← apenas usuário logado, sem ROLE_CEMADEN
 class CemadenController extends AbstractController
 {
     public function __construct(
@@ -30,14 +30,14 @@ class CemadenController extends AbstractController
         $level   = $request->query->get('level');
         $state   = $request->query->get('state');
 
-        // Dados pluviométricos / meteorológicos (tabela cemaden_data)
+        // Dados pluviométricos
         $data = $this->cemadenRepo->findFilteredByPartner(
             partner: $partner,
             alertLevel: $level ?: null,
             state: $state ?: null,
         );
 
-        // Dados hidrológicos: última leitura de cada estação do parceiro
+        // Dados hidrológicos (última leitura de cada estação)
         $hydroData = $this->db->fetchAllAssociative(
             "SELECT
                 s.id            AS station_id,
@@ -60,9 +60,9 @@ class CemadenController extends AbstractController
                 )
              WHERE s.station_type = 'hydrological'
                AND s.is_active    = 1
-               AND s.partner_slug = ?
+               AND s.partner_id   = ?  -- ← usar partner_id, não slug
              ORDER BY s.municipio, s.nome",
-            [$partner->getSlug()],
+            [$partner->getId()],
         );
 
         return $this->render('cemaden/index.html.twig', [
