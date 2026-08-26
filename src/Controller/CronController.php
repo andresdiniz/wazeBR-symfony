@@ -11,45 +11,10 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * CronController — Health-check e disparo via URL dos jobs de coleta.
- *
- * DUAS FORMAS DE USO NA HOSTINGER (escolha uma por job, nunca as duas
- * para o mesmo job — senão ele roda em dobro):
- *
- *   1. CLI direto (recomendado): Agendador de Tarefas chamando
- *      `php cron.php <job>` — ver doc/cron-reference.md. Mais robusto,
- *      não depende de exec() estar liberado no PHP do Apache/LiteSpeed.
- *
- *   2. URL (/cron/trigger/{job}): útil se o seu plano permitir configurar
- *      o cron como "chamar uma URL" em vez de rodar um binário, ou se
- *      você preferir usar um serviço externo de ping (cron-job.org,
- *      EasyCron, etc). Exige que exec() esteja liberado no SAPI web —
- *      teste antes com uma chamada real, muita hospedagem compartilhada
- *      bloqueia exec() só no PHP do Apache/LiteSpeed mesmo liberando no
- *      CLI. A resposta HTTP retorna na hora (o job roda em background),
- *      então não sofre com o timeout do servidor web.
- *
- * COMPATIBILIDADE LOCAL (Windows): o método trigger() detecta o SO via
- * PHP_OS_FAMILY. Em produção (Linux/Hostinger) usa CRON_PHP_BINARY (ou o
- * padrão /usr/local/bin/php8.5) e dispara com "&" no final do comando,
- * sintaxe de background do shell POSIX. No Windows local, usa PHP_BINARY
- * (o php.exe que já está rodando o `symfony server` / `php -S`) e troca o
- * "&" por `start /B "" ...`, que é a forma correta do cmd.exe iniciar um
- * processo em segundo plano — sem isso, exec() no Windows tenta abrir um
- * caminho de binário Linux inexistente e ainda quebra o parsing do "&",
- * gerando a mensagem duplicada "O sistema não pode encontrar o caminho
- * especificado."
- *
- * Rotas públicas — ambas exigem CRON_TOKEN como query param.
- */
 final class CronController extends AbstractController
 {
-    /**
-     * Jobs que podem ser disparados via /cron/trigger/{job}.
-     * Mantenha esta lista sincronizada com o array $jobs de cron.php.
-     */
     private const ALLOWED_JOBS = [
+        'all',
         'waze_feed',
         'waze_routes',
         'waze_tvt',
@@ -88,23 +53,17 @@ final class CronController extends AbstractController
         }
 
         return new JsonResponse([
-            'status'    => 'ok',
+            'status' => 'ok',
             'timestamp' => (new \DateTimeImmutable())->format('c'),
             'queue' => [
-                'waze'    => $wazePending,
+                'waze' => $wazePending,
                 'cemaden' => $cemadenPending,
             ],
             'cron_jobs' => $this->readCronStatus(),
-            'note' => 'Coleta disparada por cron.php (ver doc/cron-reference.md). '
-                . 'Campo cron_jobs vem de var/log/cron_status.json.',
+            'note' => 'Coleta disparada por cron.php. Campo cron_jobs vem de var/log/cron_status.json.',
         ]);
     }
 
-    /**
-     * Dispara um job em background via `php cron.php <job>` e responde
-     * imediatamente — não espera o job terminar. O resultado real fica
-     * disponível em /cron/run (campo cron_jobs) alguns segundos depois.
-     */
     #[Route('/cron/trigger/{job}', name: 'cron_trigger', methods: ['GET'])]
     public function trigger(string $job, Request $request): JsonResponse
     {
@@ -114,7 +73,7 @@ final class CronController extends AbstractController
 
         if (!in_array($job, self::ALLOWED_JOBS, true)) {
             return new JsonResponse([
-                'status'  => 'error',
+                'status' => 'error',
                 'message' => "Job desconhecido: {$job}",
                 'allowed' => self::ALLOWED_JOBS,
             ], Response::HTTP_BAD_REQUEST);
@@ -122,71 +81,83 @@ final class CronController extends AbstractController
 
         if (!function_exists('exec')) {
             return new JsonResponse([
-                'status'  => 'error',
-                'message' => 'exec() está desabilitado neste PHP (SAPI web). '
-                    . 'Use o disparo via CLI direto (Agendador de Tarefas chamando '
-                    . 'php cron.php <job>) em vez desta URL — ver doc/cron-reference.md.',
+                'status' => 'error',
+                'message' => 'exec() está desabilitado neste PHP (SAPI web). Use o modo CLI: php cron.php <job>.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
         $projectDir = $this->getParameter('kernel.project_dir');
-        $isWindows  = str_starts_with(PHP_OS_FAMILY, 'Windows');
+        $isWindows = PHP_OS_FAMILY === 'Windows';
+        $configuredBinary = $_ENV['CRON_PHP_BINARY'] ?? $_SERVER['CRON_PHP_BINARY'] ?? getenv('CRON_PHP_BINARY');
+        $phpBinary = is_string($configuredBinary) && trim($configuredBinary) !== ''
+            ? trim($configuredBinary, " \t\n\r\0\x0B\"")
+            : ($isWindows ? PHP_BINARY : '/usr/local/bin/php8.5');
 
-        // Em produção (Hostinger/Linux) usa CRON_PHP_BINARY ou o padrão do
-        // painel; em desenvolvimento local no Windows, PHP_BINARY (o mesmo
-        // binário que já está rodando o servidor Symfony) já resolve certo,
-        // sem precisar configurar nada no .env local.
-        $phpBinary = $_ENV['CRON_PHP_BINARY'] ?? ($isWindows ? PHP_BINARY : '/usr/local/bin/php8.5');
-
-        $cronScript  = $projectDir . '/cron.php';
+        $cronScript = $projectDir . '/cron.php';
         $dispatchLog = $projectDir . '/var/log/cron_http_trigger.log';
 
-        if ($isWindows) {
-            // No Windows não existe "&" de background nem o php.exe padrão
-            // da Hostinger; usa START /B (processo em background, sem nova
-            // janela) e redireciona a saída com a sintaxe do cmd.exe.
-            $cmd = sprintf(
-                'start /B "" %s %s %s >> %s 2>&1',
-                escapeshellarg($phpBinary),
-                escapeshellarg($cronScript),
-                escapeshellarg($job),
-                escapeshellarg($dispatchLog),
-            );
-        } else {
-            // Linux/Hostinger: comando em background de fato (o "&" no
-            // final) para a resposta HTTP não esperar o job terminar.
-            $cmd = sprintf(
-                '%s %s %s >> %s 2>&1 &',
-                escapeshellarg($phpBinary),
-                escapeshellarg($cronScript),
-                escapeshellarg($job),
-                escapeshellarg($dispatchLog),
-            );
+        if (!is_file($phpBinary)) {
+            return new JsonResponse([
+                'status' => 'error',
+                'message' => 'Binário PHP não encontrado.',
+                'php_binary' => $phpBinary,
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
-        exec($cmd);
+        if (!is_file($cronScript)) {
+            return new JsonResponse([
+                'status' => 'error',
+                'message' => 'Arquivo cron.php não encontrado.',
+                'cron_script' => $cronScript,
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+
+        $args = [$phpBinary, $cronScript, $job];
+
+        if ($isWindows) {
+            $cmd = 'start /B "" ' . implode(' ', array_map(
+                static fn(string $value): string => escapeshellarg($value),
+                $args
+            )) . ' >> ' . escapeshellarg($dispatchLog) . ' 2>&1';
+        } else {
+            $cmd = implode(' ', array_map(
+                static fn(string $value): string => escapeshellarg($value),
+                $args
+            )) . ' >> ' . escapeshellarg($dispatchLog) . ' 2>&1 &';
+        }
+
+        $output = [];
+        $exitCode = 0;
+        exec($cmd, $output, $exitCode);
+
+        if ($exitCode !== 0) {
+            return new JsonResponse([
+                'status' => 'error',
+                'message' => 'Não foi possível disparar o processo PHP.',
+                'exit_code' => $exitCode,
+                'php_binary' => $phpBinary,
+                'command' => $cmd,
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
 
         return new JsonResponse([
-            'status'  => 'dispatched',
-            'job'     => $job,
-            'os'      => $isWindows ? 'windows' : 'linux',
-            'message' => 'Job disparado em background. Confira o resultado em /cron/run em alguns segundos.',
+            'status' => 'dispatched',
+            'job' => $job,
+            'os' => $isWindows ? 'windows' : 'linux',
+            'message' => $job === 'all'
+                ? 'Todos os jobs foram disparados em sequência. Confira /cron/run depois de alguns segundos.'
+                : 'Job disparado em background. Confira /cron/run depois de alguns segundos.',
         ]);
     }
 
     private function isTokenValid(Request $request): bool
     {
-        $token    = (string) $request->query->get('token', '');
+        $token = (string) $request->query->get('token', '');
         $expected = (string) ($_ENV['CRON_TOKEN'] ?? '');
 
         return $expected !== '' && hash_equals($expected, $token);
     }
 
-    /**
-     * Lê var/log/cron_status.json (gerado pelo cron.php a cada execução
-     * de job) e retorna o conteúdo já decodificado, ou um array vazio
-     * se o arquivo ainda não existir ou estiver corrompido.
-     */
     private function readCronStatus(): array
     {
         $path = $this->getParameter('kernel.project_dir') . '/var/log/cron_status.json';
