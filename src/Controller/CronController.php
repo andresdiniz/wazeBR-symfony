@@ -30,6 +30,17 @@ use Symfony\Component\Routing\Attribute\Route;
  *      CLI. A resposta HTTP retorna na hora (o job roda em background),
  *      então não sofre com o timeout do servidor web.
  *
+ * COMPATIBILIDADE LOCAL (Windows): o método trigger() detecta o SO via
+ * PHP_OS_FAMILY. Em produção (Linux/Hostinger) usa CRON_PHP_BINARY (ou o
+ * padrão /usr/local/bin/php8.5) e dispara com "&" no final do comando,
+ * sintaxe de background do shell POSIX. No Windows local, usa PHP_BINARY
+ * (o php.exe que já está rodando o `symfony server` / `php -S`) e troca o
+ * "&" por `start /B "" ...`, que é a forma correta do cmd.exe iniciar um
+ * processo em segundo plano — sem isso, exec() no Windows tenta abrir um
+ * caminho de binário Linux inexistente e ainda quebra o parsing do "&",
+ * gerando a mensagem duplicada "O sistema não pode encontrar o caminho
+ * especificado."
+ *
  * Rotas públicas — ambas exigem CRON_TOKEN como query param.
  */
 final class CronController extends AbstractController
@@ -62,14 +73,18 @@ final class CronController extends AbstractController
 
         try {
             $wazePending = (int) $this->connection->fetchOne(
-                "SELECT COUNT(*) FROM messenger_messages WHERE queue_name = 'waze' AND delivered_at IS NULL"
-            );
-            $cemadenPending = (int) $this->connection->fetchOne(
-                "SELECT COUNT(*) FROM messenger_messages WHERE queue_name = 'cemaden' AND delivered_at IS NULL"
+                "SELECT COUNT(*) FROM messenger_messages WHERE queue_name = 'async_waze'"
             );
         } catch (\Throwable) {
-            $wazePending    = -1;
-            $cemadenPending = -1;
+            $wazePending = null;
+        }
+
+        try {
+            $cemadenPending = (int) $this->connection->fetchOne(
+                "SELECT COUNT(*) FROM messenger_messages WHERE queue_name = 'async_cemaden'"
+            );
+        } catch (\Throwable) {
+            $cemadenPending = null;
         }
 
         return new JsonResponse([
@@ -115,25 +130,46 @@ final class CronController extends AbstractController
         }
 
         $projectDir = $this->getParameter('kernel.project_dir');
-        $phpBinary  = $_ENV['CRON_PHP_BINARY'] ?? '/usr/local/bin/php8.5';
-        $cronScript = $projectDir . '/cron.php';
+        $isWindows  = str_starts_with(PHP_OS_FAMILY, 'Windows');
+
+        // Em produção (Hostinger/Linux) usa CRON_PHP_BINARY ou o padrão do
+        // painel; em desenvolvimento local no Windows, PHP_BINARY (o mesmo
+        // binário que já está rodando o servidor Symfony) já resolve certo,
+        // sem precisar configurar nada no .env local.
+        $phpBinary = $_ENV['CRON_PHP_BINARY'] ?? ($isWindows ? PHP_BINARY : '/usr/local/bin/php8.5');
+
+        $cronScript  = $projectDir . '/cron.php';
         $dispatchLog = $projectDir . '/var/log/cron_http_trigger.log';
 
-        // Comando em background (o "&" no final): a resposta HTTP não
-        // espera o job terminar, evitando o timeout do servidor web.
-        $cmd = sprintf(
-            '%s %s %s >> %s 2>&1 &',
-            escapeshellarg($phpBinary),
-            escapeshellarg($cronScript),
-            escapeshellarg($job),
-            escapeshellarg($dispatchLog),
-        );
+        if ($isWindows) {
+            // No Windows não existe "&" de background nem o php.exe padrão
+            // da Hostinger; usa START /B (processo em background, sem nova
+            // janela) e redireciona a saída com a sintaxe do cmd.exe.
+            $cmd = sprintf(
+                'start /B "" %s %s %s >> %s 2>&1',
+                escapeshellarg($phpBinary),
+                escapeshellarg($cronScript),
+                escapeshellarg($job),
+                escapeshellarg($dispatchLog),
+            );
+        } else {
+            // Linux/Hostinger: comando em background de fato (o "&" no
+            // final) para a resposta HTTP não esperar o job terminar.
+            $cmd = sprintf(
+                '%s %s %s >> %s 2>&1 &',
+                escapeshellarg($phpBinary),
+                escapeshellarg($cronScript),
+                escapeshellarg($job),
+                escapeshellarg($dispatchLog),
+            );
+        }
 
         exec($cmd);
 
         return new JsonResponse([
             'status'  => 'dispatched',
             'job'     => $job,
+            'os'      => $isWindows ? 'windows' : 'linux',
             'message' => 'Job disparado em background. Confira o resultado em /cron/run em alguns segundos.',
         ]);
     }
