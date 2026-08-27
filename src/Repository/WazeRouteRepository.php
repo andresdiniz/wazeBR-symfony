@@ -30,14 +30,14 @@ class WazeRouteRepository extends ServiceEntityRepository
     }
 
     public function findActiveByLink(string $link): ?WazeRoute
-    {
-        return $this->createQueryBuilder('wr')
-            ->where('wr.isActive = :isActive')
-            ->andWhere('wr.link = :link')
-            ->setParameter('isActive', true)
-            ->setParameter('link', $link)
-            ->setMaxResults(1)
-            ->getQuery()
-            ->getOneOrNullResult();
-    }
+{
+    return $this->createQueryBuilder('wr')
+        ->where('wr.isActive = :isActive')
+        ->andWhere('wr.link = :link')
+        ->setParameter('isActive', true)
+        ->setParameter('link', $link)
+        ->setMaxResults(1)
+        ->getQuery()
+        ->getOneOrNullResult();
+}
 }
