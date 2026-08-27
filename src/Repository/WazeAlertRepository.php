@@ -152,11 +152,13 @@ class WazeAlertRepository extends ServiceEntityRepository
         array $filters = []
     ): array {
         $qb = $this->createQueryBuilder('a')
-            ->select("DATE(a.createdAt) as day, COUNT(a.id) as total")
+            ->select('YEAR(a.createdAt) as year, MONTH(a.createdAt) as month, DAY(a.createdAt) as day, COUNT(a.id) as total')
             ->where('a.partner = :partner')
             ->setParameter('partner', $partner)
-            ->groupBy('day')
-            ->orderBy('day', 'ASC');
+            ->groupBy('year', 'month', 'day')
+            ->orderBy('year', 'ASC')
+            ->addOrderBy('month', 'ASC')
+            ->addOrderBy('day', 'ASC');
 
         if ($filters['type'] !== null && $filters['type'] !== '') {
             $qb->andWhere('a.type = :type')
