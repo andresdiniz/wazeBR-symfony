@@ -14,6 +14,69 @@ class WazeAlertRepository extends ServiceEntityRepository
     }
 
     /**
+     * Find one alert by partner ID.
+     */
+    public function findOneByPartner(int $partnerId): ?WazeAlert
+    {
+        return $this->createQueryBuilder('a')
+            ->where('a.partner = :partnerId')
+            ->setParameter('partnerId', $partnerId)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    /**
+     * Count alerts filtered by partner and criteria.
+     */
+    public function countFilteredByPartner(
+        object $partner,
+        array $filters = []
+    ): int {
+        $qb = $this->createQueryBuilder('a')
+            ->select('COUNT(a.id)')
+            ->where('a.partner = :partner')
+            ->setParameter('partner', $partner);
+
+        if ($filters['type'] !== null && $filters['type'] !== '') {
+            $qb->andWhere('a.type = :type')
+                ->setParameter('type', $filters['type']);
+        }
+
+        if ($filters['subtype'] !== null && $filters['subtype'] !== '') {
+            $qb->andWhere('a.subtype = :subtype')
+                ->setParameter('subtype', $filters['subtype']);
+        }
+
+        if ($filters['city'] !== null && $filters['city'] !== '') {
+            $qb->andWhere('a.city LIKE :city')
+                ->setParameter('city', '%' . $filters['city'] . '%');
+        }
+
+        if ($filters['street'] !== null && $filters['street'] !== '') {
+            $qb->andWhere('a.street LIKE :street')
+                ->setParameter('street', '%' . $filters['street'] . '%');
+        }
+
+        if ($filters['excludeStreet'] !== null && $filters['excludeStreet'] !== '') {
+            $qb->andWhere('a.street NOT LIKE :excludeStreet')
+                ->setParameter('excludeStreet', '%' . $filters['excludeStreet'] . '%');
+        }
+
+        if ($filters['dateFrom'] !== null && $filters['dateFrom'] !== '') {
+            $qb->andWhere('a.createdAt >= :dateFrom')
+                ->setParameter('dateFrom', $filters['dateFrom']);
+        }
+
+        if ($filters['dateTo'] !== null && $filters['dateTo'] !== '') {
+            $qb->andWhere('a.createdAt <= :dateTo')
+                ->setParameter('dateTo', $filters['dateTo']);
+        }
+
+        return (int) $qb->getQuery()->getSingleScalarResult();
+    }
+
+    /**
      * Busca alertas de um parceiro com filtros e paginacao.
      * Retorna array com items, total e pages.
      */
@@ -120,6 +183,61 @@ class WazeAlertRepository extends ServiceEntityRepository
             'total' => $total,
             'pages' => $pages,
         ];
+    }
+
+    /**
+     * Find all alerts filtered by partner and criteria.
+     */
+    public function findAllFilteredByPartner(
+        object $partner,
+        array $filters = [],
+        ?int $limit = null
+    ): array {
+        $qb = $this->createQueryBuilder('a')
+            ->where('a.partner = :partner')
+            ->setParameter('partner', $partner)
+            ->orderBy('a.createdAt', 'DESC');
+
+        if ($filters['type'] !== null && $filters['type'] !== '') {
+            $qb->andWhere('a.type = :type')
+                ->setParameter('type', $filters['type']);
+        }
+
+        if ($filters['subtype'] !== null && $filters['subtype'] !== '') {
+            $qb->andWhere('a.subtype = :subtype')
+                ->setParameter('subtype', $filters['subtype']);
+        }
+
+        if ($filters['city'] !== null && $filters['city'] !== '') {
+            $qb->andWhere('a.city LIKE :city')
+                ->setParameter('city', '%' . $filters['city'] . '%');
+        }
+
+        if ($filters['street'] !== null && $filters['street'] !== '') {
+            $qb->andWhere('a.street LIKE :street')
+                ->setParameter('street', '%' . $filters['street'] . '%');
+        }
+
+        if ($filters['excludeStreet'] !== null && $filters['excludeStreet'] !== '') {
+            $qb->andWhere('a.street NOT LIKE :excludeStreet')
+                ->setParameter('excludeStreet', '%' . $filters['excludeStreet'] . '%');
+        }
+
+        if ($filters['dateFrom'] !== null && $filters['dateFrom'] !== '') {
+            $qb->andWhere('a.createdAt >= :dateFrom')
+                ->setParameter('dateFrom', $filters['dateFrom']);
+        }
+
+        if ($filters['dateTo'] !== null && $filters['dateTo'] !== '') {
+            $qb->andWhere('a.createdAt <= :dateTo')
+                ->setParameter('dateTo', $filters['dateTo']);
+        }
+
+        if ($limit !== null && $limit > 0) {
+            $qb->setMaxResults($limit);
+        }
+
+        return $qb->getQuery()->getResult();
     }
 
     /**
