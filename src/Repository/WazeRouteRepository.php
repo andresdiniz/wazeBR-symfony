@@ -29,7 +29,7 @@ class WazeRouteRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    public function findOneActiveByLink(string $link): ?WazeRoute
+    public function findActiveByLink(string $link): ?WazeRoute
     {
         return $this->createQueryBuilder('wr')
             ->where('wr.isActive = :isActive')
