@@ -136,4 +136,11 @@ class WazeAlertRepository extends ServiceEntityRepository
                 ->setParameter('dateFrom', $filters['dateFrom']);
         }
 
-        if ($filters['dateTo'] !==
+        if ($filters['dateTo'] !== null && $filters['dateTo'] !== '') {
+            $qb->andWhere('a.createdAt <= :dateTo')
+                ->setParameter('dateTo', $filters['dateTo']);
+        }
+
+        return $qb->getQuery()->getArrayResult();
+    }
+}
