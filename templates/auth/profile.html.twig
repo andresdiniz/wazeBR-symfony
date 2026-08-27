@@ -123,6 +123,15 @@
                 <p class="hint">O e-mail é o identificador da conta e não pode ser alterado por aqui.</p>
             </div>
 
+            {% if user.lastLoginAt %}
+            <div class="field">
+                <label class="label">Último acesso</label>
+                <p class="hint" style="margin-top:0;">
+                    {{ user.lastLoginAt|date('d/m/Y \\à\\s H:i') }}{% if user.lastLoginIp %} — IP {{ user.lastLoginIp }}{% endif %}
+                </p>
+            </div>
+            {% endif %}
+
             <div class="divider"></div>
 
             <div class="field">

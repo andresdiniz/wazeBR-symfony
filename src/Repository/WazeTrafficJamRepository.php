@@ -345,6 +345,34 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
             ->getArrayResult();
     }
 
+    /**
+     * ATENÇÃO — SEM FILTRO DE PARCEIRO (diferente do resto deste
+     * repository). Usado por ApiController::traffic(), o mesmo endpoint
+     * legado sem TenantContext citado em WazeAlertRepository::findFiltered().
+     * Mesma recomendação: revisar antes de expor em produção.
+     *
+     * @return WazeTrafficJam[]
+     */
+    public function findFiltered(int $hours, ?string $city, ?int $level, int $limit = 500): array
+    {
+        $since = self::toMillis(new \DateTimeImmutable("-{$hours} hours"));
+
+        $qb = $this->createQueryBuilder('j')
+            ->where('j.pubMillis >= :since')
+            ->setParameter('since', $since)
+            ->orderBy('j.pubMillis', 'DESC')
+            ->setMaxResults($limit);
+
+        if ($city) {
+            $qb->andWhere('LOWER(j.city) LIKE :city')->setParameter('city', '%' . mb_strtolower($city) . '%');
+        }
+        if ($level !== null) {
+            $qb->andWhere('j.level = :level')->setParameter('level', $level);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
     public function getJamsPerHourLast24h(): array
     {
         $now = time() * 1000;

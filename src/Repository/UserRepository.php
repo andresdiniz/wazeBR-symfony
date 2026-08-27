@@ -30,6 +30,18 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         }
     }
 
+    /**
+     * Grava data/hora e IP do login bem-sucedido. Chamado pelo
+     * LoginSuccessListener a cada autenticação (form_login e
+     * remember-me automático).
+     */
+    public function recordLogin(User $user, ?string $ip): void
+    {
+        $user->setLastLoginAt(new \DateTimeImmutable());
+        $user->setLastLoginIp($ip);
+        $this->save($user);
+    }
+
     public function remove(User $user, bool $flush = true): void
     {
         $this->getEntityManager()->remove($user);

@@ -154,7 +154,22 @@ class WazeCollectFeedCommand extends Command
                 continue;
             }
 
-            if ($this->alertRepo->findOneBy(['wazeId' => $wazeId, 'partner' => $partner])) {
+            $existing = $this->alertRepo->findOneBy(['wazeId' => $wazeId, 'partner' => $partner]);
+
+            if ($existing !== null) {
+                // Alerta continua ativo na mesma coleta anterior — atualiza
+                // pubMillis e os campos que mudam com o tempo (confiança,
+                // thumbs up, etc). Sem isso, o pubMillis fica congelado no
+                // valor da primeira vez que o alerta apareceu e ele "some"
+                // do dashboard assim que sai da janela de tempo consultada,
+                // mesmo continuando ativo de verdade no Waze.
+                $existing
+                    ->setPubMillis((int) ($raw['pubMillis'] ?? $existing->getPubMillis()))
+                    ->setReliability(isset($raw['reliability']) ? (int) $raw['reliability'] : $existing->getReliability())
+                    ->setConfidence(isset($raw['confidence'])   ? (int) $raw['confidence']  : $existing->getConfidence())
+                    ->setReportRating(isset($raw['reportRating']) ? (int) $raw['reportRating'] : $existing->getReportRating())
+                    ->setNThumbsUp(isset($raw['nThumbsUp']) ? (int) $raw['nThumbsUp'] : $existing->getNThumbsUp());
+
                 continue;
             }
 
@@ -182,9 +197,7 @@ class WazeCollectFeedCommand extends Command
             $count++;
         }
 
-        if ($count > 0) {
-            $this->em->flush();
-        }
+        $this->em->flush();
 
         return $count;
     }
@@ -205,7 +218,20 @@ class WazeCollectFeedCommand extends Command
                 continue;
             }
 
-            if ($this->jamRepo->findOneBy(['wazeId' => $wazeId, 'partner' => $partner])) {
+            $existing = $this->jamRepo->findOneBy(['wazeId' => $wazeId, 'partner' => $partner]);
+
+            if ($existing !== null) {
+                // Mesmo motivo do persistAlerts(): mantém o jam "vivo" nas
+                // consultas por janela de tempo do dashboard enquanto ele
+                // continuar aparecendo no feed, em vez de congelar no
+                // pubMillis da primeira vez que foi visto.
+                $existing
+                    ->setPubMillis((int) ($raw['pubMillis'] ?? $existing->getPubMillis()))
+                    ->setLevel(isset($raw['level']) ? (int) $raw['level'] : $existing->getLevel())
+                    ->setSpeedKmh(isset($raw['speedKMH']) ? (float) $raw['speedKMH'] : $existing->getSpeedKmh())
+                    ->setDelay(isset($raw['delay']) ? (int) $raw['delay'] : $existing->getDelay())
+                    ->setLength(isset($raw['length']) ? (float) $raw['length'] : $existing->getLength());
+
                 continue;
             }
 
@@ -233,9 +259,7 @@ class WazeCollectFeedCommand extends Command
             $count++;
         }
 
-        if ($count > 0) {
-            $this->em->flush();
-        }
+        $this->em->flush();
 
         return $count;
     }

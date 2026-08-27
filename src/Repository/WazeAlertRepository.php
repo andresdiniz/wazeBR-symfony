@@ -67,6 +67,71 @@ class WazeAlertRepository extends ServiceEntityRepository
             ->toIterable();
     }
     public function findActiveByPartner(Partner $partner, int $minutes = 10): array { return $this->createQueryBuilder('a')->where('a.partner = :partner')->andWhere('a.pubMillis >= :since')->setParameter('partner', $partner)->setParameter('since', (time() - max(1, $minutes) * 60) * 1000)->orderBy('a.pubMillis', 'DESC')->getQuery()->getResult(); }
+
+    /**
+     * Alertas críticos de um parceiro: reliability >= $minReliability,
+     * restritos a uma janela recente (padrão 30 min) para não reprocessar
+     * o histórico inteiro a cada execução do notifications:dispatch —
+     * a deduplicação real fica por conta de NotificationRepository::existsForAlert().
+     *
+     * NOTA: era chamado sem existir aqui, causando BadMethodCallException
+     * em toda execução de notifications:dispatch.
+     *
+     * @return WazeAlert[]
+     */
+    public function findCriticalByPartner(Partner $partner, int $minReliability = 8, int $windowMinutes = 30): array
+    {
+        $since = (time() - max(1, $windowMinutes) * 60) * 1000;
+
+        return $this->createQueryBuilder('a')
+            ->where('a.partner = :partner')
+            ->andWhere('a.reliability >= :minReliability')
+            ->andWhere('a.pubMillis >= :since')
+            ->setParameter('partner', $partner)
+            ->setParameter('minReliability', $minReliability)
+            ->setParameter('since', $since)
+            ->orderBy('a.pubMillis', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Últimos $limit alertas de um parceiro, sem filtro de janela de tempo
+     * — usado no feed "ao vivo" do LiveSummaryController.
+     *
+     * NOTA: era chamado sem existir aqui, causando erro fatal em
+     * GET /api/live-summary.
+     *
+     * @return WazeAlert[]
+     */
+    public function findRecentByPartner(Partner $partner, int $limit = 30): array
+    {
+        return $this->createQueryBuilder('a')
+            ->where('a.partner = :partner')
+            ->setParameter('partner', $partner)
+            ->orderBy('a.pubMillis', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Alias de countLastHoursByPartner($partner, 1) — usado pelos KPIs do
+     * LiveSummaryController. NOTA: era chamado sem existir aqui.
+     */
+    public function countLast1hByPartner(Partner $partner): int
+    {
+        return $this->countLastHoursByPartner($partner, 1);
+    }
+
+    /**
+     * Alias de countLastHoursByPartner($partner, 24) — usado pelos KPIs do
+     * LiveSummaryController. NOTA: era chamado sem existir aqui.
+     */
+    public function countLast24hByPartner(Partner $partner): int
+    {
+        return $this->countLastHoursByPartner($partner, 24);
+    }
     public function findOneByPartner(int $id, Partner $partner): ?WazeAlert { return $this->createQueryBuilder('a')->where('a.id = :id')->andWhere('a.partner = :partner')->setParameter('id', $id)->setParameter('partner', $partner)->getQuery()->getOneOrNullResult(); }
 
     /**
@@ -98,4 +163,38 @@ class WazeAlertRepository extends ServiceEntityRepository
     public function topStreetsFiltered(Partner $partner, array $filters = [], int $limit = 10): array { $qb = $this->createQueryBuilder('a')->select('a.street AS street, a.city AS city, COUNT(a.id) AS total')->andWhere('a.street IS NOT NULL')->groupBy('a.street, a.city')->orderBy('total', 'DESC')->setMaxResults($limit); $this->applyFilters($qb, $partner, $filters); return $qb->getQuery()->getArrayResult(); }
     public function findHotspotsFiltered(Partner $partner, array $filters = [], int $limit = 15): array { $qb = $this->createQueryBuilder('a')->select('a.latitude AS lat, a.longitude AS lng, COUNT(a.id) AS total', 'MAX(a.street) AS street', 'MAX(a.city) AS city')->andWhere('a.latitude IS NOT NULL')->andWhere('a.longitude IS NOT NULL')->groupBy('a.latitude, a.longitude')->orderBy('total', 'DESC')->setMaxResults($limit); $this->applyFilters($qb, $partner, $filters); return $qb->getQuery()->getArrayResult(); }
     public function findForMapFiltered(Partner $partner, array $filters = [], int $limit = 500): array { $qb = $this->createQueryBuilder('a')->select('a.id, a.type, a.subtype, a.street, a.city, a.latitude, a.longitude, a.confidence, a.nThumbsUp, a.pubMillis')->andWhere('a.latitude IS NOT NULL')->andWhere('a.longitude IS NOT NULL')->orderBy('a.pubMillis', 'DESC')->setMaxResults($limit); $this->applyFilters($qb, $partner, $filters); return $qb->getQuery()->getArrayResult(); }
+
+    /**
+     * ATENÇÃO — SEM FILTRO DE PARCEIRO (diferente de todo o resto deste
+     * repository, que sempre exige Partner). Usado por ApiController::alerts(),
+     * um endpoint legado que nunca foi adaptado para o modelo multi-tenant
+     * (não recebe TenantContext). Isso significa que, hoje, qualquer
+     * usuário autenticado que bater em GET /api/alertas recebe alertas de
+     * TODOS os parceiros misturados — provável vazamento de dado entre
+     * clientes. Implementado aqui só para o endpoint parar de dar erro
+     * fatal (BadMethodCallException); recomendo revisar se ApiController
+     * deveria ser removido ou migrado para usar TenantContext como
+     * LiveSummaryController já faz.
+     *
+     * @return WazeAlert[]
+     */
+    public function findFiltered(int $hours, ?string $city, ?string $type, int $limit = 500): array
+    {
+        $since = (time() - max(1, $hours) * 3600) * 1000;
+
+        $qb = $this->createQueryBuilder('a')
+            ->where('a.pubMillis >= :since')
+            ->setParameter('since', $since)
+            ->orderBy('a.pubMillis', 'DESC')
+            ->setMaxResults($limit);
+
+        if ($city) {
+            $qb->andWhere('LOWER(a.city) LIKE :city')->setParameter('city', '%' . mb_strtolower($city) . '%');
+        }
+        if ($type) {
+            $qb->andWhere('a.type = :type')->setParameter('type', $type);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
 }

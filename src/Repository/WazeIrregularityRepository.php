@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\MonitoredLink;
 use App\Entity\Partner;
 use App\Entity\WazeIrregularity;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
@@ -228,6 +229,28 @@ class WazeIrregularityRepository extends ServiceEntityRepository
             ->orderBy('i.jamLevel', 'DESC')
             ->addOrderBy('i.collectedAt', 'DESC')
             ->setMaxResults($limit)
+            ->getQuery()->getResult();
+    }
+
+    /**
+     * Irregularidades ativas vindas de um MonitoredLink específico.
+     *
+     * Usado por WazeCollectRoutesCommand para desativar todas as
+     * irregularidades antigas de um link antes de gravar as novas
+     * (evita acumular registros "ativos" de coletas anteriores).
+     *
+     * NOTA: este método era chamado sem existir aqui, o que causava
+     * BadMethodCallException em toda execução de app:waze:collect-routes
+     * (mesmo padrão do bug já corrigido em PartnerRepository::findActivePartners()).
+     *
+     * @return WazeIrregularity[]
+     */
+    public function findActiveByLink(MonitoredLink $link): array
+    {
+        return $this->createQueryBuilder('i')
+            ->where('i.sourceLink = :link')
+            ->andWhere('i.isActive = true')
+            ->setParameter('link', $link)
             ->getQuery()->getResult();
     }
 }

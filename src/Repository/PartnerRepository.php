@@ -96,4 +96,16 @@ class PartnerRepository extends ServiceEntityRepository
             ->getQuery()
             ->getOneOrNullResult();
     }
+
+    /**
+     * getEntityManager() é protected na classe base do Doctrine — esta
+     * sobrescrita só amplia a visibilidade pra public, porque
+     * PartnerAdminController chama de fora da classe (isso é permitido
+     * em PHP: subclasse pode ampliar visibilidade, nunca restringir).
+     * Sem isso, a chamada externa dá "Call to protected method" fatal error.
+     */
+    public function getEntityManager(): \Doctrine\ORM\EntityManagerInterface
+    {
+        return parent::getEntityManager();
+    }
 }

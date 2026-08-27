@@ -72,4 +72,15 @@ class NotificationRepository extends ServiceEntityRepository
         $this->getEntityManager()->persist($n);
         if ($flush) $this->getEntityManager()->flush();
     }
+
+    /**
+     * getEntityManager() é protected na classe base do Doctrine — esta
+     * sobrescrita só amplia a visibilidade pra public, porque
+     * NotificationDispatchCommand e NotificationController chamam de
+     * fora da classe. Sem isso, dá "Call to protected method" fatal error.
+     */
+    public function getEntityManager(): \Doctrine\ORM\EntityManagerInterface
+    {
+        return parent::getEntityManager();
+    }
 }
