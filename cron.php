@@ -5,7 +5,10 @@ declare(strict_types=1);
 use Symfony\Component\ErrorHandler\Debug;
 use Symfony\Component\HttpFoundation\Request;
 
-require dirname(__DIR__).'/config/bootstrap.php';
+// Define project root explicitly
+$projectRoot = dirname(__DIR__);
+
+require $projectRoot.'/config/bootstrap.php';
 
 if ($_SERVER['APP_DEBUG']) {
     umask(0000);
@@ -24,7 +27,7 @@ if (!defined('STDERR')) {
     define('STDERR', fopen('php://stderr', 'w'));
 }
 
-if ($app = require dirname(__DIR__).'/config/app.php') {
+if ($app = require $projectRoot.'/config/app.php') {
     $request = Request::createFromGlobals();
     $app->handle($request)->send();
     exit(0);
@@ -63,6 +66,7 @@ set_exception_handler(function($exception) use ($kernel) {
 fwrite(STDOUT, "\n=== CRON START ===\n");
 fwrite(STDOUT, "Time: " . date('Y-m-d H:i:s') . "\n");
 fwrite(STDOUT, "Job: " . ($argv[1] ?? 'none') . "\n");
+fwrite(STDOUT, "Project Root: $projectRoot\n");
 fwrite(STDOUT, "PHP Version: " . PHP_VERSION . "\n");
 fwrite(STDOUT, "Memory Limit: " . ini_get('memory_limit') . "\n");
 fwrite(STDOUT, "==================\n\n");
