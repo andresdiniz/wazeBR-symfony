@@ -109,7 +109,7 @@ html[data-theme='dark'], body.dark, body[data-theme='dark'] {
     <div style="margin-top:var(--space-2);display:flex;gap:var(--space-3);flex-wrap:wrap">
       <span class="meta-pill">
         <i class="bi bi-clock"></i>
-        <time data-utc="{{ jam.pubDate|date('c') }}" data-fmt="datetime">{{ jam.pubDate|date('d/m/Y H:i:s') }}</time>
+        <time data-utc="{{ jam.pubDate|date('c') }}" data-fmt="datetime">{{ jam.pubDate|date('d/m/Y H:i:s', 'America/Sao_Paulo') }}</time>
       </span>
       {% if jam.speedKmh is not null %}
         <span class="meta-pill">🚗 {{ jam.speedKmh }} km/h</span>
@@ -174,7 +174,7 @@ html[data-theme='dark'], body.dark, body[data-theme='dark'] {
     <div class="detail-card">
       <div class="detail-section-title">Timestamps</div>
       <div class="detail-rows">
-        <div class="detail-row"><span class="detail-label">Publicado (Waze)</span><span class="detail-value"><time data-utc="{{ jam.pubDate|date('c') }}" data-fmt="datetime">{{ jam.pubDate|date('d/m/Y H:i:s') }}</time></span></div>
+        <div class="detail-row"><span class="detail-label">Publicado (Waze)</span><span class="detail-value"><time data-utc="{{ jam.pubDate|date('c') }}" data-fmt="datetime">{{ jam.pubDate|date('d/m/Y H:i:s', 'America/Sao_Paulo') }}</time></span></div>
         <div class="detail-row"><span class="detail-label">pubMillis</span><span class="detail-value" style="font-family:monospace;font-size:var(--text-xs)">{{ jam.pubMillis }}</span></div>
         <div class="detail-row"><span class="detail-label">Coletado em</span><span class="detail-value"><time data-utc="{{ jam.createdAt|date('c') }}" data-fmt="datetime">{{ jam.createdAt|date('d/m/Y H:i:s') }}</time></span></div>
         {% if jam.updatedAt %}
