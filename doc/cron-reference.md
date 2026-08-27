@@ -9,6 +9,20 @@ as mensagens ficam paradas na fila. Por isso, aqui a coleta é feita
 `bin/console`, com lock próprio, timeout e log — sem depender do
 Messenger nem do Supervisor.
 
+Duas formas de disparar, dependendo do que o painel de cron permitir
+configurar:
+
+- **Modo CLI** — Agendador de Tarefas rodando `php cron.php <job>` direto.
+- **Modo URL** — cron configurado como "chamar uma URL" (ex.: `wget`),
+  batendo em `/cron/trigger/{job}`.
+
+Nunca configure os dois modos para o **mesmo job** ao mesmo tempo —
+duplica a coleta.
+
+---
+
+## Modo CLI
+
 Configure **uma entrada por job** no Agendador de Tarefas da Hostinger,
 todas chamando o mesmo arquivo, mudando apenas o argumento:
 
@@ -39,54 +53,30 @@ todas chamando o mesmo arquivo, mudando apenas o argumento:
 ```
 
 > Ajuste `/usr/local/bin/php8.5` e o caminho do projeto conforme o painel
-> da Hostinger. Se quiser trocar o binário do PHP sem editar `cron.php`,
-> defina a variável de ambiente `CRON_PHP_BINARY` no painel (Agendador
-> de Tarefas → Variáveis de ambiente, se disponível) ou direto na linha
-> de cron: `CRON_PHP_BINARY=/usr/bin/php8.3 php8.5 .../cron.php waze_feed`.
+> da Hostinger.
 
-### O que o `cron.php` garante em cada chamada
-
-- **Lock por job** (`var/cron-locks/<job>.lock`): se a execução anterior
-  do mesmo job ainda estiver rodando (ex.: feed lento), a nova chamada
-  é pulada silenciosamente — nunca roda em paralelo consigo mesma.
-- **Timeout por job**: cada job tem um limite de tempo (ex.: 50s para
-  coletas de 5 em 5 min); se passar disso, o processo é encerrado
-  (SIGTERM, depois SIGKILL) para nunca travar a próxima execução.
-- **Log individual**: `var/log/cron_<job>.log`, com rotação simples
-  quando passa de 2MB (mantém 1 arquivo anterior, `.log.1`).
-- **Status agregado**: `var/log/cron_status.json` é atualizado a cada
-  execução (status, exit code, duração) e é exposto por
-  `GET /cron/run?token=SEU_CRON_TOKEN` — use como health-check externo
-  (UptimeRobot, painel, etc).
-
-### Debug manual
+### Debug manual (CLI)
 
 ```bash
 # Roda um job específico na hora, vendo a saída direto no terminal
 php cron.php waze_feed
 
-# Roda todos os jobs em sequência (não recomendado como rotina — é para debug)
+# Roda TODOS os jobs em sequência (job especial "all")
+# — não recomendado como entrada de cron regular, é só para debug
 php cron.php all
 ```
 
 ---
 
-## Alternativa: disparo via URL (`/cron/trigger/{job}`)
+## Modo URL (`/cron/trigger/{job}`) — via wget ou serviço externo de ping
 
-Se preferir configurar o cron da Hostinger como "chamar uma URL" (ou usar
-um serviço externo de ping, tipo cron-job.org / EasyCron) em vez de rodar
-um binário PHP diretamente, use as URLs abaixo. **Antes de configurar em
-produção, teste uma chamada real** — vários planos de hospedagem
-compartilhada liberam `exec()` no PHP-CLI mas bloqueiam no PHP que roda
-via Apache/LiteSpeed; se for o caso, o endpoint responde com erro
-explicando isso, e você deve usar o modo CLI acima em vez deste.
+Use se o painel da Hostinger só permitir configurar o cron como "chamar
+uma URL", ou se preferir um serviço externo (cron-job.org, EasyCron, etc).
 
-A resposta HTTP retorna na hora (o job roda em background no servidor),
-então não sofre com o timeout do servidor web mesmo em jobs mais longos
-como `report`.
-
-Substitua `SEUDOMINIO.com.br` e `SEU_CRON_TOKEN` (valor de `CRON_TOKEN`
-no `.env`):
+**Pré-requisito:** `CRON_PHP_BINARY` precisa estar definido no `.env`
+com o caminho do PHP-**CLI** (não confunda com o PHP do Apache/CGI —
+ver nota abaixo). Sem isso, o endpoint recusa disparar e retorna erro
+explicando o motivo.
 
 ```
 https://SEUDOMINIO.com.br/cron/trigger/waze_feed?token=SEU_CRON_TOKEN        (a cada 5 min)
@@ -99,16 +89,52 @@ https://SEUDOMINIO.com.br/cron/trigger/notify_high_risk?token=SEU_CRON_TOKEN (a 
 https://SEUDOMINIO.com.br/cron/trigger/report?token=SEU_CRON_TOKEN           (diário às 06:00)
 ```
 
-Pra acompanhar o resultado de cada disparo, use o health-check (mostra a
-última execução de cada job, vinda do mesmo `cron_status.json` que o
-modo CLI gera):
+Exemplo de linha de cron usando `wget`:
+
+```cron
+*/5 * * * * wget -q -O /dev/null "https://SEUDOMINIO.com.br/cron/trigger/waze_feed?token=SEU_CRON_TOKEN"
+```
+
+A resposta HTTP retorna na hora (o job roda em background no servidor),
+então não sofre com o timeout do servidor web mesmo em jobs mais longos
+como `report`.
+
+### Debug manual (URL)
+
+```
+# Roda um job específico
+https://SEUDOMINIO.com.br/cron/trigger/waze_feed?token=SEU_CRON_TOKEN
+
+# Roda TODOS os jobs em sequência (job especial "all")
+# — não recomendado como entrada de cron regular, é só para debug
+https://SEUDOMINIO.com.br/cron/trigger/all?token=SEU_CRON_TOKEN
+```
+
+Pra acompanhar o resultado de qualquer disparo (CLI ou URL), use o
+health-check — mostra a última execução de cada job, vinda do
+`var/log/cron_status.json`:
 
 ```
 https://SEUDOMINIO.com.br/cron/run?token=SEU_CRON_TOKEN
 ```
 
-**Importante:** escolha CLI **ou** URL para cada job, nunca as duas —
-configurar as duas formas pro mesmo job dispara a coleta em dobro.
+### Nota sobre `CRON_PHP_BINARY` no Windows/XAMPP
+
+Sob Apache/mod_php, `PHP_BINARY` **não** aponta pro PHP-CLI — resolve
+pro binário do próprio SAPI web (por isso não é usado como fallback no
+código). Descubra o caminho certo no terminal:
+
+```cmd
+where php
+```
+
+E defina no `.env.local`:
+```
+CRON_PHP_BINARY="C:\xampp\php\php.exe"
+```
+
+Na Hostinger, geralmente é algo como `/usr/local/bin/php8.5` — confirme
+no painel qual caminho de PHP-CLI eles disponibilizam.
 
 ---
 
@@ -120,16 +146,16 @@ Messenger (ver `supervisor/waze_scheduler.conf`), **não** o `cron.php`.
 Os dois caminhos não devem rodar ao mesmo tempo para os mesmos jobs —
 isso causaria coleta duplicada. Escolha um ou outro por ambiente.
 
-| Comando (`bin/console`)     | Equivalente antigo         | Frequência sugerida |
-|------------------------------|-----------------------------|----------------------|
-| `app:waze:collect-feed`      | `wazejob.php`               | A cada 5 min         |
-| `app:waze:collect-routes`    | —                            | A cada 5 min         |
-| `app:waze:collect-tvt`       | `wazejobtraficc.php`        | A cada 5 min         |
-| `cemaden:collect`            | `dadoscemadem.php`          | A cada 15 min        |
-| `cemaden:collect-hydro`      | `hidrologicocemadem*.php`   | A cada 30 min        |
-| `notifications:dispatch`     | —                            | A cada 10 min        |
-| `waze:notify:high-risk`      | `worker_notifications.php`  | A cada 10 min        |
-| `waze:report:daily`          | `send_daily_report.php`     | Diário às 06:00      |
+| Comando (`bin/console`)     | Frequência sugerida |
+|------------------------------|----------------------|
+| `app:waze:collect-feed`      | A cada 5 min         |
+| `app:waze:collect-routes`    | A cada 5 min         |
+| `app:waze:collect-tvt`       | A cada 5 min         |
+| `cemaden:collect`            | A cada 15 min        |
+| `cemaden:collect-hydro`      | A cada 30 min        |
+| `notifications:dispatch`     | A cada 10 min        |
+| `waze:notify:high-risk`      | A cada 10 min        |
+| `waze:report:daily`          | Diário às 06:00      |
 
 ## Geração de JSON/XML sob demanda
 
