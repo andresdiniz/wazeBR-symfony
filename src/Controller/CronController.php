@@ -24,8 +24,8 @@ class CronController extends AbstractController
         $rootDir = $this->getParameter('kernel.project_dir');
         $cronPath = $rootDir . '/cron.php';
 
-        // Usar symfony console para executar o script
-        $command = sprintf('php %s %s 2>&1', escapeshellarg($cronPath), escapeshellarg($job));
+        // Mudar para o diretorio do projeto antes de executar
+        $command = sprintf('cd %s && php %s %s 2>&1', escapeshellarg($rootDir), escapeshellarg($cronPath), escapeshellarg($job));
         $output = [];
         $returnCode = 0;
 
