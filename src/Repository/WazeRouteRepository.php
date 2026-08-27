@@ -2,10 +2,8 @@
 
 namespace App\Repository;
 
-use App\Entity\Partner;
 use App\Entity\WazeRoute;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
-use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -13,98 +11,33 @@ use Doctrine\Persistence\ManagerRegistry;
  */
 class WazeRouteRepository extends ServiceEntityRepository
 {
-    public function __construct(ManagerRegistry $registry, private readonly EntityManagerInterface $em)
+    public function __construct(ManagerRegistry $managerRegistry)
     {
-        parent::__construct($registry, WazeRoute::class);
+        parent::__construct($managerRegistry, WazeRoute::class);
     }
 
     /**
-     * Todas as rotas ativas que tenham coordinates (Routing API)
-     * OU wazeId preenchido (TVT API).
-     *
      * @return WazeRoute[]
      */
-    public function findAllActive(): array
+    public function findActive(): array
     {
-        return $this->createQueryBuilder('r')
-            ->leftJoin('r.partner', 'p')
-            ->where('r.isActive = true')
-            ->andWhere('r.coordinates IS NOT NULL OR r.wazeId IS NOT NULL')
-            ->orderBy('p.name', 'ASC')
-            ->addOrderBy('r.name', 'ASC')
+        return $this->createQueryBuilder('wr')
+            ->where('wr.isActive = :isActive')
+            ->setParameter('isActive', true)
+            ->orderBy('wr.name', 'ASC')
             ->getQuery()
             ->getResult();
     }
 
-    /**
-     * Rotas ativas de um parceiro filtrado por slug,
-     * com coordinates (Routing API) OU wazeId (TVT API).
-     *
-     * @return WazeRoute[]
-     */
-    public function findActiveByPartnerSlug(string $slug): array
+    public function findOneActiveByLink(string $link): ?WazeRoute
     {
-        return $this->createQueryBuilder('r')
-            ->join('r.partner', 'p')
-            ->where('r.isActive = true')
-            ->andWhere('p.slug = :slug')
-            ->andWhere('r.coordinates IS NOT NULL OR r.wazeId IS NOT NULL')
-            ->setParameter('slug', $slug)
-            ->orderBy('r.name', 'ASC')
-            ->getQuery()
-            ->getResult();
-    }
-
-    /**
-     * @return WazeRoute[]
-     */
-    public function findByPartner(Partner $partner, bool $activeOnly = true): array
-    {
-        $qb = $this->createQueryBuilder('r')
-            ->where('r.partner = :partner')
-            ->setParameter('partner', $partner)
-            ->orderBy('r.name', 'ASC');
-
-        if ($activeOnly) {
-            $qb->andWhere('r.isActive = true');
-        }
-
-        return $qb->getQuery()->getResult();
-    }
-
-    public function countByPartner(Partner $partner, bool $activeOnly = true): int
-    {
-        $qb = $this->createQueryBuilder('r')
-            ->select('COUNT(r.id)')
-            ->where('r.partner = :partner')
-            ->setParameter('partner', $partner);
-
-        if ($activeOnly) {
-            $qb->andWhere('r.isActive = true');
-        }
-
-        return (int) $qb->getQuery()->getSingleScalarResult();
-    }
-
-    public function findOneByPartner(int $id, Partner $partner): ?WazeRoute
-    {
-        return $this->createQueryBuilder('r')
-            ->where('r.id = :id')
-            ->andWhere('r.partner = :partner')
-            ->setParameter('id', $id)
-            ->setParameter('partner', $partner)
+        return $this->createQueryBuilder('wr')
+            ->where('wr.isActive = :isActive')
+            ->andWhere('wr.link = :link')
+            ->setParameter('isActive', true)
+            ->setParameter('link', $link)
+            ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
-    }
-
-    public function save(WazeRoute $route): void
-    {
-        $this->em->persist($route);
-        $this->em->flush();
-    }
-
-    public function getEntityManager(): EntityManagerInterface
-    {
-        return $this->em;
     }
 }
