@@ -20,26 +20,30 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 #[AsCommand(
     name: 'cemaden:collect',
-    description: 'Coleta dados CEMADEN pluviométricos para estações cadastradas em cemaden_stations.',
+    description: 'Coleta dados CEMADEN para estações cadastradas em cemaden_stations.',
 )]
 class CemadenCollectCommand extends Command
 {
     private const CEMADEN_URL = 'http://sjc.salvar.cemaden.gov.br/resources/graficos/interativo/getJson2.php';
 
     public function __construct(
-        private readonly PartnerRepository     $partnerRepo,
+        private readonly PartnerRepository $partnerRepo,
         private readonly CemadenDataRepository $cemadenRepo,
-        private readonly TenantContext         $tenantContext,
-        private readonly HttpClientInterface   $httpClient,
-        private readonly Connection            $db,
+        private readonly TenantContext $tenantContext,
+        private readonly HttpClientInterface $httpClient,
+        private readonly Connection $db,
     ) {
         parent::__construct();
     }
 
     protected function configure(): void
     {
-        $this->addOption('partner', 'p', InputOption::VALUE_OPTIONAL,
-            'Slug do parceiro (omitir = todos os ativos)');
+        $this->addOption(
+            'partner',
+            'p',
+            InputOption::VALUE_OPTIONAL,
+            'Slug do parceiro (omitir = todos os ativos)',
+        );
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -52,75 +56,174 @@ class CemadenCollectCommand extends Command
         $partners = $slugFilter
             ? array_filter(
                 $this->partnerRepo->findActivePartners(),
-                fn (Partner $p) => $p->getSlug() === $slugFilter,
+                static fn (Partner $partner): bool => $partner->getSlug() === $slugFilter,
             )
             : $this->partnerRepo->findActivePartners();
 
         if (empty($partners)) {
             $io->warning('Nenhum parceiro ativo encontrado.');
+
             return Command::SUCCESS;
         }
 
         foreach ($partners as $partner) {
             $this->tenantContext->setPartner($partner);
-            $io->section("Parceiro: {$partner->getName()} [{$partner->getSlug()}]");
 
-            // Carrega estações pluviométricas ativas deste parceiro (com id para atualizar lat/lng)
-            $stations = $this->loadPluviometricStations($partner->getSlug());
+            $io->section(
+                sprintf(
+                    'Parceiro: %s [%s]',
+                    $partner->getName(),
+                    $partner->getSlug(),
+                ),
+            );
+
+            /*
+             * CORREÇÃO:
+             * A tabela cemaden_stations possui partner_id, não partner_slug.
+             * Portanto, filtramos pelo ID numérico relacionado a partners.id.
+             */
+            $stations = $this->loadStationsByPartnerId((int) $partner->getId());
 
             if (empty($stations)) {
-                $io->warning('Nenhuma estação pluviométrica ativa cadastrada em cemaden_stations. Pulando.');
+                $io->warning(
+                    'Nenhuma estação CEMADEN ativa cadastrada em cemaden_stations para este parceiro. Pulando.',
+                );
+
                 continue;
             }
 
-            // Monta mapa cod_estacao → id (para atualizar lat/lng depois)
+            /*
+             * Mapa cod_estacao => dados da estação.
+             * Ele limita a coleta somente às estações permitidas para o parceiro.
+             */
             $stationMap = [];
-            foreach ($stations as $s) {
-                $stationMap[$s['cod_estacao']] = $s;
+
+            foreach ($stations as $station) {
+                $stationCode = (string) $station['cod_estacao'];
+
+                if ($stationCode === '') {
+                    continue;
+                }
+
+                $stationMap[$stationCode] = $station;
             }
 
-            $io->text(sprintf('  Estações autorizadas: %s', implode(', ', array_keys($stationMap))));
+            if (empty($stationMap)) {
+                $io->warning(
+                    'As estações cadastradas não possuem cod_estacao válido. Pulando.',
+                );
+
+                continue;
+            }
+
+            $io->text(
+                sprintf(
+                    'Estações autorizadas: %s',
+                    implode(', ', array_keys($stationMap)),
+                ),
+            );
 
             $states = $partner->getCemadenStates();
+
             if (empty($states)) {
                 $io->warning('Nenhum estado CEMADEN configurado. Pulando.');
+
                 continue;
             }
 
             $total = 0;
+
             foreach ($states as $state) {
                 try {
-                    $count = $this->collectState($partner, $state, $stationMap);
-                    $io->text("  Estado {$state}: {$count} novos registros.");
+                    $count = $this->collectState(
+                        $partner,
+                        (string) $state,
+                        $stationMap,
+                    );
+
+                    $io->text(
+                        sprintf(
+                            'Estado %s: %d novo(s) registro(s).',
+                            $state,
+                            $count,
+                        ),
+                    );
+
                     $total += $count;
-                } catch (\Throwable $e) {
-                    $io->error("  Erro no estado {$state}: " . $e->getMessage());
+                } catch (\Throwable $exception) {
+                    $io->error(
+                        sprintf(
+                            'Erro no estado %s: %s',
+                            $state,
+                            $exception->getMessage(),
+                        ),
+                    );
                 }
             }
 
-            $io->success("Total [{$partner->getSlug()}]: {$total} novos registros CEMADEN.");
+            $io->success(
+                sprintf(
+                    'Total [%s]: %d novo(s) registro(s) CEMADEN.',
+                    $partner->getSlug(),
+                    $total,
+                ),
+            );
         }
 
         return Command::SUCCESS;
     }
 
     /**
-     * Carrega estações pluviométricas ativas de um parceiro com id, cod_estacao e lat/lng atuais.
+     * Carrega todas as estações ativas vinculadas ao parceiro.
+     *
+     * A tabela usa partner_id como chave estrangeira para partners.id.
+     * Não usa partner_slug.
+     *
+     * Inclui estações pluviométricas e hidrológicas, pois o cadastro atual
+     * do parceiro possui a estação Rio Bananeiras com station_type = hydrological.
      */
-    private function loadPluviometricStations(string $partnerSlug): array
+    private function loadStationsByPartnerId(int $partnerId): array
     {
         return $this->db->fetchAllAssociative(
-            "SELECT id, cod_estacao, lat, lng
-             FROM cemaden_stations
-             WHERE partner_slug = ? AND station_type = 'pluviometric' AND is_active = 1",
-            [$partnerSlug],
+            <<<'SQL'
+                SELECT
+                    id,
+                    cod_estacao,
+                    nome,
+                    municipio,
+                    uf,
+                    lat,
+                    lng,
+                    station_type,
+                    hydro_url
+                FROM cemaden_stations
+                WHERE partner_id = :partnerId
+                  AND is_active = 1
+                  AND station_type IN ('pluviometric', 'hydrological')
+                ORDER BY nome ASC, cod_estacao ASC
+            SQL,
+            [
+                'partnerId' => $partnerId,
+            ],
         );
     }
 
-    private function collectState(Partner $partner, string $state, array $stationMap): int
-    {
+    /**
+     * Coleta registros de um estado e mantém somente estações autorizadas
+     * para o parceiro atual.
+     *
+     * @param array<string, array<string, mixed>> $stationMap
+     */
+    private function collectState(
+        Partner $partner,
+        string $state,
+        array &$stationMap,
+    ): int {
         $response = $this->httpClient->request('GET', self::CEMADEN_URL, [
-            'query'   => ['uf' => $state, 'tipo' => 1],
+            'query' => [
+                'uf' => $state,
+                'tipo' => 1,
+            ],
             'timeout' => 30,
         ]);
 
@@ -132,50 +235,92 @@ class CemadenCollectCommand extends Command
         }
 
         $count = 0;
+
         foreach ($data as $raw) {
-            $stationCode = $raw['codEstacao'] ?? null;
-            if (!$stationCode) continue;
+            if (!is_array($raw)) {
+                continue;
+            }
 
-            // ← Filtro principal: ignora estações não cadastradas
-            if (!isset($stationMap[$stationCode])) continue;
+            $stationCode = isset($raw['codEstacao'])
+                ? trim((string) $raw['codEstacao'])
+                : '';
 
-            $measuredAt = isset($raw['dataHora'])
-                ? new \DateTimeImmutable($raw['dataHora'])
-                : new \DateTimeImmutable();
+            if ($stationCode === '') {
+                continue;
+            }
+
+            /*
+             * Filtro principal de multi-tenancy:
+             * ignora qualquer estação recebida da API que não esteja
+             * cadastrada e autorizada para este parceiro.
+             */
+            if (!isset($stationMap[$stationCode])) {
+                continue;
+            }
+
+            $measuredAt = $this->resolveMeasuredAt($raw['dataHora'] ?? null);
 
             $existing = $this->cemadenRepo->findOneBy([
                 'stationCode' => $stationCode,
-                'partner'     => $partner,
-                'measuredAt'  => $measuredAt,
+                'partner' => $partner,
+                'measuredAt' => $measuredAt,
             ]);
 
-            if ($existing) continue;
+            if ($existing !== null) {
+                continue;
+            }
 
-            $lat  = isset($raw['latitude'])  ? (float) $raw['latitude']  : null;
-            $lng  = isset($raw['longitude']) ? (float) $raw['longitude'] : null;
-            $rain = (float) ($raw['valorMedido'] ?? 0);
+            $latitude = isset($raw['latitude']) && $raw['latitude'] !== ''
+                ? (float) $raw['latitude']
+                : null;
 
-            // Atualiza lat/lng na tabela cemaden_stations se ainda não tiver coordenada
+            $longitude = isset($raw['longitude']) && $raw['longitude'] !== ''
+                ? (float) $raw['longitude']
+                : null;
+
+            $rain = isset($raw['valorMedido']) && $raw['valorMedido'] !== ''
+                ? (float) $raw['valorMedido']
+                : 0.0;
+
             $stationRow = $stationMap[$stationCode];
-            if ($lat !== null && $lng !== null &&
-                (empty($stationRow['lat']) || empty($stationRow['lng']))) {
-                $this->db->update('cemaden_stations', [
-                    'lat' => $lat,
-                    'lng' => $lng,
-                ], ['id' => (int) $stationRow['id']]);
-                // Atualiza o mapa local para não repetir o UPDATE
-                $stationMap[$stationCode]['lat'] = $lat;
-                $stationMap[$stationCode]['lng'] = $lng;
+
+            /*
+             * Guarda coordenadas retornadas pela API apenas quando a estação
+             * ainda não possui latitude/longitude cadastradas.
+             */
+            if (
+                $latitude !== null
+                && $longitude !== null
+                && (
+                    $stationRow['lat'] === null
+                    || $stationRow['lat'] === ''
+                    || $stationRow['lng'] === null
+                    || $stationRow['lng'] === ''
+                )
+            ) {
+                $this->db->update(
+                    'cemaden_stations',
+                    [
+                        'lat' => $latitude,
+                        'lng' => $longitude,
+                    ],
+                    [
+                        'id' => (int) $stationRow['id'],
+                    ],
+                );
+
+                $stationMap[$stationCode]['lat'] = $latitude;
+                $stationMap[$stationCode]['lng'] = $longitude;
             }
 
             $item = (new CemadenData())
                 ->setPartner($partner)
-                ->setStationCode((string) $stationCode)
-                ->setStationName($raw['nomeEstacao'] ?? '')
-                ->setMunicipality($raw['municipio'] ?? '')
+                ->setStationCode($stationCode)
+                ->setStationName((string) ($raw['nomeEstacao'] ?? $stationRow['nome'] ?? ''))
+                ->setMunicipality((string) ($raw['municipio'] ?? $stationRow['municipio'] ?? ''))
                 ->setState($state)
-                ->setLatitude($lat ?? 0.0)
-                ->setLongitude($lng ?? 0.0)
+                ->setLatitude($latitude ?? (float) ($stationRow['lat'] ?? 0.0))
+                ->setLongitude($longitude ?? (float) ($stationRow['lng'] ?? 0.0))
                 ->setAccumulatedRain($rain)
                 ->setAlertLevel($this->resolveAlertLevel($rain))
                 ->setMeasuredAt($measuredAt);
@@ -191,14 +336,31 @@ class CemadenCollectCommand extends Command
         return $count;
     }
 
+    /**
+     * A API pode retornar data em formatos diversos. Mantém a operação
+     * resiliente e evita gravar uma data inválida.
+     */
+    private function resolveMeasuredAt(mixed $value): \DateTimeImmutable
+    {
+        if (is_string($value) && trim($value) !== '') {
+            try {
+                return new \DateTimeImmutable($value);
+            } catch (\Throwable) {
+                // Usa o instante atual abaixo se a API entregar uma data inválida.
+            }
+        }
+
+        return new \DateTimeImmutable();
+    }
+
     private function resolveAlertLevel(float $rain): string
     {
         return match (true) {
             $rain >= 50.0 => 'VERMELHO',
             $rain >= 30.0 => 'LARANJA',
             $rain >= 15.0 => 'AMARELO',
-            $rain > 0     => 'VERDE',
-            default       => 'SEM_CHUVA',
+            $rain > 0.0 => 'VERDE',
+            default => 'SEM_CHUVA',
         };
     }
 }
