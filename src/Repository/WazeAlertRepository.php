@@ -214,4 +214,76 @@ class WazeAlertRepository extends ServiceEntityRepository
 
         return $result;
     }
+
+    /**
+     * Count alerts grouped by hour of day for a partner with filters.
+     * Uses PHP grouping to avoid DQL function compatibility issues.
+     */
+    public function countByHourOfDayFiltered(
+        object $partner,
+        array $filters = []
+    ): array {
+        $qb = $this->createQueryBuilder('a')
+            ->select('a')
+            ->where('a.partner = :partner')
+            ->setParameter('partner', $partner)
+            ->orderBy('a.createdAt', 'ASC');
+
+        if ($filters['type'] !== null && $filters['type'] !== '') {
+            $qb->andWhere('a.type = :type')
+                ->setParameter('type', $filters['type']);
+        }
+
+        if ($filters['subtype'] !== null && $filters['subtype'] !== '') {
+            $qb->andWhere('a.subtype = :subtype')
+                ->setParameter('subtype', $filters['subtype']);
+        }
+
+        if ($filters['city'] !== null && $filters['city'] !== '') {
+            $qb->andWhere('a.city LIKE :city')
+                ->setParameter('city', '%' . $filters['city'] . '%');
+        }
+
+        if ($filters['street'] !== null && $filters['street'] !== '') {
+            $qb->andWhere('a.street LIKE :street')
+                ->setParameter('street', '%' . $filters['street'] . '%');
+        }
+
+        if ($filters['excludeStreet'] !== null && $filters['excludeStreet'] !== '') {
+            $qb->andWhere('a.street NOT LIKE :excludeStreet')
+                ->setParameter('excludeStreet', '%' . $filters['excludeStreet'] . '%');
+        }
+
+        if ($filters['dateFrom'] !== null && $filters['dateFrom'] !== '') {
+            $qb->andWhere('a.createdAt >= :dateFrom')
+                ->setParameter('dateFrom', $filters['dateFrom']);
+        }
+
+        if ($filters['dateTo'] !== null && $filters['dateTo'] !== '') {
+            $qb->andWhere('a.createdAt <= :dateTo')
+                ->setParameter('dateTo', $filters['dateTo']);
+        }
+
+        $alerts = $qb->getQuery()->getResult();
+
+        $groupedByHour = [];
+        foreach ($alerts as $alert) {
+            $hour = $alert->getCreatedAt()->format('H');
+            if (!isset($groupedByHour[$hour])) {
+                $groupedByHour[$hour] = 0;
+            }
+            $groupedByHour[$hour]++;
+        }
+
+        $result = [];
+        for ($h = 0; $h < 24; $h++) {
+            $hour = str_pad((string)$h, 2, '0', STR_PAD_LEFT);
+            $result[] = [
+                'hour' => $hour,
+                'total' => $groupedByHour[$hour] ?? 0,
+            ];
+        }
+
+        return $result;
+    }
 }
