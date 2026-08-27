@@ -34,21 +34,22 @@ class WazeAlertRepository extends ServiceEntityRepository
     }
 
     /**
-     * Count alerts by subtype in a period for a partner
+     * Count alerts by subtype in a period for a partner - returns array of results
      */
-    public function countBySubtypeInPeriod($partner, $startDate, $endDate, $subtype): int
+    public function countBySubtypeInPeriod($partner, $startDate, $endDate, $limit = 10): array
     {
-        return (int) $this->createQueryBuilder('a')
-            ->select('COUNT(a.id)')
+        return $this->createQueryBuilder('a')
+            ->select('a.type, a.subtype, COUNT(a.id) as total')
             ->where('a.partner = :partner')
             ->andWhere('a.createdAt >= :startDate')
             ->andWhere('a.createdAt <= :endDate')
-            ->andWhere('a.subtype = :subtype')
             ->setParameter('partner', $partner)
             ->setParameter('startDate', $startDate)
             ->setParameter('endDate', $endDate)
-            ->setParameter('subtype', $subtype)
+            ->groupBy('a.type', 'a.subtype')
+            ->orderBy('total', 'DESC')
+            ->setMaxResults($limit)
             ->getQuery()
-            ->getSingleScalarResult();
+            ->getArrayResult();
     }
 }
