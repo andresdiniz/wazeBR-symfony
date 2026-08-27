@@ -5,8 +5,13 @@ declare(strict_types=1);
 use Symfony\Component\ErrorHandler\Debug;
 use Symfony\Component\HttpFoundation\Request;
 
-// Define project root explicitly
-$projectRoot = dirname(__DIR__);
+// Define project root using current working directory (set by cd command in controller)
+$projectRoot = getcwd();
+
+// Fallback to dirname if getcwd fails
+if ($projectRoot === false || $projectRoot === '') {
+    $projectRoot = dirname(__DIR__);
+}
 
 require $projectRoot.'/config/bootstrap.php';
 
@@ -66,6 +71,7 @@ set_exception_handler(function($exception) use ($kernel) {
 fwrite(STDOUT, "\n=== CRON START ===\n");
 fwrite(STDOUT, "Time: " . date('Y-m-d H:i:s') . "\n");
 fwrite(STDOUT, "Job: " . ($argv[1] ?? 'none') . "\n");
+fwrite(STDOUT, "CWD: " . getcwd() . "\n");
 fwrite(STDOUT, "Project Root: $projectRoot\n");
 fwrite(STDOUT, "PHP Version: " . PHP_VERSION . "\n");
 fwrite(STDOUT, "Memory Limit: " . ini_get('memory_limit') . "\n");
