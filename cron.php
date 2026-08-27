@@ -2,227 +2,105 @@
 
 declare(strict_types=1);
 
-/**
- * Dispatcher de coleta para hospedagem compartilhada e desenvolvimento local.
- */
+use Symfony\Component\ErrorHandler\Debug;
+use Symfony\Component\HttpFoundation\Request;
 
-$projectDir = __DIR__;
-$logDir = $projectDir . '/var/log';
-$lockDir = $projectDir . '/var/cron-locks';
-$statusFile = $logDir . '/cron_status.json';
-$isWindows = PHP_OS_FAMILY === 'Windows';
+require dirname(__DIR__).'/config/bootstrap.php';
 
-$jobs = [
-    'waze_feed' => ['cmd' => ['app:waze:collect-feed'], 'timeout' => 50, 'desc' => 'Alertas e congestionamentos Waze'],
-    'waze_routes' => ['cmd' => ['app:waze:collect-routes'], 'timeout' => 50, 'desc' => 'Tempos de rota e irregularidades Waze'],
-    'waze_tvt' => ['cmd' => ['app:waze:collect-tvt'], 'timeout' => 50, 'desc' => 'Snapshots de rotas TVT'],
-    'cemaden' => ['cmd' => ['cemaden:collect'], 'timeout' => 50, 'desc' => 'Dados pluviométricos CEMADEN'],
-    'cemaden_hydro' => ['cmd' => ['cemaden:collect-hydro'], 'timeout' => 60, 'desc' => 'Níveis de rios CEMADEN'],
-    'notify' => ['cmd' => ['notifications:dispatch'], 'timeout' => 40, 'desc' => 'Notificações'],
-    'notify_high_risk' => ['cmd' => ['waze:notify:high-risk'], 'timeout' => 40, 'desc' => 'Notificações legadas de alto risco'],
-    'report' => ['cmd' => ['waze:report:daily'], 'timeout' => 90, 'desc' => 'Relatório diário'],
-];
-
-$job = $argv[1] ?? null;
-
-if ($job === null) {
-    fwrite(STDERR, "Uso: php cron.php <job>\n\nJobs disponíveis:\n");
-    foreach ($jobs as $name => $def) {
-        fwrite(STDERR, sprintf("  %-18s %s\n", $name, $def['desc']));
-    }
-    fwrite(STDERR, "  all               Roda todos os jobs em sequência\n");
-    exit(1);
+if ($_SERVER['APP_DEBUG']) {
+    umask(0000);
+    Debug::enable();
 }
 
-if (!isset($jobs[$job]) && $job !== 'all') {
-    fwrite(STDERR, "Job desconhecido: {$job}\n");
-    exit(1);
+if (!defined('STDIN')) {
+    define('STDIN', fopen('php://stdin', 'r'));
 }
 
-if (!is_dir($logDir) && !mkdir($logDir, 0755, true) && !is_dir($logDir)) {
-    fwrite(STDERR, "Não foi possível criar o diretório de log: {$logDir}\n");
-    exit(1);
+if (!defined('STDOUT')) {
+    define('STDOUT', fopen('php://stdout', 'w'));
 }
 
-if (!is_dir($lockDir) && !mkdir($lockDir, 0755, true) && !is_dir($lockDir)) {
-    fwrite(STDERR, "Não foi possível criar o diretório de locks: {$lockDir}\n");
-    exit(1);
+if (!defined('STDERR')) {
+    define('STDERR', fopen('php://stderr', 'w'));
 }
 
-$phpBinary = cronResolvePhpBinary($isWindows);
-if ($phpBinary === null) {
-    $message = 'Binário PHP não encontrado. Configure CRON_PHP_BINARY com o caminho completo do php.exe.';
-    fwrite(STDERR, $message . PHP_EOL);
-    cronAppendLog($logDir . '/cron_dispatcher.log', '[' . date('c') . '] ERROR: ' . $message . PHP_EOL);
-    exit(1);
+if ($app = require dirname(__DIR__).'/config/app.php') {
+    $request = Request::createFromGlobals();
+    $app->handle($request)->send();
+    exit(0);
 }
 
-if ($job === 'all') {
-    $overallExit = 0;
-    foreach (array_keys($jobs) as $name) {
-        $overallExit |= cronRunJob($name, $jobs[$name], $phpBinary, $projectDir, $logDir, $lockDir, $statusFile, $isWindows);
-    }
-    exit($overallExit === 0 ? 0 : 1);
-}
+$kernel = new Kernel($_SERVER['APP_ENV'], (bool) $_SERVER['APP_DEBUG']);
 
-exit(cronRunJob($job, $jobs[$job], $phpBinary, $projectDir, $logDir, $lockDir, $statusFile, $isWindows));
+// Add global error handler to catch all errors
+set_error_handler(function($severity, $message, $file, $line) {
+    fwrite(STDERR, "\n[ERROR] $message in $file on line $line\n");
+    fwrite(STDERR, "Stack trace:\n" . debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS) . "\n");
+    return false; // Let PHP also handle it
+});
 
-function cronResolvePhpBinary(bool $isWindows): ?string
-{
-    $configured = $_ENV['CRON_PHP_BINARY'] ?? $_SERVER['CRON_PHP_BINARY'] ?? getenv('CRON_PHP_BINARY');
-    $configured = is_string($configured) ? trim($configured, " \t\n\r\0\x0B\"") : '';
-
-    $candidates = [];
-    if ($configured !== '') {
-        $candidates[] = $configured;
-    }
-    if ($isWindows) {
-        $candidates[] = PHP_BINARY;
-    } else {
-        $candidates[] = '/usr/local/bin/php8.5';
-        $candidates[] = PHP_BINARY;
-    }
-
-    foreach ($candidates as $candidate) {
-        if (!is_string($candidate) || $candidate === '') {
-            continue;
+set_exception_handler(function($exception) use ($kernel) {
+    fwrite(STDERR, "\n[EXCEPTION] " . get_class($exception) . ": " . $exception->getMessage() . "\n");
+    fwrite(STDERR, "File: " . $exception->getFile() . ":" . $exception->getLine() . "\n");
+    fwrite(STDERR, "Stack trace:\n" . $exception->getTraceAsString() . "\n");
+    
+    // Also log to Symfony logger if available
+    try {
+        $container = $kernel->getContainer();
+        if ($container->has('logger')) {
+            $logger = $container->get('logger');
+            $logger->critical('Cron error: ' . $exception->getMessage(), [
+                'exception' => $exception,
+                'file' => $exception->getFile(),
+                'line' => $exception->getLine()
+            ]);
         }
-        $candidate = trim($candidate, " \t\n\r\0\x0B\"");
-        if (is_file($candidate)) {
-            return $candidate;
-        }
+    } catch (Throwable $e) {
+        // Container not available yet
+    }
+});
+
+fwrite(STDOUT, "\n=== CRON START ===\n");
+fwrite(STDOUT, "Time: " . date('Y-m-d H:i:s') . "\n");
+fwrite(STDOUT, "Job: " . ($argv[1] ?? 'none') . "\n");
+fwrite(STDOUT, "PHP Version: " . PHP_VERSION . "\n");
+fwrite(STDOUT, "Memory Limit: " . ini_get('memory_limit') . "\n");
+fwrite(STDOUT, "==================\n\n");
+
+try {
+    $kernel->boot();
+    $application = new Application($kernel);
+    $application->setAutoExit(false);
+
+    $input = new ArrayInput($argv ?? ['console']);
+    $output = new ConsoleOutput(STDOUT, ConsoleOutput::VERBOSITY_NORMAL);
+
+    fwrite(STDOUT, "[INFO] Running command: " . implode(' ', $argv) . "\n");
+
+    $exitCode = $application->run($input, $output);
+
+    fwrite(STDOUT, "\n[INFO] Command finished with exit code: $exitCode\n");
+
+    if ($exitCode !== 0) {
+        fwrite(STDERR, "[ERROR] Command failed with exit code: $exitCode\n");
     }
 
-    return null;
-}
-
-function cronRunJob(
-    string $name,
-    array $def,
-    string $phpBinary,
-    string $projectDir,
-    string $logDir,
-    string $lockDir,
-    string $statusFile,
-    bool $isWindows,
-): int {
-    $lockPath = $lockDir . '/' . $name . '.lock';
-    $lockHandle = fopen($lockPath, 'c');
-    if ($lockHandle === false) {
-        fwrite(STDERR, "[{$name}] Não foi possível abrir o lock: {$lockPath}\n");
-        return 1;
+    exit($exitCode);
+} catch (Throwable $e) {
+    fwrite(STDERR, "\n[FATAL ERROR] " . get_class($e) . ": " . $e->getMessage() . "\n");
+    fwrite(STDERR, "File: " . $e->getFile() . ":" . $e->getLine() . "\n");
+    fwrite(STDERR, "Stack trace:\n" . $e->getTraceAsString() . "\n");
+    exit(1);
+} finally {
+    fwrite(STDOUT, "\n=== CRON END ===\n");
+    
+    if (defined('STDIN') && is_resource(STDIN)) {
+        fclose(STDIN);
     }
-
-    if (!flock($lockHandle, LOCK_EX | LOCK_NB)) {
-        cronWriteStatus($statusFile, $name, [
-            'status' => 'skipped_running',
-            'timestamp' => date('c'),
-            'message' => 'Execução anterior ainda em andamento.',
-        ]);
-        fclose($lockHandle);
-        return 0;
+    if (defined('STDOUT') && is_resource(STDOUT)) {
+        fclose(STDOUT);
     }
-
-    $logFile = $logDir . '/cron_' . $name . '.log';
-    $startedAt = microtime(true);
-    $console = $projectDir . '/bin/console';
-    $arguments = array_merge([$phpBinary, $console], $def['cmd'], ['--env=prod', '--no-interaction']);
-
-    if (!is_file($console)) {
-        $message = "Arquivo bin/console não encontrado: {$console}";
-        cronAppendLog($logFile, '[' . date('c') . '] ERROR: ' . $message . PHP_EOL);
-        cronWriteStatus($statusFile, $name, ['status' => 'error', 'timestamp' => date('c'), 'message' => $message]);
-        flock($lockHandle, LOCK_UN);
-        fclose($lockHandle);
-        return 1;
+    if (defined('STDERR') && is_resource(STDERR)) {
+        fclose(STDERR);
     }
-
-    $descriptorSpec = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
-    $process = proc_open($isWindows ? cronBuildWindowsCommand($arguments) : $arguments, $descriptorSpec, $pipes, $projectDir);
-
-    if (!is_resource($process)) {
-        $message = 'Falha ao iniciar proc_open(). Binário: ' . $phpBinary . ' | Comando: ' . cronFormatCommand($arguments);
-        cronAppendLog($logFile, '[' . date('c') . '] ERROR: ' . $message . PHP_EOL);
-        cronWriteStatus($statusFile, $name, ['status' => 'error', 'timestamp' => date('c'), 'message' => $message]);
-        flock($lockHandle, LOCK_UN);
-        fclose($lockHandle);
-        return 1;
-    }
-
-    fclose($pipes[0]);
-    stream_set_blocking($pipes[1], false);
-    stream_set_blocking($pipes[2], false);
-    $output = '';
-    $timedOut = false;
-
-    while (true) {
-        $processStatus = proc_get_status($process);
-        $output .= (string) stream_get_contents($pipes[1]);
-        $output .= (string) stream_get_contents($pipes[2]);
-        if (!$processStatus['running']) {
-            break;
-        }
-        if ((microtime(true) - $startedAt) > $def['timeout']) {
-            proc_terminate($process, 15);
-            usleep(500000);
-            if (proc_get_status($process)['running']) {
-                proc_terminate($process, 9);
-            }
-            $timedOut = true;
-            break;
-        }
-        usleep(200000);
-    }
-
-    $output .= (string) stream_get_contents($pipes[1]);
-    $output .= (string) stream_get_contents($pipes[2]);
-    fclose($pipes[1]);
-    fclose($pipes[2]);
-
-    $exitCode = $timedOut ? 124 : proc_close($process);
-    $duration = round(microtime(true) - $startedAt, 2);
-    cronAppendLog($logFile, sprintf("[%s] job=%s exit=%d duration=%ss%s\n%s\n", date('c'), $name, $exitCode, $duration, $timedOut ? ' KILLED_TIMEOUT' : '', trim($output) ?: '(sem saída)'));
-    cronWriteStatus($statusFile, $name, ['status' => $timedOut ? 'timeout' : ($exitCode === 0 ? 'ok' : 'error'), 'exit_code' => $exitCode, 'duration_s' => $duration, 'timestamp' => date('c'), 'timed_out' => $timedOut]);
-
-    flock($lockHandle, LOCK_UN);
-    fclose($lockHandle);
-    return $timedOut || $exitCode !== 0 ? 1 : 0;
-}
-
-function cronBuildWindowsCommand(array $arguments): string
-{
-    return implode(' ', array_map(static fn(string $value): string => escapeshellarg($value), $arguments));
-}
-
-function cronFormatCommand(array $arguments): string
-{
-    return implode(' ', array_map(static fn(string $value): string => '"' . $value . '"', $arguments));
-}
-
-function cronAppendLog(string $path, string $line): void
-{
-    file_put_contents($path, $line, FILE_APPEND | LOCK_EX);
-}
-
-function cronWriteStatus(string $statusFile, string $job, array $data): void
-{
-    $fp = fopen($statusFile, 'c+');
-    if ($fp === false) {
-        return;
-    }
-    if (flock($fp, LOCK_EX)) {
-        rewind($fp);
-        $contents = stream_get_contents($fp);
-        $all = json_decode($contents ?: '', true);
-        if (!is_array($all)) {
-            $all = [];
-        }
-        $all[$job] = $data;
-        ftruncate($fp, 0);
-        rewind($fp);
-        fwrite($fp, (string) json_encode($all, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-        fflush($fp);
-        flock($fp, LOCK_UN);
-    }
-    fclose($fp);
 }
