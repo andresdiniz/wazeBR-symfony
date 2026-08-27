@@ -146,19 +146,17 @@ class WazeAlertRepository extends ServiceEntityRepository
 
     /**
      * Count alerts grouped by day for a partner with filters.
+     * Uses PHP grouping to avoid DQL function compatibility issues.
      */
     public function countByDayFiltered(
         object $partner,
         array $filters = []
     ): array {
         $qb = $this->createQueryBuilder('a')
-            ->select('YEAR(a.createdAt) as year, MONTH(a.createdAt) as month, DAY(a.createdAt) as day, COUNT(a.id) as total')
+            ->select('a')
             ->where('a.partner = :partner')
             ->setParameter('partner', $partner)
-            ->groupBy('year', 'month', 'day')
-            ->orderBy('year', 'ASC')
-            ->addOrderBy('month', 'ASC')
-            ->addOrderBy('day', 'ASC');
+            ->orderBy('a.createdAt', 'ASC');
 
         if ($filters['type'] !== null && $filters['type'] !== '') {
             $qb->andWhere('a.type = :type')
@@ -195,6 +193,25 @@ class WazeAlertRepository extends ServiceEntityRepository
                 ->setParameter('dateTo', $filters['dateTo']);
         }
 
-        return $qb->getQuery()->getArrayResult();
+        $alerts = $qb->getQuery()->getResult();
+
+        $groupedByDay = [];
+        foreach ($alerts as $alert) {
+            $day = $alert->getCreatedAt()->format('Y-m-d');
+            if (!isset($groupedByDay[$day])) {
+                $groupedByDay[$day] = 0;
+            }
+            $groupedByDay[$day]++;
+        }
+
+        $result = [];
+        foreach ($groupedByDay as $day => $total) {
+            $result[] = [
+                'day' => $day,
+                'total' => $total,
+            ];
+        }
+
+        return $result;
     }
 }
