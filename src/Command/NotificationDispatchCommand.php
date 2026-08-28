@@ -24,13 +24,15 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 class NotificationDispatchCommand extends Command
 {
+    private const MIN_RELIABILITY = 8;
+
     public function __construct(
-        private readonly PartnerRepository      $partnerRepo,
-        private readonly WazeAlertRepository    $alertRepo,
-        private readonly CemadenDataRepository  $cemadenRepo,
-        private readonly UserRepository         $userRepo,
+        private readonly PartnerRepository $partnerRepo,
+        private readonly WazeAlertRepository $alertRepo,
+        private readonly CemadenDataRepository $cemadenRepo,
+        private readonly UserRepository $userRepo,
         private readonly NotificationRepository $notifRepo,
-        private readonly TenantContext          $tenantContext,
+        private readonly TenantContext $tenantContext,
     ) {
         parent::__construct();
     }
@@ -42,11 +44,12 @@ class NotificationDispatchCommand extends Command
 
         foreach ($this->partnerRepo->findActivePartners() as $partner) {
             $this->tenantContext->setPartner($partner);
-            $io->section("Parceiro: {$partner->getName()}");
+            $io->section(sprintf('Parceiro: %s', $partner->getName()));
 
             $admins = $this->userRepo->findAdminsByPartner($partner);
-            if (empty($admins)) {
-                $io->text('  Nenhum admin. Pulando.');
+
+            if ($admins === []) {
+                $io->text('Nenhum administrador ativo. Pulando.');
                 continue;
             }
 
@@ -54,7 +57,7 @@ class NotificationDispatchCommand extends Command
             $count += $this->dispatchAlertNotifications($partner, $admins);
             $count += $this->dispatchCemadenNotifications($partner, $admins);
 
-            $io->success("{$count} notificações geradas.");
+            $io->success(sprintf('%d notificação(ões) gerada(s).', $count));
         }
 
         return Command::SUCCESS;
@@ -62,53 +65,101 @@ class NotificationDispatchCommand extends Command
 
     private function dispatchAlertNotifications(Partner $partner, array $admins): int
     {
-        $critical = $this->alertRepo->findCriticalByPartner($partner, minReliability: 8);
+        $critical = $this->alertRepo->findCriticalByPartner(
+            $partner,
+            self::MIN_RELIABILITY,
+        );
+
         $count = 0;
 
         foreach ($critical as $alert) {
+            $wazeId = (string) $alert->getWazeId();
+
+            if ($wazeId === '') {
+                continue;
+            }
+
             foreach ($admins as $user) {
-                $exists = $this->notifRepo->existsForAlert($user, $alert->getWazeId());
-                if ($exists) continue;
+                if ($this->notifRepo->existsForAlert($user, $wazeId)) {
+                    continue;
+                }
 
                 $notif = (new Notification())
                     ->setPartner($partner)
                     ->setUser($user)
                     ->setType('waze_alert')
-                    ->setTitle("Alerta {$alert->getType()} — {$alert->getCity()}")
-                    ->setBody("{$alert->getStreet()} | Confiança: {$alert->getConfidence()}");
+                    ->setReferenceId($wazeId)
+                    ->setTitle(sprintf(
+                        'Alerta %s — %s',
+                        $alert->getType(),
+                        $alert->getCity() ?: 'Local não informado',
+                    ))
+                    ->setBody(sprintf(
+                        '%s | Confiabilidade: %s | Confiança: %s',
+                        $alert->getStreet() ?: 'Via não informada',
+                        $alert->getReliability(),
+                        $alert->getConfidence(),
+                    ));
 
                 $this->notifRepo->save($notif, false);
                 $count++;
             }
         }
 
-        if ($count > 0) $this->notifRepo->getEntityManager()->flush();
+        if ($count > 0) {
+            $this->notifRepo->getEntityManager()->flush();
+        }
+
         return $count;
     }
 
     private function dispatchCemadenNotifications(Partner $partner, array $admins): int
     {
-        $critical = $this->cemadenRepo->findByPartnerAndLevels($partner, ['VERMELHO', 'LARANJA']);
+        $critical = $this->cemadenRepo->findByPartnerAndLevels(
+            $partner,
+            ['VERMELHO', 'LARANJA'],
+        );
+
         $count = 0;
 
         foreach ($critical as $item) {
             foreach ($admins as $user) {
-                $exists = $this->notifRepo->existsForCemaden($user, $item->getStationCode(), $item->getMeasuredAt());
-                if ($exists) continue;
+                if ($this->notifRepo->existsForCemaden(
+                    $user,
+                    $item->getStationCode(),
+                    $item->getMeasuredAt(),
+                )) {
+                    continue;
+                }
+
+                $referenceId = $item->getStationCode() . '_' . $item->getMeasuredAt()->format('YmdHi');
 
                 $notif = (new Notification())
                     ->setPartner($partner)
                     ->setUser($user)
                     ->setType('cemaden')
-                    ->setTitle("Alerta {$item->getAlertLevel()} — {$item->getMunicipality()}/{$item->getState()}")
-                    ->setBody("{$item->getStationName()} | Chuva: {$item->getAccumulatedRain()}mm");
+                    ->setReferenceId($referenceId)
+                    ->setTitle(sprintf(
+                        'Alerta %s — %s/%s',
+                        $item->getAlertLevel(),
+                        $item->getMunicipality(),
+                        $item->getState(),
+                    ))
+                    ->setBody(sprintf(
+                        '%s | Chuva: %s mm',
+                        $item->getStationName(),
+                        $item->getAccumulatedRain(),
+                    ));
 
                 $this->notifRepo->save($notif, false);
                 $count++;
             }
         }
 
-        if ($count > 0) $this->notifRepo->getEntityManager()->flush();
+        if ($count > 0) {
+            $this->notifRepo->getEntityManager()->flush();
+        }
+
         return $count;
     }
 }
