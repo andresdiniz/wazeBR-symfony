@@ -123,43 +123,38 @@ class CemadenCollectCommand extends Command
                 ),
             );
 
-            $states = $partner->getCemadenStates();
+            $states = $this->normalizeStates($partner->getCemadenStates());
 
-            if (empty($states)) {
-                $io->warning('Nenhum estado CEMADEN configurado. Pulando.');
+if ($states === []) {
+    $io->warning('Nenhum estado CEMADEN configurado. Pulando.');
+    continue;
+}
 
-                continue;
-            }
+$total = 0;
 
-            $total = 0;
+foreach ($states as $state) {
+    try {
+        $count = $this->collectState($partner, $state, $stationMap);
 
-            foreach ($states as $state) {
-                try {
-                    $count = $this->collectState(
-                        $partner,
-                        (string) $state,
-                        $stationMap,
-                    );
+        $io->text(
+            sprintf(
+                'Estado %s: %d novo(s) registro(s).',
+                $state,
+                $count,
+            ),
+        );
 
-                    $io->text(
-                        sprintf(
-                            'Estado %s: %d novo(s) registro(s).',
-                            $state,
-                            $count,
-                        ),
-                    );
-
-                    $total += $count;
-                } catch (\Throwable $exception) {
-                    $io->error(
-                        sprintf(
-                            'Erro no estado %s: %s',
-                            $state,
-                            $exception->getMessage(),
-                        ),
-                    );
-                }
-            }
+        $total += $count;
+    } catch (\Throwable $exception) {
+        $io->error(
+            sprintf(
+                'Erro no estado %s: %s',
+                $state,
+                $exception->getMessage(),
+            ),
+        );
+    }
+}
 
             $io->success(
                 sprintf(
@@ -363,4 +358,60 @@ class CemadenCollectCommand extends Command
             default => 'SEM_CHUVA',
         };
     }
+
+    /**
+ * Normaliza os estados CEMADEN recebidos do parceiro.
+ *
+ * Aceita:
+ * - array: ['MG', 'RJ']
+ * - JSON: '["MG","RJ"]'
+ * - string única: 'MG'
+ * - lista: 'MG, RJ, SP' ou 'MG;RJ;SP'
+ *
+ * @return list<string>
+ */
+private function normalizeStates(mixed $states): array
+{
+    if (is_array($states)) {
+        $values = $states;
+    } elseif (is_string($states)) {
+        $states = trim($states);
+
+        if ($states === '') {
+            return [];
+        }
+
+        $decoded = json_decode($states, true);
+
+        if (is_array($decoded)) {
+            $values = $decoded;
+        } else {
+            $values = preg_split('/[,;|\s]+/', $states) ?: [];
+        }
+    } else {
+        return [];
+    }
+
+    $normalized = [];
+
+    foreach ($values as $state) {
+        $state = strtoupper(trim((string) $state));
+
+        if ($state === '') {
+            continue;
+        }
+
+        /*
+         * Estados brasileiros usam sigla de duas letras.
+         * Ignora valores acidentais/inválidos antes de chamar a API.
+         */
+        if (!preg_match('/^[A-Z]{2}$/', $state)) {
+            continue;
+        }
+
+        $normalized[$state] = $state;
+    }
+
+    return array_values($normalized);
+}
 }
