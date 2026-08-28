@@ -301,6 +301,42 @@ class CemadenHydroDataRepository extends ServiceEntityRepository
     }
 
     /**
+     * Série temporal completa (sem paginação) de UMA estação, para o
+     * gráfico de evolução do histórico. Diferente de findHistorico(),
+     * que pagina e serve a tabela, este método sempre retorna o período
+     * inteiro em ordem cronológica — o gráfico só faz sentido com uma
+     * estação por vez, já que rios diferentes têm escalas de nível
+     * completamente diferentes.
+     */
+    public function findSeriesByStation(
+        Partner $partner,
+        string  $stationCode,
+        string  $dateFrom,
+        string  $dateTo,
+    ): array {
+        $rows = $this->createQueryBuilder('h')
+            ->select('h.waterLevel, h.cotaAtencao, h.cotaAlerta, h.cotaTransbordamento, h.measuredAt')
+            ->where('h.partner = :partner')
+            ->andWhere('h.stationCode = :station')
+            ->andWhere('h.measuredAt BETWEEN :from AND :to')
+            ->setParameter('partner', $partner)
+            ->setParameter('station', $stationCode)
+            ->setParameter('from', new \DateTimeImmutable($dateFrom . ' 00:00:00'))
+            ->setParameter('to', new \DateTimeImmutable($dateTo . ' 23:59:59'))
+            ->orderBy('h.measuredAt', 'ASC')
+            ->getQuery()
+            ->getArrayResult();
+
+        return array_map(static fn($r) => [
+            'water_level'          => $r['waterLevel'],
+            'cota_atencao'         => $r['cotaAtencao'],
+            'cota_alerta'          => $r['cotaAlerta'],
+            'cota_transbordamento' => $r['cotaTransbordamento'],
+            'measured_at'          => $r['measuredAt']->format('c'),
+        ], $rows);
+    }
+
+    /**
      * Lista de estações (código, nome, município, estado) do parceiro
      * para uso no filtro de estação.
      */

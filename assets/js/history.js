@@ -61,6 +61,11 @@
       const labels = ordered.map(r => FMT.format(new Date(r.t)));
       const times = ordered.map(r => r.time !== null ? +(r.time / 60).toFixed(1) : null);
       const hists = ordered.map(r => r.hist !== null ? +(r.hist / 60).toFixed(1) : null);
+      const delays = ordered.map(r => r.delay !== null ? +(r.delay / 60).toFixed(1) : null);
+      // Cor de cada ponto conforme o nível de congestionamento daquele
+      // registro — assim dá pra ver de relance ONDE ficou pesado, não só
+      // que o tempo subiu.
+      const pointColors = ordered.map(r => jamColors[r.jam ?? 0] || '#a12c7b');
 
       const colors = getChartColors();
       new Chart(elHistory, {
@@ -77,9 +82,11 @@
               fill: true,
               pointRadius: 3,
               pointHoverRadius: 7,
-              pointBackgroundColor: '#a12c7b',
+              pointBackgroundColor: pointColors,
+              pointBorderColor: pointColors,
               spanGaps: true,
               borderWidth: 2.5,
+              yAxisID: 'y',
             },
             {
               label: 'Histórico (min)',
@@ -94,6 +101,21 @@
               pointBackgroundColor: '#437a22',
               spanGaps: true,
               borderWidth: 2,
+              yAxisID: 'y',
+            },
+            {
+              label: 'Atraso (min)',
+              data: delays,
+              borderColor: '#64748b',
+              backgroundColor: 'transparent',
+              borderDash: [2, 3],
+              tension: 0.35,
+              fill: false,
+              pointRadius: 0,
+              pointHoverRadius: 5,
+              spanGaps: true,
+              borderWidth: 1.5,
+              yAxisID: 'y1',
             },
           ],
         },
@@ -121,6 +143,12 @@
               boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
               callbacks: {
                 label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y !== null ? ctx.parsed.y.toFixed(1) + ' min' : '—'),
+                afterBody: ctx => {
+                  const idx = ctx[0]?.dataIndex;
+                  if (idx === undefined) return '';
+                  const lvl = ordered[idx]?.jam ?? 0;
+                  return 'Congestionamento: ' + jamLabels[lvl];
+                },
               },
             },
           },
@@ -131,9 +159,16 @@
             },
             y: {
               beginAtZero: true,
+              position: 'left',
               title: { display: true, text: 'minutos', color: colors.text, font: { size: 11 } },
               ticks: { color: colors.text, font: { size: 10 }, callback: v => v + ' min' },
               grid: { color: colors.grid, drawBorder: false },
+            },
+            y1: {
+              position: 'right',
+              title: { display: true, text: 'atraso (min)', color: colors.text, font: { size: 11 } },
+              ticks: { color: colors.text, font: { size: 10 }, callback: v => (v > 0 ? '+' : '') + v },
+              grid: { display: false },
             },
           },
         },
@@ -143,6 +178,7 @@
     // Gráfico de distribuição (doughnut)
     const elByJam = document.getElementById('chart-byjam');
     if (elByJam && byJam.length > 0) {
+      const byJamTotal = byJam.reduce((a, b) => a + b, 0);
       new Chart(elByJam, {
         type: 'doughnut',
         data: {
@@ -161,11 +197,18 @@
                 font: { size: 11, weight: '500' },
                 color: isDark() ? '#94a3b8' : '#64748b',
                 padding: 12,
+                // Esconde da legenda os níveis que não tiveram nenhum
+                // registro no período — evita listar "Livre: 0" junto
+                // de fatias que existem de verdade.
+                filter: (item, data) => (data.datasets[0].data[item.index] || 0) > 0,
               },
             },
             tooltip: {
               callbacks: {
-                label: ctx => ctx.label + ': ' + ctx.parsed + ' registros',
+                label: ctx => {
+                  const pct = byJamTotal > 0 ? ((ctx.parsed / byJamTotal) * 100).toFixed(1) : '0.0';
+                  return ctx.label + ': ' + ctx.parsed + ' registros (' + pct + '%)';
+                },
               },
             },
           },

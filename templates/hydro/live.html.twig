@@ -5,9 +5,6 @@
 {% block stylesheets %}
     {{ parent() }}
     <link rel="stylesheet" href="{{ asset('styles/hydro-live.css') }}">
-    <style>
-        /* fallback CSS para caso o asset não carregue */
-    </style>
 {% endblock %}
 
 {% block body %}
@@ -107,9 +104,9 @@
                             <th>Estação</th>
                             <th>Município / UF</th>
                             <th class="text-right">Nível (m)</th>
-                            <th class="text-right">Atenção</th>
-                            <th class="text-right">Alerta</th>
-                            <th class="text-right">Transb.</th>
+                            <th class="text-right col-cota">Atenção</th>
+                            <th class="text-right col-cota">Alerta</th>
+                            <th class="text-right col-cota">Transb.</th>
                             <th>Medido em</th>
                         </tr>
                     </thead>
@@ -145,9 +142,9 @@
                                     </div>
                                 {% endif %}
                             </td>
-                            <td class="text-right">{{ r.cota_atencao is not null ? r.cota_atencao|number_format(2,',','.') ~ ' m' : '—' }}</td>
-                            <td class="text-right">{{ r.cota_alerta is not null ? r.cota_alerta|number_format(2,',','.') ~ ' m' : '—' }}</td>
-                            <td class="text-right">{{ r.cota_transbordamento is not null ? r.cota_transbordamento|number_format(2,',','.') ~ ' m' : '—' }}</td>
+                            <td class="text-right col-cota">{{ r.cota_atencao is not null ? r.cota_atencao|number_format(2,',','.') ~ ' m' : '—' }}</td>
+                            <td class="text-right col-cota">{{ r.cota_alerta is not null ? r.cota_alerta|number_format(2,',','.') ~ ' m' : '—' }}</td>
+                            <td class="text-right col-cota">{{ r.cota_transbordamento is not null ? r.cota_transbordamento|number_format(2,',','.') ~ ' m' : '—' }}</td>
                             <td style="white-space:nowrap;font-size:var(--text-xs)">
                                 <time data-utc="{{ r.measured_at|date('Y-m-d H:i:s') }}" data-fmt="datetime">{{ r.measured_at|date('d/m H:i') }}</time>
                             </td>

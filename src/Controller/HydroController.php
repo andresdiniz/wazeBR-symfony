@@ -91,18 +91,36 @@ class HydroController extends AbstractController
 
         $stations = $this->hydroRepo->findStationsByPartner($partner);
 
+        // Gráfico só faz sentido com UMA estação selecionada — rios
+        // diferentes têm escalas de nível completamente diferentes, então
+        // misturar várias no mesmo eixo Y não seria legível nem correto.
+        $series = null;
+        $selectedStationName = null;
+        if ($station !== '') {
+            $series = $this->hydroRepo->findSeriesByStation($partner, $station, $dateFrom, $dateTo);
+
+            foreach ($stations as $s) {
+                if ($s['station_code'] === $station) {
+                    $selectedStationName = $s['station_name'];
+                    break;
+                }
+            }
+        }
+
         return $this->render('hydro/historico.html.twig', [
-            'partner'   => $partner,
-            'rows'      => $rows,
-            'total'     => $total,
-            'page'      => $page,
-            'perPage'   => $perPage,
-            'pages'     => (int) ceil($total / $perPage),
-            'stations'  => $stations,
-            'station'   => $station,
-            'level'     => $level,
-            'date_from' => $dateFrom,
-            'date_to'   => $dateTo,
+            'partner'              => $partner,
+            'rows'                 => $rows,
+            'total'                => $total,
+            'page'                 => $page,
+            'perPage'              => $perPage,
+            'pages'                => (int) ceil($total / $perPage),
+            'stations'             => $stations,
+            'station'              => $station,
+            'selectedStationName'  => $selectedStationName,
+            'level'                => $level,
+            'date_from'            => $dateFrom,
+            'date_to'              => $dateTo,
+            'series'               => $series,
         ]);
     }
 

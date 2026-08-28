@@ -27,6 +27,40 @@
   --radius:    1rem;
   --font-family: 'Inter', system-ui, -apple-system, sans-serif;
 
+  /* Escala de espaçamento e tipografia — referenciada em várias páginas
+     (rotas, hidrológico) mas nunca definida globalmente antes disso, o
+     que fazia padding/font-size silenciosamente não aplicar nelas. */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px;
+  --space-12: 48px; --space-16: 64px;
+
+  --text-xs: .7rem;  --text-sm: .8rem;   --text-base: .95rem;
+  --text-lg: 1.1rem; --text-xl: 1.3rem;  --text-2xl: 1.6rem; --text-3xl: 2rem;
+
+  /* Variantes de raio — mesmo caso: usadas mas nunca definidas. */
+  --radius-sm: .5rem;
+  --radius-md: .75rem;
+  --radius-lg: 1rem;
+  --radius-full: 999px;
+
+  --transition: 200ms cubic-bezier(.4, 0, .2, 1);
+
+  /* Alias — algumas páginas usam --color-surface para o fundo de card
+     em vez de --color-bg-card; mantém os dois em sincronia. */
+  --color-surface: var(--color-bg-card);
+
+  /* Canal RGB do primary, para usar em rgba() (ex.: anel de foco) —
+     sem isso, rgba(var(--color-primary-rgb), .15) não renderizava nada. */
+  --color-primary-rgb: 51, 121, 243;
+
+  /* Cores de severidade dedicadas para níveis de alerta CEMADEN/hidro.
+     Não reaproveita --color-warning (usado em outros contextos como
+     "atenção genérica", já em âmbar) para os 3 níveis de alerta do
+     hidrológico não colidirem e virarem visualmente idênticos. */
+  --color-atencao: #f59e0b;
+  --color-alerta-hidro: #f97316;
+  --color-transbordamento: #dc2626;
+
   --sidebar-w:      260px;
   --sidebar-bg:     #10151f;
   --sidebar-bg-2:   #171d2b;

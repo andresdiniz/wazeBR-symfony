@@ -359,7 +359,13 @@
 }
 
 /* ── Cards de visualização ── */
-.viz-grid, .grid-2 {
+.viz-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+.grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-6);
@@ -411,9 +417,14 @@
   height: 280px;
 }
 .chart-wrap.sm { height: 200px; }
+/* O gráfico de evolução ganhou uma 3ª série (atraso) e eixo secundário —
+   precisa de mais espaço vertical para a legenda de 3 itens não brigar
+   com o gráfico. */
+.chart-wrap.lg { height: 360px; }
 @media (max-width: 600px) {
   .chart-wrap { height: 220px; }
   .chart-wrap.sm { height: 180px; }
+  .chart-wrap.lg { height: 300px; }
 }
 
 /* ── Mapa ── */

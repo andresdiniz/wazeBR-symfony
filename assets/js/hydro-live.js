@@ -100,9 +100,18 @@
   }
 
   // ── Gráfico ──
+  // Em vez de comparar metros brutos entre rios diferentes (que têm
+  // escalas completamente distintas e tornam a barra sem sentido),
+  // mostramos o nível como % da cota de transbordamento de cada estação
+  // — assim 80% em qualquer rio significa a mesma coisa: perto de
+  // transbordar. Estações sem cota de transbordamento cadastrada ficam
+  // de fora do gráfico (mas continuam na tabela).
   function renderChart(rows) {
     if (!chartCanvas) return;
-    if (!rows.length) {
+
+    const withThreshold = rows.filter(r => r.cota_transbordamento && r.water_level !== null);
+
+    if (!withThreshold.length) {
       if (chartInstance) {
         chartInstance.destroy();
         chartInstance = null;
@@ -110,22 +119,31 @@
       return;
     }
 
-    // Prepara dados: pega a última estação (ou todas, mas para simplificar, a primeira)
-    const stationData = rows.slice(0, 1); // para demonstração, usamos a primeira estação
-    // Na prática, você pode buscar séries temporais via API, mas aqui usamos os dados atuais.
-    // Para um gráfico mais rico, o ideal seria ter um endpoint que retorne histórico.
-    // Como temos apenas a última leitura por estação, o gráfico seria apenas um ponto.
-    // Para melhorar, podemos coletar as últimas 24 leituras de uma estação específica.
-    // Vou deixar um placeholder que mostra um gráfico com dados simulados, mas você pode adaptar.
+    // Pior situação primeiro, para chamar atenção sem precisar rolar.
+    const sorted = withThreshold
+      .map(r => ({
+        ...r,
+        pct: Math.min((r.water_level / r.cota_transbordamento) * 100, 150),
+      }))
+      .sort((a, b) => b.pct - a.pct)
+      .slice(0, 20); // limite pra não virar uma parede de barras ilegível
 
-    // Aqui, como só temos uma leitura por estação, vou criar um gráfico de barras mostrando os níveis de todas as estações.
-    const labels = rows.map(r => r.station_name);
-    const levels = rows.map(r => r.water_level ?? 0);
-    const colors = rows.map(r => {
+    // Altura fixa no CSS funcionava para o gráfico antigo (poucas barras
+    // verticais). Barra horizontal com até 20 estações precisa de altura
+    // proporcional à quantidade de linhas, senão os rótulos ficam
+    // espremidos uns em cima dos outros.
+    const container = chartCanvas.parentElement;
+    if (container) {
+      container.style.height = Math.max(250, sorted.length * 28 + 40) + 'px';
+    }
+
+    const labels = sorted.map(r => r.station_name);
+    const values = sorted.map(r => +r.pct.toFixed(1));
+    const colors = sorted.map(r => {
       const lvl = r.alert_level ?? 'normal';
-      if (lvl === 'atencao') return '#f59e0b';
-      if (lvl === 'alerta') return '#f97316';
       if (lvl === 'transbordamento') return '#dc2626';
+      if (lvl === 'alerta') return '#f97316';
+      if (lvl === 'atencao') return '#f59e0b';
       return '#22c55e';
     });
 
@@ -139,44 +157,42 @@
       data: {
         labels: labels,
         datasets: [{
-          label: 'Nível (m)',
-          data: levels,
+          label: '% da cota de transbordamento',
+          data: values,
           backgroundColor: colors,
-          borderColor: colors.map(c => c),
-          borderWidth: 1,
           borderRadius: 4,
-        }]
+        }],
       },
       options: {
+        indexAxis: 'y',
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: function(context) {
-                return 'Nível: ' + context.parsed.y.toFixed(2) + ' m';
-              }
-            }
-          }
+              label: function (context) {
+                const r = sorted[context.dataIndex];
+                return [
+                  'Nível: ' + fmt(r.water_level) + ' (' + context.parsed.x.toFixed(1) + '% do limite)',
+                  'Transbordamento: ' + fmt(r.cota_transbordamento),
+                ];
+              },
+            },
+          },
         },
         scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: function(value) { return value.toFixed(2) + ' m'; }
-            }
-          },
           x: {
-            ticks: {
-              maxRotation: 45,
-              minRotation: 30,
-              autoSkip: true,
-              maxTicksLimit: 15
-            }
-          }
-        }
-      }
+            beginAtZero: true,
+            max: 150,
+            title: { display: true, text: '% da cota de transbordamento' },
+            ticks: { callback: value => value + '%' },
+          },
+          y: {
+            ticks: { autoSkip: false, font: { size: 11 } },
+          },
+        },
+      },
     });
   }
 

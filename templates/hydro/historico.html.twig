@@ -5,11 +5,11 @@
 {% block stylesheets %}
 {{ parent() }}
 <style>
-/* ── Variáveis e reset ── */
+/* ── Container ── */
 .hydro-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: var(--space-4);
+  padding: var(--space-5) var(--space-4);
 }
 
 /* ── Toolbar ── */
@@ -20,17 +20,21 @@
   flex-wrap: wrap;
   gap: var(--space-3);
   margin-bottom: var(--space-5);
-  padding: var(--space-4);
-  background: var(--color-surface);
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-bg-card);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
 }
 .hydro-toolbar-left h1 {
-  font-family: var(--font-display);
   font-size: var(--text-xl);
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: -.02em;
   margin: 0;
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 .hydro-toolbar-left small {
   font-size: var(--text-xs);
@@ -45,7 +49,7 @@
 
 /* ── Filtros ── */
 .filter-card {
-  background: var(--color-surface);
+  background: var(--color-bg-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-4) var(--space-5);
@@ -64,24 +68,27 @@
   font-weight: 600;
   color: var(--color-text-muted);
   margin-bottom: var(--space-1);
+  text-transform: uppercase;
+  letter-spacing: .02em;
 }
 .filter-actions {
   display: flex;
   gap: var(--space-2);
 }
 .form-control-sm {
-  padding: 0.25rem 0.5rem;
+  padding: .5rem .65rem;
   font-size: var(--text-sm);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
-  background: var(--color-surface);
+  background: var(--color-bg-card);
   color: var(--color-text);
   width: 100%;
+  transition: border-color var(--transition), box-shadow var(--transition);
 }
 .form-control-sm:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15);
+  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), .15);
 }
 @media(max-width: 768px) {
   .filter-grid {
@@ -100,7 +107,7 @@
 
 /* ── Card e tabela ── */
 .card {
-  background: var(--color-surface);
+  background: var(--color-bg-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
@@ -112,21 +119,23 @@
   justify-content: space-between;
   padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--color-border);
-  background: var(--color-surface-offset);
+  background: var(--color-bg-muted);
   flex-wrap: wrap;
   gap: var(--space-2);
 }
 .card-title {
   font-weight: 600;
   font-size: var(--text-base);
+  color: var(--color-text);
 }
 .badge {
   display: inline-block;
-  padding: 0.25rem 0.75rem;
+  padding: .25rem .75rem;
   border-radius: var(--radius-full);
   font-size: var(--text-xs);
   font-weight: 600;
-  background: var(--color-surface-offset);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
   color: var(--color-text-muted);
 }
 
@@ -140,30 +149,36 @@
   font-size: var(--text-sm);
 }
 .table-wrap table th {
-  background: var(--color-surface-offset);
+  background: var(--color-bg-muted);
   padding: var(--space-3) var(--space-4);
   text-align: left;
   font-weight: 600;
   color: var(--color-text-muted);
-  border-bottom: 2px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
   white-space: nowrap;
 }
 .table-wrap table td {
   padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-divider);
   vertical-align: middle;
 }
+.table-wrap table tbody tr:last-child td { border-bottom: none; }
 .table-wrap table tbody tr:hover td {
-  background: var(--color-surface-offset);
+  background: var(--color-bg-muted);
 }
 
 /* ── Row highlight por nível ── */
-.row-atencao td         { background: oklch(from var(--color-gold)    l c h / .06); }
-.row-alerta td          { background: oklch(from var(--color-warning)  l c h / .08); }
-.row-transbordamento td { background: oklch(from var(--color-error)    l c h / .08); }
-tr.row-atencao:hover td         { background: oklch(from var(--color-gold)   l c h / .12); }
-tr.row-alerta:hover td          { background: oklch(from var(--color-warning) l c h / .14); }
-tr.row-transbordamento:hover td { background: oklch(from var(--color-error)   l c h / .14); }
+/* Cores de severidade dedicadas (--color-atencao/--color-alerta-hidro/
+   --color-transbordamento, definidas em app.css) — antes usava
+   --color-gold/--color-warning/--color-error, que ou não existiam ou
+   colidiam com outros usos globais, fazendo "atenção" e "alerta"
+   renderizarem com a mesma cor. */
+.row-atencao td         { background: color-mix(in srgb, var(--color-atencao) 7%, var(--color-bg-card)); }
+.row-alerta td          { background: color-mix(in srgb, var(--color-alerta-hidro) 8%, var(--color-bg-card)); }
+.row-transbordamento td { background: color-mix(in srgb, var(--color-transbordamento) 8%, var(--color-bg-card)); }
+tr.row-atencao:hover td         { background: color-mix(in srgb, var(--color-atencao) 14%, var(--color-bg-card)); }
+tr.row-alerta:hover td          { background: color-mix(in srgb, var(--color-alerta-hidro) 14%, var(--color-bg-card)); }
+tr.row-transbordamento:hover td { background: color-mix(in srgb, var(--color-transbordamento) 14%, var(--color-bg-card)); }
 
 .level-icon {
   font-size: 1.2rem;
@@ -192,13 +207,13 @@ tr.row-transbordamento:hover td { background: oklch(from var(--color-error)   l 
   border: 1px solid var(--color-border);
   font-size: var(--text-sm);
   color: var(--color-text-muted);
-  background: var(--color-surface);
+  background: var(--color-bg-card);
   transition: all var(--transition);
   text-decoration: none;
   cursor: pointer;
 }
 .pagination-btn:hover {
-  background: var(--color-surface-offset);
+  background: var(--color-bg-muted);
   color: var(--color-text);
   text-decoration: none;
 }
@@ -219,6 +234,15 @@ tr.row-transbordamento:hover td { background: oklch(from var(--color-error)   l 
   text-align: center;
 }
 
+/* ── Gráfico de evolução (histórico) ── */
+.hydro-chart-wrap {
+  position: relative;
+  height: 280px;
+}
+@media (min-width: 768px) {
+  .hydro-chart-wrap { height: 340px; }
+}
+
 /* ── Empty state ── */
 .hydro-empty {
   padding: var(--space-16) var(--space-8);
@@ -228,11 +252,13 @@ tr.row-transbordamento:hover td { background: oklch(from var(--color-error)   l 
 .hydro-empty-icon {
   font-size: 3rem;
   margin-bottom: var(--space-4);
+  opacity: .6;
 }
 .hydro-empty h3 {
   font-size: var(--text-lg);
   color: var(--color-text);
   margin-bottom: var(--space-2);
+  font-weight: 600;
 }
 </style>
 {% endblock %}
@@ -298,6 +324,35 @@ tr.row-transbordamento:hover td { background: oklch(from var(--color-error)   l 
       </div>
     </div>
   </form>
+
+  {# ── Gráfico de evolução (só com uma estação selecionada) ── #}
+  {% if station != '' %}
+    {% if series is not empty %}
+      <div id="hydro-series-data"
+        data-series="{{ series|json_encode|e('html_attr') }}"
+        style="display:none"
+      ></div>
+      <div class="card" style="margin-bottom:var(--space-5)">
+        <div class="card-header">
+          <span class="card-title">📈 Evolução do nível — {{ selectedStationName ?? station }}</span>
+          <span class="badge">{{ series|length }} leituras no período</span>
+        </div>
+        <div class="card-body" style="padding:var(--space-4)">
+          <div class="hydro-chart-wrap">
+            <canvas id="hydro-history-chart"></canvas>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="card" style="margin-bottom:var(--space-5)">
+        <div class="hydro-empty">
+          <div class="hydro-empty-icon">📈</div>
+          <h3>Sem leituras no período para esta estação</h3>
+          <p>Ajuste o intervalo de datas para ver o gráfico de evolução.</p>
+        </div>
+      </div>
+    {% endif %}
+  {% endif %}
 
   {# ── Tabela ── #}
   <div class="card">
@@ -412,11 +467,101 @@ tr.row-transbordamento:hover td { background: oklch(from var(--color-error)   l 
 
 {% block javascripts %}
 {{ parent() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" crossorigin=""></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
     lucide.createIcons();
   }
+
+  const dataEl = document.getElementById('hydro-series-data');
+  const canvas = document.getElementById('hydro-history-chart');
+  if (!dataEl || !canvas) return;
+
+  let series;
+  try {
+    series = JSON.parse(dataEl.dataset.series);
+  } catch (e) {
+    console.error('[HydroHistorico] Erro ao parsear série:', e);
+    return;
+  }
+  if (!series.length) return;
+
+  const labels = series.map(r => {
+    const d = new Date(r.measured_at);
+    return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  });
+  const levels = series.map(r => r.water_level !== null ? +r.water_level : null);
+
+  // Cotas de referência: usa o último valor não nulo da série (elas
+  // raramente mudam, mas por segurança pegamos o mais recente em vez do
+  // primeiro registro, caso a estação tenha sido recalibrada no período).
+  const lastWith = (key) => {
+    for (let i = series.length - 1; i >= 0; i--) {
+      if (series[i][key] !== null && series[i][key] !== undefined) return +series[i][key];
+    }
+    return null;
+  };
+  const cotaAtencao = lastWith('cota_atencao');
+  const cotaAlerta = lastWith('cota_alerta');
+  const cotaTransb = lastWith('cota_transbordamento');
+
+  const flatLine = (value) => value !== null ? series.map(() => value) : null;
+
+  const datasets = [
+    {
+      label: 'Nível (m)',
+      data: levels,
+      borderColor: '#0284c7',
+      backgroundColor: 'rgba(2,132,199,0.08)',
+      fill: true,
+      tension: 0.25,
+      pointRadius: series.length > 60 ? 0 : 2,
+      spanGaps: true,
+      borderWidth: 2.5,
+      order: 1,
+    },
+  ];
+
+  const refLine = (label, value, color) => ({
+    label: label,
+    data: flatLine(value),
+    borderColor: color,
+    borderDash: [6, 4],
+    borderWidth: 1.5,
+    pointRadius: 0,
+    fill: false,
+    order: 2,
+  });
+
+  if (cotaAtencao !== null) datasets.push(refLine('Atenção', cotaAtencao, '#f59e0b'));
+  if (cotaAlerta !== null) datasets.push(refLine('Alerta', cotaAlerta, '#f97316'));
+  if (cotaTransb !== null) datasets.push(refLine('Transbordamento', cotaTransb, '#dc2626'));
+
+  new Chart(canvas, {
+    type: 'line',
+    data: { labels: labels, datasets: datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y !== null ? ctx.parsed.y.toFixed(2) + ' m' : '—'),
+          },
+        },
+      },
+      scales: {
+        x: { ticks: { maxTicksLimit: 12, maxRotation: 45, font: { size: 10 } } },
+        y: {
+          title: { display: true, text: 'metros' },
+          ticks: { callback: v => v + ' m' },
+        },
+      },
+    },
+  });
 });
 </script>
 {% endblock %}

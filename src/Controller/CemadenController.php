@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Repository\CemadenDataRepository;
+use App\Repository\CemadenHydroDataRepository;
 use App\Service\TenantContext;
-use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -18,9 +18,9 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class CemadenController extends AbstractController
 {
     public function __construct(
-        private readonly TenantContext         $tenantContext,
-        private readonly CemadenDataRepository $cemadenRepo,
-        private readonly Connection            $db,
+        private readonly TenantContext             $tenantContext,
+        private readonly CemadenDataRepository      $cemadenRepo,
+        private readonly CemadenHydroDataRepository $hydroRepo,
     ) {}
 
     #[Route('', name: 'index')]
@@ -37,33 +37,16 @@ class CemadenController extends AbstractController
             state: $state ?: null,
         );
 
-        // Dados hidrológicos (última leitura de cada estação)
-        $hydroData = $this->db->fetchAllAssociative(
-            "SELECT
-                s.id            AS station_id,
-                s.cod_estacao,
-                s.nome,
-                s.municipio,
-                s.uf,
-                r.measured_at,
-                r.sensor_value,
-                r.offset_value,
-                r.river_level,
-                r.is_offline
-             FROM cemaden_stations s
-             INNER JOIN cemaden_hydro_readings r
-                ON r.station_id = s.id
-                AND r.measured_at = (
-                    SELECT MAX(r2.measured_at)
-                    FROM cemaden_hydro_readings r2
-                    WHERE r2.station_id = s.id
-                )
-             WHERE s.station_type = 'hydrological'
-               AND s.is_active    = 1
-               AND s.partner_id   = ?  -- ← usar partner_id, não slug
-             ORDER BY s.municipio, s.nome",
-            [$partner->getId()],
-        );
+        // Dados hidrológicos (última leitura de cada estação).
+        //
+        // NOTA: aqui antes tinha uma query SQL bruta contra
+        // cemaden_stations / cemaden_hydro_readings — tabelas que não
+        // existem no schema atual (o modelo real é a tabela única
+        // cemaden_hydro_data, mapeada pela entidade CemadenHydroData).
+        // Isso fazia essa seção da página quebrar com erro de SQL toda
+        // vez que carregava. Trocado pelo método que já existe e já é
+        // usado em /hidrologico/live para o mesmo propósito.
+        $hydroData = $this->hydroRepo->findLatestByPartner($partner);
 
         return $this->render('cemaden/index.html.twig', [
             'partner'    => $partner,
