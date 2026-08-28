@@ -492,4 +492,43 @@ public function countByWeekdayFiltered(
             ->getQuery()
             ->getResult();
     }
+    /**
+ * Retorna alertas críticos recentes de um parceiro para disparo de notificações.
+ *
+ * Critério atual:
+ * - alerta com confiança baixa (0 a 3), ou
+ * - acidente, congestionamento ou perigo.
+ *
+ * Ajuste a janela de tempo conforme a frequência do cron.
+ *
+ * @return list<WazeAlert>
+ */
+public function findCriticalByPartner(
+    object $partner,
+    ?\DateTimeInterface $since = null,
+    int $limit = 100
+): array {
+    $since ??= new \DateTimeImmutable('-15 minutes', new \DateTimeZone('UTC'));
+
+    return $this->createQueryBuilder('a')
+        ->where('a.partner = :partner')
+        ->andWhere('a.createdAt >= :since')
+        ->andWhere(
+            '(a.type IN (:criticalTypes) OR a.confidence <= :maxConfidence)'
+        )
+        ->setParameter('partner', $partner)
+        ->setParameter('since', $since)
+        ->setParameter('criticalTypes', [
+            'ACCIDENT',
+            'JAM',
+            'HAZARD',
+            'WEATHERHAZARD',
+        ])
+        ->setParameter('maxConfidence', 3)
+        ->orderBy('a.createdAt', 'DESC')
+        ->addOrderBy('a.id', 'DESC')
+        ->setMaxResults(max(1, $limit))
+        ->getQuery()
+        ->getResult();
+}
 }
