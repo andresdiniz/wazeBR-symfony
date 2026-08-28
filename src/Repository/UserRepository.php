@@ -155,4 +155,18 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         $user->setResetTokenExpiresAt(null);
         $this->save($user);
     }
+
+    public function findAdminsByPartner(Partner $partner): array
+    {
+        return $this->createQueryBuilder('u')
+            ->where('u.partner = :partner')
+            ->andWhere('u.isActive = :active')
+            ->andWhere('u.roles LIKE :adminRole')
+            ->setParameter('partner', $partner)
+            ->setParameter('active', true)
+            ->setParameter('adminRole', '%ROLE_ADMIN%')
+            ->orderBy('u.email', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }
