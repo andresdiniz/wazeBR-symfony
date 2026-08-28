@@ -67,7 +67,8 @@ class NotificationDispatchCommand extends Command
     {
         $critical = $this->alertRepo->findCriticalByPartner(
             $partner,
-            self::MIN_RELIABILITY,
+            new \DateTimeImmutable('-30 minutes', new \DateTimeZone('UTC')),
+            100,
         );
 
         $count = 0;
