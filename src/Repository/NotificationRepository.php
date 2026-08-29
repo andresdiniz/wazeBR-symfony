@@ -8,6 +8,7 @@ use App\Entity\Notification;
 use App\Entity\Partner;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 
 class NotificationRepository extends ServiceEntityRepository
@@ -17,69 +18,116 @@ class NotificationRepository extends ServiceEntityRepository
         parent::__construct($registry, Notification::class);
     }
 
+    /**
+     * @return list<Notification>
+     */
     public function findUnreadByUser(User $user, int $limit = 20): array
     {
         return $this->createQueryBuilder('n')
-            ->where('n.user = :user')->setParameter('user', $user)
-            ->andWhere('n.isRead = false')
+            ->where('n.user = :user')
+            ->andWhere('n.isRead = :isRead')
+            ->setParameter('user', $user)
+            ->setParameter('isRead', false)
             ->orderBy('n.createdAt', 'DESC')
-            ->setMaxResults($limit)
-            ->getQuery()->getResult();
+            ->addOrderBy('n.id', 'DESC')
+            ->setMaxResults(max(1, $limit))
+            ->getQuery()
+            ->getResult();
     }
 
     public function countUnreadByUser(User $user): int
     {
         return (int) $this->createQueryBuilder('n')
             ->select('COUNT(n.id)')
-            ->where('n.user = :user')->setParameter('user', $user)
-            ->andWhere('n.isRead = false')
-            ->getQuery()->getSingleScalarResult();
+            ->where('n.user = :user')
+            ->andWhere('n.isRead = :isRead')
+            ->setParameter('user', $user)
+            ->setParameter('isRead', false)
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 
-    public function findByPartner(Partner $partner, int $page = 1, int $limit = 30): array
-    {
+    /**
+     * @return list<Notification>
+     */
+    public function findByPartner(
+        Partner $partner,
+        int $page = 1,
+        int $limit = 30,
+    ): array {
+        $page = max(1, $page);
+        $limit = max(1, $limit);
+
         return $this->createQueryBuilder('n')
-            ->where('n.partner = :p')->setParameter('p', $partner)
+            ->where('n.partner = :partner')
+            ->setParameter('partner', $partner)
             ->orderBy('n.createdAt', 'DESC')
+            ->addOrderBy('n.id', 'DESC')
             ->setFirstResult(($page - 1) * $limit)
             ->setMaxResults($limit)
-            ->getQuery()->getResult();
+            ->getQuery()
+            ->getResult();
     }
 
     public function existsForAlert(User $user, string $wazeId): bool
     {
-        return (bool) $this->createQueryBuilder('n')
+        return (int) $this->createQueryBuilder('n')
             ->select('COUNT(n.id)')
-            ->where('n.user = :user')->setParameter('user', $user)
-            ->andWhere('n.type = :type')->setParameter('type', 'waze_alert')
-            ->andWhere('n.referenceId = :ref')->setParameter('ref', $wazeId)
-            ->getQuery()->getSingleScalarResult();
+            ->where('n.user = :user')
+            ->andWhere('n.type = :type')
+            ->andWhere('n.referenceId = :referenceId')
+            ->setParameter('user', $user)
+            ->setParameter('type', 'waze_alert')
+            ->setParameter('referenceId', $wazeId)
+            ->getQuery()
+            ->getSingleScalarResult() > 0;
     }
 
-    public function existsForCemaden(User $user, string $stationCode, \DateTimeImmutable $measuredAt): bool
-    {
-        $ref = $stationCode . '_' . $measuredAt->format('YmdHi');
-        return (bool) $this->createQueryBuilder('n')
+    public function existsForCemaden(
+        User $user,
+        string $stationCode,
+        \DateTimeInterface $measuredAt,
+    ): bool {
+        $referenceId = sprintf(
+            '%s_%s',
+            $stationCode,
+            $measuredAt->format('YmdHi'),
+        );
+
+        return (int) $this->createQueryBuilder('n')
             ->select('COUNT(n.id)')
-            ->where('n.user = :user')->setParameter('user', $user)
-            ->andWhere('n.type = :type')->setParameter('type', 'cemaden')
-            ->andWhere('n.referenceId = :ref')->setParameter('ref', $ref)
-            ->getQuery()->getSingleScalarResult();
+            ->where('n.user = :user')
+            ->andWhere('n.type = :type')
+            ->andWhere('n.referenceId = :referenceId')
+            ->setParameter('user', $user)
+            ->setParameter('type', 'cemaden')
+            ->setParameter('referenceId', $referenceId)
+            ->getQuery()
+            ->getSingleScalarResult() > 0;
     }
 
-    public function save(Notification $n, bool $flush = true): void
+    public function save(Notification $notification, bool $flush = true): void
     {
-        $this->getEntityManager()->persist($n);
-        if ($flush) $this->getEntityManager()->flush();
+        $this->getEntityManager()->persist($notification);
+
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
+    }
+
+    public function remove(Notification $notification, bool $flush = true): void
+    {
+        $this->getEntityManager()->remove($notification);
+
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
     }
 
     /**
-     * getEntityManager() é protected na classe base do Doctrine — esta
-     * sobrescrita só amplia a visibilidade pra public, porque
-     * NotificationDispatchCommand e NotificationController chamam de
-     * fora da classe. Sem isso, dá "Call to protected method" fatal error.
+     * Disponibiliza o EntityManager para os commands que fazem flush em lote.
      */
-    public function getEntityManager(): \Doctrine\ORM\EntityManagerInterface
+    public function getEntityManager(): EntityManagerInterface
     {
         return parent::getEntityManager();
     }

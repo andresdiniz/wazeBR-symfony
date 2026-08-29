@@ -9,7 +9,11 @@ use App\Entity\User;
 use App\Entity\WazeAlert;
 use App\Entity\WazeTrafficJam;
 use App\Entity\CemadenData;
+use App\Entity\Partner;
 use App\Repository\UserRepository;
+use App\Repository\WazeAlertRepository;
+use App\Repository\WazeTrafficJamRepository;
+use App\Repository\CemadenDataRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Mailer\MailerInterface;
@@ -21,6 +25,9 @@ class NotificationService
         private readonly EntityManagerInterface $entityManager,
         private readonly MailerInterface        $mailer,
         private readonly UserRepository         $userRepository,
+        private readonly WazeAlertRepository    $wazeAlertRepository,
+        private readonly WazeTrafficJamRepository $wazeTrafficJamRepository,
+        private readonly CemadenDataRepository  $cemadenDataRepository,
         private readonly LoggerInterface        $logger,
         private readonly string                 $appName,
         private readonly string                 $senderEmail,
@@ -28,7 +35,7 @@ class NotificationService
 
     public function notifyHighRiskAlerts(): int
     {
-        $alerts = $this->entityManager->getRepository(WazeAlert::class)->findHighRiskAlerts();
+        $alerts = $this->wazeAlertRepository->findHighRiskAlerts();
         $users  = $this->userRepository->findActiveUsers();
         $sent   = 0;
 
@@ -51,14 +58,20 @@ class NotificationService
         return $sent;
     }
 
-    public function sendDailyReport(\DateTimeImmutable $date): void
+    /**
+     * Envia o relatório diário para todos os usuários ativos de um parceiro.
+     */
+    public function sendDailyReportForPartner(Partner $partner, \DateTimeImmutable $date): void
     {
-        $this->logger->info('Enviando relatório diário', ['date' => $date->format('Y-m-d')]);
+        $this->logger->info('Enviando relatório diário', [
+            'partner' => $partner->getName(),
+            'date' => $date->format('Y-m-d'),
+        ]);
 
-        $alertCount   = $this->entityManager->getRepository(WazeAlert::class)->countByDate($date);
-        $jamCount     = $this->entityManager->getRepository(WazeTrafficJam::class)->countByDate($date);
-        $cemadenCount = $this->entityManager->getRepository(CemadenData::class)->countActiveAlerts();
-        $users        = $this->userRepository->findActiveUsers();
+        $alertCount   = $this->wazeAlertRepository->countByDate($partner, $date);
+        $jamCount     = $this->wazeTrafficJamRepository->countByDate($partner, $date);
+        $cemadenCount = $this->cemadenDataRepository->countActiveAlerts($partner);
+        $users        = $this->userRepository->findActiveUsers($partner);
 
         foreach ($users as $user) {
             $email = (new Email())
@@ -70,15 +83,40 @@ class NotificationService
             try {
                 $this->mailer->send($email);
             } catch (\Throwable $e) {
-                $this->logger->error('Erro ao enviar relatório', ['user' => $user->getEmail(), 'error' => $e->getMessage()]);
+                $this->logger->error('Erro ao enviar relatório', [
+                    'user' => $user->getEmail(),
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 
-        $this->logger->info('Relatórios enviados', ['users' => count($users)]);
+        $this->logger->info('Relatórios enviados', [
+            'partner' => $partner->getName(),
+            'users' => count($users),
+        ]);
     }
 
-    private function buildDailyReportHtml(User $user, int $alertCount, int $jamCount, int $cemadenCount, \DateTimeImmutable $date): string
+    /**
+     * Versão antiga, mantida apenas se houver chamadas legadas.
+     *
+     * @deprecated Use sendDailyReportForPartner() em vez disso.
+     */
+    public function sendDailyReport(\DateTimeImmutable $date): void
     {
+        // Se realmente quiser um relatório "global", itere por parceiros no command
+        // e chame sendDailyReportForPartner() para cada um.
+        throw new \BadMethodCallException(
+            'sendDailyReport() sem parceiro não é mais suportado. Use sendDailyReportForPartner().'
+        );
+    }
+
+    private function buildDailyReportHtml(
+        User $user,
+        int $alertCount,
+        int $jamCount,
+        int $cemadenCount,
+        \DateTimeImmutable $date,
+    ): string {
         return <<<HTML
         <h2>Relatório Diário — {$date->format('d/m/Y')}</h2>
         <p>Olá, {$user->getName()}!</p>

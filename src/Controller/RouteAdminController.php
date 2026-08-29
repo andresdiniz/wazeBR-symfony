@@ -14,7 +14,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
-new \DateTimeZone('America/Sao_Paulo');
 
 #[Route('/rotas', name: 'route_admin_')]
 #[IsGranted('ROLE_USER')]

@@ -102,4 +102,18 @@ class CemadenData
     public function getMeasuredAt(): \DateTimeImmutable { return $this->measuredAt; }
     public function setMeasuredAt(\DateTimeImmutable $measuredAt): static { $this->measuredAt = $measuredAt; return $this; }
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
+
+    public function countActiveAlerts(Partner $partner): int
+    {
+        $since = new \DateTimeImmutable('-6 hours');
+
+        return (int) $this->createQueryBuilder('c')
+            ->select('COUNT(c.id)')
+            ->where('c.partner = :partner')
+            ->andWhere('c.measuredAt >= :since')
+            ->setParameter('partner', $partner)
+            ->setParameter('since', $since)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
 }

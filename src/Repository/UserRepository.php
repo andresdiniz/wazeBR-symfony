@@ -169,4 +169,29 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
             ->getQuery()
             ->getResult();
     }
+    /**
+ * Retorna todos os usuários ativos.
+ *
+ * Se um parceiro for informado, retorna somente usuários ativos
+ * vinculados a esse parceiro.
+ *
+ * @return list<User>
+ */
+public function findActiveUsers(?Partner $partner = null): array
+{
+    $qb = $this->createQueryBuilder('u')
+        ->where('u.isActive = :active')
+        ->setParameter('active', true)
+        ->orderBy('u.name', 'ASC')
+        ->addOrderBy('u.id', 'ASC');
+
+    if ($partner !== null) {
+        $qb->andWhere('u.partner = :partner')
+            ->setParameter('partner', $partner);
+    }
+
+    return $qb
+        ->getQuery()
+        ->getResult();
+}
 }

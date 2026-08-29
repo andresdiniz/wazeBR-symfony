@@ -114,4 +114,23 @@ class CemadenDataRepository extends ServiceEntityRepository
             $this->getEntityManager()->flush();
         }
     }
+    /**
+ * Conta alertas CEMADEN “ativos” de um parceiro.
+ *
+ * Como não existe isActive, consideramos ativos os registros
+ * medidos nas últimas 6 horas.
+ */
+    public function countActiveAlerts(Partner $partner): int
+    {
+        $since = new \DateTimeImmutable('-6 hours', new \DateTimeZone('UTC'));
+
+        return (int) $this->createQueryBuilder('c')
+            ->select('COUNT(c.id)')
+            ->where('c.partner = :partner')
+            ->andWhere('c.measuredAt >= :since')
+            ->setParameter('partner', $partner)
+            ->setParameter('since', $since)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
 }

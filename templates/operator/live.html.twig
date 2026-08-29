@@ -117,6 +117,24 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
   animation: pulse-ring 2s ease-in-out infinite;
 }
 .op-pulse.err { background: var(--red); box-shadow: 0 0 6px var(--red); }
+
+.op-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: #7f1d1d;
+  color: #fecaca;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  animation: error-banner-blink 1.6s ease-in-out infinite;
+}
+@keyframes error-banner-blink {
+  0%, 100% { background: #7f1d1d; }
+  50%      { background: #991b1b; }
+}
 @keyframes pulse-ring {
   0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,.5); }
   50%       { box-shadow: 0 0 0 5px rgba(34,197,94,0); }
@@ -704,6 +722,12 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
 <body>
 <div class="op-shell">
 
+  <!-- ═══ FAIXA DE ERRO — só aparece após falhas consecutivas ═══ -->
+  <div id="op-error-banner" class="op-error-banner" style="display:none">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    <span id="op-error-msg">Sem conexão com o servidor — os dados na tela podem estar desatualizados.</span>
+  </div>
+
   <!-- ═══ HEADER ════════════════════════════════════════════ -->
   <header class="op-header">
     <div class="op-logo">
@@ -874,16 +898,30 @@ const mapLayers = {
 };
 
 // ── Sound ─────────────────────────────────────────────────────
-let soundEnabled = false;
+// Ligado por padrão e persistido: numa tela que fica aberta sozinha no
+// CCO, se ela recarregar (queda de rede, deploy, reboot noturno do
+// quiosque) o alarme não pode voltar mudo em silêncio sem ninguém notar.
+const SOUND_STORAGE_KEY = 'op_sound_enabled';
+let soundEnabled = localStorage.getItem(SOUND_STORAGE_KEY) !== 'false';
 const btnSound   = document.getElementById('btnSound');
 const soundIcon  = document.getElementById('soundIcon');
-btnSound.addEventListener('click', () => {
-  soundEnabled = !soundEnabled;
-  btnSound.style.color    = soundEnabled ? '#14b8a6' : '';
+
+function applySoundVisual() {
+  btnSound.style.color       = soundEnabled ? '#14b8a6' : '';
   btnSound.style.borderColor = soundEnabled ? 'rgba(20,184,166,.35)' : '';
   soundIcon.innerHTML = soundEnabled
     ? '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>'
     : '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>';
+}
+applySoundVisual();
+
+btnSound.addEventListener('click', () => {
+  soundEnabled = !soundEnabled;
+  localStorage.setItem(SOUND_STORAGE_KEY, String(soundEnabled));
+  applySoundVisual();
+  // Feedback imediato do clique — o operador confirma que o som "pegou"
+  // sem precisar esperar o próximo alerta de verdade.
+  if (soundEnabled) playAlert();
 });
 
 function playAlert() {
@@ -901,16 +939,22 @@ function playAlert() {
   } catch (_) {}
 }
 
-// ── Mapa — CartoDB DarkMatter (vias em cinza neutro) ──────────────
+// ── Mapa — Esri World Dark Gray Base (sem chave de API) ────────────
+// TROCADO: CARTO passou a exigir chave de API paga em basemaps.cartocdn.com
+// (mudança deles, não do projeto — quebrou de uma hora pra outra em
+// qualquer app usando essas URLs, não só aqui). O serviço legado do Esri
+// em server.arcgisonline.com continua genuinamente gratuito, sem
+// cadastro nem chave.
 const map = L.map('op-map', { zoomControl: false, attributionControl: false });
 L.control.zoom({ position: 'bottomright' }).addTo(map);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
-  subdomains: 'abcd', maxZoom: 19,
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+  maxZoom: 16,
   opacity: 0.85,
+  attribution: '&copy; <a href="https://www.esri.com">Esri</a>',
 }).addTo(map);
 // Labels acima dos overlays de trânsito
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {
-  subdomains: 'abcd', maxZoom: 19, pane: 'shadowPane',
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+  maxZoom: 16, pane: 'shadowPane',
   opacity: 0.9,
 }).addTo(map);
 map.setView([FALLBACK_LAT, FALLBACK_LNG], FALLBACK_ZOOM);
@@ -1037,14 +1081,18 @@ function buildKpis(d) {
   const cemaden = d.cemaden || [];
 
   const jamCount   = jams.length;
-  const alertCount = alerts.length;
+  const alertCount = d.alertsLastHour ?? alerts.length;
   const critJams   = jams.filter(j => (j.level || 0) >= 5).length;
-  const avgSpd     = jams.length ? Math.round(jams.reduce((s,j)=>s+(j.speedKMH||0),0)/jams.length) : 0;
+  // Velocidade/atraso médios vêm prontos do backend (WazeTrafficJamRepository::avgStats),
+  // que já calcula isso a cada ciclo — antes o front recalculava do zero
+  // a partir do array bruto, duplicando trabalho que o servidor já fez.
+  const avgSpd     = Math.round(d.liveAvgSpeed ?? 0);
   const totalLen   = jams.reduce((s,j)=>s+(j.length||0),0);
-  const avgDelay   = jams.length ? Math.round(jams.reduce((s,j)=>s+(j.delay||0),0)/jams.length/60) : 0;
+  const avgDelay   = Math.round((d.liveAvgDelay ?? 0) / 60);
 
   const cemadenCrit  = cemaden.filter(c => c.critical).length;
   const maxRain1h    = cemaden.length ? Math.max(...cemaden.map(c => c.rain1h || 0)) : null;
+  const rainTotal    = d.rainLastHour ?? null;
   const alertByType  = {};
   alerts.forEach(a => {
     const t = (a.type||'OTHER').split('_')[0];
@@ -1072,11 +1120,20 @@ function buildKpis(d) {
   const routeIcon   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h7v7H3z"/><path d="M14 3h7v7h-7z"/><path d="M14 14h7v7h-7z"/><path d="M3 17.5A4.5 4.5 0 0 0 7.5 22H10"/><path d="M10 14H7.5a4.5 4.5 0 0 1 0-9H10"/></svg>`;
   const cloudIcon   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/><line x1="8" y1="19" x2="8" y2="21"/><line x1="8" y1="13" x2="8" y2="15"/><line x1="16" y1="19" x2="16" y2="21"/><line x1="16" y1="13" x2="16" y2="15"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="12" y1="15" x2="12" y2="17"/></svg>`;
   const delayIcon   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+  const anomalyIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`;
+  const satIcon     = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 7 9 3 5 7l4 4"/><path d="m17 11 4 4-4 4-4-4"/><path d="m8 12 4 4 6-6-4-4Z"/><path d="m16 8 3-3"/><path d="M9 21a6 6 0 0 0-6-6"/></svg>`;
 
   const jamCls  = alertClass(jamCount, 5, 10, 20);
   const aluCls  = alertClass(alertCount, 3, 7, 15);
   const critCls = alertClass(critJams, 1, 3, 6);
   const spdCls  = avgSpd < 10 ? 'alert-red' : avgSpd < 20 ? 'alert-orange' : avgSpd < 30 ? 'alert-yellow' : '';
+
+  // Anomalia: o backend compara alertas da última hora com a média das
+  // últimas 6h (OperatorController::liveData). É o sinal mais valioso
+  // que a API já calcula — antes o front nunca lia isso, então um pico
+  // sustentado (não só uma contagem bruta alta) passava despercebido.
+  const anomaly    = d.anomaly || { detected: false, ratio: 0, avg6h: 0 };
+  const anomalyCls = anomaly.detected ? 'alert-red' : '';
 
   const kpisHtml = [
     `<div class="kpi-section-label">${trafficIcon} Tráfego — últimas 3h</div>`,
@@ -1086,11 +1143,13 @@ function buildKpis(d) {
     kpiCard(routeIcon, 'Extensão congestionada', (totalLen/1000).toFixed(1), 'km', '', alertClass(totalLen/1000,2,8,15), totalLen/1000/20*100, 'red'),
     `<div class="kpi-section-label">${alertIcon} Alertas</div>`,
     kpiCard(alertIcon, 'Alertas — última hora', alertCount, '', '', aluCls, alertCount/15*100, 'yellow'),
+    kpiCard(anomalyIcon, 'vs. média 6h', anomaly.detected ? `${anomaly.ratio}×` : 'normal', '', `média 6h: ${anomaly.avg6h}/h`, anomalyCls, anomaly.detected ? Math.min(100, anomaly.ratio*33) : 0, 'red'),
     `<div class="kpi-section-label">${cloudIcon} CEMADEN — estações do parceiro</div>`,
     kpiCard(cloudIcon, 'Estações críticas', cemaden.length ? cemadenCrit : '—', '', cemaden.length ? `de ${cemaden.length} monitoradas` : 'aguardando dados…', cemadenCrit > 0 ? 'alert-red' : '', cemaden.length ? cemadenCrit/cemaden.length*100 : undefined, 'red'),
-    kpiCard(cloudIcon, 'Chuva acum. (máx. estação)', maxRain1h !== null ? maxRain1h.toFixed(1) : '—', 'mm', '', maxRain1h !== null ? alertClass(maxRain1h,15,30,50) : '', undefined),
-    `<div class="kpi-section-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg> Infraestrutura</div>`,
-    kpiCard(`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`, 'Monitorados', `0 <span style="font-size:10px;font-weight:400;color:var(--faint)">câm.</span> 2 <span style="font-size:10px;font-weight:400;color:var(--faint)">links</span> ${jamCount} <span style="font-size:10px;font-weight:400;color:var(--faint)">rotas</span>`, '', '', '', undefined),
+    kpiCard(cloudIcon, 'Chuva acumulada (parceiro)', rainTotal !== null ? rainTotal.toFixed(1) : '—', 'mm', maxRain1h !== null ? `pior estação: ${maxRain1h.toFixed(1)} mm` : '', rainTotal !== null ? alertClass(rainTotal,15,30,50) : '', undefined),
+    `<div class="kpi-section-label">${satIcon} Fontes externas</div>`,
+    kpiCard(satIcon, 'Waze (contagem oficial)', d.wazeJams ?? '—', '', d.wazeAlerts !== null && d.wazeAlerts !== undefined ? `${d.wazeAlerts} alertas oficiais` : 'sem dado ainda', '', undefined),
+    kpiCard(alertIcon, 'CIFS ativos', d.cifsActive ?? 0, '', 'eventos publicados pelo parceiro', (d.cifsActive ?? 0) > 0 ? 'alert-yellow' : '', undefined),
   ].join('');
 
   document.getElementById('op-kpis').innerHTML = kpisHtml;
@@ -1222,18 +1281,26 @@ function updateBar(d) {
 // FIX: usa setTimeout recursivo em vez de setInterval para evitar
 // sobreposição de ciclos quando o fetch demora mais que REFRESH_MS,
 // eliminando o violation 'setInterval handler took Xms'.
-let prevAlertCount = 0;
-let _fetchTimer    = null;
+let prevAlertCount      = 0;
+let prevAnomalyDetected = false;
+let _fetchTimer         = null;
+let consecutiveFailures = 0;
+const errorBanner = document.getElementById('op-error-banner');
+const errorMsgEl  = document.getElementById('op-error-msg');
 
 async function fetchData() {
   try {
     const res  = await fetch(API_URL);
-    if (!res.ok) throw new Error(res.status);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
 
     lastFetch = Date.now();
     pulseEl.className = 'op-pulse ok';
     updateAgo();
+
+    // Conexão voltou — some com o aviso.
+    consecutiveFailures = 0;
+    errorBanner.style.display = 'none';
 
     // FIX: operações leves de DOM primeiro (KPIs, bar, feed)
     buildKpis(data);
@@ -1250,9 +1317,29 @@ async function fetchData() {
     if (newAlerts > prevAlertCount) playAlert();
     prevAlertCount = newAlerts;
 
+    // Alarme também na detecção de anomalia (pico sustentado vs. média
+    // das últimas 6h) — só na borda de subida, senão tocaria a cada 30s
+    // inteiros enquanto a anomalia permanecer ativa.
+    const anomalyNow = !!(data.anomaly && data.anomaly.detected);
+    if (anomalyNow && !prevAnomalyDetected) playAlert();
+    prevAnomalyDetected = anomalyNow;
+
   } catch (e) {
     pulseEl.className = 'op-pulse err';
     console.error('[LiveOp] fetch error', e);
+
+    // MOTIVAÇÃO: antes, uma falha de fetch só aparecia como um pontinho
+    // vermelho de 7px no canto superior — em uma tela que fica aberta
+    // sozinha no CCO, sem ninguém olhando de perto o tempo todo, isso é
+    // efetivamente invisível. Depois de 2 falhas seguidas (~1 min, não
+    // dispara por um soluço isolado de rede), mostra um aviso enorme
+    // que não dá pra ignorar, mesmo vendo a tela de longe.
+    consecutiveFailures++;
+    if (consecutiveFailures >= 2) {
+      errorMsgEl.textContent = `Sem conexão com o servidor (${e.message}) — os dados na tela podem estar desatualizados.`;
+      errorBanner.style.display = 'flex';
+    }
+
   } finally {
     // Agenda próximo ciclo somente após o atual terminar
     _fetchTimer = setTimeout(fetchData, REFRESH_MS);
