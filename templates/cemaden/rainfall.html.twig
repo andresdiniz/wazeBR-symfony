@@ -13,9 +13,11 @@
         </div>
     </div>
 
-    {% if stations is defined and stations is not empty %}
+    {% if stationCards is defined and stationCards is not empty %}
         <div class="row">
-            {% for station in stations %}
+            {% for item in stationCards %}
+                {% set station = item.station %}
+                
                 <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
                     <div class="card shadow-sm h-100">
                         <div class="card-header bg-primary text-white">
@@ -42,12 +44,12 @@
                                 <div class="d-flex align-items-center">
                                     <i class="bi bi-droplet-fill text-primary" style="font-size: 1.5rem;"></i>
                                     <h3 class="mb-0 ms-2 text-primary">
-                                        {{ station.lastRainfall|default(0)|number_format(2) }} mm
+                                        {{ item.lastRainfall|default(0)|number_format(2, ',', '.') }} mm
                                     </h3>
                                 </div>
-                                {% if station.lastRainfallAt %}
+                                {% if item.lastRainfallAt %}
                                     <small class="text-muted">
-                                        Último: {{ station.lastRainfallAt|date('d/m/Y H:i') }}
+                                        Último: {{ item.lastRainfallAt|date('d/m/Y H:i') }}
                                     </small>
                                 {% else %}
                                     <small class="text-muted">Sem registros</small>
