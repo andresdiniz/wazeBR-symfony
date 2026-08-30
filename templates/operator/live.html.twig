@@ -234,6 +234,9 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
   padding: 8px 6px 2px;
   border-top: 1px solid var(--border);
   margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .kpi-section-label:first-child { border-top: none; margin-top: 0; padding-top: 2px; }
 .kpi-section-label svg { flex-shrink: 0; }
@@ -282,6 +285,7 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
   align-items: center;
   gap: 7px;
   margin-bottom: 6px;
+  min-width: 0; /* permite ao label truncar em vez de forçar o card a alargar */
 }
 .kpi-icon {
   width: 26px; height: 26px;
@@ -295,6 +299,7 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
 .kpi-icon svg {
   width: 13px; height: 13px;
   display: block;
+  flex-shrink: 0;
 }
 .kpi-label {
   font-size: 10px;
@@ -303,12 +308,23 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
   text-transform: uppercase;
   color: var(--muted);
   line-height: 1.2;
+  /* Rótulos longos ("Extensão congestionada", "Chuva acumulada
+     (parceiro)") quebravam em 2-3 linhas nas faixas mais estreitas,
+     empurrando o resto do card e dando impressão de sobreposição.
+     Trunca com reticências em vez de quebrar. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .kpi-body {
   display: flex;
   align-items: baseline;
   gap: 4px;
+  min-width: 0;
+  flex-wrap: nowrap;
 }
 .kpi-value {
   font-size: 26px;
@@ -318,18 +334,35 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
   color: var(--text);
   transition: color var(--transition);
   letter-spacing: -.02em;
+  /* Mesmo motivo do label: nunca deixar o valor quebrar linha —
+     ele é sempre curto (número), então isto só protege contra
+     casos extremos sem custar legibilidade normal. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 .kpi-unit {
   font-size: 12px;
   font-weight: 500;
   color: var(--muted);
   line-height: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .kpi-sub {
   font-size: 10px;
   color: var(--faint);
   margin-top: 5px;
   line-height: 1.3;
+  /* Textos de apoio mais longos ("pior estação: X mm", "eventos
+     publicados pelo parceiro") agora limitam em 2 linhas em vez de
+     crescer sem limite e empurrar a barra de progresso abaixo dele
+     pra cima do próximo card. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .kpi-bar-wrap {
   height: 3px;
@@ -701,6 +734,59 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
 ::-webkit-scrollbar-thumb { background: var(--faint); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
+/* ── Telas menores — de tablet a monitor pequeno ─────────────────
+   Mantém sempre os 3 painéis lado a lado (KPIs / mapa / feed), só
+   reduz proporções, fontes e espaçamentos conforme a tela encolhe.
+   Piso em 768px (tablet retrato) — celular não é alvo desta tela. */
+@media (max-width: 1440px) {
+  .op-body { grid-template-columns: 200px 1fr 260px; }
+  .kpi-value { font-size: 23px; }
+  .op-clock  { font-size: 18px; }
+  .op-city   { max-width: 150px; }
+}
+
+@media (max-width: 1180px) {
+  .op-body { grid-template-columns: 176px 1fr 220px; }
+  .op-header { gap: 8px; padding: 0 10px; }
+  .op-btn span, .op-btn-back span { display: none; } /* ícone só, sem o texto do botão */
+  .kpi-card { padding: 8px 9px; }
+  .kpi-value { font-size: 20px; }
+  .kpi-label { font-size: 9px; }
+  .kpi-icon  { width: 22px; height: 22px; }
+  .op-clock  { font-size: 16px; }
+  .op-city   { display: none; } /* nome do parceiro cede espaço primeiro */
+  .feed-street { font-size: 11px; }
+  .map-legend  { min-width: 128px; padding: 6px 7px; }
+}
+
+@media (max-width: 900px) {
+  .op-body { grid-template-columns: 156px 1fr 190px; }
+  .op-shell { grid-template-rows: 48px 1fr 44px; }
+  .op-header { gap: 6px; }
+  .op-logo { font-size: 13px; }
+  .op-divider { display: none; }
+  .kpi-section-label { font-size: 8px; padding: 6px 4px 2px; }
+  .kpi-card { padding: 7px 8px; }
+  .kpi-header { gap: 5px; margin-bottom: 4px; }
+  .kpi-value { font-size: 18px; }
+  .kpi-unit  { font-size: 10px; }
+  .kpi-sub   { font-size: 9px; }
+  .op-clock  { font-size: 15px; }
+  .op-wakelock-indicator span { display: none; } /* só o ícone do cadeado */
+  .op-bar { gap: 10px; padding: 0 10px; font-size: 10px; }
+  .map-overlay-info { font-size: 10px; padding: 4px 8px; }
+}
+
+@media (max-width: 768px) {
+  .op-body { grid-template-columns: 138px 1fr 168px; }
+  .kpi-icon { width: 20px; height: 20px; }
+  .kpi-icon svg { width: 11px; height: 11px; }
+  .kpi-value { font-size: 16px; }
+  .feed-item { padding: 6px 8px; }
+  .feed-city, .feed-conf { display: none; } /* mantém só o essencial: tipo, rua, tempo */
+  .map-legend { bottom: 40px; }
+}
+
 /* ── Telas grandes / TV ───────────────────────────────────────── */
 @media (min-width: 2560px) {
   .op-body { grid-template-columns: 290px 1fr 380px; }
@@ -752,15 +838,15 @@ html, body { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', s
     </div>
     <a href="{{ path('dashboard_index') }}" class="op-btn-back">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-      Dashboard
+      <span>Dashboard</span>
     </a>
     <button class="op-btn" id="btnFullscreen" title="Fullscreen">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-      Fullscreen
+      <span>Fullscreen</span>
     </button>
     <button class="op-btn" id="btnSound" title="Alertas sonoros">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="soundIcon"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-      Som
+      <span>Som</span>
     </button>
   </header>
 
@@ -1043,8 +1129,8 @@ document.getElementById('btnFullscreen').addEventListener('click', () => {
 document.addEventListener('fullscreenchange', () => {
   const btn = document.getElementById('btnFullscreen');
   btn.innerHTML = document.fullscreenElement
-    ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg> Sair'
-    : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg> Fullscreen';
+    ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg> <span>Sair</span>'
+    : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg> <span>Fullscreen</span>';
 });
 
 // ── Pulse / ago ───────────────────────────────────────────────────
@@ -1140,15 +1226,15 @@ function buildKpis(d) {
     kpiCard(trafficIcon, 'Jams ativos', jamCount, '', `nível mín. ${jams.length ? Math.min(...jams.map(j=>j.level||0)) : '—'}`, jamCls, jamCount/30*100, jamCls==='alert-red'?'red':jamCls==='alert-orange'?'orange':'yellow'),
     kpiCard(speedIcon, 'Velocidade média', avgSpd, 'km/h', '', spdCls, avgSpd/60*100, spdCls==='alert-red'?'red':spdCls==='alert-orange'?'orange':'teal'),
     kpiCard(delayIcon, 'Atraso médio', avgDelay, 'min', '', alertClass(avgDelay,2,5,10), avgDelay/15*100, 'orange'),
-    kpiCard(routeIcon, 'Extensão congestionada', (totalLen/1000).toFixed(1), 'km', '', alertClass(totalLen/1000,2,8,15), totalLen/1000/20*100, 'red'),
+    kpiCard(routeIcon, 'Km congestionados', (totalLen/1000).toFixed(1), 'km', '', alertClass(totalLen/1000,2,8,15), totalLen/1000/20*100, 'red'),
     `<div class="kpi-section-label">${alertIcon} Alertas</div>`,
-    kpiCard(alertIcon, 'Alertas — última hora', alertCount, '', '', aluCls, alertCount/15*100, 'yellow'),
+    kpiCard(alertIcon, 'Última hora', alertCount, '', '', aluCls, alertCount/15*100, 'yellow'),
     kpiCard(anomalyIcon, 'vs. média 6h', anomaly.detected ? `${anomaly.ratio}×` : 'normal', '', `média 6h: ${anomaly.avg6h}/h`, anomalyCls, anomaly.detected ? Math.min(100, anomaly.ratio*33) : 0, 'red'),
-    `<div class="kpi-section-label">${cloudIcon} CEMADEN — estações do parceiro</div>`,
-    kpiCard(cloudIcon, 'Estações críticas', cemaden.length ? cemadenCrit : '—', '', cemaden.length ? `de ${cemaden.length} monitoradas` : 'aguardando dados…', cemadenCrit > 0 ? 'alert-red' : '', cemaden.length ? cemadenCrit/cemaden.length*100 : undefined, 'red'),
-    kpiCard(cloudIcon, 'Chuva acumulada (parceiro)', rainTotal !== null ? rainTotal.toFixed(1) : '—', 'mm', maxRain1h !== null ? `pior estação: ${maxRain1h.toFixed(1)} mm` : '', rainTotal !== null ? alertClass(rainTotal,15,30,50) : '', undefined),
+    `<div class="kpi-section-label">${cloudIcon} CEMADEN</div>`,
+    kpiCard(cloudIcon, 'Críticas', cemaden.length ? cemadenCrit : '—', '', cemaden.length ? `de ${cemaden.length} monitoradas` : 'aguardando dados…', cemadenCrit > 0 ? 'alert-red' : '', cemaden.length ? cemadenCrit/cemaden.length*100 : undefined, 'red'),
+    kpiCard(cloudIcon, 'Chuva acumulada', rainTotal !== null ? rainTotal.toFixed(1) : '—', 'mm', maxRain1h !== null ? `pior estação: ${maxRain1h.toFixed(1)} mm` : '', rainTotal !== null ? alertClass(rainTotal,15,30,50) : '', undefined),
     `<div class="kpi-section-label">${satIcon} Fontes externas</div>`,
-    kpiCard(satIcon, 'Waze (contagem oficial)', d.wazeJams ?? '—', '', d.wazeAlerts !== null && d.wazeAlerts !== undefined ? `${d.wazeAlerts} alertas oficiais` : 'sem dado ainda', '', undefined),
+    kpiCard(satIcon, 'Waze oficial', d.wazeJams ?? '—', '', d.wazeAlerts !== null && d.wazeAlerts !== undefined ? `${d.wazeAlerts} alertas oficiais` : 'sem dado ainda', '', undefined),
     kpiCard(alertIcon, 'CIFS ativos', d.cifsActive ?? 0, '', 'eventos publicados pelo parceiro', (d.cifsActive ?? 0) > 0 ? 'alert-yellow' : '', undefined),
   ].join('');
 
