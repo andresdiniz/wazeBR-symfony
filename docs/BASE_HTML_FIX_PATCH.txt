@@ -1,0 +1,79 @@
+# Patch de Correcao - base.html.twig
+
+## Erro
+
+```
+Unable to generate a URL for the named route "cemadenindex"
+in base.html.twig at line 50
+```
+
+## Correcao Manual
+
+### Arquivo: templates/base.html.twig
+
+Procure por:
+
+```twig
+<a href="{{ path('cemadenindex') }}" class="{{ r starts with 'cemaden' ? 'active' : '' }}">
+    <i class="bi bi-droplet"></i>
+    <span>Quantidade de Chuvas</span>
+</a>
+```
+
+Substitua por:
+
+```twig
+<a href="{{ path('app_cemaden_rainfall') }}" class="{{ app.request.attributes.get('_route') starts with 'app_cemaden_' ? 'active' : '' }}">
+    <i class="bi bi-droplet"></i>
+    <span>Quantidade de Chuva</span>
+</a>
+```
+
+## Aplicacao do Patch
+
+### Linux/Mac
+
+```bash
+cd /caminho/para/wazeBR-symfony
+
+# Backup
+cp templates/base.html.twig templates/base.html.twig.backup
+
+# Aplicar correcao
+sed -i "s/path('cemadenindex')/path('app_cemaden_rainfall')/g" templates/base.html.twig
+sed -i "s/r starts with 'cemaden'/app.request.attributes.get('_route') starts with 'app_cemaden_'/g" templates/base.html.twig
+
+# Limpar cache
+php bin/console cache:clear
+```
+
+### Windows PowerShell
+
+```powershell
+cd C:\caminho\para\wazeBR-symfony
+
+# Backup
+Copy-Item templates\base.html.twig templates\base.html.twig.backup
+
+# Aplicar correcao
+(Get-Content templates\base.html.twig) -replace "path\('cemadenindex'\)", "path('app_cemaden_rainfall')" | Set-Content templates\base.html.twig
+(Get-Content templates\base.html.twig) -replace "r starts with 'cemaden'", "app.request.attributes.get('_route') starts with 'app_cemaden_'" | Set-Content templates\base.html.twig
+
+# Limpar cache
+php bin\console cache:clear
+```
+
+## Verificacao
+
+```bash
+# Verificar se ainda existe cemadenindex
+grep -R "cemadenindex" templates/ src/ config/
+
+# Se retornar nada, a correcao foi aplicada com sucesso
+```
+
+## Commits Relacionados
+
+- `4a71454` - CemadenController.php
+- `c5d81e0` - rainfall.html.twig
+- `e5bc6b9` - FIX_BASE_HTML_INSTRUCTIONS.md
