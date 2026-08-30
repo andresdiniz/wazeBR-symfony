@@ -1,4 +1,6 @@
 security:
+    access_denied_url: /access-denied
+
     providers:
         app_user_provider:
             entity:
