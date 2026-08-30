@@ -9,7 +9,10 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: CemadenStationRepository::class)]
 #[ORM\Table(name: 'cemaden_stations')]
-#[ORM\UniqueConstraint(name: 'uniq_cod_partner', columns: ['cod_estacao', 'partner_id'])]
+#[ORM\UniqueConstraint(
+    name: 'uniq_cod_partner',
+    columns: ['cod_estacao', 'partner_id']
+)]
 #[ORM\HasLifecycleCallbacks]
 class CemadenStation
 {
@@ -18,7 +21,7 @@ class CemadenStation
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 30)]
+    #[ORM\Column(name: 'cod_estacao', length: 30)]
     private string $codEstacao;
 
     #[ORM\Column(length: 120)]
@@ -30,29 +33,49 @@ class CemadenStation
     #[ORM\Column(length: 2)]
     private string $uf;
 
-    #[ORM\Column(type: 'decimal', precision: 10, scale: 7, nullable: true)]
+    #[ORM\Column(
+        type: 'decimal',
+        precision: 10,
+        scale: 7,
+        nullable: true
+    )]
     private ?string $lat = null;
 
-    #[ORM\Column(type: 'decimal', precision: 10, scale: 7, nullable: true)]
+    #[ORM\Column(
+        type: 'decimal',
+        precision: 10,
+        scale: 7,
+        nullable: true
+    )]
     private ?string $lng = null;
 
-    #[ORM\Column(type: 'string', length: 20, enumType: StationType::class)]
+    #[ORM\Column(
+        name: 'station_type',
+        type: 'string',
+        length: 20,
+        enumType: StationType::class
+    )]
     private StationType $stationType;
 
-    #[ORM\Column(type: 'boolean')]
+    #[ORM\Column(name: 'is_active', type: 'boolean')]
     private bool $isActive = true;
 
     #[ORM\ManyToOne(targetEntity: Partner::class)]
-    #[ORM\JoinColumn(name: 'partner_id', referencedColumnName: 'id', nullable: false, onDelete: 'CASCADE')]
+    #[ORM\JoinColumn(
+        name: 'partner_id',
+        referencedColumnName: 'id',
+        nullable: false,
+        onDelete: 'CASCADE'
+    )]
     private Partner $partner;
 
-    #[ORM\Column(type: 'text', nullable: true)]
+    #[ORM\Column(name: 'hydro_url', type: 'text', nullable: true)]
     private ?string $hydroUrl = null;
 
-    #[ORM\Column(type: 'datetime_immutable')]
+    #[ORM\Column(name: 'created_at', type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
 
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    #[ORM\Column(name: 'updated_at', type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $updatedAt = null;
 
     #[ORM\PrePersist]
@@ -67,40 +90,138 @@ class CemadenStation
         $this->updatedAt = new \DateTimeImmutable();
     }
 
-    // Getters & Setters
+    public function getId(): ?int
+    {
+        return $this->id;
+    }
 
-    public function getId(): ?int { return $this->id; }
+    public function getCodEstacao(): string
+    {
+        return $this->codEstacao;
+    }
 
-    public function getCodEstacao(): string { return $this->codEstacao; }
-    public function setCodEstacao(string $codEstacao): static { $this->codEstacao = $codEstacao; return $this; }
+    public function setCodEstacao(string $codEstacao): static
+    {
+        $this->codEstacao = $codEstacao;
 
-    public function getNome(): string { return $this->nome; }
-    public function setNome(string $nome): static { $this->nome = $nome; return $this; }
+        return $this;
+    }
 
-    public function getMunicipio(): string { return $this->municipio; }
-    public function setMunicipio(string $municipio): static { $this->municipio = $municipio; return $this; }
+    public function getNome(): string
+    {
+        return $this->nome;
+    }
 
-    public function getUf(): string { return $this->uf; }
-    public function setUf(string $uf): static { $this->uf = $uf; return $this; }
+    public function setNome(string $nome): static
+    {
+        $this->nome = $nome;
 
-    public function getLat(): ?float { return $this->lat !== null ? (float) $this->lat : null; }
-    public function setLat(?float $lat): static { $this->lat = $lat !== null ? (string) $lat : null; return $this; }
+        return $this;
+    }
 
-    public function getLng(): ?float { return $this->lng !== null ? (float) $this->lng : null; }
-    public function setLng(?float $lng): static { $this->lng = $lng !== null ? (string) $lng : null; return $this; }
+    public function getMunicipio(): string
+    {
+        return $this->municipio;
+    }
 
-    public function getStationType(): StationType { return $this->stationType; }
-    public function setStationType(StationType $stationType): static { $this->stationType = $stationType; return $this; }
+    public function setMunicipio(string $municipio): static
+    {
+        $this->municipio = $municipio;
 
-    public function isActive(): bool { return $this->isActive; }
-    public function setIsActive(bool $isActive): static { $this->isActive = $isActive; return $this; }
+        return $this;
+    }
 
-    public function getPartner(): Partner { return $this->partner; }
-    public function setPartner(Partner $partner): static { $this->partner = $partner; return $this; }
+    public function getUf(): string
+    {
+        return $this->uf;
+    }
 
-    public function getHydroUrl(): ?string { return $this->hydroUrl; }
-    public function setHydroUrl(?string $hydroUrl): static { $this->hydroUrl = $hydroUrl; return $this; }
+    public function setUf(string $uf): static
+    {
+        $this->uf = $uf;
 
-    public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
-    public function getUpdatedAt(): ?\DateTimeImmutable { return $this->updatedAt; }
+        return $this;
+    }
+
+    public function getLat(): ?float
+    {
+        return $this->lat !== null ? (float) $this->lat : null;
+    }
+
+    public function setLat(float|string|null $lat): static
+    {
+        $this->lat = $lat !== null ? (string) $lat : null;
+
+        return $this;
+    }
+
+    public function getLng(): ?float
+    {
+        return $this->lng !== null ? (float) $this->lng : null;
+    }
+
+    public function setLng(float|string|null $lng): static
+    {
+        $this->lng = $lng !== null ? (string) $lng : null;
+
+        return $this;
+    }
+
+    public function getStationType(): StationType
+    {
+        return $this->stationType;
+    }
+
+    public function setStationType(StationType $stationType): static
+    {
+        $this->stationType = $stationType;
+
+        return $this;
+    }
+
+    public function isActive(): bool
+    {
+        return $this->isActive;
+    }
+
+    public function setIsActive(bool $isActive): static
+    {
+        $this->isActive = $isActive;
+
+        return $this;
+    }
+
+    public function getPartner(): Partner
+    {
+        return $this->partner;
+    }
+
+    public function setPartner(Partner $partner): static
+    {
+        $this->partner = $partner;
+
+        return $this;
+    }
+
+    public function getHydroUrl(): ?string
+    {
+        return $this->hydroUrl;
+    }
+
+    public function setHydroUrl(?string $hydroUrl): static
+    {
+        $this->hydroUrl = $hydroUrl;
+
+        return $this;
+    }
+
+    public function getCreatedAt(): \DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    public function getUpdatedAt(): ?\DateTimeImmutable
+    {
+        return $this->updatedAt;
+    }
 }

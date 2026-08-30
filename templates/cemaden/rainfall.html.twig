@@ -2,88 +2,103 @@
 
 {% block title %}Quantidade de Chuva{% endblock %}
 
+{% block header_title %}
+    <i class="bi bi-droplet"></i> Quantidade de Chuva
+{% endblock %}
+
 {% block body %}
-<div class="container-fluid mt-4">
+<div class="container-fluid py-4">
     <div class="row mb-4">
         <div class="col-12">
-            <h2 class="text-primary">
-                <i class="bi bi-droplet"></i> Quantidade de Chuva
+            <h2 class="text-primary mb-1">
+                <i class="bi bi-cloud-rain"></i>
+                Monitoramento Pluviométrico
             </h2>
-            <p class="text-muted">Pluviô££´metros cadastrados e suas mediçµ£es</p>
+            <p class="text-muted mb-0">
+                Acompanhamento da chuva acumulada nas estações pluviométricas.
+            </p>
         </div>
     </div>
 
-    {% if stationCards is defined and stationCards is not empty %}
-        <div class="row">
-            {% for item in stationCards %}
-                {% set station = item.station %}
-                
-                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-header bg-primary text-white">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0">
-                                    <i class="bi bi-droplet"></i>
-                                    {{ station.name|default('Estaçª£o ' ~ station.code) }}
-                                </h5>
-                                {% if station.active %}
-                                    <span class="badge bg-light text-primary">Ativo</span>
-                                {% else %}
-                                    <span class="badge bg-light text-secondary">Inativo</span>
-                                {% endif %}
-                            </div>
+    <div class="row g-4">
+        {% for card in stationCards %}
+            <div class="col-12 col-md-6 col-xl-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-primary text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-droplet"></i>
+                                {{ card.station.nome }}
+                            </h5>
+
+                            <span class="badge bg-light text-primary">
+                                {{ card.station.codEstacao }}
+                            </span>
                         </div>
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <small class="text-muted">CÓ¡­DIGO</small>
-                                <p class="mb-0"><strong>{{ station.code }}</strong></p>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <small class="text-muted">QUANTIDADE DE CHUVA</small>
-                                <div class="d-flex align-items-center">
-                                    <i class="bi bi-droplet-fill text-primary" style="font-size: 1.5rem;"></i>
-                                    <h3 class="mb-0 ms-2 text-primary">
-                                        {{ item.lastRainfall|default(0)|number_format(2, ',', '.') }} mm
-                                    </h3>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <small class="text-muted d-block mb-1">
+                                CHUVA ACUMULADA
+                            </small>
+
+                            {% if card.lastRainfall is not null %}
+                                <div class="fs-3 fw-bold text-primary">
+                                    {{ card.lastRainfall|number_format(2, ',', '.') }} mm
                                 </div>
-                                {% if item.lastRainfallAt %}
-                                    <small class="text-muted">
-                                        Último: {{ item.lastRainfallAt|date('d/m/Y H:i') }}
-                                    </small>
-                                {% else %}
-                                    <small class="text-muted">Sem registros</small>
-                                {% endif %}
-                            </div>
-                            
-                            {% if station.city %}
-                                <div class="mb-3">
-                                    <small class="text-muted">CIDADE</small>
-                                    <p class="mb-0"><i class="bi bi-geo-alt"></i> {{ station.city }}</p>
+                            {% else %}
+                                <div class="fs-4 fw-bold text-muted">
+                                    Sem dados
                                 </div>
                             {% endif %}
                         </div>
-                        <div class="card-footer bg-white">
-                            <a href="{{ path('app_cemaden_station_show', {id: station.id}) }}" class="btn btn-primary btn-sm w-100">
-                                <i class="bi bi-eye"></i> Ver Detalhes
-                            </a>
+
+                        <div class="mb-3">
+                            <small class="text-muted d-block mb-1">
+                                MUNICÍPIO
+                            </small>
+                            <div>
+                                <i class="bi bi-geo-alt"></i>
+                                {{ card.station.municipio }} - {{ card.station.uf }}
+                            </div>
+                        </div>
+
+                        <div>
+                            <small class="text-muted d-block mb-1">
+                                ÚLTIMA MEDIÇÃO
+                            </small>
+
+                            {% if card.lastRainfallAt is not null %}
+                                <div>
+                                    <i class="bi bi-clock"></i>
+                                    {{ card.lastRainfallAt|date('d/m/Y H:i') }}
+                                </div>
+                            {% else %}
+                                <div class="text-muted">—</div>
+                            {% endif %}
                         </div>
                     </div>
+
+                    <div class="card-footer bg-transparent">
+                        <a
+                            href="{{ path('app_cemaden_station_show', {id: card.station.id}) }}"
+                            class="btn btn-outline-primary btn-sm w-100"
+                        >
+                            <i class="bi bi-eye"></i>
+                            Ver detalhes
+                        </a>
+                    </div>
                 </div>
-            {% endfor %}
-        </div>
-    {% else %}
-        <div class="alert alert-info" role="alert">
-            <i class="bi bi-info-circle"></i>
-            <strong>Nenhum pluviô££´metro cadastrado.</strong>
-            <p class="mb-0">Cadastre estaçµ£es pluviom é tricas para monitorar a quantidade de chuva.</p>
-        </div>
-    {% endif %}
-    
-    <div class="mt-4">
-        <a href="{{ path('app_home') }}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Voltar
-        </a>
+            </div>
+        {% else %}
+            <div class="col-12">
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-info-circle"></i>
+                    Nenhuma estação pluviométrica ativa foi encontrada.
+                </div>
+            </div>
+        {% endfor %}
     </div>
 </div>
 {% endblock %}

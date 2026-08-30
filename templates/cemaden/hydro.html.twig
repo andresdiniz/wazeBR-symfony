@@ -1,0 +1,148 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Dados Hidrológicos{% endblock %}
+
+{% block header_title %}
+    <i class="bi bi-water"></i> Dados Hidrológicos
+{% endblock %}
+
+{% block body %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="text-info mb-1">
+                <i class="bi bi-water"></i>
+                Monitoramento Hidrológico
+            </h2>
+            <p class="text-muted mb-0">
+                Acompanhamento do nível dos rios nas estações hidrológicas.
+            </p>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        {% for item in hydroCards %}
+            <div class="col-12 col-md-6 col-xl-4">
+                {% set statusClass = 'secondary' %}
+                {% set statusText = 'Sem dados' %}
+                {% set statusIcon = 'bi-question-circle' %}
+
+                {% if item.alertLevel == 'transbordamento' %}
+                    {% set statusClass = 'danger' %}
+                    {% set statusText = 'Transbordamento' %}
+                    {% set statusIcon = 'bi-exclamation-triangle-fill' %}
+                {% elseif item.alertLevel == 'alerta' %}
+                    {% set statusClass = 'warning' %}
+                    {% set statusText = 'Alerta' %}
+                    {% set statusIcon = 'bi-exclamation-circle-fill' %}
+                {% elseif item.alertLevel == 'atencao' %}
+                    {% set statusClass = 'info' %}
+                    {% set statusText = 'Atenção' %}
+                    {% set statusIcon = 'bi-info-circle-fill' %}
+                {% elseif item.waterLevel is not null %}
+                    {% set statusClass = 'success' %}
+                    {% set statusText = 'Normal' %}
+                    {% set statusIcon = 'bi-check-circle-fill' %}
+                {% endif %}
+
+                <div class="card shadow-sm h-100 border-{{ statusClass }}">
+                    <div class="card-header bg-{{ statusClass }} text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-water"></i>
+                                {{ item.station.nome }}
+                            </h5>
+
+                            <span class="badge bg-light text-{{ statusClass }}">
+                                {{ item.station.codEstacao }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <small class="text-muted d-block mb-1">
+                                NÍVEL DO RIO
+                            </small>
+
+                            {% if item.waterLevel is not null %}
+                                <div class="fs-3 fw-bold text-{{ statusClass }}">
+                                    {{ item.waterLevel|number_format(3, ',', '.') }} m
+                                </div>
+                            {% else %}
+                                <div class="fs-4 fw-bold text-muted">
+                                    Sem dados
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <small class="text-muted d-block mb-1">
+                                SITUAÇÃO
+                            </small>
+
+                            <span class="badge bg-{{ statusClass }}">
+                                <i class="bi {{ statusIcon }}"></i>
+                                {{ statusText }}
+                            </span>
+                        </div>
+
+                        <div class="mb-3">
+                            <small class="text-muted d-block mb-1">
+                                MUNICÍPIO
+                            </small>
+                            <div>
+                                <i class="bi bi-geo-alt"></i>
+                                {{ item.station.municipio }} - {{ item.station.uf }}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <small class="text-muted d-block mb-1">
+                                COTAS DE REFERÊNCIA
+                            </small>
+
+                            <div class="small">
+                                <div>
+                                    Atenção:
+                                    {{ item.cotaAtencao is not null ? item.cotaAtencao|number_format(2, ',', '.') ~ ' m' : '—' }}
+                                </div>
+                                <div>
+                                    Alerta:
+                                    {{ item.cotaAlerta is not null ? item.cotaAlerta|number_format(2, ',', '.') ~ ' m' : '—' }}
+                                </div>
+                                <div>
+                                    Transbordamento:
+                                    {{ item.cotaTransbordamento is not null ? item.cotaTransbordamento|number_format(2, ',', '.') ~ ' m' : '—' }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <small class="text-muted d-block mb-1">
+                                ÚLTIMA MEDIÇÃO
+                            </small>
+
+                            {% if item.lastUpdate is not null %}
+                                <div>
+                                    <i class="bi bi-clock"></i>
+                                    {{ item.lastUpdate|date('d/m/Y H:i') }}
+                                </div>
+                            {% else %}
+                                <div class="text-muted">—</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="col-12">
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-info-circle"></i>
+                    Nenhuma estação hidrológica ativa foi encontrada.
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

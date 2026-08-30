@@ -1,6 +1,13 @@
 security:
     access_denied_url: /access-denied
 
+    role_hierarchy:
+        ROLE_USER: [ROLE_CEMADEN]
+        ROLE_OPERATOR: [ROLE_USER]
+        ROLE_ACCOUNT_ADMIN: [ROLE_USER]
+        ROLE_ADMIN: [ROLE_USER, ROLE_ACCOUNT_ADMIN, ROLE_CEMADEN]
+        ROLE_SUPER_ADMIN: [ROLE_ADMIN, ROLE_ACCOUNT_ADMIN, ROLE_CEMADEN]
+
     providers:
         app_user_provider:
             entity:
@@ -59,7 +66,7 @@ security:
         - { path: '^/traffic', roles: ROLE_USER }
         - { path: '^/notifications', roles: ROLE_USER }
         - { path: '^/operator', roles: ROLE_OPERATOR }
-        - { path: '^/cemaden', roles: ROLE_CEMADEN }
-        - { path: '^/cifs', roles: ROLE_CEMADEN }
-        - { path: '^/hydro', roles: ROLE_CEMADEN }
+        - { path: '^/cemaden', roles: ROLE_USER }
+        - { path: '^/cifs', roles: ROLE_USER }
+        - { path: '^/hydro', roles: ROLE_USER }
         - { path: '^/', roles: ROLE_USER }

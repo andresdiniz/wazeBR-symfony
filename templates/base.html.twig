@@ -47,7 +47,9 @@
         <a href="{{ path('jam_index') }}" class="{{ r starts with 'jam_' ? 'active' }}"><i class="bi bi-cone-striped"></i><span>Congestionamentos</span></a>
         <a href="{{ path('route_admin_index') }}" class="{{ r starts with 'route_admin_' ? 'active' }}"><i class="bi bi-signpost-split"></i><span>Rotas</span></a>
         <a href="{{ path('cifs_index') }}" class="{{ r starts with 'cifs_' ? 'active' }}"><i class="bi bi-calendar-event"></i><span>CIFS</span></a>
-        <a href="{{ path('cemaden_index') }}" class="{{ r starts with 'cemaden_' ? 'active' }}"><i class="bi bi-droplet"></i><span>Quantidade de Chuva</span></a>
+        <a href="{{ path('app_cemaden_index') }}" class="{{ r starts with 'app_cemaden_' and 'rainfall' in r ? 'active' : '' }}">
+            <i class="bi bi-droplet"></i><span>Quantidade de Chuva</span>
+        </a>
         <a href="{{ path('hydro_live') }}" class="{{ r starts with 'hydro_' ? 'active' }}"><i class="bi bi-water"></i><span>Hidrológico</span></a>
         <a href="{{ path('operator_live') }}" class="{{ r starts with 'operator_' ? 'active' }}"><i class="bi bi-broadcast"></i><span>Operador ao vivo</span></a>
         <a href="{{ path('notification_index') }}" class="{{ r starts with 'notification_' ? 'active' }}"><i class="bi bi-bell"></i><span>Notificações</span></a>
@@ -63,7 +65,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script><script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
 <script>
 document.getElementById('sidebarToggle')?.addEventListener('click',function(){document.getElementById('sidebar').classList.toggle('show');document.getElementById('sidebarBackdrop').classList.toggle('show');});document.getElementById('sidebarBackdrop')?.addEventListener('click',function(){document.getElementById('sidebar').classList.remove('show');this.classList.remove('show');});
-(function(){var switchEl=document.getElementById('themeSwitch');if(!switchEl)return;function applyActiveButton(theme){switchEl.querySelectorAll('button').forEach(function(btn){btn.classList.toggle('active',btn.dataset.theme===theme);});}applyActiveButton(document.documentElement.getAttribute('data-theme')||'light');switchEl.addEventListener('click',function(e){var btn=e.target.closest('button[data-theme]');if(!btn)return;var theme=btn.dataset.theme;document.documentElement.setAttribute('data-theme',theme);document.documentElement.setAttribute('data-bs-theme',theme);try{localStorage.setItem('wazebr-theme',theme);}catch(e){}applyActiveButton(theme);});})();
+(function(){var switchEl=document.getElementById('themeSwitch');if(!switchEl)return;function applyActiveButton(theme){switchEl.querySelectorAll('button').forEach(function(btn){btn.classList.toggle('active',btn.dataset.theme===theme);});}applyActiveButton(document.documentElement.getAttribute('data-theme')||'light');switchEl.addEventListener('click',function(e){var btn=e.target.closest('button[data-theme]');if(!btn)return;var theme=btn.dataset.theme;document.documentElement.setAttribute('data-theme',theme);document.documentElement.setAttribute('data-bs-theme',theme);try{localStorage.setItem('wazebr-theme',theme);}catch(e){}applyActiveButton(theme);})();
 (function(){var alertToggle=document.querySelector('.alerts-toggle');var submenu=document.getElementById('alertsSubmenu');if(!alertToggle||!submenu)return;alertToggle.addEventListener('click',function(e){if(window.matchMedia('(max-width:768px)').matches){e.preventDefault();}var open=alertToggle.getAttribute('aria-expanded')==='true';alertToggle.setAttribute('aria-expanded',String(!open));submenu.classList.toggle('is-open',!open);});})();
 /*
  * Botões de download/export (.js-download-btn) em qualquer página: mostra um
