@@ -25,13 +25,11 @@ class CemadenController extends AbstractController
         ]);
     }
 
-    /**
-     * Página de quantidade de chuva - mostra pluviô££´metros cadastrados
-     */
     #[Route('/cemaden/rainfall', name: 'app_cemaden_rainfall', methods: ['GET'])]
     public function rainfall(): Response
     {
         $stations = $this->stationRepository->findAll();
+        $stationCards = [];
         
         foreach ($stations as $station) {
             $lastData = $this->dataRepository->findOneBy(
@@ -39,17 +37,15 @@ class CemadenController extends AbstractController
                 ['createdAt' => 'DESC']
             );
             
-            if ($lastData) {
-                $station->lastRainfall = $lastData->getRainfall();
-                $station->lastRainfallAt = $lastData->getCreatedAt();
-            } else {
-                $station->lastRainfall = null;
-                $station->lastRainfallAt = null;
-            }
+            $stationCards[] = [
+                'station' => $station,
+                'lastRainfall' => $lastData?->getRainfall(),
+                'lastRainfallAt' => $lastData?->getCreatedAt(),
+            ];
         }
         
         return $this->render('cemaden/rainfall.html.twig', [
-            'stations' => $stations,
+            'stationCards' => $stationCards,
         ]);
     }
 
