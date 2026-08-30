@@ -1,0 +1,52 @@
+{# templates/partner_admin/_form.html.twig #}
+{# Formuló¡££xio reutilizá¡£vel para new e edit #}
+
+{{ form_start(form) }}
+    <div class="mb-3">
+        {{ form_label(form.name) }}
+        {{ form_widget(form.name, {'attr': {'class': 'form-control'}}) }}
+        {{ form_errors(form.name) }}
+    </div>
+    
+    <div class="mb-3">
+        {{ form_label(form.email) }}
+        {{ form_widget(form.email, {'attr': {'class': 'form-control'}}) }}
+        {{ form_errors(form.email) }}
+    </div>
+    
+    <div class="mb-3">
+        {{ form_label(form.active) }}
+        {{ form_widget(form.active, {'attr': {'class': 'form-check-input'}}) }}
+        {{ form_errors(form.active) }}
+    </div>
+    
+    <div class="mb-3">
+        {{ form_label(form.apiKey) }}
+        {{ form_widget(form.apiKey, {'attr': {'class': 'form-control'}}) }}
+        {{ form_errors(form.apiKey) }}
+        <small class="form-text text-muted">Chave ú nica para autentica çã££o da API</small>
+    </div>
+    
+    <div class="mb-3">
+        {{ form_label(form.webhookUrl) }}
+        {{ form_widget(form.webhookUrl, {'attr': {'class': 'form-control'}}) }}
+        {{ form_errors(form.webhookUrl) }}
+        <small class="form-text text-muted">URL para recebimento de notifica çõ£££es</small>
+    </div>
+    
+    <div class="mb-3">
+        {{ form_label(form.settings) }}
+        {{ form_widget(form.settings, {'attr': {'class': 'form-control', 'rows': 5}}) }}
+        {{ form_errors(form.settings) }}
+        <small class="form-text text-muted">Configura çõ£££es em formato JSON</small>
+    </div>
+    
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+        <a href="{{ path('app_partner_admin_index') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-times"></i> Cancelar
+        </a>
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i> {{ button_label|default('Salvar') }}
+        </button>
+    </div>
+{{ form_end(form) }}

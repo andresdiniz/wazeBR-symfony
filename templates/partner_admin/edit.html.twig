@@ -1,0 +1,93 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Editar {{ partner.name }}{% endblock %}
+
+{% block body %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-edit"></i> Editar {{ partner.name }}</h1>
+                <a href="{{ path('app_partner_admin_index') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-times"></i> Cancelar
+                </a>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0">Atualize os dados do parceiro</h5>
+                </div>
+                <div class="card-body">
+                    {{ form_start(form) }}
+                        
+                        <div class="mb-3">
+                            {{ form_label(form.name) }}
+                            {{ form_widget(form.name, {'attr': {'class': 'form-control'}}) }}
+                            {{ form_errors(form.name) }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form_label(form.email) }}
+                            {{ form_widget(form.email, {'attr': {'class': 'form-control'}}) }}
+                            {{ form_errors(form.email) }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form_label(form.active) }}
+                            {{ form_widget(form.active, {'attr': {'class': 'form-check-input'}}) }}
+                            {{ form_errors(form.active) }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form_label(form.apiKey) }}
+                            {{ form_widget(form.apiKey, {'attr': {'class': 'form-control'}}) }}
+                            {{ form_errors(form.apiKey) }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form_label(form.webhookUrl) }}
+                            {{ form_widget(form.webhookUrl, {'attr': {'class': 'form-control'}}) }}
+                            {{ form_errors(form.webhookUrl) }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form_label(form.settings) }}
+                            {{ form_widget(form.settings, {'attr': {'class': 'form-control', 'rows': 5}}) }}
+                            {{ form_errors(form.settings) }}
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ path('app_partner_admin_index') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-save"></i> Salvar Altera çõ£££es
+                            </button>
+                        </div>
+                    
+                    {{ form_end(form) }}
+                </div>
+            </div>
+            
+            {# Bot ão de deletar - apenas para ROLE_PARTNER e ROLE_ADMIN #}
+            {% if can_edit is defined and can_edit %}
+                <div class="card shadow-sm mt-4 border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0"><i class="fas fa-trash-alt"></i> Zona de Perigo</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Uma vez removido, este parceiro n ã o poder á ser recuperado.</p>
+                        <form action="{{ path('app_partner_admin_delete', {id: partner.id}) }}" method="post" 
+                              onsubmit="return confirm('Tem certeza que deseja remover este parceiro?');">
+                            <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ partner.id) }}">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash-alt"></i> Remover Parceiro
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

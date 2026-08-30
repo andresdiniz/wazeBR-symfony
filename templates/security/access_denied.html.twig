@@ -1,0 +1,65 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Acesso Negado{% endblock %}
+
+{% block body %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-sm border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-lock"></i> Acesso Negado
+                    </h4>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-exclamation-triangle text-danger" style="font-size: 4rem;"></i>
+                    </div>
+                    
+                    <h5 class="card-title mb-3">Voc ê n ã o tem permiss ã o para acessar esta p á gina</h5>
+                    
+                    <p class="card-text text-muted mb-4">
+                        {% if exception_message is defined and exception_message %}
+                            {{ exception_message }}
+                        {% else %}
+                            Seu usu á rio n ã o possui os privil é gios necess á rios para realizar esta a çã££o.
+                        {% endif %}
+                    </p>
+                    
+                    {% if missing_role is defined %}
+                        <div class="alert alert-info" role="alert">
+                            <strong>Permiss ã o necess á ria:</strong> {{ missing_role }}
+                        </div>
+                    {% endif %}
+                    
+                    <div class="mt-4">
+                        {% if app.user %}
+                            <a href="{{ path('app_home') }}" class="btn btn-primary">
+                                <i class="fas fa-home"></i> Voltar ao In í cio
+                            </a>
+                            <a href="{{ path('app_dashboard') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-tachometer-alt"></i> Ir para Dashboard
+                            </a>
+                        {% else %}
+                            <a href="{{ path('app_login') }}" class="btn btn-primary">
+                                <i class="fas fa-sign-in-alt"></i> Fazer Login
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-footer text-muted text-center">
+                    <small>
+                        {% if app.user %}
+                            Usu á rio: {{ app.user.email }} | 
+                            Roles: {{ app.user.roles | join(', ') }}
+                        {% else %}
+                            Voc ê n ã o est á autenticado
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
