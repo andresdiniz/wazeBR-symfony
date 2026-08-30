@@ -1,0 +1,87 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Quantidade de Chuva{% endblock %}
+
+{% block body %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="text-primary">
+                <i class="bi bi-droplet"></i> Quantidade de Chuva
+            </h2>
+            <p class="text-muted">Pluviô££´metros cadastrados e suas mediçµ£es</p>
+        </div>
+    </div>
+
+    {% if stations is defined and stations is not empty %}
+        <div class="row">
+            {% for station in stations %}
+                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-primary text-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-droplet"></i>
+                                    {{ station.name|default('Estaçª£o ' ~ station.code) }}
+                                </h5>
+                                {% if station.active %}
+                                    <span class="badge bg-light text-primary">Ativo</span>
+                                {% else %}
+                                    <span class="badge bg-light text-secondary">Inativo</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <small class="text-muted">CÓ¡­DIGO</small>
+                                <p class="mb-0"><strong>{{ station.code }}</strong></p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <small class="text-muted">QUANTIDADE DE CHUVA</small>
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-droplet-fill text-primary" style="font-size: 1.5rem;"></i>
+                                    <h3 class="mb-0 ms-2 text-primary">
+                                        {{ station.lastRainfall|default(0)|number_format(2) }} mm
+                                    </h3>
+                                </div>
+                                {% if station.lastRainfallAt %}
+                                    <small class="text-muted">
+                                        Último: {{ station.lastRainfallAt|date('d/m/Y H:i') }}
+                                    </small>
+                                {% else %}
+                                    <small class="text-muted">Sem registros</small>
+                                {% endif %}
+                            </div>
+                            
+                            {% if station.city %}
+                                <div class="mb-3">
+                                    <small class="text-muted">CIDADE</small>
+                                    <p class="mb-0"><i class="bi bi-geo-alt"></i> {{ station.city }}</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="card-footer bg-white">
+                            <a href="{{ path('app_cemaden_station_show', {id: station.id}) }}" class="btn btn-primary btn-sm w-100">
+                                <i class="bi bi-eye"></i> Ver Detalhes
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info" role="alert">
+            <i class="bi bi-info-circle"></i>
+            <strong>Nenhum pluviô££´metro cadastrado.</strong>
+            <p class="mb-0">Cadastre estaçµ£es pluviom é tricas para monitorar a quantidade de chuva.</p>
+        </div>
+    {% endif %}
+    
+    <div class="mt-4">
+        <a href="{{ path('app_home') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+    </div>
+</div>
+{% endblock %}
