@@ -4,73 +4,73 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Repository\CemadenStationRepository;
 use App\Repository\CemadenDataRepository;
-use App\Repository\CemadenHydroDataRepository;
-use App\Service\TenantContext;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Routing\Annotation\Route;
 
-#[Route('/cemaden', name: 'cemaden_')]
-#[IsGranted('ROLE_USER')] // ← apenas usuário logado, sem ROLE_CEMADEN
 class CemadenController extends AbstractController
 {
     public function __construct(
-        private readonly TenantContext             $tenantContext,
-        private readonly CemadenDataRepository      $cemadenRepo,
-        private readonly CemadenHydroDataRepository $hydroRepo,
+        private CemadenStationRepository $stationRepository,
+        private CemadenDataRepository $dataRepository
     ) {}
 
-    #[Route('', name: 'index')]
-    public function index(Request $request): Response
+    #[Route('/cemaden', name: 'app_cemaden_index', methods: ['GET'])]
+    public function index(): Response
     {
-        $partner = $this->tenantContext->requirePartner();
-        $level   = $request->query->get('level');
-        $state   = $request->query->get('state');
-
-        // Dados pluviométricos
-        $data = $this->cemadenRepo->findFilteredByPartner(
-            partner: $partner,
-            alertLevel: $level ?: null,
-            state: $state ?: null,
-        );
-
-        // Dados hidrológicos (última leitura de cada estação).
-        //
-        // NOTA: aqui antes tinha uma query SQL bruta contra
-        // cemaden_stations / cemaden_hydro_readings — tabelas que não
-        // existem no schema atual (o modelo real é a tabela única
-        // cemaden_hydro_data, mapeada pela entidade CemadenHydroData).
-        // Isso fazia essa seção da página quebrar com erro de SQL toda
-        // vez que carregava. Trocado pelo método que já existe e já é
-        // usado em /hidrologico/live para o mesmo propósito.
-        $hydroData = $this->hydroRepo->findLatestByPartner($partner);
-
         return $this->render('cemaden/index.html.twig', [
-            'partner'    => $partner,
-            'data'       => $data,
-            'hydro_data' => $hydroData,
-            'level'      => $level,
-            'state'      => $state,
+            'controller_name' => 'CemadenController',
         ]);
     }
 
-    #[Route('/{id}', name: 'show', requirements: ['id' => '\\d+'])]
-    public function show(int $id): Response
+    /**
+     * Página de quantidade de chuva - mostra pluviô££´metros cadastrados
+     */
+    #[Route('/cemaden/rainfall', name: 'app_cemaden_rainfall', methods: ['GET'])]
+    public function rainfall(): Response
     {
-        $partner = $this->tenantContext->requirePartner();
-        $item    = $this->cemadenRepo->findOneByPartner($id, $partner);
-
-        if (!$item) {
-            throw $this->createNotFoundException('Dado CEMADEN não encontrado.');
+        $stations = $this->stationRepository->findAll();
+        
+        foreach ($stations as $station) {
+            $lastData = $this->dataRepository->findOneBy(
+                ['station' => $station],
+                ['createdAt' => 'DESC']
+            );
+            
+            if ($lastData) {
+                $station->lastRainfall = $lastData->getRainfall();
+                $station->lastRainfallAt = $lastData->getCreatedAt();
+            } else {
+                $station->lastRainfall = null;
+                $station->lastRainfallAt = null;
+            }
         }
+        
+        return $this->render('cemaden/rainfall.html.twig', [
+            'stations' => $stations,
+        ]);
+    }
 
-        return $this->render('cemaden/show.html.twig', [
-            'partner' => $partner,
-            'item'    => $item,
+    #[Route('/cemaden/station/{id}', name: 'app_cemaden_station_show', methods: ['GET'])]
+    public function stationShow(int $id): Response
+    {
+        $station = $this->stationRepository->find($id);
+        
+        if (!$station) {
+            throw $this->createNotFoundException('Estaçª£o nã££o encontrada');
+        }
+        
+        $recentData = $this->dataRepository->findBy(
+            ['station' => $station],
+            ['createdAt' => 'DESC'],
+            10
+        );
+        
+        return $this->render('cemaden/station_show.html.twig', [
+            'station' => $station,
+            'recentData' => $recentData,
         ]);
     }
 }
-
