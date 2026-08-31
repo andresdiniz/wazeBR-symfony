@@ -98,6 +98,35 @@ class WazeAlertRepository extends ServiceEntityRepository
             ->getSingleScalarResult();
     }
 
+    /**
+     * Contagem agrupada por (tipo, subtipo) num período, ordenada do
+     * mais frequente pro menos, limitada a $limit linhas — usada pelo
+     * gráfico "Alertas por tipo" do dashboard.
+     *
+     * NOTA: era chamado sem existir aqui, causando erro fatal
+     * (InvalidMagicMethodCall — o Doctrine tentava interpretar
+     * "countBySubtypeInPeriod" como um magic finder por um campo
+     * chamado "subtypeInPeriod", que não existe) toda vez que um
+     * usuário comum carregava o dashboard.
+     *
+     * @return array<int, array{type: string, subtype: ?string, total: int}>
+     */
+    public function countBySubtypeInPeriod(Partner $partner, \DateTimeInterface $from, \DateTimeInterface $to, int $limit = 10): array
+    {
+        return $this->createQueryBuilder('a')
+            ->select('a.type AS type, a.subtype AS subtype, COUNT(a.id) AS total')
+            ->where('a.partner = :partner')
+            ->andWhere('a.pubMillis BETWEEN :from AND :to')
+            ->setParameter('partner', $partner)
+            ->setParameter('from', $from->getTimestamp() * 1000)
+            ->setParameter('to', $to->getTimestamp() * 1000)
+            ->groupBy('a.type, a.subtype')
+            ->orderBy('total', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getArrayResult();
+    }
+
     public function findCriticalByPartner(Partner $partner, int $minReliability = 8, int $windowMinutes = 30): array
     {
         $since = (time() - max(1, $windowMinutes) * 60) * 1000;
