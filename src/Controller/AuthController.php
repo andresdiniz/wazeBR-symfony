@@ -6,12 +6,11 @@ namespace App\Controller;
 
 use App\Entity\User;
 use App\Repository\UserRepository;
+use App\Service\PhpMailerService;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Mailer\MailerInterface;
-use Symfony\Component\Mime\Email;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -23,10 +22,9 @@ class AuthController extends AbstractController
     public function __construct(
         private readonly UserRepository              $userRepository,
         private readonly UserPasswordHasherInterface  $hasher,
-        private readonly MailerInterface              $mailer,
+        private readonly PhpMailerService             $mailer,
         private readonly LoggerInterface              $logger,
         private readonly string                       $appName,
-        private readonly string                       $senderEmail,
     ) {}
 
     #[Route('/login', name: 'auth_login')]
@@ -165,18 +163,16 @@ class AuthController extends AbstractController
     {
         $resetUrl = $this->generateUrl('auth_reset', ['token' => $token], UrlGeneratorInterface::ABSOLUTE_URL);
 
-        $email = (new Email())
-            ->from($this->senderEmail)
-            ->to($user->getEmail())
-            ->subject("[{$this->appName}] Redefinição de senha")
-            ->html($this->buildResetEmailHtml($user, $resetUrl));
+        $sent = $this->mailer->send(
+            toEmail: $user->getEmail(),
+            toName: $user->getName() ?? $user->getEmail(),
+            subject: "[{$this->appName}] Redefinição de senha",
+            htmlBody: $this->buildResetEmailHtml($user, $resetUrl),
+        );
 
-        try {
-            $this->mailer->send($email);
-        } catch (\Throwable $e) {
+        if (!$sent) {
             $this->logger->error('Erro ao enviar e-mail de redefinição de senha', [
-                'user'  => $user->getEmail(),
-                'error' => $e->getMessage(),
+                'user' => $user->getEmail(),
             ]);
         }
     }

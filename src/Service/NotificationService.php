@@ -14,23 +14,21 @@ use App\Repository\UserRepository;
 use App\Repository\WazeAlertRepository;
 use App\Repository\WazeTrafficJamRepository;
 use App\Repository\CemadenDataRepository;
+use App\Service\PhpMailerService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
-use Symfony\Component\Mailer\MailerInterface;
-use Symfony\Component\Mime\Email;
 
 class NotificationService
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly MailerInterface        $mailer,
+        private readonly PhpMailerService       $mailer,
         private readonly UserRepository         $userRepository,
         private readonly WazeAlertRepository    $wazeAlertRepository,
         private readonly WazeTrafficJamRepository $wazeTrafficJamRepository,
         private readonly CemadenDataRepository  $cemadenDataRepository,
         private readonly LoggerInterface        $logger,
         private readonly string                 $appName,
-        private readonly string                 $senderEmail,
     ) {}
 
     public function notifyHighRiskAlerts(): int
@@ -74,18 +72,16 @@ class NotificationService
         $users        = $this->userRepository->findActiveUsers($partner);
 
         foreach ($users as $user) {
-            $email = (new Email())
-                ->from($this->senderEmail)
-                ->to($user->getEmail())
-                ->subject("[{$this->appName}] Relatório Diário — " . $date->format('d/m/Y'))
-                ->html($this->buildDailyReportHtml($user, $alertCount, $jamCount, $cemadenCount, $date));
+            $sent = $this->mailer->send(
+                toEmail: $user->getEmail(),
+                toName: $user->getName() ?? $user->getEmail(),
+                subject: "[{$this->appName}] Relatório Diário — " . $date->format('d/m/Y'),
+                htmlBody: $this->buildDailyReportHtml($user, $alertCount, $jamCount, $cemadenCount, $date),
+            );
 
-            try {
-                $this->mailer->send($email);
-            } catch (\Throwable $e) {
+            if (!$sent) {
                 $this->logger->error('Erro ao enviar relatório', [
                     'user' => $user->getEmail(),
-                    'error' => $e->getMessage(),
                 ]);
             }
         }
