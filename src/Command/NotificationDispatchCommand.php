@@ -11,7 +11,9 @@ use App\Repository\NotificationRepository;
 use App\Repository\PartnerRepository;
 use App\Repository\UserRepository;
 use App\Repository\WazeAlertRepository;
+use App\Service\PhpMailerService;
 use App\Service\TenantContext;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -20,55 +22,110 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'notifications:dispatch',
-    description: 'Gera notificações para alertas críticos e CEMADEN por parceiro.',
+    description: 'Gera notificações para administradores de cada parceiro.',
 )]
-class NotificationDispatchCommand extends Command
+final class NotificationDispatchCommand extends Command
 {
-    private const MIN_RELIABILITY = 8;
-
     public function __construct(
         private readonly PartnerRepository $partnerRepo,
+        private readonly UserRepository $userRepo,
         private readonly WazeAlertRepository $alertRepo,
         private readonly CemadenDataRepository $cemadenRepo,
-        private readonly UserRepository $userRepo,
         private readonly NotificationRepository $notifRepo,
         private readonly TenantContext $tenantContext,
+        private readonly PhpMailerService $mailer,
+        private readonly EntityManagerInterface $entityManager,
     ) {
         parent::__construct();
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
+    protected function execute(
+        InputInterface $input,
+        OutputInterface $output,
+    ): int {
         $io = new SymfonyStyle($input, $output);
+
         $io->title('Notification Dispatch — Multi-Tenant');
 
-        foreach ($this->partnerRepo->findActivePartners() as $partner) {
+        $partners = $this->partnerRepo->findActivePartners();
+
+        if ($partners === []) {
+            $io->warning('Nenhum parceiro ativo encontrado.');
+
+            return Command::SUCCESS;
+        }
+
+        $totalNotifications = 0;
+
+        foreach ($partners as $partner) {
             $this->tenantContext->setPartner($partner);
-            $io->section(sprintf('Parceiro: %s', $partner->getName()));
+
+            $io->section(sprintf(
+                'Parceiro: %s',
+                $partner->getName(),
+            ));
 
             $admins = $this->userRepo->findAdminsByPartner($partner);
 
             if ($admins === []) {
                 $io->text('Nenhum administrador ativo. Pulando.');
+
                 continue;
             }
 
             $count = 0;
-            $count += $this->dispatchAlertNotifications($partner, $admins);
-            $count += $this->dispatchCemadenNotifications($partner, $admins);
 
-            $io->success(sprintf('%d notificação(ões) gerada(s).', $count));
+            $count += $this->dispatchAlertNotifications(
+                $partner,
+                $admins,
+                $io,
+            );
+
+            $count += $this->dispatchCemadenNotifications(
+                $partner,
+                $admins,
+                $io,
+            );
+
+            $totalNotifications += $count;
+
+            $io->success(sprintf(
+                '%d notificação(ões) gerada(s).',
+                $count,
+            ));
         }
+
+        $io->success(sprintf(
+            'Processamento concluído. Total: %d notificação(ões).',
+            $totalNotifications,
+        ));
 
         return Command::SUCCESS;
     }
 
-    private function dispatchAlertNotifications(Partner $partner, array $admins): int
-    {
+    /**
+     * @param array<int, object> $admins
+     */
+    private function dispatchAlertNotifications(
+        Partner $partner,
+        array $admins,
+        SymfonyStyle $io,
+    ): int {
+        /*
+         * A assinatura do repository é:
+         *
+         * findCriticalByPartner(
+         *     Partner $partner,
+         *     int $minReliability = 8,
+         *     int $windowMinutes = 30
+         * )
+         *
+         * Portanto, não passe DateTimeImmutable aqui.
+         */
         $critical = $this->alertRepo->findCriticalByPartner(
             $partner,
-            new \DateTimeImmutable('-30 minutes', new \DateTimeZone('UTC')),
-            100,
+            8,
+            30,
         );
 
         $count = 0;
@@ -85,7 +142,7 @@ class NotificationDispatchCommand extends Command
                     continue;
                 }
 
-                $notif = (new Notification())
+                $notification = (new Notification())
                     ->setPartner($partner)
                     ->setUser($user)
                     ->setType('waze_alert')
@@ -102,8 +159,21 @@ class NotificationDispatchCommand extends Command
                         $alert->getConfidence(),
                     ));
 
-                $this->notifRepo->save($notif, false);
+                $this->notifRepo->save($notification, false);
                 $count++;
+
+                $sent = $this->sendNotificationEmail(
+                    $user,
+                    $notification->getTitle(),
+                    $notification->getBody(),
+                );
+
+                if (!$sent) {
+                    $io->warning(sprintf(
+                        'Falha ao enviar alerta para %s.',
+                        $this->maskEmail((string) $user->getEmail()),
+                    ));
+                }
             }
         }
 
@@ -114,8 +184,14 @@ class NotificationDispatchCommand extends Command
         return $count;
     }
 
-    private function dispatchCemadenNotifications(Partner $partner, array $admins): int
-    {
+    /**
+     * @param array<int, object> $admins
+     */
+    private function dispatchCemadenNotifications(
+        Partner $partner,
+        array $admins,
+        SymfonyStyle $io,
+    ): int {
         $critical = $this->cemadenRepo->findByPartnerAndLevels(
             $partner,
             ['VERMELHO', 'LARANJA'],
@@ -133,9 +209,10 @@ class NotificationDispatchCommand extends Command
                     continue;
                 }
 
-                $referenceId = $item->getStationCode() . '_' . $item->getMeasuredAt()->format('YmdHi');
+                $referenceId = $item->getStationCode()
+                    .'_'.$item->getMeasuredAt()->format('YmdHi');
 
-                $notif = (new Notification())
+                $notification = (new Notification())
                     ->setPartner($partner)
                     ->setUser($user)
                     ->setType('cemaden')
@@ -149,11 +226,24 @@ class NotificationDispatchCommand extends Command
                     ->setBody(sprintf(
                         '%s | Chuva: %s mm',
                         $item->getStationName(),
-                        $item->getAccumulatedRain(),
+                        $item->getAccumulatedRain() ?? 'N/A',
                     ));
 
-                $this->notifRepo->save($notif, false);
+                $this->notifRepo->save($notification, false);
                 $count++;
+
+                $sent = $this->sendNotificationEmail(
+                    $user,
+                    $notification->getTitle(),
+                    $notification->getBody(),
+                );
+
+                if (!$sent) {
+                    $io->warning(sprintf(
+                        'Falha ao enviar CEMADEN para %s.',
+                        $this->maskEmail((string) $user->getEmail()),
+                    ));
+                }
             }
         }
 
@@ -162,5 +252,48 @@ class NotificationDispatchCommand extends Command
         }
 
         return $count;
+    }
+
+    private function sendNotificationEmail(
+        object $user,
+        string $title,
+        string $body,
+    ): bool {
+        $email = (string) $user->getEmail();
+
+        if ($email === '') {
+            return false;
+        }
+
+        $html = sprintf(
+            '<div style="font-family:Arial,sans-serif;">'
+            .'<h2>%s</h2>'
+            .'<p>%s</p>'
+            .'<p style="color:#777;font-size:12px;">WazeBR</p>'
+            .'</div>',
+            htmlspecialchars($title, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+            nl2br(htmlspecialchars($body, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')),
+        );
+
+        return $this->mailer->send(
+            toEmail: $email,
+            toName: method_exists($user, 'getName')
+                ? (string) ($user->getName() ?? $email)
+                : $email,
+            subject: '[WazeBR] '.$title,
+            htmlBody: $html,
+            textBody: $title."\n\n".$body,
+        );
+    }
+
+    private function maskEmail(string $email): string
+    {
+        $parts = explode('@', $email, 2);
+
+        if (count($parts) !== 2) {
+            return '[e-mail inválido]';
+        }
+
+        return mb_substr($parts[0], 0, 2).'***@'.$parts[1];
     }
 }
