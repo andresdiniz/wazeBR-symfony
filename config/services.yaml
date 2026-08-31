@@ -1,25 +1,25 @@
 parameters:
-    app.waze_api_url:       '%env(string:WAZE_API_URL)%'
-    app.waze_api_key:       '%env(string:WAZE_API_KEY)%'
-    app.waze_bbox:          '%env(string:WAZE_BBOX)%'
-    app.cemaden_api_url:    '%env(string:CEMADEN_API_URL)%'
-    app.cemaden_api_key:    '%env(string:CEMADEN_API_KEY)%'
-    app.app_name:           '%env(string:APP_NAME)%'
-    app.sender_email:       '%env(string:SENDER_EMAIL)%'
-    app.mailer_dsn:         '%env(string:MAILER_DSN)%'
+    app.waze_api_url: '%env(string:WAZE_API_URL)%'
+    app.waze_api_key: '%env(string:WAZE_API_KEY)%'
+    app.waze_bbox: '%env(string:WAZE_BBOX)%'
+    app.cemaden_api_url: '%env(string:CEMADEN_API_URL)%'
+    app.cemaden_api_key: '%env(string:CEMADEN_API_KEY)%'
+    app.app_name: '%env(string:APP_NAME)%'
+    app.sender_email: '%env(string:SENDER_EMAIL)%'
+    app.mailer_dsn: '%env(string:MAILER_DSN)%'
 
 services:
     _defaults:
         autowire: true
         autoconfigure: true
+
         bind:
-            # Scalares injetados por nome de argumento em qualquer servico/controller
-            string $apiUrl:          '%app.waze_api_url%'
-            string $apiKey:          '%app.waze_api_key%'
-            string $bbox:            '%app.waze_bbox%'
-            string $appName:         '%app.app_name%'
-            string $senderEmail:     '%app.sender_email%'
-            string $mailerDsn:       '%app.mailer_dsn%'
+            string $apiUrl: '%app.waze_api_url%'
+            string $apiKey: '%app.waze_api_key%'
+            string $bbox: '%app.waze_bbox%'
+            string $appName: '%app.app_name%'
+            string $senderEmail: '%app.sender_email%'
+            string $mailerDsn: '%app.mailer_dsn%'
 
     App\:
         resource: '../src/'
@@ -28,9 +28,13 @@ services:
             - '../src/Entity/'
             - '../src/Kernel.php'
 
-    # CemadenService tem $apiUrl e $apiKey mas para a URL do CEMADEN (diferente do Waze)
-    # Por isso sobrescreve os binds globais apenas aqui
     App\Service\CemadenService:
         arguments:
             $apiUrl: '%app.cemaden_api_url%'
             $apiKey: '%app.cemaden_api_key%'
+
+    App\Service\PhpMailerService:
+        arguments:
+            $mailerDsn: '%app.mailer_dsn%'
+            $senderEmail: '%app.sender_email%'
+            $appName: '%app.app_name%'
