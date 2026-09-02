@@ -31,20 +31,15 @@ class DashboardController extends AbstractController
             throw $this->createAccessDeniedException('UsuÃ¡rio sem parceiro associado.');
         }
 
-        $emptyRouteId = '00000000-0000-0000-0000-000000000000';
-
-        // Query corrigida: sem JOIN por snapshot (WazeTvtRouteExecution nÃ£o tem associaÃ§Ã£o "snapshot")
-        // Filtramos diretamente por r.partner = :partnerId
+        // Query corrigida: WazeTvtRouteExecution nÃ£o tem campo wazeRouteId
+        // Contamos execucoes distintas por id diretamente
         $qb = $this->entityManager->createQueryBuilder();
-        $qb->select('COUNT(DISTINCT r.wazeRouteId)')
+        $qb->select('COUNT(DISTINCT r.id)')
             ->from(WazeTvtRouteExecution::class, 'r')
             ->where('r.partner = :partnerId')
             ->andWhere('r.isSubRoute = :false')
-            ->andWhere('r.wazeRouteId IS NOT NULL')
-            ->andWhere('r.wazeRouteId != :emptyRouteId')
             ->setParameter('partnerId', $partnerId)
-            ->setParameter('false', false, 'boolean')
-            ->setParameter('emptyRouteId', $emptyRouteId);
+            ->setParameter('false', false, 'boolean');
 
         $count = $qb->getQuery()->getSingleScalarResult();
 
