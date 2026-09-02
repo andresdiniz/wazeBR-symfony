@@ -1,11 +1,15 @@
 {% extends 'base.html.twig' %}
-{% block title %}Usuários — {{ partner.name }}{% endblock %}
+{% block title %}Usuários — {{ isAdmin ? 'Todos os parceiros' : partner.name }}{% endblock %}
 
 {% block content %}
 <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-4)">
   <div>
     <h1 class="page-title">Usuários</h1>
-    <p class="page-subtitle">Gerencie os usuários do parceiro <strong>{{ partner.name }}</strong></p>
+    {% if isAdmin %}
+      <p class="page-subtitle">Gerencie os usuários de <strong>todos os parceiros</strong></p>
+    {% else %}
+      <p class="page-subtitle">Gerencie os usuários do parceiro <strong>{{ partner.name }}</strong></p>
+    {% endif %}
   </div>
   <a href="{{ path('account_user_new') }}" class="btn btn-primary">
     <i data-lucide="user-plus" style="width:16px;height:16px"></i> Novo Usuário
@@ -37,6 +41,7 @@
         <tr>
           <th>Nome</th>
           <th>E-mail</th>
+          {% if isAdmin %}<th>Parceiro</th>{% endif %}
           <th>Status</th>
           <th>Último acesso</th>
           <th></th>
@@ -54,6 +59,9 @@
             </div>
           </td>
           <td style="color:var(--color-text-muted)">{{ u.email }}</td>
+          {% if isAdmin %}
+            <td style="color:var(--color-text-muted);font-size:var(--text-xs)">{{ u.partner ? u.partner.name : '—' }}</td>
+          {% endif %}
           <td>
             {% if u.isActive %}
               <span class="badge badge-green"><i data-lucide="circle" style="width:7px;height:7px"></i> Ativo</span>
@@ -119,6 +127,7 @@
         <tr>
           <th>Nome</th>
           <th>E-mail</th>
+          {% if isAdmin %}<th>Parceiro</th>{% endif %}
           <th>Permissões</th>
           <th>Status</th>
           <th>Último acesso</th>
@@ -137,6 +146,9 @@
             </div>
           </td>
           <td style="color:var(--color-text-muted)">{{ u.email }}</td>
+          {% if isAdmin %}
+            <td style="color:var(--color-text-muted);font-size:var(--text-xs)">{{ u.partner ? u.partner.name : '—' }}</td>
+          {% endif %}
           <td>
             {% if u.fieldAgentPermissions is empty %}
               <span class="badge badge-green" title="Mesmas permissões de usuário comum">Padrão</span>

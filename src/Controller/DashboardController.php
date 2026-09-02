@@ -14,6 +14,7 @@ use App\Repository\CifsEventRepository;
 use App\Repository\WazeAlertTypeRepository;
 use App\Repository\CemadenDataRepository;
 use App\Repository\CemadenHydroDataRepository;
+use App\Service\TenantContext;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -57,14 +58,18 @@ class DashboardController extends AbstractController
         private CemadenDataRepository $cemadenDataRepo,
         private CemadenHydroDataRepository $cemadenHydroRepo,
         private CacheInterface $cache,
+        private TenantContext $tenantContext,
     ) {}
 
     #[Route('/', name: 'dashboard_index', methods: ['GET'])]
     public function index(Request $request): Response
     {
-        /** @var User $user */
-        $user = $this->getUser();
-        $partner = $user?->getPartner();
+        // Antes: $user?->getPartner() direto — travava com "Usuário
+        // sem parceiro vinculado" pra qualquer ROLE_ADMIN, já que esse
+        // perfil não tem (e não deve ter) um Partner fixo no cadastro.
+        // TenantContext já sabe resolver isso (parceiro escolhido na
+        // sessão, com fallback pro primeiro ativo).
+        $partner = $this->tenantContext->getPartner();
 
         if (!$partner) {
             return new Response('<div class="p-5 text-center">Usuário sem parceiro vinculado.</div>', 200, ['Content-Type' => 'text/html; charset=UTF-8']);

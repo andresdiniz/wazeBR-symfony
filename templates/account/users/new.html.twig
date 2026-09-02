@@ -7,12 +7,32 @@
     <i data-lucide="arrow-left" style="width:14px;height:14px"></i> Voltar para Usuários
   </a>
   <h1 class="page-title">Novo Usuário</h1>
-  <p class="page-subtitle">Adicione um usuário comum ou agente de rua ao parceiro <strong>{{ partner.name }}</strong></p>
+  {% if isAdmin %}
+    <p class="page-subtitle">Adicione um usuário comum ou agente de rua a qualquer parceiro</p>
+  {% else %}
+    <p class="page-subtitle">Adicione um usuário comum ou agente de rua ao parceiro <strong>{{ partner.name }}</strong></p>
+  {% endif %}
 </div>
 
 <div class="card" style="max-width:640px">
   <form method="post" action="{{ path('account_user_new') }}" novalidate>
     <div style="padding:var(--space-5);display:flex;flex-direction:column;gap:var(--space-4)">
+
+      {% if isAdmin %}
+      {# Parceiro — só aparece pra admin, que não tem parceiro fixo #}
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label" for="partner_id">Parceiro</label>
+        <select class="form-control {{ errors.partner_id is defined ? 'error' }}" id="partner_id" name="partner_id" required>
+          <option value="">Selecione o parceiro…</option>
+          {% for p in availablePartners %}
+            <option value="{{ p.id }}" {{ (data.partner_id ?? '') == p.id ? 'selected' }}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+        {% if errors.partner_id is defined %}
+          <span class="form-hint" style="color:var(--color-error)">{{ errors.partner_id }}</span>
+        {% endif %}
+      </div>
+      {% endif %}
 
       {# Nome #}
       <div class="form-group" style="margin-bottom:0">

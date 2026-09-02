@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Repository;
 
 use App\Entity\Partner;
@@ -21,6 +19,7 @@ class PartnerRepository extends ServiceEntityRepository
     public function save(Partner $partner, bool $flush = true): void
     {
         $this->getEntityManager()->persist($partner);
+
         if ($flush) {
             $this->getEntityManager()->flush();
         }
@@ -29,19 +28,29 @@ class PartnerRepository extends ServiceEntityRepository
     public function remove(Partner $partner, bool $flush = true): void
     {
         $this->getEntityManager()->remove($partner);
+
         if ($flush) {
             $this->getEntityManager()->flush();
         }
     }
 
     /**
-     * Lista todos os parceiros com contagem de usuários, ordenados por nome.
+     * Retorna os parceiros junto da quantidade de usuários vinculados.
+     *
+     * Cada item contém a entidade Partner no índice 0 e o campo userCount.
+     *
+     * @return array<int, array{0: Partner, userCount: string}>
      */
     public function findAllWithUserCount(): array
     {
         return $this->createQueryBuilder('p')
-            ->leftJoin('p.users', 'u')
-            ->addSelect('COUNT(u.id) AS HIDDEN userCount')
+            ->leftJoin(
+                'App\Entity\User',
+                'u',
+                'ON',
+                'u.partner = p'
+            )
+            ->addSelect('COUNT(u.id) AS userCount')
             ->groupBy('p.id')
             ->orderBy('p.name', 'ASC')
             ->getQuery()
@@ -58,6 +67,9 @@ class PartnerRepository extends ServiceEntityRepository
         return $this->findOneBy(['apiToken' => $token]);
     }
 
+    /**
+     * @return Partner[]
+     */
     public function findAllActive(): array
     {
         return $this->createQueryBuilder('p')
@@ -68,16 +80,7 @@ class PartnerRepository extends ServiceEntityRepository
     }
 
     /**
-     * Alias de findAllActive(), usado pelos comandos de cron
-     * (cemaden:collect, cemaden:collect-hydro, notifications:dispatch)
-     * e pelos controllers de admin de monitoramento.
-     *
-     * NOTA: este método era chamado em 5 lugares do código
-     * (3 admin controllers + 2 commands) sem existir aqui, o que
-     * causava BadMethodCallException / Error em toda execução —
-     * inclusive em cemaden:collect via cron.php. Mantido como alias
-     * explícito (em vez de renomear as chamadas) para não quebrar
-     * nada que já dependa do nome findActivePartners().
+     * Alias de findAllActive(), utilizado por comandos e controllers.
      *
      * @return Partner[]
      */
@@ -98,11 +101,7 @@ class PartnerRepository extends ServiceEntityRepository
     }
 
     /**
-     * getEntityManager() é protected na classe base do Doctrine — esta
-     * sobrescrita só amplia a visibilidade pra public, porque
-     * PartnerAdminController chama de fora da classe (isso é permitido
-     * em PHP: subclasse pode ampliar visibilidade, nunca restringir).
-     * Sem isso, a chamada externa dá "Call to protected method" fatal error.
+     * Mantido público por compatibilidade com PartnerAdminController.
      */
     public function getEntityManager(): \Doctrine\ORM\EntityManagerInterface
     {

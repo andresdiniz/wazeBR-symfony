@@ -237,6 +237,22 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Equatab
         return in_array('ROLE_SUPER_ADMIN', $this->getRoles(), true);
     }
 
+    /**
+     * ROLE_ADMIN (ou ROLE_SUPER_ADMIN, que já é mais amplo) — usado
+     * pelo TenantContext e pelos controllers de conta para liberar
+     * visão/gestão sem restrição de parceiro. Checa contra os roles
+     * brutos do próprio usuário (não a hierarquia expandida do
+     * Security), porque getRoles() aqui retorna só o que está
+     * gravado — um usuário com apenas ROLE_ADMIN não teria
+     * ROLE_SUPER_ADMIN aparecendo mesmo a hierarquia dizendo que
+     * SUPER_ADMIN > ADMIN (a hierarquia funciona no sentido
+     * contrário: super admin herda permissões de admin, não o oposto).
+     */
+    public function isAdmin(): bool
+    {
+        return $this->isSuperAdmin() || in_array('ROLE_ADMIN', $this->getRoles(), true);
+    }
+
     public function isAccountAdmin(): bool
     {
         return in_array('ROLE_ACCOUNT_ADMIN', $this->getRoles(), true);

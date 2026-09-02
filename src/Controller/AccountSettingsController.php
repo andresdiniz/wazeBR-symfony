@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\Repository\ActivityLogRepository;
 use App\Repository\PartnerRepository;
+use App\Service\TenantContext;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -26,21 +27,19 @@ class AccountSettingsController extends AbstractController
     public function __construct(
         private readonly PartnerRepository     $partnerRepo,
         private readonly ActivityLogRepository $logRepo,
+        private readonly TenantContext         $tenantContext,
     ) {}
 
     // ──────────────────────────────────────────────────────────────────────
 
+    /**
+     * Antes: lia $user->getPartner() direto, travando com "Usuário
+     * sem parceiro vinculado" pra ROLE_ADMIN. TenantContext resolve
+     * (parceiro escolhido na sessão, com fallback pro primeiro ativo).
+     */
     private function requirePartner(): \App\Entity\Partner
     {
-        /** @var \App\Entity\User $user */
-        $user    = $this->getUser();
-        $partner = $user->getPartner();
-
-        if (!$partner) {
-            throw $this->createAccessDeniedException('Usuário sem parceiro vinculado.');
-        }
-
-        return $partner;
+        return $this->tenantContext->requirePartner();
     }
 
     // ──────────────────────────────────────────────────────────────────────

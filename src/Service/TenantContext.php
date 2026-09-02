@@ -15,22 +15,21 @@ use Symfony\Component\HttpFoundation\RequestStack;
  *
  * Ordem de resolução:
  *  1. Usuário comum (tem Partner fixo no cadastro) → sempre esse.
- *  2. Super admin (ROLE_SUPER_ADMIN) → NÃO fica preso a um parceiro
- *     fixo. Usa o que estiver escolhido na sessão (trocável via
- *     PartnerController::switchTo(), rota
+ *  2. Admin (ROLE_ADMIN ou ROLE_SUPER_ADMIN) → NÃO fica preso a um
+ *     parceiro fixo. Usa o que estiver escolhido na sessão (trocável
+ *     via PartnerController::switchTo(), rota
  *     /admin/parceiros/{id}/visualizar), com fallback pro primeiro
  *     parceiro ativo se ainda não tiver escolhido nenhum.
  *  3. Token externo (X-Api-Token) → resolveFromToken().
  *  4. Command/job → setPartner() manual.
  *
  * NOTA: antes, requirePartner() lançava LogicException sempre que um
- * super admin sem Partner atribuído no próprio cadastro acessava
- * qualquer página — travava o login/dashboard do admin por completo.
- * Isso não implementa uma visão agregada de TODOS os parceiros ao
- * mesmo tempo (isso exigiria reescrever boa parte das queries do
- * projeto, que são todas filtradas por um Partner só) — implementa o
- * admin poder ver e alternar entre qualquer parceiro, sem ficar preso
- * a nenhum fixo.
+ * admin sem Partner atribuído no próprio cadastro acessava qualquer
+ * página — travava o login/dashboard por completo. Isso não
+ * implementa uma visão agregada de TODOS os parceiros ao mesmo tempo
+ * (isso exigiria reescrever boa parte das queries do projeto, que são
+ * todas filtradas por um Partner só) — implementa o admin poder ver e
+ * alternar entre qualquer parceiro, sem ficar preso a nenhum fixo.
  */
 class TenantContext
 {
@@ -56,8 +55,8 @@ class TenantContext
             return null;
         }
 
-        if ($user->isSuperAdmin()) {
-            $this->current = $this->resolveSuperAdminPartner();
+        if ($user->isAdmin()) {
+            $this->current = $this->resolveAdminPartner();
             return $this->current;
         }
 
@@ -104,7 +103,7 @@ class TenantContext
         return $partner;
     }
 
-    private function resolveSuperAdminPartner(): ?Partner
+    private function resolveAdminPartner(): ?Partner
     {
         $session = $this->requestStack->getSession();
         $partnerId = $session->get(self::SESSION_KEY);

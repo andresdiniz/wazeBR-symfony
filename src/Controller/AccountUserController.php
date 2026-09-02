@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Repository\PartnerRepository;
 use App\Repository\UserRepository;
 use App\Service\PhpMailerService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -14,11 +15,29 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
+/**
+ * Gestão de usuários.
+ *
+ * ROLE_ACCOUNT_ADMIN: só os usuários do próprio parceiro (como sempre foi).
+ * ROLE_ADMIN / ROLE_SUPER_ADMIN: vê e gerencia usuários de QUALQUER
+ * parceiro, sem restrição — decisão explícita do projeto (perfil de
+ * suporte/operação que precisa atender qualquer cliente).
+ *
+ * Barreiras de segurança mantidas mesmo para admin:
+ *  - Papel atribuível continua restrito a ROLE_USER/ROLE_FIELD_AGENT
+ *    neste formulário — não dá pra promover ninguém a admin por aqui.
+ *  - Continua proibido editar/desativar/remover contas
+ *    ROLE_SUPER_ADMIN ou ROLE_ACCOUNT_ADMIN por esta tela, mesmo
+ *    sendo admin — evita adulterar contas de mesmo nível ou superior.
+ *  - Criar parceiro novo continua exclusivo de ROLE_SUPER_ADMIN
+ *    (Admin/PartnerController), não afetado por esta mudança.
+ */
 #[Route('/account/users', name: 'account_user_')]
 class AccountUserController extends AbstractController
 {
     public function __construct(
         private readonly UserRepository $userRepository,
+        private readonly PartnerRepository $partnerRepository,
         private readonly EntityManagerInterface $em,
         private readonly UserPasswordHasherInterface $passwordHasher,
         private readonly PhpMailerService $mailer,
@@ -33,21 +52,29 @@ class AccountUserController extends AbstractController
         $this->denyAccessUnlessGranted('ROLE_ACCOUNT_ADMIN');
 
         /** @var User $me */
-        $me      = $this->getUser();
-        $partner = $me->getPartner();
+        $me = $this->getUser();
 
-        if (!$partner) {
-            throw $this->createAccessDeniedException();
+        if ($me->isAdmin()) {
+            // Sem filtro de parceiro — admin vê todo mundo.
+            $users   = $this->userRepository->findBy([], ['name' => 'ASC']);
+            $partner = null;
+        } else {
+            $partner = $me->getPartner();
+
+            if (!$partner) {
+                throw $this->createAccessDeniedException();
+            }
+
+            $users = $this->userRepository->findBy(
+                ['partner' => $partner],
+                ['name' => 'ASC']
+            );
         }
-
-        $users = $this->userRepository->findBy(
-            ['partner' => $partner],
-            ['name' => 'ASC']
-        );
 
         return $this->render('account/users/index.html.twig', [
             'users'   => $users,
             'partner' => $partner,
+            'isAdmin' => $me->isAdmin(),
         ]);
     }
 
@@ -60,10 +87,19 @@ class AccountUserController extends AbstractController
 
         /** @var User $me */
         $me      = $this->getUser();
-        $partner = $me->getPartner();
+        $isAdmin = $me->isAdmin();
 
-        if (!$partner) {
-            throw $this->createAccessDeniedException();
+        if ($isAdmin) {
+            // Admin escolhe o parceiro do novo usuário no formulário.
+            $partner           = null;
+            $availablePartners = $this->partnerRepository->findActivePartners();
+        } else {
+            $partner           = $me->getPartner();
+            $availablePartners = [];
+
+            if (!$partner) {
+                throw $this->createAccessDeniedException();
+            }
         }
 
         $errors = [];
@@ -74,6 +110,15 @@ class AccountUserController extends AbstractController
             $password = (string) $request->request->get('password', '');
             $role     = $request->request->get('role', 'ROLE_USER');
             $perms    = $request->request->all('permissions');
+
+            if ($isAdmin) {
+                $partnerId = (int) $request->request->get('partner_id', 0);
+                $partner   = $partnerId ? $this->partnerRepository->find($partnerId) : null;
+
+                if (!$partner) {
+                    $errors['partner_id'] = 'Selecione um parceiro.';
+                }
+            }
 
             // Validation
             if ($name === '')      { $errors['name']  = 'Nome é obrigatório.'; }
@@ -121,9 +166,11 @@ class AccountUserController extends AbstractController
         }
 
         return $this->render('account/users/new.html.twig', [
-            'errors'  => $errors,
-            'data'    => $request->request->all(),
-            'partner' => $partner,
+            'errors'            => $errors,
+            'data'              => $request->request->all(),
+            'partner'           => $partner,
+            'isAdmin'           => $isAdmin,
+            'availablePartners' => $availablePartners,
         ]);
     }
 
@@ -135,15 +182,21 @@ class AccountUserController extends AbstractController
         $this->denyAccessUnlessGranted('ROLE_ACCOUNT_ADMIN');
 
         /** @var User $me */
-        $me      = $this->getUser();
-        $partner = $me->getPartner();
-        $user    = $this->userRepository->find($id);
+        $me   = $this->getUser();
+        $user = $this->userRepository->find($id);
 
-        if (!$user || !$user->belongsToPartner($partner)) {
+        if (!$user) {
             throw $this->createNotFoundException();
         }
 
-        // Prevent editing another account admin or super admin
+        // Admin gerencia qualquer parceiro (pedido explícito). Usuário
+        // comum (ROLE_ACCOUNT_ADMIN) continua restrito ao próprio.
+        if (!$me->isAdmin() && !$user->belongsToPartner($me->getPartner())) {
+            throw $this->createNotFoundException();
+        }
+
+        // Barreira mantida mesmo para admin: não editar contas de
+        // mesmo nível ou superior por esta tela.
         if ($user->isSuperAdmin() || $user->isAccountAdmin()) {
             throw $this->createAccessDeniedException('Você não pode editar este usuário.');
         }
@@ -194,7 +247,10 @@ class AccountUserController extends AbstractController
         return $this->render('account/users/edit.html.twig', [
             'user'    => $user,
             'errors'  => $errors,
-            'partner' => $partner,
+            // Parceiro DO USUÁRIO EDITADO — não confundir com o
+            // parceiro "atual" do admin, que pode ser outro (ou nenhum).
+            'partner' => $user->getPartner(),
+            'isAdmin' => $me->isAdmin(),
         ]);
     }
 
@@ -206,11 +262,14 @@ class AccountUserController extends AbstractController
         $this->denyAccessUnlessGranted('ROLE_ACCOUNT_ADMIN');
 
         /** @var User $me */
-        $me      = $this->getUser();
-        $partner = $me->getPartner();
-        $user    = $this->userRepository->find($id);
+        $me   = $this->getUser();
+        $user = $this->userRepository->find($id);
 
-        if (!$user || !$user->belongsToPartner($partner)) {
+        if (!$user) {
+            throw $this->createNotFoundException();
+        }
+
+        if (!$me->isAdmin() && !$user->belongsToPartner($me->getPartner())) {
             throw $this->createNotFoundException();
         }
 
@@ -239,11 +298,14 @@ class AccountUserController extends AbstractController
         $this->denyAccessUnlessGranted('ROLE_ACCOUNT_ADMIN');
 
         /** @var User $me */
-        $me      = $this->getUser();
-        $partner = $me->getPartner();
-        $user    = $this->userRepository->find($id);
+        $me   = $this->getUser();
+        $user = $this->userRepository->find($id);
 
-        if (!$user || !$user->belongsToPartner($partner)) {
+        if (!$user) {
+            throw $this->createNotFoundException();
+        }
+
+        if (!$me->isAdmin() && !$user->belongsToPartner($me->getPartner())) {
             throw $this->createNotFoundException();
         }
 
