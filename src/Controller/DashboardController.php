@@ -26,13 +26,11 @@ class DashboardController extends AbstractController
             return $this->redirectToRoute('app_login');
         }
 
-        // WazeTvtRouteExecution não tem campos partner ou wazeRouteId
-        // Contamos todas as execucoes (filtro por parceiro deve ser feito via JOIN ou outro metodo)
+        // Query minimalista: conta todas as execucoes sem filtros
+        // (WazeTvtRouteExecution não tem campos partner, wazeRouteId ou isSubRoute)
         $qb = $this->entityManager->createQueryBuilder();
-        $qb->select('COUNT(DISTINCT r.id)')
-            ->from(WazeTvtRouteExecution::class, 'r')
-            ->where('r.isSubRoute = :false')
-            ->setParameter('false', false, 'boolean');
+        $qb->select('COUNT(r.id)')
+            ->from(WazeTvtRouteExecution::class, 'r');
 
         $count = $qb->getQuery()->getSingleScalarResult();
 
