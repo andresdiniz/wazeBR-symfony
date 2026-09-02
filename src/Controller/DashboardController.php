@@ -44,11 +44,19 @@ class DashboardController extends AbstractController
         ];
         $periodKey = $request->get('period', '2_week');
 
+        // Stats do parceiro (valores temporarios zerados)
+        $partnerStats = [n            'alerts' => 0,
+            'jams' => 0,
+            'routes' => 0,
+            'executions' => (int) ($count[1] ?? 0),
+        ];
+
         return $this->render('dashboard/index.html.twig', [
             'count' => $count,
             'partnerLabel' => $partnerLabel,
             'periods' => $periods,
             'periodKey' => $periodKey,
+            'partnerStats' => $partnerStats,
         ]);
     }
 }
