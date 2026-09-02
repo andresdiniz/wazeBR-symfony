@@ -30,16 +30,25 @@ class DashboardController extends AbstractController
         $partnerLabel = $partner ? ($partner->getName() ?? 'Parceiro') : 'Sem parceiro';
 
         // Query temporaria: conta todas as execucoes (sem JOIN para waze_tvt_route)
-        // Execute a migration SQL para criar as tabelas waze_tvt_route e waze_tvt_route_history
         $qb = $this->entityManager->createQueryBuilder();
         $qb->select('COUNT(e.id)')
             ->from(WazeTvtRouteExecution::class, 'e');
 
         $count = $qb->getQuery()->getSingleScalarResult();
 
+        // Periodos disponiveis
+        $periods = [
+            '2_week' => ['label' => 'Úĺtimas 2 semanas'],
+            '7_days' => ['label' => 'Úĺtimos 7 dias'],
+            '24_hours' => ['label' => 'Úĺtimas 24 horas'],
+        ];
+        $periodKey = $request->get('period', '2_week');
+
         return $this->render('dashboard/index.html.twig', [
             'count' => $count,
             'partnerLabel' => $partnerLabel,
+            'periods' => $periods,
+            'periodKey' => $periodKey,
         ]);
     }
 }
