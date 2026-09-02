@@ -92,6 +92,7 @@ class DashboardController extends AbstractController
         // Dados para graficos (valores temporarios zerados)
         $totalAlertsInPeriod = 0;
         $alertsBySubtype = [];
+        $topStreets = [];
 
         return $this->render('dashboard/index.html.twig', [
             'count' => $count,
@@ -105,6 +106,7 @@ class DashboardController extends AbstractController
             'periodStats' => $periodStats,
             'totalAlertsInPeriod' => $totalAlertsInPeriod,
             'alertsBySubtype' => $alertsBySubtype,
+            'topStreets' => $topStreets,
         ]);
     }
 }
