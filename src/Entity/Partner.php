@@ -12,8 +12,10 @@ use Doctrine\ORM\Mapping\GeneratedValue;
 use Doctrine\ORM\Mapping\Column;
 use Doctrine\ORM\Mapping\Entity;
 use Doctrine\ORM\Mapping\OneToMany;
+use Doctrine\ORM\Mapping\Table;
 
 #[Entity(repositoryClass: PartnerRepository::class)]
+#[Table(name: 'partners')]
 class Partner
 {
     #[Id]
