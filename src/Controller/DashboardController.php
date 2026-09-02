@@ -26,19 +26,12 @@ class DashboardController extends AbstractController
             return $this->redirectToRoute('app_login');
         }
 
-        $partnerId = $user->getPartner()?->getId();
-        if (!$partnerId) {
-            throw $this->createAccessDeniedException('UsuÃ¡rio sem parceiro associado.');
-        }
-
-        // Query corrigida: WazeTvtRouteExecution nÃ£o tem campo wazeRouteId
-        // Contamos execucoes distintas por id diretamente
+        // WazeTvtRouteExecution não tem campos partner ou wazeRouteId
+        // Contamos todas as execucoes (filtro por parceiro deve ser feito via JOIN ou outro metodo)
         $qb = $this->entityManager->createQueryBuilder();
         $qb->select('COUNT(DISTINCT r.id)')
             ->from(WazeTvtRouteExecution::class, 'r')
-            ->where('r.partner = :partnerId')
-            ->andWhere('r.isSubRoute = :false')
-            ->setParameter('partnerId', $partnerId)
+            ->where('r.isSubRoute = :false')
             ->setParameter('false', false, 'boolean');
 
         $count = $qb->getQuery()->getSingleScalarResult();
