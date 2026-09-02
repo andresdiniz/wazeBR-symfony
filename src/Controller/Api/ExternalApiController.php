@@ -1,138 +1,89 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Controller\Api;
 
-use App\Repository\CemadenDataRepository;
-use App\Repository\WazeAlertRepository;
-use App\Repository\WazeTrafficJamRepository;
-use App\Service\TenantContext;
+use App\Repository\WazeTvtRouteDefinitionRepository;
+use App\Repository\WazeTvtRouteExecutionRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Annotation\Route;
 
-/**
- * API externa pública para parceiros/clientes (autenticação via X-Api-Token).
- * O tenant é resolvido pelo TenantTokenListener antes de chegar aqui.
- */
-#[Route('/api/externa', name: 'api_externa_')]
+#[Route('/api/external')]
 class ExternalApiController extends AbstractController
 {
     public function __construct(
-        private readonly TenantContext            $tenantContext,
-        private readonly WazeAlertRepository      $alertRepo,
-        private readonly WazeTrafficJamRepository $jamRepo,
-        private readonly CemadenDataRepository    $cemadenRepo,
-    ) {}
-
-    #[Route('/alertas', name: 'alerts', methods: ['GET'])]
-    public function alerts(Request $request): JsonResponse
-    {
-        $partner = $this->tenantContext->requirePartner();
-        $type    = $request->query->get('type');
-        $city    = $request->query->get('city');
-        $limit   = min(500, max(1, (int) $request->query->get('limit', 100)));
-
-        $alerts = $this->alertRepo->findFilteredByPartner(
-            partner: $partner,
-            type: $type ?: null,
-            city: $city ?: null,
-            page: 1,
-            limit: $limit,
-        );
-
-        return $this->json([
-            'partner' => $partner->getSlug(),
-            'total'   => count($alerts),
-            'data'    => array_map(fn ($a) => [
-                'id'          => $a->getWazeId(),
-                'type'        => $a->getType(),
-                'subtype'     => $a->getSubtype(),
-                'street'      => $a->getStreet(),
-                'city'        => $a->getCity(),
-                'lat'         => $a->getLatitude(),
-                'lng'         => $a->getLongitude(),
-                'reliability' => $a->getReliability(),
-                'confidence'  => $a->getConfidence(),
-                'pubMillis'   => $a->getPubMillis(),
-            ], $alerts),
-        ]);
+        private WazeTvtRouteDefinitionRepository $definitionRepo,
+        private WazeTvtRouteExecutionRepository $executionRepo,
+    ) {
     }
 
-    #[Route('/congestionamentos', name: 'jams', methods: ['GET'])]
-    public function jams(Request $request): JsonResponse
+    #[Route('/tvt/routes', name: 'api_external_tvt_routes', methods: ['GET'])]
+    public function tvtRoutes(Request $request): JsonResponse
     {
-        $partner  = $this->tenantContext->requirePartner();
-        $minLevel = (int) $request->query->get('level', 0);
-        $limit    = min(500, max(1, (int) $request->query->get('limit', 100)));
+        $routeId = $request->query->get('route_id');
+        $limit = (int) $request->query->get('limit', '10');
 
-        $jams = $this->jamRepo->findFilteredByPartner(
-            partner: $partner,
-            minLevel: $minLevel > 0 ? $minLevel : null,
-            city: null,
-            page: 1,
-            limit: $limit,
-        );
+        if (!$routeId) {
+            return new JsonResponse(['error' => 'Missing route_id parameter'], JsonResponse::HTTP_BAD_REQUEST);
+        }
 
-        return $this->json([
-            'partner' => $partner->getSlug(),
-            'total'   => count($jams),
-            'data'    => array_map(fn ($j) => [
-                'id'     => $j->getWazeId(),
-                'street' => $j->getStreet(),
-                'city'   => $j->getCity(),
-                'level'  => $j->getLevel(),
-                'speed'  => $j->getSpeedKmh(),
-                'length' => $j->getLength(),
-                'delay'  => $j->getDelay(),
-            ], $jams),
-        ]);
+        $definition = $this->definitionRepo->findOneByRouteId($routeId);
+        if (!$definition) {
+            return new JsonResponse(['error' => 'Route definition not found'], JsonResponse::HTTP_NOT_FOUND);
+        }
+
+        $executions = $this->executionRepo->findByRouteId($routeId, $limit);
+
+        $data = [
+            'definition' => [
+                'routeId' => $definition->getRouteId(),
+                'name' => $definition->getName(),
+                'bbox' => $definition->getBbox() ? json_decode($definition->getBbox(), true) : null,
+                'line' => $definition->getLine() ? json_decode($definition->getLine(), true) : null,
+            ],
+            'executions' => array_map(function (WazeTvtRouteExecution $exec) {
+                return [
+                    'id' => $exec->getId(),
+                    'timestamp' => $exec->getTimestamp()?->format('c'),
+                    'duration' => $exec->getDuration(),
+                    'length' => $exec->getLength(),
+                    'irregularities' => $exec->getIrregularities(),
+                    'trafficJams' => $exec->getTrafficJams(),
+                    'avgSpeed' => $exec->getAvgSpeed(),
+                ];
+            }, $executions),
+        ];
+
+        return new JsonResponse($data);
     }
 
-    #[Route('/cemaden', name: 'cemaden', methods: ['GET'])]
-    public function cemaden(Request $request): JsonResponse
+    #[Route('/tvt/routes/latest', name: 'api_external_tvt_routes_latest', methods: ['GET'])]
+    public function tvtRoutesLatest(Request $request): JsonResponse
     {
-        $partner = $this->tenantContext->requirePartner();
-        $level   = $request->query->get('level');
-        $state   = $request->query->get('state');
+        $routeIds = $request->query->all('route_id');
 
-        $data = $this->cemadenRepo->findFilteredByPartner(
-            partner: $partner,
-            alertLevel: $level ?: null,
-            state: $state ?: null,
-        );
+        if (empty($routeIds)) {
+            return new JsonResponse(['error' => 'Missing route_id parameter(s)'], JsonResponse::HTTP_BAD_REQUEST);
+        }
 
-        return $this->json([
-            'partner' => $partner->getSlug(),
-            'total'   => count($data),
-            'data'    => array_map(fn ($c) => [
-                'station'    => $c->getStationCode(),
-                'name'       => $c->getStationName(),
-                'city'       => $c->getMunicipality(),
-                'state'      => $c->getState(),
-                'lat'        => $c->getLatitude(),
-                'lng'        => $c->getLongitude(),
-                'rain'       => $c->getAccumulatedRain(),
-                'level'      => $c->getAlertLevel(),
-                'measuredAt' => $c->getMeasuredAt()?->format('c'),
-            ], $data),
-        ]);
-    }
+        $result = [];
+        foreach ($routeIds as $routeId) {
+            $executions = $this->executionRepo->findByRouteId($routeId, 1);
+            if (!empty($executions)) {
+                $exec = $executions[0];
+                $result[$routeId] = [
+                    'routeId' => $routeId,
+                    'timestamp' => $exec->getTimestamp()?->format('c'),
+                    'duration' => $exec->getDuration(),
+                    'length' => $exec->getLength(),
+                    'irregularities' => $exec->getIrregularities(),
+                    'trafficJams' => $exec->getTrafficJams(),
+                    'avgSpeed' => $exec->getAvgSpeed(),
+                ];
+            }
+        }
 
-    #[Route('/status', name: 'status', methods: ['GET'])]
-    public function status(): JsonResponse
-    {
-        $partner = $this->tenantContext->requirePartner();
-
-        return $this->json([
-            'partner'   => $partner->getSlug(),
-            'name'      => $partner->getName(),
-            'isActive'  => $partner->isActive(),
-            'bbox'      => $partner->getBbox(),
-            'states'    => $partner->getCemadenStates(),
-            'timestamp' => (new \DateTimeImmutable())->format('c'),
-        ]);
+        return new JsonResponse($result);
     }
 }
