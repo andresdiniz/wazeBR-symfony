@@ -27,13 +27,16 @@ class DashboardController extends AbstractController
         }
 
         $partner = $user->getPartner();
+        $partnerId = $partner?->getId();
         $partnerLabel = $partner ? ($partner->getName() ?? 'Parceiro') : 'Sem parceiro';
 
-        // WazeTvtRoute e WazeTvtRouteExecution não tem campo partner direto
-        // Contagem geral de execucoes (filtro por parceiro requer modelo completo)
+        // Query com JOIN para filtrar por partner via WazeTvtRoute
         $qb = $this->entityManager->createQueryBuilder();
-        $qb->select('COUNT(e.id)')
-            ->from(WazeTvtRouteExecution::class, 'e');
+        $qb->select('COUNT(DISTINCT e.id)')
+            ->from(WazeTvtRouteExecution::class, 'e')
+            ->innerJoin('e.tvtRoute', 'r')
+            ->where('r.partner = :partnerId')
+            ->setParameter('partnerId', $partnerId);
 
         $count = $qb->getQuery()->getSingleScalarResult();
 

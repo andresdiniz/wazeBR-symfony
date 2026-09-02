@@ -3,72 +3,45 @@
 namespace App\Entity;
 
 use App\Repository\PartnerRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Validator\Constraints as Assert;
+use Doctrine\ORM\Mapping\Id;
+use Doctrine\ORM\Mapping\GeneratedValue;
+use Doctrine\ORM\Mapping\Column;
+use Doctrine\ORM\Mapping\Entity;
+use Doctrine\ORM\Mapping\OneToMany;
 
-#[ORM\Entity(repositoryClass: PartnerRepository::class)]
-#[ORM\Table(name: 'partners')]
+#[Entity(repositoryClass: PartnerRepository::class)]
 class Partner
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
+    #[Id]
+    #[GeneratedValue]
+    #[Column(type: Types::INTEGER)]
     private ?int $id = null;
 
-    #[ORM\Column(type: 'string', length: 80, unique: true)]
-    #[Assert\NotBlank]
-    #[Assert\Length(max: 80)]
-    private ?string $slug = null;
-
-    #[ORM\Column(type: 'string', length: 120)]
-    #[Assert\NotBlank]
-    #[Assert\Length(max: 120)]
+    #[Column(type: Types::STRING, length: 255)]
     private ?string $name = null;
 
-    #[ORM\Column(type: 'string', length: 180, unique: true)]
-    #[Assert\NotBlank]
-    #[Assert\Email]
-    private ?string $email = null;
+    #[Column(type: Types::BOOLEAN)]
+    private bool $active = true;
 
-    #[ORM\Column(type: 'string', length: 64, unique: true)]
-    #[Assert\NotBlank]
-    #[Assert\Length(min: 64, max: 64)]
-    private ?string $apiToken = null;
+    #[OneToMany(targetEntity: User::class, mappedBy: 'partner')]
+    private Collection $users;
 
-    #[ORM\Column(type: 'string', length: 100, nullable: true)]
-    private ?string $bbox = null;
-
-    #[ORM\Column(type: 'text', nullable: false)]
-    private string $cemadenStates = '[]';
-
-    #[ORM\Column(type: 'boolean')]
-    private bool $isActive = true;
-
-    #[ORM\Column(type: 'datetime')]
-    private \DateTimeInterface $createdAt;
-
-    #[ORM\Column(type: 'integer', nullable: true)]
-    private ?int $refreshIntervalMinutes = null;
+    #[OneToMany(targetEntity: WazeTvtRoute::class, mappedBy: 'partner')]
+    private Collection $wazeTvtRoutes;
 
     public function __construct()
     {
-        $this->createdAt = new \DateTime();
+        $this->users = new ArrayCollection();
+        $this->wazeTvtRoutes = new ArrayCollection();
     }
 
     public function getId(): ?int
     {
         return $this->id;
-    }
-
-    public function getSlug(): ?string
-    {
-        return $this->slug;
-    }
-
-    public function setSlug(?string $slug): static
-    {
-        $this->slug = $slug;
-        return $this;
     }
 
     public function getName(): ?string
@@ -82,80 +55,24 @@ class Partner
         return $this;
     }
 
-    public function getEmail(): ?string
-    {
-        return $this->email;
-    }
-
-    public function setEmail(?string $email): static
-    {
-        $this->email = $email;
-        return $this;
-    }
-
-    public function getApiToken(): ?string
-    {
-        return $this->apiToken;
-    }
-
-    public function setApiToken(?string $apiToken): static
-    {
-        $this->apiToken = $apiToken;
-        return $this;
-    }
-
-    public function getBbox(): ?string
-    {
-        return $this->bbox;
-    }
-
-    public function setBbox(?string $bbox): static
-    {
-        $this->bbox = $bbox;
-        return $this;
-    }
-
-    public function getCemadenStates(): string
-    {
-        return $this->cemadenStates;
-    }
-
-    public function setCemadenStates(string $cemadenStates): static
-    {
-        $this->cemadenStates = $cemadenStates;
-        return $this;
-    }
-
     public function isActive(): bool
     {
-        return $this->isActive;
+        return $this->active;
     }
 
-    public function setIsActive(bool $isActive): static
+    public function setActive(bool $active): static
     {
-        $this->isActive = $isActive;
+        $this->active = $active;
         return $this;
     }
 
-    public function getCreatedAt(): \DateTimeInterface
+    public function getUsers(): Collection
     {
-        return $this->createdAt;
+        return $this->users;
     }
 
-    public function setCreatedAt(\DateTimeInterface $createdAt): static
+    public function getWazeTvtRoutes(): Collection
     {
-        $this->createdAt = $createdAt;
-        return $this;
-    }
-
-    public function getRefreshIntervalMinutes(): ?int
-    {
-        return $this->refreshIntervalMinutes;
-    }
-
-    public function setRefreshIntervalMinutes(?int $refreshIntervalMinutes): static
-    {
-        $this->refreshIntervalMinutes = $refreshIntervalMinutes;
-        return $this;
+        return $this->wazeTvtRoutes;
     }
 }
