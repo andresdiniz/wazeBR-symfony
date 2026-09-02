@@ -68,6 +68,8 @@ class DashboardController extends AbstractController
             'routesMonitored' => 0,
             'monitoredLinks' => 0,
             'monitoredCities' => 0,
+            'cemadenReadings' => 0,
+            'cemadenCities' => 0,
         ];
 
         return $this->render('dashboard/index.html.twig', [
