@@ -18,15 +18,8 @@ framework:
     php_errors:
         log: true
 
-    # PÃ¡ginas de erro customizadas
-    error_controller: framework.controller.error
-    exceptions:
-        Symfony\Component\HttpKernel\Exception\NotFoundHttpException:
-            controller: App\Controller\ErrorController::notFound
-        Symfony\Component\HttpKernel\Exception\HttpException:
-            controller: App\Controller\ErrorController::error
-        Throwable:
-            controller: App\Controller\ErrorController::error
+    # Em produção, não mostrar detalhes de erro no browser
+    # O Symfony já usa templates de erro genricos por padrão quando debug=false
 
 when@test:
     framework:
@@ -36,9 +29,6 @@ when@test:
 
 when@prod:
     framework:
-        # Em produÃ§Ã£o, nÃ£o mostrar detalhes de erro no browser
-        exceptions:
-            Symfony\Component\HttpKernel\Exception\NotFoundHttpException:
-                controller: App\Controller\ErrorController::notFound
-            Throwable:
-                controller: App\Controller\ErrorController::error
+        # Garante que erros PHP sejam logados mas não exibidos
+        php_errors:
+            log: true
