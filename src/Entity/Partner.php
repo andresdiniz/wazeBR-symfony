@@ -26,9 +26,6 @@ class Partner
     #[Column(type: Types::STRING, length: 255)]
     private ?string $name = null;
 
-    #[Column(type: Types::BOOLEAN)]
-    private bool $active = true;
-
     #[OneToMany(targetEntity: User::class, mappedBy: 'partner')]
     private Collection $users;
 
@@ -54,17 +51,6 @@ class Partner
     public function setName(?string $name): static
     {
         $this->name = $name;
-        return $this;
-    }
-
-    public function isActive(): bool
-    {
-        return $this->active;
-    }
-
-    public function setActive(bool $active): static
-    {
-        $this->active = $active;
         return $this;
     }
 
