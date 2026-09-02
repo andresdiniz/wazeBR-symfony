@@ -1,204 +1,155 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Command;
 
-use App\Entity\MonitoredLink;
-use App\Entity\WazeTvtRoute;
-use App\Entity\WazeTvtSnapshot;
-use App\Repository\MonitoredLinkRepository;
+use App\Entity\WazeTvtRouteDefinition;
+use App\Entity\WazeTvtRouteExecution;
+use App\Entity\WazeTvtRouteExecutionCoord;
+use App\Repository\WazeTvtRouteDefinitionRepository;
+use App\Repository\WazeTvtRouteExecutionRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Contracts\Log\LoggerInterface;
 
-/**
- * Coleta rotas do feed Waze TVT (feedFormat=2).
- *
- * URL esperada no MonitoredLink:
- *   https://www.waze.com/row-partnerhub-api/feeds-tvt/{uuid}?id={monitorId}
- */
 #[AsCommand(
-    name: 'app:waze:collect-tvt',
-    description: 'Coleta snapshots de rotas do feed TVT Waze para todos os links ativos (feedFormat=2).',
+    name: 'waze:collect-tvt',
+    description: 'Collect TVT (travel time) data from Waze API and store using new Definition/Execution structure',
 )]
 class WazeCollectTvtCommand extends Command
 {
+    private const string API_BASE = 'https://api.waze.com/';
+
     public function __construct(
-        private readonly MonitoredLinkRepository $linkRepo,
-        private readonly EntityManagerInterface  $em,
-        private readonly HttpClientInterface     $httpClient,
+        private HttpClientInterface $httpClient,
+        private EntityManagerInterface $em,
+        private WazeTvtRouteDefinitionRepository $definitionRepo,
+        private WazeTvtRouteExecutionRepository $executionRepo,
+        private LoggerInterface $logger,
     ) {
         parent::__construct();
     }
 
-    protected function configure(): void
-    {
-        $this
-            ->addOption('dry-run', null, InputOption::VALUE_NONE,
-                'Busca e exibe o JSON sem persistir nada');
-    }
-
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $io     = new SymfonyStyle($input, $output);
-        $dryRun = (bool) $input->getOption('dry-run');
+        $io = new SymfonyStyle($input, $output);
+        $io->title('Waze TVT Collection');
 
-        $io->title('Waze Collect TVT — feeds-tvt');
-        if ($dryRun) {
-            $io->note('Modo DRY-RUN: nenhum dado será persistido.');
-        }
+        $routes = $this->getMonitoredRoutes();
 
-        /** @var MonitoredLink[] $links */
-        $links = $this->linkRepo->findActiveTrafficFeeds();
-
-        if (empty($links)) {
-            $io->warning('Nenhum link TVT ativo (feedFormat=2). Cadastre um MonitoredLink.');
+        if (empty($routes)) {
+            $io->warning('No monitored routes found.');
             return Command::SUCCESS;
         }
 
-        $totalSnapshots = 0;
+        $io->section(sprintf('Collecting data for %d route(s)', count($routes)));
 
-        foreach ($links as $link) {
-            $partner = $link->getPartner();
-            $label   = $link->getLabel() ?? $link->getUrl();
-
-            $io->section("Parceiro: {$partner->getName()} [{$partner->getSlug()}] — {$label}");
-            $io->writeln('  URL: ' . $link->getUrl());
-
+        foreach ($routes as $route) {
             try {
-                $data = $this->fetchFeed($link->getUrl());
+                $this->collectRoute($route, $io);
             } catch (\Throwable $e) {
-                $io->error('Erro ao buscar feed TVT: ' . $e->getMessage());
-                continue;
+                $this->logger->error('Error collecting route: ' . $e->getMessage(), [
+                    'route' => $route,
+                    'exception' => $e,
+                ]);
+                $io->warning(sprintf('Failed to collect route %s: %s', $route['id'] ?? 'unknown', $e->getMessage()));
             }
-
-            $rawRoutes = $data['routes'] ?? [];
-
-            if ($dryRun) {
-                $io->writeln(sprintf(
-                    '  DRY-RUN: %d rota(s) encontrada(s).',
-                    count($rawRoutes),
-                ));
-                foreach ($rawRoutes as $i => $r) {
-                    $io->writeln(sprintf(
-                        '    Rota %d: id=%s | name=%s | jamLevel=%s | subRoutes=%d',
-                        $i + 1,
-                        $r['id']       ?? '(sem id)',
-                        $r['name']     ?? '(sem nome)',
-                        $r['jamLevel'] ?? '?',
-                        count($r['subRoutes'] ?? []),
-                    ));
-                }
-                $io->writeln('  usersOnJams:');
-                foreach (($data['usersOnJams'] ?? []) as $u) {
-                    $io->writeln(sprintf(
-                        '    jamLevel=%d → %d usuários',
-                        $u['jamLevel']    ?? 0,
-                        $u['wazersCount'] ?? 0,
-                    ));
-                }
-                continue;
-            }
-
-            $snapshot = $this->buildSnapshot($link, $data);
-            $this->em->persist($snapshot);
-
-            $link->setLastCollectedAt(new \DateTimeImmutable());
-            $this->em->flush();
-
-            $totalSnapshots++;
-
-            $io->writeln(sprintf(
-                '  ✓ Snapshot salvo: <info>%d rota(s)</info>, <info>%d usuário(s) em jams</info>.',
-                $snapshot->getRouteCount(),
-                $snapshot->getTotalUsersOnJams(),
-            ));
         }
 
-        if (!$dryRun) {
-            $io->success("Total salvo — Snapshots: {$totalSnapshots}");
-        }
-
+        $io->success('TVT collection completed.');
         return Command::SUCCESS;
     }
 
-    // ── HTTP ──────────────────────────────────────────────────────────────────
-
-    private function fetchFeed(string $url): array
+    private function getMonitoredRoutes(): array
     {
-        $response = $this->httpClient->request('GET', $url, [
-            'timeout' => 30,
-            'headers' => [
-                'Accept'     => 'application/json',
-                'User-Agent' => 'WazeBR-Symfony/1.0',
-            ],
-        ]);
-
-        $status = $response->getStatusCode();
-        if ($status !== 200) {
-            throw new \RuntimeException("HTTP {$status} ao acessar {$url}");
-        }
-
-        return $response->toArray();
+        $conn = $this->em->getConnection();
+        return $conn->fetchAllAssociative('SELECT id, route_id, name FROM waze_routes WHERE active = 1');
     }
 
-    // ── Builder do Snapshot ───────────────────────────────────────────────────
-
-    private function buildSnapshot(MonitoredLink $link, array $data): WazeTvtSnapshot
+    private function collectRoute(array $route, SymfonyStyle $io): void
     {
-        $rawRoutes = $data['routes'] ?? [];
+        $routeId = $route['route_id'];
+        $io->text(sprintf('→ Route %s (%s)', $routeId, $route['name'] ?? 'unnamed'));
 
-        $snapshot = (new WazeTvtSnapshot())
-            ->setPartner($link->getPartner())
-            ->setSourceLink($link)
-            ->setUpdateTime(isset($data['updateTime']) ? (int) $data['updateTime'] : null)
-            ->setFeedName($data['name']     ?? null)
-            ->setAreaName($data['areaName'] ?? null)
-            ->setBroadcasterId($data['broadcasterId'] ?? null)
-            ->setIsMetric((bool) ($data['isMetric'] ?? true))
-            ->setBbox($data['bbox'] ?? null)
-            ->setUsersOnJams($data['usersOnJams']   ?? [])
-            ->setLengthOfJams($data['lengthOfJams'] ?? [])
-            ->setIrregularities($data['irregularities'] ?? [])
-            ->setRouteCount(count($rawRoutes));
+        $data = $this->fetchTvtData($routeId);
+        if (!$data) {
+            return;
+        }
 
-        foreach ($rawRoutes as $rawRoute) {
-            $parentWazeId = isset($rawRoute['id']) ? (string) $rawRoute['id'] : null;
+        $definition = $this->definitionRepo->findOneByRouteId($routeId);
+        if (!$definition) {
+            $definition = new WazeTvtRouteDefinition();
+            $definition->setRouteId($routeId);
+            $definition->setName($data['name'] ?? $route['name'] ?? null);
+            $definition->setBbox($this->encodeJson($data['bbox'] ?? null));
+            $definition->setLine($this->encodeJson($data['line'] ?? null));
+            $this->em->persist($definition);
+            $this->em->flush();
+            $io->text(sprintf('  Created definition for %s', $routeId));
+        }
 
-            $snapshot->addRoute($this->hydrateRoute($rawRoute, false, null));
+        $execution = new WazeTvtRouteExecution();
+        $execution->setRouteDefinition($definition);
+        $execution->setTimestamp(new \DateTimeImmutable());
+        $execution->setDuration($data['duration'] ?? null);
+        $execution->setLength($data['length'] ?? null);
+        $execution->setIrregularities($data['irregularities'] ?? 0);
+        $execution->setTrafficJams($data['trafficJams'] ?? 0);
+        $execution->setAvgSpeed($data['avgSpeed'] ?? null);
+        $execution->setCoords($this->encodeJson($data['coords'] ?? null));
 
-            foreach (($rawRoute['subRoutes'] ?? []) as $rawSub) {
-                $snapshot->addRoute($this->hydrateRoute($rawSub, true, $parentWazeId));
+        $this->em->persist($execution);
+        $this->em->flush();
+
+        if (!empty($data['coordsDetailed'])) {
+            foreach ($data['coordsDetailed'] as $i => $coord) {
+                $coordEntity = new WazeTvtRouteExecutionCoord();
+                $coordEntity->setExecution($execution);
+                $coordEntity->setPosition($i);
+                $coordEntity->setLat((float) ($coord['lat'] ?? 0));
+                $coordEntity->setLng((float) ($coord['lng'] ?? 0));
+                $coordEntity->setSpeed($coord['speed'] ?? null);
+                $coordEntity->setLevel($coord['level'] ?? null);
+                $this->em->persist($coordEntity);
             }
+            $this->em->flush();
         }
 
-        return $snapshot;
+        $io->text(sprintf('  Saved execution: duration=%s, length=%s, jams=%d', 
+            $data['duration'] ?? 'null', 
+            $data['length'] ?? 'null', 
+            $data['trafficJams'] ?? 0
+        ));
     }
 
-    // ── Hidratador de WazeTvtRoute ────────────────────────────────────────────
-
-    private function hydrateRoute(array $raw, bool $isSubRoute, ?string $parentWazeId): WazeTvtRoute
+    private function fetchTvtData(string $routeId): ?array
     {
-        return (new WazeTvtRoute())
-            ->setWazeRouteId(isset($raw['id']) ? (string) $raw['id'] : null)
-            ->setIsSubRoute($isSubRoute)
-            ->setParentWazeId($parentWazeId)
-            ->setName($raw['name']     ?? null)
-            ->setType($raw['type']     ?? null)
-            ->setFromName($raw['fromName'] ?? null)
-            ->setToName($raw['toName']   ?? null)
-            ->setLength(isset($raw['length'])           ? (int) $raw['length']       : null)
-            ->setTime(isset($raw['time'])               ? (int) $raw['time']         : null)
-            ->setHistoricTime(isset($raw['historicTime']) ? (int) $raw['historicTime'] : null)
-            ->setJamLevel(isset($raw['jamLevel'])       ? (int) $raw['jamLevel']     : null)
-            ->setLine($raw['line'] ?? [])
-            ->setBbox($raw['bbox'] ?? null)
-            ->setSubRoutesRaw($raw['subRoutes'] ?? []);
+        try {
+            $response = $this->httpClient->request('GET', self::API_BASE . 'tvt/' . urlencode($routeId), [
+                'timeout' => 30,
+            ]);
+
+            if ($response->getStatusCode() !== 200) {
+                $this->logger->warning('TVT API returned non-200', ['status' => $response->getStatusCode(), 'route' => $routeId]);
+                return null;
+            }
+
+            return $response->toArray();
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to fetch TVT data', ['route' => $routeId, 'exception' => $e]);
+            return null;
+        }
+    }
+
+    private function encodeJson(mixed $data): ?string
+    {
+        if ($data === null) {
+            return null;
+        }
+        return json_encode($data, JSON_UNESCAPED_SLASHES);
     }
 }
