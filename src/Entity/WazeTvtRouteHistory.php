@@ -1,23 +1,17 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Entity;
 
 use App\Repository\WazeTvtRouteHistoryRepository;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Doctrine\ORM\Mapping\Id;
 use Doctrine\ORM\Mapping\GeneratedValue;
 use Doctrine\ORM\Mapping\Column;
 use Doctrine\ORM\Mapping\Entity;
-use Doctrine\ORM\Mapping\Table;
 use Doctrine\ORM\Mapping\ManyToOne;
-use Doctrine\ORM\Mapping\OneToMany;
 use Doctrine\ORM\Mapping\JoinColumn;
-use Doctrine\ORM\Mapping\OrderBy;
+use Doctrine\ORM\Mapping\Table;
 
 #[Entity(repositoryClass: WazeTvtRouteHistoryRepository::class)]
 #[Table(name: 'waze_tvt_route_history')]
@@ -25,75 +19,194 @@ class WazeTvtRouteHistory
 {
     #[Id]
     #[GeneratedValue]
-    #[Column(type: 'bigint')]
+    #[Column(type: Types::INTEGER)]
     private ?int $id = null;
 
-    #[ManyToOne(inversedBy: 'history')]
+    #[ManyToOne(targetEntity: WazeTvtRoute::class, inversedBy: 'histories')]
     #[JoinColumn(name: 'route_id', referencedColumnName: 'id', nullable: false)]
     private ?WazeTvtRoute $route = null;
 
-    #[Column(type: 'integer', nullable: true)]
-    private ?int $jamLevel = null;
+    #[Column(type: Types::DATETIME_IMMUTABLE)]
+    private ?\DateTimeImmutable $capturedAt = null;
 
-    #[Column(type: 'integer', nullable: true)]
-    private ?int $lengthMeters = null;
+    #[Column(type: Types::DECIMAL, precision: 10, scale: 6, nullable: true)]
+    private ?float $bboxMinLat = null;
 
-    #[Column(type: 'integer', nullable: true)]
-    private ?int $delaySeconds = null;
+    #[Column(type: Types::DECIMAL, precision: 10, scale: 6, nullable: true)]
+    private ?float $bboxMinLng = null;
 
-    #[Column(type: 'decimal', precision: 5, scale: 2, nullable: true)]
-    private ?string $speedKmh = null;
+    #[Column(type: Types::DECIMAL, precision: 10, scale: 6, nullable: true)]
+    private ?float $bboxMaxLat = null;
 
-    #[Column(type: Types::DATETIME_MUTABLE, nullable: true)]
-    private ?\DateTimeInterface $collectedAt = null;
+    #[Column(type: Types::DECIMAL, precision: 10, scale: 6, nullable: true)]
+    private ?float $bboxMaxLng = null;
 
-    #[Column(type: Types::DATETIME_MUTABLE, nullable: true)]
-    private ?\DateTimeInterface $createdAt = null;
+    #[Column(type: Types::DECIMAL, precision: 10, scale: 6, nullable: true)]
+    private ?float $coordStartLat = null;
 
-    #[OneToMany(
-        targetEntity: WazeTvtRouteHistoryCoords::class,
-        mappedBy: 'history',
-        cascade: ['persist', 'remove'],
-        orphanRemoval: true
-    )]
-    #[OrderBy(['orderIndex' => 'ASC'])]
-    private Collection $coords;
+    #[Column(type: Types::DECIMAL, precision: 10, scale: 6, nullable: true)]
+    private ?float $coordStartLng = null;
 
-    public function __construct()
+    #[Column(type: Types::DECIMAL, precision: 10, scale: 6, nullable: true)]
+    private ?float $coordMidLat = null;
+
+    #[Column(type: Types::DECIMAL, precision: 10, scale: 6, nullable: true)]
+    private ?float $coordMidLng = null;
+
+    #[Column(type: Types::DECIMAL, precision: 10, scale: 6, nullable: true)]
+    private ?float $coordEndLat = null;
+
+    #[Column(type: Types::DECIMAL, precision: 10, scale: 6, nullable: true)]
+    private ?float $coordEndLng = null;
+
+    #[Column(type: Types::INTEGER, nullable: true)]
+    private ?int $originalPointCount = null;
+
+    public function getId(): ?int
     {
-        $this->coords = new ArrayCollection();
-        $this->createdAt = new \DateTime();
+        return $this->id;
     }
 
-    public function getId(): ?int { return $this->id; }
-    public function getRoute(): ?WazeTvtRoute { return $this->route; }
-    public function setRoute(?WazeTvtRoute $route): static { $this->route = $route; return $this; }
-    public function getJamLevel(): ?int { return $this->jamLevel; }
-    public function setJamLevel(?int $jamLevel): static { $this->jamLevel = $jamLevel; return $this; }
-    public function getLengthMeters(): ?int { return $this->lengthMeters; }
-    public function setLengthMeters(?int $lengthMeters): static { $this->lengthMeters = $lengthMeters; return $this; }
-    public function getDelaySeconds(): ?int { return $this->delaySeconds; }
-    public function setDelaySeconds(?int $delaySeconds): static { $this->delaySeconds = $delaySeconds; return $this; }
-    public function getSpeedKmh(): ?string { return $this->speedKmh; }
-    public function setSpeedKmh(?string $speedKmh): static { $this->speedKmh = $speedKmh; return $this; }
-    public function getCollectedAt(): ?\DateTimeInterface { return $this->collectedAt; }
-    public function setCollectedAt(?\DateTimeInterface $collectedAt): static { $this->collectedAt = $collectedAt; return $this; }
-    public function getCreatedAt(): ?\DateTimeInterface { return $this->createdAt; }
-    public function setCreatedAt(?\DateTimeInterface $createdAt): static { $this->createdAt = $createdAt; return $this; }
-    public function getCoords(): Collection { return $this->coords; }
-    public function addCoord(WazeTvtRouteHistoryCoords $coord): static {
-        if (!$this->coords->contains($coord)) {
-            $this->coords->add($coord);
-            $coord->setHistory($this);
-        }
+    public function getRoute(): ?WazeTvtRoute
+    {
+        return $this->route;
+    }
+
+    public function setRoute(?WazeTvtRoute $route): static
+    {
+        $this->route = $route;
         return $this;
     }
-    public function removeCoord(WazeTvtRouteHistoryCoords $coord): static {
-        if ($this->coords->removeElement($coord)) {
-            if ($coord->getHistory() === $this) {
-                $coord->setHistory(null);
-            }
-        }
+
+    public function getCapturedAt(): ?\DateTimeImmutable
+    {
+        return $this->capturedAt;
+    }
+
+    public function setCapturedAt(\DateTimeImmutable $capturedAt): static
+    {
+        $this->capturedAt = $capturedAt;
+        return $this;
+    }
+
+    public function getBboxMinLat(): ?float
+    {
+        return $this->bboxMinLat;
+    }
+
+    public function setBboxMinLat(?float $bboxMinLat): static
+    {
+        $this->bboxMinLat = $bboxMinLat;
+        return $this;
+    }
+
+    public function getBboxMinLng(): ?float
+    {
+        return $this->bboxMinLng;
+    }
+
+    public function setBboxMinLng(?float $bboxMinLng): static
+    {
+        $this->bboxMinLng = $bboxMinLng;
+        return $this;
+    }
+
+    public function getBboxMaxLat(): ?float
+    {
+        return $this->bboxMaxLat;
+    }
+
+    public function setBboxMaxLat(?float $bboxMaxLat): static
+    {
+        $this->bboxMaxLat = $bboxMaxLat;
+        return $this;
+    }
+
+    public function getBboxMaxLng(): ?float
+    {
+        return $this->bboxMaxLng;
+    }
+
+    public function setBboxMaxLng(?float $bboxMaxLng): static
+    {
+        $this->bboxMaxLng = $bboxMaxLng;
+        return $this;
+    }
+
+    public function getCoordStartLat(): ?float
+    {
+        return $this->coordStartLat;
+    }
+
+    public function setCoordStartLat(?float $coordStartLat): static
+    {
+        $this->coordStartLat = $coordStartLat;
+        return $this;
+    }
+
+    public function getCoordStartLng(): ?float
+    {
+        return $this->coordStartLng;
+    }
+
+    public function setCoordStartLng(?float $coordStartLng): static
+    {
+        $this->coordStartLng = $coordStartLng;
+        return $this;
+    }
+
+    public function getCoordMidLat(): ?float
+    {
+        return $this->coordMidLat;
+    }
+
+    public function setCoordMidLat(?float $coordMidLat): static
+    {
+        $this->coordMidLat = $coordMidLat;
+        return $this;
+    }
+
+    public function getCoordMidLng(): ?float
+    {
+        return $this->coordMidLng;
+    }
+
+    public function setCoordMidLng(?float $coordMidLng): static
+    {
+        $this->coordMidLng = $coordMidLng;
+        return $this;
+    }
+
+    public function getCoordEndLat(): ?float
+    {
+        return $this->coordEndLat;
+    }
+
+    public function setCoordEndLat(?float $coordEndLat): static
+    {
+        $this->coordEndLat = $coordEndLat;
+        return $this;
+    }
+
+    public function getCoordEndLng(): ?float
+    {
+        return $this->coordEndLng;
+    }
+
+    public function setCoordEndLng(?float $coordEndLng): static
+    {
+        $this->coordEndLng = $coordEndLng;
+        return $this;
+    }
+
+    public function getOriginalPointCount(): ?int
+    {
+        return $this->originalPointCount;
+    }
+
+    public function setOriginalPointCount(?int $originalPointCount): static
+    {
+        $this->originalPointCount = $originalPointCount;
         return $this;
     }
 }
