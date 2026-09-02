@@ -32,17 +32,28 @@ class MigrateTvtRoutesCommand extends Command
 
         $conn = $this->em->getConnection();
 
-        $io->section('1. Creating unique route definitions from existing executions');
+        // Check if old table exists
+        try {
+            $conn->executeQuery('SELECT 1 FROM waze_tvt_routes LIMIT 1');
+        } catch (\Throwable $e) {
+            $io->warning('Table waze_tvt_routes does not exist or is not accessible. Skipping migration.');
+            $io->text('New tables (waze_tvt_route_definition, waze_tvt_route_execution) should be created manually or via migration.');
+            return Command::SUCCESS;
+        }
 
+        $io->section('1. Creating route definitions from existing executions');
+
+        // Try to get distinct routes - adjust column names based on your actual schema
         $rows = $conn->fetchAllAssociative(
             <<<'SQL'
             SELECT DISTINCT
-                route_id,
+                id as route_id,
                 name,
                 bbox,
                 line
             FROM waze_tvt_routes
-            WHERE route_id IS NOT NULL
+            WHERE id IS NOT NULL
+            LIMIT 1000
             SQL
         );
 
@@ -71,13 +82,12 @@ class MigrateTvtRoutesCommand extends Command
         $this->em->flush();
         $io->success(sprintf('Created %d route definitions (skipped %d existing).', $createdDefs, $skippedDefs));
 
-        $io->section('2. Migrating executions linking to definitions');
+        $io->section('2. Creating executions linking to definitions');
 
         $execRows = $conn->fetchAllAssociative(
             <<<'SQL'
             SELECT
                 id,
-                route_id,
                 timestamp,
                 duration,
                 length,
@@ -87,8 +97,8 @@ class MigrateTvtRoutesCommand extends Command
                 coords,
                 created_at
             FROM waze_tvt_routes
-            WHERE route_id IS NOT NULL
             ORDER BY id
+            LIMIT 1000
             SQL
         );
 
@@ -97,10 +107,10 @@ class MigrateTvtRoutesCommand extends Command
 
         foreach ($execRows as $row) {
             $def = $this->em->getRepository(WazeTvtRouteDefinition::class)
-                ->findOneBy(['routeId' => (string) $row['route_id']]);
+                ->findOneBy(['routeId' => (string) $row['id']]);
 
             if (!$def) {
-                $io->warning(sprintf('No definition for route_id "%s", skipping execution id=%d', $row['route_id'], $row['id']));
+                $io->warning(sprintf('No definition for route id=%d, skipping execution.', $row['id']));
                 $skippedExec++;
                 continue;
             }
@@ -122,47 +132,6 @@ class MigrateTvtRoutesCommand extends Command
 
         $this->em->flush();
         $io->success(sprintf('Created %d executions (skipped %d).', $createdExec, $skippedExec));
-
-        $io->section('3. Migrating coords from waze_tvt_route_history_coords (if any)');
-
-        $coordRows = $conn->fetchAllAssociative(
-            <<<'SQL'
-            SELECT
-                id,
-                execution_id,
-                position,
-                lat,
-                lng,
-                speed,
-                level
-            FROM waze_tvt_route_history_coords
-            ORDER BY id
-            SQL
-        );
-
-        $createdCoords = 0;
-
-        foreach ($coordRows as $row) {
-            $exec = $this->em->getRepository(WazeTvtRouteExecution::class)->find($row['execution_id']);
-            if (!$exec) {
-                $io->warning(sprintf('No execution id=%d for coord id=%d, skipping.', $row['execution_id'] ?? 0, $row['id']));
-                continue;
-            }
-
-            $coord = new WazeTvtRouteExecutionCoord();
-            $coord->setExecution($exec);
-            $coord->setPosition((int) ($row['position'] ?? 0));
-            $coord->setLat((float) ($row['lat'] ?? 0));
-            $coord->setLng((float) ($row['lng'] ?? 0));
-            $coord->setSpeed($row['speed'] !== null ? (float) $row['speed'] : null);
-            $coord->setLevel($row['level'] !== null ? (int) $row['level'] : null);
-
-            $this->em->persist($coord);
-            $createdCoords++;
-        }
-
-        $this->em->flush();
-        $io->success(sprintf('Created %d coord details.', $createdCoords));
 
         $io->newLine();
         $io->text('Migration completed. You can now:');
