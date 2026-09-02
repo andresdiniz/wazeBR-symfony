@@ -26,6 +26,9 @@ class DashboardController extends AbstractController
             return $this->redirectToRoute('app_login');
         }
 
+        $partner = $user->getPartner();
+        $partnerLabel = $partner ? ($partner->getName() ?? 'Parceiro') : 'Sem parceiro';
+
         // Query minimalista: conta todas as execucoes sem filtros
         // (WazeTvtRouteExecution não tem campos partner, wazeRouteId ou isSubRoute)
         $qb = $this->entityManager->createQueryBuilder();
@@ -36,6 +39,7 @@ class DashboardController extends AbstractController
 
         return $this->render('dashboard/index.html.twig', [
             'count' => $count,
+            'partnerLabel' => $partnerLabel,
         ]);
     }
 }
