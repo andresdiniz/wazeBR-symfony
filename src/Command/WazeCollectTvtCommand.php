@@ -22,7 +22,7 @@ use Symfony\Contracts\Log\LoggerInterface;
 )]
 class WazeCollectTvtCommand extends Command
 {
-    private const string API_BASE = 'https://api.waze.com/';
+    private const API_BASE = 'https://api.waze.com/';
 
     public function __construct(
         private HttpClientInterface $httpClient,
