@@ -89,6 +89,10 @@ class DashboardController extends AbstractController
             'executions' => (int) ($count[1] ?? 0),
         ];
 
+        // Dados para graficos (valores temporarios zerados)
+        $totalAlertsInPeriod = 0;
+        $alertsBySubtype = [];
+
         return $this->render('dashboard/index.html.twig', [
             'count' => $count,
             'partnerLabel' => $partnerLabel,
@@ -99,6 +103,8 @@ class DashboardController extends AbstractController
             'partnerStats' => $partnerStats,
             'hero' => $hero,
             'periodStats' => $periodStats,
+            'totalAlertsInPeriod' => $totalAlertsInPeriod,
+            'alertsBySubtype' => $alertsBySubtype,
         ]);
     }
 }
