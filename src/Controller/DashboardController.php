@@ -44,6 +44,11 @@ class DashboardController extends AbstractController
         ];
         $periodKey = $request->get('period', '2_week');
 
+        // Calcula periodo (valores temporarios - agora menos X conforme periodo)
+        $now = new \DateTimeImmutable();
+        $periodFrom = $now->modify('-2 weeks');
+        $periodTo = $now;
+
         // Stats do parceiro (valores temporarios zerados)
         $partnerStats = [
             'alerts' => 0,
@@ -72,13 +77,28 @@ class DashboardController extends AbstractController
             'cemadenCities' => 0,
         ];
 
+        // Period stats (valores temporarios zerados)
+        $periodStats = [
+            'alerts' => 0,
+            'jams' => 0,
+            'routes' => 0,
+            'tvtRoutes' => 0,
+            'monitoredLinks' => 0,
+            'irregularities' => 0,
+            'cifsEvents' => 0,
+            'executions' => (int) ($count[1] ?? 0),
+        ];
+
         return $this->render('dashboard/index.html.twig', [
             'count' => $count,
             'partnerLabel' => $partnerLabel,
             'periods' => $periods,
             'periodKey' => $periodKey,
+            'periodFrom' => $periodFrom,
+            'periodTo' => $periodTo,
             'partnerStats' => $partnerStats,
             'hero' => $hero,
+            'periodStats' => $periodStats,
         ]);
     }
 }
