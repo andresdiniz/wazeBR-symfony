@@ -9,3 +9,7 @@ wme_ur_sync:
   path: /api/wme/urs
   controller: App\Controller\WmeUrSyncController::receive
   methods: [POST]
+
+partner_register:
+    path: /partner/register
+    controller: App\Controller\PartnerRegistrationController::register
