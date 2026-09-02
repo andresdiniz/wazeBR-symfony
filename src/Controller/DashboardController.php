@@ -56,12 +56,21 @@ class DashboardController extends AbstractController
             'executions' => (int) ($count[1] ?? 0),
         ];
 
+        // Hero stats (valores temporarios zerados)
+        $hero = [
+            'alertsLast24h' => 0,
+            'alertsTotal' => 0,
+            'jamsLast24h' => 0,
+            'jamsTotal' => 0,
+        ];
+
         return $this->render('dashboard/index.html.twig', [
             'count' => $count,
             'partnerLabel' => $partnerLabel,
             'periods' => $periods,
             'periodKey' => $periodKey,
             'partnerStats' => $partnerStats,
+            'hero' => $hero,
         ]);
     }
 }
