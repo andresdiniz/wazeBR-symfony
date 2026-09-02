@@ -50,6 +50,7 @@ class DashboardController extends AbstractController
             'jams' => 0,
             'routes' => 0,
             'tvtRoutes' => 0,
+            'monitoredLinks' => 0,
             'executions' => (int) ($count[1] ?? 0),
         ];
 
