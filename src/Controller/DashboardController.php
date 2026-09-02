@@ -65,6 +65,9 @@ class DashboardController extends AbstractController
             'jamsLiveTotal' => 0,
             'jamsLiveMaxLevel' => 0,
             'jamsLiveMaxLevelLabel' => null,
+            'routesMonitored' => 0,
+            'monitoredLinks' => 0,
+            'monitoredCities' => 0,
         ];
 
         return $this->render('dashboard/index.html.twig', [
