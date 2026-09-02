@@ -8,6 +8,8 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
+#[ORM\Entity(repositoryClass: WazeTvtRouteExecutionRepository::class)]
+#[ORM\Table(name: 'waze_tvt_route_execution')]
 class WazeTvtRouteExecution
 {
     #[ORM\Id]
