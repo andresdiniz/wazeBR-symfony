@@ -38,3 +38,6 @@ services:
             $mailerDsn: '%app.mailer_dsn%'
             $senderEmail: '%app.sender_email%'
             $appName: '%app.app_name%'
+
+    App\Twig\UserExtension:
+        tags: ['twig.extension']

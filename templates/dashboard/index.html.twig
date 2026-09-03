@@ -14,7 +14,7 @@
 
 {% block javascripts %}
     {{ parent() }}
-    {{ importmap('chart.js') }}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="{{ asset('js/dashboard.js') }}" defer></script>
@@ -22,7 +22,7 @@
 
 {% block body %}
     {# Debug do dashboard (remova em produção) #}
-    {% if debugData is defined and app.user.hasRole('ROLE_ADMIN') %}
+    {% if debugData is defined %}
         <details class="dashboard-debug" open>
             <summary>🔍 Debug do Dashboard</summary>
             <pre>{{ debugData|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre>
