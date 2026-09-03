@@ -1,8 +1,43 @@
-/* Dedicated styles for river level screens. */
-.hydro-page .status-updated{color:var(--color-success)}
-.hydro-page .status-stale{color:var(--color-warning)}
-.hydro-page .status-offline{color:var(--color-text-muted)}
-.hydro-page .level-value,.hydro-page .rain-value{font-variant-numeric:tabular-nums;font-weight:700}
-.hydro-page .empty-state{padding:3rem 1rem;text-align:center;color:var(--color-text-muted)}
-.hydro-page .table-wrap{overflow-x:auto}
-.hydro-page .level-bar{height:4px;border-radius:999px;background:var(--color-primary);max-width:140px}
+.hydro-container {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 1.5rem;
+}
+
+.hydro-map {
+    height: 500px;
+    border-radius: 8px;
+}
+
+.hydro-sidebar {
+    background: #fff;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.station-card {
+    border-bottom: 1px solid #eee;
+    padding: 1rem 0;
+}
+
+.station-card:last-child {
+    border-bottom: none;
+}
+
+.station-level {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.station-level.critical {
+    color: #dc3545;
+}
+
+.station-level.warning {
+    color: #ffc107;
+}
+
+.station-level.normal {
+    color: #198754;
+}

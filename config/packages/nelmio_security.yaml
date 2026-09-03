@@ -1,14 +1,35 @@
 nelmio_security:
-  clickjacking:
-    paths:
-      '^/': DENY
-
-  content_type:
-    nosniff: true
-
-  xss_protection:
-    enabled: true
-    mode_block: true
-
-  referrer_policy:
-    policies: ['strict-origin-when-cross-origin']
+    csrf_protection:
+        enabled: true
+        token_check:
+            check_request: true
+    clickjacking:
+        paths:
+            '^/.*': DENY
+    xss_protection:
+        enabled: true
+        mode_block: true
+        report_uri: '%env(string:REPORT_URI)%'
+    content_type:
+        nosniff: true
+    referrer_policy:
+        enabled: true
+        policies:
+            - no-referrer-when-downgrade
+    rate_limit:
+        enabled: true
+        limits:
+            - { path: ^/api, limit: 60, period: 1min }
+            - { path: ^/login, limit: 5, period: 1min }
+            - { path: ^/reset-password, limit: 3, period: 1min }
+    csp:
+        enabled: true
+        report_endpoint: /csp-report
+        enforce:
+            level1:
+                default_src: ['self']
+                script_src: ['self', 'https://cdn.jsdelivr.net']
+                style_src: ['self', 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com']
+                img_src: ['self', 'data:', 'https://*.tile.openstreetmap.org']
+                font_src: ['self', 'https://fonts.gstatic.com']
+                connect_src: ['self', 'https://api.waze.com']

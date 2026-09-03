@@ -1,0 +1,52 @@
+.alerts-container {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.alerts-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.alerts-table th,
+.alerts-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.alerts-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+}
+
+.alert-type {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.alert-type.accident {
+    background: #dc3545;
+    color: #fff;
+}
+
+.alert-type.hazard {
+    background: #ffc107;
+    color: #000;
+}
+
+.alert-type.police {
+    background: #0d6efd;
+    color: #fff;
+}
+
+.alerts-filter {
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
