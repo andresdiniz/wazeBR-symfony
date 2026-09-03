@@ -3,83 +3,262 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="{% block meta_description %}Dashboard de monitoramento de tráfego e alertas{% endblock %}">
+    <meta name="description" content="{% block meta_description %}Sistema de monitoramento de tráfego{% endblock %}">
+    <meta name="author" content="wazeBR">
+    <meta name="robots" content="index, follow">
+
     <title>{% block title %}Dashboard{% endblock %} | wazeBR</title>
 
     {# Favicon #}
     <link rel="icon" href="{{ asset('favicon.ico') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
 
     {# Google Fonts #}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-    {# CSS via AssetMapper #}
+    {# CSS #}
     {% block stylesheets %}
         <link rel="stylesheet" href="{{ asset('styles/app.css') }}">
     {% endblock %}
-
-    <style>
-        :root {
-            --primary: #2563eb;
-            --primary-dark: #1d4ed8;
-            --secondary: #64748b;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --background: #f8fafc;
-            --surface: #ffffff;
-            --text: #1e293b;
-            --text-muted: #64748b;
-            --border: #e2e8f0;
-            --shadow: 0 1px 3px rgba(0,0,0,0.1);
-            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
-            --radius: 12px;
-            --radius-sm: 8px;
-            --transition: all 0.2s ease;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--background);
-            color: var(--text);
-            line-height: 1.6;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 1.5rem;
-        }
-
-        a {
-            color: var(--primary);
-            text-decoration: none;
-            transition: var(--transition);
-        }
-
-        a:hover {
-            color: var(--primary-dark);
-        }
-
-        button {
-            font-family: inherit;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-    </style>
 </head>
-<body>
-    {% block body %}{% endblock %}
+<body class="{% block body_class %}{% endblock %}">
+    {# Header / Navbar #}
+    {% block header %}
+        <header class="site-header">
+            <nav class="navbar">
+                <div class="navbar-container">
+                    {# Logo / Brand #}
+                    <a href="{{ path('app_home') }}" class="navbar-brand">
+                        <span class="brand-icon">🚦</span>
+                        <span class="brand-text">wazeBR</span>
+                    </a>
 
+                    {# Mobile Menu Toggle #}
+                    <button class="navbar-toggle" data-mobile-menu>
+                        <span class="sr-only">Menu</span>
+                        <svg class="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                        <svg class="icon-close hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+
+                    {# Navigation Menu #}
+                    <div class="navbar-menu" data-mobile-menu-content>
+                        <ul class="navbar-nav">
+                            {% block main_nav %}
+                                <li class="nav-item">
+                                    <a href="{{ path('dashboard_index') }}" class="nav-link {% if app.request.attributes.get('_route') == 'dashboard_index' %}active{% endif %}">
+                                        <span class="nav-icon">📊</span>
+                                        <span class="nav-text">Dashboard</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ path('alert_live') }}" class="nav-link {% if 'alert' in app.request.attributes.get('_route') %}active{% endif %}">
+                                        <span class="nav-icon">🔔</span>
+                                        <span class="nav-text">Alertas</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ path('jam_live') }}" class="nav-link {% if 'jam' in app.request.attributes.get('_route') %}active{% endif %}">
+                                        <span class="nav-icon">🚦</span>
+                                        <span class="nav-text">Congestionamentos</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ path('cifs_index') }}" class="nav-link {% if 'cifs' in app.request.attributes.get('_route') %}active{% endif %}">
+                                        <span class="nav-icon">📋</span>
+                                        <span class="nav-text">CIFS</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ path('hydro_live') }}" class="nav-link {% if 'hydro' in app.request.attributes.get('_route') %}active{% endif %}">
+                                        <span class="nav-icon">🌊</span>
+                                        <span class="nav-text">Hidrológico</span>
+                                    </a>
+                                </li>
+                            {% endblock %}
+                        </ul>
+                    </div>
+
+                    {# User Menu / Actions #}
+                    <div class="navbar-actions">
+                        {% if app.user %}
+                            <div class="user-menu" data-dropdown>
+                                <button class="user-menu-toggle" data-dropdown-trigger>
+                                    <span class="user-avatar">
+                                        {{ app.user.email|first|upper }}
+                                    </span>
+                                    <span class="user-name hidden-mobile">{{ app.user.name|default(app.user.email) }}</span>
+                                    <svg class="icon-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </button>
+                                <div class="user-menu-content" data-dropdown-menu>
+                                    <div class="user-menu-header">
+                                        <div class="user-info">
+                                            <div class="user-name">{{ app.user.name|default('Usuário') }}</div>
+                                            <div class="user-email">{{ app.user.email }}</div>
+                                        </div>
+                                    </div>
+
+                                    {# Menu baseado em regras de usuário #}
+                                    <div class="user-menu-section">
+                                        {% if is_granted('ROLE_ADMIN') or is_granted('ROLE_SUPER_ADMIN') %}
+                                            <a href="{{ path('admin_partner_index') }}" class="user-menu-link">
+                                                <span class="link-icon">🏢</span>
+                                                <span class="link-text">Administração</span>
+                                            </a>
+                                            <a href="{{ path('account_user_index') }}" class="user-menu-link">
+                                                <span class="link-icon">👥</span>
+                                                <span class="link-text">Usuários</span>
+                                            </a>
+                                        {% endif %}
+
+                                        {% if is_granted('ROLE_PARTNER_ADMIN') %}
+                                            <a href="{{ path('app_partner_admin_index') }}" class="user-menu-link">
+                                                <span class="link-icon">⚙️</span>
+                                                <span class="link-text">Painel do Parceiro</span>
+                                            </a>
+                                        {% endif %}
+
+                                        <a href="{{ path('account_settings') }}" class="user-menu-link">
+                                            <span class="link-icon">🔧</span>
+                                            <span class="link-text">Configurações</span>
+                                        </a>
+                                        <a href="{{ path('account_logs') }}" class="user-menu-link">
+                                            <span class="link-icon">📜</span>
+                                            <span class="link-text">Atividade</span>
+                                        </a>
+                                    </div>
+
+                                    <div class="user-menu-divider"></div>
+
+                                    <div class="user-menu-section">
+                                        <a href="{{ path('auth_logout') }}" class="user-menu-link text-danger">
+                                            <span class="link-icon">🚪</span>
+                                            <span class="link-text">Sair</span>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="auth-buttons">
+                                <a href="{{ path('auth_login') }}" class="btn btn-secondary btn-sm">Entrar</a>
+                                <a href="{{ path('partner_register') }}" class="btn btn-primary btn-sm">Cadastrar</a>
+                            </div>
+                        {% endif %}
+
+                        {# Theme Toggle #}
+                        <button class="theme-toggle" data-theme-toggle title="Alternar tema">
+                            <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <circle cx="12" cy="12" r="5" stroke-width="2"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                            </svg>
+                            <svg class="icon-moon hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </nav>
+        </header>
+    {% endblock %}
+
+    {# Flash Messages #}
+    {% block flashes %}
+        {% for label, messages in app.flashes %}
+            {% for message in messages %}
+                <div class="alert alert-{{ label }} alert-dismissible fade show" data-auto-dismiss role="alert">
+                    <div class="alert-content">
+                        {{ message }}
+                    </div>
+                    <button type="button" class="alert-close" data-dismiss="alert">
+                        <span class="sr-only">Fechar</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            {% endfor %}
+        {% endfor %}
+    {% endblock %}
+
+    {# Main Content #}
+    <main class="site-main">
+        {% block body %}{% endblock %}
+    </main>
+
+    {# Footer #}
+    {% block footer %}
+        <footer class="site-footer">
+            <div class="footer-container">
+                <div class="footer-content">
+                    <div class="footer-section">
+                        <h4 class="footer-title">wazeBR</h4>
+                        <p class="footer-text">
+                            Sistema de monitoramento de tráfego em tempo real.
+                        </p>
+                        <div class="footer-social">
+                            <a href="#" class="social-link" aria-label="GitHub">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                                </svg>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="footer-section">
+                        <h4 class="footer-title">Links Rápidos</h4>
+                        <ul class="footer-links">
+                            <li><a href="{{ path('dashboard_index') }}">Dashboard</a></li>
+                            <li><a href="{{ path('alert_index') }}">Alertas</a></li>
+                            <li><a href="{{ path('jam_index') }}">Congestionamentos</a></li>
+                            <li><a href="{{ path('cifs_index') }}">CIFS</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="footer-section">
+                        <h4 class="footer-title">Administração</h4>
+                        <ul class="footer-links">
+                            {% if is_granted('ROLE_ADMIN') %}
+                                <li><a href="{{ path('admin_partner_index') }}">Parceiros</a></li>
+                                <li><a href="{{ path('account_user_index') }}">Usuários</a></li>
+                            {% endif %}
+                            {% if is_granted('ROLE_PARTNER_ADMIN') %}
+                                <li><a href="{{ path('app_partner_admin_index') }}">Painel</a></li>
+                            {% endif %}
+                            <li><a href="{{ path('account_settings') }}">Configurações</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="footer-section">
+                        <h4 class="footer-title">Suporte</h4>
+                        <ul class="footer-links">
+                            <li><a href="mailto:suporte@wazebr.com">suporte@wazebr.com</a></li>
+                            <li><a href="#">Documentação</a></li>
+                            <li><a href="#">Status do Sistema</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="footer-bottom">
+                    <p class="copyright">
+                        &copy; {{ "now"|date("Y") }} wazeBR. Todos os direitos reservados.
+                    </p>
+                    <div class="footer-legal">
+                        <a href="#">Termos de Uso</a>
+                        <a href="#">Privacidade</a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    {% endblock %}
+
+    {# JavaScript #}
     {% block javascripts %}
         {{ importmap('app') }}
     {% endblock %}

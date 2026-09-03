@@ -1,362 +1,300 @@
-(() => {
-    'use strict';
+/**
+ * wazeBR - Dashboard Specific JavaScript
+ * Charts, Maps, and Dashboard-only features
+ */
 
-    const Dashboard = {
-        charts: [],
-        map: null,
-        refreshInterval: 60000,
-        refreshTimer: null,
-        reduceMotion: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
+// Initialize Dashboard
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof window.dashboardData === 'undefined') {
+        console.warn('Dashboard data not found');
+        return;
+    }
 
-        init() {
-            this.observeSections();
-            this.renderCharts();
-            this.initMapWhenReady();
-            this.bindRefresh();
-            this.startAutoRefresh();
-        },
+    initializeCharts();
+    initializeMap();
+    initializeDashboardAnimations();
+});
 
-        bindRefresh() {
-            document.querySelector('[data-dashboard-refresh], #refresh-dashboard')?.addEventListener('click', () => window.location.reload());
-            document.addEventListener('visibilitychange', () => {
-                if (document.visibilityState === 'visible') {
-                    this.startAutoRefresh();
-                    this.map?.invalidateSize({ animate: false });
-                } else {
-                    this.stopAutoRefresh();
-                }
-            });
-            window.addEventListener('resize', this.debounce(() => {
-                this.map?.invalidateSize({ animate: false });
-                this.charts.forEach((chart) => chart.resize());
-            }, 180), { passive: true });
-        },
+// Charts
+function initializeCharts() {
+    if (typeof Chart === 'undefined') {
+        console.warn('Chart.js not loaded');
+        return;
+    }
 
-        startAutoRefresh() {
-            this.stopAutoRefresh();
-            if (document.visibilityState === 'visible') {
-                this.refreshTimer = window.setInterval(() => window.location.reload(), this.refreshInterval);
-            }
-        },
-
-        stopAutoRefresh() {
-            if (this.refreshTimer) window.clearInterval(this.refreshTimer);
-            this.refreshTimer = null;
-        },
-
-        observeSections() {
-            const sections = document.querySelectorAll('[data-animate-section]');
-            if (this.reduceMotion || !('IntersectionObserver' in window)) {
-                sections.forEach((section) => section.classList.add('is-visible'));
-                return;
-            }
-            const observer = new IntersectionObserver((entries, currentObserver) => {
-                entries.forEach((entry) => {
-                    if (!entry.isIntersecting) return;
-                    entry.target.classList.add('is-visible');
-                    currentObserver.unobserve(entry.target);
-                });
-            }, { threshold: 0.08, rootMargin: '0px 0px -40px' });
-            sections.forEach((section) => observer.observe(section));
-        },
-
-        colors() {
-            const css = getComputedStyle(document.documentElement);
-            return {
-                text: css.getPropertyValue('--color-text').trim() || '#1e293b',
-                muted: css.getPropertyValue('--color-text-muted').trim() || '#64748b',
-                border: css.getPropertyValue('--color-border').trim() || '#e2e8f0',
-                primary: css.getPropertyValue('--color-primary').trim() || '#3379f3',
-                palette: ['#3379f3', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#0ea5a5'],
-            };
-        },
-
-        chartAnimation() {
-            if (this.reduceMotion) return false;
-            return { duration: 850, easing: 'easeOutQuart', delay: (context) => context.type === 'data' && context.mode === 'default' ? context.dataIndex * 45 : 0 };
-        },
-
-        renderCharts() {
-            if (typeof Chart === 'undefined' || !window.dashboardData) return;
-            const data = window.dashboardData;
-            const theme = this.colors();
-            Chart.defaults.color = theme.muted;
-            Chart.defaults.borderColor = theme.border;
-            Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
-            this.renderAlertsChart(data, theme);
-            this.renderLevelsChart(data, theme);
-            this.renderTopStreetsChart(data, theme);
-        },
-
-        renderAlertsChart(data, theme) {
-            const canvas = document.getElementById('chartAlertsBySubtype');
-            const rows = Array.isArray(data.alertsBySubtype) ? data.alertsBySubtype : [];
-            if (!canvas || !rows.length) return;
-            const total = rows.reduce((sum, r) => sum + Number(r.total), 0);
-            this.charts.push(new Chart(canvas, {
-                type: 'bar',
-                data: {
-                    labels: rows.map((row) => row.label || 'Sem subtipo'),
-                    datasets: [{
-                        label: 'Alertas',
-                        data: rows.map((row) => Number(row.total || 0)),
-                        backgroundColor: theme.primary,
-                        borderRadius: 8,
-                        borderSkipped: false,
-                        maxBarThickness: 34,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: this.chartAnimation(),
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            displayColors: false,
-                            callbacks: {
-                                label: (context) => {
-                                    const value = context.parsed.y;
-                                    const percent = total ? ((value / total) * 100).toFixed(1) : 0;
-                                    return ` ${value} alertas (${percent}%)`;
-                                }
+    // Alerts Chart (Doughnut)
+    const alertsCanvas = document.getElementById('alertsChart');
+    if (alertsCanvas && window.dashboardData.alertsBySubtype?.length > 0) {
+        new Chart(alertsCanvas, {
+            type: 'doughnut',
+            data: {
+                labels: window.dashboardData.alertsBySubtype.map(item => item.label),
+                datasets: [{
+                    data: window.dashboardData.alertsBySubtype.map(item => item.count),
+                    backgroundColor: [
+                        '#2563eb',
+                        '#10b981',
+                        '#f59e0b',
+                        '#ef4444',
+                        '#8b5cf6',
+                        '#06b6d4',
+                        '#ec4899',
+                        '#84cc16',
+                    ],
+                    borderWidth: 0,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 20,
+                            font: {
+                                size: 12,
+                                family: "'Inter', sans-serif"
                             }
                         }
                     },
-                    scales: {
-                        x: { ticks: { color: theme.muted, maxRotation: 35, minRotation: 0 }, grid: { color: theme.border } },
-                        y: { beginAtZero: true, ticks: { precision: 0, color: theme.muted }, grid: { color: theme.border } }
-                    }
-                }
-            }));
-        },
-
-        renderLevelsChart(data, theme) {
-            const canvas = document.getElementById('chartJamsByLevel');
-            const source = Array.isArray(data.jamsByLevel) ? data.jamsByLevel : [];
-            if (!canvas || !source.length) return;
-            const labels = ['Livre', 'Lento', 'Moderado', 'Pesado', 'Muito pesado', 'Parado'];
-            const values = [0, 1, 2, 3, 4, 5].map((level) => Number(source[level]?.total ?? source[level] ?? 0));
-            if (!values.some(Boolean)) return;
-            this.charts.push(new Chart(canvas, {
-                type: 'doughnut',
-                data: {
-                    labels,
-                    datasets: [{
-                        data: values,
-                        backgroundColor: theme.palette,
-                        borderColor: getComputedStyle(document.documentElement).getPropertyValue('--color-bg-card').trim() || '#fff',
-                        borderWidth: 3,
-                        hoverOffset: 8
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '62%',
-                    animation: this.chartAnimation(),
-                    plugins: {
-                        legend: { position: 'bottom', labels: { color: theme.muted, boxWidth: 11, padding: 13, usePointStyle: true } },
-                        tooltip: {
-                            callbacks: {
-                                label: (context) => {
-                                    const total = context.dataset.data.reduce((a,b) => a+b, 0);
-                                    const value = context.parsed;
-                                    const percent = total ? ((value / total) * 100).toFixed(1) : 0;
-                                    return ` ${context.label}: ${value} (${percent}%)`;
-                                }
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                return `${label}: ${value}`;
                             }
                         }
                     }
                 }
-            }));
-        },
+            }
+        });
+    }
 
-        renderTopStreetsChart(data, theme) {
-            const canvas = document.getElementById('chartTopStreets');
-            const source = Array.isArray(data.topStreets) ? data.topStreets : [];
-            if (!canvas || !source.length) return;
-            const rows = [...source].sort((a, b) => Number(b.occurrences || 0) - Number(a.occurrences || 0)).slice(0, 10).reverse();
-            this.charts.push(new Chart(canvas, {
-                type: 'bar',
-                data: {
-                    labels: rows.map((row) => row.street || 'Sem nome'),
-                    datasets: [{
-                        label: 'Ocorrências',
-                        data: rows.map((row) => Number(row.occurrences || 0)),
-                        backgroundColor: '#0ea5a5',
-                        borderRadius: 8,
-                        borderSkipped: false,
-                        maxBarThickness: 30
-                    }]
+    // Jams Chart (Bar)
+    const jamsCanvas = document.getElementById('jamsChart');
+    if (jamsCanvas && window.dashboardData.jamsByLevel?.length > 0) {
+        new Chart(jamsCanvas, {
+            type: 'bar',
+            data: {
+                labels: window.dashboardData.jamsByLevel.map(item => `Nível ${item.level}`),
+                datasets: [{
+                    label: 'Jams',
+                    data: window.dashboardData.jamsByLevel.map(item => item.count),
+                    backgroundColor: [
+                        '#10b981',
+                        '#84cc16',
+                        '#f59e0b',
+                        '#ef4444',
+                        '#dc2626',
+                    ],
+                    borderRadius: 8,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `${context.parsed} jams`
+                        }
+                    }
                 },
-                options: {
-                    indexAxis: 'y',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: this.chartAnimation(),
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            displayColors: false,
-                            callbacks: {
-                                title: (items) => rows[items[0].dataIndex]?.street || 'Sem nome',
-                                label: (context) => ` ${context.parsed.x.toLocaleString('pt-BR')} ocorrências`,
-                                afterLabel: (context) => {
-                                    const row = rows[context.dataIndex];
-                                    const lines = [];
-                                    if (row.city) lines.push(`Cidade: ${row.city}`);
-                                    if (row.avgLevel !== undefined) lines.push(`Nível médio: ${row.avgLevel}`);
-                                    if (row.avgDelay) lines.push(`Atraso médio: ${(Number(row.avgDelay) / 60).toFixed(1)} min`);
-                                    return lines;
-                                }
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0,
+                            font: {
+                                family: "'Inter', sans-serif"
                             }
+                        },
+                        grid: {
+                            color: '#e2e8f0'
                         }
                     },
-                    scales: {
-                        x: { beginAtZero: true, ticks: { precision: 0, color: theme.muted }, grid: { color: theme.border } },
-                        y: { ticks: { color: theme.muted }, grid: { display: false } }
+                    x: {
+                        grid: {
+                            display: false
+                        }
                     }
                 }
-            }));
-        },
-
-        // ---- MAPA SIMPLES E ROBUSTO ----
-        initMapWhenReady(attempt = 0) {
-            const element = document.getElementById('dashboard-map');
-            if (!element) {
-                if (attempt < 10) setTimeout(() => this.initMapWhenReady(attempt + 1), 200);
-                return;
             }
-            if (typeof L === 'undefined') {
-                if (attempt < 20) setTimeout(() => this.initMapWhenReady(attempt + 1), 100);
-                return;
-            }
-            try {
-                this.initMap(element);
-            } catch (err) {
-                console.error('Erro ao inicializar mapa:', err);
-                element.innerHTML = `
-                    <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--color-text-muted);flex-direction:column;gap:0.5rem;">
-                        <i class="bi bi-map" style="font-size:2rem;"></i>
-                        <span>Erro: ${err.message}</span>
-                    </div>
-                `;
-            }
-        },
+        });
+    }
+}
 
-        initMap(element) {
-            const data = window.dashboardData || {};
-            if (this.map) {
-                this.map.remove();
-                this.map = null;
-            }
+// Map
+function initializeMap() {
+    if (typeof L === 'undefined') {
+        console.warn('Leaflet not loaded');
+        return;
+    }
 
-            const hasJams = Array.isArray(data.mapJams) && data.mapJams.length > 0;
-            const hasAlerts = Array.isArray(data.mapAlerts) && data.mapAlerts.length > 0;
+    const mapContainer = document.getElementById('dashboard-map');
+    if (!mapContainer) return;
 
-            if (!hasJams && !hasAlerts) {
-                element.innerHTML = `
-                    <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--color-text-muted);flex-direction:column;gap:0.5rem;">
-                        <i class="bi bi-map" style="font-size:2rem;"></i>
-                        <span>Nenhum dado para exibir no período.</span>
-                    </div>
-                `;
-                return;
-            }
+    const { mapCenter, mapZoom, mapJams, mapAlerts } = window.dashboardData;
 
-            // Cria o mapa com view central (Brasil)
-            this.map = L.map(element, { zoomControl: true, preferCanvas: true })
-                .setView([-15.7939, -47.8828], 4);
+    // Create map
+    const map = L.map(mapContainer).setView(mapCenter, mapZoom);
 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '&copy; OpenStreetMap contributors'
-            }).addTo(this.map);
+    // Add tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(map);
 
-            const bounds = [];
-
-            // Adiciona Jams (polylines)
-            (Array.isArray(data.mapJams) ? data.mapJams : []).forEach((jam) => {
-                const line = Array.isArray(jam.line) ? jam.line.map((point) => [Number(point.lat), Number(point.lng)]).filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng)) : [];
-                if (line.length < 2) return;
-                line.forEach((p) => bounds.push(p));
-                const level = Number(jam.level || 0);
-                const color = level >= 5 ? '#b91c1c' : level >= 4 ? '#ef4444' : level >= 3 ? '#f97316' : level >= 2 ? '#f59e0b' : '#10b981';
-                L.polyline(line, {
-                    color,
-                    weight: level >= 4 ? 6 : 4,
-                    opacity: 0.8,
-                    lineCap: 'round',
-                    lineJoin: 'round'
-                }).bindPopup(`
-                    <strong>${this.escape(jam.street || 'Sem nome')}</strong><br>
-                    ${this.escape(jam.city || '')}<br>
-                    Nível: ${level}
-                    ${jam.speed ? `<br>Velocidade: ${jam.speed} km/h` : ''}
-                    ${jam.delay ? `<br>Atraso: ${Math.round(Number(jam.delay) / 60)} min` : ''}
-                `).addTo(this.map);
+    // Create marker groups
+    const jamsGroup = L.markerClusterGroup({
+        iconCreateFunction: (cluster) => {
+            const count = cluster.getChildCount();
+            return L.divIcon({
+                html: `<div class="marker-cluster marker-cluster-jam">${count}</div>`,
+                className: 'marker-cluster-custom',
+                iconSize: L.point(40, 40)
             });
+        }
+    });
 
-            // Adiciona Alertas (marcadores simples)
-            (Array.isArray(data.mapAlerts) ? data.mapAlerts : []).forEach((alert) => {
-                const lat = Number(alert.lat), lng = Number(alert.lng);
-                if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-                bounds.push([lat, lng]);
-                const color = alert.type === 'JAM' ? '#f97316' :
-                              alert.type === 'ACCIDENT' ? '#8b5cf6' :
-                              alert.type === 'ROAD_CLOSED' ? '#64748b' : '#3379f3';
-                L.marker([lat, lng], {
-                    icon: L.divIcon({
-                        className: 'dashboard-map-marker',
-                        html: `<span style="--marker-color:${color}"></span>`,
-                        iconSize: [18, 18],
-                        iconAnchor: [9, 9]
-                    })
-                }).bindPopup(`
-                    <strong>${this.escape(alert.label || alert.type || 'Alerta')}</strong><br>
-                    ${this.escape(alert.city || '')} — ${this.escape(alert.street || 'Via não informada')}
-                `).addTo(this.map);
+    const alertsGroup = L.markerClusterGroup({
+        iconCreateFunction: (cluster) => {
+            const count = cluster.getChildCount();
+            return L.divIcon({
+                html: `<div class="marker-cluster marker-cluster-alert">${count}</div>`,
+                className: 'marker-cluster-custom',
+                iconSize: L.point(40, 40)
             });
+        }
+    });
 
-            // Ajusta os limites
-            if (bounds.length > 0) {
-                const latLngBounds = L.latLngBounds(bounds);
-                this.map.fitBounds(latLngBounds, { padding: [30, 30], maxZoom: 16, animate: !this.reduceMotion });
+    // Add jams markers
+    if (mapJams?.length > 0) {
+        mapJams.forEach((jam) => {
+            if (jam.lat && jam.lng) {
+                const marker = L.marker([jam.lat, jam.lng]);
+                marker.bindPopup(`
+                    <div class="map-popup">
+                        <h4>🚦 Jam</h4>
+                        <p><strong>Via:</strong> ${jam.street || 'N/A'}</p>
+                        <p><strong>Cidade:</strong> ${jam.city || 'N/A'}</p>
+                        <p><strong>Nível:</strong> ${jam.level || 0}</p>
+                    </div>
+                `);
+                jamsGroup.addLayer(marker);
+            }
+        });
+    }
+
+    // Add alerts markers
+    if (mapAlerts?.length > 0) {
+        mapAlerts.forEach((alert) => {
+            if (alert.lat && alert.lng) {
+                const marker = L.marker([alert.lat, alert.lng]);
+                marker.bindPopup(`
+                    <div class="map-popup">
+                        <h4>🔔 Alerta</h4>
+                        <p><strong>Tipo:</strong> ${alert.type || 'Alerta'}</p>
+                        <p><strong>Local:</strong> ${alert.street || 'N/A'}</p>
+                    </div>
+                `);
+                alertsGroup.addLayer(marker);
+            }
+        });
+    }
+
+    // Add groups to map
+    jamsGroup.addTo(map);
+    alertsGroup.addTo(map);
+
+    // Fit bounds if we have markers
+    const allMarkers = [...(mapJams || []), ...(mapAlerts || [])].filter(m => m.lat && m.lng);
+    if (allMarkers.length > 0) {
+        const bounds = allMarkers.map(m => [m.lat, m.lng]);
+        map.fitBounds(bounds, { padding: [50, 50] });
+    }
+}
+
+// Dashboard-specific animations
+function initializeDashboardAnimations() {
+    // Animate stats on scroll
+    const statValues = document.querySelectorAll('.stat-value');
+
+    const animateValue = (element) => {
+        const text = element.textContent;
+        const number = parseInt(text.replace(/\D/g, ''));
+
+        if (isNaN(number)) return;
+
+        let current = 0;
+        const increment = number / 50;
+        const timer = setInterval(() => {
+            current += increment;
+            if (current >= number) {
+                element.textContent = text;
+                clearInterval(timer);
             } else {
-                this.map.setView([-15.7939, -47.8828], 4);
+                element.textContent = Math.floor(current).toLocaleString('pt-BR');
             }
-
-            // Força redimensionamento com múltiplos delays
-            const forceResize = () => {
-                if (this.map) {
-                    this.map.invalidateSize({ animate: false });
-                }
-            };
-            setTimeout(forceResize, 100);
-            setTimeout(forceResize, 300);
-            setTimeout(forceResize, 600);
-        },
-
-        escape(value) {
-            const node = document.createElement('span');
-            node.textContent = String(value);
-            return node.innerHTML;
-        },
-
-        debounce(callback, delay) {
-            let timeout;
-            return (...args) => {
-                window.clearTimeout(timeout);
-                timeout = window.setTimeout(() => callback(...args), delay);
-            };
-        },
+        }, 20);
     };
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => Dashboard.init(), { once: true });
-    } else {
-        Dashboard.init();
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+                animateValue(entry.target);
+                observer.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.5 });
+
+    statValues.forEach((stat) => observer.observe(stat));
+}
+
+// Marker cluster custom styles (injected dynamically)
+const style = document.createElement('style');
+style.textContent = `
+    .marker-cluster-custom {
+        background: transparent !important;
     }
-    window.WazeBRDashboard = Dashboard;
-})();
+
+    .marker-cluster-jam {
+        background: rgba(239, 68, 68, 0.9);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 14px;
+    }
+
+    .marker-cluster-alert {
+        background: rgba(37, 99, 235, 0.9);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 14px;
+    }
+
+    .map-popup h4 {
+        margin: 0 0 8px 0;
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    .map-popup p {
+        margin: 4px 0;
+        font-size: 13px;
+        color: #475569;
+    }
+`;
+document.head.appendChild(style);
