@@ -24,7 +24,7 @@ nelmio_security:
             - { path: ^/reset-password, limit: 3, period: 1min }
     csp:
         enabled: true
-        report_endpoint: /csp-report
+        report_endpoint: [/csp-report]
         enforce:
             level1:
                 default_src: ['self']
