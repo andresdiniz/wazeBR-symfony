@@ -18,7 +18,6 @@ final class Version20260902235900 extends AbstractMigration
     {
         $this->createSnapshotLightTable($schema);
         $this->createSnapshotGeomTable($schema);
-        $this->migrateExistingData();
     }
 
     public function down(Schema $schema): void
@@ -29,6 +28,10 @@ final class Version20260902235900 extends AbstractMigration
 
     private function createSnapshotLightTable(Schema $schema): void
     {
+        if ($schema->hasTable('waze_route_snapshot_light')) {
+            return;
+        }
+        
         $table = $schema->createTable('waze_route_snapshot_light');
         $table->addColumn('id', 'integer')->setAutoincrement(true)->setNotnull(true);
         $table->addColumn('route_id', 'integer')->setNotnull(true);
@@ -45,6 +48,10 @@ final class Version20260902235900 extends AbstractMigration
 
     private function createSnapshotGeomTable(Schema $schema): void
     {
+        if ($schema->hasTable('waze_route_snapshot_geom')) {
+            return;
+        }
+        
         $table = $schema->createTable('waze_route_snapshot_geom');
         $table->addColumn('id', 'integer')->setAutoincrement(true)->setNotnull(true);
         $table->addColumn('route_id', 'integer')->setNotnull(true);
@@ -55,24 +62,5 @@ final class Version20260902235900 extends AbstractMigration
         $table->setPrimaryKey(['id']);
         $table->addIndex(['route_id']);
         $table->addUniqueIndex(['route_id']);
-    }
-
-    private function migrateExistingData(): void
-    {
-        $this->addSql("
-            INSERT INTO waze_route_snapshot_light (route_id, recorded_at, speed, length, delay, traffic_level)
-            SELECT route_id, recorded_at, speed, length, delay, traffic_level
-            FROM waze_route_snapshot
-            WHERE recorded_at >= NOW() - INTERVAL '30 days'
-            ORDER BY recorded_at DESC
-        ");
-        
-        $this->addSql("
-            INSERT INTO waze_route_snapshot_geom (route_id, updated_at, line, bbox)
-            SELECT DISTINCT ON (route_id) route_id, recorded_at, line, bbox
-            FROM waze_route_snapshot
-            WHERE line IS NOT NULL OR bbox IS NOT NULL
-            ORDER BY route_id, recorded_at DESC
-        ");
     }
 }

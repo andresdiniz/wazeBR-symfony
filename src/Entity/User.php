@@ -1,66 +1,56 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use App\Repository\UserRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
-use Symfony\Component\Security\Core\User\EquatableInterface;
-use Symfony\Component\Security\Core\User\UserInterface as CoreUserInterface;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-#[ORM\Table(name: 'users')]
-#[UniqueEntity(fields: ['email'], message: 'Este email já está em uso')]
-class User implements UserInterface, PasswordAuthenticatedUserInterface, EquatableInterface
+#[ORM\Table(name: '`user`')]
+class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
+    #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(type: 'string', length: 180, unique: true)]
+    #[ORM\Column(length: 180, unique: true)]
     private ?string $email = null;
 
-    #[ORM\Column(type: 'json')]
+    #[ORM\Column]
     private array $roles = [];
 
-    #[ORM\Column(type: 'string')]
+    #[ORM\Column]
     private ?string $password = null;
 
-    #[ORM\Column(type: 'string', length: 255)]
-    private ?string $name = null;
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $firstName = null;
 
-    #[ORM\Column(type: 'boolean')]
-    private bool $isActive = true;
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $lastName = null;
 
-    #[ORM\Column(type: 'datetime_immutable')]
-    private \DateTimeImmutable $createdAt;
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $phone = null;
 
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
-    private ?string $resetToken = null;
+    #[ORM\Column(nullable: true)]
+    private ?bool $active = null;
 
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
-    private ?\DateTimeImmutable $resetTokenExpiresAt = null;
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $locale = null;
 
-    #[ORM\ManyToOne]
-    #[ORM\JoinColumn(nullable: true)]
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $lastLogin = null;
+
+    #[ORM\ManyToOne(inversedBy: 'users')]
+    #[ORM\JoinColumn]
     private ?Partner $partner = null;
-
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
-    private ?\DateTimeImmutable $lastLoginAt = null;
-
-    #[ORM\Column(type: 'string', length: 45, nullable: true)]
-    private ?string $lastLoginIp = null;
-
-    #[ORM\Column(type: 'json', nullable: true)]
-    private ?array $fieldAgentPermissions = null;
-
-    public function __construct()
-    {
-        $this->createdAt = new \DateTimeImmutable();
-    }
 
     public function getId(): ?int
     {
@@ -96,6 +86,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Equatab
         return $this;
     }
 
+    public function hasRole(string ...$roles): bool
+    {
+        $userRoles = $this->getRoles();
+        foreach ($roles as $role) {
+            if (in_array($role, $userRoles, true)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public function getPassword(): ?string
     {
         return $this->password;
@@ -107,64 +108,69 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Equatab
         return $this;
     }
 
-    #[\Deprecated]
-    public function eraseCredentials(): void
+    public function getFirstName(): ?string
     {
-        // Não há dados sens�veis tempor�rios para limpar
+        return $this->firstName;
     }
 
-    public function getName(): ?string
+    public function setFirstName(?string $firstName): static
     {
-        return $this->name;
-    }
-
-    public function setName(string $name): static
-    {
-        $this->name = $name;
+        $this->firstName = $firstName;
         return $this;
     }
 
-    public function isActive(): bool
+    public function getLastName(): ?string
     {
-        return $this->isActive;
+        return $this->lastName;
     }
 
-    public function setIsActive(bool $isActive): static
+    public function setLastName(?string $lastName): static
     {
-        $this->isActive = $isActive;
+        $this->lastName = $lastName;
         return $this;
     }
 
-    public function getCreatedAt(): \DateTimeImmutable
+    public function getPhone(): ?string
     {
-        return $this->createdAt;
+        return $this->phone;
     }
 
-    public function setCreatedAt(\DateTimeImmutable $createdAt): static
+    public function setPhone(?string $phone): static
     {
-        $this->createdAt = $createdAt;
+        $this->phone = $phone;
         return $this;
     }
 
-    public function getResetToken(): ?string
+    public function isActive(): ?bool
     {
-        return $this->resetToken;
+        return $this->active;
     }
 
-    public function setResetToken(?string $resetToken): static
+    public function setActive(?bool $active): static
     {
-        $this->resetToken = $resetToken;
+        $this->active = $active;
         return $this;
     }
 
-    public function getResetTokenExpiresAt(): ?\DateTimeImmutable
+    public function getLocale(): ?string
     {
-        return $this->resetTokenExpiresAt;
+        return $this->locale;
     }
 
-    public function setResetTokenExpiresAt(?\DateTimeImmutable $resetTokenExpiresAt): static
+    public function setLocale(?string $locale): static
     {
-        $this->resetTokenExpiresAt = $resetTokenExpiresAt;
+        $this->locale = $locale;
+        return $this;
+    }
+
+    public function getLastLogin(): ?\DateTimeImmutable
+    {
+        return $this->lastLogin;
+    }
+
+    public function setLastLogin(?\DateTimeImmutable $lastLogin): static
+    {
+        $this->lastLogin = $lastLogin;
         return $this;
     }
 
@@ -179,131 +185,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Equatab
         return $this;
     }
 
-    public function getLastLoginAt(): ?\DateTimeImmutable
+    public function eraseCredentials(): void
     {
-        return $this->lastLoginAt;
-    }
-
-    public function setLastLoginAt(?\DateTimeImmutable $lastLoginAt): static
-    {
-        $this->lastLoginAt = $lastLoginAt;
-        return $this;
-    }
-
-    public function getLastLoginIp(): ?string
-    {
-        return $this->lastLoginIp;
-    }
-
-    public function setLastLoginIp(?string $lastLoginIp): static
-    {
-        $this->lastLoginIp = $lastLoginIp;
-        return $this;
-    }
-
-    /**
-     * @return string[]|null
-     */
-    public function getFieldAgentPermissions(): ?array
-    {
-        return $this->fieldAgentPermissions;
-    }
-
-    /**
-     * @param string[]|null $permissions
-     */
-    public function setFieldAgentPermissions(?array $permissions): static
-    {
-        $this->fieldAgentPermissions = $permissions;
-        return $this;
-    }
-
-    /**
-     * Alias de isActive() — usado no fluxo de "esqueci minha senha"
-     * (AuthController::forgot()) para decidir se envia o e-mail de reset.
-     *
-     * NOTA: era chamado sem existir aqui, causando erro fatal
-     * (Call to undefined method) toda vez que alguém tentava
-     * redefinir a senha — mesmo padrão de bug já corrigido em
-     * outros pontos do projeto (métodos chamados sem implementação).
-     */
-    public function isEnabled(): bool
-    {
-        return $this->isActive();
-    }
-
-    public function isSuperAdmin(): bool
-    {
-        return in_array('ROLE_SUPER_ADMIN', $this->getRoles(), true);
-    }
-
-    /**
-     * ROLE_ADMIN (ou ROLE_SUPER_ADMIN, que já é mais amplo) — usado
-     * pelo TenantContext e pelos controllers de conta para liberar
-     * visão/gestão sem restrição de parceiro. Checa contra os roles
-     * brutos do próprio usuário (não a hierarquia expandida do
-     * Security), porque getRoles() aqui retorna só o que está
-     * gravado — um usuário com apenas ROLE_ADMIN não teria
-     * ROLE_SUPER_ADMIN aparecendo mesmo a hierarquia dizendo que
-     * SUPER_ADMIN > ADMIN (a hierarquia funciona no sentido
-     * contrário: super admin herda permissões de admin, não o oposto).
-     */
-    public function isAdmin(): bool
-    {
-        return $this->isSuperAdmin() || in_array('ROLE_ADMIN', $this->getRoles(), true);
-    }
-
-    public function isAccountAdmin(): bool
-    {
-        return in_array('ROLE_ACCOUNT_ADMIN', $this->getRoles(), true);
-    }
-
-    /**
-     * Usado por AccountUserController para garantir que um admin de conta
-     * só edite/desative/remova usuários do próprio parceiro.
-     *
-     * NOTA: isSuperAdmin(), isAccountAdmin() e belongsToPartner() eram
-     * chamados em AccountUserController sem existir aqui — toda a área
-     * de gestão de usuários da conta (/account/users/*) dava erro fatal
-     * antes desta correção.
-     */
-    public function belongsToPartner(?Partner $partner): bool
-    {
-        return $this->partner !== null
-            && $partner !== null
-            && $this->partner->getId() === $partner->getId();
-    }
-
-    public function isFieldAgent(): bool
-    {
-        return in_array('ROLE_FIELD_AGENT', $this->getRoles(), true);
-    }
-
-    /**
-     * Usado por FieldAgentVoter para checar permissões granulares de um
-     * agente de campo (FieldAgentVoter::PERMISSIONS). Quando
-     * $fieldAgentPermissions é null, o agente não tem nenhuma permissão
-     * customizada liberada (mais restritivo por padrão).
-     *
-     * NOTA: isFieldAgent() e hasFieldAgentPermission() eram chamados em
-     * FieldAgentVoter sem existir aqui — todo o controle de acesso de
-     * agentes de campo (rotas FIELD_AGENT_*) dava erro fatal antes desta
-     * correção, negando acesso a todo mundo (inclusive admins, que
-     * dependem do voter avaliar sem quebrar antes de cair no atalho de
-     * isSuperAdmin()/isAccountAdmin()).
-     */
-    public function hasFieldAgentPermission(string $permission): bool
-    {
-        return $this->fieldAgentPermissions !== null
-            && in_array($permission, $this->fieldAgentPermissions, true);
-    }
-
-    public function isEqualTo(CoreUserInterface $user): bool
-    {
-        if (!$user instanceof self) {
-            return false;
-        }
-
-        return $this->id === $user->id;
     }
 }
