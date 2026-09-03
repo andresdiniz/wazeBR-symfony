@@ -25,10 +25,9 @@ nelmio_security:
     csp:
         enabled: true
         enforce:
-            level1:
-                default_src: ['self']
-                script_src: ['self', 'https://cdn.jsdelivr.net']
-                style_src: ['self', 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com']
-                img_src: ['self', 'data:', 'https://*.tile.openstreetmap.org']
-                font_src: ['self', 'https://fonts.gstatic.com']
-                connect_src: ['self', 'https://api.waze.com']
+            default_src: ['self']
+            script_src: ['self', 'https://cdn.jsdelivr.net']
+            style_src: ['self', 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com']
+            img_src: ['self', 'data:', 'https://*.tile.openstreetmap.org']
+            font_src: ['self', 'https://fonts.gstatic.com']
+            connect_src: ['self', 'https://api.waze.com']
