@@ -4,63 +4,57 @@ declare(strict_types=1);
 
 namespace DoctrineMigrations;
 
-use Doctrine\DBAL\Schema\Table;
-use Doctrine\DBAL\Schema\Column;
-use Doctrine\DBAL\Types\Types;
+use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 final class Version20260902235900 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Otimiza\u00e7\u00e3o de snapshots - separa\u00e7\u00e3o de dados leves e geom\u00e9tricos';
+        return 'Otimizacao de snapshots - separacao de dados leves e geometricos';
     }
 
-    public function up(): void
+    public function up(Schema $schema): void
     {
-        $this->createSnapshotLightTable();
-        $this->createSnapshotGeomTable();
+        $this->createSnapshotLightTable($schema);
+        $this->createSnapshotGeomTable($schema);
         $this->migrateExistingData();
     }
 
-    public function down(): void
+    public function down(Schema $schema): void
     {
-        $this->dropTable('waze_route_snapshot_geom');
-        $this->dropTable('waze_route_snapshot_light');
+        $schema->dropTable('waze_route_snapshot_geom');
+        $schema->dropTable('waze_route_snapshot_light');
     }
 
-    private function createSnapshotLightTable(): void
+    private function createSnapshotLightTable(Schema $schema): void
     {
-        $table = new Table('waze_route_snapshot_light');
-        $table->addColumn('id', Types::INTEGER)->setAutoincrement(true)->setNotnull(true);
-        $table->addColumn('route_id', Types::INTEGER)->setNotnull(true);
-        $table->addColumn('recorded_at', Types::DATETIME_IMMUTABLE)->setNotnull(true);
-        $table->addColumn('speed', Types::FLOAT)->setNotnull(false);
-        $table->addColumn('length', Types::FLOAT)->setNotnull(false);
-        $table->addColumn('delay', Types::FLOAT)->setNotnull(false);
-        $table->addColumn('traffic_level', Types::INTEGER)->setNotnull(false);
+        $table = $schema->createTable('waze_route_snapshot_light');
+        $table->addColumn('id', 'integer')->setAutoincrement(true)->setNotnull(true);
+        $table->addColumn('route_id', 'integer')->setNotnull(true);
+        $table->addColumn('recorded_at', 'datetime')->setNotnull(true);
+        $table->addColumn('speed', 'float')->setNotnull(false);
+        $table->addColumn('length', 'float')->setNotnull(false);
+        $table->addColumn('delay', 'float')->setNotnull(false);
+        $table->addColumn('traffic_level', 'integer')->setNotnull(false);
         
         $table->setPrimaryKey(['id']);
         $table->addIndex(['route_id', 'recorded_at']);
         $table->addUniqueIndex(['route_id', 'recorded_at']);
-        
-        $this->createTable($table);
     }
 
-    private function createSnapshotGeomTable(): void
+    private function createSnapshotGeomTable(Schema $schema): void
     {
-        $table = new Table('waze_route_snapshot_geom');
-        $table->addColumn('id', Types::INTEGER)->setAutoincrement(true)->setNotnull(true);
-        $table->addColumn('route_id', Types::INTEGER)->setNotnull(true);
-        $table->addColumn('updated_at', Types::DATETIME_IMMUTABLE)->setNotnull(true);
-        $table->addColumn('line', Types::JSON)->setNotnull(false);
-        $table->addColumn('bbox', Types::JSON)->setNotnull(false);
+        $table = $schema->createTable('waze_route_snapshot_geom');
+        $table->addColumn('id', 'integer')->setAutoincrement(true)->setNotnull(true);
+        $table->addColumn('route_id', 'integer')->setNotnull(true);
+        $table->addColumn('updated_at', 'datetime')->setNotnull(true);
+        $table->addColumn('line', 'json')->setNotnull(false);
+        $table->addColumn('bbox', 'json')->setNotnull(false);
         
         $table->setPrimaryKey(['id']);
         $table->addIndex(['route_id']);
         $table->addUniqueIndex(['route_id']);
-        
-        $this->createTable($table);
     }
 
     private function migrateExistingData(): void
