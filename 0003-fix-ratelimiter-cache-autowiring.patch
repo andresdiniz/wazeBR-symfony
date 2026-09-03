@@ -1,0 +1,60 @@
+From eec62235caf39ad744b5b99216d823cbae322a84 Mon Sep 17 00:00:00 2001
+From: andresdiniz <andresdiniz@users.noreply.github.com>
+Date: Thu, 3 Sep 2026 20:59:29 +0000
+Subject: [PATCH] =?UTF-8?q?fix(rate-limiter):=20corrige=20type-hint=20de?=
+ =?UTF-8?q?=20cache=20n=C3=A3o=20autowireable?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+RateLimiterService::__construct() pedia
+Symfony\Component\Cache\Adapter\AdapterInterface, que o
+FrameworkBundle não expõe como serviço autowireable — só cria
+alias automático pra Psr\Cache\CacheItemPoolInterface (PSR-6),
+apontando pro pool "cache.app" (config/packages/cache.yaml).
+
+Esse erro sempre existiu, mas ficava escondido: como nada
+injetava RateLimiterService antes do commit anterior (era código
+morto), o Symfony removia o serviço do container por não ser
+usado, e nunca chegava a validar o construtor. Agora que
+AuthController usa o serviço de verdade, o container precisa
+montá-lo e o erro de autowiring aparece.
+
+Troca o type-hint pra CacheItemPoolInterface — os únicos métodos
+usados (getItem/save/deleteItem) já fazem parte da interface PSR-6,
+então não muda nenhum comportamento, só resolve a injeção.
+---
+ src/Service/RateLimiterService.php | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/src/Service/RateLimiterService.php b/src/Service/RateLimiterService.php
+index dd2908b..2f40838 100644
+--- a/src/Service/RateLimiterService.php
++++ b/src/Service/RateLimiterService.php
+@@ -4,7 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Service;
+ 
+-use Symfony\Component\Cache\Adapter\AdapterInterface;
++use Psr\Cache\CacheItemPoolInterface;
+ use Symfony\Component\HttpFoundation\Request;
+ 
+ /**
+@@ -27,7 +27,13 @@ class RateLimiterService
+     private const RESET_PASSWORD_WINDOW = 3600; // 1 hour
+ 
+     public function __construct(
+-        private readonly AdapterInterface $cache,
++        // AdapterInterface (Symfony\Component\Cache\Adapter) não tem
++        // autowiring automático — o FrameworkBundle só cria alias
++        // autowireable pra CacheItemPoolInterface (PSR-6), apontando
++        // pro pool "cache.app" configurado em config/packages/cache.yaml.
++        // Os métodos usados aqui (getItem/save/deleteItem) já fazem
++        // parte da interface PSR-6, então a troca é direta.
++        private readonly CacheItemPoolInterface $cache,
+     ) {}
+ 
+     /**
+-- 
+2.43.0
+
