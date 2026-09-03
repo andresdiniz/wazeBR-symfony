@@ -5,17 +5,15 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 
-class AuthController extends AbstractController
+final class AuthController extends AbstractController
 {
-    #[Route('/login', name: 'app_login')]
+    #[Route('/login', name: 'app_login', methods: ['GET', 'POST'])]
     public function login(AuthenticationUtils $authenticationUtils): Response
     {
-        // Se usuario ja estiver logado, redireciona para dashboard
         if ($this->getUser()) {
             return $this->redirectToRoute('dashboard_index');
         }
@@ -26,23 +24,22 @@ class AuthController extends AbstractController
         ]);
     }
 
-    #[Route('/logout', name: 'app_logout')]
-    public function logout(): void
+    #[Route('/logout', name: 'app_logout', methods: ['GET'])]
+    public function logout(): never
     {
-        // Interceptado pelo firewall
-        throw new \LogicException('This method can be blank - it will be intercepted by the logout key on your firewall.');
+        throw new \LogicException('Esta rota é interceptada pelo firewall de logout.');
     }
 
-    #[Route('/forgot-password', name: 'app_forgot_password')]
-    public function requestForgotPassword(Request $request): Response
+    #[Route('/forgot-password', name: 'app_forgot_password', methods: ['GET', 'POST'])]
+    public function forgotPassword(): Response
     {
         return $this->render('auth/forgot.html.twig', [
             'requestForm' => null,
         ]);
     }
 
-    #[Route('/reset-password/{token}', name: 'app_reset_password')]
-    public function resetPassword(Request $request, ?string $token = null): Response
+    #[Route('/reset-password/{token}', name: 'app_reset_password', methods: ['GET', 'POST'])]
+    public function resetPassword(string $token): Response
     {
         return $this->render('auth/reset.html.twig', [
             'resetForm' => null,

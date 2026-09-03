@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Login - wazeBR{% endblock %}
+{% block title %}Entrar | wazeBR{% endblock %}
 
 {% block stylesheets %}
     {{ parent() }}
@@ -9,71 +9,58 @@
 
 {% block javascripts %}
     {{ parent() }}
-    {{ importmap('auth') }}
+    <script type="module" src="{{ asset('controllers/auth_controller.js') }}"></script>
 {% endblock %}
 
+{% block body_class %}auth-page{% endblock %}
+
 {% block body %}
-<div class="auth-container">
-    <div class="auth-card">
-        <div class="auth-header">
-            <h1>wazeBR</h1>
-            <p>Monitoramento de Tr\u00e1fego</p>
+<main class="auth-shell">
+    <section class="auth-card" aria-labelledby="login-title">
+        <div class="auth-brand">
+            <div class="auth-logo" aria-hidden="true">w</div>
+            <div>
+                <h1 id="login-title">wazeBR</h1>
+                <p>Monitoramento de tráfego</p>
+            </div>
         </div>
 
-        <form method="post" class="auth-form" novalidate>
-            {% if error %}
-                <div class="alert alert-danger">
-                    {{ error.messageKey|trans(error.messageData, 'security') }}
-                </div>
-            {% endif %}
+        {% if error %}
+            <div class="auth-alert auth-alert-error" role="alert">
+                {{ error.messageKey|trans(error.messageData, 'security') }}
+            </div>
+        {% endif %}
 
-            {% if app.user %}
-                <div class="alert alert-info">
-                    Voc\u00ea est\u00e1 logado como {{ app.user.userIdentifier }}. 
-                    <a href="{{ path('app_logout') }}">Sair</a>
-                </div>
-            {% endif %}
+        <form action="{{ path('app_login') }}" method="post" class="auth-form">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
 
-            <div class="form-group">
+            <div class="auth-field">
                 <label for="username">E-mail</label>
-                <input type="email" 
-                       id="username" 
-                       name="_username" 
-                       class="form-control" 
-                       value="{{ last_username }}" 
-                       required 
-                       autofocus
-                       autocomplete="email">
+                <input id="username" name="_username" type="email"
+                       value="{{ last_username }}" autocomplete="username"
+                       required autofocus placeholder="seu@email.com">
             </div>
 
-            <div class="form-group">
-                <label for="password">Senha</label>
-                <div class="password-input-wrapper">
-                    <input type="password" 
-                           id="password" 
-                           name="_password" 
-                           class="form-control" 
-                           required 
-                           autocomplete="current-password">
-                    <button type="button" class="toggle-password" aria-label="Mostrar senha">
-                        <i class="fas fa-eye"></i>
-                    </button>
+            <div class="auth-field">
+                <div class="auth-label-row">
+                    <label for="password">Senha</label>
+                    <a href="{{ path('app_forgot_password') }}">Esqueceu a senha?</a>
+                </div>
+                <div class="auth-password">
+                    <input id="password" name="_password" type="password"
+                           autocomplete="current-password" required placeholder="Sua senha">
+                    <button type="button" class="auth-password-toggle" data-password-toggle
+                            aria-label="Mostrar senha" aria-pressed="false">Mostrar</button>
                 </div>
             </div>
 
-            <div class="form-group checkbox-group">
-                <input type="checkbox" id="remember_me" name="_remember_me" checked>
-                <label for="remember_me">Lembrar-me</label>
-            </div>
+            <label class="auth-remember">
+                <input type="checkbox" name="_remember_me" value="1">
+                <span>Lembrar-me neste dispositivo</span>
+            </label>
 
-            <input type="hidden" name="_target_path" value="{{ app.request.get('redirect') ?: path('dashboard_index') }}">
-
-            <button type="submit" class="btn btn-primary btn-block">Entrar</button>
-
-            <div class="auth-footer">
-                <a href="{{ path('app_forgot_password') }}">Esqueceu a senha?</a>
-            </div>
+            <button class="auth-submit" type="submit">Entrar</button>
         </form>
-    </div>
-</div>
+    </section>
+</main>
 {% endblock %}

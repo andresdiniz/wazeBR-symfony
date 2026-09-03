@@ -1,44 +1,13 @@
-import { Controller } from '@hotwired/stimulus';
+const toggle = document.querySelector('[data-password-toggle]');
 
-export default class extends Controller {
-    connect() {
-        this.initPasswordToggle();
-        this.initFormValidation();
-    }
+if (toggle) {
+    const input = document.getElementById('password');
 
-    initPasswordToggle() {
-        const toggleButtons = document.querySelectorAll('.toggle-password');
-        
-        toggleButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const wrapper = button.closest('.password-input-wrapper');
-                const input = wrapper.querySelector('input');
-                const icon = button.querySelector('i');
-                
-                if (input.type === 'password') {
-                    input.type = 'text';
-                    icon.classList.remove('fa-eye');
-                    icon.classList.add('fa-eye-slash');
-                } else {
-                    input.type = 'password';
-                    icon.classList.remove('fa-eye-slash');
-                    icon.classList.add('fa-eye');
-                }
-            });
-        });
-    }
-
-    initFormValidation() {
-        const forms = document.querySelectorAll('form[novalidate]');
-        
-        forms.forEach(form => {
-            form.addEventListener('submit', (e) => {
-                if (!form.checkValidity()) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }
-                form.classList.add('was-validated');
-            });
-        });
-    }
+    toggle.addEventListener('click', () => {
+        const visible = input.type === 'text';
+        input.type = visible ? 'password' : 'text';
+        toggle.textContent = visible ? 'Mostrar' : 'Ocultar';
+        toggle.setAttribute('aria-pressed', String(!visible));
+        toggle.setAttribute('aria-label', visible ? 'Mostrar senha' : 'Ocultar senha');
+    });
 }
