@@ -199,6 +199,16 @@ final class DashboardController extends AbstractController
                 'routes_table' => $this->countTable('waze_routes'),
             ],
         ];
+        // Dados para o Super Admin
+        $superAdminData = null;
+        if (is_granted('ROLE_SUPER_ADMIN')) {
+            $superAdminData = [
+                'totalPartners' => 0, // Count de partners
+                'totalUsers' => 0,    // Count de users
+                'activeCrons' => 0,   // Status dos crons
+                'systemLogs' => [],   // Logs do sistema
+            ];
+        }
 
         return $this->render('dashboard/index.html.twig', [
             'count' => $executions,
@@ -221,6 +231,7 @@ final class DashboardController extends AbstractController
             'recentAlerts' => $recentAlerts,
             'recentJams' => $recentJams,
             'debugData' => $debugData,
+            'superAdminData' => $superAdminData,
         ]);
     }
 

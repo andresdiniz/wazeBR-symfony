@@ -129,6 +129,33 @@
             </div>
         </section>
 
+        {# Após a seção de stats, adicione: #}
+{% if is_granted('ROLE_SUPER_ADMIN') and superAdminData %}
+<section class="super-admin-section" data-animate>
+    <div class="section-header">
+        <h2 class="section-title">
+            <span class="title-icon">👑</span>
+            Administração do Sistema
+        </h2>
+    </div>
+
+    <div class="admin-grid">
+        <div class="admin-card">
+            <h3>Parceiros</h3>
+            <div class="admin-value">{{ superAdminData.totalPartners }}</div>
+        </div>
+        <div class="admin-card">
+            <h3>Usuários Totais</h3>
+            <div class="admin-value">{{ superAdminData.totalUsers }}</div>
+        </div>
+        <div class="admin-card">
+            <h3>Crons Ativos</h3>
+            <div class="admin-value admin-value-success">{{ superAdminData.activeCrons }}</div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
         {# Ao Vivo #}
         <section class="live-section" data-animate>
             <div class="section-header">
@@ -210,25 +237,26 @@
         {# Gráficos #}
         <div class="charts-grid">
             {# Alertas por Subtipo #}
-            <section class="chart-section" data-animate>
-                <div class="section-header">
-                    <h2 class="section-title">
-                        <span class="title-icon">📊</span>
-                        Alertas por Subtipo
-                    </h2>
-                    <span class="chart-total">Total: {{ totalAlertsInPeriod }}</span>
-                </div>
-                <div class="chart-container">
-                    {% if alertsBySubtype|length > 0 %}
-                        <canvas id="alertsChart" data-chart-type="doughnut" data-chart-data="{{ alertsBySubtype|json_encode }}"></canvas>
-                    {% else %}
-                        <div class="empty-state">
-                            <span class="empty-icon">📊</span>
-                            <p>Nenhum alerta no período</p>
-                        </div>
-                    {% endif %}
-                </div>
-            </section>
+            {# Corrija o gráfico de Alertas por Subtipo #}
+<section class="chart-section" data-animate>
+    <div class="section-header">
+        <h2 class="section-title">
+            <span class="title-icon">📊</span>
+            Alertas por Subtipo
+        </h2>
+        <span class="chart-total">Total: {{ totalAlertsInPeriod }}</span>
+    </div>
+    <div class="chart-container">
+        {% if alertsBySubtype|length > 0 %}
+            <canvas id="alertsChart"></canvas>
+        {% else %}
+            <div class="empty-state">
+                <span class="empty-icon">📊</span>
+                <p>Nenhum alerta no período</p>
+            </div>
+        {% endif %}
+    </div>
+</section>
 
             {# Jams por Nível #}
             <section class="chart-section" data-animate>

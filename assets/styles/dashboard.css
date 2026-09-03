@@ -623,6 +623,50 @@
     overflow-x: auto;
 }
 
+/* Super Admin Section */
+.super-admin-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    color: #ffffff;
+    box-shadow: var(--shadow-lg);
+}
+
+.super-admin-section .section-title {
+    color: #ffffff;
+}
+
+.admin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-4);
+    margin-top: var(--space-4);
+}
+
+.admin-card {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--radius);
+    padding: var(--space-4);
+    text-align: center;
+}
+
+.admin-card h3 {
+    font-size: var(--text-sm);
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: var(--space-2);
+}
+
+.admin-value {
+    font-size: var(--text-3xl);
+    font-weight: var(--font-bold);
+    color: #ffffff;
+}
+
+.admin-value-success {
+    color: #10b981;
+}
+
 /* ===================================
    11. Responsive
    =================================== */

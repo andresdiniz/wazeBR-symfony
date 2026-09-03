@@ -23,54 +23,38 @@ function initializeCharts() {
     }
 
     // Alerts Chart (Doughnut)
-    const alertsCanvas = document.getElementById('alertsChart');
-    if (alertsCanvas && window.dashboardData.alertsBySubtype?.length > 0) {
-        new Chart(alertsCanvas, {
-            type: 'doughnut',
-            data: {
-                labels: window.dashboardData.alertsBySubtype.map(item => item.label),
-                datasets: [{
-                    data: window.dashboardData.alertsBySubtype.map(item => item.count),
-                    backgroundColor: [
-                        '#2563eb',
-                        '#10b981',
-                        '#f59e0b',
-                        '#ef4444',
-                        '#8b5cf6',
-                        '#06b6d4',
-                        '#ec4899',
-                        '#84cc16',
-                    ],
-                    borderWidth: 0,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            padding: 20,
-                            font: {
-                                size: 12,
-                                family: "'Inter', sans-serif"
-                            }
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: (context) => {
-                                const label = context.label || '';
-                                const value = context.parsed || 0;
-                                return `${label}: ${value}`;
-                            }
-                        }
+    // Alerts Chart (Doughnut)
+const alertsCanvas = document.getElementById('alertsChart');
+if (alertsCanvas && window.dashboardData.alertsBySubtype?.length > 0) {
+    new Chart(alertsCanvas, {
+        type: 'doughnut',
+        data: {
+            labels: window.dashboardData.alertsBySubtype.map(item => item.label || 'Outros'),
+            datasets: [{
+                data: window.dashboardData.alertsBySubtype.map(item => item.count),
+                backgroundColor: [
+                    '#2563eb', '#10b981', '#f59e0b', '#ef4444',
+                    '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16',
+                ],
+                borderWidth: 2,
+                borderColor: '#ffffff',
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        font: { size: 12, family: "'Inter', sans-serif" }
                     }
                 }
             }
-        });
-    }
+        }
+    });
+}
 
     // Jams Chart (Bar)
     const jamsCanvas = document.getElementById('jamsChart');
