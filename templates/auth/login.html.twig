@@ -69,10 +69,6 @@
             <input type="hidden" name="_target_path" value="{{ app.request.get('redirect') ?: path('dashboard_index') }}">
 
             <button type="submit" class="btn btn-primary btn-block">Entrar</button>
-
-            <div class="auth-footer">
-                <a href="{{ path('app_forgot_password_request') }}">Esqueceu a senha?</a>
-            </div>
         </form>
     </div>
 </div>
