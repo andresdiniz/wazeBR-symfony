@@ -475,6 +475,7 @@ a:hover {
     color: var(--text-primary);
     cursor: pointer;
     transition: var(--transition);
+    flex-shrink: 0;
 }
 
 .theme-toggle:hover {
@@ -780,28 +781,14 @@ a:hover {
     display: none !important;
 }
 
-.hidden-mobile {
-    @media (max-width: 768px) {
-        display: none !important;
-    }
-}
-
 /* ===================================
-   10. Responsive
+   10. Responsive - Mobile Menu
    =================================== */
-@media (max-width: 1024px) {
-    .navbar-nav {
-        gap: var(--space-1);
-    }
-
-    .nav-link {
-        padding: var(--space-2) var(--space-3);
-    }
-}
-
 @media (max-width: 768px) {
     .navbar-toggle {
         display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .navbar-menu {
@@ -813,13 +800,16 @@ a:hover {
         border-bottom: 1px solid var(--border-light);
         box-shadow: var(--shadow-lg);
         padding: var(--space-4);
+        max-height: 0;
+        overflow: hidden;
         transform: translateY(-100%);
         opacity: 0;
         visibility: hidden;
-        transition: var(--transition);
+        transition: all 0.3s ease;
     }
 
     .navbar-menu.show {
+        max-height: 500px;
         transform: translateY(0);
         opacity: 1;
         visibility: visible;
@@ -828,10 +818,16 @@ a:hover {
     .navbar-nav {
         flex-direction: column;
         align-items: stretch;
+        gap: var(--space-2);
     }
 
     .nav-link {
         justify-content: flex-start;
+        padding: var(--space-3) var(--space-4);
+    }
+
+    .hidden-mobile {
+        display: none !important;
     }
 
     .footer-content {
@@ -841,6 +837,16 @@ a:hover {
     .footer-bottom {
         flex-direction: column;
         text-align: center;
+    }
+}
+
+@media (max-width: 1024px) {
+    .navbar-nav {
+        gap: var(--space-1);
+    }
+
+    .nav-link {
+        padding: var(--space-2) var(--space-3);
     }
 }
 

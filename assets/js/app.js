@@ -10,7 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeDropdowns();
     initializeAlerts();
     initializeAnimations();
-    initializeTooltips();
 });
 
 // Theme Management
@@ -55,27 +54,50 @@ function initializeMobileMenu() {
     const closeIcon = toggle?.querySelector('.icon-close');
 
     if (toggle && menu) {
-        toggle.addEventListener('click', () => {
+        toggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
             const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
             toggle.setAttribute('aria-expanded', !isExpanded);
             menu.classList.toggle('show');
 
             if (menuIcon && closeIcon) {
-                menuIcon.classList.toggle('hidden');
-                closeIcon.classList.toggle('hidden');
+                if (!isExpanded) {
+                    menuIcon.classList.add('hidden');
+                    closeIcon.classList.remove('hidden');
+                } else {
+                    menuIcon.classList.remove('hidden');
+                    closeIcon.classList.add('hidden');
+                }
             }
         });
 
         // Close menu when clicking outside
         document.addEventListener('click', (e) => {
             if (!toggle.contains(e.target) && !menu.contains(e.target)) {
+                const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+                if (isExpanded) {
+                    menu.classList.remove('show');
+                    toggle.setAttribute('aria-expanded', 'false');
+                    if (menuIcon && closeIcon) {
+                        menuIcon.classList.remove('hidden');
+                        closeIcon.classList.add('hidden');
+                    }
+                }
+            }
+        });
+
+        // Close menu when clicking on a link
+        menu.querySelectorAll('a').forEach((link) => {
+            link.addEventListener('click', () => {
                 menu.classList.remove('show');
                 toggle.setAttribute('aria-expanded', 'false');
                 if (menuIcon && closeIcon) {
                     menuIcon.classList.remove('hidden');
                     closeIcon.classList.add('hidden');
                 }
-            }
+            });
         });
     }
 }
@@ -154,49 +176,6 @@ function initializeAnimations() {
         observer.observe(el);
     });
 }
-
-// Tooltips (futuro)
-function initializeTooltips() {
-    // Placeholder para tooltips
-}
-
-// API Helper
-window.api = {
-    async get(url, options = {}) {
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            },
-            ...options
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        return response.json();
-    },
-
-    async post(url, data, options = {}) {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            },
-            body: JSON.stringify(data),
-            ...options
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        return response.json();
-    }
-};
 
 // Utility functions
 window.utils = {
