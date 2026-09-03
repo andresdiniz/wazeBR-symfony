@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
-use Symfony\Component\Cache\Adapter\AdapterInterface;
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -27,7 +27,13 @@ class RateLimiterService
     private const RESET_PASSWORD_WINDOW = 3600; // 1 hour
 
     public function __construct(
-        private readonly AdapterInterface $cache,
+        // AdapterInterface (Symfony\Component\Cache\Adapter) não tem
+        // autowiring automático — o FrameworkBundle só cria alias
+        // autowireable pra CacheItemPoolInterface (PSR-6), apontando
+        // pro pool "cache.app" configurado em config/packages/cache.yaml.
+        // Os métodos usados aqui (getItem/save/deleteItem) já fazem
+        // parte da interface PSR-6, então a troca é direta.
+        private readonly CacheItemPoolInterface $cache,
     ) {}
 
     /**
