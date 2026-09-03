@@ -1,538 +1,79 @@
-{% extends 'base_guest.html.twig' %}
+{% extends 'base.html.twig' %}
 
-{% block title %}Entrar - WazeBR{% endblock %}
+{% block title %}Login - wazeBR{% endblock %}
 
 {% block stylesheets %}
-    <style>
-        :root {
-            --bg-1: #0c2b3a;
-            --bg-2: #0f5266;
-            --bg-3: #159bb2;
-            --glass: rgba(9, 22, 30, 0.88);
-            --glass-border: rgba(255, 255, 255, 0.07);
-            --glass-highlight: rgba(255, 255, 255, 0.12);
-            --text-main: #f2f8f9;
-            --text-soft: rgba(242, 248, 249, 0.76);
-            --accent: #8bd34f;
-            --accent-strong: #6cb336;
-            --danger-bg: rgba(188, 77, 77, 0.18);
-            --danger-border: rgba(255, 146, 146, 0.22);
-            --input-bg: rgba(6, 15, 20, 0.96);
-            --input-border: rgba(255, 255, 255, 0.09);
-        }
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('styles/auth.css') }}">
+{% endblock %}
 
-        *, *::before, *::after { box-sizing: border-box; }
-        html, body { height: 100%; }
-
-        body.guest-shell {
-            margin: 0;
-            min-height: 100vh;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            color: var(--text-main);
-            background:
-                radial-gradient(circle at 15% 20%, rgba(255,255,255,0.16), transparent 32%),
-                radial-gradient(circle at 80% 80%, rgba(0,0,0,0.30), transparent 40%),
-                linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 45%, var(--bg-3) 100%);
-            overflow-x: hidden;
-            overflow-y: auto;
-        }
-
-        .login-scene {
-            min-height: 100vh;
-            padding: clamp(18px, 4vw, 42px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
-
-        .orb, .orb::before, .orb::after {
-            position: absolute;
-            border-radius: 999px;
-            filter: blur(40px);
-            opacity: 0.32;
-            pointer-events: none;
-        }
-
-        .orb {
-            width: 260px;
-            height: 260px;
-            background: radial-gradient(circle, rgba(255,255,255,0.30), transparent 55%);
-            top: 8%;
-            left: 10%;
-            animation: float 30s infinite alternate ease-in-out;
-        }
-
-        .orb::before {
-            content: "";
-            width: 220px;
-            height: 220px;
-            background: radial-gradient(circle, rgba(127,216,230,0.38), transparent 60%);
-            bottom: -16%;
-            right: -18%;
-        }
-
-        .orb::after {
-            content: "";
-            width: 260px;
-            height: 260px;
-            background: radial-gradient(circle, rgba(98,184,216,0.38), transparent 60%);
-            top: 40%;
-            left: 68%;
-        }
-
-        @keyframes float {
-            0% { transform: translate3d(0, 0, 0) scale(1); }
-            100% { transform: translate3d(16px, 10px, 0) scale(1.03); }
-        }
-
-        .login-frame {
-            width: min(1200px, 100%);
-            max-width: 1200px;
-            display: grid;
-            grid-template-columns: minmax(260px, 340px) minmax(340px, 460px);
-            align-items: center;
-            gap: clamp(32px, 5vw, 64px);
-            position: relative;
-            z-index: 1;
-            justify-content: flex-end;
-            animation: card-enter 320ms ease-out;
-        }
-
-        @keyframes card-enter {
-            from { opacity: 0; transform: translate3d(0, 14px, 0); }
-            to { opacity: 1; transform: translate3d(0, 0, 0); }
-        }
-
-        .brand-column {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 18px;
-            padding-left: clamp(0, 3vw, 32px);
-        }
-
-        .brand-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 14px;
-            background: rgba(0,0,0,0.48);
-            padding: 10px 16px 10px 12px;
-            border-radius: 999px;
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255,255,255,0.14);
-            box-shadow: 0 16px 40px rgba(0,0,0,0.35);
-        }
-
-        .brand-avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 10px;
-            background: linear-gradient(135deg, #55ccd3 0%, #159bb2 100%);
-            display: grid;
-            place-items: center;
-            color: #f6ffff;
-            font-weight: 800;
-            font-size: 18px;
-            animation: pulse 2200ms infinite ease-in-out;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(127,216,230,0.45); }
-            50% { transform: scale(1.06); box-shadow: 0 0 0 8px rgba(127,216,230,0.0); }
-        }
-
-        .brand-main { display: flex; flex-direction: column; }
-
-        .brand-name {
-            font-weight: 800;
-            font-size: 20px;
-            letter-spacing: -0.02em;
-        }
-
-        .brand-tag {
-            font-size: 12px;
-            color: rgba(244,239,232,0.68);
-        }
-
-        .brand-heading {
-            margin-top: 10px;
-            max-width: 260px;
-            color: rgba(247,244,236,0.92);
-            font-size: 24px;
-            font-weight: 700;
-            letter-spacing: -0.03em;
-        }
-
-        .brand-description {
-            margin-top: 8px;
-            max-width: 280px;
-            font-size: 13px;
-            color: rgba(247,244,236,0.80);
-        }
-
-        .form-column { position: relative; }
-
-        .login-card {
-            position: relative;
-            background: var(--glass);
-            border-radius: 18px;
-            border: 1px solid var(--glass-border);
-            box-shadow: 0 24px 64px rgba(0,0,0,0.48);
-            padding: 22px 24px 20px;
-            overflow: hidden;
-        }
-
-        .login-card::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            border-radius: 18px;
-            background: linear-gradient(135deg, var(--glass-highlight), transparent 40%);
-            opacity: 0.18;
-            pointer-events: none;
-        }
-
-        .login-card-inner { position: relative; z-index: 1; }
-
-        .login-kicker {
-            margin: 0 0 6px;
-            font-size: 11px;
-            letter-spacing: 0.26em;
-            text-transform: uppercase;
-            color: rgba(244,239,232,0.60);
-        }
-
-        .login-title {
-            margin: 0;
-            font-size: clamp(22px, 2.6vw, 28px);
-            line-height: 1.1;
-            font-weight: 800;
-            letter-spacing: -0.03em;
-        }
-
-        .login-text {
-            margin: 10px 0 18px;
-            font-size: 13px;
-            color: var(--text-soft);
-        }
-
-        .alert {
-            padding: 10px 11px;
-            border-radius: 10px;
-            font-size: 13px;
-            margin-bottom: 14px;
-        }
-
-        .alert-danger {
-            background: var(--danger-bg);
-            color: #ffd6d6;
-            border: 1px solid var(--danger-border);
-        }
-
-        .field { margin-bottom: 12px; }
-        .field-error .input { border-color: var(--danger-border); }
-        .field-error .error-message {
-            margin-top: 4px;
-            font-size: 11px;
-            color: #ffd6d6;
-        }
-
-        .label {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 6px;
-            font-size: 12px;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            color: rgba(244,239,232,0.80);
-        }
-
-        .input-shell { position: relative; }
-
-        .input {
-            width: 100%;
-            height: 44px;
-            padding: 0 44px 0 40px;
-            border-radius: 12px;
-            border: 1px solid var(--input-border);
-            background: var(--input-bg);
-            color: var(--text-main);
-            font-size: 14px;
-            outline: none;
-        }
-
-        .input::placeholder { color: rgba(244,239,232,0.38); }
-
-        .input:focus {
-            border-color: rgba(127,216,230,0.90);
-            box-shadow: 0 0 0 2px rgba(127,216,230,0.25);
-        }
-
-        .input-icon {
-            position: absolute;
-            left: 14px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 16px;
-            height: 16px;
-            pointer-events: none;
-        }
-
-        .input-icon svg {
-            width: 100%;
-            height: 100%;
-            stroke: rgba(244,239,232,0.66);
-        }
-
-        .toggle-password {
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 24px;
-            height: 24px;
-            border-radius: 999px;
-            border: none;
-            background: transparent;
-            display: grid;
-            place-items: center;
-            cursor: pointer;
-            color: rgba(244,239,232,0.66);
-        }
-
-        .toggle-password:hover { color: var(--accent); }
-        .toggle-password[aria-pressed="true"] { color: var(--accent); }
-
-        .toggle-password svg {
-            width: 18px;
-            height: 18px;
-        }
-
-        .submit {
-            margin-top: 10px;
-            width: 100%;
-            height: 46px;
-            border-radius: 12px;
-            border: none;
-            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
-            color: #041014;
-            font-size: 14px;
-            font-weight: 800;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            cursor: pointer;
-            box-shadow: 0 14px 30px rgba(89,180,199,0.34);
-            transform: translateY(0);
-            transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
-        }
-
-        .submit:hover { transform: translateY(-1px); filter: brightness(1.03); }
-
-        .submit:active {
-            transform: translateY(0);
-            box-shadow: 0 10px 22px rgba(89,180,199,0.30);
-        }
-
-        .submit[data-loading="true"] {
-            opacity: 0.8;
-            cursor: wait;
-            position: relative;
-        }
-
-        .submit[data-loading="true"]::before {
-            content: "";
-            position: absolute;
-            left: 16px;
-            top: 50%;
-            width: 16px;
-            height: 16px;
-            border-radius: 999px;
-            border: 2px solid rgba(4,16,20,0.4);
-            border-top-color: #041014;
-            transform: translateY(-50%);
-            animation: spin 600ms linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: translateY(-50%) rotate(360deg); }
-        }
-
-        .login-footer {
-            margin-top: 14px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 11px;
-            color: rgba(244,239,232,0.64);
-        }
-
-        .login-footer-left {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .remember-shell {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .remember-shell input {
-            width: 13px;
-            height: 13px;
-        }
-
-        .remember-shell label {
-            font-size: 11px;
-            color: rgba(244,239,232,0.72);
-        }
-
-        .login-footer a {
-            color: var(--accent);
-            text-decoration: none;
-        }
-
-        .login-footer a:hover { text-decoration: underline; }
-
-        @media (max-width: 900px) {
-            .login-frame {
-                grid-template-columns: minmax(0, 1fr);
-                gap: 24px;
-                justify-content: center;
-            }
-
-            .brand-column {
-                align-items: center;
-                text-align: center;
-                padding-left: 0;
-            }
-
-            .brand-heading,
-            .brand-description { max-width: 360px; }
-
-            .form-column {
-                max-width: 460px;
-                margin: 0 auto;
-            }
-        }
-
-        @media (max-width: 640px) {
-            .login-scene { padding: 18px 16px; }
-            .brand-pill { justify-content: center; }
-            .login-card { padding: 20px 18px 18px; border-radius: 16px; }
-        }
-
-        @media (max-width: 480px) {
-            .login-footer {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 8px;
-            }
-        }
-    </style>
+{% block javascripts %}
+    {{ parent() }}
+    {{ importmap('auth') }}
 {% endblock %}
 
 {% block body %}
-<div class="login-scene">
-    <div class="orb"></div>
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h1>wazeBR</h1>
+            <p>Monitoramento de Tr\u00e1fego</p>
+        </div>
 
-    <div class="login-frame">
-        <div class="brand-column">
-            <div class="brand-pill">
-                <div class="brand-avatar">W</div>
-                <div class="brand-main">
-                    <span class="brand-name">WazeBR<span style="opacity:.6;font-weight:600"> Monitor</span></span>
-                    <span class="brand-tag">Monitoramento em tempo real</span>
+        <form method="post" class="auth-form" novalidate>
+            {% if error %}
+                <div class="alert alert-danger">
+                    {{ error.messageKey|trans(error.messageData, 'security') }}
+                </div>
+            {% endif %}
+
+            {% if app.user %}
+                <div class="alert alert-info">
+                    Voc\u00ea est\u00e1 logado como {{ app.user.userIdentifier }}. 
+                    <a href="{{ path('app_logout') }}">Sair</a>
+                </div>
+            {% endif %}
+
+            <div class="form-group">
+                <label for="username">E-mail</label>
+                <input type="email" 
+                       id="username" 
+                       name="_username" 
+                       class="form-control" 
+                       value="{{ last_username }}" 
+                       required 
+                       autofocus
+                       autocomplete="email">
+            </div>
+
+            <div class="form-group">
+                <label for="password">Senha</label>
+                <div class="password-input-wrapper">
+                    <input type="password" 
+                           id="password" 
+                           name="_password" 
+                           class="form-control" 
+                           required 
+                           autocomplete="current-password">
+                    <button type="button" class="toggle-password" aria-label="Mostrar senha">
+                        <i class="fas fa-eye"></i>
+                    </button>
                 </div>
             </div>
 
-            <h2 class="brand-heading">Painel de mobilidade urbana</h2>
-            <p class="brand-description">Alertas Waze, congestionamentos, ocorrências CIFS e dados hidrológicos CEMADEN em uma única interface, pensada para operação.</p>
-        </div>
-
-        <div class="form-column">
-            <div class="login-card">
-                <div class="login-card-inner">
-                    <p class="login-kicker">Monitoramento</p>
-                    <h1 class="login-title">Acesso ao sistema</h1>
-                    <p class="login-text">Entre com seu e-mail e senha para continuar no painel de monitoramento.</p>
-
-                    {% if error %}
-                        <div class="alert alert-danger">
-                            {{ error.messageKey|trans(error.messageData, 'security') }}
-                        </div>
-                    {% endif %}
-
-                    <form method="post" action="{{ path('auth_login') }}" onsubmit="this.querySelector('.submit').dataset.loading = 'true';">
-                        <div class="field">
-                            <label for="email" class="label">E-mail</label>
-                            <div class="input-shell">
-                                <span class="input-icon" aria-hidden="true">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6">
-                                        <path d="M4 6h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z" />
-                                        <path d="M22 8 12 13 2 8" />
-                                    </svg>
-                                </span>
-                                <input
-                                    type="email"
-                                    id="email"
-                                    name="email"
-                                    class="input"
-                                    value="{{ last_username|default('') }}"
-                                    autocomplete="email"
-                                    autofocus
-                                    required
-                                >
-                            </div>
-                        </div>
-
-                        <div class="field">
-                            <label for="password" class="label">Senha</label>
-                            <div class="input-shell">
-                                <span class="input-icon" aria-hidden="true">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6">
-                                        <rect x="6" y="11" width="12" height="9" rx="2" />
-                                        <path d="M9 11V8a3 3 0 0 1 6 0v3" />
-                                    </svg>
-                                </span>
-                                <input
-                                    type="password"
-                                    id="password"
-                                    name="password"
-                                    class="input"
-                                    autocomplete="current-password"
-                                    required
-                                >
-                                <button type="button" class="toggle-password" onclick="const input = document.getElementById('password'); const isText = input.type === 'text'; input.type = isText ? 'password' : 'text'; this.setAttribute('aria-pressed', (!isText).toString());">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6">
-                                        <path d="M1 12s3-7 11-7 11 7 11 7-3 7-11 7S1 12 1 12Z" />
-                                        <circle cx="12" cy="12" r="3" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-
-                        <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
-
-                        <button type="submit" class="submit" data-loading="false">Entrar</button>
-
-                        <div class="login-footer">
-                            <div class="login-footer-left">
-                                <div class="remember-shell">
-                                    <input type="checkbox" id="remember_me" name="_remember_me" value="1">
-                                    <label for="remember_me">Manter conectado</label>
-                                </div>
-                                <span>·</span>
-                                <span>WazeBR Security</span>
-                            </div>
-                            <a href="{{ path('auth_forgot') }}">Esqueceu sua senha?</a>
-                        </div>
-                    </form>
-                </div>
+            <div class="form-group checkbox-group">
+                <input type="checkbox" id="remember_me" name="_remember_me" checked>
+                <label for="remember_me">Lembrar-me</label>
             </div>
-        </div>
+
+            <input type="hidden" name="_target_path" value="{{ app.request.get('redirect') ?: path('dashboard_index') }}">
+
+            <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+
+            <div class="auth-footer">
+                <a href="{{ path('app_forgot_password_request') }}">Esqueceu a senha?</a>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %}
