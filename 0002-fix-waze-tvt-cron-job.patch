@@ -1,0 +1,160 @@
+From d39206765162aafe1f43ac8690734524f1bfc5e9 Mon Sep 17 00:00:00 2001
+From: andresdiniz <andresdiniz@users.noreply.github.com>
+Date: Thu, 3 Sep 2026 19:50:56 +0000
+Subject: [PATCH] fix(waze): corrige job de coleta TVT quebrado no cron e
+ endurece sync de rotas
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- cron.php: job 'waze_tvt' chamava o comando 'app:waze:collect-tvt',
+  que não existe — o comando real é 'waze:collect-tvt' (sem prefixo
+  app:), registrado em WazeCollectTvtCommand. Com o nome errado, todo
+  disparo do job (agendado ou via /cron/trigger/waze_tvt) falhava com
+  "Command not found", então a coleta TVT pelo modelo novo
+  (WazeTvtRouteDefinition/Execution/Coord) nunca rodava de fato.
+
+- WazeCollectRoutesCommand (Modo TVT): a resincronização de subRoutes
+  e de irregularities agora só roda quando a respectiva chave
+  ('subRoutes' / 'irregularities') realmente está presente na resposta
+  do feed. Antes, uma resposta parcial da API (chave ausente, não um
+  array vazio de propósito) fazia o código desativar/remover tudo que
+  já existia sem repor nada — um glitch pontual do feed podia zerar
+  silenciosamente dados válidos.
+
+- Remove o flush() por rota dentro do loop, mantendo um único flush
+  por link ao final do lote (rotas + subrotas + snapshots juntos),
+  em vez de um round-trip ao banco por rota processada.
+---
+ cron.php                                 |  2 +-
+ src/Command/WazeCollectRoutesCommand.php | 86 ++++++++++++++----------
+ 2 files changed, 50 insertions(+), 38 deletions(-)
+
+diff --git a/cron.php b/cron.php
+index dcda2ab..29db374 100644
+--- a/cron.php
++++ b/cron.php
+@@ -93,7 +93,7 @@ $jobs = [
+         'desc'    => 'Tempos de rota e irregularidades Waze',
+     ],
+     'waze_tvt' => [
+-        'cmd'     => ['app:waze:collect-tvt'],
++        'cmd'     => ['waze:collect-tvt'],
+         'timeout' => 50,
+         'desc'    => 'Snapshots de rotas do feed TVT',
+     ],
+diff --git a/src/Command/WazeCollectRoutesCommand.php b/src/Command/WazeCollectRoutesCommand.php
+index 3f1ab06..cd6ebbc 100644
+--- a/src/Command/WazeCollectRoutesCommand.php
++++ b/src/Command/WazeCollectRoutesCommand.php
+@@ -177,44 +177,49 @@ class WazeCollectRoutesCommand extends Command
+                         }
+ 
+                         // ── Sincroniza subRoutes (orphanRemoval) ──────────
+-                        foreach ($route->getSubRoutes() as $old) {
+-                            $route->removeSubRoute($old);
+-                        }
+-
+-                        foreach (($rawRoute['subRoutes'] ?? []) as $sortOrder => $rawSub) {
+-                            $subLen  = max(1, (int) ($rawSub['length']      ?? 1));
+-                            $subTime = max(1, (int) ($rawSub['time']        ?? 1));
+-                            $subHist = max(1, (int) ($rawSub['historicTime'] ?? 1));
+-
+-                            $leadAlert = $rawSub['leadAlert'] ?? null;
+-
+-                            $sub = (new WazeSubRoute())
+-                                ->setFromName($rawSub['fromName'] ?? null)
+-                                ->setToName($rawSub['toName']    ?? null)
+-                                ->setTime($subTime)
+-                                ->setHistoricTime($subHist)
+-                                ->setLength($subLen)
+-                                ->setJamLevel(isset($rawSub['jamLevel']) ? (int) $rawSub['jamLevel'] : null)
+-                                ->setAvgSpeed(round(($subLen / 1000) / ($subTime / 3600), 2))
+-                                ->setHistoricSpeed(round(($subLen / 1000) / ($subHist / 3600), 2))
+-                                ->setLine($rawSub['line'] ?? null)
+-                                ->setBbox($rawSub['bbox'] ?? null)
+-                                ->setSortOrder($sortOrder)
+-                                // lead alert
+-                                ->setLeadAlertId($leadAlert['id']               ?? null)
+-                                ->setLeadAlertType($leadAlert['type']            ?? null)
+-                                ->setLeadAlertSubType($leadAlert['subType']      ?? null)
+-                                ->setLeadAlertPosition(isset($leadAlert['position']) ? (array) $leadAlert['position'] : null)
+-                                ->setLeadAlertNumComments($leadAlert['numComments']          ?? null)
+-                                ->setLeadAlertNumThumbsUp($leadAlert['numThumbsUp']          ?? null)
+-                                ->setLeadAlertNumNotThereReports($leadAlert['numNotThereReports'] ?? null)
+-                                ->setLeadAlertStreet($leadAlert['street']        ?? null);
+-
+-                            $route->addSubRoute($sub);
++                        // Só mexe se a chave 'subRoutes' realmente veio na
++                        // resposta — um glitch pontual da API que omita o
++                        // campo (em vez de mandar array vazio de propósito)
++                        // não pode apagar as subrotas que já existiam.
++                        if (array_key_exists('subRoutes', $rawRoute)) {
++                            foreach ($route->getSubRoutes() as $old) {
++                                $route->removeSubRoute($old);
++                            }
++
++                            foreach (($rawRoute['subRoutes'] ?? []) as $sortOrder => $rawSub) {
++                                $subLen  = max(1, (int) ($rawSub['length']      ?? 1));
++                                $subTime = max(1, (int) ($rawSub['time']        ?? 1));
++                                $subHist = max(1, (int) ($rawSub['historicTime'] ?? 1));
++
++                                $leadAlert = $rawSub['leadAlert'] ?? null;
++
++                                $sub = (new WazeSubRoute())
++                                    ->setFromName($rawSub['fromName'] ?? null)
++                                    ->setToName($rawSub['toName']    ?? null)
++                                    ->setTime($subTime)
++                                    ->setHistoricTime($subHist)
++                                    ->setLength($subLen)
++                                    ->setJamLevel(isset($rawSub['jamLevel']) ? (int) $rawSub['jamLevel'] : null)
++                                    ->setAvgSpeed(round(($subLen / 1000) / ($subTime / 3600), 2))
++                                    ->setHistoricSpeed(round(($subLen / 1000) / ($subHist / 3600), 2))
++                                    ->setLine($rawSub['line'] ?? null)
++                                    ->setBbox($rawSub['bbox'] ?? null)
++                                    ->setSortOrder($sortOrder)
++                                    // lead alert
++                                    ->setLeadAlertId($leadAlert['id']               ?? null)
++                                    ->setLeadAlertType($leadAlert['type']            ?? null)
++                                    ->setLeadAlertSubType($leadAlert['subType']      ?? null)
++                                    ->setLeadAlertPosition(isset($leadAlert['position']) ? (array) $leadAlert['position'] : null)
++                                    ->setLeadAlertNumComments($leadAlert['numComments']          ?? null)
++                                    ->setLeadAlertNumThumbsUp($leadAlert['numThumbsUp']          ?? null)
++                                    ->setLeadAlertNumNotThereReports($leadAlert['numNotThereReports'] ?? null)
++                                    ->setLeadAlertStreet($leadAlert['street']        ?? null);
++
++                                $route->addSubRoute($sub);
++                            }
+                         }
+ 
+                         $this->em->persist($route);
+-                        $this->em->flush();
+ 
+                         // WazeRouteSnapshot (histórico imutável)
+                         $snapshot = (new WazeRouteSnapshot())
+@@ -242,13 +247,20 @@ class WazeCollectRoutesCommand extends Command
+                         $ok++;
+                     }
+ 
++                    // Um único flush pro lote inteiro de rotas+subrotas+snapshots
++                    // deste link, em vez de um flush por rota dentro do loop.
+                     $this->em->flush();
+                 }
+ 
+                 // ── 3. Irregularidades ────────────────────────────────────
+-                $rawIrregularities = $data['irregularities'] ?? [];
++                // Só reprocessa quando a chave 'irregularities' realmente
++                // veio na resposta — mesma razão do guard nas subrotas: uma
++                // resposta parcial/glitch da API (chave ausente, não um
++                // array vazio de propósito) não pode desativar tudo que já
++                // estava ativo.
++                if (!$dryRun && array_key_exists('irregularities', $data)) {
++                    $rawIrregularities = $data['irregularities'] ?? [];
+ 
+-                if (!$dryRun) {
+                     // Desativa tudo que veio antes para este link
+                     $existing = $this->irregularityRepo->findActiveByLink($link);
+                     foreach ($existing as $irr) {
+-- 
+2.43.0
+

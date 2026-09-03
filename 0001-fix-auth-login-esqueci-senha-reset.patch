@@ -1,0 +1,1040 @@
+From 7200c7ef541903f0a534324579954ed2936920de Mon Sep 17 00:00:00 2001
+From: andresdiniz <andresdiniz@users.noreply.github.com>
+Date: Thu, 3 Sep 2026 09:35:44 +0000
+Subject: [PATCH] fix(auth): corrige login, esqueci-senha e reset de senha
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- UserChecker: security.yaml apontava para o user_checker padrão
+  (no-op) do Symfony; contas desativadas (isActive=false) ainda
+  conseguiam logar normalmente. Cria App\Security\UserChecker real,
+  checando isActive() em checkPreAuth/checkPostAuth.
+
+- Remove LoginFormAuthenticator: classe nunca registrada em
+  security.yaml (form_login builtin é quem realmente autentica),
+  e que chamava um método inexistente ($user->isEnabled()) —
+  daria erro fatal se algum dia fosse ativada.
+
+- Remove fluxo duplicado de reset de senha (ResetPasswordController
+  + SymfonyCasts + templates/reset_password/*): sem regra em
+  access_control, ficava inacessível para usuários deslogados
+  (o próprio público-alvo), e não estava linkado em lugar nenhum
+  da UI. O fluxo real é auth_forgot/auth_reset (AuthController).
+
+- AuthController: conecta RateLimiterService (existia pronto, mas
+  nunca era chamado) em forgot() e reset(), fechando o gap de
+  rate limit relatado no audit anterior.
+
+- RateLimiterService::getClientIp(): parava de confiar cegamente
+  em X-Forwarded-For/CF-Connecting-IP (spoofável sem
+  trusted_proxies configurado); usa Request::getClientIp().
+
+- UserRepository: token de reset de senha agora é gravado como
+  hash SHA-256 no banco, não mais em texto puro (mesmo tamanho
+  de string, sem migração necessária).
+
+- Templates auth/login, auth/forgot, auth/reset: remove novalidate
+  (anulava required/pattern/minlength nativos sem JS substituto);
+  adiciona validação client-side ao vivo de confirmação de senha
+  em auth/reset; padroniza spinner de loading nos 3 formulários;
+  feedback visual no toggle de mostrar/ocultar senha.
+
+- base_guest.html.twig: adiciona meta color-scheme, corrigindo o
+  mesmo bug de fundo azul forçado (dark mode Chrome/Android) já
+  corrigido no dashboard, mas que ainda afetava login/esqueci-senha
+  /reset.
+---
+ config/packages/security.yaml                 |   2 +-
+ src/Controller/AuthController.php             |  29 ++-
+ src/Controller/ResetPasswordController.php    | 175 ------------------
+ src/Form/ChangePasswordFormType.php           |  58 ------
+ src/Form/ResetPasswordRequestFormType.php     |  31 ----
+ src/Repository/UserRepository.php             |  24 ++-
+ src/Security/LoginFormAuthenticator.php       | 147 ---------------
+ src/Security/UserChecker.php                  |  55 ++++++
+ src/Service/RateLimiterService.php            |  28 +--
+ templates/auth/forgot.html.twig               |  28 ++-
+ templates/auth/login.html.twig                |   3 +-
+ templates/auth/reset.html.twig                |  78 +++++++-
+ templates/base_guest.html.twig                |   1 +
+ .../reset_password/check_email.html.twig      |  11 --
+ templates/reset_password/email.html.twig      |   9 -
+ templates/reset_password/request.html.twig    |  22 ---
+ templates/reset_password/reset.html.twig      |  12 --
+ 17 files changed, 222 insertions(+), 491 deletions(-)
+ delete mode 100644 src/Controller/ResetPasswordController.php
+ delete mode 100644 src/Form/ChangePasswordFormType.php
+ delete mode 100644 src/Form/ResetPasswordRequestFormType.php
+ delete mode 100644 src/Security/LoginFormAuthenticator.php
+ create mode 100644 src/Security/UserChecker.php
+ delete mode 100644 templates/reset_password/check_email.html.twig
+ delete mode 100644 templates/reset_password/email.html.twig
+ delete mode 100644 templates/reset_password/request.html.twig
+ delete mode 100644 templates/reset_password/reset.html.twig
+
+diff --git a/config/packages/security.yaml b/config/packages/security.yaml
+index 0d1d365..071feaa 100644
+--- a/config/packages/security.yaml
++++ b/config/packages/security.yaml
+@@ -48,7 +48,7 @@ security:
+                 samesite: lax
+                 always_remember_me: true
+                 signature_properties: [password]
+-            user_checker: security.user_checker
++            user_checker: App\Security\UserChecker
+ 
+     access_control:
+         - { path: '^/$', roles: PUBLIC_ACCESS }
+diff --git a/src/Controller/AuthController.php b/src/Controller/AuthController.php
+index 57fa51b..65b85a0 100644
+--- a/src/Controller/AuthController.php
++++ b/src/Controller/AuthController.php
+@@ -7,6 +7,7 @@ namespace App\Controller;
+ use App\Entity\User;
+ use App\Repository\UserRepository;
+ use App\Service\PhpMailerService;
++use App\Service\RateLimiterService;
+ use Psr\Log\LoggerInterface;
+ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+ use Symfony\Component\HttpFoundation\Request;
+@@ -24,6 +25,7 @@ class AuthController extends AbstractController
+         private readonly UserPasswordHasherInterface  $hasher,
+         private readonly PhpMailerService             $mailer,
+         private readonly LoggerInterface              $logger,
++        private readonly RateLimiterService           $rateLimiter,
+         private readonly string                       $appName,
+     ) {}
+ 
+@@ -59,9 +61,22 @@ class AuthController extends AbstractController
+             }
+ 
+             $email = trim(strtolower((string) $request->request->get('email', '')));
+-            $user  = $email !== '' ? $this->userRepository->findOneBy(['email' => $email]) : null;
+ 
+-            if ($user instanceof User && $user->isEnabled()) {
++            // Rate limit por e-mail (evita inundar uma caixa de entrada
++            // específica com pedidos de reset), sem revelar se o e-mail
++            // existe na base — a resposta é idêntica em qualquer caso.
++            if ($this->rateLimiter->isForgotPasswordRateLimited($email)) {
++                $this->logger->notice('Rate limit atingido em esqueci-senha.', ['email' => $email]);
++                $this->addFlash('error', 'Muitas solicitações para este e-mail. Tente novamente mais tarde.');
++
++                return $this->render('auth/forgot.html.twig', ['sent' => false]);
++            }
++
++            $this->rateLimiter->recordForgotPasswordRequest($email);
++
++            $user = $email !== '' ? $this->userRepository->findOneBy(['email' => $email]) : null;
++
++            if ($user instanceof User && $user->isActive()) {
+                 $token = $this->userRepository->generateResetToken($user);
+                 $this->sendResetEmail($user, $token);
+             } else {
+@@ -94,6 +109,16 @@ class AuthController extends AbstractController
+                 return $this->render('auth/reset.html.twig', ['token' => $token]);
+             }
+ 
++            // Rate limit por IP: evita força bruta contra o endpoint de
++            // definição de nova senha (ex.: tentar adivinhar tokens).
++            if ($this->rateLimiter->isResetPasswordRateLimited($request)) {
++                $this->addFlash('error', 'Muitas tentativas. Aguarde um pouco e tente novamente.');
++
++                return $this->render('auth/reset.html.twig', ['token' => $token]);
++            }
++
++            $this->rateLimiter->recordResetPasswordAttempt($request);
++
+             $password = (string) $request->request->get('password', '');
+             $confirm  = (string) $request->request->get('confirm', '');
+ 
+diff --git a/src/Controller/ResetPasswordController.php b/src/Controller/ResetPasswordController.php
+deleted file mode 100644
+index 20885ee..0000000
+--- a/src/Controller/ResetPasswordController.php
++++ /dev/null
+@@ -1,175 +0,0 @@
+-<?php
+-
+-namespace App\Controller;
+-
+-use App\Entity\User;
+-use App\Form\ChangePasswordFormType;
+-use App\Form\ResetPasswordRequestFormType;
+-use Doctrine\ORM\EntityManagerInterface;
+-use Symfony\Bridge\Twig\Mime\TemplatedEmail;
+-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+-use Symfony\Component\HttpFoundation\RedirectResponse;
+-use Symfony\Component\HttpFoundation\Request;
+-use Symfony\Component\HttpFoundation\Response;
+-use Symfony\Component\Mailer\MailerInterface;
+-use Symfony\Component\Mime\Address;
+-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+-use Symfony\Component\Routing\Attribute\Route;
+-use SymfonyCasts\Bundle\ResetPassword\Controller\ResetPasswordControllerTrait;
+-use SymfonyCasts\Bundle\ResetPassword\Exception\ResetPasswordExceptionInterface;
+-use SymfonyCasts\Bundle\ResetPassword\ResetPasswordHelperInterface;
+-
+-#[Route('/reset-password')]
+-class ResetPasswordController extends AbstractController
+-{
+-    use ResetPasswordControllerTrait;
+-
+-    public function __construct(
+-        private ResetPasswordHelperInterface $resetPasswordHelper,
+-        private EntityManagerInterface $entityManager,
+-    ) {
+-    }
+-
+-    /**
+-     * Display & process form to request a password reset.
+-     */
+-    #[Route('', name: 'app_forgot_password_request')]
+-    public function request(Request $request, MailerInterface $mailer): Response
+-    {
+-        $form = $this->createForm(ResetPasswordRequestFormType::class);
+-        $form->handleRequest($request);
+-
+-        if ($form->isSubmitted() && $form->isValid()) {
+-            /** @var string $email */
+-            $email = $form->get('email')->getData();
+-
+-            return $this->processSendingPasswordResetEmail($email, $mailer
+-            );
+-        }
+-
+-        return $this->render('reset_password/request.html.twig', [
+-            'requestForm' => $form,
+-        ]);
+-    }
+-
+-    /**
+-     * Confirmation page after a user has requested a password reset.
+-     */
+-    #[Route('/check-email', name: 'app_check_email')]
+-    public function checkEmail(): Response
+-    {
+-        // Generate a fake token if the user does not exist or someone hit this page directly.
+-        // This prevents exposing whether or not a user was found with the given email address or not
+-        if (null === ($resetToken = $this->getTokenObjectFromSession())) {
+-            $resetToken = $this->resetPasswordHelper->generateFakeResetToken();
+-        }
+-
+-        return $this->render('reset_password/check_email.html.twig', [
+-            'resetToken' => $resetToken,
+-        ]);
+-    }
+-
+-    /**
+-     * Validates and process the reset URL that the user clicked in their email.
+-     */
+-    #[Route('/reset/{token}', name: 'app_reset_password')]
+-    public function reset(Request $request, UserPasswordHasherInterface $passwordHasher, ?string $token = null): Response
+-    {
+-        if ($token) {
+-            // We store the token in session and remove it from the URL, to avoid the URL being
+-            // loaded in a browser and potentially leaking the token to 3rd party JavaScript.
+-            $this->storeTokenInSession($token);
+-
+-            return $this->redirectToRoute('app_reset_password');
+-        }
+-
+-        $token = $this->getTokenFromSession();
+-
+-        if (null === $token) {
+-            throw $this->createNotFoundException('No reset password token found in the URL or in the session.');
+-        }
+-
+-        try {
+-            /** @var User $user */
+-            $user = $this->resetPasswordHelper->validateTokenAndFetchUser($token);
+-        } catch (ResetPasswordExceptionInterface $e) {
+-            $this->addFlash('reset_password_error', sprintf(
+-                '%s - %s',
+-                ResetPasswordExceptionInterface::MESSAGE_PROBLEM_VALIDATE,
+-                $e->getReason()
+-            ));
+-
+-            return $this->redirectToRoute('app_forgot_password_request');
+-        }
+-
+-        // The token is valid; allow the user to change their password.
+-        $form = $this->createForm(ChangePasswordFormType::class);
+-        $form->handleRequest($request);
+-
+-        if ($form->isSubmitted() && $form->isValid()) {
+-            // A password reset token should be used only once, remove it.
+-            $this->resetPasswordHelper->removeResetRequest($token);
+-
+-            /** @var string $plainPassword */
+-            $plainPassword = $form->get('plainPassword')->getData();
+-
+-            // Encode(hash) the plain password, and set it.
+-            $user->setPassword($passwordHasher->hashPassword($user, $plainPassword));
+-            $this->entityManager->flush();
+-
+-            // The session is cleaned up after the password has been changed.
+-            $this->cleanSessionAfterReset();
+-
+-            return $this->redirectToRoute('auth_login');
+-        }
+-
+-        return $this->render('reset_password/reset.html.twig', [
+-            'resetForm' => $form,
+-        ]);
+-    }
+-
+-    private function processSendingPasswordResetEmail(string $emailFormData, MailerInterface $mailer): RedirectResponse
+-    {
+-        $user = $this->entityManager->getRepository(User::class)->findOneBy([
+-            'email' => $emailFormData,
+-        ]);
+-
+-        // Do not reveal whether a user account was found or not.
+-        if (!$user) {
+-            return $this->redirectToRoute('app_check_email');
+-        }
+-
+-        try {
+-            $resetToken = $this->resetPasswordHelper->generateResetToken($user);
+-        } catch (ResetPasswordExceptionInterface $e) {
+-            // If you want to tell the user why a reset email was not sent, uncomment
+-            // the lines below and change the redirect to 'app_forgot_password_request'.
+-            // Caution: This may reveal if a user is registered or not.
+-            //
+-            // $this->addFlash('reset_password_error', sprintf(
+-            //     '%s - %s',
+-            //     ResetPasswordExceptionInterface::MESSAGE_PROBLEM_HANDLE,
+-            //     $e->getReason()
+-            // ));
+-
+-            return $this->redirectToRoute('app_check_email');
+-        }
+-
+-        $email = (new TemplatedEmail())
+-            ->from(new Address('onboarding@resend.dev', 'WazeBR'))
+-            ->to((string) $user->getEmail())
+-            ->subject('Your password reset request')
+-            ->htmlTemplate('reset_password/email.html.twig')
+-            ->context([
+-                'resetToken' => $resetToken,
+-            ])
+-        ;
+-
+-        $mailer->send($email);
+-
+-        // Store the token object in session for retrieval in check-email route.
+-        $this->setTokenObjectInSession($resetToken);
+-
+-        return $this->redirectToRoute('app_check_email');
+-    }
+-}
+diff --git a/src/Form/ChangePasswordFormType.php b/src/Form/ChangePasswordFormType.php
+deleted file mode 100644
+index d9e4ae6..0000000
+--- a/src/Form/ChangePasswordFormType.php
++++ /dev/null
+@@ -1,58 +0,0 @@
+-<?php
+-
+-namespace App\Form;
+-
+-use Symfony\Component\Form\AbstractType;
+-use Symfony\Component\Form\Extension\Core\Type\PasswordType;
+-use Symfony\Component\Form\Extension\Core\Type\RepeatedType;
+-use Symfony\Component\Form\FormBuilderInterface;
+-use Symfony\Component\OptionsResolver\OptionsResolver;
+-use Symfony\Component\Validator\Constraints\Length;
+-use Symfony\Component\Validator\Constraints\NotBlank;
+-use Symfony\Component\Validator\Constraints\NotCompromisedPassword;
+-use Symfony\Component\Validator\Constraints\PasswordStrength;
+-
+-class ChangePasswordFormType extends AbstractType
+-{
+-    public function buildForm(FormBuilderInterface $builder, array $options): void
+-    {
+-        $builder
+-            ->add('plainPassword', RepeatedType::class, [
+-                'type' => PasswordType::class,
+-                'options' => [
+-                    'attr' => [
+-                        'autocomplete' => 'new-password',
+-                    ],
+-                ],
+-                'first_options' => [
+-                    'constraints' => [
+-                        new NotBlank(
+-                            message: 'Please enter a password',
+-                        ),
+-                        new Length(
+-                            min: 12,
+-                            minMessage: 'Your password should be at least {{ limit }} characters',
+-                            // max length allowed by Symfony for security reasons
+-                            max: 4096,
+-                        ),
+-                        new PasswordStrength(),
+-                        new NotCompromisedPassword(),
+-                    ],
+-                    'label' => 'New password',
+-                ],
+-                'second_options' => [
+-                    'label' => 'Repeat Password',
+-                ],
+-                'invalid_message' => 'The password fields must match.',
+-                // Instead of being set onto the object directly,
+-                // this is read and encoded in the controller
+-                'mapped' => false,
+-            ])
+-        ;
+-    }
+-
+-    public function configureOptions(OptionsResolver $resolver): void
+-    {
+-        $resolver->setDefaults([]);
+-    }
+-}
+diff --git a/src/Form/ResetPasswordRequestFormType.php b/src/Form/ResetPasswordRequestFormType.php
+deleted file mode 100644
+index 69b6e94..0000000
+--- a/src/Form/ResetPasswordRequestFormType.php
++++ /dev/null
+@@ -1,31 +0,0 @@
+-<?php
+-
+-namespace App\Form;
+-
+-use Symfony\Component\Form\AbstractType;
+-use Symfony\Component\Form\Extension\Core\Type\EmailType;
+-use Symfony\Component\Form\FormBuilderInterface;
+-use Symfony\Component\OptionsResolver\OptionsResolver;
+-use Symfony\Component\Validator\Constraints\NotBlank;
+-
+-class ResetPasswordRequestFormType extends AbstractType
+-{
+-    public function buildForm(FormBuilderInterface $builder, array $options): void
+-    {
+-        $builder
+-            ->add('email', EmailType::class, [
+-                'attr' => ['autocomplete' => 'email'],
+-                'constraints' => [
+-                    new NotBlank(
+-                        message: 'Please enter your email',
+-                    ),
+-                ],
+-            ])
+-        ;
+-    }
+-
+-    public function configureOptions(OptionsResolver $resolver): void
+-    {
+-        $resolver->setDefaults([]);
+-    }
+-}
+diff --git a/src/Repository/UserRepository.php b/src/Repository/UserRepository.php
+index 4e462d2..3125bf3 100644
+--- a/src/Repository/UserRepository.php
++++ b/src/Repository/UserRepository.php
+@@ -105,13 +105,18 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
+     /**
+      * Busca um usuário por token de redefinição de senha ainda válido
+      * (não expirado). Tokens expirados ou inexistentes retornam null.
++     *
++     * O token recebido (texto puro, vindo da URL clicada no e-mail) é
++     * hasheado antes da consulta — a coluna resetToken guarda apenas o
++     * hash, nunca o valor utilizável. Assim, um vazamento do banco não
++     * expõe tokens de reset prontos para uso.
+      */
+     public function findByValidResetToken(string $token): ?User
+     {
+         return $this->createQueryBuilder('u')
+             ->where('u.resetToken = :token')
+             ->andWhere('u.resetTokenExpiresAt > :now')
+-            ->setParameter('token', $token)
++            ->setParameter('token', $this->hashResetToken($token))
+             ->setParameter('now', new \DateTimeImmutable())
+             ->getQuery()
+             ->getOneOrNullResult();
+@@ -119,14 +124,15 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
+ 
+     /**
+      * Gera um token de redefinição de senha criptograficamente seguro,
+-     * persiste no usuário com prazo de expiração e retorna o token em texto puro
+-     * (o único momento em que ele existe fora do banco, para ir no e-mail).
++     * persiste no usuário (apenas o HASH do token, com prazo de
++     * expiração) e retorna o token em texto puro — o único momento em
++     * que ele existe fora do banco, para ir no e-mail.
+      */
+     public function generateResetToken(User $user, int $ttlMinutes = 60): string
+     {
+         $token = bin2hex(random_bytes(32));
+ 
+-        $user->setResetToken($token);
++        $user->setResetToken($this->hashResetToken($token));
+         $user->setResetTokenExpiresAt(new \DateTimeImmutable(sprintf('+%d minutes', $ttlMinutes)));
+ 
+         $this->save($user);
+@@ -134,6 +140,16 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
+         return $token;
+     }
+ 
++    /**
++     * SHA-256 do token de reset — mesmo comprimento (64 chars hex) do
++     * token original gerado por bin2hex(random_bytes(32)), então não
++     * exige alteração de schema na coluna resetToken.
++     */
++    private function hashResetToken(string $token): string
++    {
++        return hash('sha256', $token);
++    }
++
+     /**
+      * Busca um usuário por token de reset, apenas se ainda válido (não expirado).
+      */
+diff --git a/src/Security/LoginFormAuthenticator.php b/src/Security/LoginFormAuthenticator.php
+deleted file mode 100644
+index b36822e..0000000
+--- a/src/Security/LoginFormAuthenticator.php
++++ /dev/null
+@@ -1,147 +0,0 @@
+-<?php
+-
+-namespace App\Security;
+-
+-use App\Entity\User;
+-use Doctrine\ORM\EntityManagerInterface;
+-use Symfony\Component\HttpFoundation\RedirectResponse;
+-use Symfony\Component\HttpFoundation\Request;
+-use Symfony\Component\HttpFoundation\Response;
+-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+-use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+-use Symfony\Component\Security\Core\Exception\AuthenticationException;
+-use Symfony\Component\Security\Core\Exception\BadCredentialsException;
+-use Symfony\Component\Security\Core\Security;
+-use Symfony\Component\Security\Core\User\UserInterface;
+-use Symfony\Component\Security\Csrf\CsrfToken;
+-use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
+-use Symfony\Component\Security\Http\Authenticator\AbstractAuthenticator;
+-use Symfony\Component\Security\Http\Authenticator\Passport\Badge\RememberMeBadge;
+-use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
+-use Symfony\Component\Security\Http\Authenticator\Passport\Credentials\PasswordCredentials;
+-use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
+-use Symfony\Component\Security\Http\EntryPoint\AuthenticationEntryPointInterface;
+-use Symfony\Component\Security\Http\Util\TargetPathTrait;
+-
+-class LoginFormAuthenticator extends AbstractAuthenticator implements AuthenticationEntryPointInterface
+-{
+-    use TargetPathTrait;
+-
+-    public const LOGIN_ROUTE = 'auth_login';
+-    public const USERNAME_FIELD = 'email';
+-    public const PASSWORD_FIELD = 'password';
+-    public const CSRF_TOKEN_ID = 'authenticate';
+-
+-    private UrlGeneratorInterface $urlGenerator;
+-    private EntityManagerInterface $entityManager;
+-    private CsrfTokenManagerInterface $csrfTokenManager;
+-
+-    public function __construct(
+-        UrlGeneratorInterface $urlGenerator,
+-        EntityManagerInterface $entityManager,
+-        CsrfTokenManagerInterface $csrfTokenManager
+-    ) {
+-        $this->urlGenerator = $urlGenerator;
+-        $this->entityManager = $entityManager;
+-        $this->csrfTokenManager = $csrfTokenManager;
+-    }
+-
+-    public function supports(Request $request): ?bool
+-    {
+-        return 'auth_login' === $request->attributes->get('_route')
+-            && $request->isMethod('POST');
+-    }
+-
+-    public function authenticate(Request $request): Passport
+-    {
+-        $email = $request->request->get(self::USERNAME_FIELD, '');
+-        $password = $request->request->get(self::PASSWORD_FIELD, '');
+-        $csrfToken = $request->request->get('_csrf_token', '');
+-
+-        if (!is_string($email) || !is_string($password)) {
+-            throw new BadCredentialsException('Invalid credentials format');
+-        }
+-
+-        // Normalize email: lowercase, trim whitespace
+-        $email = trim(strtolower($email));
+-
+-        if ('' === $email || '' === $password) {
+-            throw new BadCredentialsException('Email and password are required');
+-        }
+-
+-        // Validate CSRF token
+-        if (!$this->csrfTokenManager->isTokenValid(new CsrfToken(self::CSRF_TOKEN_ID, $csrfToken))) {
+-            throw new AuthenticationException('Invalid CSRF token');
+-        }
+-
+-        // Load user from database
+-        $user = $this->entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
+-
+-        if (!$user instanceof User) {
+-            throw new BadCredentialsException('Invalid email or password');
+-        }
+-
+-        if (!$user->isEnabled()) {
+-            throw new BadCredentialsException('Account is disabled');
+-        }
+-
+-        return new Passport(
+-            // Passa o usuário já carregado via callback, evitando uma segunda
+-            // consulta ao banco que o UserBadge faria internamente se recebesse
+-            // apenas a string do e-mail (o provider buscaria o mesmo registro de novo).
+-            new UserBadge($email, fn (string $userIdentifier): User => $user),
+-            new PasswordCredentials($password),
+-            [new RememberMeBadge()]
+-        );
+-    }
+-
+-    public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): ?Response
+-    {
+-        // Read the pre-login target path BEFORE touching the session, then
+-        // regenerate the session ID (keeping its data) to prevent session fixation.
+-        $targetPath = $this->getTargetPath($request->getSession(), $firewallName);
+-        $request->getSession()->migrate(true);
+-
+-        if ($targetPath && $this->isSafeTarget($targetPath)) {
+-            return new RedirectResponse($targetPath);
+-        }
+-
+-        return new RedirectResponse($this->urlGenerator->generate('dashboard_index'));
+-    }
+-
+-    public function onAuthenticationFailure(Request $request, AuthenticationException $exception): ?Response
+-    {
+-        // Log without sensitive data
+-        error_log(sprintf(
+-            'Auth failure - IP: %s, UA: %s, Reason: %s',
+-            $request->getClientIp(),
+-            $request->headers->get('User-Agent', 'unknown'),
+-            $exception->getMessageKey()
+-        ));
+-
+-        $request->getSession()->set(Security::AUTHENTICATION_ERROR, $exception);
+-
+-        return new RedirectResponse($this->urlGenerator->generate('auth_login'));
+-    }
+-
+-    public function start(Request $request, AuthenticationException $authException = null): Response
+-    {
+-        return new RedirectResponse($this->urlGenerator->generate('auth_login'));
+-    }
+-
+-    private function isSafeTarget(string $path): bool
+-    {
+-        if (!str_starts_with($path, '/') || str_starts_with($path, '//')) {
+-            return false;
+-        }
+-        
+-        $blockedPaths = ['/logout', '/_profiler', '/_wdt'];
+-        foreach ($blockedPaths as $blocked) {
+-            if (str_starts_with($path, $blocked)) {
+-                return false;
+-            }
+-        }
+-
+-        return true;
+-    }
+-}
+diff --git a/src/Security/UserChecker.php b/src/Security/UserChecker.php
+new file mode 100644
+index 0000000..85ec422
+--- /dev/null
++++ b/src/Security/UserChecker.php
+@@ -0,0 +1,55 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\Security;
++
++use App\Entity\User;
++use Symfony\Component\Security\Core\Exception\CustomUserMessageAccountStatusException;
++use Symfony\Component\Security\Core\User\UserCheckerInterface;
++use Symfony\Component\Security\Core\User\UserInterface;
++
++/**
++ * Verificador de status de conta usado pelo firewall "main".
++ *
++ * security.yaml apontava para o serviço padrão `security.user_checker`
++ * (um no-op do próprio Symfony) em vez de uma implementação própria —
++ * ou seja, a flag `active` do usuário nunca era checada no login.
++ * Um usuário desativado por um ROLE_ACCOUNT_ADMIN via
++ * AccountUserController::toggle() continuava conseguindo autenticar
++ * normalmente, pois nada no fluxo real de login (form_login) validava
++ * isso. Este checker fecha essa lacuna.
++ *
++ * checkPreAuth roda ANTES da senha ser verificada (bloqueia cedo);
++ * checkPostAuth roda depois, como defesa em profundidade caso a conta
++ * seja desativada entre o carregamento do usuário e a validação da
++ * senha (condição de corrida rara, mas de custo zero cobrir aqui).
++ */
++class UserChecker implements UserCheckerInterface
++{
++    public function checkPreAuth(UserInterface $user): void
++    {
++        if (!$user instanceof User) {
++            return;
++        }
++
++        if ($user->isActive() === false) {
++            throw new CustomUserMessageAccountStatusException(
++                'Sua conta está desativada. Entre em contato com um administrador.'
++            );
++        }
++    }
++
++    public function checkPostAuth(UserInterface $user): void
++    {
++        if (!$user instanceof User) {
++            return;
++        }
++
++        if ($user->isActive() === false) {
++            throw new CustomUserMessageAccountStatusException(
++                'Sua conta está desativada. Entre em contato com um administrador.'
++            );
++        }
++    }
++}
+diff --git a/src/Service/RateLimiterService.php b/src/Service/RateLimiterService.php
+index 372b0dc..dd2908b 100644
+--- a/src/Service/RateLimiterService.php
++++ b/src/Service/RateLimiterService.php
+@@ -186,22 +186,24 @@ class RateLimiterService
+     }
+ 
+     /**
+-     * Obtém o IP do cliente de forma segura
++     * Obtém o IP do cliente de forma segura.
++     *
++     * Não lemos os headers X-Forwarded-For / CF-Connecting-IP na mão:
++     * como o projeto não define `trusted_proxies` em framework.yaml,
++     * esses headers não são cegamente confiáveis — qualquer cliente
++     * pode enviá-los diretamente e burlar o rate limit trocando o
++     * valor a cada requisição. `Request::getClientIp()` já resolve
++     * isso corretamente: só considera X-Forwarded-For quando a
++     * requisição vem de um proxy listado em `trusted_proxies`; caso
++     * contrário retorna o IP real da conexão TCP.
++     *
++     * Se a aplicação estiver atrás de um proxy reverso/CDN em produção,
++     * configure `framework.trusted_proxies` e `trusted_headers` (ver
++     * config/packages/framework.yaml) — sem isso, todo IP aqui será o
++     * do proxy, não o do visitante.
+      */
+     private function getClientIp(Request $request): string
+     {
+-        // Considera proxies reversos confiáveis
+-        if ($request->headers->has('CF-Connecting-IP')) {
+-            // Cloudflare
+-            return $request->headers->get('CF-Connecting-IP') ?? '';
+-        }
+-
+-        if ($request->headers->has('X-Forwarded-For')) {
+-            // Nginx, Apache com proxy
+-            $ips = explode(',', $request->headers->get('X-Forwarded-For') ?? '');
+-            return trim($ips[0]);
+-        }
+-
+         return $request->getClientIp() ?? '127.0.0.1';
+     }
+ }
+diff --git a/templates/auth/forgot.html.twig b/templates/auth/forgot.html.twig
+index db37c81..e554cba 100644
+--- a/templates/auth/forgot.html.twig
++++ b/templates/auth/forgot.html.twig
+@@ -93,6 +93,30 @@
+             filter: brightness(1.03);
+         }
+ 
++        .submit[data-loading="true"] {
++            opacity: 0.8;
++            cursor: wait;
++            position: relative;
++        }
++
++        .submit[data-loading="true"]::before {
++            content: "";
++            position: absolute;
++            left: 16px;
++            top: 50%;
++            width: 16px;
++            height: 16px;
++            border-radius: 999px;
++            border: 2px solid rgba(4,16,20,0.4);
++            border-top-color: #041014;
++            transform: translateY(-50%);
++            animation: spin 600ms linear infinite;
++        }
++
++        @keyframes spin {
++            to { transform: translateY(-50%) rotate(360deg); }
++        }
++
+         .footer {
+             margin-top: 14px;
+             font-size: 11px;
+@@ -116,7 +140,7 @@
+         {% else %}
+             <p class="forgot-text">Informe seu e-mail cadastrado. Se existir uma conta correspondente, enviaremos instruções para redefinir sua senha.</p>
+ 
+-            <form method="post" action="{{ path('auth_forgot') }}" novalidate>
++            <form method="post" action="{{ path('auth_forgot') }}" onsubmit="this.querySelector('.submit').dataset.loading = 'true';">
+                 <div class="field">
+                     <label for="email" class="label">E-mail</label>
+                     <input type="email" id="email" name="email" class="input" required autocomplete="email" placeholder="seu@email.com">
+@@ -124,7 +148,7 @@
+ 
+                 <input type="hidden" name="_csrf_token" value="{{ csrf_token('auth_forgot') }}">
+ 
+-                <button type="submit" class="submit">Enviar link</button>
++                <button type="submit" class="submit" data-loading="false">Enviar link</button>
+             </form>
+         {% endif %}
+ 
+diff --git a/templates/auth/login.html.twig b/templates/auth/login.html.twig
+index f60a5c0..dd7e665 100644
+--- a/templates/auth/login.html.twig
++++ b/templates/auth/login.html.twig
+@@ -302,6 +302,7 @@
+         }
+ 
+         .toggle-password:hover { color: var(--accent); }
++        .toggle-password[aria-pressed="true"] { color: var(--accent); }
+ 
+         .toggle-password svg {
+             width: 18px;
+@@ -464,7 +465,7 @@
+                         </div>
+                     {% endif %}
+ 
+-                    <form method="post" action="{{ path('auth_login') }}" novalidate onsubmit="this.querySelector('.submit').dataset.loading = 'true';">
++                    <form method="post" action="{{ path('auth_login') }}" onsubmit="this.querySelector('.submit').dataset.loading = 'true';">
+                         <div class="field">
+                             <label for="email" class="label">E-mail</label>
+                             <div class="input-shell">
+diff --git a/templates/auth/reset.html.twig b/templates/auth/reset.html.twig
+index aec45c8..e242f48 100644
+--- a/templates/auth/reset.html.twig
++++ b/templates/auth/reset.html.twig
+@@ -55,7 +55,12 @@
+             box-shadow: 0 0 0 2px rgba(85,204,211,0.22);
+         }
+ 
++        .input.is-invalid { border-color: rgba(255,146,146,0.55); }
++        .input.is-valid { border-color: rgba(139,211,79,0.55); }
++
+         .hint { margin: -4px 0 12px; font-size: 11px; color: rgba(242,248,249,0.56); }
++        .hint.is-invalid { color: #ffb4b4; }
++        .hint.is-valid { color: #a9e08a; }
+ 
+         .submit {
+             margin-top: 10px;
+@@ -70,10 +75,41 @@
+             letter-spacing: 0.08em;
+             text-transform: uppercase;
+             cursor: pointer;
++            position: relative;
++            transition: opacity 0.16s ease, filter 0.16s ease;
+         }
+ 
+         .submit:hover { filter: brightness(1.05); }
+ 
++        .submit[disabled] {
++            opacity: 0.5;
++            cursor: not-allowed;
++            filter: none;
++        }
++
++        .submit[data-loading="true"] {
++            opacity: 0.8;
++            cursor: wait;
++        }
++
++        .submit[data-loading="true"]::before {
++            content: "";
++            position: absolute;
++            left: 16px;
++            top: 50%;
++            width: 16px;
++            height: 16px;
++            border-radius: 999px;
++            border: 2px solid rgba(4,16,20,0.4);
++            border-top-color: #041014;
++            transform: translateY(-50%);
++            animation: spin 600ms linear infinite;
++        }
++
++        @keyframes spin {
++            to { transform: translateY(-50%) rotate(360deg); }
++        }
++
+         .alert-error { color: #ffb4b4; font-size: 13px; margin: 0 0 12px; }
+         .alert-success { color: #a9e08a; font-size: 13px; margin: 0 0 12px; }
+ 
+@@ -96,21 +132,22 @@
+             <p class="alert-success">{{ message }}</p>
+         {% endfor %}
+ 
+-        <form method="post" action="{{ path('auth_reset', {token: token}) }}" novalidate>
++        <form method="post" action="{{ path('auth_reset', {token: token}) }}" id="reset-form" onsubmit="this.querySelector('.submit').dataset.loading = 'true';">
+             <div class="field">
+                 <label for="password" class="label">Nova senha</label>
+                 <input type="password" id="password" name="password" class="input" required minlength="8" pattern="(?=.*[A-Za-z])(?=.*\d).{8,}" title="Mínimo de 8 caracteres, com letras e números" autocomplete="new-password">
+             </div>
+-            <p class="hint">Mínimo de 8 caracteres, incluindo letras e números.</p>
++            <p class="hint" id="password-hint">Mínimo de 8 caracteres, incluindo letras e números.</p>
+ 
+             <div class="field">
+                 <label for="confirm" class="label">Confirmar senha</label>
+                 <input type="password" id="confirm" name="confirm" class="input" required minlength="8" autocomplete="new-password">
+             </div>
++            <p class="hint" id="confirm-hint" style="display:none;"></p>
+ 
+             <input type="hidden" name="_csrf_token" value="{{ csrf_token('auth_reset') }}">
+ 
+-            <button type="submit" class="submit">Atualizar senha</button>
++            <button type="submit" class="submit" data-loading="false">Atualizar senha</button>
+         </form>
+ 
+         <div class="footer">
+@@ -118,4 +155,39 @@
+         </div>
+     </div>
+ </div>
++
++<script>
++    (function () {
++        var form = document.getElementById('reset-form');
++        var password = document.getElementById('password');
++        var confirm = document.getElementById('confirm');
++        var passwordHint = document.getElementById('password-hint');
++        var confirmHint = document.getElementById('confirm-hint');
++        var submitBtn = form.querySelector('.submit');
++        var strongEnough = /(?=.*[A-Za-z])(?=.*\d).{8,}/;
++
++        function validate() {
++            var pwOk = strongEnough.test(password.value);
++            password.classList.toggle('is-invalid', password.value.length > 0 && !pwOk);
++            password.classList.toggle('is-valid', pwOk);
++            passwordHint.classList.toggle('is-invalid', password.value.length > 0 && !pwOk);
++            passwordHint.classList.toggle('is-valid', pwOk);
++
++            var matchOk = confirm.value.length > 0 && confirm.value === password.value;
++            var showConfirmHint = confirm.value.length > 0;
++            confirmHint.style.display = showConfirmHint ? 'block' : 'none';
++            confirmHint.textContent = matchOk ? 'As senhas coincidem.' : 'As senhas não coincidem.';
++            confirmHint.classList.toggle('is-valid', matchOk);
++            confirmHint.classList.toggle('is-invalid', showConfirmHint && !matchOk);
++            confirm.classList.toggle('is-valid', matchOk);
++            confirm.classList.toggle('is-invalid', showConfirmHint && !matchOk);
++
++            submitBtn.disabled = !(pwOk && matchOk);
++        }
++
++        password.addEventListener('input', validate);
++        confirm.addEventListener('input', validate);
++        validate();
++    })();
++</script>
+ {% endblock %}
+diff --git a/templates/base_guest.html.twig b/templates/base_guest.html.twig
+index ff18075..2231a41 100644
+--- a/templates/base_guest.html.twig
++++ b/templates/base_guest.html.twig
+@@ -3,6 +3,7 @@
+ <head>
+     <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1">
++    <meta name="color-scheme" content="dark">
+     <title>{% block title %}WazeBR{% endblock %}</title>
+     {% block stylesheets %}{% endblock %}
+ </head>
+diff --git a/templates/reset_password/check_email.html.twig b/templates/reset_password/check_email.html.twig
+deleted file mode 100644
+index 786819b..0000000
+--- a/templates/reset_password/check_email.html.twig
++++ /dev/null
+@@ -1,11 +0,0 @@
+-{% extends 'base.html.twig' %}
+-
+-{% block title %}Password Reset Email Sent{% endblock %}
+-
+-{% block body %}
+-    <p>
+-        If an account matching your email exists, then an email was just sent that contains a link that you can use to reset your password.
+-        This link will expire in {{ resetToken.expirationMessageKey|trans(resetToken.expirationMessageData, 'ResetPasswordBundle') }}.
+-    </p>
+-    <p>If you don't receive an email please check your spam folder or <a href="{{ path('app_forgot_password_request') }}">try again</a>.</p>
+-{% endblock %}
+diff --git a/templates/reset_password/email.html.twig b/templates/reset_password/email.html.twig
+deleted file mode 100644
+index 824a218..0000000
+--- a/templates/reset_password/email.html.twig
++++ /dev/null
+@@ -1,9 +0,0 @@
+-<h1>Hi!</h1>
+-
+-<p>To reset your password, please visit the following link</p>
+-
+-<a href="{{ url('app_reset_password', {token: resetToken.token}) }}">{{ url('app_reset_password', {token: resetToken.token}) }}</a>
+-
+-<p>This link will expire in {{ resetToken.expirationMessageKey|trans(resetToken.expirationMessageData, 'ResetPasswordBundle') }}.</p>
+-
+-<p>Cheers!</p>
+diff --git a/templates/reset_password/request.html.twig b/templates/reset_password/request.html.twig
+deleted file mode 100644
+index 0a118aa..0000000
+--- a/templates/reset_password/request.html.twig
++++ /dev/null
+@@ -1,22 +0,0 @@
+-{% extends 'base.html.twig' %}
+-
+-{% block title %}Reset your password{% endblock %}
+-
+-{% block body %}
+-    {% for flash_error in app.flashes('reset_password_error') %}
+-        <div class="alert alert-danger" role="alert">{{ flash_error }}</div>
+-    {% endfor %}
+-    <h1>Reset your password</h1>
+-
+-    {{ form_start(requestForm) }}
+-        {{ form_row(requestForm.email) }}
+-        <div>
+-            <small>
+-                Enter your email address, and we will send you a
+-                link to reset your password.
+-            </small>
+-        </div>
+-
+-        <button class="btn btn-primary">Send password reset email</button>
+-    {{ form_end(requestForm) }}
+-{% endblock %}
+diff --git a/templates/reset_password/reset.html.twig b/templates/reset_password/reset.html.twig
+deleted file mode 100644
+index 799aa10..0000000
+--- a/templates/reset_password/reset.html.twig
++++ /dev/null
+@@ -1,12 +0,0 @@
+-{% extends 'base.html.twig' %}
+-
+-{% block title %}Reset your password{% endblock %}
+-
+-{% block body %}
+-    <h1>Reset your password</h1>
+-
+-    {{ form_start(resetForm) }}
+-        {{ form_row(resetForm.plainPassword) }}
+-        <button class="btn btn-primary">Reset password</button>
+-    {{ form_end(resetForm) }}
+-{% endblock %}
+-- 
+2.43.0
+
