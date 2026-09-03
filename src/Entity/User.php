@@ -5,9 +5,6 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\UserRepository;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
-use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -29,22 +26,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[ORM\Column]
     private ?string $password = null;
-
-    #[ORM\Column(length: 20, nullable: true)]
-    private ?string $phone = null;
-
-    #[ORM\Column(nullable: true)]
-    private ?bool $active = null;
-
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $locale = null;
-
-    #[ORM\Column(name: 'last_login', type: Types::DATETIME_IMMUTABLE, nullable: true)]
-    private ?\DateTimeImmutable $lastLogin = null;
-
-    #[ORM\ManyToOne(inversedBy: 'users')]
-    #[ORM\JoinColumn(name: 'partner_id')]
-    private ?Partner $partner = null;
 
     public function __construct()
     {
@@ -104,61 +85,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setPassword(string $password): static
     {
         $this->password = $password;
-        return $this;
-    }
-
-    public function getPhone(): ?string
-    {
-        return $this->phone;
-    }
-
-    public function setPhone(?string $phone): static
-    {
-        $this->phone = $phone;
-        return $this;
-    }
-
-    public function isActive(): ?bool
-    {
-        return $this->active;
-    }
-
-    public function setActive(?bool $active): static
-    {
-        $this->active = $active;
-        return $this;
-    }
-
-    public function getLocale(): ?string
-    {
-        return $this->locale;
-    }
-
-    public function setLocale(?string $locale): static
-    {
-        $this->locale = $locale;
-        return $this;
-    }
-
-    public function getLastLogin(): ?\DateTimeImmutable
-    {
-        return $this->lastLogin;
-    }
-
-    public function setLastLogin(?\DateTimeImmutable $lastLogin): static
-    {
-        $this->lastLogin = $lastLogin;
-        return $this;
-    }
-
-    public function getPartner(): ?Partner
-    {
-        return $this->partner;
-    }
-
-    public function setPartner(?Partner $partner): static
-    {
-        $this->partner = $partner;
         return $this;
     }
 
