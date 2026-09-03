@@ -1,27 +1,16 @@
 nelmio_security:
-    csrf_protection:
-        enabled: true
-        token_check:
-            check_request: true
     clickjacking:
         paths:
             '^/.*': DENY
     xss_protection:
         enabled: true
         mode_block: true
-        report_uri: '%env(string:REPORT_URI)%'
     content_type:
         nosniff: true
     referrer_policy:
         enabled: true
         policies:
             - no-referrer-when-downgrade
-    rate_limit:
-        enabled: true
-        limits:
-            - { path: ^/api, limit: 60, period: 1min }
-            - { path: ^/login, limit: 5, period: 1min }
-            - { path: ^/reset-password, limit: 3, period: 1min }
     csp:
         enabled: true
         enforce:
