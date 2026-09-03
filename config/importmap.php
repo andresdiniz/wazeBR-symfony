@@ -1,10 +1,10 @@
 return [
     'app' => [
-        'path' => './assets/js/app.js', // Updated from './assets/app.js'
+        'path' => 'assets/app.js',
         'entrypoint' => true,
     ],
     'chart.js' => [
-        'version' => '4.4.0',
+        'version' => '4.5.1',
         'entrypoint' => true,
     ],
     '@hotwired/stimulus' => [
