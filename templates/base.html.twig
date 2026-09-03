@@ -1,245 +1,69 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}wazeBR{% endblock %}</title>
-    <link rel="icon" href="{{ asset('favicon.ico') }}">
-    <link rel="stylesheet" href="{{ asset('styles/app.css') }}">
-    {% block stylesheets %}{% endblock %}
-</head>
-<body class="{% block body_class %}{% endblock %}">
-    {% set isSuperAdmin = is_granted('ROLE_SUPER_ADMIN') %}
-    {% set userPartner = app.user ? (app.user.partner ?? null) : null %}
-    {% set isInPartnerContext = userPartner is not null %}
-
-    {# Navigation #}
-    <nav class="navbar">
-        <div class="navbar-container">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{% block title %}wazeBR{% endblock %}</title>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%22.9em%22 font-size=%2290%22>🚗</text></svg>">
+        {% block stylesheets %}{% endblock %}
+        {% block javascripts %}{% endblock %}
+    </head>
+    <body class="{% block body_class %}{% endblock %}">
+        {% if app.user %}
+        <nav class="navbar">
             <div class="navbar-brand">
-                <a href="{{ path('app_home') }}" class="brand-link">
-                    <span class="brand-icon">🚦</span>
+                <a href="{{ path('dashboard_index') }}" class="brand-link">
+                    <span class="brand-icon">🚗</span>
                     <span class="brand-name">wazeBR</span>
                 </a>
             </div>
-
-            <div class="navbar-menu" id="navbar-menu">
-                {% if isSuperAdmin and not isInPartnerContext %}
-                    {# Menu do Dono do SaaS #}
-                    <div class="navbar-section">
-                        <span class="navbar-section-label">Plataforma</span>
-                        <a href="{{ path('admin_dashboard') }}" class="nav-link {{ app.request.attributes.get('_route') == 'admin_dashboard' ? 'active' : '' }}">
-                            <span class="nav-icon">👑</span>
-                            <span>Dashboard SaaS</span>
-                        </a>
-                        <a href="{{ path('admin_partner_index') }}" class="nav-link {{ 'admin_partner' in app.request.attributes.get('_route') ? 'active' : '' }}">
-                            <span class="nav-icon">🏢</span>
-                            <span>Parceiros</span>
-                        </a>
-                        <a href="{{ path('account_user_index') }}" class="nav-link {{ 'account_user' in app.request.attributes.get('_route') ? 'active' : '' }}">
-                            <span class="nav-icon">👥</span>
-                            <span>Usuários</span>
-                        </a>
-                    </div>
-
-                    <div class="navbar-section">
-                        <span class="navbar-section-label">Sistema</span>
-                        <a href="{{ path('admin_settings_index') }}" class="nav-link {{ 'admin_settings' in app.request.attributes.get('_route') ? 'active' : '' }}">
-                            <span class="nav-icon">⚙️</span>
-                            <span>Configurações</span>
-                        </a>
-                        <a href="{{ path('account_logs') }}" class="nav-link {{ 'account_logs' in app.request.attributes.get('_route') ? 'active' : '' }}">
-                            <span class="nav-icon">📜</span>
-                            <span>Logs</span>
-                        </a>
-                    </div>
-                {% else %}
-                    {# Menu do Parceiro #}
-                    <div class="navbar-section">
-                        <span class="navbar-section-label">Monitoramento</span>
-                        <a href="{{ path('dashboard_index') }}" class="nav-link {{ app.request.attributes.get('_route') == 'dashboard_index' ? 'active' : '' }}">
-                            <span class="nav-icon">📊</span>
-                            <span>Dashboard</span>
-                        </a>
-                        <a href="{{ path('alert_index') }}" class="nav-link {{ 'alert' in app.request.attributes.get('_route') ? 'active' : '' }}">
-                            <span class="nav-icon">🔔</span>
-                            <span>Alertas</span>
-                        </a>
-                        <a href="{{ path('jam_index') }}" class="nav-link {{ 'jam' in app.request.attributes.get('_route') ? 'active' : '' }}">
-                            <span class="nav-icon">🚦</span>
-                            <span>Congestionamentos</span>
-                        </a>
-                    </div>
-
-                    <div class="navbar-section">
-                        <span class="navbar-section-label">Dados</span>
-                        <a href="{{ path('admin_routes_index') }}" class="nav-link {{ 'admin_routes' in app.request.attributes.get('_route') ? 'active' : '' }}">
-                            <span class="nav-icon">🛣️</span>
-                            <span>Rotas</span>
-                        </a>
-                        <a href="{{ path('account_link_index') }}" class="nav-link {{ 'account_link' in app.request.attributes.get('_route') ? 'active' : '' }}">
-                            <span class="nav-icon">🔗</span>
-                            <span>Links</span>
-                        </a>
-                        <a href="{{ path('cifs_index') }}" class="nav-link {{ 'cifs' in app.request.attributes.get('_route') ? 'active' : '' }}">
-                            <span class="nav-icon">📋</span>
-                            <span>CIFS</span>
-                        </a>
-                    </div>
-
-                    {% if isSuperAdmin and isInPartnerContext %}
-                        <div class="navbar-notice">
-                            <span class="notice-icon">⚠️</span>
-                            <span>Visualizando como: <strong>{{ userPartner.name }}</strong></span>
-                        </div>
-                    {% endif %}
+            
+            <div class="navbar-menu">
+                {% block navbar_menu %}
+                <a href="{{ path('dashboard_index') }}" class="nav-link">Dashboard</a>
+                {% if is_granted('ROLE_ADMIN') or is_granted('ROLE_MANAGER') %}
+                <a href="{{ path('admin_routes_index') }}" class="nav-link">Rotas</a>
                 {% endif %}
+                {% endblock %}
             </div>
 
-            <div class="navbar-actions">
-                {% if isSuperAdmin and not isInPartnerContext %}
-                    <span class="badge badge-saas">SaaS Admin</span>
-                {% elseif isSuperAdmin and isInPartnerContext %}
-                    <span class="badge badge-partner-context">Modo Parceiro</span>
-                {% endif %}
-
-                {# User Menu #}
-                <div class="user-menu">
-                    <button class="user-menu-toggle" id="user-menu-toggle">
-                        <span class="user-avatar">{{ app.user.email|first|upper }}</span>
-                        <span class="user-email">{{ app.user.email }}</span>
-                        <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                            <path d="M4 6l4 4 4-4H4z"/>
-                        </svg>
-                    </button>
-
-                    <div class="user-menu-dropdown" id="user-menu-dropdown">
-                        <div class="user-menu-header">
-                            <div>
-                                <div class="user-menu-name">{{ app.user.email }}</div>
-                                {% if isInPartnerContext %}
-                                    <div class="user-menu-partner">{{ userPartner.name }}</div>
-                                {% else %}
-                                    <div class="user-menu-partner">Administrador SaaS</div>
-                                {% endif %}
-                            </div>
-                        </div>
-
-                        <div class="user-menu-divider"></div>
-
-                        {% if isSuperAdmin and not isInPartnerContext %}
-                            <a href="{{ path('admin_partner_index') }}" class="user-menu-item">
-                                <span class="menu-item-icon">🏢</span>
-                                Gerenciar Parceiros
-                            </a>
-                            <a href="{{ path('account_user_index') }}" class="user-menu-item">
-                                <span class="menu-item-icon">👥</span>
-                                Usuários
-                            </a>
-                        {% endif %}
-
-                        <a href="{{ path('account_settings') }}" class="user-menu-item">
-                            <span class="menu-item-icon">⚙️</span>
-                            Configurações
-                        </a>
-
-                        <div class="user-menu-divider"></div>
-
-                        <a href="{{ path('app_logout') }}" class="user-menu-item">
-                            <span class="menu-item-icon">🚪</span>
-                            Sair
-                        </a>
-                    </div>
-                </div>
-
-                <button class="navbar-toggle" id="navbar-toggle" aria-label="Toggle menu">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            {% if app.user %}
+            <div class="user-menu">
+                <button class="user-menu-toggle" id="user-menu-toggle">
+                    <span class="user-avatar">{{ app.user.email|first|upper }}</span>
+                    <span class="user-email">{{ app.user.email }}</span>
+                    <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M4 6l4 4 4-4H4z"/>
                     </svg>
                 </button>
-            </div>
-        </div>
-    </nav>
-
-    {# Main Content #}
-    <main class="main-content">
-        {% for label, messages in app.flashes %}
-            {% for message in messages %}
-                <div class="flash flash-{{ label }}">
-                    {{ message }}
+                <div class="user-menu-dropdown" id="user-menu-dropdown">
+                    <a href="{{ path('app_profile') }}" class="dropdown-item">Perfil</a>
+                    <a href="{{ path('app_logout') }}" class="dropdown-item">Sair</a>
                 </div>
-            {% endfor %}
-        {% endfor %}
-
-        {% block body %}{% endblock %}
-    </main>
-
-    {# Footer #}
-    <footer class="footer">
-        <div class="footer-container">
-            <div class="footer-section">
-                <h4>wazeBR</h4>
-                <p>Sistema de monitoramento de tráfego em tempo real.</p>
             </div>
+            {% endif %}
+        </nav>
+        {% endif %}
 
-            <div class="footer-section">
-                <h4>Links Rápidos</h4>
-                {% if isSuperAdmin and not isInPartnerContext %}
-                    <a href="{{ path('admin_dashboard') }}">Dashboard SaaS</a>
-                    <a href="{{ path('admin_partner_index') }}">Parceiros</a>
-                    <a href="{{ path('account_user_index') }}">Usuários</a>
-                {% else %}
-                    <a href="{{ path('dashboard_index') }}">Dashboard</a>
-                    <a href="{{ path('alert_index') }}">Alertas</a>
-                    <a href="{{ path('jam_index') }}">Congestionamentos</a>
-                {% endif %}
-            </div>
+        <main class="main-content">
+            {% block body %}{% endblock %}
+        </main>
 
-            <div class="footer-section">
-                <h4>Administração</h4>
-                {% if isSuperAdmin %}
-                    <a href="{{ path('admin_partner_index') }}">Parceiros</a>
-                    <a href="{{ path('account_user_index') }}">Usuários</a>
-                    <a href="{{ path('admin_settings_index') }}">Configurações</a>
-                {% else %}
-                    <a href="{{ path('account_settings') }}">Configurações</a>
-                {% endif %}
-            </div>
-
-            <div class="footer-section">
-                <p>© {{ "now"|date("Y") }} wazeBR. Todos os direitos reservados.</p>
-            </div>
-        </div>
-    </footer>
-
-    <script>
-        // User menu toggle
-        const userMenuToggle = document.getElementById('user-menu-toggle');
-        const userMenuDropdown = document.getElementById('user-menu-dropdown');
-
-        if (userMenuToggle && userMenuDropdown) {
-            userMenuToggle.addEventListener('click', () => {
-                userMenuDropdown.classList.toggle('show');
-            });
-
-            document.addEventListener('click', (e) => {
-                if (!userMenuToggle.contains(e.target) && !userMenuDropdown.contains(e.target)) {
-                    userMenuDropdown.classList.remove('show');
-                }
-            });
-        }
-
-        // Mobile menu toggle
-        const navbarToggle = document.getElementById('navbar-toggle');
-        const navbarMenu = document.getElementById('navbar-menu');
-
-        if (navbarToggle && navbarMenu) {
-            navbarToggle.addEventListener('click', () => {
-                navbarMenu.classList.toggle('show');
-            });
-        }
-    </script>
-
-    {% block javascripts %}{% endblock %}
-</body>
+        <script>
+            const userMenuToggle = document.getElementById('user-menu-toggle');
+            const userMenuDropdown = document.getElementById('user-menu-dropdown');
+            
+            if (userMenuToggle && userMenuDropdown) {
+                userMenuToggle.addEventListener('click', () => {
+                    userMenuDropdown.classList.toggle('show');
+                });
+                
+                document.addEventListener('click', (e) => {
+                    if (!userMenuToggle.contains(e.target) && !userMenuDropdown.contains(e.target)) {
+                        userMenuDropdown.classList.remove('show');
+                    }
+                });
+            }
+        </script>
+    </body>
 </html>
