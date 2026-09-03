@@ -88,6 +88,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
+    public function isActive(): bool
+    {
+        return true;
+    }
+
     public function eraseCredentials(): void
     {
     }
