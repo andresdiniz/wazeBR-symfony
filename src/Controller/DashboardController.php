@@ -86,49 +86,78 @@ final class DashboardController extends AbstractController
         $last24Hours = new \DateTimeImmutable('-24 hours');
         $last3Hours = new \DateTimeImmutable('-3 hours');
 
-        // Contagens principais usando repositórios
-        $alertsTotal = $this->countAlerts($periodFrom, $periodTo, $partnerId);
-        $alertsLast24h = $this->countAlerts($last24Hours, $periodTo, $partnerId);
-        $jamsTotal = $this->countJams($periodFrom, $periodTo, $partnerId);
-        $jamsLast24h = $this->countJams($last24Hours, $periodTo, $partnerId);
-        $jamsLiveTotal = $this->countJams($last3Hours, $periodTo, $partnerId);
-        $routesTotal = $this->countRoutes($partnerId);
-        $monitoredLinks = $this->countLinks($partnerId);
-        $monitoredCities = $this->countCities($partnerId);
-        $cifsEvents = $this->countCifsEvents($periodFrom, $periodTo, $partnerId);
-        $executions = $this->countExecutions($periodFrom, $periodTo);
-        $tvtRoutes = $this->countTvtRoutes();
+        // Verifica se é Super Admin sem contexto de parceiro
+        $isSuperAdmin = $this->isGranted('ROLE_SUPER_ADMIN');
+        $hasPartnerContext = $partnerId !== null;
 
-        // Alertas recentes
-        $recentAlerts = $this->alertRepository->findBy(
-            ['partner' => $partnerId],
-            ['createdAt' => 'DESC'],
-            10
-        );
+        // Se for Super Admin sem parceiro, zera os dados operacionais
+        if ($isSuperAdmin && !$hasPartnerContext) {
+            $alertsTotal = 0;
+            $alertsLast24h = 0;
+            $jamsTotal = 0;
+            $jamsLast24h = 0;
+            $jamsLiveTotal = 0;
+            $routesTotal = 0;
+            $monitoredLinks = 0;
+            $monitoredCities = 0;
+            $cifsEvents = 0;
+            $executions = 0;
+            $tvtRoutes = 0;
+            $recentAlerts = [];
+            $recentJams = [];
+            $jamsByLevel = [];
+            $alertsBySubtype = [];
+            $topStreets = [];
+            $mapJams = [];
+            $mapAlerts = [];
+            $mapJamsTruncated = false;
+            $mapAlertsTruncated = false;
+            $jamsLiveMaxLevel = 0;
+        } else {
+            // Contagens principais usando repositórios
+            $alertsTotal = $this->countAlerts($periodFrom, $periodTo, $partnerId);
+            $alertsLast24h = $this->countAlerts($last24Hours, $periodTo, $partnerId);
+            $jamsTotal = $this->countJams($periodFrom, $periodTo, $partnerId);
+            $jamsLast24h = $this->countJams($last24Hours, $periodTo, $partnerId);
+            $jamsLiveTotal = $this->countJams($last3Hours, $periodTo, $partnerId);
+            $routesTotal = $this->countRoutes($partnerId);
+            $monitoredLinks = $this->countLinks($partnerId);
+            $monitoredCities = $this->countCities($partnerId);
+            $cifsEvents = $this->countCifsEvents($periodFrom, $periodTo, $partnerId);
+            $executions = $this->countExecutions($periodFrom, $periodTo);
+            $tvtRoutes = $this->countTvtRoutes();
 
-        // Jams recentes
-        $recentJams = $this->jamRepository->findBy(
-            ['partner' => $partnerId],
-            ['createdAt' => 'DESC'],
-            10
-        );
+            // Alertas recentes
+            $recentAlerts = $this->alertRepository->findBy(
+                ['partner' => $partnerId],
+                ['createdAt' => 'DESC'],
+                10
+            );
 
-        // Dados para gráficos
-        $jamsByLevel = $this->getJamsByLevel($periodFrom, $partnerId);
-        $alertsBySubtype = $this->getAlertsBySubtype($periodFrom, $partnerId);
-        $topStreets = $this->getTopStreets($periodFrom, $partnerId);
+            // Jams recentes
+            $recentJams = $this->jamRepository->findBy(
+                ['partner' => $partnerId],
+                ['createdAt' => 'DESC'],
+                10
+            );
 
-        // Dados do mapa
-        $mapJams = $this->getMapJams($periodFrom, $partnerId);
-        $mapAlerts = $this->getMapAlerts($periodFrom, $partnerId);
+            // Dados para gráficos
+            $jamsByLevel = $this->getJamsByLevel($periodFrom, $partnerId);
+            $alertsBySubtype = $this->getAlertsBySubtype($periodFrom, $partnerId);
+            $topStreets = $this->getTopStreets($periodFrom, $partnerId);
 
-        $mapJamsTruncated = count($mapJams) >= 100;
-        $mapAlertsTruncated = count($mapAlerts) >= 100;
+            // Dados do mapa
+            $mapJams = $this->getMapJams($periodFrom, $partnerId);
+            $mapAlerts = $this->getMapAlerts($periodFrom, $partnerId);
 
-        $jamsLiveMaxLevel = 0;
-        foreach ($jamsByLevel as $jam) {
-            if ((int) ($jam['level'] ?? 0) > $jamsLiveMaxLevel) {
-                $jamsLiveMaxLevel = (int) ($jam['level'] ?? 0);
+            $mapJamsTruncated = count($mapJams) >= 100;
+            $mapAlertsTruncated = count($mapAlerts) >= 100;
+
+            $jamsLiveMaxLevel = 0;
+            foreach ($jamsByLevel as $jam) {
+                if ((int) ($jam['level'] ?? 0) > $jamsLiveMaxLevel) {
+                    $jamsLiveMaxLevel = (int) ($jam['level'] ?? 0);
+                }
             }
         }
 
@@ -171,44 +200,30 @@ final class DashboardController extends AbstractController
             'executions' => $executions,
         ];
 
-        // Debug data
-        $debugData = [
-            'database' => $this->entityManager->getConnection()->getDatabase(),
-            'partnerId' => $partnerId,
-            'period' => [
-                'key' => $periodKey,
-                'from' => $periodFrom->format(\DateTimeInterface::ATOM),
-                'to' => $periodTo->format(\DateTimeInterface::ATOM),
-            ],
-            'counts' => [
-                'alerts' => $alertsTotal,
-                'jams' => $jamsTotal,
-                'routes' => $routesTotal,
-                'tvtRoutes' => $tvtRoutes,
-                'executions' => $executions,
-            ],
-            'rows' => [
-                'recentAlerts' => count($recentAlerts),
-                'recentJams' => count($recentJams),
-                'mapAlerts' => count($mapAlerts),
-                'mapJams' => count($mapJams),
-            ],
-            'tables' => [
-                'alerts_table' => $this->countTable('waze_alerts'),
-                'jams_table' => $this->countTable('waze_traffic_jams'),
-                'routes_table' => $this->countTable('waze_routes'),
-            ],
-        ];
         // Dados para o Super Admin
-        $superAdminData = null;
-        if (is_granted('ROLE_SUPER_ADMIN')) {
-            $superAdminData = [
-                'totalPartners' => 0, // Count de partners
-                'totalUsers' => 0,    // Count de users
-                'activeCrons' => 0,   // Status dos crons
-                'systemLogs' => [],   // Logs do sistema
-            ];
-        }
+        // Dados para o Super Admin
+$superAdminData = null;
+if ($isSuperAdmin) {
+    $superAdminData = [
+        'totalPartners' => $this->countTable('partners'),
+        'totalUsers' => $this->countTable('users'),
+        'activeCrons' => 3,
+        'totalCrons' => 5,
+        'systemLogs' => [],
+        'storageUsed' => 2.4, // GB
+        'storageLimit' => 10, // GB
+        'activeFeatures' => [
+            'alerts_monitoring' => true,
+            'jams_monitoring' => true,
+            'routes_tracking' => true,
+            'cifs_integration' => false,
+            'hydrological' => false,
+        ],
+        'lastActivity' => new \DateTimeImmutable('-2 hours'),
+        'nextBilling' => new \DateTimeImmutable('+28 days'),
+        'plan' => 'Enterprise',
+    ];
+}
 
         return $this->render('dashboard/index.html.twig', [
             'count' => $executions,
@@ -230,7 +245,6 @@ final class DashboardController extends AbstractController
             'mapAlertsTruncated' => $mapAlertsTruncated,
             'recentAlerts' => $recentAlerts,
             'recentJams' => $recentJams,
-            'debugData' => $debugData,
             'superAdminData' => $superAdminData,
         ]);
     }
