@@ -9,14 +9,25 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
+use Symfony\Component\Security\Http\Authentication\UserAuthenticatorInterface;
+use Symfony\Component\Security\Http\Authenticator\FormLoginAuthenticator;
 
 class AuthController extends AbstractController
 {
     #[Route('/login', name: 'app_login')]
-    public function login(AuthenticationUtils $authenticationUtils): Response
+    public function login(Request $request, AuthenticationUtils $authenticationUtils, UserAuthenticatorInterface $userAuthenticator, FormLoginAuthenticator $authenticator): Response
     {
         if ($this->getUser()) {
             return $this->redirectToRoute('dashboard_index');
+        }
+
+        // Se for POST, tenta autenticar
+        if ($request->isMethod('POST')) {
+            return $userAuthenticator->authenticateUser(
+                $this->getUser() ?? $request->attributes->get('user'),
+                $authenticator,
+                $request
+            );
         }
 
         return $this->render('auth/login.html.twig', [
