@@ -105,13 +105,18 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
     /**
      * Busca um usuário por token de redefinição de senha ainda válido
      * (não expirado). Tokens expirados ou inexistentes retornam null.
+     *
+     * O token recebido (texto puro, vindo da URL clicada no e-mail) é
+     * hasheado antes da consulta — a coluna resetToken guarda apenas o
+     * hash, nunca o valor utilizável. Assim, um vazamento do banco não
+     * expõe tokens de reset prontos para uso.
      */
     public function findByValidResetToken(string $token): ?User
     {
         return $this->createQueryBuilder('u')
             ->where('u.resetToken = :token')
             ->andWhere('u.resetTokenExpiresAt > :now')
-            ->setParameter('token', $token)
+            ->setParameter('token', $this->hashResetToken($token))
             ->setParameter('now', new \DateTimeImmutable())
             ->getQuery()
             ->getOneOrNullResult();
@@ -119,19 +124,30 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
 
     /**
      * Gera um token de redefinição de senha criptograficamente seguro,
-     * persiste no usuário com prazo de expiração e retorna o token em texto puro
-     * (o único momento em que ele existe fora do banco, para ir no e-mail).
+     * persiste no usuário (apenas o HASH do token, com prazo de
+     * expiração) e retorna o token em texto puro — o único momento em
+     * que ele existe fora do banco, para ir no e-mail.
      */
     public function generateResetToken(User $user, int $ttlMinutes = 60): string
     {
         $token = bin2hex(random_bytes(32));
 
-        $user->setResetToken($token);
+        $user->setResetToken($this->hashResetToken($token));
         $user->setResetTokenExpiresAt(new \DateTimeImmutable(sprintf('+%d minutes', $ttlMinutes)));
 
         $this->save($user);
 
         return $token;
+    }
+
+    /**
+     * SHA-256 do token de reset — mesmo comprimento (64 chars hex) do
+     * token original gerado por bin2hex(random_bytes(32)), então não
+     * exige alteração de schema na coluna resetToken.
+     */
+    private function hashResetToken(string $token): string
+    {
+        return hash('sha256', $token);
     }
 
     /**

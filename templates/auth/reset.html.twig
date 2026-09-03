@@ -55,7 +55,12 @@
             box-shadow: 0 0 0 2px rgba(85,204,211,0.22);
         }
 
+        .input.is-invalid { border-color: rgba(255,146,146,0.55); }
+        .input.is-valid { border-color: rgba(139,211,79,0.55); }
+
         .hint { margin: -4px 0 12px; font-size: 11px; color: rgba(242,248,249,0.56); }
+        .hint.is-invalid { color: #ffb4b4; }
+        .hint.is-valid { color: #a9e08a; }
 
         .submit {
             margin-top: 10px;
@@ -70,9 +75,40 @@
             letter-spacing: 0.08em;
             text-transform: uppercase;
             cursor: pointer;
+            position: relative;
+            transition: opacity 0.16s ease, filter 0.16s ease;
         }
 
         .submit:hover { filter: brightness(1.05); }
+
+        .submit[disabled] {
+            opacity: 0.5;
+            cursor: not-allowed;
+            filter: none;
+        }
+
+        .submit[data-loading="true"] {
+            opacity: 0.8;
+            cursor: wait;
+        }
+
+        .submit[data-loading="true"]::before {
+            content: "";
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            width: 16px;
+            height: 16px;
+            border-radius: 999px;
+            border: 2px solid rgba(4,16,20,0.4);
+            border-top-color: #041014;
+            transform: translateY(-50%);
+            animation: spin 600ms linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: translateY(-50%) rotate(360deg); }
+        }
 
         .alert-error { color: #ffb4b4; font-size: 13px; margin: 0 0 12px; }
         .alert-success { color: #a9e08a; font-size: 13px; margin: 0 0 12px; }
@@ -96,21 +132,22 @@
             <p class="alert-success">{{ message }}</p>
         {% endfor %}
 
-        <form method="post" action="{{ path('auth_reset', {token: token}) }}" novalidate>
+        <form method="post" action="{{ path('auth_reset', {token: token}) }}" id="reset-form" onsubmit="this.querySelector('.submit').dataset.loading = 'true';">
             <div class="field">
                 <label for="password" class="label">Nova senha</label>
                 <input type="password" id="password" name="password" class="input" required minlength="8" pattern="(?=.*[A-Za-z])(?=.*\d).{8,}" title="Mínimo de 8 caracteres, com letras e números" autocomplete="new-password">
             </div>
-            <p class="hint">Mínimo de 8 caracteres, incluindo letras e números.</p>
+            <p class="hint" id="password-hint">Mínimo de 8 caracteres, incluindo letras e números.</p>
 
             <div class="field">
                 <label for="confirm" class="label">Confirmar senha</label>
                 <input type="password" id="confirm" name="confirm" class="input" required minlength="8" autocomplete="new-password">
             </div>
+            <p class="hint" id="confirm-hint" style="display:none;"></p>
 
             <input type="hidden" name="_csrf_token" value="{{ csrf_token('auth_reset') }}">
 
-            <button type="submit" class="submit">Atualizar senha</button>
+            <button type="submit" class="submit" data-loading="false">Atualizar senha</button>
         </form>
 
         <div class="footer">
@@ -118,4 +155,39 @@
         </div>
     </div>
 </div>
+
+<script>
+    (function () {
+        var form = document.getElementById('reset-form');
+        var password = document.getElementById('password');
+        var confirm = document.getElementById('confirm');
+        var passwordHint = document.getElementById('password-hint');
+        var confirmHint = document.getElementById('confirm-hint');
+        var submitBtn = form.querySelector('.submit');
+        var strongEnough = /(?=.*[A-Za-z])(?=.*\d).{8,}/;
+
+        function validate() {
+            var pwOk = strongEnough.test(password.value);
+            password.classList.toggle('is-invalid', password.value.length > 0 && !pwOk);
+            password.classList.toggle('is-valid', pwOk);
+            passwordHint.classList.toggle('is-invalid', password.value.length > 0 && !pwOk);
+            passwordHint.classList.toggle('is-valid', pwOk);
+
+            var matchOk = confirm.value.length > 0 && confirm.value === password.value;
+            var showConfirmHint = confirm.value.length > 0;
+            confirmHint.style.display = showConfirmHint ? 'block' : 'none';
+            confirmHint.textContent = matchOk ? 'As senhas coincidem.' : 'As senhas não coincidem.';
+            confirmHint.classList.toggle('is-valid', matchOk);
+            confirmHint.classList.toggle('is-invalid', showConfirmHint && !matchOk);
+            confirm.classList.toggle('is-valid', matchOk);
+            confirm.classList.toggle('is-invalid', showConfirmHint && !matchOk);
+
+            submitBtn.disabled = !(pwOk && matchOk);
+        }
+
+        password.addEventListener('input', validate);
+        confirm.addEventListener('input', validate);
+        validate();
+    })();
+</script>
 {% endblock %}

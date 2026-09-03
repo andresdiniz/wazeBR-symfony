@@ -186,22 +186,24 @@ class RateLimiterService
     }
 
     /**
-     * Obtém o IP do cliente de forma segura
+     * Obtém o IP do cliente de forma segura.
+     *
+     * Não lemos os headers X-Forwarded-For / CF-Connecting-IP na mão:
+     * como o projeto não define `trusted_proxies` em framework.yaml,
+     * esses headers não são cegamente confiáveis — qualquer cliente
+     * pode enviá-los diretamente e burlar o rate limit trocando o
+     * valor a cada requisição. `Request::getClientIp()` já resolve
+     * isso corretamente: só considera X-Forwarded-For quando a
+     * requisição vem de um proxy listado em `trusted_proxies`; caso
+     * contrário retorna o IP real da conexão TCP.
+     *
+     * Se a aplicação estiver atrás de um proxy reverso/CDN em produção,
+     * configure `framework.trusted_proxies` e `trusted_headers` (ver
+     * config/packages/framework.yaml) — sem isso, todo IP aqui será o
+     * do proxy, não o do visitante.
      */
     private function getClientIp(Request $request): string
     {
-        // Considera proxies reversos confiáveis
-        if ($request->headers->has('CF-Connecting-IP')) {
-            // Cloudflare
-            return $request->headers->get('CF-Connecting-IP') ?? '';
-        }
-
-        if ($request->headers->has('X-Forwarded-For')) {
-            // Nginx, Apache com proxy
-            $ips = explode(',', $request->headers->get('X-Forwarded-For') ?? '');
-            return trim($ips[0]);
-        }
-
         return $request->getClientIp() ?? '127.0.0.1';
     }
 }

@@ -48,7 +48,7 @@ security:
                 samesite: lax
                 always_remember_me: true
                 signature_properties: [password]
-            user_checker: security.user_checker
+            user_checker: App\Security\UserChecker
 
     access_control:
         - { path: '^/$', roles: PUBLIC_ACCESS }

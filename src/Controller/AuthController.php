@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Entity\User;
 use App\Repository\UserRepository;
 use App\Service\PhpMailerService;
+use App\Service\RateLimiterService;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -24,6 +25,7 @@ class AuthController extends AbstractController
         private readonly UserPasswordHasherInterface  $hasher,
         private readonly PhpMailerService             $mailer,
         private readonly LoggerInterface              $logger,
+        private readonly RateLimiterService           $rateLimiter,
         private readonly string                       $appName,
     ) {}
 
@@ -59,9 +61,22 @@ class AuthController extends AbstractController
             }
 
             $email = trim(strtolower((string) $request->request->get('email', '')));
-            $user  = $email !== '' ? $this->userRepository->findOneBy(['email' => $email]) : null;
 
-            if ($user instanceof User && $user->isEnabled()) {
+            // Rate limit por e-mail (evita inundar uma caixa de entrada
+            // específica com pedidos de reset), sem revelar se o e-mail
+            // existe na base — a resposta é idêntica em qualquer caso.
+            if ($this->rateLimiter->isForgotPasswordRateLimited($email)) {
+                $this->logger->notice('Rate limit atingido em esqueci-senha.', ['email' => $email]);
+                $this->addFlash('error', 'Muitas solicitações para este e-mail. Tente novamente mais tarde.');
+
+                return $this->render('auth/forgot.html.twig', ['sent' => false]);
+            }
+
+            $this->rateLimiter->recordForgotPasswordRequest($email);
+
+            $user = $email !== '' ? $this->userRepository->findOneBy(['email' => $email]) : null;
+
+            if ($user instanceof User && $user->isActive()) {
                 $token = $this->userRepository->generateResetToken($user);
                 $this->sendResetEmail($user, $token);
             } else {
@@ -93,6 +108,16 @@ class AuthController extends AbstractController
 
                 return $this->render('auth/reset.html.twig', ['token' => $token]);
             }
+
+            // Rate limit por IP: evita força bruta contra o endpoint de
+            // definição de nova senha (ex.: tentar adivinhar tokens).
+            if ($this->rateLimiter->isResetPasswordRateLimited($request)) {
+                $this->addFlash('error', 'Muitas tentativas. Aguarde um pouco e tente novamente.');
+
+                return $this->render('auth/reset.html.twig', ['token' => $token]);
+            }
+
+            $this->rateLimiter->recordResetPasswordAttempt($request);
 
             $password = (string) $request->request->get('password', '');
             $confirm  = (string) $request->request->get('confirm', '');

@@ -302,6 +302,7 @@
         }
 
         .toggle-password:hover { color: var(--accent); }
+        .toggle-password[aria-pressed="true"] { color: var(--accent); }
 
         .toggle-password svg {
             width: 18px;
@@ -464,7 +465,7 @@
                         </div>
                     {% endif %}
 
-                    <form method="post" action="{{ path('auth_login') }}" novalidate onsubmit="this.querySelector('.submit').dataset.loading = 'true';">
+                    <form method="post" action="{{ path('auth_login') }}" onsubmit="this.querySelector('.submit').dataset.loading = 'true';">
                         <div class="field">
                             <label for="email" class="label">E-mail</label>
                             <div class="input-shell">
