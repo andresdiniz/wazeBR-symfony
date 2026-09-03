@@ -93,7 +93,7 @@ $jobs = [
         'desc'    => 'Tempos de rota e irregularidades Waze',
     ],
     'waze_tvt' => [
-        'cmd'     => ['app:waze:collect-tvt'],
+        'cmd'     => ['waze:collect-tvt'],
         'timeout' => 50,
         'desc'    => 'Snapshots de rotas do feed TVT',
     ],

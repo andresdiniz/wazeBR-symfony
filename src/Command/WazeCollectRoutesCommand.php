@@ -177,44 +177,49 @@ class WazeCollectRoutesCommand extends Command
                         }
 
                         // ── Sincroniza subRoutes (orphanRemoval) ──────────
-                        foreach ($route->getSubRoutes() as $old) {
-                            $route->removeSubRoute($old);
-                        }
+                        // Só mexe se a chave 'subRoutes' realmente veio na
+                        // resposta — um glitch pontual da API que omita o
+                        // campo (em vez de mandar array vazio de propósito)
+                        // não pode apagar as subrotas que já existiam.
+                        if (array_key_exists('subRoutes', $rawRoute)) {
+                            foreach ($route->getSubRoutes() as $old) {
+                                $route->removeSubRoute($old);
+                            }
 
-                        foreach (($rawRoute['subRoutes'] ?? []) as $sortOrder => $rawSub) {
-                            $subLen  = max(1, (int) ($rawSub['length']      ?? 1));
-                            $subTime = max(1, (int) ($rawSub['time']        ?? 1));
-                            $subHist = max(1, (int) ($rawSub['historicTime'] ?? 1));
+                            foreach (($rawRoute['subRoutes'] ?? []) as $sortOrder => $rawSub) {
+                                $subLen  = max(1, (int) ($rawSub['length']      ?? 1));
+                                $subTime = max(1, (int) ($rawSub['time']        ?? 1));
+                                $subHist = max(1, (int) ($rawSub['historicTime'] ?? 1));
 
-                            $leadAlert = $rawSub['leadAlert'] ?? null;
+                                $leadAlert = $rawSub['leadAlert'] ?? null;
 
-                            $sub = (new WazeSubRoute())
-                                ->setFromName($rawSub['fromName'] ?? null)
-                                ->setToName($rawSub['toName']    ?? null)
-                                ->setTime($subTime)
-                                ->setHistoricTime($subHist)
-                                ->setLength($subLen)
-                                ->setJamLevel(isset($rawSub['jamLevel']) ? (int) $rawSub['jamLevel'] : null)
-                                ->setAvgSpeed(round(($subLen / 1000) / ($subTime / 3600), 2))
-                                ->setHistoricSpeed(round(($subLen / 1000) / ($subHist / 3600), 2))
-                                ->setLine($rawSub['line'] ?? null)
-                                ->setBbox($rawSub['bbox'] ?? null)
-                                ->setSortOrder($sortOrder)
-                                // lead alert
-                                ->setLeadAlertId($leadAlert['id']               ?? null)
-                                ->setLeadAlertType($leadAlert['type']            ?? null)
-                                ->setLeadAlertSubType($leadAlert['subType']      ?? null)
-                                ->setLeadAlertPosition(isset($leadAlert['position']) ? (array) $leadAlert['position'] : null)
-                                ->setLeadAlertNumComments($leadAlert['numComments']          ?? null)
-                                ->setLeadAlertNumThumbsUp($leadAlert['numThumbsUp']          ?? null)
-                                ->setLeadAlertNumNotThereReports($leadAlert['numNotThereReports'] ?? null)
-                                ->setLeadAlertStreet($leadAlert['street']        ?? null);
+                                $sub = (new WazeSubRoute())
+                                    ->setFromName($rawSub['fromName'] ?? null)
+                                    ->setToName($rawSub['toName']    ?? null)
+                                    ->setTime($subTime)
+                                    ->setHistoricTime($subHist)
+                                    ->setLength($subLen)
+                                    ->setJamLevel(isset($rawSub['jamLevel']) ? (int) $rawSub['jamLevel'] : null)
+                                    ->setAvgSpeed(round(($subLen / 1000) / ($subTime / 3600), 2))
+                                    ->setHistoricSpeed(round(($subLen / 1000) / ($subHist / 3600), 2))
+                                    ->setLine($rawSub['line'] ?? null)
+                                    ->setBbox($rawSub['bbox'] ?? null)
+                                    ->setSortOrder($sortOrder)
+                                    // lead alert
+                                    ->setLeadAlertId($leadAlert['id']               ?? null)
+                                    ->setLeadAlertType($leadAlert['type']            ?? null)
+                                    ->setLeadAlertSubType($leadAlert['subType']      ?? null)
+                                    ->setLeadAlertPosition(isset($leadAlert['position']) ? (array) $leadAlert['position'] : null)
+                                    ->setLeadAlertNumComments($leadAlert['numComments']          ?? null)
+                                    ->setLeadAlertNumThumbsUp($leadAlert['numThumbsUp']          ?? null)
+                                    ->setLeadAlertNumNotThereReports($leadAlert['numNotThereReports'] ?? null)
+                                    ->setLeadAlertStreet($leadAlert['street']        ?? null);
 
-                            $route->addSubRoute($sub);
+                                $route->addSubRoute($sub);
+                            }
                         }
 
                         $this->em->persist($route);
-                        $this->em->flush();
 
                         // WazeRouteSnapshot (histórico imutável)
                         $snapshot = (new WazeRouteSnapshot())
@@ -242,13 +247,20 @@ class WazeCollectRoutesCommand extends Command
                         $ok++;
                     }
 
+                    // Um único flush pro lote inteiro de rotas+subrotas+snapshots
+                    // deste link, em vez de um flush por rota dentro do loop.
                     $this->em->flush();
                 }
 
                 // ── 3. Irregularidades ────────────────────────────────────
-                $rawIrregularities = $data['irregularities'] ?? [];
+                // Só reprocessa quando a chave 'irregularities' realmente
+                // veio na resposta — mesma razão do guard nas subrotas: uma
+                // resposta parcial/glitch da API (chave ausente, não um
+                // array vazio de propósito) não pode desativar tudo que já
+                // estava ativo.
+                if (!$dryRun && array_key_exists('irregularities', $data)) {
+                    $rawIrregularities = $data['irregularities'] ?? [];
 
-                if (!$dryRun) {
                     // Desativa tudo que veio antes para este link
                     $existing = $this->irregularityRepo->findActiveByLink($link);
                     foreach ($existing as $irr) {
