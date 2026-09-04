@@ -19,7 +19,6 @@ class PartnerRepository extends ServiceEntityRepository
     public function save(Partner $partner, bool $flush = true): void
     {
         $this->getEntityManager()->persist($partner);
-
         if ($flush) {
             $this->getEntityManager()->flush();
         }
@@ -28,28 +27,15 @@ class PartnerRepository extends ServiceEntityRepository
     public function remove(Partner $partner, bool $flush = true): void
     {
         $this->getEntityManager()->remove($partner);
-
         if ($flush) {
             $this->getEntityManager()->flush();
         }
     }
 
-    /**
-     * Retorna os parceiros junto da quantidade de usuários vinculados.
-     *
-     * Cada item contém a entidade Partner no índice 0 e o campo userCount.
-     *
-     * @return array<int, array{0: Partner, userCount: string}>
-     */
     public function findAllWithUserCount(): array
     {
         return $this->createQueryBuilder('p')
-            ->leftJoin(
-                'App\Entity\User',
-                'u',
-                'ON',
-                'u.partner = p'
-            )
+            ->leftJoin('App\Entity\User', 'u', 'ON', 'u.partner = p')
             ->addSelect('COUNT(u.id) AS userCount')
             ->groupBy('p.id')
             ->orderBy('p.name', 'ASC')
@@ -67,26 +53,27 @@ class PartnerRepository extends ServiceEntityRepository
         return $this->findOneBy(['apiToken' => $token]);
     }
 
-    /**
-     * @return Partner[]
-     */
     public function findAllActive(): array
     {
         return $this->createQueryBuilder('p')
-            ->where('p.isActive = true')
+            ->where('p.active = true')
             ->orderBy('p.name', 'ASC')
             ->getQuery()
             ->getResult();
     }
 
-    /**
-     * Alias de findAllActive(), utilizado por comandos e controllers.
-     *
-     * @return Partner[]
-     */
     public function findActivePartners(): array
     {
         return $this->findAllActive();
+    }
+
+    public function countActive(): int
+    {
+        return (int) $this->createQueryBuilder('p')
+            ->select('COUNT(p.id)')
+            ->where('p.active = true')
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 
     public function findWithLinks(int $id): ?Partner
@@ -100,9 +87,6 @@ class PartnerRepository extends ServiceEntityRepository
             ->getOneOrNullResult();
     }
 
-    /**
-     * Mantido público por compatibilidade com PartnerAdminController.
-     */
     public function getEntityManager(): \Doctrine\ORM\EntityManagerInterface
     {
         return parent::getEntityManager();

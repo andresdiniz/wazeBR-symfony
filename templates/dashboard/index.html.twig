@@ -71,10 +71,118 @@
 
         {# Conteúdo condicional via partials #}
         {% if isSuperAdmin and not showPartnerDashboard %}
-            {{ include('dashboard/partials/_super_admin.html.twig', {
-                superAdminData: superAdminData
-            }) }}
+            <section class="super-admin-section" data-animate>
+                {# Cabeçalho do Super Admin (já existente) #}
+                <div class="section-header">
+                    <div>
+                        <span class="section-kicker">wazeBR SaaS</span>
+                        <h2 class="section-title">
+                            <span class="title-icon">👑</span>
+                            Administração da plataforma
+                        </h2>
+                    </div>
+                    <a href="{{ path('admin_partner_index') }}" class="admin-action-link">
+                        Gerenciar parceiros
+                        <span aria-hidden="true">→</span>
+                    </a>
+                </div>
+
+                <p class="super-admin-description">
+                    Você não está vinculado a nenhum parceiro. Por segurança, dados operacionais de alertas,
+                    congestionamentos, mapas e rotas não são exibidos neste painel.
+                </p>
+
+                {# 🆕 NOVO PARTIAL: Estatísticas do Sistema #}
+                {{ include('dashboard/partials/_super_admin_stats.html.twig') }}
+
+                {# Restante do conteúdo do Super Admin (features, etc.) #}
+                <div class="admin-features-section">
+                    <h3 class="admin-features-title">
+                        <span class="title-icon">⚙️</span>
+                        Funcionalidades ativas
+                    </h3>
+                    <div class="features-grid">
+                        {% set features = {
+                            'alerts_monitoring': 'Monitoramento de Alertas',
+                            'jams_monitoring': 'Monitoramento de Jams',
+                            'routes_tracking': 'Rastreamento de Rotas',
+                            'cifs_integration': 'Integração CIFS',
+                            'hydrological': 'Monitoramento Hidrológico'
+                        } %}
+                        {% for key, label in features %}
+                            {% set active = superAdminData.activeFeatures[key] ?? false %}
+                            <div class="feature-item {{ active ? 'active' : '' }}">
+                                <span class="feature-icon">{{ loop.index == 1 ? '🔔' : (loop.index == 2 ? '🚦' : (loop.index == 3 ? '🛣️' : (loop.index == 4 ? '📋' : '🌊'))) }}</span>
+                                <span class="feature-name">{{ label }}</span>
+                                <span class="feature-status {{ active ? 'status-active' : 'status-inactive' }}">
+                                    {{ active ? 'Ativo' : 'Inativo' }}
+                                </span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="admin-info-cards">
+                    <div class="info-card">
+                        <div class="info-card-header">
+                            <span class="info-icon">📅</span>
+                            <h4>Próxima fatura</h4>
+                        </div>
+                        <div class="info-card-content">
+                            <strong>{{ superAdminData.nextBilling|date('d/m/Y') }}</strong>
+                            <span class="info-subtext">Plano {{ superAdminData.plan|default('Enterprise') }}</span>
+                        </div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-card-header">
+                            <span class="info-icon">⏰</span>
+                            <h4>Última atividade</h4>
+                        </div>
+                        <div class="info-card-content">
+                            <strong>{{ superAdminData.lastActivity|date('d/m H:i') }}</strong>
+                            <span class="info-subtext">Sistema operacional</span>
+                        </div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-card-header">
+                            <span class="info-icon">📊</span>
+                            <h4>Status do sistema</h4>
+                        </div>
+                        <div class="info-card-content">
+                            <strong class="text-success">● Online</strong>
+                            <span class="info-subtext">Todos os serviços ativos</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="super-admin-actions">
+                    <a href="{{ path('admin_partner_index') }}" class="btn btn-light">
+                        <span aria-hidden="true">🏢</span> Parceiros
+                    </a>
+                    <a href="{{ path('account_user_index') }}" class="btn btn-light">
+                        <span aria-hidden="true">👥</span> Usuários
+                    </a>
+                    <a href="{{ path('account_logs') }}" class="btn btn-light">
+                        <span aria-hidden="true">📜</span> Logs
+                    </a>
+                    <a href="{{ path('admin_settings_index') }}" class="btn btn-light">
+                        <span aria-hidden="true">⚙️</span> Configurações
+                    </a>
+                </div>
+
+                <div class="admin-empty-state">
+                    <span class="admin-empty-icon">🔐</span>
+                    <div>
+                        <h2>Nenhum parceiro em contexto</h2>
+                        <p>
+                            Selecione ou implemente uma atribuição temporária de parceiro para diagnosticar
+                            a operação de uma organização sem misturar dados entre clientes.
+                        </p>
+                    </div>
+                </div>
+            </section>
         {% else %}
+            {# Dashboard para usuários com parceiro (Administradores e usuários comuns) #}
             {% if isAdmin %}
                 {{ include('dashboard/partials/_admin_actions.html.twig') }}
             {% endif %}

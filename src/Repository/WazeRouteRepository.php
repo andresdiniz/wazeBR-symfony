@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\Entity\Partner;
 use App\Entity\WazeRoute;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -30,40 +31,22 @@ class WazeRouteRepository extends ServiceEntityRepository
     }
 
     public function findActiveByLink(string $link): ?WazeRoute
-{
-    return $this->createQueryBuilder('wr')
-        ->where('wr.isActive = :isActive')
-        ->andWhere('wr.link = :link')
-        ->setParameter('isActive', true)
-        ->setParameter('link', $link)
-        ->setMaxResults(1)
-        ->getQuery()
-        ->getOneOrNullResult();
-}
+    {
+        return $this->createQueryBuilder('wr')
+            ->where('wr.isActive = :isActive')
+            ->andWhere('wr.link = :link')
+            ->setParameter('isActive', true)
+            ->setParameter('link', $link)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 
-    /**
-     * Alias de findActive() — usado por WazeCollectRoutesCommand quando
-     * nenhum --partner é informado (roda para todos os parceiros).
-     *
-     * NOTA: findAllActive() era chamado sem existir aqui, causando
-     * BadMethodCallException em toda execução de app:waze:collect-routes
-     * sem --partner (mesmo padrão de bug já corrigido em outros repositories).
-     *
-     * @return WazeRoute[]
-     */
     public function findAllActive(): array
     {
         return $this->findActive();
     }
 
-    /**
-     * Rotas ativas de um parceiro específico, filtrando por slug.
-     *
-     * NOTA: era chamado sem existir aqui, causando BadMethodCallException
-     * em toda execução de app:waze:collect-routes --partner=<slug>.
-     *
-     * @return WazeRoute[]
-     */
     public function findActiveByPartnerSlug(string $slug): array
     {
         return $this->createQueryBuilder('wr')
@@ -75,5 +58,18 @@ class WazeRouteRepository extends ServiceEntityRepository
             ->orderBy('wr.name', 'ASC')
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * Conta quantas rotas pertencem a um parceiro.
+     */
+    public function countRoutesByPartner(Partner $partner): int
+    {
+        return (int) $this->createQueryBuilder('r')
+            ->select('COUNT(r.id)')
+            ->where('r.partner = :partner')
+            ->setParameter('partner', $partner)
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 }

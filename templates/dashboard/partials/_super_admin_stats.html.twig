@@ -1,0 +1,119 @@
+{# dashboard/partials/_super_admin_stats.html.twig #}
+
+<div class="super-admin-stats">
+    <h3 class="admin-features-title">
+        <span class="title-icon">📊</span>
+        Estatísticas do Sistema
+    </h3>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">🏢</div>
+            <div class="stat-content">
+                <span class="stat-value">{{ superAdminData.totalPartners }}</span>
+                <span class="stat-label">Parceiros ativos</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-content">
+                <span class="stat-value">{{ superAdminData.totalUsers }}</span>
+                <span class="stat-label">Usuários</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🔔</div>
+            <div class="stat-content">
+                <span class="stat-value">{{ superAdminData.totalAlerts|number_format(0, ',', '.') }}</span>
+                <span class="stat-label">Alertas</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🚦</div>
+            <div class="stat-content">
+                <span class="stat-value">{{ superAdminData.totalJams|number_format(0, ',', '.') }}</span>
+                <span class="stat-label">Congestionamentos</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🔗</div>
+            <div class="stat-content">
+                <span class="stat-value">{{ superAdminData.totalLinks }}</span>
+                <span class="stat-label">Links monitorados</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🌧️</div>
+            <div class="stat-content">
+                <span class="stat-value">{{ superAdminData.totalCemaden|number_format(0, ',', '.') }}</span>
+                <span class="stat-label">Leituras CEMADEN</span>
+            </div>
+        </div>
+    </div>
+
+    <h4 class="mt-4">Detalhamento por parceiro</h4>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Parceiro</th>
+                    <th>Alertas</th>
+                    <th>Jams</th>
+                    <th>Usuários</th>
+                    <th>Links</th>
+                    <th>CEMADEN</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for stat in superAdminData.partnerStats %}
+                    <tr>
+                        <td>{{ stat.partner.name }}</td>
+                        <td>{{ stat.alerts|number_format(0, ',', '.') }}</td>
+                        <td>{{ stat.jams|number_format(0, ',', '.') }}</td>
+                        <td>{{ stat.users }}</td>
+                        <td>{{ stat.links }}</td>
+                        <td>{{ stat.cemaden|number_format(0, ',', '.') }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="6" class="text-center">Nenhum parceiro cadastrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="admin-info-cards mt-4">
+        <div class="info-card">
+            <div class="info-card-header">
+                <span class="info-icon">💾</span>
+                <h4>Armazenamento</h4>
+            </div>
+            <div class="info-card-content">
+                <strong>{{ superAdminData.storageUsed }} GB</strong>
+                <span class="info-subtext">de {{ superAdminData.storageLimit }} GB</span>
+                <div class="storage-bar">
+                    <div class="storage-fill" style="width: {{ (superAdminData.storageUsed / superAdminData.storageLimit * 100)|round }}%"></div>
+                </div>
+            </div>
+        </div>
+        <div class="info-card">
+            <div class="info-card-header">
+                <span class="info-icon">⏱️</span>
+                <h4>Crons ativos</h4>
+            </div>
+            <div class="info-card-content">
+                <strong>{{ superAdminData.activeCrons }}/{{ superAdminData.totalCrons }}</strong>
+                <span class="info-subtext">{{ ((superAdminData.activeCrons / superAdminData.totalCrons) * 100)|round }}% operacionais</span>
+            </div>
+        </div>
+        <div class="info-card">
+            <div class="info-card-header">
+                <span class="info-icon">📅</span>
+                <h4>Última atividade</h4>
+            </div>
+            <div class="info-card-content">
+                <strong>{{ superAdminData.lastActivity|date('d/m H:i') }}</strong>
+                <span class="info-subtext">Sistema operacional</span>
+            </div>
+        </div>
+    </div>
+</div>

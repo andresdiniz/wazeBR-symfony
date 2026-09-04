@@ -22,12 +22,15 @@ class WazeRouteLinkRepository extends ServiceEntityRepository
             ->where('rl.route = :route')
             ->setParameter('route', $route)
             ->orderBy('rl.sortOrder', 'ASC')
-            ->getQuery()->getResult();
+            ->getQuery()
+            ->getResult();
     }
 
     public function save(WazeRouteLink $link, bool $flush = true): void
     {
         $this->getEntityManager()->persist($link);
-        if ($flush) $this->getEntityManager()->flush();
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
     }
 }

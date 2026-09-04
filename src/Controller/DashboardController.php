@@ -2,14 +2,7 @@
 
 namespace App\Controller;
 
-use App\Entity\WazeAlert;
-use App\Entity\WazeTrafficJam;
-use App\Entity\WazeRoute;
-use App\Entity\MonitoredLink;
-use App\Entity\MonitoredCity;
-use App\Entity\CifsEvent;
-use App\Entity\WazeTvtRouteExecution;
-use App\Entity\WazeTvtRoute;
+use App\Entity\Partner;
 use App\Repository\WazeAlertRepository;
 use App\Repository\WazeTrafficJamRepository;
 use App\Repository\WazeRouteRepository;
@@ -18,6 +11,9 @@ use App\Repository\MonitoredCityRepository;
 use App\Repository\CifsEventRepository;
 use App\Repository\WazeTvtRouteExecutionRepository;
 use App\Repository\WazeTvtRouteRepository;
+use App\Repository\UserRepository;
+use App\Repository\PartnerRepository;
+use App\Repository\CemadenDataRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -36,6 +32,9 @@ final class DashboardController extends AbstractController
         private readonly CifsEventRepository $cifsRepository,
         private readonly WazeTvtRouteExecutionRepository $executionRepository,
         private readonly WazeTvtRouteRepository $tvtRouteRepository,
+        private readonly UserRepository $userRepository,
+        private readonly PartnerRepository $partnerRepository,
+        private readonly CemadenDataRepository $cemadenRepository,
     ) {
     }
 
@@ -86,7 +85,6 @@ final class DashboardController extends AbstractController
         $last24Hours = new \DateTimeImmutable('-24 hours');
         $last3Hours = new \DateTimeImmutable('-3 hours');
 
-        // Verifica se é Super Admin sem contexto de parceiro
         $isSuperAdmin = $this->isGranted('ROLE_SUPER_ADMIN');
         $hasPartnerContext = $partnerId !== null;
 
@@ -114,7 +112,7 @@ final class DashboardController extends AbstractController
             $mapAlertsTruncated = false;
             $jamsLiveMaxLevel = 0;
         } else {
-            // Contagens principais usando repositórios
+            // Contagens principais
             $alertsTotal = $this->countAlerts($periodFrom, $periodTo, $partnerId);
             $alertsLast24h = $this->countAlerts($last24Hours, $periodTo, $partnerId);
             $jamsTotal = $this->countJams($periodFrom, $periodTo, $partnerId);
@@ -200,30 +198,58 @@ final class DashboardController extends AbstractController
             'executions' => $executions,
         ];
 
-        // Dados para o Super Admin
-        // Dados para o Super Admin
-$superAdminData = null;
-if ($isSuperAdmin) {
-    $superAdminData = [
-        'totalPartners' => $this->countTable('partners'),
-        'totalUsers' => $this->countTable('users'),
-        'activeCrons' => 3,
-        'totalCrons' => 5,
-        'systemLogs' => [],
-        'storageUsed' => 2.4, // GB
-        'storageLimit' => 10, // GB
-        'activeFeatures' => [
-            'alerts_monitoring' => true,
-            'jams_monitoring' => true,
-            'routes_tracking' => true,
-            'cifs_integration' => false,
-            'hydrological' => false,
-        ],
-        'lastActivity' => new \DateTimeImmutable('-2 hours'),
-        'nextBilling' => new \DateTimeImmutable('+28 days'),
-        'plan' => 'Enterprise',
-    ];
-}
+        // ════════════════════════════════════════════════════════
+        // Dados para o Super Admin (com estatísticas reais)
+        // ════════════════════════════════════════════════════════
+        $superAdminData = null;
+        if ($isSuperAdmin) {
+            $partners = $this->partnerRepository->findAllActive();
+            $partnerStatsCollection = [];
+
+            foreach ($partners as $partner) {
+                $partnerStatsCollection[] = [
+                    'partner' => $partner,
+                    'alerts' => $this->alertRepository->countByPartner($partner),
+                    'jams' => $this->jamRepository->countByPartner($partner),
+                    'users' => $this->userRepository->countByPartner($partner),
+                    'links' => $this->linkRepository->countByPartner($partner),
+                    'cemaden' => $this->cemadenRepository->countByPartner($partner),
+                    'routes' => $this->routeRepository->countRoutesByPartner($partner),
+                ];
+            }
+
+            $totalAlerts = array_sum(array_column($partnerStatsCollection, 'alerts'));
+            $totalJams = array_sum(array_column($partnerStatsCollection, 'jams'));
+            $totalUsers = array_sum(array_column($partnerStatsCollection, 'users'));
+            $totalLinks = array_sum(array_column($partnerStatsCollection, 'links'));
+            $totalCemaden = array_sum(array_column($partnerStatsCollection, 'cemaden'));
+
+            $dbSize = $this->getDatabaseSize();
+
+            $superAdminData = [
+                'totalPartners' => count($partners),
+                'totalUsers' => $totalUsers,
+                'totalAlerts' => $totalAlerts,
+                'totalJams' => $totalJams,
+                'totalLinks' => $totalLinks,
+                'totalCemaden' => $totalCemaden,
+                'activeCrons' => 3,
+                'totalCrons' => 5,
+                'storageUsed' => round($dbSize / 1024, 1),
+                'storageLimit' => 10,
+                'lastActivity' => new \DateTimeImmutable('-2 hours'),
+                'nextBilling' => new \DateTimeImmutable('+28 days'),
+                'plan' => 'Enterprise',
+                'partnerStats' => $partnerStatsCollection,
+                'activeFeatures' => [
+                    'alerts_monitoring' => true,
+                    'jams_monitoring' => true,
+                    'routes_tracking' => true,
+                    'cifs_integration' => false,
+                    'hydrological' => false,
+                ],
+            ];
+        }
 
         return $this->render('dashboard/index.html.twig', [
             'count' => $executions,
@@ -248,6 +274,8 @@ if ($isSuperAdmin) {
             'superAdminData' => $superAdminData,
         ]);
     }
+
+    // ─── Métodos de contagem ────────────────────────────────────────────
 
     private function countAlerts(\DateTimeInterface $from, \DateTimeInterface $to, ?int $partnerId): int
     {
@@ -388,15 +416,7 @@ if ($isSuperAdmin) {
         }
     }
 
-    private function countTable(string $table): int
-    {
-        try {
-            $sql = sprintf('SELECT COUNT(*) FROM `%s`', $table);
-            return (int) $this->entityManager->getConnection()->executeQuery($sql)->fetchOne();
-        } catch (\Throwable) {
-            return 0;
-        }
-    }
+    // ─── Dados para gráficos e mapa ──────────────────────────────────────
 
     private function getJamsByLevel(\DateTimeInterface $from, ?int $partnerId): array
     {
@@ -507,4 +527,20 @@ if ($isSuperAdmin) {
             return [];
         }
     }
+
+    // ─── Método auxiliar para tamanho do banco ──────────────────────────
+
+    private function getDatabaseSize(): float
+    {
+        try {
+            $sql = "SELECT SUM(data_length + index_length) / 1024 / 1024 AS size_mb
+                    FROM information_schema.tables
+                    WHERE table_schema = DATABASE()";
+            $result = $this->entityManager->getConnection()->executeQuery($sql)->fetchOne();
+            return (float) $result;
+        } catch (\Throwable $e) {
+            return 0;
+        }
+    }
 }
+
