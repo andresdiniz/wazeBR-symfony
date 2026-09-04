@@ -88,73 +88,67 @@ final class DashboardController extends AbstractController
         $isSuperAdmin = $this->isGranted('ROLE_SUPER_ADMIN');
         $hasPartnerContext = $partnerId !== null;
 
-        // Se for Super Admin sem parceiro, zera os dados operacionais
-        if ($isSuperAdmin && !$hasPartnerContext) {
-            $alertsTotal = 0;
-            $alertsLast24h = 0;
-            $jamsTotal = 0;
-            $jamsLast24h = 0;
-            $jamsLiveTotal = 0;
-            $routesTotal = 0;
-            $monitoredLinks = 0;
-            $monitoredCities = 0;
-            $cifsEvents = 0;
-            $executions = 0;
-            $tvtRoutes = 0;
-            $recentAlerts = [];
-            $recentJams = [];
-            $jamsByLevel = [];
-            $alertsBySubtype = [];
-            $topStreets = [];
-            $mapJams = [];
-            $mapAlerts = [];
-            $mapJamsTruncated = false;
-            $mapAlertsTruncated = false;
-            $jamsLiveMaxLevel = 0;
-        } else {
-            // Contagens principais
-            $alertsTotal = $this->countAlerts($periodFrom, $periodTo, $partnerId);
-            $alertsLast24h = $this->countAlerts($last24Hours, $periodTo, $partnerId);
-            $jamsTotal = $this->countJams($periodFrom, $periodTo, $partnerId);
-            $jamsLast24h = $this->countJams($last24Hours, $periodTo, $partnerId);
-            $jamsLiveTotal = $this->countJams($last3Hours, $periodTo, $partnerId);
-            $routesTotal = $this->countRoutes($partnerId);
-            $monitoredLinks = $this->countLinks($partnerId);
-            $monitoredCities = $this->countCities($partnerId);
-            $cifsEvents = $this->countCifsEvents($periodFrom, $periodTo, $partnerId);
-            $executions = $this->countExecutions($periodFrom, $periodTo);
-            $tvtRoutes = $this->countTvtRoutes();
+        // ============================================================
+        // Inicializa variáveis com valores padrão
+        // ============================================================
+        $alertsTotal = 0;
+        $alertsLast24h = 0;
+        $jamsTotal = 0;
+        $jamsLast24h = 0;
+        $jamsLiveTotal = 0;
+        $routesTotal = 0;
+        $monitoredLinks = 0;
+        $monitoredCities = 0;
+        $cifsEvents = 0;
+        $executions = 0;
+        $tvtRoutes = 0;
+        $recentAlerts = [];
+        $recentJams = [];
+        $jamsByLevel = [];
+        $alertsBySubtype = [];
+        $topStreets = [];
+        $mapJams = [];
+        $mapAlerts = [];
+        $mapJamsTruncated = false;
+        $mapAlertsTruncated = false;
+        $jamsLiveMaxLevel = 0;
 
-            // Alertas recentes
-            $recentAlerts = $this->alertRepository->findBy(
-                ['partner' => $partnerId],
-                ['createdAt' => 'DESC'],
-                10
-            );
+        // ============================================================
+        // Se o usuário tem parceiro, busca dados operacionais
+        // ============================================================
+        if ($hasPartnerContext) {
+            $alertsTotal = $this->alertRepository->countInPeriod($partner, $periodFrom, $periodTo);
+            $alertsLast24h = $this->alertRepository->countInPeriod($partner, $last24Hours, $periodTo);
 
-            // Jams recentes
-            $recentJams = $this->jamRepository->findBy(
-                ['partner' => $partnerId],
-                ['createdAt' => 'DESC'],
-                10
-            );
+            $jamsTotal = $this->jamRepository->countInPeriod($partner, $periodFrom, $periodTo);
+            $jamsLast24h = $this->jamRepository->countInPeriod($partner, $last24Hours, $periodTo);
+            $jamsLiveTotal = $this->jamRepository->countInPeriod($partner, $last3Hours, $periodTo);
 
-            // Dados para gráficos
-            $jamsByLevel = $this->getJamsByLevel($periodFrom, $partnerId);
-            $alertsBySubtype = $this->getAlertsBySubtype($periodFrom, $partnerId);
-            $topStreets = $this->getTopStreets($periodFrom, $partnerId);
+            $routesTotal = $this->routeRepository->countRoutesByPartner($partner);
+            $monitoredLinks = $this->linkRepository->countByPartner($partner);
+            $monitoredCities = $this->cityRepository->countByPartner($partner);
+            $cifsEvents = $this->cifsRepository->countInPeriod($partner, $periodFrom, $periodTo);
+            $executions = $this->executionRepository->countInPeriod($periodFrom, $periodTo);
+            $tvtRoutes = $this->tvtRouteRepository->count([]);
 
-            // Dados do mapa
-            $mapJams = $this->getMapJams($periodFrom, $partnerId);
-            $mapAlerts = $this->getMapAlerts($periodFrom, $partnerId);
+            $recentAlerts = $this->alertRepository->findRecentByPartner($partner, 10);
+            $recentJams = $this->jamRepository->findRecentByPartner($partner, 10);
+
+            $jamsByLevel = $this->jamRepository->countByLevelInPeriod($partner, $periodFrom, $periodTo);
+            $alertsBySubtype = $this->alertRepository->countBySubtypeInPeriod($partner, $periodFrom, $periodTo, 10);
+            $topStreets = $this->jamRepository->topStreetsInPeriod($partner, $periodFrom, $periodTo, 10);
+
+            $mapJams = $this->jamRepository->findForMapInPeriod($partner, $periodFrom, $periodTo, 100);
+            $mapAlerts = $this->alertRepository->findForMapFiltered($partner, ['dateFrom' => $periodFrom->format('Y-m-d')], 100);
 
             $mapJamsTruncated = count($mapJams) >= 100;
             $mapAlertsTruncated = count($mapAlerts) >= 100;
 
             $jamsLiveMaxLevel = 0;
-            foreach ($jamsByLevel as $jam) {
-                if ((int) ($jam['level'] ?? 0) > $jamsLiveMaxLevel) {
-                    $jamsLiveMaxLevel = (int) ($jam['level'] ?? 0);
+            $liveJams = $this->jamRepository->findLiveByPartner($partner, 3, 100);
+            foreach ($liveJams as $jam) {
+                if ($jam->getLevel() > $jamsLiveMaxLevel) {
+                    $jamsLiveMaxLevel = $jam->getLevel();
                 }
             }
         }
@@ -177,9 +171,7 @@ final class DashboardController extends AbstractController
             'jamsTotal' => $jamsTotal,
             'jamsLiveTotal' => $jamsLiveTotal,
             'jamsLiveMaxLevel' => $jamsLiveMaxLevel,
-            'jamsLiveMaxLevelLabel' => $jamsLiveMaxLevel > 0
-                ? 'Nível ' . $jamsLiveMaxLevel
-                : null,
+            'jamsLiveMaxLevelLabel' => $jamsLiveMaxLevel > 0 ? 'Nível ' . $jamsLiveMaxLevel : null,
             'routesMonitored' => $routesTotal,
             'monitoredLinks' => $monitoredLinks,
             'monitoredCities' => $monitoredCities,
@@ -198,23 +190,23 @@ final class DashboardController extends AbstractController
             'executions' => $executions,
         ];
 
-        // ════════════════════════════════════════════════════════
-        // Dados para o Super Admin (com estatísticas reais)
-        // ════════════════════════════════════════════════════════
+        // ============================================================
+        // Dados para o Super Admin (estatísticas da plataforma)
+        // ============================================================
         $superAdminData = null;
         if ($isSuperAdmin) {
             $partners = $this->partnerRepository->findAllActive();
             $partnerStatsCollection = [];
 
-            foreach ($partners as $partner) {
+            foreach ($partners as $p) {
                 $partnerStatsCollection[] = [
-                    'partner' => $partner,
-                    'alerts' => $this->alertRepository->countByPartner($partner),
-                    'jams' => $this->jamRepository->countByPartner($partner),
-                    'users' => $this->userRepository->countByPartner($partner),
-                    'links' => $this->linkRepository->countByPartner($partner),
-                    'cemaden' => $this->cemadenRepository->countByPartner($partner),
-                    'routes' => $this->routeRepository->countRoutesByPartner($partner),
+                    'partner' => $p,
+                    'alerts' => $this->alertRepository->countByPartner($p),
+                    'jams' => $this->jamRepository->countByPartner($p),
+                    'users' => $this->userRepository->countByPartner($p),
+                    'links' => $this->linkRepository->countByPartner($p),
+                    'cemaden' => $this->cemadenRepository->countByPartner($p),
+                    'routes' => $this->routeRepository->countRoutesByPartner($p),
                 ];
             }
 
@@ -275,259 +267,6 @@ final class DashboardController extends AbstractController
         ]);
     }
 
-    // ─── Métodos de contagem ────────────────────────────────────────────
-
-    private function countAlerts(\DateTimeInterface $from, \DateTimeInterface $to, ?int $partnerId): int
-    {
-        try {
-            $qb = $this->alertRepository->createQueryBuilder('a');
-            $qb->select('COUNT(a.id)')
-                ->where('a.createdAt >= :from')
-                ->andWhere('a.createdAt <= :to')
-                ->setParameter('from', $from)
-                ->setParameter('to', $to);
-
-            if ($partnerId) {
-                $qb->andWhere('a.partner = :partner')
-                    ->setParameter('partner', $partnerId);
-            }
-
-            return (int) $qb->getQuery()->getSingleScalarResult();
-        } catch (\Throwable) {
-            return 0;
-        }
-    }
-
-    private function countJams(\DateTimeInterface $from, \DateTimeInterface $to, ?int $partnerId): int
-    {
-        try {
-            $qb = $this->jamRepository->createQueryBuilder('j');
-            $qb->select('COUNT(j.id)')
-                ->where('j.createdAt >= :from')
-                ->andWhere('j.createdAt <= :to')
-                ->setParameter('from', $from)
-                ->setParameter('to', $to);
-
-            if ($partnerId) {
-                $qb->andWhere('j.partner = :partner')
-                    ->setParameter('partner', $partnerId);
-            }
-
-            return (int) $qb->getQuery()->getSingleScalarResult();
-        } catch (\Throwable) {
-            return 0;
-        }
-    }
-
-    private function countRoutes(?int $partnerId): int
-    {
-        try {
-            $qb = $this->routeRepository->createQueryBuilder('r');
-            $qb->select('COUNT(r.id)');
-
-            if ($partnerId) {
-                $qb->where('r.partner = :partner')
-                    ->setParameter('partner', $partnerId);
-            }
-
-            return (int) $qb->getQuery()->getSingleScalarResult();
-        } catch (\Throwable) {
-            return 0;
-        }
-    }
-
-    private function countLinks(?int $partnerId): int
-    {
-        try {
-            $qb = $this->linkRepository->createQueryBuilder('l');
-            $qb->select('COUNT(l.id)');
-
-            if ($partnerId) {
-                $qb->where('l.partner = :partner')
-                    ->setParameter('partner', $partnerId);
-            }
-
-            return (int) $qb->getQuery()->getSingleScalarResult();
-        } catch (\Throwable) {
-            return 0;
-        }
-    }
-
-    private function countCities(?int $partnerId): int
-    {
-        try {
-            $qb = $this->cityRepository->createQueryBuilder('c');
-            $qb->select('COUNT(c.id)');
-
-            if ($partnerId) {
-                $qb->where('c.partner = :partner')
-                    ->setParameter('partner', $partnerId);
-            }
-
-            return (int) $qb->getQuery()->getSingleScalarResult();
-        } catch (\Throwable) {
-            return 0;
-        }
-    }
-
-    private function countCifsEvents(\DateTimeInterface $from, \DateTimeInterface $to, ?int $partnerId): int
-    {
-        try {
-            $qb = $this->cifsRepository->createQueryBuilder('c');
-            $qb->select('COUNT(c.id)')
-                ->where('c.createdAt >= :from')
-                ->andWhere('c.createdAt <= :to')
-                ->setParameter('from', $from)
-                ->setParameter('to', $to);
-
-            if ($partnerId) {
-                $qb->andWhere('c.partner = :partner')
-                    ->setParameter('partner', $partnerId);
-            }
-
-            return (int) $qb->getQuery()->getSingleScalarResult();
-        } catch (\Throwable) {
-            return 0;
-        }
-    }
-
-    private function countExecutions(\DateTimeInterface $from, \DateTimeInterface $to): int
-    {
-        try {
-            $qb = $this->executionRepository->createQueryBuilder('e');
-            $qb->select('COUNT(e.id)')
-                ->where('e.createdAt >= :from')
-                ->andWhere('e.createdAt <= :to')
-                ->setParameter('from', $from)
-                ->setParameter('to', $to);
-
-            return (int) $qb->getQuery()->getSingleScalarResult();
-        } catch (\Throwable) {
-            return 0;
-        }
-    }
-
-    private function countTvtRoutes(): int
-    {
-        try {
-            return (int) $this->tvtRouteRepository->count([]);
-        } catch (\Throwable) {
-            return 0;
-        }
-    }
-
-    // ─── Dados para gráficos e mapa ──────────────────────────────────────
-
-    private function getJamsByLevel(\DateTimeInterface $from, ?int $partnerId): array
-    {
-        try {
-            $qb = $this->jamRepository->createQueryBuilder('j');
-            $qb->select('j.level AS level', 'COUNT(j.id) AS count')
-                ->where('j.createdAt >= :from')
-                ->setParameter('from', $from)
-                ->groupBy('j.level')
-                ->orderBy('j.level');
-
-            if ($partnerId) {
-                $qb->andWhere('j.partner = :partner')
-                    ->setParameter('partner', $partnerId);
-            }
-
-            return $qb->getQuery()->getArrayResult();
-        } catch (\Throwable) {
-            return [];
-        }
-    }
-
-    private function getAlertsBySubtype(\DateTimeInterface $from, ?int $partnerId): array
-    {
-        try {
-            $qb = $this->alertRepository->createQueryBuilder('a');
-            $qb->select('a.subType AS label', 'COUNT(a.id) AS count')
-                ->where('a.createdAt >= :from')
-                ->setParameter('from', $from)
-                ->groupBy('a.subType')
-                ->orderBy('count', 'DESC');
-
-            if ($partnerId) {
-                $qb->andWhere('a.partner = :partner')
-                    ->setParameter('partner', $partnerId);
-            }
-
-            return $qb->getQuery()->getArrayResult();
-        } catch (\Throwable) {
-            return [];
-        }
-    }
-
-    private function getTopStreets(\DateTimeInterface $from, ?int $partnerId): array
-    {
-        try {
-            $qb = $this->jamRepository->createQueryBuilder('j');
-            $qb->select('j.street AS street', 'COUNT(j.id) AS count')
-                ->where('j.createdAt >= :from')
-                ->setParameter('from', $from)
-                ->groupBy('j.street')
-                ->orderBy('count', 'DESC')
-                ->setMaxResults(10);
-
-            if ($partnerId) {
-                $qb->andWhere('j.partner = :partner')
-                    ->setParameter('partner', $partnerId);
-            }
-
-            return $qb->getQuery()->getArrayResult();
-        } catch (\Throwable) {
-            return [];
-        }
-    }
-
-    private function getMapJams(\DateTimeInterface $from, ?int $partnerId): array
-    {
-        try {
-            $qb = $this->jamRepository->createQueryBuilder('j');
-            $qb->select('j.id', 'j.street', 'j.city', 'j.level', 'j.latitude AS lat', 'j.longitude AS lng')
-                ->where('j.createdAt >= :from')
-                ->andWhere('j.latitude IS NOT NULL')
-                ->andWhere('j.longitude IS NOT NULL')
-                ->setParameter('from', $from)
-                ->orderBy('j.createdAt', 'DESC')
-                ->setMaxResults(100);
-
-            if ($partnerId) {
-                $qb->andWhere('j.partner = :partner')
-                    ->setParameter('partner', $partnerId);
-            }
-
-            return $qb->getQuery()->getArrayResult();
-        } catch (\Throwable) {
-            return [];
-        }
-    }
-
-    private function getMapAlerts(\DateTimeInterface $from, ?int $partnerId): array
-    {
-        try {
-            $qb = $this->alertRepository->createQueryBuilder('a');
-            $qb->select('a.id', 'a.type', 'a.street', 'a.latitude AS lat', 'a.longitude AS lng')
-                ->where('a.createdAt >= :from')
-                ->andWhere('a.latitude IS NOT NULL')
-                ->andWhere('a.longitude IS NOT NULL')
-                ->setParameter('from', $from)
-                ->orderBy('a.createdAt', 'DESC')
-                ->setMaxResults(100);
-
-            if ($partnerId) {
-                $qb->andWhere('a.partner = :partner')
-                    ->setParameter('partner', $partnerId);
-            }
-
-            return $qb->getQuery()->getArrayResult();
-        } catch (\Throwable) {
-            return [];
-        }
-    }
-
     // ─── Método auxiliar para tamanho do banco ──────────────────────────
 
     private function getDatabaseSize(): float
@@ -543,4 +282,3 @@ final class DashboardController extends AbstractController
         }
     }
 }
-
