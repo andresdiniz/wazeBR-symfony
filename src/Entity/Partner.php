@@ -12,6 +12,7 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: PartnerRepository::class)]
 #[ORM\Table(name: 'partner')]
+#[ORM\HasLifecycleCallbacks]
 class Partner
 {
     #[ORM\Id]
@@ -25,12 +26,34 @@ class Partner
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $code = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $slug = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $email = null;
+
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $description = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $bbox = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $cemadenStates = null;
+
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $apiToken = null;
 
     #[ORM\Column(nullable: true)]
     private ?bool $active = null;
 
+    #[ORM\Column(type: 'datetime_immutable')]
+    private \DateTimeImmutable $createdAt;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $updatedAt = null;
+
+    // ── Relacionamentos ──
     #[ORM\OneToMany(mappedBy: 'partner', targetEntity: User::class)]
     private Collection $users;
 
@@ -65,7 +88,23 @@ class Partner
         $this->wazeCounts = new ArrayCollection();
         $this->routes = new ArrayCollection();
         $this->trafficJams = new ArrayCollection();
+        $this->createdAt = new \DateTimeImmutable();
+        $this->active = true;
+        $this->generateApiToken();
     }
+
+    #[ORM\PreUpdate]
+    public function onPreUpdate(): void
+    {
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function generateApiToken(): void
+    {
+        $this->apiToken = bin2hex(random_bytes(32));
+    }
+
+    // ── Getters / Setters ──
 
     public function getId(): ?int
     {
@@ -94,6 +133,28 @@ class Partner
         return $this;
     }
 
+    public function getSlug(): ?string
+    {
+        return $this->slug;
+    }
+
+    public function setSlug(?string $slug): static
+    {
+        $this->slug = $slug;
+        return $this;
+    }
+
+    public function getEmail(): ?string
+    {
+        return $this->email;
+    }
+
+    public function setEmail(?string $email): static
+    {
+        $this->email = $email;
+        return $this;
+    }
+
     public function getDescription(): ?string
     {
         return $this->description;
@@ -105,7 +166,45 @@ class Partner
         return $this;
     }
 
+    public function getBbox(): ?string
+    {
+        return $this->bbox;
+    }
+
+    public function setBbox(?string $bbox): static
+    {
+        $this->bbox = $bbox;
+        return $this;
+    }
+
+    public function getCemadenStates(): ?string
+    {
+        return $this->cemadenStates;
+    }
+
+    public function setCemadenStates(?string $cemadenStates): static
+    {
+        $this->cemadenStates = $cemadenStates;
+        return $this;
+    }
+
+    public function getApiToken(): ?string
+    {
+        return $this->apiToken;
+    }
+
+    public function setApiToken(?string $apiToken): static
+    {
+        $this->apiToken = $apiToken;
+        return $this;
+    }
+
     public function isActive(): ?bool
+    {
+        return $this->active;
+    }
+
+    public function getIsActive(): ?bool
     {
         return $this->active;
     }
@@ -115,6 +214,36 @@ class Partner
         $this->active = $active;
         return $this;
     }
+
+    public function setIsActive(?bool $active): static
+    {
+        $this->active = $active;
+        return $this;
+    }
+
+    public function getCreatedAt(): \DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    public function setCreatedAt(\DateTimeImmutable $createdAt): static
+    {
+        $this->createdAt = $createdAt;
+        return $this;
+    }
+
+    public function getUpdatedAt(): ?\DateTimeImmutable
+    {
+        return $this->updatedAt;
+    }
+
+    public function setUpdatedAt(?\DateTimeImmutable $updatedAt): static
+    {
+        $this->updatedAt = $updatedAt;
+        return $this;
+    }
+
+    // ── Relacionamentos ──
 
     public function getUsers(): Collection
     {

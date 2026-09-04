@@ -1,0 +1,26 @@
+{# dashboard/partials/_top_streets.html.twig #}
+<section class="top-section" data-animate>
+    <div class="section-header">
+        <h2 class="section-title"><span class="title-icon">🏆</span>Principais ruas com jams</h2>
+    </div>
+
+    {% if topStreets|length > 0 %}
+        <div class="top-grid">
+            {% set maxStreetCount = topStreets[0].count|default(1) %}
+            {% for street in topStreets %}
+                <div class="top-item">
+                    <span class="top-rank">#{{ loop.index }}</span>
+                    <div class="top-content">
+                        <div class="top-name">{{ street.street|default('Não informado') }}</div>
+                        <div class="top-bar">
+                            <span class="top-bar-fill" style="width: {{ ((street.count / maxStreetCount) * 100)|round }}%"></span>
+                        </div>
+                    </div>
+                    <strong class="top-count">{{ street.count }} jams</strong>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state"><span class="empty-icon">🏆</span><p>Nenhum jam no período</p></div>
+    {% endif %}
+</section>

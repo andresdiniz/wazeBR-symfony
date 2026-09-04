@@ -1,163 +1,235 @@
-{% extends 'base.html.twig' %}
+{% extends 'admin/base.html.twig' %}
 
-{% block title %}{{ partner.name }}{% endblock %}
+{% block admin_title %}{{ partner.name }}{% endblock %}
+{% block admin_subtitle %}Detalhes do parceiro{% endblock %}
 
-{% block body %}
-<div class="container py-4">
+{% block content %}
+<div class="row g-4">
 
-    <nav aria-label="breadcrumb" class="mb-3">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ path('admin_partner_index') }}">Parceiros</a></li>
-            <li class="breadcrumb-item active">{{ partner.name }}</li>
-        </ol>
-    </nav>
+    <div class="col-lg-4">
+        <div class="card shadow-sm p-4 mb-3">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                    <h1 class="h4 mb-1">{{ partner.name }}</h1>
+                    <code class="small text-muted">{{ partner.slug }}</code>
+                </div>
+                {% if partner.active %}
+                    <span class="badge badge-green">Ativo</span>
+                {% else %}
+                    <span class="badge badge-gray">Inativo</span>
+                {% endif %}
+            </div>
 
-    {% for message in app.flashes('success') %}
-        <div class="alert alert-success alert-dismissible fade show">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    {% endfor %}
-    {% for message in app.flashes('error') %}
-        <div class="alert alert-danger alert-dismissible fade show">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    {% endfor %}
+            <dl class="row small mb-0">
+                <dt class="col-sm-4 text-muted">E-mail</dt>
+                <dd class="col-sm-8">{{ partner.email }}</dd>
 
-    <div class="row g-4">
-
-        {# — Coluna esquerda: dados do parceiro — #}
-        <div class="col-lg-4">
-            <div class="card shadow-sm p-4 mb-3">
-                <div class="d-flex justify-content-between align-items-start mb-3">
-                    <div>
-                        <h1 class="h4 mb-1">{{ partner.name }}</h1>
-                        <code class="small text-muted">{{ partner.slug }}</code>
-                    </div>
-                    {% if partner.isActive %}
-                        <span class="badge bg-success">Ativo</span>
+                <dt class="col-sm-4 text-muted">BBox</dt>
+                <dd class="col-sm-8">
+                    {% if partner.bbox %}
+                        <span id="bbox-preview" class="text-truncate d-block" style="max-width:200px;cursor:pointer" title="{{ partner.bbox }}">
+                            {{ partner.bbox|slice(0, 60) ~ '...' }}
+                        </span>
+                        <div class="d-none" id="bbox-wkt">{{ partner.bbox }}</div>
                     {% else %}
-                        <span class="badge bg-secondary">Inativo</span>
+                        <span class="text-muted">—</span>
                     {% endif %}
-                </div>
+                </dd>
 
-                <dl class="row small mb-0">
-                    <dt class="col-sm-4 text-muted">E-mail</dt>
-                    <dd class="col-sm-8">{{ partner.email }}</dd>
+                <dt class="col-sm-4 text-muted">Criado</dt>
+                <dd class="col-sm-8">{{ partner.createdAt|date('d/m/Y') }}</dd>
 
-                    <dt class="col-sm-4 text-muted">BBox</dt>
-                    <dd class="col-sm-8">
-                        {% if partner.bbox %}
-                            <code>{{ partner.bbox }}</code>
-                        {% else %}
-                            <span class="text-muted">—</span>
-                        {% endif %}
-                    </dd>
+                <dt class="col-sm-4 text-muted">Links</dt>
+                <dd class="col-sm-8">{{ partner.links|length }}</dd>
 
-                    <dt class="col-sm-4 text-muted">Criado</dt>
-                    <dd class="col-sm-8">{{ partner.createdAt|date('d/m/Y') }}</dd>
+                <dt class="col-sm-4 text-muted">Usuários</dt>
+                <dd class="col-sm-8">{{ partner.users|length }}</dd>
+            </dl>
+        </div>
 
-                    <dt class="col-sm-4 text-muted">Links</dt>
-                    <dd class="col-sm-8">{{ partner.links|length }}</dd>
-
-                    <dt class="col-sm-4 text-muted">Usuários</dt>
-                    <dd class="col-sm-8">{{ partner.users|length }}</dd>
-                </dl>
+        <div class="card shadow-sm p-3 mb-3">
+            <h2 class="h6 text-muted text-uppercase mb-2">API Token</h2>
+            <div class="input-group input-group-sm">
+                <input type="text" id="apiToken" class="form-control font-monospace" value="{{ partner.apiToken }}" readonly>
+                <button class="btn btn-outline-secondary" type="button" id="token-toggle" title="Mostrar/Ocultar">
+                    <i class="bi bi-eye"></i>
+                </button>
+                <button class="btn btn-outline-secondary" type="button" id="token-copy" title="Copiar token">
+                    <i class="bi bi-clipboard"></i>
+                </button>
             </div>
+            <form method="post" action="{{ path('admin_partner_regenerate_token', {id: partner.id}) }}" class="mt-2">
+                <input type="hidden" name="_token" value="{{ csrf_token('regen_token_' ~ partner.id) }}">
+                <button type="submit" class="btn btn-sm btn-outline-warning w-100" onclick="return confirm('Token atual será invalidado. Confirmar?')">
+                    <i class="bi bi-arrow-repeat me-1"></i> Regenerar token
+                </button>
+            </form>
+        </div>
 
-            <div class="card shadow-sm p-3 mb-3">
-                <h2 class="h6 text-muted text-uppercase mb-2">API Token</h2>
-                <div class="input-group input-group-sm">
-                    <input type="password" id="apiToken" class="form-control font-monospace" value="{{ partner.apiToken }}" readonly>
-                    <button class="btn btn-outline-secondary" type="button"
-                            onclick="const i=document.getElementById('apiToken');i.type=i.type==='password'?'text':'password'">
-                        <i class="bi bi-eye"></i>
-                    </button>
-                </div>
-                <form method="post" action="{{ path('admin_partner_regenerate_token', {id: partner.id}) }}" class="mt-2">
-                    <input type="hidden" name="_token" value="{{ csrf_token('regen_token_' ~ partner.id) }}">
-                    <button type="submit" class="btn btn-sm btn-outline-warning w-100"
-                            onclick="return confirm('Token atual será invalidado. Confirmar?')">
-                        <i class="bi bi-arrow-repeat me-1"></i> Regenerar token
-                    </button>
-                </form>
-            </div>
+        <div class="d-flex gap-2">
+            <a href="{{ path('admin_partner_edit', {id: partner.id}) }}" class="btn btn-outline-primary flex-grow-1">
+                <i class="bi bi-pencil me-1"></i> Editar
+            </a>
+            <form method="post" action="{{ path('admin_partner_toggle_active', {id: partner.id}) }}">
+                <input type="hidden" name="_token" value="{{ csrf_token('toggle_' ~ partner.id) }}">
+                <button type="submit" class="btn {{ partner.active ? 'btn-outline-secondary' : 'btn-outline-success' }}" onclick="return confirm('Confirmar alteração de status?')">
+                    {{ partner.active ? 'Desativar' : 'Ativar' }}
+                </button>
+            </form>
+        </div>
+    </div>
 
-            <div class="d-flex gap-2">
-                <a href="{{ path('admin_partner_edit', {id: partner.id}) }}" class="btn btn-outline-primary flex-grow-1">
-                    <i class="bi bi-pencil me-1"></i> Editar
+    <div class="col-lg-8">
+        <div class="card shadow-sm p-3 mb-3">
+            <h2 class="h5 mb-3">Mapa de cobertura</h2>
+            <div id="map" style="height:350px;border-radius:0.375rem;overflow:hidden;" data-bbox="{{ partner.bbox|e('html_attr') }}"></div>
+            <small class="text-muted mt-2">Clique no polígono para ver os detalhes.</small>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="h5 mb-0">Usuários</h2>
+                <a href="{{ path('admin_partner_user_new', {id: partner.id}) }}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-person-plus me-1"></i> Adicionar usuário
                 </a>
-                <form method="post" action="{{ path('admin_partner_toggle_active', {id: partner.id}) }}">
-                    <input type="hidden" name="_token" value="{{ csrf_token('toggle_' ~ partner.id) }}">
-                    <button type="submit" class="btn {{ partner.isActive ? 'btn-outline-secondary' : 'btn-outline-success' }}"
-                            onclick="return confirm('Confirmar alteração de status?')">
-                        {{ partner.isActive ? 'Desativar' : 'Ativar' }}
-                    </button>
-                </form>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Nome</th>
+                            <th>E-mail</th>
+                            <th>Perfil</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Último acesso</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for user in users %}
+                        <tr>
+                            <td class="fw-semibold">{{ user.name }}</td>
+                            <td class="text-muted small">{{ user.email }}</td>
+                            <td>
+                                {% if 'ROLE_ACCOUNT_ADMIN' in user.roles %}
+                                    <span class="badge bg-primary">Admin</span>
+                                {% elseif 'ROLE_FIELD_AGENT' in user.roles %}
+                                    <span class="badge bg-info text-dark">Agente</span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark border">Usuário</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if user.isActive %}
+                                    <span class="badge bg-success">Ativo</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inativo</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center text-muted small">
+                                {{ user.lastLoginAt ? user.lastLoginAt|date('d/m/Y H:i') : '—' }}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                <i class="bi bi-people fs-4 d-block mb-2"></i>
+                                Nenhum usuário cadastrado.
+                                <a href="{{ path('admin_partner_user_new', {id: partner.id}) }}">Adicionar o primeiro</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
-
-        {# — Coluna direita: usuários — #}
-        <div class="col-lg-8">
-            <div class="card shadow-sm">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h2 class="h5 mb-0">Usuários</h2>
-                    <a href="{{ path('admin_partner_user_new', {id: partner.id}) }}" class="btn btn-sm btn-primary">
-                        <i class="bi bi-person-plus me-1"></i> Adicionar usuário
-                    </a>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Nome</th>
-                                <th>E-mail</th>
-                                <th>Perfil</th>
-                                <th class="text-center">Status</th>
-                                <th class="text-center">Último acesso</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        {% for user in users %}
-                            <tr>
-                                <td class="fw-semibold">{{ user.name }}</td>
-                                <td class="text-muted small">{{ user.email }}</td>
-                                <td>
-                                    {% if 'ROLE_ACCOUNT_ADMIN' in user.roles %}
-                                        <span class="badge bg-primary">Admin da conta</span>
-                                    {% elseif 'ROLE_FIELD_AGENT' in user.roles %}
-                                        <span class="badge bg-info text-dark">Agente de via</span>
-                                    {% else %}
-                                        <span class="badge bg-light text-dark border">Usuário</span>
-                                    {% endif %}
-                                </td>
-                                <td class="text-center">
-                                    {% if user.isActive %}
-                                        <span class="badge bg-success">Ativo</span>
-                                    {% else %}
-                                        <span class="badge bg-secondary">Inativo</span>
-                                    {% endif %}
-                                </td>
-                                <td class="text-center text-muted small">
-                                    {{ user.lastLoginAt ? user.lastLoginAt|date('d/m/Y H:i') : '—' }}
-                                </td>
-                            </tr>
-                        {% else %}
-                            <tr>
-                                <td colspan="5" class="text-center text-muted py-4">
-                                    <i class="bi bi-people fs-4 d-block mb-2"></i>
-                                    Nenhum usuário cadastrado.
-                                    <a href="{{ path('admin_partner_user_new', {id: partner.id}) }}">Adicionar o primeiro</a>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
     </div>
 </div>
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Token toggle (mostrar/ocultar)
+    const tokenInput = document.getElementById('apiToken');
+    const tokenToggle = document.getElementById('token-toggle');
+    if (tokenToggle && tokenInput) {
+        tokenToggle.addEventListener('click', function() {
+            const isPassword = tokenInput.type === 'password';
+            tokenInput.type = isPassword ? 'text' : 'password';
+            this.querySelector('i').className = isPassword ? 'bi bi-eye-slash' : 'bi bi-eye';
+        });
+    }
+
+    // 2. Copiar token
+    const tokenCopy = document.getElementById('token-copy');
+    if (tokenCopy && tokenInput) {
+        tokenCopy.addEventListener('click', function() {
+            navigator.clipboard.writeText(tokenInput.value).then(function() {
+                const original = tokenCopy.innerHTML;
+                tokenCopy.innerHTML = '<i class="bi bi-check-lg"></i>';
+                setTimeout(() => { tokenCopy.innerHTML = original; }, 2000);
+            }).catch(function() {
+                // fallback
+                tokenInput.select();
+                document.execCommand('copy');
+            });
+        });
+    }
+
+    // 3. Mapa Leaflet (se houver BBox)
+    const mapElement = document.getElementById('map');
+    if (mapElement && typeof L !== 'undefined') {
+        const bboxWkt = mapElement.dataset.bbox;
+        if (bboxWkt) {
+            // Inicializa o mapa
+            const map = L.map('map').setView([-20.66, -43.78], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+
+            // Converte WKT POLYGON para coordenadas Leaflet
+            const polygonCoords = convertWktToLeaflet(bboxWkt);
+            if (polygonCoords && polygonCoords.length >= 3) {
+                const polygon = L.polygon(polygonCoords, {
+                    color: '#2563eb',
+                    weight: 3,
+                    fillColor: '#2563eb',
+                    fillOpacity: 0.15
+                }).addTo(map);
+                map.fitBounds(polygon.getBounds());
+                polygon.bindPopup('Área de cobertura do parceiro');
+            }
+        }
+    }
+
+    // Função auxiliar para converter WKT POLYGON para array de LatLng
+    function convertWktToLeaflet(wkt) {
+        if (!wkt) return null;
+        // Exemplo: POLYGON((-43.8078 -20.6246, -43.7877 -20.6206, ...))
+        const match = wkt.match(/POLYGON\s*\(\((.+?)\)\)/i);
+        if (!match) return null;
+        const coordsStr = match[1];
+        const points = coordsStr.split(',').map(pair => {
+            const [lng, lat] = pair.trim().split(/\s+/).map(Number);
+            return [lat, lng]; // Leaflet usa [lat, lng]
+        });
+        // Remove o último ponto se for igual ao primeiro (fechamento automático)
+        if (points.length > 1 && points[0][0] === points[points.length-1][0] && points[0][1] === points[points.length-1][1]) {
+            points.pop();
+        }
+        return points;
+    }
+
+    // 4. Clique no BBox resumido para mostrar o completo
+    const bboxPreview = document.getElementById('bbox-preview');
+    const bboxWktElement = document.getElementById('bbox-wkt');
+    if (bboxPreview && bboxWktElement) {
+        bboxPreview.addEventListener('click', function() {
+            const full = bboxWktElement.textContent.trim();
+            alert(full);
+        });
+    }
+});
+</script>
 {% endblock %}

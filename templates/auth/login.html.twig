@@ -31,7 +31,7 @@
             </div>
         {% endif %}
 
-        <form action="{{ path('app_login') }}" method="post" class="auth-form">
+        <form action="{{ path('app_login') }}" method="post" class="auth-form" novalidate>
             <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
 
             <div class="auth-field">

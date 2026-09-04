@@ -1,0 +1,53 @@
+{# dashboard/partials/_live.html.twig #}
+<section class="live-section" data-animate>
+    <div class="section-header">
+        <h2 class="section-title">
+            <span class="title-icon">⚡</span>
+            Ao vivo
+        </h2>
+        <span class="live-indicator">
+            <span class="live-dot"></span>
+            Atualizado agora
+        </span>
+    </div>
+
+    <div class="live-grid">
+        <article class="live-card">
+            <div class="live-header"><span>🔔</span><h3>Alertas (24h)</h3></div>
+            <strong class="live-value">{{ hero.alertsLast24h|number_format(0, ',', '.') }}</strong>
+            <span class="live-subtext">Total: {{ hero.alertsTotal }}</span>
+        </article>
+
+        <article class="live-card">
+            <div class="live-header"><span>🚦</span><h3>Jams (24h)</h3></div>
+            <strong class="live-value">{{ hero.jamsLast24h|number_format(0, ',', '.') }}</strong>
+            <span class="live-subtext">Total: {{ hero.jamsTotal }}</span>
+        </article>
+
+        <article class="live-card live-card-highlight">
+            <div class="live-header"><span>🟢</span><h3>Jams ativos (3h)</h3></div>
+            <strong class="live-value">{{ hero.jamsLiveTotal|number_format(0, ',', '.') }}</strong>
+            <span class="live-subtext">
+                {{ hero.jamsLiveMaxLevel > 0 ? hero.jamsLiveMaxLevelLabel : 'Sem jams ativos' }}
+            </span>
+        </article>
+
+        <article class="live-card">
+            <div class="live-header"><span>🛣️</span><h3>Rotas</h3></div>
+            <strong class="live-value">{{ hero.routesMonitored|number_format(0, ',', '.') }}</strong>
+            <span class="live-subtext">{{ hero.monitoredLinks }} links · {{ hero.monitoredCities }} cidades</span>
+        </article>
+
+        <article class="live-card">
+            <div class="live-header"><span>🌧️</span><h3>CEMADEN</h3></div>
+            <strong class="live-value">{{ hero.cemadenReadings|number_format(0, ',', '.') }}</strong>
+            <span class="live-subtext">{{ hero.cemadenCities }} cidade(s)</span>
+        </article>
+
+        <article class="live-card">
+            <div class="live-header"><span>📈</span><h3>Execuções TVT</h3></div>
+            <strong class="live-value">{{ partnerStats.executions|number_format(0, ',', '.') }}</strong>
+            <span class="live-subtext">No período</span>
+        </article>
+    </div>
+</section>

@@ -1,0 +1,9 @@
+{# partials/_navbar_menu.html.twig #}
+<a href="{{ path('dashboard_index') }}" class="nav-link">Dashboard</a>
+
+{% if is_granted('ROLE_ADMIN') or is_granted('ROLE_MANAGER') %}
+    <a href="{{ path('admin_routes_index') }}" class="nav-link">Rotas</a>
+    <a href="{{ path('account_link_index') }}" class="nav-link">Links</a>
+    <a href="{{ path('monitored_city_index') }}" class="nav-link">Cidades</a>
+    {# Adicione outros links administrativos aqui #}
+{% endif %}

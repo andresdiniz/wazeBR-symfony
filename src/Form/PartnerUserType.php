@@ -1,11 +1,11 @@
 <?php
-// src/Form/PartnerUserType.php - ATUALIZADO
 
 namespace App\Form;
 
 use App\Entity\User;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
+use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\PasswordType;
 use Symfony\Component\Form\Extension\Core\Type\RepeatedType;
@@ -21,30 +21,41 @@ class PartnerUserType extends AbstractType
     {
         $builder
             ->add('email', EmailType::class, [
-                'label' => 'Email',
+                'label' => 'E-mail',
                 'attr' => ['placeholder' => 'usuario@empresa.com.br'],
                 'constraints' => [
-                    new NotBlank(['message' => 'Email é obrigatório']),
+                    new NotBlank(['message' => 'E-mail é obrigatório']),
                 ],
             ])
-            ->add('fullName', TextType::class, [
+            ->add('name', TextType::class, [
                 'label' => 'Nome completo',
-                'required' => false,
+                'required' => true,
                 'attr' => ['placeholder' => 'Nome da pessoa'],
             ])
-            ->add('active', CheckboxType::class, [
+            ->add('isActive', CheckboxType::class, [  // ← ALTERADO: active → isActive
                 'label' => 'Usuário ativo',
                 'required' => false,
             ])
+            ->add('roles', ChoiceType::class, [
+                'label' => 'Perfil de acesso',
+                'choices' => [
+                    'Administrador da conta' => 'ROLE_ACCOUNT_ADMIN',
+                    'Agente de via' => 'ROLE_FIELD_AGENT',
+                    'Visualizador' => 'ROLE_USER',
+                ],
+                'multiple' => true,
+                'expanded' => true,
+                'required' => false,
+                'attr' => ['class' => 'form-check-input'],
+            ])
         ;
 
-        // Adicionar campos de senha apenas para criação (novo usuário)
         if ($options['include_password']) {
             $builder->add('plainPassword', RepeatedType::class, [
                 'type' => PasswordType::class,
                 'first_options' => [
                     'label' => 'Senha',
-                    'attr' => ['autocomplete' => 'new-password'],
+                    'attr' => ['autocomplete' => 'new-password', 'class' => 'form-control'],
                     'constraints' => [
                         new NotBlank(['message' => 'Senha é obrigatória']),
                         new Length([
@@ -55,7 +66,7 @@ class PartnerUserType extends AbstractType
                 ],
                 'second_options' => [
                     'label' => 'Confirmar senha',
-                    'attr' => ['autocomplete' => 'new-password'],
+                    'attr' => ['autocomplete' => 'new-password', 'class' => 'form-control'],
                 ],
                 'invalid_message' => 'As senhas não coincidem',
                 'mapped' => false,

@@ -19,9 +19,10 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 /**
  * CRUD de MonitoredLink no painel admin.
  * Rotas base: /admin/links
+ * Acesso: ROLE_ADMIN ou ROLE_ACCOUNT_ADMIN (gestor do parceiro)
  */
 #[Route('/admin/links', name: 'admin_link_')]
-#[IsGranted('ROLE_ADMIN')]
+#[IsGranted('ROLE_ADMIN')] // Fallback global – podemos substituir por lógica no método
 class MonitoredLinkAdminController extends AbstractController
 {
     public function __construct(
@@ -30,17 +31,54 @@ class MonitoredLinkAdminController extends AbstractController
         private readonly EntityManagerInterface  $em,
     ) {}
 
-    /** Lista todos os links agrupados por parceiro */
+    /**
+     * Verifica se o usuário tem acesso ao parceiro (para ROLE_ACCOUNT_ADMIN).
+     * Se o usuário for ROLE_ADMIN, pode ver todos; se for ROLE_ACCOUNT_ADMIN, só vê os do seu parceiro.
+     */
+    private function getUserPartner(): ?Partner
+    {
+        $user = $this->getUser();
+        if (!$user) {
+            return null;
+        }
+
+        // Se for ROLE_ADMIN ou superior, retorna null (pode ver tudo)
+        if ($this->isGranted('ROLE_ADMIN') || $this->isGranted('ROLE_SUPER_ADMIN')) {
+            return null;
+        }
+
+        // Se for ROLE_ACCOUNT_ADMIN, retorna o parceiro do usuário
+        if (method_exists($user, 'getPartner')) {
+            return $user->getPartner();
+        }
+
+        return null;
+    }
+
+    /** Lista todos os links agrupados por parceiro (filtrado por parceiro se ROLE_ACCOUNT_ADMIN) */
     #[Route('', name: 'index', methods: ['GET'])]
     public function index(): Response
     {
-        $links = $this->linkRepo->findAll();
+        $userPartner = $this->getUserPartner();
 
-        $byPartner = [];
-        foreach ($links as $link) {
-            $pid = $link->getPartner()?->getId() ?? 0;
-            $byPartner[$pid]['partner'] = $link->getPartner();
-            $byPartner[$pid]['links'][] = $link;
+        if ($userPartner) {
+            // ROLE_ACCOUNT_ADMIN – vê apenas links do seu parceiro
+            $links = $this->linkRepo->findBy(['partner' => $userPartner]);
+            $byPartner = [];
+            foreach ($links as $link) {
+                $pid = $link->getPartner()?->getId() ?? 0;
+                $byPartner[$pid]['partner'] = $link->getPartner();
+                $byPartner[$pid]['links'][] = $link;
+            }
+        } else {
+            // ROLE_ADMIN ou ROLE_SUPER_ADMIN – vê todos
+            $links = $this->linkRepo->findAll();
+            $byPartner = [];
+            foreach ($links as $link) {
+                $pid = $link->getPartner()?->getId() ?? 0;
+                $byPartner[$pid]['partner'] = $link->getPartner();
+                $byPartner[$pid]['links'][] = $link;
+            }
         }
 
         return $this->render('admin/link/index.html.twig', [
@@ -48,19 +86,34 @@ class MonitoredLinkAdminController extends AbstractController
         ]);
     }
 
-    /** Formulário de criação de link */
+    /** Formulário de criação de link (apenas ROLE_ADMIN pode criar para qualquer parceiro, ROLE_ACCOUNT_ADMIN apenas para o seu) */
     #[Route('/new', name: 'new', methods: ['GET', 'POST'])]
     public function new(Request $request): Response
     {
-        $partners = $this->partnerRepo->findActivePartners();
+        $userPartner = $this->getUserPartner();
+        $partners = [];
+
+        if ($userPartner) {
+            // ROLE_ACCOUNT_ADMIN – só pode criar link para seu próprio parceiro
+            $partners = [$userPartner];
+        } else {
+            // ROLE_ADMIN – pode criar para qualquer parceiro
+            $partners = $this->partnerRepo->findActivePartners();
+        }
 
         if ($request->isMethod('POST')) {
             $partnerId = (int) $request->request->get('partner_id');
-            $partner   = $this->partnerRepo->find($partnerId);
+            $partner = $this->partnerRepo->find($partnerId);
 
             if (!$partner) {
                 $this->addFlash('error', 'Parceiro não encontrado.');
                 return $this->redirectToRoute('admin_link_new');
+            }
+
+            // Verifica se o usuário tem permissão para este parceiro
+            if ($userPartner && $partner->getId() !== $userPartner->getId()) {
+                $this->addFlash('error', 'Você não tem permissão para criar links para este parceiro.');
+                return $this->redirectToRoute('admin_link_index');
             }
 
             $linkTypeValue = $request->request->get('link_type', LinkType::WazeFeed->value);
@@ -77,9 +130,8 @@ class MonitoredLinkAdminController extends AbstractController
                 ->setUrl((string) $request->request->get('url'))
                 ->setLinkType($linkType)
                 ->setFeedFormat($feedFormat)
-                ->setIsActive(true);
-
-            $link->setPartner($partner);
+                ->setIsActive(true)
+                ->setPartner($partner);
 
             $this->em->persist($link);
             $this->em->flush();
@@ -97,10 +149,17 @@ class MonitoredLinkAdminController extends AbstractController
         ]);
     }
 
-    /** Editar link */
+    /** Editar link (apenas se tiver permissão) */
     #[Route('/{id}/edit', name: 'edit', methods: ['GET', 'POST'])]
     public function edit(MonitoredLink $link, Request $request): Response
     {
+        $userPartner = $this->getUserPartner();
+        // Se for ROLE_ACCOUNT_ADMIN, verifica se o link pertence ao seu parceiro
+        if ($userPartner && $link->getPartner()?->getId() !== $userPartner->getId()) {
+            $this->addFlash('error', 'Você não tem permissão para editar este link.');
+            return $this->redirectToRoute('admin_link_index');
+        }
+
         if ($request->isMethod('POST')) {
             $linkTypeValue = $request->request->get('link_type', $link->getLinkType()->value);
             $linkType = LinkType::tryFrom($linkTypeValue);
@@ -129,10 +188,16 @@ class MonitoredLinkAdminController extends AbstractController
         ]);
     }
 
-    /** Ativar / desativar */
+    /** Ativar / desativar (com permissão) */
     #[Route('/{id}/toggle', name: 'toggle', methods: ['POST'])]
     public function toggle(MonitoredLink $link): Response
     {
+        $userPartner = $this->getUserPartner();
+        if ($userPartner && $link->getPartner()?->getId() !== $userPartner->getId()) {
+            $this->addFlash('error', 'Você não tem permissão para alterar este link.');
+            return $this->redirectToRoute('admin_link_index');
+        }
+
         $link->setIsActive(!$link->isActive());
         $this->em->flush();
 
@@ -142,10 +207,16 @@ class MonitoredLinkAdminController extends AbstractController
         return $this->redirectToRoute('admin_link_index');
     }
 
-    /** Deletar link */
+    /** Deletar link (com permissão) */
     #[Route('/{id}/delete', name: 'delete', methods: ['POST'])]
     public function delete(MonitoredLink $link, Request $request): Response
     {
+        $userPartner = $this->getUserPartner();
+        if ($userPartner && $link->getPartner()?->getId() !== $userPartner->getId()) {
+            $this->addFlash('error', 'Você não tem permissão para excluir este link.');
+            return $this->redirectToRoute('admin_link_index');
+        }
+
         if (!$this->isCsrfTokenValid('delete_link_' . $link->getId(), $request->request->get('_token'))) {
             $this->addFlash('error', 'Token CSRF inválido.');
             return $this->redirectToRoute('admin_link_index');

@@ -9,7 +9,9 @@
         {% block javascripts %}{% endblock %}
     </head>
     <body class="{% block body_class %}{% endblock %}">
-        {% if app.user %}
+
+        {# ===== NAVBAR ORIGINAL (APENAS FORA DO ADMIN) ===== #}
+        {% if app.user and not app.request.attributes.get('_route') starts with 'admin_' %}
         <nav class="navbar">
             <div class="navbar-brand">
                 <a href="{{ path('dashboard_index') }}" class="brand-link">
@@ -17,16 +19,11 @@
                     <span class="brand-name">wazeBR</span>
                 </a>
             </div>
-            
             <div class="navbar-menu">
                 {% block navbar_menu %}
-                <a href="{{ path('dashboard_index') }}" class="nav-link">Dashboard</a>
-                {% if is_granted('ROLE_ADMIN') or is_granted('ROLE_MANAGER') %}
-                <a href="{{ path('admin_routes_index') }}" class="nav-link">Rotas</a>
-                {% endif %}
+                    {{ include('partials/_navbar_menu.html.twig') }}
                 {% endblock %}
             </div>
-
             {% if app.user %}
             <div class="user-menu">
                 <button class="user-menu-toggle" id="user-menu-toggle">
@@ -37,7 +34,6 @@
                     </svg>
                 </button>
                 <div class="user-menu-dropdown" id="user-menu-dropdown">
-                    <a href="{{ path('app_profile') }}" class="dropdown-item">Perfil</a>
                     <a href="{{ path('app_logout') }}" class="dropdown-item">Sair</a>
                 </div>
             </div>
@@ -52,12 +48,10 @@
         <script>
             const userMenuToggle = document.getElementById('user-menu-toggle');
             const userMenuDropdown = document.getElementById('user-menu-dropdown');
-            
             if (userMenuToggle && userMenuDropdown) {
                 userMenuToggle.addEventListener('click', () => {
                     userMenuDropdown.classList.toggle('show');
                 });
-                
                 document.addEventListener('click', (e) => {
                     if (!userMenuToggle.contains(e.target) && !userMenuDropdown.contains(e.target)) {
                         userMenuDropdown.classList.remove('show');

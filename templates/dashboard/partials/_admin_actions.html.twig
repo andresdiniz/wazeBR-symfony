@@ -1,0 +1,33 @@
+{# dashboard/partials/_admin_actions.html.twig #}
+<section class="admin-actions-section" data-animate>
+    <div class="section-header">
+        <h2 class="section-title">
+            <span class="title-icon">⚡</span>
+            Ações rápidas
+        </h2>
+    </div>
+    <div class="admin-actions-grid">
+        <a href="{{ path('account_link_index') }}" class="admin-action-card">
+            <span class="action-icon">🔗</span>
+            <span class="action-label">Gerenciar Links</span>
+            <span class="action-sub">Feeds Waze, TVT, CEMADEN</span>
+        </a>
+        <a href="{{ path('monitored_city_index') }}" class="admin-action-card">
+            <span class="action-icon">🏙️</span>
+            <span class="action-label">Cidades Monitoradas</span>
+            <span class="action-sub">Adicionar ou remover cidades</span>
+        </a>
+        <a href="{{ path('admin_routes_index') }}" class="admin-action-card">
+            <span class="action-icon">🛣️</span>
+            <span class="action-label">Rotas TVT</span>
+            <span class="action-sub">Gerir rotas de tráfego</span>
+        </a>
+        {% if app.user.partner %}
+        <a href="{{ path('admin_partner_edit', {id: app.user.partner.id}) }}" class="admin-action-card">
+            <span class="action-icon">🏢</span>
+            <span class="action-label">Configurar Parceiro</span>
+            <span class="action-sub">Editar dados do parceiro</span>
+        </a>
+        {% endif %}
+    </div>
+</section>

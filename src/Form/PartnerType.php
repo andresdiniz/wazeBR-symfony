@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Form;
 
 use App\Entity\Partner;
@@ -9,12 +7,9 @@ use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
+use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
-use Symfony\Component\Validator\Constraints\Email;
-use Symfony\Component\Validator\Constraints\Length;
-use Symfony\Component\Validator\Constraints\NotBlank;
-use Symfony\Component\Validator\Constraints\Regex;
 
 class PartnerType extends AbstractType
 {
@@ -22,45 +17,43 @@ class PartnerType extends AbstractType
     {
         $builder
             ->add('name', TextType::class, [
-                'label'       => 'Nome do parceiro',
-                'constraints' => [new NotBlank(), new Length(min: 3, max: 120)],
-                'attr'        => ['placeholder' => 'Ex: Prefeitura de Campinas'],
+                'label' => 'Nome',
+                'required' => true,
+            ])
+            ->add('code', TextType::class, [
+                'label' => 'Código',
+                'required' => false,
             ])
             ->add('slug', TextType::class, [
-                'label'    => 'Slug (identificador único)',
+                'label' => 'Slug',
                 'required' => false,
-                'constraints' => [
-                    new Length(max: 80),
-                    new Regex(['pattern' => '/^[a-z0-9-]*$/', 'message' => 'Use apenas letras minúsculas, números e hífen.']),
-                ],
-                'attr' => ['placeholder' => 'gerado-automaticamente'],
-                'help' => 'Deixe em branco para gerar automaticamente a partir do nome.',
+                'help' => 'Identificador único na URL. Ex: prefeitura-sp',
             ])
             ->add('email', EmailType::class, [
-                'label'       => 'E-mail de contato',
-                'constraints' => [new NotBlank(), new Email()],
-                'attr'        => ['placeholder' => 'contato@parceiro.gov.br'],
-            ])
-            ->add('bbox', TextType::class, [
-                'label'    => 'Bounding Box geográfica',
+                'label' => 'E-mail',
                 'required' => false,
-                'constraints' => [
-                    new Regex([
-                        'pattern' => '/^-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?$/',
-                        'message' => 'Formato: lat_min,lng_min,lat_max,lng_max',
-                    ]),
-                ],
-                'attr' => ['placeholder' => '-23.1,-47.2,-22.8,-46.8'],
-                'help' => 'Coordenadas: lat_min,lng_min,lat_max,lng_max',
             ])
-            ->add('isActive', CheckboxType::class, [
-                'label'    => 'Parceiro ativo',
+            ->add('description', TextareaType::class, [
+                'label' => 'Descrição',
+                'required' => false,
+                'attr' => ['rows' => 3],
+            ])
+            ->add('bbox', TextareaType::class, [
+                'label' => 'BBox (WKT)',
+                'required' => false,
+                'attr' => ['rows' => 2, 'placeholder' => 'POLYGON((-43.8 -20.6, ...))'],
+                'help' => 'Polígono de cobertura no formato WKT.',
+            ])
+            ->add('active', CheckboxType::class, [
+                'label' => 'Ativo',
                 'required' => false,
             ]);
     }
 
     public function configureOptions(OptionsResolver $resolver): void
     {
-        $resolver->setDefaults(['data_class' => Partner::class]);
+        $resolver->setDefaults([
+            'data_class' => Partner::class,
+        ]);
     }
 }

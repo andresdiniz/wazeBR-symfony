@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Esqueci a Senha - wazeBR{% endblock %}
+{% block title %}Esqueci a Senha | wazeBR{% endblock %}
 
 {% block stylesheets %}
     {{ parent() }}
@@ -12,44 +12,41 @@
     {{ importmap('auth') }}
 {% endblock %}
 
+{% block body_class %}auth-page{% endblock %}
+
 {% block body %}
-<div class="auth-container">
+<div class="auth-shell">
     <div class="auth-card">
         <div class="auth-header">
             <h1>Recuperar Senha</h1>
-            <p>Digite seu e-mail para receber as instru\u00e7\u00f5es</p>
+            <p>Digite seu e-mail para receber as instruções</p>
         </div>
 
         {% for flash_error in app.flashes('reset_password_error') %}
-            <div class="alert alert-danger">{{ flash_error }}</div>
+            <div class="auth-alert auth-alert-error" role="alert">{{ flash_error }}</div>
         {% endfor %}
 
         {% for flash_success in app.flashes('reset_password_success') %}
-            <div class="alert alert-success">{{ flash_success }}</div>
+            <div class="auth-alert auth-alert-success" role="alert">{{ flash_success }}</div>
         {% endfor %}
 
-        <form method="post" class="auth-form" novalidate>
-            {{ form_start(requestForm) }}
-                <div class="form-group">
-                    {{ form_label(requestForm.email, 'E-mail') }}
-                    {{ form_widget(requestForm.email, {
-                        'attr': {
-                            'autocomplete': 'email',
-                            'placeholder': 'seu@email.com',
-                            'class': 'form-control'
-                        }
-                    }) }}
-                    {{ form_errors(requestForm.email) }}
-                </div>
+        {{ form_start(requestForm, { 'attr': { 'class': 'auth-form', 'novalidate': 'novalidate' } }) }}
+            {{ form_row(requestForm.email, {
+                'label': 'E-mail',
+                'attr': {
+                    'autocomplete': 'email',
+                    'placeholder': 'seu@email.com',
+                    'class': 'form-control'
+                }
+            }) }}
 
-                <button type="submit" class="btn btn-primary btn-block">
-                    Enviar instru\u00e7\u00f5es
-                </button>
-            {{ form_end(requestForm) }}
-        </form>
+            <button type="submit" class="auth-submit">
+                Enviar instruções
+            </button>
+        {{ form_end(requestForm) }}
 
         <div class="auth-footer">
-            <a href="{{ path('app_login') }}">Voltar ao login</a>
+            <a href="{{ path('app_login') }}">← Voltar ao login</a>
         </div>
     </div>
 </div>

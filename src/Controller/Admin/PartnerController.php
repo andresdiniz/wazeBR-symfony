@@ -76,23 +76,31 @@ class PartnerController extends AbstractController
     }
 
     #[Route('/{id}/editar', name: 'edit', methods: ['GET', 'POST'])]
-    public function edit(Partner $partner, Request $request): Response
-    {
-        $form = $this->createForm(PartnerType::class, $partner);
-        $form->handleRequest($request);
+public function edit(Partner $partner, Request $request): Response
+{
+    $form = $this->createForm(PartnerType::class, $partner);
+    $form->handleRequest($request);
 
-        if ($form->isSubmitted() && $form->isValid()) {
+    if ($form->isSubmitted()) {
+        // Depuração: se o formulário não for válido, adiciona flash com erros
+        if (!$form->isValid()) {
+            $errors = [];
+            foreach ($form->getErrors(true) as $error) {
+                $errors[] = $error->getMessage();
+            }
+            $this->addFlash('error', 'Erro(s) no formulário: ' . implode(', ', $errors));
+        } else {
             $this->em->flush();
             $this->addFlash('success', 'Parceiro atualizado com sucesso.');
-
             return $this->redirectToRoute('admin_partner_show', ['id' => $partner->getId()]);
         }
-
-        return $this->render('admin/partner/edit.html.twig', [
-            'form'    => $form,
-            'partner' => $partner,
-        ]);
     }
+
+    return $this->render('admin/partner/edit.html.twig', [
+        'form'    => $form,
+        'partner' => $partner,
+    ]);
+}
 
     #[Route('/{id}/regenerar-token', name: 'regenerate_token', methods: ['POST'])]
     public function regenerateToken(Partner $partner, Request $request): Response
@@ -134,7 +142,9 @@ class PartnerController extends AbstractController
         $user->setPartner($partner);
         $user->setRoles(['ROLE_ACCOUNT_ADMIN']);
 
-        $form = $this->createForm(PartnerUserType::class, $user);
+        $form = $this->createForm(PartnerUserType::class, $user, [
+            'include_password' => true, // ← ESSENCIAL
+        ]);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {

@@ -1,0 +1,262 @@
+{# dashboard/_partner_stats.html.twig #}
+<section class="stats-section" data-animate>
+    <div class="stats-grid">
+        <a href="{{ path('alert_index') }}" class="stat-card stat-card-clickable">
+            <div class="stat-icon stat-icon-alerts">🔔</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ partnerStats.alerts|number_format(0, ',', '.') }}</div>
+                <div class="stat-label">Alertas</div>
+                <div class="stat-trend">
+                    <span class="trend-icon">📊</span>
+                    <span>Total: {{ hero.alertsTotal }}</span>
+                </div>
+            </div>
+        </a>
+
+        <a href="{{ path('jam_index') }}" class="stat-card stat-card-clickable">
+            <div class="stat-icon stat-icon-jams">🚦</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ partnerStats.jams|number_format(0, ',', '.') }}</div>
+                <div class="stat-label">Congestionamentos</div>
+                <div class="stat-trend">
+                    <span class="trend-icon">📊</span>
+                    <span>Total: {{ hero.jamsTotal }}</span>
+                </div>
+            </div>
+        </a>
+
+        <a href="{{ path('admin_routes_index') }}" class="stat-card stat-card-clickable">
+            <div class="stat-icon stat-icon-routes">🛣️</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ partnerStats.routes|number_format(0, ',', '.') }}</div>
+                <div class="stat-label">Rotas</div>
+                <div class="stat-trend">
+                    <span class="trend-icon">📍</span>
+                    <span>Monitoradas</span>
+                </div>
+            </div>
+        </a>
+
+        <a href="{{ path('account_link_index') }}" class="stat-card stat-card-clickable">
+            <div class="stat-icon stat-icon-links">🔗</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ partnerStats.monitoredLinks|number_format(0, ',', '.') }}</div>
+                <div class="stat-label">Links</div>
+                <div class="stat-trend">
+                    <span class="trend-icon">✓</span>
+                    <span>Monitorados</span>
+                </div>
+            </div>
+        </a>
+
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-irregularities">⚠️</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ partnerStats.irregularities|number_format(0, ',', '.') }}</div>
+                <div class="stat-label">Irregularidades</div>
+                <div class="stat-trend">
+                    <span class="trend-icon">📊</span>
+                    <span>No período</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-cifs">📋</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ partnerStats.cifsEvents|number_format(0, ',', '.') }}</div>
+                <div class="stat-label">Eventos CIFS</div>
+                <div class="stat-trend">
+                    <span class="trend-icon">📊</span>
+                    <span>No período</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="live-section" data-animate>
+    <div class="section-header">
+        <h2 class="section-title">
+            <span class="title-icon">⚡</span>
+            Ao vivo
+        </h2>
+        <span class="live-indicator">
+            <span class="live-dot"></span>
+            Atualizado agora
+        </span>
+    </div>
+
+    <div class="live-grid">
+        <article class="live-card">
+            <div class="live-header"><span>🔔</span><h3>Alertas (24h)</h3></div>
+            <strong class="live-value">{{ hero.alertsLast24h|number_format(0, ',', '.') }}</strong>
+            <span class="live-subtext">Total: {{ hero.alertsTotal }}</span>
+        </article>
+
+        <article class="live-card">
+            <div class="live-header"><span>🚦</span><h3>Jams (24h)</h3></div>
+            <strong class="live-value">{{ hero.jamsLast24h|number_format(0, ',', '.') }}</strong>
+            <span class="live-subtext">Total: {{ hero.jamsTotal }}</span>
+        </article>
+
+        <article class="live-card live-card-highlight">
+            <div class="live-header"><span>🟢</span><h3>Jams ativos (3h)</h3></div>
+            <strong class="live-value">{{ hero.jamsLiveTotal|number_format(0, ',', '.') }}</strong>
+            <span class="live-subtext">
+                {{ hero.jamsLiveMaxLevel > 0 ? hero.jamsLiveMaxLevelLabel : 'Sem jams ativos' }}
+            </span>
+        </article>
+
+        <article class="live-card">
+            <div class="live-header"><span>🛣️</span><h3>Rotas</h3></div>
+            <strong class="live-value">{{ hero.routesMonitored|number_format(0, ',', '.') }}</strong>
+            <span class="live-subtext">{{ hero.monitoredLinks }} links · {{ hero.monitoredCities }} cidades</span>
+        </article>
+
+        <article class="live-card">
+            <div class="live-header"><span>🌧️</span><h3>CEMADEN</h3></div>
+            <strong class="live-value">{{ hero.cemadenReadings|number_format(0, ',', '.') }}</strong>
+            <span class="live-subtext">{{ hero.cemadenCities }} cidade(s)</span>
+        </article>
+
+        <article class="live-card">
+            <div class="live-header"><span>📈</span><h3>Execuções TVT</h3></div>
+            <strong class="live-value">{{ partnerStats.executions|number_format(0, ',', '.') }}</strong>
+            <span class="live-subtext">No período</span>
+        </article>
+    </div>
+</section>
+
+<div class="charts-grid">
+    <section class="chart-section" data-animate>
+        <div class="section-header">
+            <h2 class="section-title"><span class="title-icon">📊</span>Alertas por subtipo</h2>
+            <span class="chart-total">Total: {{ totalAlertsInPeriod }}</span>
+        </div>
+        <div class="chart-container">
+            {% if alertsBySubtype|length > 0 %}
+                <canvas id="alertsChart"></canvas>
+            {% else %}
+                <div class="empty-state"><span class="empty-icon">📊</span><p>Nenhum alerta no período</p></div>
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="chart-section" data-animate>
+        <div class="section-header">
+            <h2 class="section-title"><span class="title-icon">🚦</span>Jams por nível</h2>
+        </div>
+        <div class="chart-container">
+            {% if jamsByLevel|length > 0 %}
+                <canvas id="jamsChart"></canvas>
+            {% else %}
+                <div class="empty-state"><span class="empty-icon">🚦</span><p>Nenhum jam no período</p></div>
+            {% endif %}
+        </div>
+    </section>
+</div>
+
+<section class="top-section" data-animate>
+    <div class="section-header">
+        <h2 class="section-title"><span class="title-icon">🏆</span>Principais ruas com jams</h2>
+    </div>
+
+    {% if topStreets|length > 0 %}
+        <div class="top-grid">
+            {% set maxStreetCount = topStreets[0].count|default(1) %}
+            {% for street in topStreets %}
+                <div class="top-item">
+                    <span class="top-rank">#{{ loop.index }}</span>
+                    <div class="top-content">
+                        <div class="top-name">{{ street.street|default('Não informado') }}</div>
+                        <div class="top-bar">
+                            <span class="top-bar-fill" style="width: {{ ((street.count / maxStreetCount) * 100)|round }}%"></span>
+                        </div>
+                    </div>
+                    <strong class="top-count">{{ street.count }} jams</strong>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state"><span class="empty-icon">🏆</span><p>Nenhum jam no período</p></div>
+    {% endif %}
+</section>
+
+<section class="map-section" data-animate>
+    <div class="section-header">
+        <h2 class="section-title"><span class="title-icon">🗺️</span>Mapa — Jams e alertas</h2>
+    </div>
+    <div class="map-card">
+        <div id="dashboard-map" class="map-container"></div>
+        <div class="map-info">
+            <div class="map-stats">
+                <span class="map-stat"><i class="stat-dot stat-dot-jam"></i>{{ mapJams|length }} jams</span>
+                <span class="map-stat"><i class="stat-dot stat-dot-alert"></i>{{ mapAlerts|length }} alertas</span>
+            </div>
+            {% if mapJamsTruncated or mapAlertsTruncated %}
+                <span class="map-note text-warning">Exibindo os últimos 100 registros</span>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<div class="recent-grid">
+    <section class="recent-section" data-animate>
+        <div class="section-header">
+            <h2 class="section-title"><span class="title-icon">🔔</span>Alertas recentes</h2>
+            <a href="{{ path('alert_index') }}" class="view-all-link">Ver todos <span>→</span></a>
+        </div>
+
+        {% if recentAlerts|length > 0 %}
+            <div class="recent-table-wrapper">
+                <table class="recent-table">
+                    <thead>
+                        <tr><th>Tipo</th><th>Subtipo</th><th>Local</th><th>Hora</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for alert in recentAlerts %}
+                            <tr>
+                                <td><span class="badge badge-primary">{{ alert.type|default('Alerta') }}</span></td>
+                                <td>{{ alert.subType|default('—') }}</td>
+                                <td class="text-truncate">{{ alert.street|default('Não informado') }}</td>
+                                <td>{{ alert.createdAt ? alert.createdAt|date('d/m H:i') : '—' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state"><span class="empty-icon">🔔</span><p>Nenhum alerta recente</p></div>
+        {% endif %}
+    </section>
+
+    <section class="recent-section" data-animate>
+        <div class="section-header">
+            <h2 class="section-title"><span class="title-icon">🚦</span>Lentidões recentes</h2>
+            <a href="{{ path('jam_index') }}" class="view-all-link">Ver todos <span>→</span></a>
+        </div>
+
+        {% if recentJams|length > 0 %}
+            <div class="recent-table-wrapper">
+                <table class="recent-table">
+                    <thead>
+                        <tr><th>Via</th><th>Cidade</th><th>Nível</th><th>Hora</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for jam in recentJams %}
+                            <tr>
+                                <td class="text-truncate">{{ jam.street|default('Não informado') }}</td>
+                                <td>{{ jam.city|default('—') }}</td>
+                                <td><span class="badge badge-warning">Nível {{ jam.level|default(0) }}</span></td>
+                                <td>{{ jam.createdAt ? jam.createdAt|date('d/m H:i') : '—' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state"><span class="empty-icon">🚦</span><p>Nenhuma lentidão recente</p></div>
+        {% endif %}
+    </section>
+</div>

@@ -1,51 +1,349 @@
-* { box-sizing: border-box; }
+/* ============================================================
+   auth.css — Login, Recuperação e Reset (Clean & Professional)
+   ============================================================ */
 
-.auth-page {
-    margin: 0;
-    min-height: 100vh;
-    background: linear-gradient(135deg, #5f74e8 0%, #7650a9 100%);
-    color: #172033;
-    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+:root {
+    --color-primary: #2563eb;
+    --color-primary-dark: #1d4ed8;
+    --color-primary-light: #60a5fa;
+    --color-bg: #f8fafc;
+    --color-card-bg: #ffffff;
+    --color-text: #0f172a;
+    --color-text-muted: #64748b;
+    --color-border: #e2e8f0;
+    --color-error: #dc2626;
+    --color-error-bg: #fef2f2;
+    --color-success: #16a34a;
+    --color-success-bg: #f0fdf4;
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-focus: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    --radius-card: 16px;
+    --radius-input: 8px;
+    --transition: 0.2s ease;
+    --font: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-.auth-page .main-content { min-height: 100vh; }
+* {
+    box-sizing: border-box;
+}
+
+.auth-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: var(--color-bg);
+    font-family: var(--font);
+}
 
 .auth-shell {
-    min-height: 100vh;
-    display: grid;
-    place-items: center;
-    padding: 32px 16px;
+    width: 100%;
+    max-width: 400px;
 }
 
 .auth-card {
-    width: min(100%, 440px);
-    padding: 40px;
-    border: 1px solid rgba(255,255,255,.55);
-    border-radius: 18px;
-    background: rgba(255,255,255,.98);
-    box-shadow: 0 24px 60px rgba(24, 20, 68, .28);
+    background: var(--color-card-bg);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    padding: 2.5rem 2rem;
+    transition: box-shadow 0.3s;
+    border: 1px solid #f1f5f9;
 }
 
-.auth-brand { display: flex; align-items: center; gap: 14px; margin-bottom: 30px; }
-.auth-logo { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: #6378e7; color: #fff; font-size: 30px; font-weight: 800; }
-.auth-brand h1 { margin: 0; color: #6378e7; font-size: 28px; letter-spacing: -.04em; }
-.auth-brand p { margin: 4px 0 0; color: #718096; font-size: 13px; }
-.auth-form { display: grid; gap: 22px; }
-.auth-field { display: grid; gap: 8px; }
-.auth-label-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.auth-field label, .auth-remember { color: #344054; font-size: 14px; font-weight: 600; }
-.auth-label-row a { color: #6378e7; font-size: 12px; text-decoration: none; }
-.auth-label-row a:hover { text-decoration: underline; }
-.auth-field input[type="email"], .auth-password input { width: 100%; height: 48px; padding: 0 14px; border: 1px solid #d7dce5; border-radius: 9px; background: #fff; color: #172033; font-size: 15px; outline: 0; transition: .2s; }
-.auth-field input:focus { border-color: #6378e7; box-shadow: 0 0 0 4px rgba(99,120,231,.14); }
-.auth-password { position: relative; }
-.auth-password input { padding-right: 76px; }
-.auth-password-toggle { position: absolute; top: 50%; right: 10px; transform: translateY(-50%); border: 0; background: transparent; color: #6378e7; cursor: pointer; font-size: 12px; font-weight: 700; }
-.auth-remember { display: flex; align-items: center; gap: 9px; font-weight: 500; }
-.auth-remember input { accent-color: #6378e7; }
-.auth-submit { height: 48px; border: 0; border-radius: 9px; background: #6378e7; color: #fff; cursor: pointer; font-size: 15px; font-weight: 700; transition: .2s; }
-.auth-submit:hover { background: #5267d7; transform: translateY(-1px); }
-.auth-alert { margin-bottom: 20px; padding: 12px 14px; border-radius: 9px; font-size: 14px; }
-.auth-alert-error { border: 1px solid #f5bcbc; background: #fff1f1; color: #a32020; }
+.auth-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
 
-@media (max-width: 480px) { .auth-card { padding: 28px 22px; } }
+/* ---------- Cabeçalho ---------- */
+.auth-header {
+    margin-bottom: 2rem;
+}
+.auth-header h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0 0 0.25rem 0;
+    letter-spacing: -0.01em;
+}
+.auth-header p {
+    color: var(--color-text-muted);
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+/* ---------- Logo (login) ---------- */
+.auth-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+}
+.auth-logo {
+    width: 48px;
+    height: 48px;
+    background: var(--color-primary);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+}
+.auth-brand h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--color-text);
+}
+.auth-brand p {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+}
+
+/* ---------- Alertas ---------- */
+.auth-alert {
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-input);
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid transparent;
+}
+
+.auth-alert-error {
+    background: var(--color-error-bg);
+    color: var(--color-error);
+    border-color: #fecaca;
+}
+
+.auth-alert-success {
+    background: var(--color-success-bg);
+    color: var(--color-success);
+    border-color: #bbf7d0;
+}
+
+.auth-alert::before {
+    font-size: 1.2rem;
+    font-weight: 700;
+    display: inline-block;
+    width: 1.2rem;
+}
+.auth-alert-error::before {
+    content: "✕";
+}
+.auth-alert-success::before {
+    content: "✓";
+}
+
+/* ---------- Formulário ---------- */
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.auth-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.auth-field label {
+    font-weight: 500;
+    font-size: 0.85rem;
+    color: var(--color-text);
+}
+
+.auth-label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.auth-label-row a {
+    font-size: 0.8rem;
+    color: var(--color-primary);
+    text-decoration: none;
+}
+.auth-label-row a:hover {
+    text-decoration: underline;
+}
+
+/* ---------- Inputs ---------- */
+.auth-field input[type="email"],
+.auth-field input[type="password"],
+.auth-field input[type="text"],
+.form-control {
+    width: 100%;
+    padding: 0.7rem 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-input);
+    font-size: 1rem;
+    background: #fff;
+    transition: border-color var(--transition), box-shadow var(--transition);
+    font-family: var(--font);
+}
+
+.auth-field input:focus,
+.form-control:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-focus);
+}
+
+.auth-field input::placeholder,
+.form-control::placeholder {
+    color: #94a3b8;
+}
+
+/* ---------- Toggle de senha ---------- */
+.auth-password {
+    position: relative;
+}
+.auth-password input {
+    padding-right: 4.5rem;
+}
+.auth-password-toggle {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    transition: background 0.2s;
+    font-weight: 500;
+}
+.auth-password-toggle:hover {
+    background: #f1f5f9;
+}
+
+/* ---------- Checkbox ---------- */
+.auth-remember {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--color-text);
+    cursor: pointer;
+}
+.auth-remember input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--color-primary);
+    border-radius: 4px;
+}
+
+/* ---------- Botão ---------- */
+.auth-submit {
+    background: var(--color-primary);
+    border: none;
+    border-radius: var(--radius-input);
+    padding: 0.8rem;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    width: 100%;
+}
+
+.auth-submit:hover {
+    background: var(--color-primary-dark);
+}
+.auth-submit:active {
+    transform: scale(0.97);
+}
+
+/* ---------- Footer ---------- */
+.auth-footer {
+    text-align: center;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--color-border);
+    font-size: 0.9rem;
+}
+.auth-footer a {
+    color: var(--color-primary);
+    text-decoration: none;
+}
+.auth-footer a:hover {
+    text-decoration: underline;
+}
+
+/* ---------- Erros do formulário (Symfony) ---------- */
+.form-errors {
+    color: var(--color-error);
+    font-size: 0.85rem;
+    margin-top: 0.2rem;
+    list-style: none;
+    padding: 0;
+}
+.form-errors li {
+    margin: 0.1rem 0;
+}
+
+/* ---------- Indicador de força da senha ---------- */
+#password-strength {
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: color 0.2s;
+    min-height: 1.5rem;
+}
+
+.password-strength-container {
+    width: 100%;
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 0.15rem;
+}
+
+.password-strength-bar {
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s ease, background 0.3s ease;
+    background: #94a3b8;
+    border-radius: 4px;
+}
+
+/* ---------- Mensagem de confirmação ---------- */
+#confirm-message {
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: color 0.2s;
+    min-height: 1.5rem;
+    color: var(--color-text-muted);
+}
+
+/* ---------- Ajustes para campos de confirmação ---------- */
+.auth-field + .auth-field {
+    margin-top: 0.25rem;
+}
+
+/* ---------- Melhor espaçamento em telas pequenas ---------- */
+@media (max-width: 480px) {
+    .auth-card {
+        padding: 1.75rem 1.25rem;
+    }
+}
+
+/* ---------- Redução de movimento (acessibilidade) ---------- */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+    }
+}

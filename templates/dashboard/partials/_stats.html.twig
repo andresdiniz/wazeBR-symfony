@@ -1,0 +1,76 @@
+{# dashboard/partials/_stats.html.twig #}
+<section class="stats-section" data-animate>
+    <div class="stats-grid">
+        <a href="{{ path('alert_index') }}" class="stat-card stat-card-clickable">
+            <div class="stat-icon stat-icon-alerts">🔔</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ partnerStats.alerts|number_format(0, ',', '.') }}</div>
+                <div class="stat-label">Alertas</div>
+                <div class="stat-trend">
+                    <span class="trend-icon">📊</span>
+                    <span>Total: {{ hero.alertsTotal }}</span>
+                </div>
+            </div>
+        </a>
+
+        <a href="{{ path('jam_index') }}" class="stat-card stat-card-clickable">
+            <div class="stat-icon stat-icon-jams">🚦</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ partnerStats.jams|number_format(0, ',', '.') }}</div>
+                <div class="stat-label">Congestionamentos</div>
+                <div class="stat-trend">
+                    <span class="trend-icon">📊</span>
+                    <span>Total: {{ hero.jamsTotal }}</span>
+                </div>
+            </div>
+        </a>
+
+        <a href="{{ path('admin_routes_index') }}" class="stat-card stat-card-clickable">
+            <div class="stat-icon stat-icon-routes">🛣️</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ partnerStats.routes|number_format(0, ',', '.') }}</div>
+                <div class="stat-label">Rotas</div>
+                <div class="stat-trend">
+                    <span class="trend-icon">📍</span>
+                    <span>Monitoradas</span>
+                </div>
+            </div>
+        </a>
+
+        <a href="{{ path('account_link_index') }}" class="stat-card stat-card-clickable">
+            <div class="stat-icon stat-icon-links">🔗</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ partnerStats.monitoredLinks|number_format(0, ',', '.') }}</div>
+                <div class="stat-label">Links</div>
+                <div class="stat-trend">
+                    <span class="trend-icon">✓</span>
+                    <span>Monitorados</span>
+                </div>
+            </div>
+        </a>
+
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-irregularities">⚠️</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ partnerStats.irregularities|number_format(0, ',', '.') }}</div>
+                <div class="stat-label">Irregularidades</div>
+                <div class="stat-trend">
+                    <span class="trend-icon">📊</span>
+                    <span>No período</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-cifs">📋</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ partnerStats.cifsEvents|number_format(0, ',', '.') }}</div>
+                <div class="stat-label">Eventos CIFS</div>
+                <div class="stat-trend">
+                    <span class="trend-icon">📊</span>
+                    <span>No período</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

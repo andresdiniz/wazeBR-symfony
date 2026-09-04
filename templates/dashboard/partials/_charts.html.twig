@@ -1,0 +1,29 @@
+{# dashboard/partials/_charts.html.twig #}
+<div class="charts-grid">
+    <section class="chart-section" data-animate>
+        <div class="section-header">
+            <h2 class="section-title"><span class="title-icon">📊</span>Alertas por subtipo</h2>
+            <span class="chart-total">Total: {{ totalAlertsInPeriod }}</span>
+        </div>
+        <div class="chart-container">
+            {% if alertsBySubtype|length > 0 %}
+                <canvas id="alertsChart"></canvas>
+            {% else %}
+                <div class="empty-state"><span class="empty-icon">📊</span><p>Nenhum alerta no período</p></div>
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="chart-section" data-animate>
+        <div class="section-header">
+            <h2 class="section-title"><span class="title-icon">🚦</span>Jams por nível</h2>
+        </div>
+        <div class="chart-container">
+            {% if jamsByLevel|length > 0 %}
+                <canvas id="jamsChart"></canvas>
+            {% else %}
+                <div class="empty-state"><span class="empty-icon">🚦</span><p>Nenhum jam no período</p></div>
+            {% endif %}
+        </div>
+    </section>
+</div>

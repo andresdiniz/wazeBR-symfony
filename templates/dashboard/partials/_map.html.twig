@@ -1,0 +1,18 @@
+{# dashboard/partials/_map.html.twig #}
+<section class="map-section" data-animate>
+    <div class="section-header">
+        <h2 class="section-title"><span class="title-icon">🗺️</span>Mapa — Jams e alertas</h2>
+    </div>
+    <div class="map-card">
+        <div id="dashboard-map" class="map-container"></div>
+        <div class="map-info">
+            <div class="map-stats">
+                <span class="map-stat"><i class="stat-dot stat-dot-jam"></i>{{ mapJams|length }} jams</span>
+                <span class="map-stat"><i class="stat-dot stat-dot-alert"></i>{{ mapAlerts|length }} alertas</span>
+            </div>
+            {% if mapJamsTruncated or mapAlertsTruncated %}
+                <span class="map-note text-warning">Exibindo os últimos 100 registros</span>
+            {% endif %}
+        </div>
+    </div>
+</section>

@@ -1,0 +1,60 @@
+{# dashboard/partials/_recent.html.twig #}
+<div class="recent-grid">
+    <section class="recent-section" data-animate>
+        <div class="section-header">
+            <h2 class="section-title"><span class="title-icon">🔔</span>Alertas recentes</h2>
+            <a href="{{ path('alert_index') }}" class="view-all-link">Ver todos <span>→</span></a>
+        </div>
+
+        {% if recentAlerts|length > 0 %}
+            <div class="recent-table-wrapper">
+                <table class="recent-table">
+                    <thead>
+                        <tr><th>Tipo</th><th>Subtipo</th><th>Local</th><th>Hora</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for alert in recentAlerts %}
+                            <tr>
+                                <td><span class="badge badge-primary">{{ alert.type|default('Alerta') }}</span></td>
+                                <td>{{ alert.subType|default('—') }}</td>
+                                <td class="text-truncate">{{ alert.street|default('Não informado') }}</td>
+                                <td>{{ alert.createdAt ? alert.createdAt|date('d/m H:i') : '—' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state"><span class="empty-icon">🔔</span><p>Nenhum alerta recente</p></div>
+        {% endif %}
+    </section>
+
+    <section class="recent-section" data-animate>
+        <div class="section-header">
+            <h2 class="section-title"><span class="title-icon">🚦</span>Lentidões recentes</h2>
+            <a href="{{ path('jam_index') }}" class="view-all-link">Ver todos <span>→</span></a>
+        </div>
+
+        {% if recentJams|length > 0 %}
+            <div class="recent-table-wrapper">
+                <table class="recent-table">
+                    <thead>
+                        <tr><th>Via</th><th>Cidade</th><th>Nível</th><th>Hora</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for jam in recentJams %}
+                            <tr>
+                                <td class="text-truncate">{{ jam.street|default('Não informado') }}</td>
+                                <td>{{ jam.city|default('—') }}</td>
+                                <td><span class="badge badge-warning">Nível {{ jam.level|default(0) }}</span></td>
+                                <td>{{ jam.createdAt ? jam.createdAt|date('d/m H:i') : '—' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state"><span class="empty-icon">🚦</span><p>Nenhuma lentidão recente</p></div>
+        {% endif %}
+    </section>
+</div>
