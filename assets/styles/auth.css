@@ -263,6 +263,11 @@
 .auth-submit:active {
     transform: scale(0.97);
 }
+.auth-submit:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
 
 /* ---------- Footer ---------- */
 .auth-footer {

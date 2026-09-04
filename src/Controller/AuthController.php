@@ -59,26 +59,22 @@ final class AuthController extends AbstractController
             $email = $form->get('email')->getData();
             $user = $this->entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
 
-            if (!$user) {
-                // Não revelar se o e-mail existe ou não por segurança (mas para demonstração mantemos)
-                $this->addFlash('reset_password_error', 'E-mail não encontrado.');
-                return $this->redirectToRoute('app_forgot_password');
+            // Mensagem sempre idêntica, exista ou não o e-mail, para não permitir
+            // que alguém descubra quais e-mails têm conta no sistema (account enumeration).
+            $genericMessage = 'Se este e-mail estiver cadastrado, você receberá as instruções em instantes.';
+
+            if ($user) {
+                try {
+                    $resetToken = $this->resetPasswordHelper->generateResetToken($user);
+                    $this->sendResetEmail($user->getEmail(), $resetToken);
+                } catch (ResetPasswordExceptionInterface|\Exception) {
+                    // Propositalmente silencioso: mesmo em caso de erro (token já gerado
+                    // recentemente, falha de envio, etc.) a resposta ao usuário não muda,
+                    // para manter a mesma proteção contra enumeração de e-mails.
+                }
             }
 
-            try {
-                $resetToken = $this->resetPasswordHelper->generateResetToken($user);
-                $this->sendResetEmail($user->getEmail(), $resetToken);
-                $this->addFlash('reset_password_success', 'Instruções enviadas para seu e-mail.');
-            } catch (ResetPasswordExceptionInterface $e) {
-                $reason = $e->getReason();
-                if (str_contains($reason, 'too many') || str_contains($reason, 'already requested')) {
-                    $this->addFlash('reset_password_error', 'Você já solicitou a redefinição recentemente. Verifique seu e-mail ou aguarde alguns minutos.');
-                } else {
-                    $this->addFlash('reset_password_error', $reason);
-                }
-            } catch (\Exception $e) {
-                $this->addFlash('reset_password_error', 'Erro ao processar a solicitação. Tente novamente mais tarde.');
-            }
+            $this->addFlash('reset_password_success', $genericMessage);
 
             return $this->redirectToRoute('app_forgot_password');
         }

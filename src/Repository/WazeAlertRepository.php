@@ -39,28 +39,16 @@ class WazeAlertRepository extends ServiceEntityRepository
     }
 
     public function findFilteredByPartner(Partner $partner, array $filters = [], int $page = 1, int $limit = 30): array { $base = $this->createQueryBuilder('a'); $this->applyFilters($base, $partner, $filters); $total = (int) (clone $base)->select('COUNT(a.id)')->getQuery()->getSingleScalarResult(); $pages = max(1, (int) ceil($total / $limit)); $page = min(max(1, $page), $pages); $items = $base->orderBy('a.pubMillis', 'DESC')->setFirstResult(($page - 1) * $limit)->setMaxResults($limit)->getQuery()->getResult(); return ['items' => $items, 'total' => $total, 'pages' => $pages]; }
-    /** Contagem total de alertas que o filtro atual retornaria (sem paginação) — usado para avisar quando um export foi truncado pelo teto de segurança. */
     public function countFilteredByPartner(Partner $partner, array $filters = []): int
     {
         $qb = $this->createQueryBuilder('a')->select('COUNT(a.id)');
         $this->applyFilters($qb, $partner, $filters);
-
         return (int) $qb->getQuery()->getSingleScalarResult();
     }
-
-    /**
-     * Iterável para exportação: não hidrata tudo em memória de uma vez
-     * (usa Doctrine::toIterable, que lê em blocos), e aplica um teto de
-     * segurança de $limit linhas — evita travar o processo/memória num
-     * export sem filtro de data num partner com histórico muito grande.
-     *
-     * @return iterable<WazeAlert>
-     */
     public function iterateFilteredByPartnerForExport(Partner $partner, array $filters = [], int $limit = 200000): iterable
     {
         $qb = $this->createQueryBuilder('a');
         $this->applyFilters($qb, $partner, $filters);
-
         return $qb->orderBy('a.pubMillis', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()
@@ -68,22 +56,10 @@ class WazeAlertRepository extends ServiceEntityRepository
     }
     public function findActiveByPartner(Partner $partner, int $minutes = 10): array { return $this->createQueryBuilder('a')->where('a.partner = :partner')->andWhere('a.pubMillis >= :since')->setParameter('partner', $partner)->setParameter('since', (time() - max(1, $minutes) * 60) * 1000)->orderBy('a.pubMillis', 'DESC')->getQuery()->getResult(); }
 
+    // ─── Dashboard methods ─────────────────────────────────────────────────────
+
     /**
-     * Alertas críticos de um parceiro: reliability >= $minReliability,
-     * restritos a uma janela recente (padrão 30 min) para não reprocessar
-     * o histórico inteiro a cada execução do notifications:dispatch —
-     * a deduplicação real fica por conta de NotificationRepository::existsForAlert().
-     *
-     * NOTA: era chamado sem existir aqui, causando BadMethodCallException
-     * em toda execução de notifications:dispatch.
-     *
-     * @return WazeAlert[]
-     */
-    /**
-     * Total de alertas de um parceiro num período (from/to inclusive),
-     * usado pelo DashboardController. NOTA: era chamado sem existir aqui
-     * — mesmo padrão de bug já corrigido em outros repositories.
-     * Espelha WazeTrafficJamRepository::countInPeriod().
+     * Total de alertas num período (usando pubMillis).
      */
     public function countInPeriod(Partner $partner, \DateTimeInterface $from, \DateTimeInterface $to): int
     {
@@ -99,58 +75,26 @@ class WazeAlertRepository extends ServiceEntityRepository
     }
 
     /**
-     * Contagem agrupada por (tipo, subtipo) num período, ordenada do
-     * mais frequente pro menos, limitada a $limit linhas — usada pelo
-     * gráfico "Alertas por tipo" do dashboard.
-     *
-     * NOTA: era chamado sem existir aqui, causando erro fatal
-     * (InvalidMagicMethodCall — o Doctrine tentava interpretar
-     * "countBySubtypeInPeriod" como um magic finder por um campo
-     * chamado "subtypeInPeriod", que não existe) toda vez que um
-     * usuário comum carregava o dashboard.
-     *
-     * @return array<int, array{type: string, subtype: ?string, total: int}>
+     * Contagem agrupada por subtipo num período (gráfico).
      */
     public function countBySubtypeInPeriod(Partner $partner, \DateTimeInterface $from, \DateTimeInterface $to, int $limit = 10): array
     {
         return $this->createQueryBuilder('a')
-            ->select('a.type AS type, a.subtype AS subtype, COUNT(a.id) AS total')
+            ->select('a.subType AS label, COUNT(a.id) AS count')
             ->where('a.partner = :partner')
             ->andWhere('a.pubMillis BETWEEN :from AND :to')
             ->setParameter('partner', $partner)
             ->setParameter('from', $from->getTimestamp() * 1000)
             ->setParameter('to', $to->getTimestamp() * 1000)
-            ->groupBy('a.type, a.subtype')
-            ->orderBy('total', 'DESC')
+            ->groupBy('a.subType')
+            ->orderBy('count', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()
             ->getArrayResult();
     }
 
-    public function findCriticalByPartner(Partner $partner, int $minReliability = 8, int $windowMinutes = 30): array
-    {
-        $since = (time() - max(1, $windowMinutes) * 60) * 1000;
-
-        return $this->createQueryBuilder('a')
-            ->where('a.partner = :partner')
-            ->andWhere('a.reliability >= :minReliability')
-            ->andWhere('a.pubMillis >= :since')
-            ->setParameter('partner', $partner)
-            ->setParameter('minReliability', $minReliability)
-            ->setParameter('since', $since)
-            ->orderBy('a.pubMillis', 'DESC')
-            ->getQuery()
-            ->getResult();
-    }
-
     /**
-     * Últimos $limit alertas de um parceiro, sem filtro de janela de tempo
-     * — usado no feed "ao vivo" do LiveSummaryController.
-     *
-     * NOTA: era chamado sem existir aqui, causando erro fatal em
-     * GET /api/live-summary.
-     *
-     * @return WazeAlert[]
+     * Últimos N alertas de um parceiro.
      */
     public function findRecentByPartner(Partner $partner, int $limit = 30): array
     {
@@ -164,32 +108,53 @@ class WazeAlertRepository extends ServiceEntityRepository
     }
 
     /**
-     * Alias de countLastHoursByPartner($partner, 1) — usado pelos KPIs do
-     * LiveSummaryController. NOTA: era chamado sem existir aqui.
+     * Alertas para o mapa com filtros.
      */
-    public function countLast1hByPartner(Partner $partner): int
+    public function findForMapFiltered(Partner $partner, array $filters = [], int $limit = 500): array
     {
-        return $this->countLastHoursByPartner($partner, 1);
+        $qb = $this->createQueryBuilder('a')
+            ->select('a.id, a.type, a.subtype, a.street, a.city, a.latitude, a.longitude, a.confidence, a.nThumbsUp, a.pubMillis')
+            ->andWhere('a.latitude IS NOT NULL')
+            ->andWhere('a.longitude IS NOT NULL')
+            ->orderBy('a.pubMillis', 'DESC')
+            ->setMaxResults($limit);
+        $this->applyFilters($qb, $partner, $filters);
+        return $qb->getQuery()->getArrayResult();
     }
 
     /**
-     * Alias de countLastHoursByPartner($partner, 24) — usado pelos KPIs do
-     * LiveSummaryController. NOTA: era chamado sem existir aqui.
+     * Total de alertas de um parceiro (todos os tempos).
      */
-    public function countLast24hByPartner(Partner $partner): int
+    public function countByPartner(Partner $partner): int
     {
-        return $this->countLastHoursByPartner($partner, 24);
+        return (int) $this->createQueryBuilder('a')
+            ->select('COUNT(a.id)')
+            ->where('a.partner = :partner')
+            ->setParameter('partner', $partner)
+            ->getQuery()
+            ->getSingleScalarResult();
     }
-    public function findOneByPartner(int $id, Partner $partner): ?WazeAlert { return $this->createQueryBuilder('a')->where('a.id = :id')->andWhere('a.partner = :partner')->setParameter('id', $id)->setParameter('partner', $partner)->getQuery()->getOneOrNullResult(); }
 
-    /**
-     * Contagem de alertas publicados nas últimas $hours horas — usado para
-     * detectar anomalias (comparando o volume da última hora com a média).
-     */
+    // ─── Existing methods (mantidos) ──────────────────────────────────────────
+
+    public function findCriticalByPartner(Partner $partner, int $minReliability = 8, int $windowMinutes = 30): array
+    {
+        $since = (time() - max(1, $windowMinutes) * 60) * 1000;
+        return $this->createQueryBuilder('a')
+            ->where('a.partner = :partner')
+            ->andWhere('a.reliability >= :minReliability')
+            ->andWhere('a.pubMillis >= :since')
+            ->setParameter('partner', $partner)
+            ->setParameter('minReliability', $minReliability)
+            ->setParameter('since', $since)
+            ->orderBy('a.pubMillis', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
     public function countLastHoursByPartner(Partner $partner, int $hours): int
     {
         $since = (time() - max(1, $hours) * 3600) * 1000;
-
         return (int) $this->createQueryBuilder('a')
             ->select('COUNT(a.id)')
             ->where('a.partner = :partner')
@@ -199,6 +164,12 @@ class WazeAlertRepository extends ServiceEntityRepository
             ->getQuery()
             ->getSingleScalarResult();
     }
+
+    public function countLast1hByPartner(Partner $partner): int { return $this->countLastHoursByPartner($partner, 1); }
+    public function countLast24hByPartner(Partner $partner): int { return $this->countLastHoursByPartner($partner, 24); }
+
+    public function findOneByPartner(int $id, Partner $partner): ?WazeAlert { return $this->createQueryBuilder('a')->where('a.id = :id')->andWhere('a.partner = :partner')->setParameter('id', $id)->setParameter('partner', $partner)->getQuery()->getOneOrNullResult(); }
+
     public function findDistinctTypes(Partner $partner): array { return array_column($this->createQueryBuilder('a')->select('DISTINCT a.type AS type')->where('a.partner = :partner')->setParameter('partner', $partner)->orderBy('a.type')->getQuery()->getArrayResult(), 'type'); }
     public function findDistinctSubtypes(Partner $partner, ?string $type = null): array { $qb = $this->createQueryBuilder('a')->select('DISTINCT a.subtype AS subtype')->where('a.partner = :partner')->andWhere('a.subtype IS NOT NULL')->setParameter('partner', $partner)->orderBy('a.subtype'); if ($type) $qb->andWhere('a.type = :type')->setParameter('type', $type); return array_column($qb->getQuery()->getArrayResult(), 'subtype'); }
     public function findDistinctCities(Partner $partner): array { return array_column($this->createQueryBuilder('a')->select('DISTINCT a.city AS city')->where('a.partner = :partner')->andWhere('a.city IS NOT NULL')->setParameter('partner', $partner)->orderBy('a.city')->getQuery()->getArrayResult(), 'city'); }
@@ -210,39 +181,17 @@ class WazeAlertRepository extends ServiceEntityRepository
     public function countByWeekdayFiltered(Partner $partner, array $filters = []): array { $qb = $this->createQueryBuilder('a')->select('a.pubMillis AS ts, COUNT(a.id) AS total')->groupBy('a.pubMillis'); $this->applyFilters($qb, $partner, $filters); $out = array_fill(1, 7, 0); $tz = new \DateTimeZone('America/Sao_Paulo'); foreach ($qb->getQuery()->getArrayResult() as $r) { $w = (int) (new \DateTimeImmutable('@' . intdiv((int) $r['ts'], 1000)))->setTimezone($tz)->format('w'); $out[$w === 0 ? 1 : $w + 1] += (int) $r['total']; } return $out; }
     public function topStreetsFiltered(Partner $partner, array $filters = [], int $limit = 10): array { $qb = $this->createQueryBuilder('a')->select('a.street AS street, a.city AS city, COUNT(a.id) AS total')->andWhere('a.street IS NOT NULL')->groupBy('a.street, a.city')->orderBy('total', 'DESC')->setMaxResults($limit); $this->applyFilters($qb, $partner, $filters); return $qb->getQuery()->getArrayResult(); }
     public function findHotspotsFiltered(Partner $partner, array $filters = [], int $limit = 15): array { $qb = $this->createQueryBuilder('a')->select('a.latitude AS lat, a.longitude AS lng, COUNT(a.id) AS total', 'MAX(a.street) AS street', 'MAX(a.city) AS city')->andWhere('a.latitude IS NOT NULL')->andWhere('a.longitude IS NOT NULL')->groupBy('a.latitude, a.longitude')->orderBy('total', 'DESC')->setMaxResults($limit); $this->applyFilters($qb, $partner, $filters); return $qb->getQuery()->getArrayResult(); }
-    public function findForMapFiltered(Partner $partner, array $filters = [], int $limit = 500): array { $qb = $this->createQueryBuilder('a')->select('a.id, a.type, a.subtype, a.street, a.city, a.latitude, a.longitude, a.confidence, a.nThumbsUp, a.pubMillis')->andWhere('a.latitude IS NOT NULL')->andWhere('a.longitude IS NOT NULL')->orderBy('a.pubMillis', 'DESC')->setMaxResults($limit); $this->applyFilters($qb, $partner, $filters); return $qb->getQuery()->getArrayResult(); }
 
-    /**
-     * ATENÇÃO — SEM FILTRO DE PARCEIRO (diferente de todo o resto deste
-     * repository, que sempre exige Partner). Usado por ApiController::alerts(),
-     * um endpoint legado que nunca foi adaptado para o modelo multi-tenant
-     * (não recebe TenantContext). Isso significa que, hoje, qualquer
-     * usuário autenticado que bater em GET /api/alertas recebe alertas de
-     * TODOS os parceiros misturados — provável vazamento de dado entre
-     * clientes. Implementado aqui só para o endpoint parar de dar erro
-     * fatal (BadMethodCallException); recomendo revisar se ApiController
-     * deveria ser removido ou migrado para usar TenantContext como
-     * LiveSummaryController já faz.
-     *
-     * @return WazeAlert[]
-     */
     public function findFiltered(int $hours, ?string $city, ?string $type, int $limit = 500): array
     {
         $since = (time() - max(1, $hours) * 3600) * 1000;
-
         $qb = $this->createQueryBuilder('a')
             ->where('a.pubMillis >= :since')
             ->setParameter('since', $since)
             ->orderBy('a.pubMillis', 'DESC')
             ->setMaxResults($limit);
-
-        if ($city) {
-            $qb->andWhere('LOWER(a.city) LIKE :city')->setParameter('city', '%' . mb_strtolower($city) . '%');
-        }
-        if ($type) {
-            $qb->andWhere('a.type = :type')->setParameter('type', $type);
-        }
-
+        if ($city) $qb->andWhere('LOWER(a.city) LIKE :city')->setParameter('city', '%' . mb_strtolower($city) . '%');
+        if ($type) $qb->andWhere('a.type = :type')->setParameter('type', $type);
         return $qb->getQuery()->getResult();
     }
 }

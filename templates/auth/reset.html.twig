@@ -26,7 +26,7 @@
             <div class="auth-alert auth-alert-error" role="alert">{{ flash_error }}</div>
         {% endfor %}
 
-        {{ form_start(resetForm, { 'attr': { 'class': 'auth-form', 'novalidate': 'novalidate' } }) }}
+        {{ form_start(resetForm, { 'attr': { 'class': 'auth-form', 'novalidate': 'novalidate', 'data-auth-form': 'true' } }) }}
             <!-- Campo: Nova senha -->
             <div class="auth-field">
                 <label for="{{ resetForm.plainPassword.vars.id }}">Nova senha</label>
@@ -43,7 +43,7 @@
                     <button type="button" class="auth-password-toggle" data-password-toggle
                             aria-label="Mostrar senha" aria-pressed="false">Mostrar</button>
                 </div>
-                <div id="password-strength" style="font-size: 0.85rem; margin-top: 0.3rem; min-height: 1.5rem;"></div>
+                <div id="password-strength" role="status" aria-live="polite" style="font-size: 0.85rem; margin-top: 0.3rem; min-height: 1.5rem;"></div>
                 <div class="password-strength-container" aria-hidden="true">
                     <div class="password-strength-bar" id="strength-bar"></div>
                 </div>
@@ -60,23 +60,19 @@
                             'placeholder': 'Confirme sua nova senha',
                             'class': 'form-control',
                             'data-confirm': 'true',
-                            'onpaste': 'return false',
-                            'oncopy': 'return false',
-                            'oncut': 'return false',
-                            'ondrag': 'return false',
                             'aria-describedby': 'confirm-message'
                         }
                     }) }}
                     <button type="button" class="auth-password-toggle" data-password-toggle
                             aria-label="Mostrar senha" aria-pressed="false">Mostrar</button>
                 </div>
-                <div id="confirm-message" style="font-size: 0.85rem; margin-top: 0.3rem; min-height: 1.5rem;">
+                <div id="confirm-message" role="status" aria-live="polite" style="font-size: 0.85rem; margin-top: 0.3rem; min-height: 1.5rem;">
                     As senhas devem coincidir
                 </div>
                 {{ form_errors(resetForm.confirmPassword) }}
             </div>
 
-            <button type="submit" class="auth-submit">
+            <button type="submit" class="auth-submit" data-submit-button>
                 Redefinir Senha
             </button>
         {{ form_end(resetForm) }}

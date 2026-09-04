@@ -9,7 +9,7 @@
 
 {% block javascripts %}
     {{ parent() }}
-    {{ importmap('auth') }}
+    <script src="{{ asset('controllers/forgot_password.js') }}" defer></script>
 {% endblock %}
 
 {% block body_class %}auth-page{% endblock %}
@@ -27,20 +27,21 @@
         {% endfor %}
 
         {% for flash_success in app.flashes('reset_password_success') %}
-            <div class="auth-alert auth-alert-success" role="alert">{{ flash_success }}</div>
+            <div class="auth-alert auth-alert-success" role="status">{{ flash_success }}</div>
         {% endfor %}
 
-        {{ form_start(requestForm, { 'attr': { 'class': 'auth-form', 'novalidate': 'novalidate' } }) }}
+        {{ form_start(requestForm, { 'attr': { 'class': 'auth-form', 'novalidate': 'novalidate', 'data-auth-form': 'true' } }) }}
             {{ form_row(requestForm.email, {
                 'label': 'E-mail',
                 'attr': {
                     'autocomplete': 'email',
                     'placeholder': 'seu@email.com',
-                    'class': 'form-control'
+                    'class': 'form-control',
+                    'autofocus': 'autofocus'
                 }
             }) }}
 
-            <button type="submit" class="auth-submit">
+            <button type="submit" class="auth-submit" data-submit-button>
                 Enviar instruções
             </button>
         {{ form_end(requestForm) }}

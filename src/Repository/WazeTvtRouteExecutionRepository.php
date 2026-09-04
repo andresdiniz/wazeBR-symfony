@@ -6,6 +6,9 @@ use App\Entity\WazeTvtRouteExecution;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
+/**
+ * @extends ServiceEntityRepository<WazeTvtRouteExecution>
+ */
 class WazeTvtRouteExecutionRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
@@ -28,5 +31,20 @@ class WazeTvtRouteExecutionRepository extends ServiceEntityRepository
         }
 
         return $qb->getQuery()->setParameter('routeId', $routeId)->getResult();
+    }
+
+    /**
+     * Conta execuções de TVT em um período (usa o campo timestamp).
+     */
+    public function countInPeriod(\DateTimeInterface $from, \DateTimeInterface $to): int
+    {
+        return (int) $this->createQueryBuilder('e')
+            ->select('COUNT(e.id)')
+            ->andWhere('e.timestamp >= :from')
+            ->andWhere('e.timestamp <= :to')
+            ->setParameter('from', $from)
+            ->setParameter('to', $to)
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 }

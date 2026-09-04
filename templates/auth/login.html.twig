@@ -15,7 +15,7 @@
 {% block body_class %}auth-page{% endblock %}
 
 {% block body %}
-<main class="auth-shell">
+<div class="auth-shell">
     <section class="auth-card" aria-labelledby="login-title">
         <div class="auth-brand">
             <div class="auth-logo" aria-hidden="true">w</div>
@@ -25,20 +25,24 @@
             </div>
         </div>
 
+        {% for flash_success in app.flashes('reset_password_success') %}
+            <div class="auth-alert auth-alert-success" role="status">{{ flash_success }}</div>
+        {% endfor %}
+
         {% if error %}
             <div class="auth-alert auth-alert-error" role="alert">
                 {{ error.messageKey|trans(error.messageData, 'security') }}
             </div>
         {% endif %}
 
-        <form action="{{ path('app_login') }}" method="post" class="auth-form" novalidate>
+        <form action="{{ path('app_login') }}" method="post" class="auth-form" novalidate data-auth-form>
             <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
 
             <div class="auth-field">
                 <label for="username">E-mail</label>
                 <input id="username" name="_username" type="email"
                        value="{{ last_username }}" autocomplete="username"
-                       required autofocus placeholder="seu@email.com">
+                       required {{ last_username ? '' : 'autofocus' }} placeholder="seu@email.com">
             </div>
 
             <div class="auth-field">
@@ -48,7 +52,8 @@
                 </div>
                 <div class="auth-password">
                     <input id="password" name="_password" type="password"
-                           autocomplete="current-password" required placeholder="Sua senha">
+                           autocomplete="current-password" required placeholder="Sua senha"
+                           {{ last_username ? 'autofocus' : '' }}>
                     <button type="button" class="auth-password-toggle" data-password-toggle
                             aria-label="Mostrar senha" aria-pressed="false">Mostrar</button>
                 </div>
@@ -59,8 +64,8 @@
                 <span>Lembrar-me neste dispositivo</span>
             </label>
 
-            <button class="auth-submit" type="submit">Entrar</button>
+            <button class="auth-submit" type="submit" data-submit-button>Entrar</button>
         </form>
     </section>
-</main>
+</div>
 {% endblock %}
