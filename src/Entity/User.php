@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\UserRepository;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
@@ -86,14 +84,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $lastLoginAt = null;
 
-    #[ORM\OneToMany(targetEntity: Alert::class, mappedBy: 'createdBy', orphanRemoval: true)]
-    private Collection $alerts;
-
     public function __construct()
     {
         $this->roles = [self::ROLE_VIEWER];
         $this->createdAt = new \DateTimeImmutable();
-        $this->alerts = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -305,30 +299,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $this->lastLoginAt = new \DateTimeImmutable();
         $this->updatedAt = new \DateTimeImmutable();
-        return $this;
-    }
-
-    public function getAlerts(): Collection
-    {
-        return $this->alerts;
-    }
-
-    public function addAlert(Alert $alert): static
-    {
-        if (!$this->alerts->contains($alert)) {
-            $this->alerts->add($alert);
-            $alert->setCreatedBy($this);
-        }
-        return $this;
-    }
-
-    public function removeAlert(Alert $alert): static
-    {
-        if ($this->alerts->removeElement($alert)) {
-            if ($alert->getCreatedBy() === $this) {
-                $alert->setCreatedBy(null);
-            }
-        }
         return $this;
     }
 
