@@ -13,7 +13,7 @@
                     <div class="top-content">
                         <div class="top-name">{{ street.street|default('Não informado') }}</div>
                         <div class="top-bar">
-                            <span class="top-bar-fill" style="width: {{ ((street.count / maxStreetCount) * 100)|round }}%"></span>
+                            <span class="top-bar-fill" style="width: {{ maxStreetCount > 0 ? ((street.count / maxStreetCount) * 100)|round : 0 }}%"></span>
                         </div>
                     </div>
                     <strong class="top-count">{{ street.count }} jams</strong>

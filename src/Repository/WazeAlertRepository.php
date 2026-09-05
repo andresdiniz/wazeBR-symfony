@@ -80,13 +80,13 @@ class WazeAlertRepository extends ServiceEntityRepository
     public function countBySubtypeInPeriod(Partner $partner, \DateTimeInterface $from, \DateTimeInterface $to, int $limit = 10): array
     {
         return $this->createQueryBuilder('a')
-            ->select('a.subType AS label, COUNT(a.id) AS count')
+            ->select('a.subtype AS label, COUNT(a.id) AS count')
             ->where('a.partner = :partner')
             ->andWhere('a.pubMillis BETWEEN :from AND :to')
             ->setParameter('partner', $partner)
             ->setParameter('from', $from->getTimestamp() * 1000)
             ->setParameter('to', $to->getTimestamp() * 1000)
-            ->groupBy('a.subType')
+            ->groupBy('a.subtype')
             ->orderBy('count', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()

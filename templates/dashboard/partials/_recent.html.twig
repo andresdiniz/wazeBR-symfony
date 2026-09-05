@@ -16,7 +16,7 @@
                         {% for alert in recentAlerts %}
                             <tr>
                                 <td><span class="badge badge-primary">{{ alert.type|default('Alerta') }}</span></td>
-                                <td>{{ alert.subType|default('—') }}</td>
+                                <td>{{ alert.subtype|default('—') }}</td>
                                 <td class="text-truncate">{{ alert.street|default('Não informado') }}</td>
                                 <td>{{ alert.createdAt ? alert.createdAt|date('d/m H:i') : '—' }}</td>
                             </tr>
