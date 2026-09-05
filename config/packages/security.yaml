@@ -1,4 +1,11 @@
 security:
+    # https://symfony.com/doc/current/security.html#registering-the-user-hierarchy
+    role_hierarchy:
+        ROLE_ADMIN: ROLE_PARTNER_ADMIN
+        ROLE_PARTNER_ADMIN: ROLE_OPERATOR
+        ROLE_OPERATOR: ROLE_VIEWER
+        ROLE_SUPER_ADMIN: ROLE_ADMIN
+
     password_hashers:
         Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
 
@@ -6,7 +13,6 @@ security:
         app_user_provider:
             entity:
                 class: App\Entity\User
-                property: email
 
     firewalls:
         dev:
@@ -18,24 +24,23 @@ security:
             form_login:
                 login_path: app_login
                 check_path: app_login
-                default_target_path: dashboard_index
                 enable_csrf: true
+                default_target_path: app_dashboard
             logout:
                 path: app_logout
                 target: app_login
             remember_me:
                 secret: '%kernel.secret%'
-                lifetime: 604800
-                path: /login
+                lifetime: 604800 # 1 week in seconds
+                path: /
 
     access_control:
-        - { path: ^/$, roles: PUBLIC_ACCESS }
+        - { path: ^/admin, roles: ROLE_ADMIN }
+        - { path: ^/partner, roles: ROLE_PARTNER_ADMIN }
+        - { path: ^/dashboard, roles: ROLE_VIEWER }
         - { path: ^/login, roles: PUBLIC_ACCESS }
-        - { path: ^/forgot-password, roles: PUBLIC_ACCESS }
-        - { path: ^/reset-password, roles: PUBLIC_ACCESS }
-        - { path: ^/dashboard, roles: ROLE_USER }
-        - { path: ^/, roles: ROLE_USER }
+        - { path: ^/$, roles: PUBLIC_ACCESS }
 
-    role_hierarchy:
-        ROLE_ADMIN: [ROLE_MANAGER, ROLE_USER]
-        ROLE_MANAGER: [ROLE_USER]
+    # When authenticating your user, this provider will be used
+    # to load the user. You can configure multiple providers and
+    # then choose which one to use per firewall.
