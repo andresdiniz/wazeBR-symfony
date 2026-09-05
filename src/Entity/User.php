@@ -62,7 +62,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column]
     private ?string $password = null;
 
-    #[ORM\Column(nullable: true)]
+    #[ORM\Column(length: 50, nullable: true)]
     #[Groups(['user:read', 'user:write'])]
     private ?string $phone = null;
 
