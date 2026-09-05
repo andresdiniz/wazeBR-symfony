@@ -14,7 +14,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-#[ORM\Table(name: 'user')]
+#[ORM\Table(name: 'users')]
 #[UniqueEntity(fields: ['email'], message: 'This email is already in use')]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
