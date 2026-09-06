@@ -3,120 +3,202 @@
 {% block title %}Admin Dashboard{% endblock %}
 
 {% block body %}
-<div class="container-fluid p-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Admin Dashboard</h1>
-        <div>
-            <span class="badge bg-primary">ROLE_ADMIN</span>
-        </div>
-    </div>
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+            <div class="position-sticky pt-3">
+                <h6 class="sidebar-heading px-3 mt-3 mb-1 text-muted">
+                    <span>Admin</span>
+                </h6>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ path('admin_dashboard') }}">
+                            <span>📊</span> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ path('admin_routes_index') }}">
+                            <span>🛣️</span> Rotas
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ path('admin_partners_index') }}">
+                            <span>🤝</span> Parceiros
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ path('admin_city_index') }}">
+                            <span>🏙️</span> Cidades
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ path('admin_link_index') }}">
+                            <span>🔗</span> Links
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ path('admin_station_index') }}">
+                            <span>📡</span> Estac̃oes
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ path('admin_settings_index') }}">
+                            <span>⚙️</span> Configuraçı¥es
+                        </a>
+                    </li>
+                </ul>
 
-    <div class="row g-4 mb-4">
-        <div class="col-md-2">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h6 class="card-subtitle text-muted">Traffic Jams (24h)</h6>
-                    <h2 class="card-title mb-0">{{ trafficJamCount }}</h2>
-                </div>
+                <h6 class="sidebar-heading px-3 mt-4 mb-1 text-muted">
+                    <span>Plataforma</span>
+                </h6>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ path('dashboard_index') }}">
+                            <span>📈</span> Dashboard Geral
+                        </a>
+                    </li>
+                </ul>
             </div>
-        </div>
-        <div class="col-md-2">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h6 class="card-subtitle text-muted">Alerts (24h)</h6>
-                    <h2 class="card-title mb-0">{{ alertCount }}</h2>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-2">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h6 class="card-subtitle text-muted">Irregularities</h6>
-                    <h2 class="card-title mb-0">{{ irregularityCount }}</h2>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-2">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h6 class="card-subtitle text-muted">Routes</h6>
-                    <h2 class="card-title mb-0">{{ routeCount }}</h2>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-2">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h6 class="card-subtitle text-muted">Hydro Data (24h)</h6>
-                    <h2 class="card-title mb-0">{{ hydroDataCount }}</h2>
-                </div>
-            </div>
-        </div>
-    </div>
+        </nav>
 
-    <div class="row g-4">
-        <div class="col-md-6">
-            <div class="card shadow-sm">
-                <div class="card-header">
-                    <h5 class="mb-0">Recent Traffic Jams</h5>
-                </div>
-                <div class="card-body">
-                    {% if recentTrafficJams|length > 0 %}
-                        <ul class="list-group list-group-flush">
-                            {% for jam in recentTrafficJams %}
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <strong>{{ jam.streetName|default('Sem rua') }}</strong>
-                                        {% if jam.city %}
-                                            <small class="text-muted">- {{ jam.city }}</small>
-                                        {% endif %}
-                                    </div>
-                                    <span class="badge bg-{{ jam.level >= 4 ? 'danger' : (jam.level >= 2 ? 'warning' : 'success') }}">
-                                        Level {{ jam.level }}
-                                    </span>
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <p class="text-muted mb-0">No recent traffic jams.</p>
-                    {% endif %}
+        <!-- Main content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3">Admin Dashboard</h1>
+                <div>
+                    <span class="badge bg-primary">ROLE_ADMIN</span>
                 </div>
             </div>
-        </div>
 
-        <div class="col-md-6">
-            <div class="card shadow-sm">
-                <div class="card-header">
-                    <h5 class="mb-0">Recent Alerts</h5>
+            <div class="row g-4 mb-4">
+                <div class="col-md-2">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h6 class="card-subtitle text-muted">Traffic Jams (24h)</h6>
+                            <h2 class="card-title mb-0">{{ trafficJamCount }}</h2>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    {% if recentAlerts|length > 0 %}
-                        <ul class="list-group list-group-flush">
-                            {% for alert in recentAlerts %}
-                                <li class="list-group-item">
-                                    <div>
-                                        <strong>{{ alert.subtype|default('Alert') }}</strong>
-                                        {% if alert.streetName %}
-                                            <small class="text-muted">- {{ alert.streetName }}</small>
-                                        {% endif %}
-                                        {% if alert.reportedAt %}
-                                            <br><small class="text-muted">{{ alert.reportedAt|date('d/m/Y H:i') }}</small>
-                                        {% endif %}
-                                    </div>
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <p class="text-muted mb-0">No recent alerts.</p>
-                    {% endif %}
+                <div class="col-md-2">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h6 class="card-subtitle text-muted">Alerts (24h)</h6>
+                            <h2 class="card-title mb-0">{{ alertCount }}</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h6 class="card-subtitle text-muted">Irregularities</h6>
+                            <h2 class="card-title mb-0">{{ irregularityCount }}</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h6 class="card-subtitle text-muted">Routes</h6>
+                            <h2 class="card-title mb-0">{{ routeCount }}</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h6 class="card-subtitle text-muted">Hydro Data (24h)</h6>
+                            <h2 class="card-title mb-0">{{ hydroDataCount }}</h2>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <div class="mt-4">
-        <a href="{{ path('admin_routes_index') }}" class="btn btn-outline-primary">Manage Routes</a>
-        <a href="{{ path('dashboard_index') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="card shadow-sm">
+                        <div class="card-header">
+                            <h5 class="mb-0">Recent Traffic Jams</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if recentTrafficJams|length > 0 %}
+                                <ul class="list-group list-group-flush">
+                                    {% for jam in recentTrafficJams %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <strong>{{ jam.streetName|default('Sem rua') }}</strong>
+                                                {% if jam.city %}
+                                                    <small class="text-muted">- {{ jam.city }}</small>
+                                                {% endif %}
+                                            </div>
+                                            <span class="badge bg-{{ jam.level >= 4 ? 'danger' : (jam.level >= 2 ? 'warning' : 'success') }}">
+                                                Level {{ jam.level }}
+                                            </span>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p class="text-muted mb-0">No recent traffic jams.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card shadow-sm">
+                        <div class="card-header">
+                            <h5 class="mb-0">Recent Alerts</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if recentAlerts|length > 0 %}
+                                <ul class="list-group list-group-flush">
+                                    {% for alert in recentAlerts %}
+                                        <li class="list-group-item">
+                                            <div>
+                                                <strong>{{ alert.subtype|default('Alert') }}</strong>
+                                                {% if alert.streetName %}
+                                                    <small class="text-muted">- {{ alert.streetName }}</small>
+                                                {% endif %}
+                                                {% if alert.reportedAt %}
+                                                    <br><small class="text-muted">{{ alert.reportedAt|date('d/m/Y H:i') }}</small>
+                                                {% endif %}
+                                            </div>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p class="text-muted mb-0">No recent alerts.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
 </div>
+
+<style>
+.sidebar {
+    min-height: 100vh;
+    border-right: 1px solid rgba(0,0,0,.1);
+}
+.sidebar .nav-link {
+    font-weight: 500;
+    color: #333;
+    padding: 0.75rem 1rem;
+}
+.sidebar .nav-link.active {
+    color: #0d6efd;
+    background-color: rgba(13,110,253,.1);
+}
+.sidebar .nav-link:hover {
+    color: #0d6efd;
+    background-color: rgba(0,0,0,.05);
+}
+.sidebar-heading {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05rem;
+}
+</style>
 {% endblock %}
