@@ -73,11 +73,11 @@ class DashboardController extends AbstractController
             ->findBy([], ['createdAt' => 'DESC'], 5);
         
         return $this->render('dashboard/index.html.twig', [
-            'trafficJamCount' => (int) $trafficJamCount[0],
-            'alertCount' => (int) $alertCount[0],
-            'irregularityCount' => (int) $irregularityCount[0],
-            'routeCount' => (int) $routeCount[0],
-            'hydroDataCount' => (int) $hydroDataCount[0],
+            'trafficJamCount' => (int) array_values($trafficJamCount)[0],
+            'alertCount' => (int) array_values($alertCount)[0],
+            'irregularityCount' => (int) array_values($irregularityCount)[0],
+            'routeCount' => (int) array_values($routeCount)[0],
+            'hydroDataCount' => (int) array_values($hydroDataCount)[0],
             'recentTrafficJams' => $recentTrafficJams,
             'recentAlerts' => $recentAlerts,
             'partner' => $partner,
