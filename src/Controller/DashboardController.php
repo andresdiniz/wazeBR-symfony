@@ -102,6 +102,11 @@ class DashboardController extends AbstractController
             'irregularitiesTotal' => (int) $irregularityCount,
             'routesTotal' => (int) $routeCount,
             'hydroDataTotal' => (int) $hydroDataCount,
+            'jamsLast24h' => (int) $trafficJamCount,
+            'alertsLast24h' => (int) $alertCount,
+            'irregularitiesLast24h' => (int) $irregularityCount,
+            'routesLast24h' => (int) $routeCount,
+            'hydroDataLast24h' => (int) $hydroDataCount,
         ];
         
         return $this->render('dashboard/index.html.twig', [
