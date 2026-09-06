@@ -25,6 +25,7 @@ class DashboardController extends AbstractController
         
         // Partner-scoped queries
         $partner = $user->getPartner();
+        $partnerLabel = $partner ? $partner->getName() : 'Sem parceiro';
         
         // Waze metrics (last 24 hours)
         $trafficJamCount = $entityManager->getRepository(WazeTrafficJam::class)
@@ -81,6 +82,7 @@ class DashboardController extends AbstractController
             'recentTrafficJams' => $recentTrafficJams,
             'recentAlerts' => $recentAlerts,
             'partner' => $partner,
+            'partnerLabel' => $partnerLabel,
         ]);
     }
 }
