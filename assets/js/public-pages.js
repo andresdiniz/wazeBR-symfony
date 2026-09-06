@@ -1,107 +1,96 @@
 /**
  * wazeBR - Public Pages JavaScript
- * (Login, Register, Reset, Home)
+ * Home, Login, Register, Reset Password
+ * Professional, Modern & Interactive
  */
+
+// ==========================================================================
+// Initialization
+// ==========================================================================
 
 export function initPublicPages() {
   console.log('[wazeBR] Public pages initialized');
   
-  // Initialize all auth forms
   initAuthForms();
-  
-  // Initialize password toggles
   initPasswordToggles();
-  
-  // Initialize form validation
   initFormValidation();
-  
-  // Initialize animations
   initAnimations();
+  initAlerts();
+  initHomeAnimations();
 }
 
-/**
- * Initialize auth form submissions
- */
+// ==========================================================================
+// Form Handling
+// ==========================================================================
+
 function initAuthForms() {
   const forms = document.querySelectorAll('.auth-form');
   
   forms.forEach(form => {
     form.addEventListener('submit', async (e) => {
-      const submitBtn = form.querySelector('.auth-form-submit');
+      const submitBtn = form.querySelector('.auth-submit');
       if (!submitBtn) return;
       
-      // Prevent default if form has data-validate attribute
+      // Only prevent if has data-validate
       if (form.dataset.validate === 'true') {
         e.preventDefault();
         
-        // Validate form
         const isValid = await validateForm(form);
         
         if (isValid) {
-          // Show loading state
           setLoadingState(submitBtn, true);
           
-          // Simulate API call (remove this and use real submission)
+          // Simulate API (remove in production)
           await sleep(1500);
           
-          // Show success
           setLoadingState(submitBtn, false);
-          showToast('Operaçª£o realizada com sucesso!', 'success');
-          
-          // Redirect or submit form
-          // form.submit();
+          showToast('Operação realizada com sucesso!', 'success');
         }
       }
     });
   });
 }
 
-/**
- * Initialize password visibility toggles
- */
+// ==========================================================================
+// Password Toggle
+// ==========================================================================
+
 function initPasswordToggles() {
   const toggles = document.querySelectorAll('.auth-password-toggle');
   
   toggles.forEach(toggle => {
     toggle.addEventListener('click', () => {
-      const input = toggle.closest('.auth-input-wrapper')?.querySelector('.auth-form-input');
+      const wrapper = toggle.closest('.auth-input-wrapper');
+      const input = wrapper?.querySelector('.auth-input');
       if (!input) return;
       
       const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
       input.setAttribute('type', type);
       
-      // Toggle icon
-      const icon = toggle.querySelector('i');
-      if (icon) {
-        icon.className = type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
-      }
+      const icon = toggle.querySelector('i') || toggle;
+      icon.className = type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
       
-      // Focus input
       input.focus();
     });
   });
 }
 
-/**
- * Initialize form validation
- */
+// ==========================================================================
+// Form Validation
+// ==========================================================================
+
 function initFormValidation() {
-  const inputs = document.querySelectorAll('.auth-form-input[data-required]');
+  const inputs = document.querySelectorAll('.auth-input[data-required]');
   
   inputs.forEach(input => {
-    // Real-time validation
-    input.addEventListener('blur', () => {
-      validateInput(input);
-    });
+    input.addEventListener('blur', () => validateInput(input));
     
     input.addEventListener('input', () => {
-      // Remove error state on input
       if (input.classList.contains('error')) {
         input.classList.remove('error');
         clearError(input);
       }
       
-      // Add success state if valid
       if (input.value.trim() !== '') {
         input.classList.add('success');
       } else {
@@ -111,51 +100,46 @@ function initFormValidation() {
   });
 }
 
-/**
- * Validate single input
- */
 function validateInput(input) {
   const value = input.value.trim();
   const type = input.type;
   const name = input.name;
   
-  // Clear previous states
   input.classList.remove('error', 'success');
   clearError(input);
   
-  // Required validation
+  // Required
   if (input.dataset.required === 'true' && value === '') {
-    showError(input, 'Este campo é obrigatá¡£io');
+    showError(input, 'Este campo é obrigatório');
     return false;
   }
   
-  // Email validation
+  // Email
   if (type === 'email' && value !== '') {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(value)) {
-      showError(input, 'Digite um email vá­lido');
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!regex.test(value)) {
+      showError(input, 'Digite um email válido');
       return false;
     }
   }
   
-  // Password validation
+  // Password
   if (type === 'password' && value !== '') {
     if (value.length < 6) {
-      showError(input, 'A senha deve ter pelo menos 6 caracteres');
+      showError(input, 'Mínimo de 6 caracteres');
       return false;
     }
   }
   
-  // Confirm password validation
+  // Confirm Password
   if (name === 'confirm_password' && value !== '') {
     const password = document.querySelector('input[name="password"]');
     if (password && value !== password.value) {
-      showError(input, 'As senhas nã££o coincidem');
+      showError(input, 'As senhas não coincidem');
       return false;
     }
   }
   
-  // Success
   if (value !== '') {
     input.classList.add('success');
   }
@@ -163,11 +147,8 @@ function validateInput(input) {
   return true;
 }
 
-/**
- * Validate entire form
- */
 async function validateForm(form) {
-  const inputs = form.querySelectorAll('.auth-form-input');
+  const inputs = form.querySelectorAll('.auth-input');
   let isValid = true;
   
   inputs.forEach(input => {
@@ -179,40 +160,37 @@ async function validateForm(form) {
   return isValid;
 }
 
-/**
- * Show error message
- */
+// ==========================================================================
+// Error Handling
+// ==========================================================================
+
 function showError(input, message) {
   input.classList.add('error');
   
   const errorDiv = document.createElement('div');
-  errorDiv.className = 'auth-form-error';
+  errorDiv.className = 'auth-input-error';
   errorDiv.style.cssText = `
-    color: var(--color-danger);
-    font-size: var(--font-size-xs);
-    margin-top: var(--spacing-1);
-    animation: slideDown 0.2s ease;
+    color: #ef4444;
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+    animation: slideDown 0.3s ease;
   `;
-  errorDiv.textContent = message;
+  errorDiv.innerHTML = `<i class="bi bi-exclamation-circle"></i> ${message}`;
   
   const wrapper = input.closest('.auth-input-wrapper') || input.parentElement;
-  wrapper.appendChild(errorDiv);
+  wrapper?.appendChild(errorDiv);
 }
 
-/**
- * Clear error message
- */
 function clearError(input) {
-  const errorDiv = input.closest('.auth-input-wrapper')?.querySelector('.auth-form-error') ||
-                   input.parentElement?.querySelector('.auth-form-error');
-  if (errorDiv) {
-    errorDiv.remove();
-  }
+  const errorDiv = input.closest('.auth-input-wrapper')?.querySelector('.auth-input-error') ||
+                   input.parentElement?.querySelector('.auth-input-error');
+  errorDiv?.remove();
 }
 
-/**
- * Set loading state on button
- */
+// ==========================================================================
+// Loading States
+// ==========================================================================
+
 function setLoadingState(button, loading) {
   if (loading) {
     button.classList.add('loading');
@@ -223,28 +201,35 @@ function setLoadingState(button, loading) {
   }
 }
 
-/**
- * Show toast notification
- */
+// ==========================================================================
+// Toast Notifications
+// ==========================================================================
+
 function showToast(message, type = 'info') {
   const toast = document.createElement('div');
   toast.className = `auth-toast auth-toast-${type}`;
   toast.style.cssText = `
     position: fixed;
-    top: var(--spacing-4);
-    right: var(--spacing-4);
-    padding: var(--spacing-3) var(--spacing-4);
-    background: var(--color-${type === 'success' ? 'success-bg' : (type === 'error' ? 'danger-bg' : 'info-bg')});
-    color: var(--color-${type === 'success' ? 'success-dark' : (type === 'error' ? 'danger-dark' : 'info-dark')});
-    border-left: 4px solid var(--color-${type});
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-lg);
+    top: 1.5rem;
+    right: 1.5rem;
+    padding: 1rem 1.5rem;
+    background: ${type === 'success' ? '#f0fdf4' : (type === 'error' ? '#fef2f2' : '#eff6ff')};
+    color: ${type === 'success' ? '#166534' : (type === 'error' ? '#991b1b' : '#1e40af')};
+    border-left: 4px solid ${type === 'success' ? '#22c55e' : (type === 'error' ? '#ef4444' : '#2563eb')};
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
     z-index: 9999;
     animation: slideIn 0.3s ease;
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-medium);
+    font-size: 0.95rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
   `;
-  toast.textContent = message;
+  toast.innerHTML = `
+    <i class="bi bi-${type === 'success' ? 'check-circle' : (type === 'error' ? 'exclamation-circle' : 'info-circle')}"></i>
+    ${message}
+  `;
   
   document.body.appendChild(toast);
   
@@ -254,11 +239,12 @@ function showToast(message, type = 'info') {
   }, 3000);
 }
 
-/**
- * Initialize animations
- */
+// ==========================================================================
+// Animations
+// ==========================================================================
+
 function initAnimations() {
-  // Fade in elements on load
+  // Fade in elements
   const elements = document.querySelectorAll('.auth-card, .auth-logo, .auth-title');
   
   elements.forEach((el, index) => {
@@ -266,76 +252,65 @@ function initAnimations() {
     el.style.transform = 'translateY(20px)';
     
     setTimeout(() => {
-      el.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+      el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
       el.style.opacity = '1';
       el.style.transform = 'translateY(0)';
     }, index * 100);
   });
+}
+
+function initHomeAnimations() {
+  // Animate feature cards on scroll
+  const cards = document.querySelectorAll('.home-feature-card');
   
-  // Add animation styles
-  if (!document.getElementById('auth-animations')) {
-    const style = document.createElement('style');
-    style.id = 'auth-animations';
-    style.textContent = `
-      @keyframes slideIn {
-        from {
-          opacity: 0;
-          transform: translateX(100%);
-        }
-        to {
-          opacity: 1;
-          transform: translateX(0);
-        }
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, index) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => {
+          entry.target.style.opacity = '1';
+          entry.target.style.transform = 'translateY(0)';
+        }, index * 100);
       }
-      
-      @keyframes slideOut {
-        from {
-          opacity: 1;
-          transform: translateX(0);
-        }
-        to {
-          opacity: 0;
-          transform: translateX(100%);
-        }
-      }
-      
-      @keyframes slideDown {
-        from {
-          opacity: 0;
-          transform: translateY(-10px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-    `;
-    document.head.appendChild(style);
-  }
+    });
+  }, { threshold: 0.1 });
+  
+  cards.forEach(card => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(30px)';
+    card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+    observer.observe(card);
+  });
 }
 
-/**
- * Sleep helper
- */
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+// ==========================================================================
+// Alerts Auto-Dismiss
+// ==========================================================================
 
-/**
- * Auto-dismiss alerts
- */
 export function initAlerts() {
-  const alerts = document.querySelectorAll('.alert-dismissible');
+  const alerts = document.querySelectorAll('.alert-dismissible, .auth-error, .auth-success');
   
   alerts.forEach(alert => {
     const timeout = parseInt(alert.dataset.timeout) || 5000;
     
     setTimeout(() => {
-      alert.style.transition = 'opacity 0.3s ease';
+      alert.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
       alert.style.opacity = '0';
+      alert.style.transform = 'translateX(100%)';
       setTimeout(() => alert.remove(), 300);
     }, timeout);
   });
 }
+
+// ==========================================================================
+// Utilities
+// ==========================================================================
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ==========================================================================
+// Export
+// ==========================================================================
 
 export default initPublicPages;
