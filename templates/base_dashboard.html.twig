@@ -64,7 +64,7 @@
             border-left: 3px solid #3b82f6;
         }
         
-        /* Header shadow on scroll */
+        /* Header scroll effect */
         .header-scrolled {
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
@@ -165,31 +165,11 @@
                 
                 {# Right side #}
                 <div class="flex items-center space-x-3">
-                    {# Notifications #}
-                    <button class="relative p-2 hover:bg-gray-100 rounded-lg">
-                        <i class="fas fa-bell text-gray-600"></i>
-                        <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                    </button>
-                    
-                    {# User menu #}
-                    <div class="relative" x-data="{ open: false }">
-                        <button class="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-lg">
-                            <div class="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center">
-                                <span class="text-white font-semibold text-xs">{{ app.user ? app.user.email|first|upper : 'U' }}</span>
-                            </div>
-                            <i class="fas fa-chevron-down text-gray-400 text-xs hidden sm:block"></i>
-                        </button>
-                        
-                        {# Dropdown menu #}
-                        <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 hidden">
-                            <a href="{{ path('app_account') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                                <i class="fas fa-user w-5"></i> Minha Conta
-                            </a>
-                            <a href="{{ path('app_logout') }}" class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-50">
-                                <i class="fas fa-sign-out-alt w-5"></i> Sair
-                            </a>
-                        </div>
-                    </div>
+                    {# Logout button #}
+                    <a href="{{ path('app_logout') }}" class="flex items-center space-x-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                        <i class="fas fa-sign-out-alt text-gray-600"></i>
+                        <span class="hidden sm:inline">Sair</span>
+                    </a>
                 </div>
             </div>
         </header>
