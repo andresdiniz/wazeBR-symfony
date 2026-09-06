@@ -48,18 +48,18 @@
                     
                     <form method="POST" class="auth-form" data-validate="true">
                         <div class="auth-form-group">
-                            <label class="auth-label" for="email">Email</label>
+                            <label class="auth-label" for="_username">Email</label>
                             <div class="auth-input-wrapper">
                                 <i class="bi bi-envelope auth-input-icon"></i>
-                                <input type="email" id="email" name="email" class="auth-input with-icon" data-required="true" placeholder="seu@email.com" value="{{ app.user.email|default('') }}" required autofocus>
+                                <input type="email" id="_username" name="_username" class="auth-input with-icon" data-required="true" placeholder="seu@email.com" value="{{ app.user.email|default('') }}" required autofocus>
                             </div>
                         </div>
                         
                         <div class="auth-form-group">
-                            <label class="auth-label" for="password">Senha</label>
+                            <label class="auth-label" for="_password">Senha</label>
                             <div class="auth-input-wrapper">
                                 <i class="bi bi-lock auth-input-icon"></i>
-                                <input type="password" id="password" name="password" class="auth-input with-icon" data-required="true" placeholder="••••••••" required>
+                                <input type="password" id="_password" name="_password" class="auth-input with-icon" data-required="true" placeholder="••••••••" required>
                                 <button type="button" class="auth-password-toggle" title="Mostrar senha">
                                     <i class="bi bi-eye"></i>
                                 </button>
