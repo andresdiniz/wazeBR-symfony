@@ -21,9 +21,9 @@
 {% endblock %}
 
 {% block body %}
-    {% set isSuperAdmin = is_granted('ROLE_SUPER_ADMIN') %}
-    {% set isAdmin = is_granted('ROLE_ADMIN') or is_granted('ROLE_MANAGER') %}
-    {% set showPartnerDashboard = (not isSuperAdmin) or (isSuperAdmin and partnerLabel != 'Sem parceiro') %}
+    {# isSuperAdmin / isAdmin / showPartnerDashboard vêm do DashboardController,
+       calculados a partir do modelo de papéis atual (ROLE_ADMIN/ROLE_PARTNER_ADMIN/
+       ROLE_OPERATOR/ROLE_VIEWER) — ver doc/PRODUCT_RULES.md §3 #}
 
     <div class="dashboard-wrapper">
         {# Cabeçalho comum #}
