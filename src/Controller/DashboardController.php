@@ -124,6 +124,11 @@ class DashboardController extends AbstractController
         $jamsByLevel = [];
         $totalAlertsInPeriod = (int) $alertCount;
         
+        // Top streets and map data
+        $topStreets = [];
+        $mapJams = $recentTrafficJams;
+        $mapAlerts = $recentAlerts;
+        
         return $this->render('dashboard/index.html.twig', [
             'trafficJamCount' => (int) $trafficJamCount,
             'alertCount' => (int) $alertCount,
@@ -141,6 +146,9 @@ class DashboardController extends AbstractController
             'alertsBySubtype' => $alertsBySubtype,
             'jamsByLevel' => $jamsByLevel,
             'totalAlertsInPeriod' => $totalAlertsInPeriod,
+            'topStreets' => $topStreets,
+            'mapJams' => $mapJams,
+            'mapAlerts' => $mapAlerts,
         ]);
     }
 }
