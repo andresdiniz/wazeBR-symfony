@@ -9,12 +9,12 @@
 </head>
 <body>
 {% set current_route = app.request.attributes.get('_route')|default('') %}
-{% set user_email = app.user ? app.user.userIdentifier : 'Usu\u00e1rio' %}
+{% set user_email = app.user ? app.user.userIdentifier : 'Usuário' %}
 {% set is_admin = is_granted('ROLE_ADMIN') %}
 
 <div class="app-shell">
     <div class="overlay" id="sidebar-overlay"></div>
-    <aside class="sidebar" id="sidebar" aria-label="Navega\u00e7\u00e3o principal">
+    <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
         <a class="brand" href="{{ path('dashboard_index') }}">
             <span class="brand-mark">WB</span>
             <span>WazeBR</span>
@@ -22,26 +22,26 @@
         <nav class="navigation">
             <section class="nav-group">
                 <span class="nav-heading">Principal</span>
-                <a class="nav-link {{ current_route in ['dashboard_index', 'app_dashboard'] ? 'is-active' : '' }}" href="{{ path('dashboard_index') }}"><span class="nav-icon">\u25a6</span><span>Dashboard</span></a>
-                <a class="nav-link {{ current_route starts with 'jam_' or current_route starts with 'traffic_jam_' ? 'is-active' : '' }}" href="{{ path('jam_index') }}"><span class="nav-icon">\u25a4</span><span>Congestionamentos</span></a>
-                <a class="nav-link {{ current_route starts with 'alert_' ? 'is-active' : '' }}" href="{{ path('alert_index') }}"><span class="nav-icon">!</span><span>Alertas</span></a>
+                <a class="nav-link {{ current_route in ['dashboard_index', 'app_dashboard'] ? 'is-active' : '' }}" href="{{ path('dashboard_index') }}"><span class="nav-icon" aria-hidden="true">▦</span><span>Dashboard</span></a>
+                <a class="nav-link {{ current_route starts with 'jam_' or current_route starts with 'traffic_jam_' ? 'is-active' : '' }}" href="{{ path('jam_index') }}"><span class="nav-icon" aria-hidden="true">▤</span><span>Congestionamentos</span></a>
+                <a class="nav-link {{ current_route starts with 'alert_' ? 'is-active' : '' }}" href="{{ path('alert_index') }}"><span class="nav-icon" aria-hidden="true">!</span><span>Alertas</span></a>
             </section>
             <section class="nav-group">
                 <span class="nav-heading">Conta</span>
-                <a class="nav-link {{ current_route starts with 'account_settings' ? 'is-active' : '' }}" href="{{ path('account_settings') }}"><span class="nav-icon">\u25cf</span><span>Configura\u00e7\u00f5es</span></a>
-                <a class="nav-link {{ current_route starts with 'account_link' ? 'is-active' : '' }}" href="{{ path('account_link_index') }}"><span class="nav-icon">\u2197</span><span>Meus links</span></a>
-                <a class="nav-link {{ current_route starts with 'account_logs' ? 'is-active' : '' }}" href="{{ path('account_logs') }}"><span class="nav-icon">\u2261</span><span>Logs</span></a>
+                <a class="nav-link {{ current_route starts with 'account_settings' ? 'is-active' : '' }}" href="{{ path('account_settings') }}"><span class="nav-icon" aria-hidden="true">●</span><span>Configurações</span></a>
+                <a class="nav-link {{ current_route starts with 'account_link' ? 'is-active' : '' }}" href="{{ path('account_link_index') }}"><span class="nav-icon" aria-hidden="true">↗</span><span>Meus links</span></a>
+                <a class="nav-link {{ current_route starts with 'account_logs' ? 'is-active' : '' }}" href="{{ path('account_logs') }}"><span class="nav-icon" aria-hidden="true">≡</span><span>Logs</span></a>
             </section>
             {% if is_admin %}
             <section class="nav-group">
-                <span class="nav-heading">Administra\u00e7\u00e3o</span>
-                <a class="nav-link {{ current_route == 'admin_dashboard' ? 'is-active' : '' }}" href="{{ path('admin_dashboard') }}"><span class="nav-icon">\u25c6</span><span>Dashboard admin</span></a>
-                <a class="nav-link {{ current_route starts with 'admin_partner' ? 'is-active' : '' }}" href="{{ path('admin_partner_index') }}"><span class="nav-icon">\u25a3</span><span>Parceiros</span></a>
-                <a class="nav-link {{ current_route starts with 'admin_city' ? 'is-active' : '' }}" href="{{ path('admin_city_index') }}"><span class="nav-icon">\u2302</span><span>Cidades</span></a>
-                <a class="nav-link {{ current_route starts with 'admin_routes' ? 'is-active' : '' }}" href="{{ path('admin_routes_index') }}"><span class="nav-icon">\u219d</span><span>Rotas</span></a>
-                <a class="nav-link {{ current_route starts with 'admin_link' ? 'is-active' : '' }}" href="{{ path('admin_link_index') }}"><span class="nav-icon">\u2197</span><span>Links</span></a>
-                <a class="nav-link {{ current_route starts with 'admin_station' ? 'is-active' : '' }}" href="{{ path('admin_station_index') }}"><span class="nav-icon">\u25cb</span><span>Esta\u00e7\u00f5es</span></a>
-                <a class="nav-link {{ current_route starts with 'admin_settings' ? 'is-active' : '' }}" href="{{ path('admin_settings_index') }}"><span class="nav-icon">\u2699</span><span>Configura\u00e7\u00f5es</span></a>
+                <span class="nav-heading">Administração</span>
+                <a class="nav-link {{ current_route == 'admin_dashboard' ? 'is-active' : '' }}" href="{{ path('admin_dashboard') }}"><span class="nav-icon" aria-hidden="true">◆</span><span>Dashboard admin</span></a>
+                <a class="nav-link {{ current_route starts with 'admin_partner' ? 'is-active' : '' }}" href="{{ path('admin_partner_index') }}"><span class="nav-icon" aria-hidden="true">▣</span><span>Parceiros</span></a>
+                <a class="nav-link {{ current_route starts with 'admin_city' ? 'is-active' : '' }}" href="{{ path('admin_city_index') }}"><span class="nav-icon" aria-hidden="true">⌂</span><span>Cidades</span></a>
+                <a class="nav-link {{ current_route starts with 'admin_routes' ? 'is-active' : '' }}" href="{{ path('admin_routes_index') }}"><span class="nav-icon" aria-hidden="true">↝</span><span>Rotas</span></a>
+                <a class="nav-link {{ current_route starts with 'admin_link' ? 'is-active' : '' }}" href="{{ path('admin_link_index') }}"><span class="nav-icon" aria-hidden="true">↗</span><span>Links</span></a>
+                <a class="nav-link {{ current_route starts with 'admin_station' ? 'is-active' : '' }}" href="{{ path('admin_station_index') }}"><span class="nav-icon" aria-hidden="true">○</span><span>Estações</span></a>
+                <a class="nav-link {{ current_route starts with 'admin_settings' ? 'is-active' : '' }}" href="{{ path('admin_settings_index') }}"><span class="nav-icon" aria-hidden="true">⚙</span><span>Configurações</span></a>
             </section>
             {% endif %}
         </nav>
@@ -49,14 +49,14 @@
             <span class="avatar">{{ user_email|first|upper }}</span>
             <div class="user-details">
                 <p class="user-email">{{ user_email }}</p>
-                <p class="user-role">{{ is_admin ? 'Administrador' : 'Usu\u00e1rio autenticado' }}</p>
+                <p class="user-role">{{ is_admin ? 'Administrador' : 'Usuário autenticado' }}</p>
             </div>
         </div>
     </aside>
     <div class="page">
         <header class="topbar">
             <div class="topbar-left">
-                <button class="menu-button" id="sidebar-toggle" type="button" aria-label="Abrir menu" aria-controls="sidebar" aria-expanded="false">\u2630</button>
+                <button class="menu-button" id="sidebar-toggle" type="button" aria-label="Abrir menu" aria-controls="sidebar" aria-expanded="false">☰</button>
                 <div class="page-heading">
                     <h1>{% block header_title %}Dashboard{% endblock %}</h1>
                     <p>{% block header_subtitle %}Plataforma WazeBR{% endblock %}</p>
@@ -64,7 +64,7 @@
             </div>
             <div class="topbar-actions">
                 <span class="avatar" title="{{ user_email }}">{{ user_email|first|upper }}</span>
-                <a class="logout-button" href="{{ path('app_logout') }}"><span aria-hidden="true">\u21aa</span><span class="logout-label">Sair</span></a>
+                <a class="logout-button" href="{{ path('app_logout') }}"><span aria-hidden="true">↪</span><span class="logout-label">Sair</span></a>
             </div>
         </header>
         <main class="content">
