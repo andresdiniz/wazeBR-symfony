@@ -47,6 +47,8 @@
                     {% endfor %}
                     
                     <form method="POST" class="auth-form" data-validate="true">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+                        
                         <div class="auth-form-group">
                             <label class="auth-label" for="_username">Email</label>
                             <div class="auth-input-wrapper">
