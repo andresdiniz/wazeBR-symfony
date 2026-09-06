@@ -33,7 +33,7 @@ class DashboardController extends AbstractController
             'month' => ['label' => 'Úºltimos 30 dias', 'hours' => 720],
         ];
         
-        $trafficJamCount = $entityManager->getRepository(WazeTrafficJam::class)
+        $trafficJamCount = (int) $entityManager->getRepository(WazeTrafficJam::class)
             ->createQueryBuilder('tj')
             ->select('COUNT(tj.id)')
             ->where('tj.createdAt >= :yesterday')
@@ -41,7 +41,7 @@ class DashboardController extends AbstractController
             ->getQuery()
             ->getSingleScalarResult();
         
-        $alertCount = $entityManager->getRepository(WazeAlert::class)
+        $alertCount = (int) $entityManager->getRepository(WazeAlert::class)
             ->createQueryBuilder('a')
             ->select('COUNT(a.id)')
             ->where('a.createdAt >= :yesterday')
@@ -49,19 +49,19 @@ class DashboardController extends AbstractController
             ->getQuery()
             ->getSingleScalarResult();
         
-        $irregularityCount = $entityManager->getRepository(WazeIrregularity::class)
+        $irregularityCount = (int) $entityManager->getRepository(WazeIrregularity::class)
             ->createQueryBuilder('i')
             ->select('COUNT(i.id)')
             ->getQuery()
             ->getSingleScalarResult();
         
-        $routeCount = $entityManager->getRepository(WazeRoute::class)
+        $routeCount = (int) $entityManager->getRepository(WazeRoute::class)
             ->createQueryBuilder('r')
             ->select('COUNT(r.id)')
             ->getQuery()
             ->getSingleScalarResult();
         
-        $hydroDataCount = $entityManager->getRepository(CemadenHydroData::class)
+        $hydroDataCount = (int) $entityManager->getRepository(CemadenHydroData::class)
             ->createQueryBuilder('hd')
             ->select('COUNT(hd.id)')
             ->where('hd.createdAt >= :yesterday')
@@ -75,7 +75,35 @@ class DashboardController extends AbstractController
         $recentAlerts = $entityManager->getRepository(WazeAlert::class)
             ->findBy([], ['createdAt' => 'DESC'], 5);
         
-        // Map data - serialize to arrays to avoid DateTime conversion error
+        $hero = [
+            'title' => 'Dashboard',
+            'subtitle' => 'VisÃ£o geral da plataforma',
+            'jamsTotal' => $trafficJamCount,
+            'alertsTotal' => $alertCount,
+            'irregularitiesTotal' => $irregularityCount,
+            'routesTotal' => $routeCount,
+            'hydroDataTotal' => $hydroDataCount,
+            'jamsLast24h' => $trafficJamCount,
+            'alertsLast24h' => $alertCount,
+            'irregularitiesLast24h' => $irregularityCount,
+            'routesLast24h' => $routeCount,
+            'hydroDataLast24h' => $hydroDataCount,
+            'jamsLiveTotal' => 0,
+            'jamsLiveMaxLevel' => 0,
+            'jamsLiveMaxLevelLabel' => 'Sem jams ativos',
+            'routesMonitored' => $routeCount,
+            'monitoredLinks' => 0,
+            'monitoredCities' => 0,
+            'cemadenReadings' => $hydroDataCount,
+            'cemadenCities' => 0,
+            'tvtExecutions' => 0,
+        ];
+        
+        $alertsBySubtype = [];
+        $jamsByLevel = [];
+        $totalAlertsInPeriod = $alertCount;
+        $topStreets = [];
+        
         $mapJams = array_map(function($jam) {
             return [
                 'lat' => $jam->getLat(),
@@ -97,14 +125,35 @@ class DashboardController extends AbstractController
             ];
         }, $recentAlerts);
         
+        $mapJamsTruncated = false;
+        $mapAlertsTruncated = false;
+        
+        $isSuperAdmin = true;
+        $isAdmin = true;
+        $showPartnerDashboard = ($partner !== null);
+        
         return $this->render('dashboard/index.html.twig', [
-            'trafficJamCount' => (int) $trafficJamCount,
-            'alertCount' => (int) $alertCount,
+            'trafficJamCount' => $trafficJamCount,
+            'alertCount' => $alertCount,
             'recentTrafficJams' => $recentTrafficJams,
             'recentJams' => $recentTrafficJams,
             'recentAlerts' => $recentAlerts,
+            'partner' => $partner,
+            'partnerLabel' => $partnerLabel,
+            'periods' => $periods,
+            'periodKey' => $periodKey,
+            'hero' => $hero,
+            'alertsBySubtype' => $alertsBySubtype,
+            'jamsByLevel' => $jamsByLevel,
+            'totalAlertsInPeriod' => $totalAlertsInPeriod,
+            'topStreets' => $topStreets,
             'mapJams' => $mapJams,
             'mapAlerts' => $mapAlerts,
+            'mapJamsTruncated' => $mapJamsTruncated,
+            'mapAlertsTruncated' => $mapAlertsTruncated,
+            'isSuperAdmin' => $isSuperAdmin,
+            'isAdmin' => $isAdmin,
+            'showPartnerDashboard' => $showPartnerDashboard,
         ]);
     }
 }
