@@ -9,7 +9,6 @@ use App\Entity\WazeAlert;
 use App\Entity\WazeIrregularity;
 use App\Entity\WazeRoute;
 use App\Entity\CemadenHydroData;
-use App\Entity\CemadenData;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -24,11 +23,9 @@ class DashboardController extends AbstractController
     {
         $user = $this->getUser();
         
-        // Partner-scoped queries
         $partner = $user->getPartner();
         $partnerLabel = $partner ? $partner->getName() : 'Sem parceiro';
         
-        // Periods configuration
         $periodKey = 'today';
         $periods = [
             'today' => ['label' => 'Úºltimas 24 horas', 'hours' => 24],
@@ -36,7 +33,6 @@ class DashboardController extends AbstractController
             'month' => ['label' => 'Úºltimos 30 dias', 'hours' => 720],
         ];
         
-        // Waze metrics (last 24 hours)
         $trafficJamCount = $entityManager->getRepository(WazeTrafficJam::class)
             ->createQueryBuilder('tj')
             ->select('COUNT(tj.id)')
@@ -65,7 +61,6 @@ class DashboardController extends AbstractController
             ->getQuery()
             ->getSingleScalarResult();
         
-        // Cemaden hydro metrics
         $hydroDataCount = $entityManager->getRepository(CemadenHydroData::class)
             ->createQueryBuilder('hd')
             ->select('COUNT(hd.id)')
@@ -74,86 +69,42 @@ class DashboardController extends AbstractController
             ->getQuery()
             ->getSingleScalarResult();
         
-        // Recent traffic jams
         $recentTrafficJams = $entityManager->getRepository(WazeTrafficJam::class)
             ->findBy([], ['createdAt' => 'DESC'], 5);
         
-        // Recent alerts
         $recentAlerts = $entityManager->getRepository(WazeAlert::class)
             ->findBy([], ['createdAt' => 'DESC'], 5);
         
-        // Partner stats
-        $partnerStats = [
-            'jams' => (int) $trafficJamCount,
-            'alerts' => (int) $alertCount,
-            'irregularities' => (int) $irregularityCount,
-            'routes' => (int) $routeCount,
-            'hydroData' => (int) $hydroDataCount,
-            'monitoredLinks' => 0,
-            'cifsEvents' => 0,
-            'executions' => 0,
-        ];
+        // Map data - serialize to arrays to avoid DateTime conversion error
+        $mapJams = array_map(function($jam) {
+            return [
+                'lat' => $jam->getLat(),
+                'lng' => $jam->getLng(),
+                'street' => $jam->getStreetName(),
+                'city' => $jam->getCity(),
+                'level' => $jam->getLevel(),
+                'createdAt' => $jam->getCreatedAt()?->format('Y-m-d H:i:s'),
+            ];
+        }, $recentTrafficJams);
         
-        // Hero configuration
-        $hero = [
-            'title' => 'Dashboard',
-            'subtitle' => 'VisÃ£o geral da plataforma',
-            'jamsTotal' => (int) $trafficJamCount,
-            'alertsTotal' => (int) $alertCount,
-            'irregularitiesTotal' => (int) $irregularityCount,
-            'routesTotal' => (int) $routeCount,
-            'hydroDataTotal' => (int) $hydroDataCount,
-            'jamsLast24h' => (int) $trafficJamCount,
-            'alertsLast24h' => (int) $alertCount,
-            'irregularitiesLast24h' => (int) $irregularityCount,
-            'routesLast24h' => (int) $routeCount,
-            'hydroDataLast24h' => (int) $hydroDataCount,
-            'jamsLiveTotal' => 0,
-            'jamsLiveMaxLevel' => 0,
-            'jamsLiveMaxLevelLabel' => 'Sem jams ativos',
-            'routesMonitored' => (int) $routeCount,
-            'monitoredLinks' => 0,
-            'monitoredCities' => 0,
-            'cemadenReadings' => (int) $hydroDataCount,
-            'cemadenCities' => 0,
-            'tvtExecutions' => 0,
-        ];
-        
-        // Chart data
-        $alertsBySubtype = [];
-        $jamsByLevel = [];
-        $totalAlertsInPeriod = (int) $alertCount;
-        
-        // Top streets and map data
-        $topStreets = [];
-        $mapJams = $recentTrafficJams;
-        $mapAlerts = $recentAlerts;
-        $mapJamsTruncated = false;
-        $mapAlertsTruncated = false;
+        $mapAlerts = array_map(function($alert) {
+            return [
+                'lat' => $alert->getLat(),
+                'lng' => $alert->getLng(),
+                'type' => $alert->getSubtype(),
+                'street' => $alert->getStreetName(),
+                'reportedAt' => $alert->getReportedAt()?->format('Y-m-d H:i:s'),
+            ];
+        }, $recentAlerts);
         
         return $this->render('dashboard/index.html.twig', [
             'trafficJamCount' => (int) $trafficJamCount,
             'alertCount' => (int) $alertCount,
-            'irregularityCount' => (int) $irregularityCount,
-            'routeCount' => (int) $routeCount,
-            'hydroDataCount' => (int) $hydroDataCount,
             'recentTrafficJams' => $recentTrafficJams,
             'recentJams' => $recentTrafficJams,
             'recentAlerts' => $recentAlerts,
-            'partner' => $partner,
-            'partnerLabel' => $partnerLabel,
-            'periods' => $periods,
-            'periodKey' => $periodKey,
-            'partnerStats' => $partnerStats,
-            'hero' => $hero,
-            'alertsBySubtype' => $alertsBySubtype,
-            'jamsByLevel' => $jamsByLevel,
-            'totalAlertsInPeriod' => $totalAlertsInPeriod,
-            'topStreets' => $topStreets,
             'mapJams' => $mapJams,
             'mapAlerts' => $mapAlerts,
-            'mapJamsTruncated' => $mapJamsTruncated,
-            'mapAlertsTruncated' => $mapAlertsTruncated,
         ]);
     }
 }
