@@ -66,7 +66,7 @@
                 <div class="sidebar-section-title">Monitoramento</div>
                 <ul class="sidebar-menu">
                     <li class="sidebar-menu-item {% if 'alert' in app.request.attributes.get('_route') %}active{% endif %}">
-                        <a href="#" class="sidebar-menu-link">
+                        <a href="{{ path('alert_index') }}" class="sidebar-menu-link">
                             <span class="sidebar-menu-icon"><i class="bi bi-exclamation-triangle"></i></span>
                             <span class="sidebar-menu-label">Alertas</span>
                             {% if unread_notifications|default(0) > 0 %}
@@ -74,36 +74,30 @@
                             {% endif %}
                         </a>
                     </li>
-                    <li class="sidebar-menu-item {% if 'traffic' in app.request.attributes.get('_route') %}active{% endif %}">
-                        <a href="#" class="sidebar-menu-link">
+                    <li class="sidebar-menu-item {% if 'jam' in app.request.attributes.get('_route') or 'traffic' in app.request.attributes.get('_route') %}active{% endif %}">
+                        <a href="{{ path('jam_index') }}" class="sidebar-menu-link">
                             <span class="sidebar-menu-icon"><i class="bi bi-sign-merge-right"></i></span>
                             <span class="sidebar-menu-label">Congestionamentos</span>
                         </a>
                     </li>
-                    {% if is_granted('ROLE_ADMIN') or show_hydro|default(false) %}
                     <li class="sidebar-menu-item {% if 'hydro' in app.request.attributes.get('_route') %}active{% endif %}">
-                        <a href="#" class="sidebar-menu-link">
+                        <a href="{{ path('hydro_live') }}" class="sidebar-menu-link">
                             <span class="sidebar-menu-icon"><i class="bi bi-droplet"></i></span>
                             <span class="sidebar-menu-label">Hidrologia</span>
                         </a>
                     </li>
-                    {% endif %}
-                    {% if is_granted('ROLE_ADMIN') or show_cemaden|default(false) %}
                     <li class="sidebar-menu-item {% if 'cemaden' in app.request.attributes.get('_route') %}active{% endif %}">
-                        <a href="#" class="sidebar-menu-link">
+                        <a href="{{ path('app_cemaden_index') }}" class="sidebar-menu-link">
                             <span class="sidebar-menu-icon"><i class="bi bi-cloud-rain"></i></span>
                             <span class="sidebar-menu-label">CEMADEN</span>
                         </a>
                     </li>
-                    {% endif %}
-                    {% if is_granted('ROLE_ADMIN') or show_cifs|default(false) %}
                     <li class="sidebar-menu-item {% if 'cifs' in app.request.attributes.get('_route') %}active{% endif %}">
-                        <a href="#" class="sidebar-menu-link">
+                        <a href="{{ path('cifs_index') }}" class="sidebar-menu-link">
                             <span class="sidebar-menu-icon"><i class="bi bi-calendar-event"></i></span>
                             <span class="sidebar-menu-label">Eventos CIFs</span>
                         </a>
                     </li>
-                    {% endif %}
                 </ul>
             </div>
             
@@ -112,8 +106,8 @@
             <div class="sidebar-section">
                 <div class="sidebar-section-title">Administraçª£o</div>
                 <ul class="sidebar-menu">
-                    <li class="sidebar-menu-item {% if 'admin' in app.request.attributes.get('_route') %}active{% endif %}">
-                        <a href="#" class="sidebar-menu-link">
+                    <li class="sidebar-menu-item {% if 'admin_dashboard' in app.request.attributes.get('_route') %}active{% endif %}">
+                        <a href="{{ path('admin_dashboard') }}" class="sidebar-menu-link">
                             <span class="sidebar-menu-icon"><i class="bi bi-gear"></i></span>
                             <span class="sidebar-menu-label">Admin</span>
                         </a>
@@ -125,14 +119,14 @@
                             <span class="sidebar-menu-icon ms-auto"><i class="bi bi-chevron-right"></i></span>
                         </div>
                         <ul class="sidebar-menu-submenu">
-                            <li><a href="#" class="sidebar-menu-link">Parceiros</a></li>
-                            <li><a href="#" class="sidebar-menu-link">Cidades</a></li>
-                            <li><a href="#" class="sidebar-menu-link">Links</a></li>
-                            <li><a href="#" class="sidebar-menu-link">Estaçµµ</a></li>
+                            <li><a href="{{ path('admin_partner_index') }}" class="sidebar-menu-link">Parceiros</a></li>
+                            <li><a href="{{ path('admin_city_index') }}" class="sidebar-menu-link">Cidades</a></li>
+                            <li><a href="{{ path('admin_link_index') }}" class="sidebar-menu-link">Links</a></li>
+                            <li><a href="{{ path('admin_station_index') }}" class="sidebar-menu-link">Estaçµµ</a></li>
                         </ul>
                     </li>
-                    <li class="sidebar-menu-item">
-                        <a href="#" class="sidebar-menu-link">
+                    <li class="sidebar-menu-item {% if 'admin_routes' in app.request.attributes.get('_route') %}active{% endif %}">
+                        <a href="{{ path('admin_routes_index') }}" class="sidebar-menu-link">
                             <span class="sidebar-menu-icon"><i class="bi bi-map"></i></span>
                             <span class="sidebar-menu-label">Rotas</span>
                         </a>
@@ -154,8 +148,12 @@
                 </div>
             </div>
             <ul class="dropdown-menu dropdown-menu-dark">
-                <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2"></i>Perfil</a></li>
-                <li><a class="dropdown-item" href="#"><i class="bi bi-gear me-2"></i>Configuraçµµ</a></li>
+                <li><a class="dropdown-item" href="{{ path('account_settings') }}"><i class="bi bi-person me-2"></i>Perfil</a></li>
+                <li><a class="dropdown-item" href="{{ path('account_settings') }}"><i class="bi bi-gear me-2"></i>Configuraçµµ</a></li>
+                <li><a class="dropdown-item" href="{{ path('account_logs') }}"><i class="bi bi-journal me-2"></i>Logs</a></li>
+                {% if is_granted('ROLE_ADMIN') %}
+                <li><a class="dropdown-item" href="{{ path('account_user_index') }}"><i class="bi bi-people me-2"></i>Usuá¡£os</a></li>
+                {% endif %}
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item text-danger" href="{{ path('app_logout') }}"><i class="bi bi-box-arrow-right me-2"></i>Sair</a></li>
             </ul>
@@ -210,7 +208,7 @@
                             {% endfor %}
                         </div>
                         <div class="header-dropdown-footer">
-                            <a href="#">Ver todas</a>
+                            <a href="{{ path('notification_index') }}">Ver todas</a>
                         </div>
                     </div>
                 </div>
@@ -227,8 +225,13 @@
                         <i class="bi bi-chevron-down header-profile-arrow d-none d-md-block ms-1"></i>
                     </div>
                     <ul class="dropdown-menu dropdown-menu-end header-profile-dropdown">
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2"></i>Meu Perfil</a></li>
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-gear me-2"></i>Configuraçµµ</a></li>
+                        <li><a class="dropdown-item" href="{{ path('account_settings') }}"><i class="bi bi-person me-2"></i>Meu Perfil</a></li>
+                        <li><a class="dropdown-item" href="{{ path('account_settings') }}"><i class="bi bi-gear me-2"></i>Configuraçµµ</a></li>
+                        <li><a class="dropdown-item" href="{{ path('account_logs') }}"><i class="bi bi-journal me-2"></i>Logs</a></li>
+                        {% if is_granted('ROLE_ADMIN') %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{{ path('account_user_index') }}"><i class="bi bi-people me-2"></i>Usuá¡£os</a></li>
+                        {% endif %}
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item text-danger" href="{{ path('app_logout') }}"><i class="bi bi-box-arrow-right me-2"></i>Sair</a></li>
                     </ul>
