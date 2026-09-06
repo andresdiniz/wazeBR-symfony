@@ -52,8 +52,6 @@ class DashboardController extends AbstractController
         $routeCount = $entityManager->getRepository(WazeRoute::class)
             ->createQueryBuilder('r')
             ->select('COUNT(r.id)')
-            ->where('r.createdAt >= :yesterday')
-            ->setParameter('yesterday', new \DateTimeImmutable('-24 hours'))
             ->getQuery()
             ->getSingleScalarResult();
         
