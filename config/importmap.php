@@ -1,3 +1,5 @@
+<?php
+
 return [
     'chart.js' => [
         'version' => '4.5.1',
@@ -9,5 +11,5 @@ return [
     'reset_password' => [
         'path' => 'assets/controllers/reset_password.js',
         'entrypoint' => true,
-    ]
+    ],
 ];
