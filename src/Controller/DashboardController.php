@@ -46,7 +46,7 @@ class DashboardController extends AbstractController
         $irregularityCount = $entityManager->getRepository(WazeIrregularity::class)
             ->createQueryBuilder('i')
             ->select('COUNT(i.id)')
-            ->where('i.createdAt >= :yesterday')
+            ->where('i.created >= :yesterday')
             ->setParameter('yesterday', new \DateTimeImmutable('-24 hours'))
             ->getQuery()
             ->getSingleScalarResult();
