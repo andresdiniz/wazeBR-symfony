@@ -95,6 +95,11 @@ class DashboardController extends AbstractController
         $hero = [
             'title' => 'Dashboard',
             'subtitle' => 'VisÃ£o geral da plataforma',
+            'trafficJamsTotal' => (int) $trafficJamCount,
+            'alertsTotal' => (int) $alertCount,
+            'irregularitiesTotal' => (int) $irregularityCount,
+            'routesTotal' => (int) $routeCount,
+            'hydroDataTotal' => (int) $hydroDataCount,
         ];
         
         return $this->render('dashboard/index.html.twig', [
