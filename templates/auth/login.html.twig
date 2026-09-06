@@ -4,88 +4,90 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Login{% endblock %} - wazeBR</title>
-
+    
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
+    
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
+    
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-
+    
     <!-- Public Pages CSS -->
     <link rel="stylesheet" href="{{ asset('styles/public-pages.css') }}">
-
+    
     {% block stylesheets %}{% endblock %}
 </head>
 <body>
     {% block body %}
-    <div class="auth-page-wrapper">
+    <div class="auth-wrapper">
         <div class="auth-container">
             <div class="auth-card">
                 <div class="auth-header">
-                    <div class="auth-logo">
-                        <i class="bi bi-speedometer2"></i>
+                    <div class="auth-logo-wrapper">
+                        <div class="auth-logo">
+                            <i class="bi bi-speedometer2"></i>
+                        </div>
                     </div>
                     <h1 class="auth-title">wazeBR</h1>
                     <p class="auth-subtitle">Entre para continuar no monitoramento</p>
                 </div>
-
+                
                 <div class="auth-body">
                     {% for type, messages in app.flashes %}
                     {% for message in messages %}
-                    <div class="alert alert-{{ type }} alert-dismissible fade show auth-alert" role="alert" data-timeout="5000">
+                    <div class="auth-{{ type }}" role="alert" data-timeout="5000">
+                        <i class="bi bi-{{ type == 'success' ? 'check-circle' : 'exclamation-circle' }}"></i>
                         {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
                     {% endfor %}
                     {% endfor %}
-
+                    
                     <form method="POST" class="auth-form" data-validate="true">
                         <div class="auth-form-group">
-                            <label class="auth-form-label" for="email">Email</label>
+                            <label class="auth-label" for="email">Email</label>
                             <div class="auth-input-wrapper">
                                 <i class="bi bi-envelope auth-input-icon"></i>
-                                <input type="email" id="email" name="email" class="auth-form-input with-icon" data-required="true" placeholder="seu@email.com" value="{{ app.user.username|default('') }}" required autofocus>
+                                <input type="email" id="email" name="email" class="auth-input with-icon" data-required="true" placeholder="seu@email.com" value="{{ app.user.email|default('') }}" required autofocus>
                             </div>
                         </div>
-
+                        
                         <div class="auth-form-group">
-                            <label class="auth-form-label" for="password">Senha</label>
+                            <label class="auth-label" for="password">Senha</label>
                             <div class="auth-input-wrapper">
                                 <i class="bi bi-lock auth-input-icon"></i>
-                                <input type="password" id="password" name="password" class="auth-form-input with-icon" data-required="true" placeholder="••••••••" required>
+                                <input type="password" id="password" name="password" class="auth-input with-icon" data-required="true" placeholder="••••••••" required>
                                 <button type="button" class="auth-password-toggle" title="Mostrar senha">
                                     <i class="bi bi-eye"></i>
                                 </button>
                             </div>
                         </div>
-
+                        
                         <div class="auth-form-options">
-                            <div class="auth-form-remember">
-                                <input type="checkbox" id="remember" name="remember">
+                            <div class="auth-remember">
+                                <input type="checkbox" id="remember" name="_remember_me">
                                 <label for="remember">Lembrar-me</label>
                             </div>
-                            <a href="{{ path('app_forgot_password') }}" class="auth-form-forgot">Esqueceu a senha?</a>
+                            <a href="{{ path('app_forgot_password') }}" class="auth-link">Esqueceu a senha?</a>
                         </div>
-
-                        <button type="submit" class="auth-form-submit">
+                        
+                        <button type="submit" class="auth-submit">
                             <i class="bi bi-box-arrow-in-right me-2"></i>
                             Entrar
                         </button>
                     </form>
-
+                    
                     {% if error %}
-                    <div class="alert alert-danger auth-alert">
-                        <i class="bi bi-exclamation-triangle me-2"></i>
+                    <div class="auth-error">
+                        <i class="bi bi-exclamation-triangle"></i>
                         {{ error.messageKey|trans(error.messageData, 'security') }}
                     </div>
                     {% endif %}
                 </div>
-
+                
                 <div class="auth-footer">
                     <p class="auth-footer-text">
                         Ainda não tem conta?
@@ -96,17 +98,17 @@
         </div>
     </div>
     {% endblock %}
-
+    
     <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
+    
     <!-- Public Pages JS -->
     <script type="module">
         import initPublicPages, { initAlerts } from '{{ asset('js/public-pages.js') }}';
         initPublicPages();
         initAlerts();
     </script>
-
+    
     {% block javascripts %}{% endblock %}
 </body>
 </html>
