@@ -1,2 +1,52 @@
-<link rel="stylesheet" href="{{ asset('styles/public-pages.css') }}">
-{{ importmap('app') }}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redefinir senha · wazeBR</title>
+    {{ importmap('app') }}
+    {{ importmap('reset_password') }}
+</head>
+<body>
+    <main class="auth-wrapper">
+        <section class="auth-container" aria-labelledby="reset-password-title">
+            <div class="auth-card">
+                <header class="auth-header">
+                    <div class="auth-logo-wrapper"><div class="auth-logo">W</div></div>
+                    <h1 id="reset-password-title" class="auth-title">Crie uma nova senha</h1>
+                    <p class="auth-subtitle">Use uma senha forte e exclusiva para proteger sua conta.</p>
+                </header>
+                <div class="auth-body">
+                    {{ form_start(resetForm, {'attr': {'class': 'auth-form', 'novalidate': 'novalidate'}}) }}
+                        <div class="auth-form-group">
+                            {{ form_label(resetForm.plainPassword, 'Nova senha', {'label_attr': {'class': 'auth-label'}}) }}
+                            <div class="auth-password auth-input-wrapper">
+                                <span class="auth-input-icon" aria-hidden="true">•</span>
+                                {{ form_widget(resetForm.plainPassword, {'attr': {'class': 'auth-input', 'autocomplete': 'new-password', 'placeholder': 'Digite uma nova senha'}}) }}
+                                <button type="button" class="auth-password-toggle" data-password-toggle aria-label="Mostrar ou ocultar senha" aria-pressed="false">Mostrar</button>
+                            </div>
+                            {{ form_errors(resetForm.plainPassword) }}
+                            <small id="password-strength" class="auth-helper">Força: muito fraca</small>
+                            <div class="password-strength-track" aria-hidden="true"><div id="strength-bar" class="password-strength-bar"></div></div>
+                        </div>
+                        <div class="auth-form-group">
+                            {{ form_label(resetForm.confirmPassword, 'Confirme a nova senha', {'label_attr': {'class': 'auth-label'}}) }}
+                            <div class="auth-password auth-input-wrapper">
+                                <span class="auth-input-icon" aria-hidden="true">•</span>
+                                {{ form_widget(resetForm.confirmPassword, {'attr': {'class': 'auth-input', 'autocomplete': 'new-password', 'placeholder': 'Digite novamente a senha', 'onpaste': 'return false;', 'oncopy': 'return false;', 'oncut': 'return false;'}}) }}
+                                <button type="button" class="auth-password-toggle" data-password-toggle aria-label="Mostrar ou ocultar confirmação de senha" aria-pressed="false">Mostrar</button>
+                            </div>
+                            {{ form_errors(resetForm.confirmPassword) }}
+                            <small id="confirm-message" class="auth-helper">Confirme sua nova senha</small>
+                        </div>
+                        <button type="submit" class="auth-submit">Redefinir senha</button>
+                    {{ form_end(resetForm) }}
+                </div>
+                <footer class="auth-footer">
+                    <p class="auth-footer-text"><a href="{{ path('app_login') }}" class="auth-footer-link">Voltar para o login</a></p>
+                </footer>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

@@ -1,2 +1,44 @@
-<link rel="stylesheet" href="{{ asset('styles/public-pages.css') }}">
-{{ importmap('app') }}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recuperar senha · wazeBR</title>
+    {{ importmap('app') }}
+</head>
+<body>
+    <main class="auth-wrapper">
+        <section class="auth-container" aria-labelledby="forgot-password-title">
+            <div class="auth-card">
+                <header class="auth-header">
+                    <div class="auth-logo-wrapper"><div class="auth-logo">W</div></div>
+                    <h1 id="forgot-password-title" class="auth-title">Recuperar senha</h1>
+                    <p class="auth-subtitle">Informe seu e-mail para receber as instruções de redefinição.</p>
+                </header>
+                <div class="auth-body">
+                    {% for type, messages in app.flashes %}
+                        {% for message in messages %}
+                            <div class="{{ type == 'reset_password_success' ? 'auth-success' : 'auth-error' }}" role="alert" data-timeout="7000">{{ message }}</div>
+                        {% endfor %}
+                    {% endfor %}
+                    {{ form_start(requestForm, {'attr': {'class': 'auth-form', 'novalidate': 'novalidate'}}) }}
+                        <div class="auth-form-group">
+                            {{ form_label(requestForm.email, 'E-mail', {'label_attr': {'class': 'auth-label'}}) }}
+                            <div class="auth-input-wrapper">
+                                <span class="auth-input-icon" aria-hidden="true">@</span>
+                                {{ form_widget(requestForm.email, {'attr': {'class': 'auth-input', 'autocomplete': 'email', 'placeholder': 'seu@email.com', 'autofocus': 'autofocus'}}) }}
+                            </div>
+                            {{ form_errors(requestForm.email) }}
+                            <small class="auth-helper">Por segurança, a confirmação será exibida mesmo que o e-mail não esteja cadastrado.</small>
+                        </div>
+                        <button type="submit" class="auth-submit">Enviar instruções</button>
+                    {{ form_end(requestForm) }}
+                </div>
+                <footer class="auth-footer">
+                    <p class="auth-footer-text"><a href="{{ path('app_login') }}" class="auth-footer-link">Voltar para o login</a></p>
+                </footer>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
