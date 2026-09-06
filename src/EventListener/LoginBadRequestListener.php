@@ -1,39 +1,25 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\EventListener;
 
-use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
+use Symfony\Bundle\SecurityBundle\EventListener\LoginThrottlingListener;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
-use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Security\Http\Exception\BadRequestHttpException;
 
 /**
- * Trata POSTs malformados em /login (campo "email" ausente do corpo da
- * requisição) sem deixar o BadRequestHttpException estourar como página
- * de erro.
- *
- * Isso acontece tipicamente com tráfego de bot/scanner de segurança
- * varrendo formulários de login às cegas (tentando "username" em vez de
- * "email", ou mandando corpo vazio) — não é erro do usuário. O
- * FormLoginAuthenticator do Symfony 7 lança BadRequestHttpException
- * ("The key \"email\" must be a string, \"NULL\" given") quando o campo
- * simplesmente não vem na requisição, antes mesmo de tentar autenticar.
- *
- * Prioridade alta (10) para interceptar antes do listener de erro
- * padrão do Symfony renderizar qualquer página de exceção.
+ * Listener to handle bad login requests and redirect back to login page
  */
-#[AsEventListener(event: KernelEvents::EXCEPTION, priority: 10)]
 class LoginBadRequestListener
 {
     public function __construct(
-        private readonly UrlGeneratorInterface $urlGenerator,
-    ) {}
+        private UrlGeneratorInterface $urlGenerator
+    ) {
+    }
 
-    public function __invoke(ExceptionEvent $event): void
+    public function __invoke(ExceptionEvent $event, string $eventName): void
     {
         $exception = $event->getThrowable();
 
@@ -41,12 +27,21 @@ class LoginBadRequestListener
             return;
         }
 
-        if ($event->getRequest()->getPathInfo() !== '/login') {
+        $request = $event->getRequest();
+
+        // Only handle login requests
+        if ($request->attributes->get('_route') !== 'app_login') {
             return;
         }
 
-        $event->setResponse(new RedirectResponse(
-            $this->urlGenerator->generate('auth_login'),
-        ));
+        // Redirect back to login page with error
+        $response = new RedirectResponse(
+            $this->urlGenerator->generate('app_login'),
+            302
+        );
+
+        $response->getSession()?->set('_security.last_error', $exception->getMessage());
+
+        $event->setResponse($response);
     }
 }
