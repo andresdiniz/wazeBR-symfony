@@ -2,82 +2,140 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}WazeBR{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}wazeBR{% endblock %}</title>
+    <link rel="icon" href="{{ asset('favicon.ico') }}">
     <link rel="stylesheet" href="{{ asset('styles/app.css') }}">
+    <link rel="stylesheet" href="{{ asset('styles/layout.css') }}">
     {% block stylesheets %}{% endblock %}
 </head>
 <body>
-{% set current_route = app.request.attributes.get('_route')|default('') %}
-{% set user_email = app.user ? app.user.userIdentifier : 'Usuário' %}
-{% set is_admin = is_granted('ROLE_ADMIN') %}
+{% if app.user %}
+    <div class="app-shell">
+        <div class="sidebar-overlay" data-sidebar-overlay></div>
 
-<div class="app-shell">
-    <div class="overlay" id="sidebar-overlay"></div>
-    <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
-        <a class="brand" href="{{ path('dashboard_index') }}">
-            <span class="brand-mark">WB</span>
-            <span>WazeBR</span>
-        </a>
-        <nav class="navigation">
-            <section class="nav-group">
-                <span class="nav-heading">Principal</span>
-                <a class="nav-link {{ current_route in ['dashboard_index', 'app_dashboard'] ? 'is-active' : '' }}" href="{{ path('dashboard_index') }}"><span class="nav-icon" aria-hidden="true">▦</span><span>Dashboard</span></a>
-                <a class="nav-link {{ current_route starts with 'jam_' or current_route starts with 'traffic_jam_' ? 'is-active' : '' }}" href="{{ path('jam_index') }}"><span class="nav-icon" aria-hidden="true">▤</span><span>Congestionamentos</span></a>
-                <a class="nav-link {{ current_route starts with 'alert_' ? 'is-active' : '' }}" href="{{ path('alert_index') }}"><span class="nav-icon" aria-hidden="true">!</span><span>Alertas</span></a>
-            </section>
-            <section class="nav-group">
-                <span class="nav-heading">Conta</span>
-                <a class="nav-link {{ current_route starts with 'account_settings' ? 'is-active' : '' }}" href="{{ path('account_settings') }}"><span class="nav-icon" aria-hidden="true">●</span><span>Configurações</span></a>
-                <a class="nav-link {{ current_route starts with 'account_link' ? 'is-active' : '' }}" href="{{ path('account_link_index') }}"><span class="nav-icon" aria-hidden="true">↗</span><span>Meus links</span></a>
-                <a class="nav-link {{ current_route starts with 'account_logs' ? 'is-active' : '' }}" href="{{ path('account_logs') }}"><span class="nav-icon" aria-hidden="true">≡</span><span>Logs</span></a>
-            </section>
-            {% if is_admin %}
-            <section class="nav-group">
-                <span class="nav-heading">Administração</span>
-                <a class="nav-link {{ current_route == 'admin_dashboard' ? 'is-active' : '' }}" href="{{ path('admin_dashboard') }}"><span class="nav-icon" aria-hidden="true">◆</span><span>Dashboard admin</span></a>
-                <a class="nav-link {{ current_route starts with 'admin_partner' ? 'is-active' : '' }}" href="{{ path('admin_partner_index') }}"><span class="nav-icon" aria-hidden="true">▣</span><span>Parceiros</span></a>
-                <a class="nav-link {{ current_route starts with 'admin_city' ? 'is-active' : '' }}" href="{{ path('admin_city_index') }}"><span class="nav-icon" aria-hidden="true">⌂</span><span>Cidades</span></a>
-                <a class="nav-link {{ current_route starts with 'admin_routes' ? 'is-active' : '' }}" href="{{ path('admin_routes_index') }}"><span class="nav-icon" aria-hidden="true">↝</span><span>Rotas</span></a>
-                <a class="nav-link {{ current_route starts with 'admin_link' ? 'is-active' : '' }}" href="{{ path('admin_link_index') }}"><span class="nav-icon" aria-hidden="true">↗</span><span>Links</span></a>
-                <a class="nav-link {{ current_route starts with 'admin_station' ? 'is-active' : '' }}" href="{{ path('admin_station_index') }}"><span class="nav-icon" aria-hidden="true">○</span><span>Estações</span></a>
-                <a class="nav-link {{ current_route starts with 'admin_settings' ? 'is-active' : '' }}" href="{{ path('admin_settings_index') }}"><span class="nav-icon" aria-hidden="true">⚙</span><span>Configurações</span></a>
-            </section>
-            {% endif %}
-        </nav>
-        <div class="user-panel">
-            <span class="avatar">{{ user_email|first|upper }}</span>
-            <div class="user-details">
-                <p class="user-email">{{ user_email }}</p>
-                <p class="user-role">{{ is_admin ? 'Administrador' : 'Usuário autenticado' }}</p>
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="{{ path('dashboard_index') }}" class="sidebar-brand">
+                    <span class="sidebar-brand-mark" aria-hidden="true">⌁</span>
+                    <span class="sidebar-brand-text">wazeBR</span>
+                </a>
+                <button type="button" class="sidebar-toggle" data-sidebar-toggle aria-label="Recolher menu">
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"/>
+                    </svg>
+                </button>
             </div>
-        </div>
-    </aside>
-    <div class="page">
-        <header class="topbar">
-            <div class="topbar-left">
-                <button class="menu-button" id="sidebar-toggle" type="button" aria-label="Abrir menu" aria-controls="sidebar" aria-expanded="false">☰</button>
-                <div class="page-heading">
-                    <h1>{% block header_title %}Dashboard{% endblock %}</h1>
-                    <p>{% block header_subtitle %}Plataforma WazeBR{% endblock %}</p>
+
+            {% if app.user.partner is defined and app.user.partner %}
+                <div class="sidebar-partner">
+                    Parceiro
+                    <strong>{{ app.user.partner.name }}</strong>
+                </div>
+            {% endif %}
+
+            <nav class="sidebar-nav">
+                {{ include('partials/_navbar_menu.html.twig') }}
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="sidebar-user">
+                    <div class="sidebar-user-avatar">{{ app.user.email|first|upper }}</div>
+                    <div class="sidebar-user-info">
+                        <div class="sidebar-user-name">{{ app.user.name ?? app.user.email }}</div>
+                        <div class="sidebar-user-role">
+                            {%- if is_granted('ROLE_ADMIN') -%}Administrador
+                            {%- elseif is_granted('ROLE_PARTNER_ADMIN') -%}Admin do parceiro
+                            {%- elseif is_granted('ROLE_OPERATOR') -%}Operador
+                            {%- else -%}Visualizador
+                            {%- endif -%}
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="topbar-actions">
-                <span class="avatar" title="{{ user_email }}">{{ user_email|first|upper }}</span>
-                <a class="logout-button" href="{{ path('app_logout') }}"><span aria-hidden="true">↪</span><span class="logout-label">Sair</span></a>
-            </div>
-        </header>
-        <main class="content">
-            {% for message in app.flashes('success') %}<div class="flash flash-success">{{ message }}</div>{% endfor %}
-            {% for message in app.flashes('error') %}<div class="flash flash-error">{{ message }}</div>{% endfor %}
-            {% for message in app.flashes('warning') %}<div class="flash flash-warning">{{ message }}</div>{% endfor %}
-            {% block body %}{% endblock %}
-        </main>
-        <footer class="footer">&copy; {{ 'now'|date('Y') }} WazeBR. Todos os direitos reservados.</footer>
-    </div>
-</div>
+        </aside>
 
-<script src="{{ asset('js/app.js') }}"></script>
+        <div class="main-content">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button type="button" class="mobile-sidebar-toggle" data-sidebar-mobile-toggle aria-label="Abrir menu">
+                        <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"/>
+                        </svg>
+                    </button>
+                    <h1 class="header-title">{% block header_title %}{% endblock %}</h1>
+                </div>
+                <div class="topbar-right">
+                    <div class="header-user">
+                        <div class="header-user-avatar">{{ app.user.email|first|upper }}</div>
+                        <span class="header-user-name">{{ app.user.email }}</span>
+                    </div>
+                    <a href="{{ path('app_logout') }}" class="btn btn-secondary">Sair</a>
+                </div>
+            </header>
+
+            {% if app.flashes|length > 0 %}
+                <div class="flash-stack">
+                    {% for label, messages in app.flashes %}
+                        {% for message in messages %}
+                            <div class="flash flash-{{ label }}" role="status">
+                                <span>{{ message }}</span>
+                                <button type="button" class="flash-close" data-flash-close aria-label="Fechar">&times;</button>
+                            </div>
+                        {% endfor %}
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <main class="content-area">
+                {% block body %}{% endblock %}
+            </main>
+
+            <footer class="footer">
+                <span>&copy; {{ "now"|date('Y') }} wazeBR - Monitoramento de tráfego e hidrologia</span>
+                <div class="footer-links">
+                    <a href="#" class="footer-link">Suporte</a>
+                    <a href="#" class="footer-link">Termos</a>
+                    <a href="#" class="footer-link">Privacidade</a>
+                </div>
+            </footer>
+        </div>
+    </div>
+{% else %}
+    {# Visitante sem sessão: layout simples, sem sidebar #}
+    <div class="layout-public">
+        <header class="topbar">
+            <a href="{{ path('app_home') }}" class="sidebar-brand" style="color: var(--text-primary);">
+                <span class="sidebar-brand-mark" aria-hidden="true">⌁</span>
+                <span class="sidebar-brand-text">wazeBR</span>
+            </a>
+            <a href="{{ path('app_login') }}" class="btn btn-primary">Entrar</a>
+        </header>
+
+        {% if app.flashes|length > 0 %}
+            <div class="flash-stack">
+                {% for label, messages in app.flashes %}
+                    {% for message in messages %}
+                        <div class="flash flash-{{ label }}" role="status">
+                            <span>{{ message }}</span>
+                            <button type="button" class="flash-close" data-flash-close aria-label="Fechar">&times;</button>
+                        </div>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <main class="content-area">
+            {{ block('body') }}
+        </main>
+
+        <footer class="footer">
+            <span>&copy; {{ "now"|date('Y') }} wazeBR - Monitoramento de tráfego e hidrologia</span>
+        </footer>
+    </div>
+{% endif %}
+
+<script src="{{ asset('js/main.js') }}"></script>
 {% block javascripts %}{% endblock %}
 </body>
 </html>
