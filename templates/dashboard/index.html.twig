@@ -1,238 +1,61 @@
-{% extends 'base.html.twig' %}
+{% extends 'base_dashboard.html.twig' %}
 
-{% block title %}Dashboard{% endblock %}
+{% block title %}Dashboard - {{ partnerLabel }}{% endblock %}
 
-{% block body_class %}dashboard-page{% endblock %}
+{% block header_title %}Dashboard{% endblock %}
 
-{% block stylesheets %}
-    {{ parent() }}
-    <link rel="stylesheet" href="{{ asset('styles/dashboard.css') }}">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+{% block header_subtitle %}{{ partnerLabel }} - VisÃ£o geral da plataforma{% endblock %}
+
+{% block body %}
+<div class="space-y-6">
+    {# Admin Actions #}
+    {% if isAdmin %}
+        {{ include('dashboard/partials/_admin_actions.html.twig') }}
+    {% endif %}
+    
+    {# Stats Cards #}
+    {{ include('dashboard/partials/_stats.html.twig', {
+        partnerStats: partnerStats,
+        hero: hero
+    }) }}
+    
+    {# Live Stats #}
+    {{ include('dashboard/partials/_live.html.twig', {
+        hero: hero,
+        alertsBySubtype: alertsBySubtype,
+        jamsByLevel: jamsByLevel
+    }) }}
+    
+    {# Charts #}
+    {{ include('dashboard/partials/_charts.html.twig', {
+        totalAlertsInPeriod: totalAlertsInPeriod,
+        topStreets: topStreets
+    }) }}
+    
+    {# Map #}
+    {{ include('dashboard/partials/_map.html.twig', {
+        mapJams: mapJams,
+        mapAlerts: mapAlerts,
+        mapJamsTruncated: mapJamsTruncated,
+        mapAlertsTruncated: mapAlertsTruncated
+    }) }}
+    
+    {# Recent Activity #}
+    {{ include('dashboard/partials/_recent.html.twig', {
+        recentJams: recentJams,
+        recentAlerts: recentAlerts
+    }) }}
+    
+    {# Super Admin Stats #}
+    {% if isSuperAdmin %}
+        {{ include('dashboard/partials/_super_admin_stats.html.twig') }}
+    {% endif %}
+</div>
 {% endblock %}
 
 {% block javascripts %}
-    {{ parent() }}
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-    <script src="{{ asset('js/dashboard.js') }}" defer></script>
-{% endblock %}
-
-{% block body %}
-    {# isSuperAdmin / isAdmin / showPartnerDashboard vêm do DashboardController,
-       calculados a partir do modelo de papéis atual (ROLE_ADMIN/ROLE_PARTNER_ADMIN/
-       ROLE_OPERATOR/ROLE_VIEWER) — ver doc/PRODUCT_RULES.md §3 #}
-
-    <div class="dashboard-wrapper">
-        {# Cabeçalho comum #}
-        <header class="dashboard-header">
-            <div class="dashboard-header-content">
-                <div>
-                    <span class="dashboard-eyebrow">
-                        {% if isSuperAdmin %}
-                            Painel da plataforma
-                        {% elseif isAdmin %}
-                            Gestão do parceiro
-                        {% else %}
-                            Monitoramento operacional
-                        {% endif %}
-                    </span>
-                    <h1 class="dashboard-title">
-                        {% if isSuperAdmin and not showPartnerDashboard %}
-                            Administração SaaS
-                        {% elseif isAdmin %}
-                            Gestão – {{ partnerLabel }}
-                        {% else %}
-                            Dashboard
-                        {% endif %}
-                    </h1>
-                    <p class="dashboard-subtitle">
-                        {% if showPartnerDashboard %}
-                            {{ partnerLabel }} · {{ periods[periodKey].label }}
-                        {% else %}
-                            Visão administrativa da plataforma wazeBR
-                        {% endif %}
-                    </p>
-                </div>
-                {% if showPartnerDashboard %}
-                    <div class="period-selector" aria-label="Selecionar período">
-                        {% for key, period in periods %}
-                            <a href="{{ path('dashboard_index', {period: key}) }}"
-                               class="period-btn {{ key == periodKey ? 'active' : '' }}">
-                                {{ period.label }}
-                            </a>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            </div>
-        </header>
-
-        {# Conteúdo condicional via partials #}
-        {% if isSuperAdmin and not showPartnerDashboard %}
-            <section class="super-admin-section" data-animate>
-                {# Cabeçalho do Super Admin (já existente) #}
-                <div class="section-header">
-                    <div>
-                        <span class="section-kicker">wazeBR SaaS</span>
-                        <h2 class="section-title">
-                            <span class="title-icon">👑</span>
-                            Administração da plataforma
-                        </h2>
-                    </div>
-                    <a href="{{ path('admin_partner_index') }}" class="admin-action-link">
-                        Gerenciar parceiros
-                        <span aria-hidden="true">→</span>
-                    </a>
-                </div>
-
-                <p class="super-admin-description">
-                    Você não está vinculado a nenhum parceiro. Por segurança, dados operacionais de alertas,
-                    congestionamentos, mapas e rotas não são exibidos neste painel.
-                </p>
-
-                {# 🆕 NOVO PARTIAL: Estatísticas do Sistema #}
-                {{ include('dashboard/partials/_super_admin_stats.html.twig') }}
-
-                {# Restante do conteúdo do Super Admin (features, etc.) #}
-                <div class="admin-features-section">
-                    <h3 class="admin-features-title">
-                        <span class="title-icon">⚙️</span>
-                        Funcionalidades ativas
-                    </h3>
-                    <div class="features-grid">
-                        {% set features = {
-                            'alerts_monitoring': 'Monitoramento de Alertas',
-                            'jams_monitoring': 'Monitoramento de Jams',
-                            'routes_tracking': 'Rastreamento de Rotas',
-                            'cifs_integration': 'Integração CIFS',
-                            'hydrological': 'Monitoramento Hidrológico'
-                        } %}
-                        {% for key, label in features %}
-                            {% set active = superAdminData.activeFeatures[key] ?? false %}
-                            <div class="feature-item {{ active ? 'active' : '' }}">
-                                <span class="feature-icon">{{ loop.index == 1 ? '🔔' : (loop.index == 2 ? '🚦' : (loop.index == 3 ? '🛣️' : (loop.index == 4 ? '📋' : '🌊'))) }}</span>
-                                <span class="feature-name">{{ label }}</span>
-                                <span class="feature-status {{ active ? 'status-active' : 'status-inactive' }}">
-                                    {{ active ? 'Ativo' : 'Inativo' }}
-                                </span>
-                            </div>
-                        {% endfor %}
-                    </div>
-                </div>
-
-                <div class="admin-info-cards">
-                    <div class="info-card">
-                        <div class="info-card-header">
-                            <span class="info-icon">📅</span>
-                            <h4>Próxima fatura</h4>
-                        </div>
-                        <div class="info-card-content">
-                            <strong>{{ superAdminData.nextBilling|date('d/m/Y') }}</strong>
-                            <span class="info-subtext">Plano {{ superAdminData.plan|default('Enterprise') }}</span>
-                        </div>
-                    </div>
-                    <div class="info-card">
-                        <div class="info-card-header">
-                            <span class="info-icon">⏰</span>
-                            <h4>Última atividade</h4>
-                        </div>
-                        <div class="info-card-content">
-                            <strong>{{ superAdminData.lastActivity|date('d/m H:i') }}</strong>
-                            <span class="info-subtext">Sistema operacional</span>
-                        </div>
-                    </div>
-                    <div class="info-card">
-                        <div class="info-card-header">
-                            <span class="info-icon">📊</span>
-                            <h4>Status do sistema</h4>
-                        </div>
-                        <div class="info-card-content">
-                            <strong class="text-success">● Online</strong>
-                            <span class="info-subtext">Todos os serviços ativos</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="super-admin-actions">
-                    <a href="{{ path('admin_partner_index') }}" class="btn btn-light">
-                        <span aria-hidden="true">🏢</span> Parceiros
-                    </a>
-                    <a href="{{ path('account_user_index') }}" class="btn btn-light">
-                        <span aria-hidden="true">👥</span> Usuários
-                    </a>
-                    <a href="{{ path('account_logs') }}" class="btn btn-light">
-                        <span aria-hidden="true">📜</span> Logs
-                    </a>
-                    <a href="{{ path('admin_settings_index') }}" class="btn btn-light">
-                        <span aria-hidden="true">⚙️</span> Configurações
-                    </a>
-                </div>
-
-                <div class="admin-empty-state">
-                    <span class="admin-empty-icon">🔐</span>
-                    <div>
-                        <h2>Nenhum parceiro em contexto</h2>
-                        <p>
-                            Selecione ou implemente uma atribuição temporária de parceiro para diagnosticar
-                            a operação de uma organização sem misturar dados entre clientes.
-                        </p>
-                    </div>
-                </div>
-            </section>
-        {% else %}
-            {# Dashboard para usuários com parceiro (Administradores e usuários comuns) #}
-            {% if isAdmin %}
-                {{ include('dashboard/partials/_admin_actions.html.twig') }}
-            {% endif %}
-
-            {{ include('dashboard/partials/_stats.html.twig', {
-                partnerStats: partnerStats,
-                hero: hero
-            }) }}
-
-            {{ include('dashboard/partials/_live.html.twig', {
-                hero: hero,
-                partnerStats: partnerStats
-            }) }}
-
-            {{ include('dashboard/partials/_charts.html.twig', {
-                alertsBySubtype: alertsBySubtype,
-                jamsByLevel: jamsByLevel,
-                totalAlertsInPeriod: totalAlertsInPeriod
-            }) }}
-
-            {{ include('dashboard/partials/_top_streets.html.twig', {
-                topStreets: topStreets
-            }) }}
-
-            {{ include('dashboard/partials/_map.html.twig', {
-                mapJams: mapJams,
-                mapAlerts: mapAlerts,
-                mapJamsTruncated: mapJamsTruncated,
-                mapAlertsTruncated: mapAlertsTruncated
-            }) }}
-
-            {{ include('dashboard/partials/_recent.html.twig', {
-                recentAlerts: recentAlerts,
-                recentJams: recentJams
-            }) }}
-        {% endif %}
-    </div>
-
-    {# Dados para JS #}
-    {% if showPartnerDashboard %}
-        <script>
-            window.dashboardData = {
-                mapCenter: [-20.6597, -43.7817],
-                mapZoom: 13,
-                mapJams: {{ mapJams|json_encode|raw }},
-                mapAlerts: {{ mapAlerts|json_encode|raw }},
-                alertsBySubtype: {{ alertsBySubtype|json_encode|raw }},
-                jamsByLevel: {{ jamsByLevel|json_encode|raw }},
-                topStreets: {{ topStreets|json_encode|raw }}
-            };
-        </script>
-    {% endif %}
+<script>
+    {# Dashboard-specific scripts #}
+    console.log('Dashboard loaded');
+</script>
 {% endblock %}
