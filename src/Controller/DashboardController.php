@@ -107,6 +107,9 @@ class DashboardController extends AbstractController
             'irregularitiesLast24h' => (int) $irregularityCount,
             'routesLast24h' => (int) $routeCount,
             'hydroDataLast24h' => (int) $hydroDataCount,
+            'jamsLiveTotal' => 0,
+            'jamsLiveMaxLevel' => 0,
+            'jamsLiveMaxLevelLabel' => 'Sem jams ativos',
         ];
         
         return $this->render('dashboard/index.html.twig', [
