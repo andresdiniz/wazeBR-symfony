@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entrar · wazeBR</title>
-    <link rel="stylesheet" href="{{ asset('styles/public-pages.css') }}">
     {{ importmap('app') }}
 </head>
 <body>
@@ -19,27 +18,11 @@
                 <div class="auth-body">
                     {% if error %}<div class="auth-error" role="alert">{{ error.messageKey|trans(error.messageData, 'security') }}</div>{% endif %}
                     {% for type, messages in app.flashes %}{% for message in messages %}<div class="auth-{{ type }}" role="alert" data-timeout="5000">{{ message }}</div>{% endfor %}{% endfor %}
-                    <form method="post" class="auth-form" novalidate>
+                    <form method="post" class="auth-form">
                         <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
-                        <div class="auth-form-group">
-                            <label class="auth-label" for="_username">E-mail</label>
-                            <div class="auth-input-wrapper">
-                                <span class="auth-input-icon" aria-hidden="true">@</span>
-                                <input id="_username" name="_username" type="email" class="auth-input" value="{{ last_username|default('') }}" autocomplete="username" placeholder="seu@email.com" required autofocus>
-                            </div>
-                        </div>
-                        <div class="auth-form-group">
-                            <label class="auth-label" for="_password">Senha</label>
-                            <div class="auth-input-wrapper">
-                                <span class="auth-input-icon" aria-hidden="true">•</span>
-                                <input id="_password" name="_password" type="password" class="auth-input" autocomplete="current-password" placeholder="Digite sua senha" required>
-                                <button type="button" class="auth-password-toggle" aria-label="Mostrar ou ocultar senha">Mostrar</button>
-                            </div>
-                        </div>
-                        <div class="auth-form-options">
-                            <div class="auth-remember"><input id="_remember_me" name="_remember_me" type="checkbox"><label for="_remember_me">Lembrar-me</label></div>
-                            <a href="{{ path('app_forgot_password') }}" class="auth-link">Esqueceu a senha?</a>
-                        </div>
+                        <div class="auth-form-group"><label class="auth-label" for="_username">E-mail</label><div class="auth-input-wrapper"><span class="auth-input-icon" aria-hidden="true">@</span><input id="_username" name="_username" type="email" class="auth-input" value="{{ last_username|default('') }}" autocomplete="username" placeholder="seu@email.com" required autofocus></div></div>
+                        <div class="auth-form-group"><label class="auth-label" for="_password">Senha</label><div class="auth-input-wrapper"><span class="auth-input-icon" aria-hidden="true">•</span><input id="_password" name="_password" type="password" class="auth-input" autocomplete="current-password" placeholder="Digite sua senha" required><button type="button" class="auth-password-toggle" aria-label="Mostrar ou ocultar senha">Mostrar</button></div></div>
+                        <div class="auth-form-options"><div class="auth-remember"><input id="_remember_me" name="_remember_me" type="checkbox"><label for="_remember_me">Lembrar-me</label></div><a href="{{ path('app_forgot_password') }}" class="auth-link">Esqueceu a senha?</a></div>
                         <button type="submit" class="auth-submit">Entrar</button>
                     </form>
                 </div>
