@@ -1,60 +1,63 @@
-{# dashboard/partials/_recent.html.twig #}
-<div class="recent-grid">
-    <section class="recent-section" data-animate>
-        <div class="section-header">
-            <h2 class="section-title"><span class="title-icon">🔔</span>Alertas recentes</h2>
-            <a href="{{ path('alert_index') }}" class="view-all-link">Ver todos <span>→</span></a>
-        </div>
-
-        {% if recentAlerts|length > 0 %}
-            <div class="recent-table-wrapper">
-                <table class="recent-table">
-                    <thead>
-                        <tr><th>Tipo</th><th>Subtipo</th><th>Local</th><th>Hora</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for alert in recentAlerts %}
-                            <tr>
-                                <td><span class="badge badge-primary">{{ alert.type|default('Alerta') }}</span></td>
-                                <td>{{ alert.subtype|default('—') }}</td>
-                                <td class="text-truncate">{{ alert.street|default('Não informado') }}</td>
-                                <td>{{ alert.createdAt ? alert.createdAt|date('d/m H:i') : '—' }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+{# Recent Traffic Jams and Alerts #}
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="mb-0">Recent Traffic Jams</h5>
             </div>
-        {% else %}
-            <div class="empty-state"><span class="empty-icon">🔔</span><p>Nenhum alerta recente</p></div>
-        {% endif %}
-    </section>
-
-    <section class="recent-section" data-animate>
-        <div class="section-header">
-            <h2 class="section-title"><span class="title-icon">🚦</span>Lentidões recentes</h2>
-            <a href="{{ path('jam_index') }}" class="view-all-link">Ver todos <span>→</span></a>
-        </div>
-
-        {% if recentJams|length > 0 %}
-            <div class="recent-table-wrapper">
-                <table class="recent-table">
-                    <thead>
-                        <tr><th>Via</th><th>Cidade</th><th>Nível</th><th>Hora</th></tr>
-                    </thead>
-                    <tbody>
+            <div class="card-body">
+                {% if recentJams|default([])|length > 0 %}
+                    <ul class="list-group list-group-flush">
                         {% for jam in recentJams %}
-                            <tr>
-                                <td class="text-truncate">{{ jam.street|default('Não informado') }}</td>
-                                <td>{{ jam.city|default('—') }}</td>
-                                <td><span class="badge badge-warning">Nível {{ jam.level|default(0) }}</span></td>
-                                <td>{{ jam.createdAt ? jam.createdAt|date('d/m H:i') : '—' }}</td>
-                            </tr>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>{{ jam.streetName|default('Sem rua') }}</strong>
+                                    {% if jam.city %}
+                                        <small class="text-muted">- {{ jam.city }}</small>
+                                    {% endif %}
+                                    {% if jam.createdAt %}
+                                        <br><small class="text-muted">{{ jam.createdAt|date('d/m/Y H:i') }}</small>
+                                    {% endif %}
+                                </div>
+                                <span class="badge bg-{{ jam.level >= 4 ? 'danger' : (jam.level >= 2 ? 'warning' : 'success') }}">
+                                    Level {{ jam.level }}
+                                </span>
+                            </li>
                         {% endfor %}
-                    </tbody>
-                </table>
+                    </ul>
+                {% else %}
+                    <p class="text-muted mb-0">Nenhum congestionamento recente.</p>
+                {% endif %}
             </div>
-        {% else %}
-            <div class="empty-state"><span class="empty-icon">🚦</span><p>Nenhuma lentidão recente</p></div>
-        {% endif %}
-    </section>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="mb-0">Recent Alerts</h5>
+            </div>
+            <div class="card-body">
+                {% if recentAlerts|default([])|length > 0 %}
+                    <ul class="list-group list-group-flush">
+                        {% for alert in recentAlerts %}
+                            <li class="list-group-item">
+                                <div>
+                                    <strong>{{ alert.subtype|default('Alerta') }}</strong>
+                                    {% if alert.streetName %}
+                                        <small class="text-muted">- {{ alert.streetName }}</small>
+                                    {% endif %}
+                                    {% if alert.reportedAt %}
+                                        <br><small class="text-muted">{{ alert.reportedAt|date('d/m/Y H:i') }}</small>
+                                    {% endif %}
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted mb-0">Nenhum alerta recente.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 </div>
