@@ -146,10 +146,10 @@
         <div class="sidebar-footer">
             <div class="sidebar-user" data-bs-toggle="dropdown" aria-expanded="false">
                 <div class="sidebar-user-avatar">
-                    {{ app.user.firstName|default(app.user.username)|first|upper }}
+                    {{ app.user.firstName|default(app.user.email|split('@')|first)|first|upper }}
                 </div>
                 <div class="sidebar-user-info">
-                    <div class="sidebar-user-name">{{ app.user.firstName|default(app.user.username) }}</div>
+                    <div class="sidebar-user-name">{{ app.user.firstName|default(app.user.email|split('@')|first) }}</div>
                     <div class="sidebar-user-role">{{ app.user.roles|first|replace({'ROLE_': ''})|title }}</div>
                 </div>
             </div>
@@ -221,9 +221,9 @@
                 <div class="header-profile dropdown">
                     <div class="d-flex align-items-center" data-bs-toggle="dropdown" aria-expanded="false">
                         <div class="header-profile-avatar">
-                            {{ app.user.firstName|default(app.user.username)|first|upper }}
+                            {{ app.user.firstName|default(app.user.email|split('@')|first)|first|upper }}
                         </div>
-                        <span class="header-profile-name d-none d-md-block ms-2">{{ app.user.firstName|default(app.user.username) }}</span>
+                        <span class="header-profile-name d-none d-md-block ms-2">{{ app.user.firstName|default(app.user.email|split('@')|first) }}</span>
                         <i class="bi bi-chevron-down header-profile-arrow d-none d-md-block ms-1"></i>
                     </div>
                     <ul class="dropdown-menu dropdown-menu-end header-profile-dropdown">
