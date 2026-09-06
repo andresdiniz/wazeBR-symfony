@@ -47,13 +47,15 @@ class Partner
     #[ORM\Column(nullable: true)]
     private ?bool $active = null;
 
+    #[ORM\Column(nullable: true)]
+    private ?int $refreshIntervalMinutes = null;
+
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
 
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $updatedAt = null;
 
-    // ── Relacionamentos ──
     #[ORM\OneToMany(mappedBy: 'partner', targetEntity: User::class)]
     private Collection $users;
 
@@ -103,8 +105,6 @@ class Partner
     {
         $this->apiToken = bin2hex(random_bytes(32));
     }
-
-    // ── Getters / Setters ──
 
     public function getId(): ?int
     {
@@ -221,6 +221,17 @@ class Partner
         return $this;
     }
 
+    public function getRefreshIntervalMinutes(): ?int
+    {
+        return $this->refreshIntervalMinutes;
+    }
+
+    public function setRefreshIntervalMinutes(?int $refreshIntervalMinutes): static
+    {
+        $this->refreshIntervalMinutes = $refreshIntervalMinutes;
+        return $this;
+    }
+
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
@@ -242,8 +253,6 @@ class Partner
         $this->updatedAt = $updatedAt;
         return $this;
     }
-
-    // ── Relacionamentos ──
 
     public function getUsers(): Collection
     {
