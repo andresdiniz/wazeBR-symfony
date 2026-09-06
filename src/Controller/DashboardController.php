@@ -84,7 +84,7 @@ class DashboardController extends AbstractController
         
         // Partner stats
         $partnerStats = [
-            'trafficJams' => (int) $trafficJamCount,
+            'jams' => (int) $trafficJamCount,
             'alerts' => (int) $alertCount,
             'irregularities' => (int) $irregularityCount,
             'routes' => (int) $routeCount,
@@ -95,7 +95,7 @@ class DashboardController extends AbstractController
         $hero = [
             'title' => 'Dashboard',
             'subtitle' => 'VisÃ£o geral da plataforma',
-            'trafficJamsTotal' => (int) $trafficJamCount,
+            'jamsTotal' => (int) $trafficJamCount,
             'alertsTotal' => (int) $alertCount,
             'irregularitiesTotal' => (int) $irregularityCount,
             'routesTotal' => (int) $routeCount,
