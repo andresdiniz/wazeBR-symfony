@@ -1,63 +1,51 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>{% block title %}wazeBR{% endblock %}</title>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%22.9em%22 font-size=%2290%22>🚗</text></svg>">
-        {% block stylesheets %}{% endblock %}
-        {% block javascripts %}{% endblock %}
-    </head>
-    <body class="{% block body_class %}{% endblock %}">
-
-        {# ===== NAVBAR ORIGINAL (APENAS FORA DO ADMIN) ===== #}
-        {% if app.user and not app.request.attributes.get('_route') starts with 'admin_' %}
-        <nav class="navbar">
-            <div class="navbar-brand">
-                <a href="{{ path('dashboard_index') }}" class="brand-link">
-                    <span class="brand-icon">🚗</span>
-                    <span class="brand-name">wazeBR</span>
-                </a>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}wazeBR{% endblock %}</title>
+    <link rel="icon" href="{{ asset('favicon.ico') }}">
+    {{ encore_entry_link_tags('app') }}
+    <link rel="stylesheet" href="{{ asset('styles/base.css') }}">
+    <link rel="stylesheet" href="{{ asset('styles/layout.css') }}">
+    {% block stylesheets %}{% endblock %}
+</head>
+<body>
+    <div class="layout-public">
+        <header class="header">
+            <div class="header-left">
+                <a href="{{ path('app_dashboard') }}" style="font-weight: 700; font-size: 1.25rem; color: var(--color-primary);">wazeBR</a>
             </div>
-            <div class="navbar-menu">
-                {% block navbar_menu %}
-                    {{ include('partials/_navbar_menu.html.twig') }}
-                {% endblock %}
+            <div class="header-right">
+                {% if app.user %}
+                    <div class="header-user">
+                        <div class="header-user-avatar">{{ app.user.email|first|upper }}</div>
+                        <span class="header-user-name">{{ app.user.email }}</span>
+                    </div>
+                    <a href="{{ path('app_logout') }}" class="btn btn-secondary">Sair</a>
+                {% else %}
+                    <a href="{{ path('app_login') }}" class="btn btn-primary">Entrar</a>
+                {% endif %}
             </div>
-            {% if app.user %}
-            <div class="user-menu">
-                <button class="user-menu-toggle" id="user-menu-toggle">
-                    <span class="user-avatar">{{ app.user.email|first|upper }}</span>
-                    <span class="user-email">{{ app.user.email }}</span>
-                    <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M4 6l4 4 4-4H4z"/>
-                    </svg>
-                </button>
-                <div class="user-menu-dropdown" id="user-menu-dropdown">
-                    <a href="{{ path('app_logout') }}" class="dropdown-item">Sair</a>
-                </div>
-            </div>
-            {% endif %}
-        </nav>
-        {% endif %}
-
-        <main class="main-content">
+        </header>
+        <main class="content-area">
             {% block body %}{% endblock %}
         </main>
-
-        <script>
-            const userMenuToggle = document.getElementById('user-menu-toggle');
-            const userMenuDropdown = document.getElementById('user-menu-dropdown');
-            if (userMenuToggle && userMenuDropdown) {
-                userMenuToggle.addEventListener('click', () => {
-                    userMenuDropdown.classList.toggle('show');
-                });
-                document.addEventListener('click', (e) => {
-                    if (!userMenuToggle.contains(e.target) && !userMenuDropdown.contains(e.target)) {
-                        userMenuDropdown.classList.remove('show');
-                    }
-                });
-            }
-        </script>
-    </body>
+        <footer class="footer">
+            <div class="footer-left">
+                <span>&copy; {{ date('Y') }} wazeBR - Monitoramento de trfego e hidrologia</span>
+            </div>
+            <div class="footer-right">
+                <div class="footer-links">
+                    <a href="#" class="footer-link">Suporte</a>
+                    <a href="#" class="footer-link">Termos</a>
+                    <a href="#" class="footer-link">Privacidade</a>
+                </div>
+            </div>
+        </footer>
+    </div>
+    {{ encore_entry_script_tags('app') }}
+    <script src="{{ asset('js/main.js') }}"></script>
+    {% block javascripts %}{% endblock %}
+</body>
 </html>
