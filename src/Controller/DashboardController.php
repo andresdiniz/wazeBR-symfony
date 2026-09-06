@@ -27,6 +27,14 @@ class DashboardController extends AbstractController
         $partner = $user->getPartner();
         $partnerLabel = $partner ? $partner->getName() : 'Sem parceiro';
         
+        // Periods configuration
+        $periodKey = 'today';
+        $periods = [
+            'today' => ['label' => 'Úºltimas 24 horas', 'hours' => 24],
+            'week' => ['label' => 'Úºltimos 7 dias', 'hours' => 168],
+            'month' => ['label' => 'Úºltimos 30 dias', 'hours' => 720],
+        ];
+        
         // Waze metrics (last 24 hours)
         $trafficJamCount = $entityManager->getRepository(WazeTrafficJam::class)
             ->createQueryBuilder('tj')
@@ -83,6 +91,8 @@ class DashboardController extends AbstractController
             'recentAlerts' => $recentAlerts,
             'partner' => $partner,
             'partnerLabel' => $partnerLabel,
+            'periods' => $periods,
+            'periodKey' => $periodKey,
         ]);
     }
 }
