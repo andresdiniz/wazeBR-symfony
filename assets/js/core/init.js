@@ -24,9 +24,6 @@ export function initApp(config) {
   initTables();
   initForms();
   
-  // Initialize page-specific scripts
-  initPageScripts();
-  
   // Setup global error handler
   setupErrorHandler();
   
@@ -79,7 +76,6 @@ function initNavbar() {
       const query = e.target.value;
       if (query.length >= 3) {
         console.log('[wazeBR] Searching:', query);
-        // Implement search functionality
       }
     }, 300));
   }
@@ -123,7 +119,6 @@ function initModals() {
 function initTables() {
   const tables = document.querySelectorAll('.table');
   tables.forEach(table => {
-    // Add hover functionality
     table.classList.add('table-hover');
   });
   console.log('[wazeBR] Tables initialized');
@@ -135,7 +130,6 @@ function initTables() {
 function initForms() {
   const forms = document.querySelectorAll('form');
   forms.forEach(form => {
-    // Add validation if needed
     if (form.dataset.validate === 'true') {
       form.addEventListener('submit', (e) => {
         const isValid = validateForm(form);
@@ -165,37 +159,6 @@ function validateForm(form) {
   });
   
   return isValid;
-}
-
-/**
- * Initialize page-specific scripts
- */
-function initPageScripts() {
-  const page = document.body.dataset.page;
-  if (!page) return;
-  
-  console.log('[wazeBR] Initializing page:', page);
-  
-  switch (page) {
-    case 'dashboard':
-      import('../pages/dashboard.js').then(m => m.initDashboard?.()).catch(() => {});
-      break;
-    case 'alerts':
-      import('../pages/alerts.js').then(m => m.initAlerts?.()).catch(() => {});
-      break;
-    case 'traffic':
-      import('../pages/traffic.js').then(m => m.initTraffic?.()).catch(() => {});
-      break;
-    case 'hydro':
-      import('../pages/hydro.js').then(m => m.initHydro?.()).catch(() => {});
-      break;
-    case 'map':
-      import('../components/maps.js').then(m => m.initMap?.()).catch(() => {});
-      break;
-    case 'charts':
-      import('../components/charts.js').then(m => m.initCharts?.()).catch(() => {});
-      break;
-  }
 }
 
 /**
