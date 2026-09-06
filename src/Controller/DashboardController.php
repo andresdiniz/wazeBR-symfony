@@ -91,6 +91,7 @@ class DashboardController extends AbstractController
             'hydroData' => (int) $hydroDataCount,
             'monitoredLinks' => 0,
             'cifsEvents' => 0,
+            'executions' => 0,
         ];
         
         // Hero configuration
