@@ -45,7 +45,8 @@
             <div class="settings-fields">
                 <label class="settings-field">
                     <span>Nome da organização</span>
-                    <input type="text" name="name" value="{{ partner.name|default('') }}" autocomplete="organization" required>
+                    <input type="text" name="name" value="{{ partner.name|default('') }}" autocomplete="organization" required aria-invalid="{{ errors.name is defined ? 'true' : 'false' }}">
+                    {% if errors.name is defined %}<small class="settings-field-error">{{ errors.name }}</small>{% endif %}
                 </label>
                 <label class="settings-field">
                     <span>Identificador da integração</span>
@@ -67,11 +68,12 @@
             <div class="settings-fields settings-fields--single">
                 <label class="settings-field">
                     <span>Intervalo de sincronização</span>
-                    <select name="sync_interval" required>
+                    <select name="refresh_interval" required aria-invalid="{{ errors.refresh_interval is defined ? 'true' : 'false' }}">
                         {% for minutes in intervalOptions %}
-                            <option value="{{ minutes }}" {{ partner.syncInterval|default(15) == minutes ? 'selected' : '' }}>A cada {{ minutes }} minuto{{ minutes > 1 ? 's' : '' }}</option>
+                            <option value="{{ minutes }}" {{ partner.refreshIntervalMinutes|default(15) == minutes ? 'selected' : '' }}>A cada {{ minutes }} minuto{{ minutes > 1 ? 's' : '' }}</option>
                         {% endfor %}
                     </select>
+                    {% if errors.refresh_interval is defined %}<small class="settings-field-error">{{ errors.refresh_interval }}</small>{% endif %}
                     <small>Intervalos menores entregam dados mais recentes, mas exigem mais requisições.</small>
                 </label>
             </div>
