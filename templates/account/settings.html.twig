@@ -1,0 +1,103 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Configurações - WazeBR{% endblock %}
+{% block header_title %}Configurações{% endblock %}
+{% block header_subtitle %}Gerencie as preferências da sua integração{% endblock %}
+
+{% block stylesheets %}
+    <link rel="stylesheet" href="{{ asset('styles/account-settings.css') }}">
+{% endblock %}
+
+{% block body %}
+<div class="settings-page">
+    <section class="settings-hero" aria-labelledby="settings-title">
+        <div>
+            <p class="settings-kicker">Conta e integração</p>
+            <h2 id="settings-title">Configurações do monitoramento</h2>
+            <p>Atualize os dados da operação e a frequência de sincronização das informações.</p>
+        </div>
+        <span class="settings-badge"><span aria-hidden="true">●</span> Integração ativa</span>
+    </section>
+
+    {% if errors is not empty %}
+        <section class="settings-errors" aria-label="Erros de validação">
+            <strong>Revise os campos destacados</strong>
+            <ul>
+                {% for error in errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
+
+    <form class="settings-form" method="post" action="{{ path('account_settings') }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('account_settings') }}">
+
+        <section class="settings-card" aria-labelledby="settings-profile-title">
+            <div class="settings-card-heading">
+                <span class="settings-card-icon" aria-hidden="true">◉</span>
+                <div>
+                    <h3 id="settings-profile-title">Dados da operação</h3>
+                    <p>Informações usadas para identificar sua organização no WazeBR.</p>
+                </div>
+            </div>
+
+            <div class="settings-fields">
+                <label class="settings-field">
+                    <span>Nome da organização</span>
+                    <input type="text" name="name" value="{{ partner.name|default('') }}" autocomplete="organization" required>
+                </label>
+                <label class="settings-field">
+                    <span>Identificador da integração</span>
+                    <input type="text" value="{{ partner.slug|default(partner.id|default('Não definido')) }}" readonly aria-readonly="true">
+                    <small>Este identificador é gerenciado pela plataforma.</small>
+                </label>
+            </div>
+        </section>
+
+        <section class="settings-card" aria-labelledby="settings-sync-title">
+            <div class="settings-card-heading">
+                <span class="settings-card-icon" aria-hidden="true">↻</span>
+                <div>
+                    <h3 id="settings-sync-title">Atualização dos dados</h3>
+                    <p>Defina com que frequência a plataforma consulta novos dados.</p>
+                </div>
+            </div>
+
+            <div class="settings-fields settings-fields--single">
+                <label class="settings-field">
+                    <span>Intervalo de sincronização</span>
+                    <select name="sync_interval" required>
+                        {% for minutes in intervalOptions %}
+                            <option value="{{ minutes }}" {{ partner.syncInterval|default(15) == minutes ? 'selected' : '' }}>A cada {{ minutes }} minuto{{ minutes > 1 ? 's' : '' }}</option>
+                        {% endfor %}
+                    </select>
+                    <small>Intervalos menores entregam dados mais recentes, mas exigem mais requisições.</small>
+                </label>
+            </div>
+        </section>
+
+        <section class="settings-card settings-card--readonly" aria-labelledby="settings-account-title">
+            <div class="settings-card-heading">
+                <span class="settings-card-icon" aria-hidden="true">◌</span>
+                <div>
+                    <h3 id="settings-account-title">Conta conectada</h3>
+                    <p>Informações associadas ao usuário autenticado.</p>
+                </div>
+            </div>
+            <div class="account-summary">
+                <span class="account-avatar">{{ app.user ? app.user.userIdentifier|first|upper : 'U' }}</span>
+                <div>
+                    <strong>{{ app.user ? app.user.userIdentifier : 'Usuário' }}</strong>
+                    <span>{{ is_granted('ROLE_ADMIN') ? 'Administrador' : 'Usuário autenticado' }}</span>
+                </div>
+            </div>
+        </section>
+
+        <div class="settings-actions">
+            <a class="settings-cancel" href="{{ path('dashboard_index') }}">Cancelar</a>
+            <button class="settings-submit" type="submit">Salvar configurações</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
