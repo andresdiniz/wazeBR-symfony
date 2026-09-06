@@ -8,6 +8,5 @@
 return [
     'app' => [
         'path' => './assets/js/app.js',
-        'version' => '1.0.0',
     ],
 ];
