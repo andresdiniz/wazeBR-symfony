@@ -138,6 +138,7 @@ class DashboardController extends AbstractController
             'routeCount' => (int) $routeCount,
             'hydroDataCount' => (int) $hydroDataCount,
             'recentTrafficJams' => $recentTrafficJams,
+            'recentJams' => $recentTrafficJams,
             'recentAlerts' => $recentAlerts,
             'partner' => $partner,
             'partnerLabel' => $partnerLabel,
