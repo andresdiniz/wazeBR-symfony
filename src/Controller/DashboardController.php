@@ -69,6 +69,17 @@ class DashboardController extends AbstractController
             ->getQuery()
             ->getSingleScalarResult();
         
+        $partnerStats = [
+            'jams' => $trafficJamCount,
+            'alerts' => $alertCount,
+            'irregularities' => $irregularityCount,
+            'routes' => $routeCount,
+            'hydroData' => $hydroDataCount,
+            'monitoredLinks' => 0,
+            'cifsEvents' => 0,
+            'executions' => 0,
+        ];
+        
         $recentTrafficJams = $entityManager->getRepository(WazeTrafficJam::class)
             ->findBy([], ['createdAt' => 'DESC'], 5);
         
@@ -83,11 +94,6 @@ class DashboardController extends AbstractController
             'irregularitiesTotal' => $irregularityCount,
             'routesTotal' => $routeCount,
             'hydroDataTotal' => $hydroDataCount,
-            'jamsLast24h' => $trafficJamCount,
-            'alertsLast24h' => $alertCount,
-            'irregularitiesLast24h' => $irregularityCount,
-            'routesLast24h' => $routeCount,
-            'hydroDataLast24h' => $hydroDataCount,
             'jamsLiveTotal' => 0,
             'jamsLiveMaxLevel' => 0,
             'jamsLiveMaxLevelLabel' => 'Sem jams ativos',
@@ -98,11 +104,6 @@ class DashboardController extends AbstractController
             'cemadenCities' => 0,
             'tvtExecutions' => 0,
         ];
-        
-        $alertsBySubtype = [];
-        $jamsByLevel = [];
-        $totalAlertsInPeriod = $alertCount;
-        $topStreets = [];
         
         $mapJams = array_map(function($jam) {
             return [
@@ -125,13 +126,6 @@ class DashboardController extends AbstractController
             ];
         }, $recentAlerts);
         
-        $mapJamsTruncated = false;
-        $mapAlertsTruncated = false;
-        
-        $isSuperAdmin = true;
-        $isAdmin = true;
-        $showPartnerDashboard = ($partner !== null);
-        
         return $this->render('dashboard/index.html.twig', [
             'trafficJamCount' => $trafficJamCount,
             'alertCount' => $alertCount,
@@ -142,18 +136,10 @@ class DashboardController extends AbstractController
             'partnerLabel' => $partnerLabel,
             'periods' => $periods,
             'periodKey' => $periodKey,
+            'partnerStats' => $partnerStats,
             'hero' => $hero,
-            'alertsBySubtype' => $alertsBySubtype,
-            'jamsByLevel' => $jamsByLevel,
-            'totalAlertsInPeriod' => $totalAlertsInPeriod,
-            'topStreets' => $topStreets,
             'mapJams' => $mapJams,
             'mapAlerts' => $mapAlerts,
-            'mapJamsTruncated' => $mapJamsTruncated,
-            'mapAlertsTruncated' => $mapAlertsTruncated,
-            'isSuperAdmin' => $isSuperAdmin,
-            'isAdmin' => $isAdmin,
-            'showPartnerDashboard' => $showPartnerDashboard,
         ]);
     }
 }
