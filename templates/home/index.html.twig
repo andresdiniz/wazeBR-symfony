@@ -1,206 +1,108 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script>document.documentElement.classList.add('js')</script>
-    <title>WazeBR Monitor | Inteligência para mobilidade urbana</title>
-    <meta name="description" content="Monitore trânsito, alertas, rotas, ocorrências CIFS e dados hidrológicos em uma única plataforma para prefeituras e equipes de mobilidade urbana. Solicite uma demonstração.">
-    <meta property="og:title" content="WazeBR Monitor | Inteligência para mobilidade urbana">
-    <meta property="og:description" content="Alertas Waze, congestionamentos, ocorrências CIFS e dados CEMADEN centralizados em um painel único, em tempo real.">
-    <meta property="og:type" content="website">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%22.9em%22 font-size=%2290%22>🚗</text></svg>">
-    <link rel="stylesheet" href="{{ asset('styles/home.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Home{% endblock %} - wazeBR</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- Public Pages CSS -->
+    <link rel="stylesheet" href="{{ asset('css/public-pages.css') }}">
+    
+    {% block stylesheets %}{% endblock %}
 </head>
-<body>
-<div class="landing">
-    <header class="container topbar">
-        <a class="brand" href="/" aria-label="WazeBR Monitor início">
-            <span class="brand-mark" aria-hidden="true">⌁</span>
-            <span>WazeBR<small>Monitor</small></span>
-        </a>
-        <nav class="nav-links" aria-label="Seções da página">
-            <a href="#recursos">Recursos</a>
-            <a href="#como-funciona">Como funciona</a>
-            <a href="#depoimentos">Depoimentos</a>
-            <a href="#faq">Perguntas frequentes</a>
-        </nav>
-        <nav class="nav-actions" aria-label="Navegação pública">
-            <a class="btn btn-light" href="#recursos">Recursos</a>
-            <a class="btn btn-primary" href="/login">Entrar <span aria-hidden="true">→</span></a>
-        </nav>
-    </header>
-
-    <main>
-        <section class="container hero">
-            <div class="hero-grid">
-                <div class="reveal">
-                    <p class="eyebrow">Plataforma para mobilidade urbana</p>
-                    <h1>Transforme dados de trânsito em <em>decisões melhores.</em></h1>
-                    <p>Tenha uma visão completa de alertas, congestionamentos, rotas e condições das vias em um único ambiente, criado para equipes públicas e privadas que precisam agir rápido.</p>
-                    <div class="hero-actions">
-                        <a class="btn btn-primary btn-lg" href="/login">Conhecer o painel <span aria-hidden="true">→</span></a>
-                        <a class="btn btn-light btn-lg" href="#recursos">Ver recursos</a>
-                    </div>
-                    <p class="hero-note">Sem cartão de crédito. Acesso liberado após validação da equipe.</p>
-                    <div class="proof">
-                        <span><b>✓</b> Visão centralizada</span>
-                        <span><b>✓</b> Operação mais ágil</span>
-                        <span><b>✓</b> Dados atualizados em tempo real</span>
-                    </div>
-                    <div class="logos" aria-label="Fontes de dados integradas">
-                        <span>Integrado com</span>
-                        <strong>Waze Data for Cities</strong>
-                        <strong>CEMADEN</strong>
-                    </div>
-                </div>
-                <div class="preview reveal" aria-label="Prévia do monitoramento de mobilidade">
-                    <div class="floating f-one"><strong>Ao vivo</strong>Monitoramento ativo</div>
-                    <div class="preview-window">
-                        <div class="window-bar"><i></i><i></i><i></i></div>
-                        <div class="map"><div class="pin"><span aria-hidden="true">⌖</span></div></div>
-                    </div>
-                    <div class="floating f-two"><strong>+24%</strong>visibilidade operacional</div>
-                </div>
+<body class="home-page-wrapper">
+    {% block body %}
+    <!-- Hero Section -->
+    <section class="home-hero">
+        <div class="home-content">
+            <div class="home-logo">
+                <i class="bi bi-speedometer2"></i>
             </div>
-        </section>
-
-        <section id="recursos" class="container">
-            <div class="section-head reveal">
-                <p class="kicker">Recursos para sua operação</p>
-                <h2>Uma visão clara do que está acontecendo.</h2>
-                <p>Informação organizada para reduzir o tempo entre identificar um problema e tomar uma decisão.</p>
+            <h1 class="home-title">wazeBR</h1>
+            <p class="home-subtitle">
+                Monitoramento inteligente de trâ££ego, alertas e hidrologia em tempo real.
+                <br>
+                A solução completa para gestão urbana e mobilidade.
+            </p>
+            <div class="home-cta">
+                <a href="{{ path('app_login') }}" class="home-cta-btn primary">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>
+                    Entrar
+                </a>
+                <a href="{{ path('partner_register') }}" class="home-cta-btn secondary">
+                    <i class="bi bi-person-plus me-2"></i>
+                    Criar Conta
+                </a>
             </div>
-            <div class="cards">
-                <article class="card reveal">
-                    <div class="icon" aria-hidden="true">⌖</div>
-                    <h3>Alertas Waze em tempo real</h3>
-                    <p>Acompanhe alertas de trânsito reportados pela comunidade, com contexto e localização atualizados.</p>
-                </article>
-                <article class="card reveal">
-                    <div class="icon" aria-hidden="true">↗</div>
-                    <h3>Congestionamentos e rotas</h3>
-                    <p>Monitore jams e rotas críticas para antecipar gargalos e agir antes que virem um problema maior.</p>
-                </article>
-                <article class="card reveal">
-                    <div class="icon" aria-hidden="true">◇</div>
-                    <h3>Ocorrências CIFS</h3>
-                    <p>Centralize eventos de defesa civil e encontre rapidamente o que exige atenção imediata da equipe.</p>
-                </article>
-                <article class="card reveal">
-                    <div class="icon" aria-hidden="true">☔</div>
-                    <h3>Dados hidrológicos CEMADEN</h3>
-                    <p>Acompanhe níveis de rios e estações monitoradas para apoiar decisões em cenários de risco.</p>
-                </article>
+        </div>
+    </section>
+    
+    <!-- Features Section -->
+    <section class="home-features">
+        <div class="home-features-grid">
+            <div class="home-feature-card">
+                <div class="home-feature-icon">
+                    <i class="bi bi-exclamation-triangle"></i>
+                </div>
+                <h3 class="home-feature-title">Alertas em Tempo Real</h3>
+                <p class="home-feature-text">
+                    Monitoramento contí££uo de incidentes e ocorrê££ncias nas vias monitoradas.
+                </p>
             </div>
-        </section>
-
-        <section id="como-funciona" class="container">
-            <div class="section-head center reveal">
-                <p class="kicker">Como funciona</p>
-                <h2>Do dado bruto à decisão, em três passos.</h2>
-                <p>Sem integrações complexas do seu lado — a coleta e o processamento já ficam por nossa conta.</p>
+            
+            <div class="home-feature-card">
+                <div class="home-feature-icon">
+                    <i class="bi bi-sign-merge-right"></i>
+                </div>
+                <h3 class="home-feature-title">Trâ££ego Inteligente</h3>
+                <p class="home-feature-text">
+                    Análise de congestionamentos e fluxo de veí££ulos com dados em tempo real.
+                </p>
             </div>
-            <div class="steps">
-                <div class="step reveal">
-                    <h3>Coletamos os dados</h3>
-                    <p>Alertas, congestionamentos, ocorrências CIFS e dados CEMADEN são coletados continuamente para a sua área de cobertura.</p>
+            
+            <div class="home-feature-card">
+                <div class="home-feature-icon">
+                    <i class="bi bi-droplet"></i>
                 </div>
-                <div class="step reveal">
-                    <h3>Organizamos em um painel único</h3>
-                    <p>Tudo fica centralizado com filtros por período, tipo de ocorrência e localização — sem planilhas soltas ou telas separadas.</p>
-                </div>
-                <div class="step reveal">
-                    <h3>Sua equipe age mais rápido</h3>
-                    <p>Com histórico, mapas e alertas em um só lugar, o tempo entre identificar e responder a um problema cai.</p>
-                </div>
+                <h3 class="home-feature-title">Monitoramento Hidro</h3>
+                <p class="home-feature-text">
+                    Acompanhamento de níveis de rios e estaçµµ pluviomê¡£icas integrado.
+                </p>
             </div>
-        </section>
-
-        <section class="band">
-            <div class="container">
-                <div class="section-head reveal">
-                    <p class="kicker">Mais controle, menos ruído</p>
-                    <h2>Feito para quem precisa enxergar o cenário inteiro.</h2>
-                    <p>Uma experiência simples para transformar dados dispersos em informação útil para sua equipe.</p>
+            
+            <div class="home-feature-card">
+                <div class="home-feature-icon">
+                    <i class="bi bi-graph-up"></i>
                 </div>
-                <div class="stats">
-                    <div class="stat reveal"><strong>01</strong><span>Ambiente centralizado</span></div>
-                    <div class="stat reveal"><strong>24h</strong><span>Informação disponível</span></div>
-                    <div class="stat reveal"><strong>∞</strong><span>Possibilidades de análise</span></div>
-                </div>
+                <h3 class="home-feature-title">Dashboards</h3>
+                <p class="home-feature-text">
+                    Visualizaçª£o completa com gráficos, mapas e métricas de desempenho.
+                </p>
             </div>
-        </section>
-
-        <section id="depoimentos" class="container">
-            <div class="section-head center reveal">
-                <p class="kicker">Quem usa, recomenda</p>
-                <h2>Confiado por equipes de mobilidade e defesa civil.</h2>
-            </div>
-            <div class="testimonials">
-                <div class="quote reveal">
-                    <p>"Reduzimos bastante o tempo entre identificar um alagamento e mobilizar a equipe de campo. O painel virou parte da rotina diária."</p>
-                    <footer><span class="avatar" aria-hidden="true">C</span> <span><b>Coordenação de Defesa Civil</b> · Município parceiro</span></footer>
-                </div>
-                <div class="quote reveal">
-                    <p>"Ter os alertas do Waze e os dados de CEMADEN no mesmo lugar tirou trabalho manual da nossa equipe e trouxe mais confiança nas decisões."</p>
-                    <footer><span class="avatar" aria-hidden="true">M</span> <span><b>Equipe de Mobilidade Urbana</b> · Município parceiro</span></footer>
-                </div>
-                <div class="quote reveal">
-                    <p>"A visão histórica por dia e horário ajudou a justificar mudanças de rota que antes eram só percepção da equipe."</p>
-                    <footer><span class="avatar" aria-hidden="true">O</span> <span><b>Operação de Trânsito</b> · Município parceiro</span></footer>
-                </div>
-            </div>
-        </section>
-
-        <section id="faq" class="container">
-            <div class="section-head center reveal">
-                <p class="kicker">Perguntas frequentes</p>
-                <h2>Ainda com dúvidas?</h2>
-            </div>
-            <div class="faq reveal">
-                <details class="faq-item">
-                    <summary>Preciso ter alguma integração pronta para usar a plataforma?</summary>
-                    <p>Não. A coleta de dados do Waze e do CEMADEN já é feita pela nossa infraestrutura. Depois do acesso liberado, sua equipe já encontra o painel populado.</p>
-                </details>
-                <details class="faq-item">
-                    <summary>A plataforma serve só para prefeituras?</summary>
-                    <p>O uso mais comum é por equipes de mobilidade urbana e defesa civil, mas qualquer operação que precise monitorar trânsito e ocorrências em uma região específica pode se beneficiar.</p>
-                </details>
-                <details class="faq-item">
-                    <summary>Como funciona o acesso?</summary>
-                    <p>Você solicita a demonstração pelo botão abaixo, nossa equipe entende a área de cobertura necessária e libera um acesso para o seu time.</p>
-                </details>
-                <details class="faq-item">
-                    <summary>Os dados são atualizados em tempo real?</summary>
-                    <p>Sim. Alertas, congestionamentos e ocorrências são coletados continuamente, então o painel reflete o cenário mais recente disponível.</p>
-                </details>
-            </div>
-        </section>
-
-        <section class="container">
-            <div class="cta reveal">
-                <div>
-                    <h2>Quer tomar decisões com mais confiança?</h2>
-                    <p>Acesse o WazeBR Monitor e descubra uma nova forma de acompanhar a mobilidade da sua cidade.</p>
-                </div>
-                <div class="cta-actions">
-                    <a class="btn btn-lg" href="/login">Acessar agora <span aria-hidden="true">→</span></a>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <footer class="container footer">
-        <span>© {{ 'now'|date('Y') }} WazeBR Monitor. Inteligência para uma mobilidade mais eficiente.</span>
-        <nav class="footer-links" aria-label="Links do rodapé">
-            <a href="#recursos">Recursos</a>
-            <a href="#faq">FAQ</a>
-            <a href="/login">Entrar</a>
-        </nav>
-    </footer>
-</div>
-
-<script src="{{ asset('js/home.js') }}" defer></script>
+        </div>
+    </section>
+    {% endblock %}
+    
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Public Pages JS -->
+    <script type="module">
+        import initPublicPages from '{{ asset('js/public-pages.js') }}';
+        initPublicPages();
+    </script>
+    
+    {% block javascripts %}{% endblock %}
 </body>
 </html>

@@ -1,54 +1,90 @@
-{% extends 'base.html.twig' %}
-
-{% block title %}Esqueci a Senha | wazeBR{% endblock %}
-
-{% block stylesheets %}
-    {{ parent() }}
-    <link rel="stylesheet" href="{{ asset('styles/auth.css') }}">
-{% endblock %}
-
-{% block javascripts %}
-    {{ parent() }}
-    <script src="{{ asset('controllers/forgot_password.js') }}" defer></script>
-{% endblock %}
-
-{% block body_class %}auth-page{% endblock %}
-
-{% block body %}
-<div class="auth-shell">
-    <div class="auth-card">
-        <div class="auth-header">
-            <h1>Recuperar Senha</h1>
-            <p>Digite seu e-mail para receber as instruções</p>
-        </div>
-
-        {% for flash_error in app.flashes('reset_password_error') %}
-            <div class="auth-alert auth-alert-error" role="alert">{{ flash_error }}</div>
-        {% endfor %}
-
-        {% for flash_success in app.flashes('reset_password_success') %}
-            <div class="auth-alert auth-alert-success" role="status">{{ flash_success }}</div>
-        {% endfor %}
-
-        {{ form_start(requestForm, { 'attr': { 'class': 'auth-form', 'novalidate': 'novalidate', 'data-auth-form': 'true' } }) }}
-            {{ form_row(requestForm.email, {
-                'label': 'E-mail',
-                'attr': {
-                    'autocomplete': 'email',
-                    'placeholder': 'seu@email.com',
-                    'class': 'form-control',
-                    'autofocus': 'autofocus'
-                }
-            }) }}
-
-            <button type="submit" class="auth-submit" data-submit-button>
-                Enviar instruções
-            </button>
-        {{ form_end(requestForm) }}
-
-        <div class="auth-footer">
-            <a href="{{ path('app_login') }}">← Voltar ao login</a>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Recuperar Senha{% endblock %} - wazeBR</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- Public Pages CSS -->
+    <link rel="stylesheet" href="{{ asset('css/public-pages.css') }}">
+    
+    {% block stylesheets %}{% endblock %}
+</head>
+<body>
+    {% block body %}
+    <div class="auth-page-wrapper">
+        <div class="auth-container">
+            <div class="auth-card">
+                <div class="auth-header">
+                    <div class="auth-logo">
+                        <i class="bi bi-speedometer2"></i>
+                    </div>
+                    <h1 class="auth-title">Recuperar Senha</h1>
+                    <p class="auth-subtitle">Digite seu email para receber as instruçµµ</p>
+                </div>
+                
+                <div class="auth-body">
+                    {% for type, messages in app.flashes %}
+                    {% for message in messages %}
+                    <div class="alert alert-{{ type }} alert-dismissible fade show auth-alert" role="alert" data-timeout="5000">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endfor %}
+                    {% endfor %}
+                    
+                    <form method="POST" class="auth-form" data-validate="true">
+                        <div class="auth-form-group">
+                            <label class="auth-form-label" for="email">Email</label>
+                            <div class="auth-input-wrapper">
+                                <i class="bi bi-envelope auth-input-icon"></i>
+                                <input type="email" id="email" name="email" class="auth-form-input with-icon" data-required="true" placeholder="seu@email.com" required autofocus>
+                            </div>
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Digite o email cadastrado na sua conta
+                            </small>
+                        </div>
+                        
+                        <button type="submit" class="auth-form-submit">
+                            <i class="bi bi-send me-2"></i>
+                            Enviar Instruçµµ
+                        </button>
+                    </form>
+                    
+                    <div class="auth-links">
+                        <a href="{{ path('app_login') }}" class="auth-link">
+                            <i class="bi bi-arrow-left me-1"></i>
+                            Voltar ao login
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-</div>
-{% endblock %}
+    {% endblock %}
+    
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Public Pages JS -->
+    <script type="module">
+        import initPublicPages, { initAlerts } from '{{ asset('js/public-pages.js') }}';
+        initPublicPages();
+        initAlerts();
+    </script>
+    
+    {% block javascripts %}{% endblock %}
+</body>
+</html>
