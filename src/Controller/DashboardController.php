@@ -89,6 +89,7 @@ class DashboardController extends AbstractController
             'irregularities' => (int) $irregularityCount,
             'routes' => (int) $routeCount,
             'hydroData' => (int) $hydroDataCount,
+            'monitoredLinks' => 0,
         ];
         
         // Hero configuration
