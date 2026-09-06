@@ -24,10 +24,10 @@
                         Novo
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="{{ path('alert_new') }}"><i class="bi bi-exclamation-triangle me-2"></i>Alerta</a></li>
-                        <li><a class="dropdown-item" href="{{ path('traffic_jam_new') }}"><i class="bi bi-sign-merge-right me-2"></i>Congestionamento</a></li>
+                        <li><a class="dropdown-item" href="{{ path('alert_index') }}"><i class="bi bi-exclamation-triangle me-2"></i>Alerta</a></li>
+                        <li><a class="dropdown-item" href="{{ path('jam_index') }}"><i class="bi bi-sign-merge-right me-2"></i>Congestionamento</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{{ path('cemaden_index') }}"><i class="bi bi-cloud-rain me-2"></i>CEMADEN</a></li>
+                        <li><a class="dropdown-item" href="{{ path('app_cemaden_index') }}"><i class="bi bi-cloud-rain me-2"></i>CEMADEN</a></li>
                     </ul>
                 </div>
             </div>
@@ -43,10 +43,10 @@
             </div>
             <div class="stats-card-content">
                 <div class="stats-card-label">Alertas Ativos</div>
-                <div class="stats-card-value">{{ stats.alerts|default(0) }}</div>
-                <div class="stats-card-change {% if stats.alerts_change|default(0) >= 0 %}negative{% else %}positive{% endif %}">
-                    <i class="bi bi-arrow-{{ stats.alerts_change|default(0) >= 0 ? 'up' : 'down' }}"></i>
-                    {{ stats.alerts_change|default(0)|abs }}%
+                <div class="stats-card-value">{{ alertCount|default(0) }}</div>
+                <div class="stats-card-change {% if hero.alertsLast24h|default(0) >= 0 %}positive{% else %}negative{% endif %}">
+                    <i class="bi bi-arrow-{{ hero.alertsLast24h|default(0) >= 0 ? 'up' : 'down' }}"></i>
+                    {{ hero.alertsLast24h|default(0) }} nas últimas 24h
                 </div>
             </div>
         </div>
@@ -58,10 +58,10 @@
             </div>
             <div class="stats-card-content">
                 <div class="stats-card-label">Congestionamentos</div>
-                <div class="stats-card-value">{{ stats.traffic_jams|default(0) }}</div>
-                <div class="stats-card-change {% if stats.traffic_change|default(0) >= 0 %}negative{% else %}positive{% endif %}">
-                    <i class="bi bi-arrow-{{ stats.traffic_change|default(0) >= 0 ? 'up' : 'down' }}"></i>
-                    {{ stats.traffic_change|default(0)|abs }}%
+                <div class="stats-card-value">{{ trafficJamCount|default(0) }}</div>
+                <div class="stats-card-change {% if hero.jamsLast24h|default(0) >= 0 %}positive{% else %}negative{% endif %}">
+                    <i class="bi bi-arrow-{{ hero.jamsLast24h|default(0) >= 0 ? 'up' : 'down' }}"></i>
+                    {{ hero.jamsLast24h|default(0) }} nas últimas 24h
                 </div>
             </div>
         </div>
@@ -73,10 +73,10 @@
             </div>
             <div class="stats-card-content">
                 <div class="stats-card-label">Estaçµµ Hidro</div>
-                <div class="stats-card-value">{{ stats.hydro_stations|default(0) }}</div>
+                <div class="stats-card-value">{{ hero.cemadenReadings|default(0) }}</div>
                 <div class="stats-card-change positive">
                     <i class="bi bi-check-lg"></i>
-                    {{ stats.hydro_active|default(0) }} ativas
+                    {{ partnerStats.cemadenReadings|default(0) }} leituras
                 </div>
             </div>
         </div>
@@ -88,10 +88,10 @@
             </div>
             <div class="stats-card-content">
                 <div class="stats-card-label">Estaçµµ CEMADEN</div>
-                <div class="stats-card-value">{{ stats.cemaden_stations|default(0) }}</div>
+                <div class="stats-card-value">{{ hero.cemadenCities|default(0) }}</div>
                 <div class="stats-card-change positive">
                     <i class="bi bi-cloud-check"></i>
-                    {{ stats.cemaden_online|default(0) }} online
+                    {{ hero.cemadenCities|default(0) }} cidades
                 </div>
             </div>
         </div>
@@ -116,7 +116,7 @@
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="#" data-layer="alerts"><i class="bi bi-exclamation-triangle me-2"></i>Alertas</a></li>
-                            <li><a class="dropdown-item" href="#" data-layer="traffic"><i class="bi bi-sign-merge-right me-2"></i>Trâ®®ego</a></li>
+                            <li><a class="dropdown-item" href="#" data-layer="traffic"><i class="bi bi-sign-merge-right me-2"></i>Trâ££ego</a></li>
                             <li><a class="dropdown-item" href="#" data-layer="hydro"><i class="bi bi-droplet me-2"></i>Hidro</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="#" data-layer="all"><i class="bi bi-check-all me-2"></i>Todos</a></li>
@@ -125,7 +125,7 @@
                 </div>
             </div>
             <div class="widget-body p-0">
-                <div id="dashboard-map" class="map-widget"></div>
+                <div id="dashboard-map" class="map-widget" style="min-height: 450px;"></div>
             </div>
         </div>
         
@@ -141,16 +141,16 @@
                 </a>
             </div>
             <div class="widget-body alerts-widget">
-                {% for alert in recent_alerts|default([]) %}
+                {% for alert in recentAlerts|default([]) %}
                 <div class="alert-item">
-                    <div class="alert-item-icon {{ alert.type|default('warning') }}">
+                    <div class="alert-item-icon {{ alert.subtype|default('warning') }}">
                         <i class="bi bi-{{ alert.icon|default('exclamation-triangle') }}"></i>
                     </div>
                     <div class="alert-item-content">
-                        <div class="alert-item-title">{{ alert.title|truncate(40) }}</div>
+                        <div class="alert-item-title">{{ alert.title|default('Alerta')|truncate(40) }}</div>
                         <div class="alert-item-location">
                             <i class="bi bi-geo-alt"></i>
-                            {{ alert.location|truncate(30) }}
+                            {{ alert.street|default('Local desconhecido')|truncate(30) }}
                         </div>
                         <div class="alert-item-time">
                             <i class="bi bi-clock"></i>
@@ -167,25 +167,39 @@
             </div>
         </div>
         
-        <!-- Traffic Chart -->
+        <!-- Recent Traffic Jams -->
         <div class="widget dashboard-col-6">
             <div class="widget-header">
                 <h3 class="widget-title">
-                    <i class="bi bi-graph-up"></i>
-                    Evoluçª£o do Trâ®®ego
+                    <i class="bi bi-sign-merge-right"></i>
+                    Congestionamentos Recentes
                 </h3>
-                <div class="widget-actions">
-                    <div class="time-range">
-                        <button class="time-range-btn active" data-range="24h">24h</button>
-                        <button class="time-range-btn" data-range="7d">7d</button>
-                        <button class="time-range-btn" data-range="30d">30d</button>
-                    </div>
-                </div>
+                <a href="{{ path('jam_index') }}" class="btn btn-sm btn-link">
+                    Ver todos
+                </a>
             </div>
             <div class="widget-body">
-                <div class="chart-container">
-                    <canvas id="trafficChart"></canvas>
+                {% for jam in recentJams|default([]) %}
+                <div class="d-flex align-items-start gap-3 pb-3 mb-3 border-bottom">
+                    <div class="rounded-circle bg-{{ jam.level == 5 ? 'danger' : (jam.level >= 3 ? 'warning' : 'success') }} text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                        <small class="fw-bold">{{ jam.level }}</small>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="fw-medium">{{ jam.street|default('Via desconhecida')|truncate(50) }}</div>
+                        <div class="text-muted small">
+                            <i class="bi bi-geo-alt"></i> {{ jam.city|default('N/A') }}
+                            <span class="ms-2">
+                                <i class="bi bi-clock"></i> {{ jam.createdAt|date('H:i') }}
+                            </span>
+                        </div>
+                    </div>
                 </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-check-circle" style="font-size: 3rem;"></i>
+                    <p class="mt-3 mb-0">Nenhum congestionamento recente</p>
+                </div>
+                {% endfor %}
             </div>
         </div>
         
@@ -199,22 +213,57 @@
             </div>
             <div class="widget-body">
                 <div class="activity-feed">
-                    {% for activity in recent_activities|default([]) %}
+                    {% if partnerStats.executions > 0 %}
                     <div class="activity-item">
-                        <div class="activity-item-time">{{ activity.createdAt|date('H:i') }}</div>
-                        <div class="activity-item-title">{{ activity.description|truncate(60) }}</div>
-                        {% if activity.user %}
+                        <div class="activity-item-time">{{ "now"|date('H:i') }}</div>
+                        <div class="activity-item-title">{{ partnerStats.executions }} execuçµµ de rotas</div>
                         <div class="activity-item-text">
-                            <i class="bi bi-person"></i>
-                            {{ activity.user.username }}
+                            <i class="bi bi-map"></i>
+                            Rotas monitoradas ativas
                         </div>
-                        {% endif %}
                     </div>
-                    {% else %}
+                    {% endif %}
+                    
+                    {% if partnerStats.cifsEvents > 0 %}
+                    <div class="activity-item">
+                        <div class="activity-item-time">{{ "now"|date('H:i') }}</div>
+                        <div class="activity-item-title">{{ partnerStats.cifsEvents }} eventos CIFs</div>
+                        <div class="activity-item-text">
+                            <i class="bi bi-calendar-event"></i>
+                            Eventos registrados
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if partnerStats.monitoredLinks > 0 %}
+                    <div class="activity-item">
+                        <div class="activity-item-time">{{ "now"|date('H:i') }}</div>
+                        <div class="activity-item-title">{{ partnerStats.monitoredLinks }} links monitorados</div>
+                        <div class="activity-item-text">
+                            <i class="bi bi-link-45deg"></i>
+                            Links ativos no sistema
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if partnerStats.jams > 0 or partnerStats.alerts > 0 %}
+                    <div class="activity-item">
+                        <div class="activity-item-time">{{ "now"|date('H:i') }}</div>
+                        <div class="activity-item-title">
+                            {{ partnerStats.jams }} congestionamentos, {{ partnerStats.alerts }} alertas
+                        </div>
+                        <div class="activity-item-text">
+                            <i class="bi bi-bar-chart"></i>
+                            Total no perí££odo
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if partnerStats.executions == 0 and partnerStats.cifsEvents == 0 and partnerStats.monitoredLinks == 0 %}
                     <div class="text-center py-4 text-muted">
                         <p class="mb-0">Nenhuma atividade recente</p>
                     </div>
-                    {% endfor %}
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -223,20 +272,39 @@
 {% endblock %}
 
 {% block javascripts %}
-<script>
+<script type="module">
 // Dashboard initialization
-import { initDashboard } from '../../js/pages/dashboard.js';
+import { config } from '../../js/core/config.js';
 
-document.addEventListener('DOMContentLoaded', () => {
-  initDashboard({
-    mapElement: 'dashboard-map',
-    chartElement: 'trafficChart',
-    endpoints: {
-      alerts: '{{ path('api_alerts_list') }}',
-      traffic: '{{ path('api_traffic_list') }}',
-      hydro: '{{ path('api_hydro_list') }}',
-    }
+// Initialize map
+const mapElement = document.getElementById('dashboard-map');
+if (mapElement) {
+  const map = L.map('dashboard-map', {
+    center: [config.map.defaultLat, config.map.defaultLng],
+    zoom: config.map.defaultZoom,
+    minZoom: config.map.minZoom,
+    maxZoom: config.map.maxZoom,
   });
+  
+  L.tileLayer(config.map.tileProvider, {
+    attribution: config.map.attribution,
+  }).addTo(map);
+  
+  console.log('[wazeBR] Dashboard map initialized');
+}
+
+// Refresh button
+document.getElementById('refreshDashboard')?.addEventListener('click', () => {
+  window.location.reload();
+});
+
+// Map fullscreen
+document.getElementById('mapFullscreen')?.addEventListener('click', () => {
+  const mapWidget = document.getElementById('dashboard-map')?.closest('.widget');
+  if (mapWidget) {
+    mapWidget.classList.toggle('widget-fullscreen');
+    setTimeout(() => map?.invalidateSize(), 300);
+  }
 });
 </script>
 {% endblock %}
