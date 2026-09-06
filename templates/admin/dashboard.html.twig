@@ -1,89 +1,101 @@
-{% extends 'admin/base.html.twig' %}
-{% block title %}Admin Dashboard{% endblock %}
+{% extends 'base_dashboard.html.twig' %}
+
+{% block title %}Admin Dashboard - WazeBR{% endblock %}
+
 {% block header_title %}Admin Dashboard{% endblock %}
+
+{% block header_subtitle %}Painel de administraçº£o do sistema{% endblock %}
+
 {% block body %}
-<div class="row g-4 mb-4">
-  <div class="col-md-2">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h6 class="card-subtitle text-muted">Traffic Jams (24h)</h6>
-        <h2 class="card-title mb-0">{{ trafficJamCount }}</h2>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-2">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h6 class="card-subtitle text-muted">Alerts (24h)</h6>
-        <h2 class="card-title mb-0">{{ alertCount }}</h2>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-2">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h6 class="card-subtitle text-muted">Irregularities</h6>
-        <h2 class="card-title mb-0">{{ irregularityCount }}</h2>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-2">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h6 class="card-subtitle text-muted">Routes</h6>
-        <h2 class="card-title mb-0">{{ routeCount }}</h2>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-2">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h6 class="card-subtitle text-muted">Hydro Data (24h)</h6>
-        <h2 class="card-title mb-0">{{ hydroDataCount }}</h2>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="row g-4">
-  <div class="col-md-6">
-    <div class="card shadow-sm">
-      <div class="card-header"><h5 class="mb-0">Recent Traffic Jams</h5></div>
-      <div class="card-body">
-        {% if recentTrafficJams|length > 0 %}
-          <ul class="list-group list-group-flush">
-            {% for jam in recentTrafficJams %}
-              <li class="list-group-item d-flex justify-content-between align-items-center">
+<div class="space-y-6">
+    {# Admin Stats Overview #}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {# Total Partners #}
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center justify-between">
                 <div>
-                  <strong>{{ jam.streetName|default('Sem rua') }}</strong>
-                  {% if jam.city %}<small class="text-muted">- {{ jam.city }}</small>{% endif %}
+                    <p class="text-sm font-medium text-gray-600">Total de Parceiros</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ partnerCount|default(0) }}</p>
                 </div>
-                <span class="badge bg-{{ jam.level >= 4 ? 'danger' : (jam.level >= 2 ? 'warning' : 'success') }}">Level {{ jam.level }}</span>
-              </li>
-            {% endfor %}
-          </ul>
-        {% else %}<p class="text-muted mb-0">No recent traffic jams.</p>{% endif %}
-      </div>
-    </div>
-  </div>
-  <div class="col-md-6">
-    <div class="card shadow-sm">
-      <div class="card-header"><h5 class="mb-0">Recent Alerts</h5></div>
-      <div class="card-body">
-        {% if recentAlerts|length > 0 %}
-          <ul class="list-group list-group-flush">
-            {% for alert in recentAlerts %}
-              <li class="list-group-item">
+                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-building text-blue-600"></i>
+                </div>
+            </div>
+        </div>
+        
+        {# Total Cities #}
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center justify-between">
                 <div>
-                  <strong>{{ alert.subtype|default('Alert') }}</strong>
-                  {% if alert.streetName %}<small class="text-muted">- {{ alert.streetName }}</small>{% endif %}
-                  {% if alert.reportedAt %}<br><small class="text-muted">{{ alert.reportedAt|date('d/m/Y H:i') }}</small>{% endif %}
+                    <p class="text-sm font-medium text-gray-600">Total de Cidades</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ cityCount|default(0) }}</p>
                 </div>
-              </li>
-            {% endfor %}
-          </ul>
-        {% else %}<p class="text-muted mb-0">No recent alerts.</p>{% endif %}
-      </div>
+                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-city text-green-600"></i>
+                </div>
+            </div>
+        </div>
+        
+        {# Total Routes #}
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Total de Rotas</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ routeCount|default(0) }}</p>
+                </div>
+                <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-map-marked text-purple-600"></i>
+                </div>
+            </div>
+        </div>
+        
+        {# Total Users #}
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Total de UsuÃ¡rios</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ userCount|default(0) }}</p>
+                </div>
+                <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-users text-orange-600"></i>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
+    
+    {# Quick Actions #}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h2 class="text-lg font-bold text-gray-900 mb-4">Açºµes RÃ¡pidas</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <a href="{{ path('admin_partner_index') }}" class="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <i class="fas fa-plus-circle text-blue-600"></i>
+                <span class="font-medium text-gray-700">Novo Parceiro</span>
+            </a>
+            <a href="{{ path('admin_city_index') }}" class="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <i class="fas fa-plus-circle text-green-600"></i>
+                <span class="font-medium text-gray-700">Nova Cidade</span>
+            </a>
+            <a href="{{ path('admin_route_index') }}" class="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <i class="fas fa-plus-circle text-purple-600"></i>
+                <span class="font-medium text-gray-700">Nova Rota</span>
+            </a>
+            <a href="{{ path('admin_settings_index') }}" class="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <i class="fas fa-cog text-gray-600"></i>
+                <span class="font-medium text-gray-700">Configuraçºµes</span>
+            </a>
+        </div>
+    </div>
+    
+    {# Recent Activity #}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h2 class="text-lg font-bold text-gray-900 mb-4">Atividade Recente</h2>
+        <div class="space-y-4">
+            <div class="flex items-center space-x-3 text-sm text-gray-600">
+                <i class="fas fa-info-circle text-blue-500"></i>
+                <span>Sistema atualizado com sucesso</span>
+                <span class="text-gray-400 ml-auto">Agora mesmo</span>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
