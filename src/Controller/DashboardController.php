@@ -119,6 +119,11 @@ class DashboardController extends AbstractController
             'tvtExecutions' => 0,
         ];
         
+        // Chart data
+        $alertsBySubtype = [];
+        $jamsByLevel = [];
+        $totalAlertsInPeriod = (int) $alertCount;
+        
         return $this->render('dashboard/index.html.twig', [
             'trafficJamCount' => (int) $trafficJamCount,
             'alertCount' => (int) $alertCount,
@@ -133,6 +138,9 @@ class DashboardController extends AbstractController
             'periodKey' => $periodKey,
             'partnerStats' => $partnerStats,
             'hero' => $hero,
+            'alertsBySubtype' => $alertsBySubtype,
+            'jamsByLevel' => $jamsByLevel,
+            'totalAlertsInPeriod' => $totalAlertsInPeriod,
         ]);
     }
 }
