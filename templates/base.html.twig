@@ -5,30 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>{% block title %}wazeBR{% endblock %} - Monitoramento de Trâ££ego</title>
-    
+
     <!-- Favicon -->
     <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
-    
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
+
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    
+
     <!-- Leaflet CSS (Maps) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
+
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    
+
     <!-- App CSS -->
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
-    
+    <link rel="stylesheet" href="{{ asset('styles/app.css') }}">
+
     {% block stylesheets %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}" data-page="{% block page_name %}{% endblock %}">
@@ -45,7 +45,7 @@
                 <i class="bi bi-chevron-left"></i>
             </button>
         </div>
-        
+
         <nav class="sidebar-nav">
             {% block sidebar_nav %}
             <!-- Dashboard -->
@@ -60,7 +60,7 @@
                     </li>
                 </ul>
             </div>
-            
+
             <!-- Monitoramento -->
             <div class="sidebar-section">
                 <div class="sidebar-section-title">Monitoramento</div>
@@ -100,7 +100,7 @@
                     </li>
                 </ul>
             </div>
-            
+
             <!-- Admin -->
             {% if is_granted('ROLE_ADMIN') %}
             <div class="sidebar-section">
@@ -136,7 +136,7 @@
             {% endif %}
             {% endblock %}
         </nav>
-        
+
         <div class="sidebar-footer">
             <div class="sidebar-user" data-bs-toggle="dropdown" aria-expanded="false">
                 <div class="sidebar-user-avatar">
@@ -160,7 +160,7 @@
         </div>
     </aside>
     {% endblock %}
-    
+
     <div class="main-content">
         {% block header %}
         <header class="main-header header">
@@ -168,13 +168,13 @@
                 <button class="header-toggle d-md-none" id="mobileMenuToggle">
                     <i class="bi bi-list"></i>
                 </button>
-                
+
                 <div class="header-search">
                     <i class="bi bi-search header-search-icon"></i>
                     <input type="text" class="header-search-input" placeholder="Buscar..." id="headerSearch">
                 </div>
             </div>
-            
+
             <div class="header-right">
                 <!-- Notifications -->
                 <div class="header-action dropdown" id="notificationsDropdown">
@@ -212,10 +212,10 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- User Menu -->
                 <div class="header-divider d-none d-md-block"></div>
-                
+
                 <div class="header-profile dropdown">
                     <div class="d-flex align-items-center" data-bs-toggle="dropdown" aria-expanded="false">
                         <div class="header-profile-avatar">
@@ -239,7 +239,7 @@
             </div>
         </header>
         {% endblock %}
-        
+
         <main class="main-body">
             {% block flash_messages %}
             {% for type, messages in app.flashes %}
@@ -251,10 +251,10 @@
             {% endfor %}
             {% endfor %}
             {% endblock %}
-            
+
             {% block content %}{% endblock %}
         </main>
-        
+
         {% block footer %}
         <footer class="main-footer">
             <div class="container-fluid">
@@ -274,16 +274,16 @@
         </footer>
         {% endblock %}
     </div>
-    
+
     <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
+
     <!-- Leaflet JS (Maps) -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
+
     <!-- App JS -->
     <script type="module" src="{{ asset('js/app.js') }}"></script>
-    
+
     {% block javascripts %}{% endblock %}
 </body>
 </html>

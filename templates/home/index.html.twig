@@ -4,21 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Home{% endblock %} - wazeBR</title>
-    
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
+
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    
+
     <!-- Public Pages CSS -->
-    <link rel="stylesheet" href="{{ asset('css/public-pages.css') }}">
-    
+    <link rel="stylesheet" href="{{ asset('styles/public-pages.css') }}">
+
     {% block stylesheets %}{% endblock %}
 </head>
 <body class="home-page-wrapper">
@@ -47,7 +47,7 @@
             </div>
         </div>
     </section>
-    
+
     <!-- Features Section -->
     <section class="home-features">
         <div class="home-features-grid">
@@ -60,7 +60,7 @@
                     Monitoramento contí££uo de incidentes e ocorrê££ncias nas vias monitoradas.
                 </p>
             </div>
-            
+
             <div class="home-feature-card">
                 <div class="home-feature-icon">
                     <i class="bi bi-sign-merge-right"></i>
@@ -70,7 +70,7 @@
                     Análise de congestionamentos e fluxo de veí££ulos com dados em tempo real.
                 </p>
             </div>
-            
+
             <div class="home-feature-card">
                 <div class="home-feature-icon">
                     <i class="bi bi-droplet"></i>
@@ -80,7 +80,7 @@
                     Acompanhamento de níveis de rios e estaçµµ pluviomê¡£icas integrado.
                 </p>
             </div>
-            
+
             <div class="home-feature-card">
                 <div class="home-feature-icon">
                     <i class="bi bi-graph-up"></i>
@@ -93,16 +93,16 @@
         </div>
     </section>
     {% endblock %}
-    
+
     <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
+
     <!-- Public Pages JS -->
     <script type="module">
         import initPublicPages from '{{ asset('js/public-pages.js') }}';
         initPublicPages();
     </script>
-    
+
     {% block javascripts %}{% endblock %}
 </body>
 </html>
