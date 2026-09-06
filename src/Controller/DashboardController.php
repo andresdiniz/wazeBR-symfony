@@ -82,6 +82,21 @@ class DashboardController extends AbstractController
         $recentAlerts = $entityManager->getRepository(WazeAlert::class)
             ->findBy([], ['createdAt' => 'DESC'], 5);
         
+        // Partner stats
+        $partnerStats = [
+            'trafficJams' => (int) $trafficJamCount,
+            'alerts' => (int) $alertCount,
+            'irregularities' => (int) $irregularityCount,
+            'routes' => (int) $routeCount,
+            'hydroData' => (int) $hydroDataCount,
+        ];
+        
+        // Hero configuration
+        $hero = [
+            'title' => 'Dashboard',
+            'subtitle' => 'VisÃ£o geral da plataforma',
+        ];
+        
         return $this->render('dashboard/index.html.twig', [
             'trafficJamCount' => (int) $trafficJamCount,
             'alertCount' => (int) $alertCount,
@@ -94,6 +109,8 @@ class DashboardController extends AbstractController
             'partnerLabel' => $partnerLabel,
             'periods' => $periods,
             'periodKey' => $periodKey,
+            'partnerStats' => $partnerStats,
+            'hero' => $hero,
         ]);
     }
 }
