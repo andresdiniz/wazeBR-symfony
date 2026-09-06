@@ -128,6 +128,8 @@ class DashboardController extends AbstractController
         $topStreets = [];
         $mapJams = $recentTrafficJams;
         $mapAlerts = $recentAlerts;
+        $mapJamsTruncated = false;
+        $mapAlertsTruncated = false;
         
         return $this->render('dashboard/index.html.twig', [
             'trafficJamCount' => (int) $trafficJamCount,
@@ -149,6 +151,8 @@ class DashboardController extends AbstractController
             'topStreets' => $topStreets,
             'mapJams' => $mapJams,
             'mapAlerts' => $mapAlerts,
+            'mapJamsTruncated' => $mapJamsTruncated,
+            'mapAlertsTruncated' => $mapAlertsTruncated,
         ]);
     }
 }
