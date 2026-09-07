@@ -1,0 +1,96 @@
+{# Header Component #}
+<header class="site-header">
+    <div class="header-container">
+        {# Logo #}
+        <a href="{{ path('app_home') }}" class="logo">
+            <div class="logo-icon">
+                <i class="fas fa-road"></i>
+            </div>
+            <span class="logo-text">waze<span class="highlight">BR</span></span>
+        </a>
+        
+        {# Navigation #}
+        {% include 'partials/navbar.html.twig' %}
+        
+        {# Header Actions #}
+        <div class="header-actions">
+            {% if app.user %}
+                {# User is logged in #}
+                <div class="user-menu">
+                    <button class="user-menu-btn" onclick="toggleUserMenu()">
+                        <div class="user-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <span class="user-name">{{ app.user.email|split('@')|first }}</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    
+                    <div class="user-dropdown" id="user-dropdown">
+                        <div class="user-info">
+                            <div class="user-avatar-large">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="user-details">
+                                <div class="user-name">{{ app.user.email|split('@')|first }}</div>
+                                <div class="user-email">{{ app.user.email }}</div>
+                                <div class="user-roles">
+                                    {% for role in app.user.roles %}
+                                        <span class="role-badge">{{ role|replace({'ROLE_': ''})|replace({'_': ' '})|title }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="dropdown-divider"></div>
+                        
+                        {# Role-based Dashboard Links #}
+                        {% if 'ROLE_ACCOUNT_ADMIN' in app.user.roles %}
+                            <a href="{{ path('app_account_admin_dashboard') }}" class="dropdown-item">
+                                <i class="fas fa-tachometer-alt"></i>
+                                <span>Dashboard Admin</span>
+                            </a>
+                        {% endif %}
+                        
+                        {% if 'ROLE_ADMIN_PARTNER' in app.user.roles %}
+                            <a href="{{ path('app_partner_dashboard') }}" class="dropdown-item">
+                                <i class="fas fa-handshake"></i>
+                                <span>Dashboard Partner</span>
+                            </a>
+                        {% endif %}
+                        
+                        {% if 'ROLE_FIELD_AGENT' in app.user.roles %}
+                            <a href="{{ path('app_field_agent_dashboard') }}" class="dropdown-item">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <span>Dashboard Agente</span>
+                            </a>
+                        {% endif %}
+                        
+                        {% if 'ROLE_USER' in app.user.roles %}
+                            <a href="{{ path('app_user_dashboard') }}" class="dropdown-item">
+                                <i class="fas fa-user"></i>
+                                <span>Meu Dashboard</span>
+                            </a>
+                        {% endif %}
+                        
+                        <div class="dropdown-divider"></div>
+                        
+                        <a href="{{ path('app_logout') }}" class="dropdown-item logout">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Sair</span>
+                        </a>
+                    </div>
+                </div>
+            {% else %}
+                {# User is not logged in #}
+                <a href="{{ path('app_login') }}" class="btn btn-ghost">
+                    <i class="fas fa-sign-in-alt"></i>
+                    <span>Entrar</span>
+                </a>
+                <a href="{{ path('app_register') }}" class="btn btn-primary">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Cadastrar</span>
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</header>
