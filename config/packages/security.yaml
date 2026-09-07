@@ -33,9 +33,15 @@ security:
     # Note: Only the *first* access control that matches will be used
     access_control:
         - { path: ^/login, roles: PUBLIC_ACCESS }
+<<<<<<< Updated upstream
         - { path: ^/register, roles: PUBLIC_ACCESS }
         - { path: ^/dashboard, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/admin, roles: ROLE_ADMIN }
+=======
+        - { path: ^/forgot-password, roles: PUBLIC_ACCESS }
+        - { path: ^/reset-password, roles: PUBLIC_ACCESS }
+        - { path: ^/health, roles: PUBLIC_ACCESS }
+>>>>>>> Stashed changes
         - { path: ^/, roles: PUBLIC_ACCESS }
 
 when@test:

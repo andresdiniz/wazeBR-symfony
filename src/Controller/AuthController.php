@@ -32,7 +32,6 @@ class AuthController extends AbstractController
     public function home(): Response
     {
         if ($this->getUser()) {
-            // Se já estiver logado, manda para o dashboard
             return $this->redirectToRoute('app_dashboard');
         }
 
