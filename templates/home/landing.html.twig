@@ -10,20 +10,22 @@
     <meta property="og:description" content="Transforme a mobilidade da sua cidade com dados em tempo real e anã¡¡lises preditivas">
     <meta property="og:type" content="website">
     <title>wazeBR | Monitoramento Inteligente de Trã¡¡fego e Mobilidade Urbana</title>
-    
+
     {# Fonts #}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
-    
+
     {# Icons #}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     {# Stylesheets #}
-    <link rel="stylesheet" href="{{ asset('assets/css/landing.css') }}">
-    
+    <link rel="stylesheet" href="{{ asset('css/landing.css') }}">
+
     {# Favicon #}
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+    <script src="{{ asset('js/landing.js') }}"></script>
+
 </head>
 <body>
     {# Navigation #}
@@ -35,7 +37,7 @@
                 </div>
                 <span class="logo-text">waze<span class="highlight">BR</span></span>
             </a>
-            
+
             <div class="nav-menu" id="nav-menu">
                 <ul class="nav-links">
                     <li><a href="#features">Funcionalidades</a></li>
@@ -45,12 +47,12 @@
                     <li><a href="#faq">FAQ</a></li>
                 </ul>
             </div>
-            
+
             <div class="nav-actions">
                 <a href="{{ path('app_login') }}" class="btn btn-ghost">Entrar</a>
                 <a href="#pricing" class="btn btn-primary">Comeã§§ar Agora</a>
             </div>
-            
+
             <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Menu">
                 <span></span>
                 <span></span>
@@ -66,22 +68,22 @@
                 <div class="hero-gradient"></div>
                 <div class="hero-particles" id="particles"></div>
             </div>
-            
+
             <div class="container hero-container">
                 <div class="hero-content">
                     <div class="hero-badge">
                         <span class="badge-icon">ã¡¡</span>
                         <span>Tecnologia Brasileira para Cidades Inteligentes</span>
                     </div>
-                    
+
                     <h1 class="hero-title">
                         Transforme a Mobilidade da Sua Cidade com <span class="highlight">Dados em Tempo Real</span>
                     </h1>
-                    
+
                     <p class="hero-subtitle">
                         Monitoramento inteligente de trã¡¡fego, alertas preditivos e anã¡¡lises avanã§§adas para gestores pãººblicos e empresas que querem revolucionar a mobilidade urbana.
                     </p>
-                    
+
                     <div class="hero-cta">
                         <a href="#pricing" class="btn btn-primary btn-lg">
                             <span>Comeã§§ar Teste Grã¡¡tis</span>
@@ -92,7 +94,7 @@
                             <span>Ver Demo</span>
                         </a>
                     </div>
-                    
+
                     <div class="hero-trust">
                         <div class="trust-item">
                             <i class="fas fa-check-circle"></i>
@@ -108,7 +110,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="hero-visual">
                     <div class="dashboard-preview">
                         <div class="preview-header">
@@ -146,7 +148,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="hero-wave">
                 <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M0 0L60 10C120 20 240 40 360 53.3C480 67 600 73 720 73.3C840 73 960 67 1080 53.3C1200 40 1320 20 1380 10L1440 0V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0V0Z" fill="white"/>
@@ -200,7 +202,7 @@
                     <h2 class="section-title">Tudo que você precisa para <span class="highlight">monitorar e otimizar</span> o trã¡¡fego</h2>
                     <p class="section-subtitle">Uma plataforma completa com ferramentas avanã§§adas para gestíµ£o inteligente da mobilidade urbana</p>
                 </div>
-                
+
                 <div class="features-grid">
                     <div class="feature-card">
                         <div class="feature-icon">
@@ -214,7 +216,7 @@
                             <li><i class="fas fa-check"></i> Baixa latãªªncia</li>
                         </ul>
                     </div>
-                    
+
                     <div class="feature-card featured">
                         <div class="feature-badge">Mais Popular</div>
                         <div class="feature-icon">
@@ -228,7 +230,7 @@
                             <li><i class="fas fa-check"></i> Camadas customizã¡¡veis</li>
                         </ul>
                     </div>
-                    
+
                     <div class="feature-card">
                         <div class="feature-icon">
                             <i class="fas fa-bell"></i>
@@ -241,7 +243,7 @@
                             <li><i class="fas fa-check"></i> Priorizaçı¡Ì£o automã¡¡tica</li>
                         </ul>
                     </div>
-                    
+
                     <div class="feature-card">
                         <div class="feature-icon">
                             <i class="fas fa-chart-line"></i>
@@ -254,7 +256,7 @@
                             <li><i class="fas fa-check"></i> Anã¡¡lise preditiva</li>
                         </ul>
                     </div>
-                    
+
                     <div class="feature-card">
                         <div class="feature-icon">
                             <i class="fas fa-plug"></i>
@@ -267,7 +269,7 @@
                             <li><i class="fas fa-check"></i> SDKs disponã¡¡veis</li>
                         </ul>
                     </div>
-                    
+
                     <div class="feature-card">
                         <div class="feature-icon">
                             <i class="fas fa-robot"></i>
@@ -292,7 +294,7 @@
                     <h2 class="section-title">Feito para <span class="highlight">diferentes necessidades</span></h2>
                     <p class="section-subtitle">Escolha a solução ideal para seu caso de uso</p>
                 </div>
-                
+
                 <div class="solutions-tabs">
                     <button class="tab-btn active" data-tab="prefeituras">
                         <i class="fas fa-city"></i>
@@ -307,7 +309,7 @@
                         <span>Desenvolvedores</span>
                     </button>
                 </div>
-                
+
                 <div class="solutions-content">
                     <div class="solution-panel active" id="prefeituras">
                         <div class="solution-grid">
@@ -331,7 +333,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="solution-panel" id="empresas">
                         <div class="solution-grid">
                             <div class="solution-text">
@@ -354,7 +356,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="solution-panel" id="desenvolvedores">
                         <div class="solution-grid">
                             <div class="solution-text">
@@ -389,7 +391,7 @@
                     <h2 class="section-title">Implementaçı¡Ì£o <span class="highlight">rã¡¡pida e simples</span></h2>
                     <p class="section-subtitle">Comece a usar em minutos, níµ£o em meses</p>
                 </div>
-                
+
                 <div class="steps-grid">
                     <div class="step-card">
                         <div class="step-number">1</div>
@@ -399,7 +401,7 @@
                         <h3>Crie sua conta</h3>
                         <p>Cadastro grã¡¡tis em menos de 2 minutos. Sem cartíµ£o de crã©©dito necessã¡¡rio.</p>
                     </div>
-                    
+
                     <div class="step-card">
                         <div class="step-number">2</div>
                         <div class="step-icon">
@@ -408,7 +410,7 @@
                         <h3>Configure sua ãrea</h3>
                         <p>Selecione as regiíµµes e vias que deseja monitorar. Defina alertas e preferãªªncias.</p>
                     </div>
-                    
+
                     <div class="step-card">
                         <div class="step-number">3</div>
                         <div class="step-icon">
@@ -417,7 +419,7 @@
                         <h3>Integre com seus sistemas</h3>
                         <p>Use nossa API ou conecte com ferramentas existentes via webhooks.</p>
                     </div>
-                    
+
                     <div class="step-card">
                         <div class="step-number">4</div>
                         <div class="step-icon">
@@ -438,7 +440,7 @@
                     <h2 class="section-title">Escolha o plano <span class="highlight">ideal para vocãªª</span></h2>
                     <p class="section-subtitle">Todos os planos incluem 14 dias de teste grã¡¡tis</p>
                 </div>
-                
+
                 <div class="pricing-toggle">
                     <span class="toggle-label">Mensal</span>
                     <label class="switch">
@@ -447,7 +449,7 @@
                     </label>
                     <span class="toggle-label">Anual <span class="save-badge">Economize 20%</span></span>
                 </div>
-                
+
                 <div class="pricing-grid">
                     <div class="pricing-card">
                         <div class="pricing-header">
@@ -471,7 +473,7 @@
                         </ul>
                         <a href="#" class="btn btn-outline btn-block">Comeã§§ar Grã¡¡tis</a>
                     </div>
-                    
+
                     <div class="pricing-card popular">
                         <div class="popular-badge">
                             <i class="fas fa-star"></i>
@@ -498,7 +500,7 @@
                         </ul>
                         <a href="#" class="btn btn-primary btn-block">Comeã§§ar Grã¡¡tis</a>
                     </div>
-                    
+
                     <div class="pricing-card">
                         <div class="pricing-header">
                             <h3>Enterprise</h3>
@@ -522,7 +524,7 @@
                         <a href="#contact" class="btn btn-outline btn-block">Falar com Vendas</a>
                     </div>
                 </div>
-                
+
                 <div class="pricing-cta">
                     <p>Precisa de um plano personalizado? <a href="#contact">Entre em contato</a> para orã§§amento customizado.</p>
                 </div>
@@ -537,7 +539,7 @@
                     <h2 class="section-title">Quem usa, <span class="highlight">recomenda</span></h2>
                     <p class="section-subtitle">Veja o que nossos clientes estão dizendo</p>
                 </div>
-                
+
                 <div class="testimonials-grid">
                     <div class="testimonial-card">
                         <div class="testimonial-rating">
@@ -558,7 +560,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="testimonial-card">
                         <div class="testimonial-rating">
                             <i class="fas fa-star"></i>
@@ -578,7 +580,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="testimonial-card">
                         <div class="testimonial-rating">
                             <i class="fas fa-star"></i>
@@ -610,7 +612,7 @@
                     <h2 class="section-title">Perguntas <span class="highlight">frequentes</span></h2>
                     <p class="section-subtitle">Tire suas dãººvidas sobre o wazeBR</p>
                 </div>
-                
+
                 <div class="faq-grid">
                     <div class="faq-item">
                         <button class="faq-question">
@@ -621,7 +623,7 @@
                             <p>Você¹¹ tem acesso completo a todas as funcionalidades do plano escolhido por 14 dias, sem compromisso. Níµ£o pedimos cartíµ£o de crã©©dito no cadastro. Apã¡¡s o perã¡¡odo, vocãªª pode escolher um plano ou cancelar sem custos.</p>
                         </div>
                     </div>
-                    
+
                     <div class="faq-item">
                         <button class="faq-question">
                             <span>Quais fontes de dados o wazeBR utiliza?</span>
@@ -631,7 +633,7 @@
                             <p>Utilizamos mãººltiplas fontes: APIs de navegaçı¡Ì£o (Waze, Google), sensores de trã¡¡fego municipais, dados de operadoras de transporte, e contribuiçı¡Ìµes da comunidade. Nossa IA cruza esses dados para garantir precisíµ£o de atã©© 99%.</p>
                         </div>
                     </div>
-                    
+
                     <div class="faq-item">
                         <button class="faq-question">
                             <span>Posso integrar com meus sistemas existentes?</span>
@@ -641,7 +643,7 @@
                             <p>Sim! Nossa API RESTful ã completa e documentada. Oferecemos SDKs em PHP, Python, Node.js e Java. Tambã©©m suportamos webhooks para notificaçı¡Ìµes em tempo real e temos integraçı¡Ìµes prã©©-construã¡¡das para ERPs populares.</p>
                         </div>
                     </div>
-                    
+
                     <div class="faq-item">
                         <button class="faq-question">
                             <span>Qual a frequãªªncia de atualizaçı¡Ì£o dos dados?</span>
@@ -651,7 +653,7 @@
                             <p>Depende do plano: Starter atualiza a cada 5 minutos, Professional a cada 30 segundos, e Enterprise em tempo real (atualizaçı¡Ì£o contã¡¡nua). Para a maioria dos casos de uso, 30 segundos oferece o equilã¡¡brio ideal entre performance e custo.</p>
                         </div>
                     </div>
-                    
+
                     <div class="faq-item">
                         <button class="faq-question">
                             <span>Existe limite de requisiçı¡Ìµes na API?</span>
@@ -661,7 +663,7 @@
                             <p>Sim, cada plano tem um limite diã¡¡rio: Starter (5k), Professional (50k), Enterprise (ilimitado). Se precisar de mais, vocãªª pode fazer upgrade do plano ou comprar pacotes adicionais de requisiçı¡Ìµes.</p>
                         </div>
                     </div>
-                    
+
                     <div class="faq-item">
                         <button class="faq-question">
                             <span>Como funciona o suporte tã©©cnico?</span>
@@ -717,7 +719,7 @@
                         <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
                     </div>
                 </div>
-                
+
                 <div class="footer-col">
                     <h4>Produto</h4>
                     <ul>
@@ -728,7 +730,7 @@
                         <li><a href="#">Changelog</a></li>
                     </ul>
                 </div>
-                
+
                 <div class="footer-col">
                     <h4>Soluçı¡Ìµes</h4>
                     <ul>
@@ -739,7 +741,7 @@
                         <li><a href="#">Smart Cities</a></li>
                     </ul>
                 </div>
-                
+
                 <div class="footer-col">
                     <h4>Empresa</h4>
                     <ul>
@@ -750,7 +752,7 @@
                         <li><a href="#">Parceiros</a></li>
                     </ul>
                 </div>
-                
+
                 <div class="footer-col">
                     <h4>Suporte</h4>
                     <ul>
@@ -762,7 +764,7 @@
                     </ul>
                 </div>
             </div>
-            
+
             <div class="footer-bottom">
                 <p>&copy; {{ "now"|date("Y") }} wazeBR. Todos os direitos reservados.</p>
                 <p>Feito com <i class="fas fa-heart"></i> no Brasil ãã¡¡</p>
