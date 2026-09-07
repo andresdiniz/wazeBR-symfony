@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - wazeBR</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('assets/css/auth.css') }}">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-box">
+            <div class="login-header">
+                <a href="{{ path('home') }}" class="logo">
+                    <div class="logo-icon">W</div>
+                    <span>waze<span class="highlight">BR</span></span>
+                </a>
+                <h1>Bem-vindo de volta</h1>
+                <p>Fa&ccedil;a login para acessar seu dashboard</p>
+            </div>
+
+            {% if error %}
+                <div class="alert alert-error">
+                    <i class="fas fa-exclamation-circle"></i>
+                    {{ error.messageKey|trans(error.messageData, 'security') }}
+                </div>
+            {% endif %}
+
+            {% if app.user %}
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    Voc&ecirc; est&aacute; logado como {{ app.user.userIdentifier }}.
+                </div>
+            {% endif %}
+
+            <form method="post" class="login-form">
+                <div class="form-group">
+                    <label for="username">Email</label>
+                    <input 
+                        type="email" 
+                        id="username" 
+                        name="_username" 
+                        value="{{ last_username }}" 
+                        required 
+                        autofocus
+                        autocomplete="email"
+                        placeholder="seu@email.com"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Senha</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="_password" 
+                        required 
+                        autocomplete="current-password"
+                        placeholder="Sua senha"
+                    >
+                </div>
+
+                <div class="form-options">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="_remember_me">
+                        <span>Lembrar-me</span>
+                    </label>
+                    <a href="#" class="forgot-link">Esqueceu a senha?</a>
+                </div>
+
+                <input type="hidden" name="_target_path" value="{{ path('app_dashboard') }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+                <button type="submit" class="btn btn-primary btn-block">
+                    <span>Entrar</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </form>
+
+            <div class="login-footer">
+                <p>N&atilde;o tem uma conta? <a href="{{ path('app_register') }}">Cadastre-se</a></p>
+            </div>
+
+            <div class="login-back">
+                <a href="{{ path('home') }}" class="back-link">
+                    <i class="fas fa-arrow-left"></i>
+                    Voltar para home
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
