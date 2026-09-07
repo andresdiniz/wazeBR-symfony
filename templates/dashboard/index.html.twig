@@ -1,261 +1,212 @@
-{% extends 'base.html.twig' %}
+{% extends 'layouts/dashboard.html.twig' %}
 
-{% block title %}Dashboard - wazeBR{% endblock %}
+{% block title %}Dashboard | wazeBR{% endblock %}
 
-{% block body_class %}dashboard-page{% endblock %}
+{% block page_body_class %}dashboard-index-page{% endblock %}
 
-{% block stylesheets %}
-    <link rel="stylesheet" href="{{ asset('css/base-layout.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
+{% block dashboard_page_title %}
+    {{ hero.title|default('Dashboard') }}
 {% endblock %}
 
-{% block body %}
-<div class="dashboard-wrapper">
-    {# Sidebar #}
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <a href="{{ path('app_home') }}" class="logo">
-                <div class="logo-icon">
-                    <i class="fas fa-road"></i>
-                </div>
-                <span class="logo-text">waze<span class="highlight">BR</span></span>
-            </a>
-            <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">
-                <i class="fas fa-bars"></i>
-            </button>
-        </div>
-
-        <nav class="sidebar-nav">
-            <ul class="nav-list">
-                <li class="nav-item">
-                    <a href="{{ path('app_dashboard') }}" class="nav-link active">
-                        <i class="fas fa-home"></i>
-                        <span>Dashboard</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="fas fa-chart-bar"></i>
-                        <span>Relat\u00f3rios</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="fas fa-map-marked-alt"></i>
-                        <span>Mapas</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="fas fa-bell"></i>
-                        <span>Alertas</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="fas fa-cog"></i>
-                        <span>Configura\u00e7\u00f5es</span>
-                    </a>
-                </li>
-            </ul>
-        </nav>
-
-        <div class="sidebar-footer">
-            <div class="user-info">
-                <div class="user-avatar">
-                    <i class="fas fa-user"></i>
-                </div>
-                <div class="user-details">
-                    <div class="user-name">{{ app.user.email|split('@')|first }}</div>
-                    <div class="user-role">{% if 'ROLE_ACCOUNT_ADMIN' in app.user.roles %}Admin{% elseif 'ROLE_ADMIN_PARTNER' in app.user.roles %}Partner{% elseif 'ROLE_FIELD_AGENT' in app.user.roles %}Agente{% else %}Usu\u00e1rio{% endif %}</div>
-                </div>
+{% block page_content %}
+    <div class="dashboard-content">
+        <section class="dashboard-hero">
+            <div>
+                <p class="dashboard-hero-kicker">Visão geral</p>
+                <h2>{{ hero.title|default('Dashboard') }}</h2>
+                <p>{{ hero.subtitle|default('Visão geral da plataforma') }}</p>
             </div>
-            <a href="{{ path('app_logout') }}" class="logout-btn">
-                <i class="fas fa-sign-out-alt"></i>
-                <span>Sair</span>
-            </a>
-        </div>
-    </aside>
 
-    {# Main Content #}
-    <main class="main-content">
-        {# Top Bar #}
-        <header class="top-bar">
-            <div class="top-bar-left">
-                <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Menu">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <h1 class="page-title">{{ hero.title|default('Dashboard') }}</h1>
+            <div class="dashboard-period-filter">
+                <label for="dashboard-period">Período</label>
+
+                <select id="dashboard-period" class="form-control">
+                    {% for key, period in periods|default({}) %}
+                        <option value="{{ key }}" {% if key == periodKey|default('today') %}selected{% endif %}>
+                            {{ period.label }}
+                        </option>
+                    {% endfor %}
+                </select>
             </div>
-            <div class="top-bar-right">
-                <div class="search-box">
-                    <i class="fas fa-search"></i>
-                    <input type="text" placeholder="Buscar..." class="search-input">
-                </div>
-                <div class="notifications">
-                    <button class="notification-btn">
-                        <i class="fas fa-bell"></i>
-                        <span class="notification-badge">{{ alertCount|default(0) }}</span>
-                    </button>
-                </div>
-                <div class="user-menu">
-                    <button class="user-menu-btn" onclick="toggleUserMenu()">
-                        <div class="user-avatar-small">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <span class="user-name-small">{{ app.user.email|split('@')|first }}</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                </div>
-            </div>
-        </header>
+        </section>
 
-        {# Dashboard Content #}
-        <div class="content-wrapper">
-            <div class="dashboard-content">
-                {# Stats Grid #}
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon blue">
-                            <i class="fas fa-car"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3>{{ hero.jamsTotal|default(0) }}</h3>
-                            <p>Congestionamentos</p>
-                        </div>
-                    </div>
-
-                    <div class="stat-card">
-                        <div class="stat-icon orange">
-                            <i class="fas fa-exclamation-triangle"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3>{{ hero.alertsTotal|default(0) }}</h3>
-                            <p>Alertas Totais</p>
-                        </div>
-                    </div>
-
-                    <div class="stat-card">
-                        <div class="stat-icon green">
-                            <i class="fas fa-route"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3>{{ hero.routesMonitored|default(0) }}</h3>
-                            <p>Rotas Monitoradas</p>
-                        </div>
-                    </div>
-
-                    <div class="stat-card">
-                        <div class="stat-icon purple">
-                            <i class="fas fa-map-marker-alt"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3>{{ hero.monitoredCities|default(0) }}</h3>
-                            <p>Cidades</p>
-                        </div>
-                    </div>
+        <section class="stats-grid" aria-label="Indicadores do dashboard">
+            <article class="stat-card">
+                <div class="stat-icon blue">
+                    <i class="fa-solid fa-car" aria-hidden="true"></i>
                 </div>
 
-                {# Content Grid #}
-                <div class="content-grid">
-                    {# Recent Jams #}
-                    <div class="card large">
-                        <div class="card-header">
-                            <h3>Congestionamentos Recentes</h3>
-                            <a href="#" class="view-all">Ver todos</a>
-                        </div>
-                        <div class="card-body">
-                            {% if recentJams|length > 0 %}
-                                <ul class="jam-list">
-                                    {% for jam in recentJams|slice(0, 5) %}
-                                        <li class="jam-item">
-                                            <div class="jam-level level-{{ jam.level|default(1) }}">
-                                                <span>{{ jam.level|default(1) }}</span>
-                                            </div>
-                                            <div class="jam-info">
-                                                <p><strong>{{ jam.street|default('Rua Desconhecida') }}</strong></p>
-                                                <span class="jam-location"><i class="fas fa-map-marker-alt"></i> {{ jam.city|default('Cidade') }}</span>
-                                            </div>
-                                            <div class="jam-meta">
-                                                <span class="jam-speed">{{ jam.speed|default(0)|number_format(1) }} km/h</span>
-                                                <span class="jam-time">{{ jam.timestamp|date('H:i') }}</span>
-                                            </div>
-                                        </li>
-                                    {% endfor %}
-                                </ul>
-                            {% else %}
-                                <div class="empty-state">
-                                    <i class="fas fa-car"></i>
-                                    <p>Nenhum congestionamento registrado</p>
-                                </div>
-                            {% endif %}
-                        </div>
+                <div class="stat-info">
+                    <span>Congestionamentos</span>
+                    <strong>{{ hero.jamsTotal|default(0) }}</strong>
+                    <small>{{ hero.jamsLast24h|default(0) }} nas últimas 24 horas</small>
+                </div>
+            </article>
+
+            <article class="stat-card">
+                <div class="stat-icon orange">
+                    <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                </div>
+
+                <div class="stat-info">
+                    <span>Alertas</span>
+                    <strong>{{ hero.alertsTotal|default(0) }}</strong>
+                    <small>{{ hero.alertsLast24h|default(0) }} nas últimas 24 horas</small>
+                </div>
+            </article>
+
+            <article class="stat-card">
+                <div class="stat-icon green">
+                    <i class="fa-solid fa-route" aria-hidden="true"></i>
+                </div>
+
+                <div class="stat-info">
+                    <span>Rotas monitoradas</span>
+                    <strong>{{ hero.routesMonitored|default(0) }}</strong>
+                    <small>{{ hero.monitoredLinks|default(0) }} links ativos</small>
+                </div>
+            </article>
+
+            <article class="stat-card">
+                <div class="stat-icon purple">
+                    <i class="fa-solid fa-city" aria-hidden="true"></i>
+                </div>
+
+                <div class="stat-info">
+                    <span>Cidades monitoradas</span>
+                    <strong>{{ hero.monitoredCities|default(0) }}</strong>
+                    <small>{{ hero.cemadenCities|default(0) }} cidades com dados</small>
+                </div>
+            </article>
+        </section>
+
+        <section class="dashboard-grid">
+            <article class="card dashboard-card dashboard-card-wide">
+                <header class="card-header">
+                    <div>
+                        <h3>Congestionamentos recentes</h3>
+                        <p>Ocorrências registradas no período selecionado.</p>
                     </div>
 
-                    {# Recent Alerts #}
-                    <div class="card">
-                        <div class="card-header">
-                            <h3>Alertas Recentes</h3>
-                            <a href="#" class="view-all">Ver todos</a>
+                    <a href="#" class="btn btn-ghost btn-sm">
+                        Ver todos
+                        <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </a>
+                </header>
+
+                <div class="card-body">
+                    {% if recentJams is not empty %}
+                        <ul class="dashboard-list">
+                            {% for jam in recentJams|slice(0, 5) %}
+                                <li class="dashboard-list-item">
+                                    <span class="dashboard-list-icon is-warning">
+                                        <i class="fa-solid fa-car" aria-hidden="true"></i>
+                                    </span>
+
+                                    <div class="dashboard-list-content">
+                                        <strong>{{ jam.street|default('Via não informada') }}</strong>
+                                        <span>{{ jam.city|default('Cidade não informada') }}</span>
+                                    </div>
+
+                                    <div class="dashboard-list-meta">
+                                        <span>{{ jam.speed|default(0)|number_format(0, ',', '.') }} km/h</span>
+                                        <time>{{ jam.timestamp|default('now')|date('H:i') }}</time>
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <div class="empty-state">
+                            <span class="empty-state-icon">
+                                <i class="fa-solid fa-car" aria-hidden="true"></i>
+                            </span>
+
+                            <h3>Nenhum congestionamento registrado</h3>
+                            <p>Não há ocorrências para o período selecionado.</p>
                         </div>
-                        <div class="card-body">
-                            {% if recentAlerts|length > 0 %}
-                                <ul class="alert-list">
-                                    {% for alert in recentAlerts|slice(0, 5) %}
-                                        <li class="alert-item">
-                                            <div class="alert-icon">
-                                                <i class="fas fa-{{ alert.type == 'ACCIDENT' ? 'car-crash' : (alert.type == 'HAZARD' ? 'exclamation-triangle' : 'info-circle') }}"></i>
-                                            </div>
-                                            <div class="alert-info">
-                                                <p><strong>{{ alert.type|default('ALERTA') }}</strong></p>
-                                                <span class="alert-time">{{ alert.timestamp|date('H:i') }}</span>
-                                            </div>
-                                        </li>
-                                    {% endfor %}
-                                </ul>
-                            {% else %}
-                                <div class="empty-state">
-                                    <i class="fas fa-bell"></i>
-                                    <p>Nenhum alerta recente</p>
-                                </div>
-                            {% endif %}
+                    {% endif %}
+                </div>
+            </article>
+
+            <article class="card dashboard-card">
+                <header class="card-header">
+                    <div>
+                        <h3>Alertas recentes</h3>
+                        <p>Últimas notificações registradas.</p>
+                    </div>
+
+                    <a href="#" class="btn btn-ghost btn-sm">
+                        Ver todos
+                    </a>
+                </header>
+
+                <div class="card-body">
+                    {% if recentAlerts is not empty %}
+                        <ul class="dashboard-list">
+                            {% for alert in recentAlerts|slice(0, 5) %}
+                                <li class="dashboard-list-item">
+                                    <span class="dashboard-list-icon is-danger">
+                                        <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                                    </span>
+
+                                    <div class="dashboard-list-content">
+                                        <strong>{{ alert.type|default('Alerta') }}</strong>
+                                        <span>{{ alert.city|default('Local não informado') }}</span>
+                                    </div>
+
+                                    <div class="dashboard-list-meta">
+                                        <time>{{ alert.timestamp|default('now')|date('H:i') }}</time>
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <div class="empty-state">
+                            <span class="empty-state-icon">
+                                <i class="fa-regular fa-bell" aria-hidden="true"></i>
+                            </span>
+
+                            <h3>Nenhum alerta recente</h3>
+                            <p>Não há alertas no período selecionado.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </article>
+        </section>
+
+        {% if partner %}
+            <section class="card dashboard-card partner-summary-card">
+                <header class="card-header">
+                    <div>
+                        <h3>{{ partnerLabel|default('Parceiro') }}</h3>
+                        <p>Resumo de dados do parceiro atual.</p>
+                    </div>
+                </header>
+
+                <div class="card-body">
+                    <div class="partner-stats">
+                        <div>
+                            <strong>{{ partnerStats.jams|default(0) }}</strong>
+                            <span>Congestionamentos</span>
+                        </div>
+
+                        <div>
+                            <strong>{{ partnerStats.alerts|default(0) }}</strong>
+                            <span>Alertas</span>
+                        </div>
+
+                        <div>
+                            <strong>{{ partnerStats.routes|default(0) }}</strong>
+                            <span>Rotas</span>
+                        </div>
+
+                        <div>
+                            <strong>{{ partnerStats.monitoredLinks|default(0) }}</strong>
+                            <span>Links monitorados</span>
                         </div>
                     </div>
                 </div>
-
-                {# Partner Info #}
-                {% if partner %}
-                    <div class="partner-card">
-                        <div class="partner-header">
-                            <h3><i class="fas fa-building"></i> {{ partnerLabel|default('Parceiro') }}</h3>
-                        </div>
-                        <div class="partner-stats">
-                            <div class="partner-stat">
-                                <strong>{{ partnerStats.jams|default(0) }}</strong>
-                                <span>Congestionamentos</span>
-                            </div>
-                            <div class="partner-stat">
-                                <strong>{{ partnerStats.alerts|default(0) }}</strong>
-                                <span>Alertas</span>
-                            </div>
-                            <div class="partner-stat">
-                                <strong>{{ partnerStats.routes|default(0) }}</strong>
-                                <span>Rotas</span>
-                            </div>
-                            <div class="partner-stat">
-                                <strong>{{ partnerStats.monitoredLinks|default(0) }}</strong>
-                                <span>Links Monitorados</span>
-                            </div>
-                        </div>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </main>
-</div>
-{% endblock %}
-
-{% block javascripts %}
-    <script src="{{ asset('assets/js/base-layout.js') }}"></script>
-    <script src="{{ asset('assets/js/dashboard.js') }}"></script>
+            </section>
+        {% endif %}
+    </div>
 {% endblock %}

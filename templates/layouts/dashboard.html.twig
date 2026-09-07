@@ -1,0 +1,34 @@
+{% extends 'base.html.twig' %}
+
+{% block body_class %}
+    layout-dashboard
+    {% block page_body_class %}{% endblock %}
+{% endblock %}
+
+{% block stylesheets %}
+    <link rel="stylesheet" href="{{ asset('assets/css/dashboard.css') }}">
+
+    {% block page_stylesheets %}{% endblock %}
+{% endblock %}
+
+{% block application %}
+    <div class="dashboard-wrapper">
+        {% include 'partials/dashboard/sidebar.html.twig' %}
+
+        <section class="dashboard-shell">
+            {% include 'partials/dashboard/topbar.html.twig' %}
+
+            <main id="main-content" class="dashboard-main" tabindex="-1">
+                {% block page_content %}{% endblock %}
+            </main>
+
+            {% include 'partials/dashboard/footer.html.twig' %}
+        </section>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    <script src="{{ asset('assets/js/dashboard.js') }}" defer></script>
+
+    {% block page_javascripts %}{% endblock %}
+{% endblock %}
