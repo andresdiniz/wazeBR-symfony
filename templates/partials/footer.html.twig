@@ -1,79 +1,336 @@
-{# Footer Component #}
-<footer class="site-footer">
-    <div class="footer-container">
-        <div class="footer-grid">
-            {# Company Info #}
-            <div class="footer-col">
-                <a href="{{ path('app_home') }}" class="footer-logo">
-                    <div class="logo-icon">
-                        <i class="fas fa-road"></i>
+{# ========================================
+   wazeBR - Premium Footer Component
+   Comprehensive links and social media
+   ======================================== #}
+
+<footer class="site-footer" id="site-footer">
+    {# Footer Top - Main Content #}
+    <div class="footer-top">
+        <div class="footer-container">
+            <div class="footer-grid">
+                {# ========================================
+                   Column 1 - Company Info
+                   ======================================== #}
+                <div class="footer-col footer-col-brand">
+                    <a href="{{ path('app_home') }}" class="footer-logo">
+                        <div class="logo-icon">
+                            <i class="fas fa-road"></i>
+                        </div>
+                        <span class="logo-text">waze<span class="highlight">BR</span></span>
+                    </a>
+                    
+                    <p class="footer-desc">
+                        Monitoramento inteligente de tr\u00e2nsito e mobilidade urbana para cidades e empresas que pensam no futuro.
+                    </p>
+                    
+                    {# Social Media #}
+                    <div class="footer-social">
+                        <a href="#" class="social-link" aria-label="LinkedIn" data-tooltip="LinkedIn">
+                            <i class="fab fa-linkedin-in"></i>
+                        </a>
+                        <a href="#" class="social-link" aria-label="GitHub" data-tooltip="GitHub">
+                            <i class="fab fa-github"></i>
+                        </a>
+                        <a href="#" class="social-link" aria-label="Twitter" data-tooltip="Twitter">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="social-link" aria-label="Facebook" data-tooltip="Facebook">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="#" class="social-link" aria-label="Instagram" data-tooltip="Instagram">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="#" class="social-link" aria-label="YouTube" data-tooltip="YouTube">
+                            <i class="fab fa-youtube"></i>
+                        </a>
                     </div>
-                    <span class="logo-text">waze<span class="highlight">BR</span></span>
-                </a>
-                <p class="footer-desc">
-                    Monitoramento inteligente de tr\u00e2nsito e mobilidade urbana para cidades e empresas que pensam no futuro.
-                </p>
-                <div class="footer-social">
-                    <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
-                    <a href="#" aria-label="GitHub"><i class="fab fa-github"></i></a>
-                    <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
-                    <a href="#" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
+                    
+                    {# Contact Info #}
+                    <div class="footer-contact">
+                        <div class="contact-item">
+                            <i class="fas fa-envelope"></i>
+                            <a href="mailto:contato@wazebr.com.br">contato@wazebr.com.br</a>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-phone"></i>
+                            <a href="tel:+5511999999999">(11) 99999-9999</a>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>S\u00e3o Paulo, SP - Brasil</span>
+                        </div>
+                    </div>
+                </div>
+
+                {# ========================================
+                   Column 2 - Product
+                   ======================================== #}
+                <div class="footer-col">
+                    <h4 class="footer-title">
+                        <i class="fas fa-rocket"></i>
+                        Produto
+                    </h4>
+                    <ul class="footer-links">
+                        <li>
+                            <a href="#features">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>Funcionalidades</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#pricing">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>Planos e Pre\u00e7os</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ path('api_docs') }}">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>API</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>Documenta\u00e7\u00e3o</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>Changelog</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>Integra\u00e7\u00f5es</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                {# ========================================
+                   Column 3 - Solutions
+                   ======================================== #}
+                <div class="footer-col">
+                    <h4 class="footer-title">
+                        <i class="fas fa-lightbulb"></i>
+                        Solu\u00e7\u00f5es
+                    </h4>
+                    <ul class="footer-links">
+                        <li>
+                            <a href="#">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>Prefeituras</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>Empresas</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>Desenvolvedores</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>Log\u00edstica</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>Smart Cities</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>Transporte P\u00fablico</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                {# ========================================
+                   Column 4 - Company
+                   ======================================== #}
+                <div class="footer-col">
+                    <h4 class="footer-title">
+                        <i class="fas fa-building"></i>
+                        Empresa
+                    </h4>
+                    <ul class="footer-links">
+                        <li>
+                            <a href="#about">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>Sobre N\u00f3s</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#blog">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>Blog</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#careers">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>Carreiras</span>
+                                <span class="badge-new">Estamos contratando!</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#contact">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>Contato</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#partners">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>Parceiros</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#press">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>Imprensa</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                {# ========================================
+                   Column 5 - Support
+                   ======================================== #}
+                <div class="footer-col">
+                    <h4 class="footer-title">
+                        <i class="fas fa-headset"></i>
+                        Suporte
+                    </h4>
+                    <ul class="footer-links">
+                        <li>
+                            <a href="#faq">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>FAQ</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#help">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>Central de Ajuda</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#status">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>Status do Sistema</span>
+                                <span class="status-indicator online"></span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#terms">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>Termos de Uso</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#privacy">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>Privacidade</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#security">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>Seguran\u00e7a</span>
+                            </a>
+                        </li>
+                    </ul>
                 </div>
             </div>
-            
-            {# Product Links #}
-            <div class="footer-col">
-                <h4>Produto</h4>
-                <ul>
-                    <li><a href="#features">Funcionalidades</a></li>
-                    <li><a href="#pricing">Planos</a></li>
-                    <li><a href="{{ path('api_docs') }}">API</a></li>
-                    <li><a href="#">Documenta\u00e7\u00e3o</a></li>
-                    <li><a href="#">Changelog</a></li>
-                </ul>
-            </div>
-            
-            {# Solutions Links #}
-            <div class="footer-col">
-                <h4>Solu\u00e7\u00f5es</h4>
-                <ul>
-                    <li><a href="#">Prefeituras</a></li>
-                    <li><a href="#">Empresas</a></li>
-                    <li><a href="#">Desenvolvedores</a></li>
-                    <li><a href="#">Log\u00edstica</a></li>
-                    <li><a href="#">Smart Cities</a></li>
-                </ul>
-            </div>
-            
-            {# Company Links #}
-            <div class="footer-col">
-                <h4>Empresa</h4>
-                <ul>
-                    <li><a href="#">Sobre</a></li>
-                    <li><a href="#">Blog</a></li>
-                    <li><a href="#">Carreiras</a></li>
-                    <li><a href="#contact">Contato</a></li>
-                    <li><a href="#">Parceiros</a></li>
-                </ul>
-            </div>
-            
-            {# Support Links #}
-            <div class="footer-col">
-                <h4>Suporte</h4>
-                <ul>
-                    <li><a href="#faq">FAQ</a></li>
-                    <li><a href="#">Central de Ajuda</a></li>
-                    <li><a href="#">Status</a></li>
-                    <li><a href="#">Termos de Uso</a></li>
-                    <li><a href="#">Privacidade</a></li>
-                </ul>
+        </div>
+    </div>
+
+    {# Footer Middle - Newsletter & CTA #}
+    <div class="footer-middle">
+        <div class="footer-container">
+            <div class="footer-newsletter">
+                <div class="newsletter-content">
+                    <h3>
+                        <i class="fas fa-envelope-open-text"></i>
+                        Fique por dentro das novidades
+                    </h3>
+                    <p>Receba atualiza\u00e7\u00f5es, dicas e novidades sobre mobilidade urbana.</p>
+                </div>
+                <form class="newsletter-form" data-validate>
+                    <div class="form-group">
+                        <input 
+                            type="email" 
+                            class="form-control" 
+                            placeholder="Seu melhor email"
+                            required
+                            aria-label="Email para newsletter"
+                        >
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane"></i>
+                        <span>Inscrever-se</span>
+                    </button>
+                </form>
             </div>
         </div>
-        
-        {# Footer Bottom #}
-        <div class="footer-bottom">
-            <p>&copy; {{ "now"|date("Y") }} wazeBR. Todos os direitos reservados.</p>
-            <p>Feito com <i class="fas fa-heart"></i> no Brasil \ud83c\udde7\ud83c\uddf7</p>
+    </div>
+
+    {# Footer Bottom - Copyright & Legal #}
+    <div class="footer-bottom">
+        <div class="footer-container">
+            <div class="footer-bottom-content">
+                {# Copyright #}
+                <div class="footer-copyright">
+                    <p>
+                        &copy; {{ "now"|date("Y") }} 
+                        <strong>wazeBR</strong>. 
+                        Todos os direitos reservados.
+                    </p>
+                    <p class="footer-made-with">
+                        Feito com 
+                        <i class="fas fa-heart"></i> 
+                        no Brasil 
+                        <span class="flag">\ud83c\udde7\ud83c\uddf7</span>
+                    </p>
+                </div>
+
+                {# Payment Methods #}
+                <div class="footer-payment">
+                    <span class="payment-title">Aceitamos:</span>
+                    <div class="payment-methods">
+                        <i class="fab fa-cc-visa" data-tooltip="Visa"></i>
+                        <i class="fab fa-cc-mastercard" data-tooltip="Mastercard"></i>
+                        <i class="fab fa-cc-amex" data-tooltip="American Express"></i>
+                        <i class="fab fa-cc-discover" data-tooltip="Discover"></i>
+                        <i class="fas fa-barcode" data-tooltip="Boleto"></i>
+                        <i class="fas fa-qrcode" data-tooltip="PIX"></i>
+                    </div>
+                </div>
+
+                {# Back to Top #}
+                <button 
+                    class="back-to-top" 
+                    id="back-to-top"
+                    aria-label="Voltar ao topo"
+                    data-tooltip="Voltar ao topo"
+                >
+                    <i class="fas fa-arrow-up"></i>
+                </button>
+            </div>
         </div>
     </div>
 </footer>
