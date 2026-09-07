@@ -35,7 +35,6 @@ class AuthController extends AbstractController
             return $this->redirectToRoute('app_dashboard');
         }
 
-        // Se NÃO estiver logado, mostra a landing page pública
         return $this->render('home/landing.html.twig');
     }
 
@@ -112,5 +111,31 @@ class AuthController extends AbstractController
         return $this->render('auth/dashboard.html.twig', [
             'user' => $user,
         ]);
+    }
+
+    /**
+     * Password Reset - Request (/reset-password)
+     * Formulário para solicitar reset de senha
+     */
+    #[Route(path: '/reset-password', name: 'app_reset_password_request')]
+    public function resetPasswordRequest(Request $request): Response
+    {
+        if ($this->getUser()) {
+            return $this->redirectToRoute('app_dashboard');
+        }
+
+        return $this->render('auth/reset_password_request.html.twig', [
+            'requestForm' => null, // Form will be created in template
+        ]);
+    }
+
+    /**
+     * Password Reset - Check Email (/reset-password/check-email)
+     * Página de confirmação após envio do email
+     */
+    #[Route(path: '/reset-password/check-email', name: 'app_reset_password_check_email')]
+    public function resetPasswordCheckEmail(): Response
+    {
+        return $this->render('auth/reset_password_check_email.html.twig');
     }
 }
