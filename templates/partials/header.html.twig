@@ -1,32 +1,148 @@
-{# Header Component #}
-<header class="site-header">
+{# ========================================
+   wazeBR - Premium Header Component
+   Advanced navigation with role-based menu
+   ======================================== #}
+
+<header class="site-header" id="site-header">
     <div class="header-container">
         {# Logo #}
-        <a href="{{ path('app_home') }}" class="logo">
+        <a href="{{ path('app_home') }}" class="logo" aria-label="wazeBR - Home">
             <div class="logo-icon">
                 <i class="fas fa-road"></i>
             </div>
-            <span class="logo-text">waze<span class="highlight">BR</span></span>
+            <span class="logo-text">
+                waze<span class="highlight">BR</span>
+            </span>
         </a>
-        
+
         {# Navigation #}
         {% include 'partials/navbar.html.twig' %}
-        
+
         {# Header Actions #}
         <div class="header-actions">
+            {# Search #}
+            <div class="search-box">
+                <i class="fas fa-search search-icon"></i>
+                <input 
+                    type="search" 
+                    class="search-input" 
+                    placeholder="Buscar... (Ctrl+K)"
+                    aria-label="Buscar"
+                    data-search
+                >
+                <span class="search-shortcut">
+                    <kbd>Ctrl</kbd>
+                    <kbd>K</kbd>
+                </span>
+            </div>
+
+            {# Notifications #}
+            <div class="notifications">
+                <button 
+                    class="notification-btn" 
+                    data-dropdown-toggle="notification-dropdown"
+                    aria-label="Notifica\u00e7\u00f5es"
+                    aria-haspopup="true"
+                >
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge" id="notification-count">3</span>
+                </button>
+
+                {# Notification Dropdown #}
+                <div 
+                    class="notification-dropdown dropdown-menu" 
+                    id="notification-dropdown"
+                    role="menu"
+                >
+                    <div class="dropdown-header">
+                        <h4>Notifica\u00e7\u00f5es</h4>
+                        <button class="mark-all-read" data-tooltip="Marcar todas como lidas">
+                            <i class="fas fa-check-double"></i>
+                        </button>
+                    </div>
+                    <div class="dropdown-body">
+                        <ul class="notification-list">
+                            <li class="notification-item unread">
+                                <div class="notification-icon danger">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <div class="notification-content">
+                                    <p class="notification-title">Alerta de tr\u00e2nsito</p>
+                                    <p class="notification-message">Congestionamento grave na Av. Principal</p>
+                                    <span class="notification-time">H\u00e1 5 minutos</span>
+                                </div>
+                            </li>
+                            <li class="notification-item unread">
+                                <div class="notification-icon warning">
+                                    <i class="fas fa-road"></i>
+                                </div>
+                                <div class="notification-content">
+                                    <p class="notification-title">Obra na via</p>
+                                    <p class="notification-message">Nova obra registrada no centro</p>
+                                    <span class="notification-time">H\u00e1 15 minutos</span>
+                                </div>
+                            </li>
+                            <li class="notification-item">
+                                <div class="notification-icon info">
+                                    <i class="fas fa-info-circle"></i>
+                                </div>
+                                <div class="notification-content">
+                                    <p class="notification-title">Atualiza\u00e7\u00e3o do sistema</p>
+                                    <p class="notification-message">Novas funcionalidades dispon\u00edveis</p>
+                                    <span class="notification-time">H\u00e1 1 hora</span>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="dropdown-footer">
+                        <a href="#" class="view-all">
+                            <i class="fas fa-list"></i>
+                            <span>Ver todas as notifica\u00e7\u00f5es</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            {# Theme Toggle #}
+            <button 
+                class="theme-toggle" 
+                data-theme-toggle
+                aria-label="Alternar tema"
+                aria-pressed="false"
+                data-tooltip="Alternar tema"
+            >
+                <i class="fas fa-moon moon-icon"></i>
+                <i class="fas fa-sun sun-icon"></i>
+            </button>
+
+            {# User Menu #}
             {% if app.user %}
-                {# User is logged in #}
                 <div class="user-menu">
-                    <button class="user-menu-btn" onclick="toggleUserMenu()">
+                    <button 
+                        class="user-menu-btn" 
+                        data-dropdown-toggle="user-dropdown"
+                        aria-label="Menu do usu\u00e1rio"
+                        aria-haspopup="true"
+                    >
                         <div class="user-avatar">
                             <i class="fas fa-user"></i>
                         </div>
-                        <span class="user-name">{{ app.user.email|split('@')|first }}</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                    
-                    <div class="user-dropdown" id="user-dropdown">
                         <div class="user-info">
+                            <span class="user-name">{{ app.user.email|split('@')|first }}</span>
+                            <span class="user-arrow">
+                                <i class="fas fa-chevron-down"></i>
+                            </span>
+                        </div>
+                    </button>
+
+                    {# User Dropdown #}
+                    <div 
+                        class="user-dropdown dropdown-menu" 
+                        id="user-dropdown"
+                        role="menu"
+                    >
+                        {# User Info #}
+                        <div class="user-profile">
                             <div class="user-avatar-large">
                                 <i class="fas fa-user"></i>
                             </div>
@@ -40,40 +156,63 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="dropdown-divider"></div>
-                        
-                        {# Role-based Dashboard Links #}
-                        {% if 'ROLE_ACCOUNT_ADMIN' in app.user.roles %}
-                            <a href="{{ path('app_account_admin_dashboard') }}" class="dropdown-item">
-                                <i class="fas fa-tachometer-alt"></i>
-                                <span>Dashboard Admin</span>
-                            </a>
-                        {% endif %}
-                        
-                        {% if 'ROLE_ADMIN_PARTNER' in app.user.roles %}
-                            <a href="{{ path('app_partner_dashboard') }}" class="dropdown-item">
-                                <i class="fas fa-handshake"></i>
-                                <span>Dashboard Partner</span>
-                            </a>
-                        {% endif %}
-                        
-                        {% if 'ROLE_FIELD_AGENT' in app.user.roles %}
-                            <a href="{{ path('app_field_agent_dashboard') }}" class="dropdown-item">
-                                <i class="fas fa-map-marker-alt"></i>
-                                <span>Dashboard Agente</span>
-                            </a>
-                        {% endif %}
-                        
-                        {% if 'ROLE_USER' in app.user.roles %}
-                            <a href="{{ path('app_user_dashboard') }}" class="dropdown-item">
-                                <i class="fas fa-user"></i>
-                                <span>Meu Dashboard</span>
-                            </a>
-                        {% endif %}
-                        
+
+                        {# Dashboard Links (Role-based) #}
+                        <div class="dropdown-section">
+                            <span class="dropdown-section-title">Dashboards</span>
+                            
+                            {% if 'ROLE_ACCOUNT_ADMIN' in app.user.roles %}
+                                <a href="{{ path('app_account_admin_dashboard') }}" class="dropdown-item">
+                                    <i class="fas fa-tachometer-alt"></i>
+                                    <span>Dashboard Admin</span>
+                                </a>
+                            {% endif %}
+                            
+                            {% if 'ROLE_ADMIN_PARTNER' in app.user.roles %}
+                                <a href="{{ path('app_partner_dashboard') }}" class="dropdown-item">
+                                    <i class="fas fa-handshake"></i>
+                                    <span>Dashboard Partner</span>
+                                </a>
+                            {% endif %}
+                            
+                            {% if 'ROLE_FIELD_AGENT' in app.user.roles %}
+                                <a href="{{ path('app_field_agent_dashboard') }}" class="dropdown-item">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    <span>Dashboard Agente</span>
+                                </a>
+                            {% endif %}
+                            
+                            {% if 'ROLE_USER' in app.user.roles %}
+                                <a href="{{ path('app_user_dashboard') }}" class="dropdown-item">
+                                    <i class="fas fa-user"></i>
+                                    <span>Meu Dashboard</span>
+                                </a>
+                            {% endif %}
+                        </div>
+
                         <div class="dropdown-divider"></div>
-                        
+
+                        {# Settings & Profile #}
+                        <div class="dropdown-section">
+                            <a href="#" class="dropdown-item">
+                                <i class="fas fa-user-circle"></i>
+                                <span>Meu Perfil</span>
+                            </a>
+                            <a href="#" class="dropdown-item">
+                                <i class="fas fa-cog"></i>
+                                <span>Configura\u00e7\u00f5es</span>
+                            </a>
+                            <a href="#" class="dropdown-item">
+                                <i class="fas fa-question-circle"></i>
+                                <span>Ajuda</span>
+                            </a>
+                        </div>
+
+                        <div class="dropdown-divider"></div>
+
+                        {# Logout #}
                         <a href="{{ path('app_logout') }}" class="dropdown-item logout">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Sair</span>
@@ -81,16 +220,170 @@
                     </div>
                 </div>
             {% else %}
-                {# User is not logged in #}
-                <a href="{{ path('app_login') }}" class="btn btn-ghost">
+                {# Auth Buttons #}
+                <div class="auth-buttons">
+                    <a href="{{ path('app_login') }}" class="btn btn-ghost">
+                        <i class="fas fa-sign-in-alt"></i>
+                        <span>Entrar</span>
+                    </a>
+                    <a href="{{ path('app_register') }}" class="btn btn-primary">
+                        <i class="fas fa-user-plus"></i>
+                        <span>Cadastrar</span>
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+
+        {# Mobile Menu Toggle #}
+        <button 
+            class="mobile-menu-toggle" 
+            id="mobile-menu-toggle"
+            aria-label="Menu"
+            aria-expanded="false"
+            aria-controls="mobile-nav"
+        >
+            <span class="hamburger">
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+            </span>
+        </button>
+    </div>
+</header>
+
+{# Mobile Navigation #}
+<nav class="mobile-nav" id="mobile-nav" aria-label="Navega\u00e7\u00e3o m\u00f3vel">
+    <div class="mobile-nav-header">
+        <a href="{{ path('app_home') }}" class="logo">
+            <div class="logo-icon">
+                <i class="fas fa-road"></i>
+            </div>
+            <span class="logo-text">waze<span class="highlight">BR</span></span>
+        </a>
+        <button class="mobile-nav-close" aria-label="Fechar menu">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
+    <div class="mobile-nav-content">
+        {# Mobile Search #}
+        <div class="mobile-search">
+            <i class="fas fa-search"></i>
+            <input type="search" placeholder="Buscar..." aria-label="Buscar">
+        </div>
+
+        {# Mobile Menu Items #}
+        <ul class="mobile-nav-list">
+            <li>
+                <a href="{{ path('app_home') }}" class="mobile-nav-link">
+                    <i class="fas fa-home"></i>
+                    <span>Home</span>
+                </a>
+            </li>
+            
+            {% if app.user %}
+                <li>
+                    <a href="{{ path('app_dashboard') }}" class="mobile-nav-link">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                
+                {# Role-based Mobile Menu #}
+                {% if 'ROLE_ACCOUNT_ADMIN' in app.user.roles %}
+                    <li class="mobile-nav-submenu">
+                        <button class="mobile-nav-submenu-toggle">
+                            <i class="fas fa-users-cog"></i>
+                            <span>Administra\u00e7\u00e3o</span>
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                        <ul class="mobile-nav-submenu-list">
+                            <li><a href="{{ path('app_account_admin_dashboard') }}">Dashboard</a></li>
+                            <li><a href="#">Usu\u00e1rios</a></li>
+                            <li><a href="#">Relat\u00f3rios</a></li>
+                            <li><a href="#">Configura\u00e7\u00f5es</a></li>
+                        </ul>
+                    </li>
+                {% endif %}
+                
+                {% if 'ROLE_ADMIN_PARTNER' in app.user.roles %}
+                    <li class="mobile-nav-submenu">
+                        <button class="mobile-nav-submenu-toggle">
+                            <i class="fas fa-handshake"></i>
+                            <span>Parcerias</span>
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                        <ul class="mobile-nav-submenu-list">
+                            <li><a href="{{ path('app_partner_dashboard') }}">Dashboard</a></li>
+                            <li><a href="#">Empresas</a></li>
+                            <li><a href="#">Faturamento</a></li>
+                        </ul>
+                    </li>
+                {% endif %}
+                
+                {% if 'ROLE_FIELD_AGENT' in app.user.roles %}
+                    <li class="mobile-nav-submenu">
+                        <button class="mobile-nav-submenu-toggle">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>Campo</span>
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                        <ul class="mobile-nav-submenu-list">
+                            <li><a href="{{ path('app_field_agent_dashboard') }}">Tarefas</a></li>
+                            <li><a href="#">Rotas</a></li>
+                            <li><a href="#">Registrar</a></li>
+                        </ul>
+                    </li>
+                {% endif %}
+                
+                {% if 'ROLE_USER' in app.user.roles %}
+                    <li class="mobile-nav-submenu">
+                        <button class="mobile-nav-submenu-toggle">
+                            <i class="fas fa-route"></i>
+                            <span>Minhas Rotas</span>
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                        <ul class="mobile-nav-submenu-list">
+                            <li><a href="{{ path('app_user_dashboard') }}">Dashboard</a></li>
+                            <li><a href="#">Mapa</a></li>
+                            <li><a href="#">Alertas</a></li>
+                        </ul>
+                    </li>
+                {% endif %}
+                
+                <li>
+                    <a href="#" class="mobile-nav-link">
+                        <i class="fas fa-bell"></i>
+                        <span>Alertas</span>
+                        <span class="notification-badge">3</span>
+                    </a>
+                </li>
+            {% else %}
+                <li><a href="#features" class="mobile-nav-link"><i class="fas fa-star"></i> Funcionalidades</a></li>
+                <li><a href="#pricing" class="mobile-nav-link"><i class="fas fa-dollar-sign"></i> Planos</a></li>
+                <li><a href="#contact" class="mobile-nav-link"><i class="fas fa-envelope"></i> Contato</a></li>
+            {% endif %}
+        </ul>
+
+        {# Mobile Auth #}
+        {% if app.user %}
+            <div class="mobile-auth">
+                <a href="{{ path('app_logout') }}" class="btn btn-danger btn-block">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Sair</span>
+                </a>
+            </div>
+        {% else %}
+            <div class="mobile-auth">
+                <a href="{{ path('app_login') }}" class="btn btn-outline btn-block">
                     <i class="fas fa-sign-in-alt"></i>
                     <span>Entrar</span>
                 </a>
-                <a href="{{ path('app_register') }}" class="btn btn-primary">
+                <a href="{{ path('app_register') }}" class="btn btn-primary btn-block">
                     <i class="fas fa-user-plus"></i>
                     <span>Cadastrar</span>
                 </a>
-            {% endif %}
-        </div>
+            </div>
+        {% endif %}
     </div>
-</header>
+</nav>
