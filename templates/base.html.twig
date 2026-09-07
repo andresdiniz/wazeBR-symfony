@@ -17,7 +17,10 @@
     {# Icons #}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    {# Stylesheets #}
+    {# Global Stylesheet (loaded on every page) #}
+    <link rel="stylesheet" href="{{ asset('assets/css/global.css') }}">
+    
+    {# Page-specific Stylesheets #}
     {% block stylesheets %}{% endblock %}
     
     {# Favicon #}
@@ -35,7 +38,10 @@
     {# Footer #}
     {% include 'partials/footer.html.twig' %}
     
-    {# JavaScript #}
+    {# Global JavaScript (loaded on every page) #}
+    <script src="{{ asset('assets/js/global.js') }}"></script>
+    
+    {# Page-specific JavaScript #}
     {% block javascripts %}{% endblock %}
 </body>
 </html>
