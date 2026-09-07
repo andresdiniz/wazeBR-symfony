@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="wazeBR - A solução definitiva para monitoramento de trã¡¡fego e mobilidade urbana no Brasil. Dados em tempo real, alertas inteligentes e anã¡¡lises preditivas.">
+    <meta name="keywords" content="trã¡¡fego, mobilidade, monitoramento, waze, brasil, smart city, gestíµ£o urbana, API">
+    <meta name="author" content="wazeBR">
+    <meta property="og:title" content="wazeBR - Monitoramento Inteligente de Trã¡¡fego">
+    <meta property="og:description" content="Transforme a mobilidade da sua cidade com dados em tempo real e anã¡¡lises preditivas">
+    <meta property="og:type" content="website">
+    <title>wazeBR | Monitoramento Inteligente de Trã¡¡fego e Mobilidade Urbana</title>
+    
+    {# Fonts #}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    {# Icons #}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    {# Stylesheets #}
+    <link rel="stylesheet" href="{{ asset('assets/css/landing.css') }}">
+    
+    {# Favicon #}
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+</head>
+<body>
+    {# Navigation #}
+    <nav class="navbar" id="navbar">
+        <div class="container nav-container">
+            <a href="{{ path('home') }}" class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-road"></i>
+                </div>
+                <span class="logo-text">waze<span class="highlight">BR</span></span>
+            </a>
+            
+            <div class="nav-menu" id="nav-menu">
+                <ul class="nav-links">
+                    <li><a href="#features">Funcionalidades</a></li>
+                    <li><a href="#solutions">Soluçı¡Ìµes</a></li>
+                    <li><a href="#pricing">Planos</a></li>
+                    <li><a href="#testimonials">Depoimentos</a></li>
+                    <li><a href="#faq">FAQ</a></li>
+                </ul>
+            </div>
+            
+            <div class="nav-actions">
+                <a href="{{ path('app_login') }}" class="btn btn-ghost">Entrar</a>
+                <a href="#pricing" class="btn btn-primary">Comeã§§ar Agora</a>
+            </div>
+            
+            <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <main>
+        {# Hero Section #}
+        <section class="hero" id="hero">
+            <div class="hero-bg">
+                <div class="hero-gradient"></div>
+                <div class="hero-particles" id="particles"></div>
+            </div>
+            
+            <div class="container hero-container">
+                <div class="hero-content">
+                    <div class="hero-badge">
+                        <span class="badge-icon">ã¡¡</span>
+                        <span>Tecnologia Brasileira para Cidades Inteligentes</span>
+                    </div>
+                    
+                    <h1 class="hero-title">
+                        Transforme a Mobilidade da Sua Cidade com <span class="highlight">Dados em Tempo Real</span>
+                    </h1>
+                    
+                    <p class="hero-subtitle">
+                        Monitoramento inteligente de trã¡¡fego, alertas preditivos e anã¡¡lises avanã§§adas para gestores pãººblicos e empresas que querem revolucionar a mobilidade urbana.
+                    </p>
+                    
+                    <div class="hero-cta">
+                        <a href="#pricing" class="btn btn-primary btn-lg">
+                            <span>Comeã§§ar Teste Grã¡¡tis</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                        <a href="#demo" class="btn btn-outline btn-lg">
+                            <i class="fas fa-play-circle"></i>
+                            <span>Ver Demo</span>
+                        </a>
+                    </div>
+                    
+                    <div class="hero-trust">
+                        <div class="trust-item">
+                            <i class="fas fa-check-circle"></i>
+                            <span>14 dias grã¡¡tis</span>
+                        </div>
+                        <div class="trust-item">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Sem cartíµ£o de crã©©dito</span>
+                        </div>
+                        <div class="trust-item">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Cancela quando quiser</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="hero-visual">
+                    <div class="dashboard-preview">
+                        <div class="preview-header">
+                            <div class="preview-dots">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                            <span class="preview-title">wazeBR Dashboard</span>
+                        </div>
+                        <div class="preview-content">
+                            <div class="preview-map">
+                                <div class="map-grid"></div>
+                                <div class="map-marker marker-1">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <div class="map-marker marker-2">
+                                    <i class="fas fa-car-crash"></i>
+                                </div>
+                                <div class="map-marker marker-3">
+                                    <i class="fas fa-traffic-light"></i>
+                                </div>
+                            </div>
+                            <div class="preview-stats">
+                                <div class="stat-card">
+                                    <div class="stat-value">2,847</div>
+                                    <div class="stat-label">Veã¡¡culos Monitorados</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value">94%</div>
+                                    <div class="stat-label">Fluidez</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="hero-wave">
+                <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M0 0L60 10C120 20 240 40 360 53.3C480 67 600 73 720 73.3C840 73 960 67 1080 53.3C1200 40 1320 20 1380 10L1440 0V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0V0Z" fill="white"/>
+                </svg>
+            </div>
+        </section>
+
+        {# Stats Section #}
+        <section class="stats-section">
+            <div class="container">
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-number" data-value="150">0</div>
+                        <div class="stat-label">Cidades Atendidas</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" data-value="50000">0</div>
+                        <div class="stat-label">Veã¡¡culos Monitorados</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" data-value="1000000">0</div>
+                        <div class="stat-label">Dados Processados/dia</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" data-value="99">0</div>
+                        <div class="stat-label">% Precissã££o</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {# Partners Section #}
+        <section class="partners-section">
+            <div class="container">
+                <p class="partners-title">Empresas e prefeituras que confiam no wazeBR</p>
+                <div class="partners-logos">
+                    <div class="partner-logo"><i class="fas fa-building"></i><span>Prefeitura SP</span></div>
+                    <div class="partner-logo"><i class="fas fa-city"></i><span>Rio Mobilidade</span></div>
+                    <div class="partner-logo"><i class="fas fa-bus"></i><span>TransBrasil</span></div>
+                    <div class="partner-logo"><i class="fas fa-truck"></i><span>Logã¡¡stica Express</span></div>
+                    <div class="partner-logo"><i class="fas fa-taxi"></i><span>UberFrota</span></div>
+                </div>
+            </div>
+        </section>
+
+        {# Features Section #}
+        <section class="features-section" id="features">
+            <div class="container">
+                <div class="section-header">
+                    <span class="section-tag">Funcionalidades</span>
+                    <h2 class="section-title">Tudo que você precisa para <span class="highlight">monitorar e otimizar</span> o trã¡¡fego</h2>
+                    <p class="section-subtitle">Uma plataforma completa com ferramentas avanã§§adas para gestíµ£o inteligente da mobilidade urbana</p>
+                </div>
+                
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-satellite-dish"></i>
+                        </div>
+                        <h3>Monitoramento em Tempo Real</h3>
+                        <p>Acompanhe o fluxo de veã¡¡culos, incidentes e condiçı¡Ìµes das vias com atualizaçı¡Ìµes a cada 30 segundos. Dados precisos para decisíµµes rã¡¡pidas.</p>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-check"></i> Atualizaçı¡Ì£o contã¡¡nua</li>
+                            <li><i class="fas fa-check"></i> Mãººltiplas fontes de dados</li>
+                            <li><i class="fas fa-check"></i> Baixa latãªªncia</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card featured">
+                        <div class="feature-badge">Mais Popular</div>
+                        <div class="feature-icon">
+                            <i class="fas fa-map-marked-alt"></i>
+                        </div>
+                        <h3>Mapas Interativos Avanã§§ados</h3>
+                        <p>Visualize dados georreferenciados em mapas dinã¡¡micos com camadas personalizã¡¡veis, heatmaps de congestionamento e rotas otimizadas.</p>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-check"></i> Leaflet e Google Maps</li>
+                            <li><i class="fas fa-check"></i> Heatmaps em tempo real</li>
+                            <li><i class="fas fa-check"></i> Camadas customizã¡¡veis</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-bell"></i>
+                        </div>
+                        <h3>Alertas Inteligentes</h3>
+                        <p>Receba notificaçı¡Ìµes automã¡¡ticas sobre incidentes, acidentes, obras e condiçı¡Ìµes adversas. Configure regras personalizadas por regiíµ£o.</p>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-check"></i> Alertas via email e SMS</li>
+                            <li><i class="fas fa-check"></i> Webhooks e API</li>
+                            <li><i class="fas fa-check"></i> Priorizaçı¡Ì£o automã¡¡tica</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <h3>Relatã¡¡rios e Anã¡¡lises</h3>
+                        <p>Gere relatã¡¡rios detalhados, identifique padríµµes de trã¡¡fego e tome decisíµµes baseadas em dados histã¡¡ricos e preditivos.</p>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-check"></i> Relatã¡¡rios customizã¡¡veis</li>
+                            <li><i class="fas fa-check"></i> Exportaçı¡Ì£o PDF/Excel</li>
+                            <li><i class="fas fa-check"></i> Anã¡¡lise preditiva</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-plug"></i>
+                        </div>
+                        <h3>API RESTful Completa</h3>
+                        <p>Integre com seus sistemas existentes. API documentada com endpoints para trã¡¡fego, alertas, rotas e mÃ©tricas em tempo real.</p>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-check"></i> Documentaçı¡Ì£o Swagger</li>
+                            <li><i class="fas fa-check"></i> Rate limiting inteligente</li>
+                            <li><i class="fas fa-check"></i> SDKs disponã¡¡veis</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <h3>IA e Machine Learning</h3>
+                        <p>Previsíµ£o de congestionamentos, deteccíµ£o automã¡¡tica de incidentes e otimizaçı¡Ì£o de rotas com algoritmos de aprendizado de mãquina.</p>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-check"></i> Predicíµ£o de trã¡¡fego</li>
+                            <li><i class="fas fa-check"></i> Detecçı¡Ì£o de anomalias</li>
+                            <li><i class="fas fa-check"></i> Rotas inteligentes</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {# Solutions Section #}
+        <section class="solutions-section" id="solutions">
+            <div class="container">
+                <div class="section-header">
+                    <span class="section-tag">Soluçı¡Ìµes</span>
+                    <h2 class="section-title">Feito para <span class="highlight">diferentes necessidades</span></h2>
+                    <p class="section-subtitle">Escolha a solução ideal para seu caso de uso</p>
+                </div>
+                
+                <div class="solutions-tabs">
+                    <button class="tab-btn active" data-tab="prefeituras">
+                        <i class="fas fa-city"></i>
+                        <span>Prefeituras</span>
+                    </button>
+                    <button class="tab-btn" data-tab="empresas">
+                        <i class="fas fa-building"></i>
+                        <span>Empresas</span>
+                    </button>
+                    <button class="tab-btn" data-tab="desenvolvedores">
+                        <i class="fas fa-code"></i>
+                        <span>Desenvolvedores</span>
+                    </button>
+                </div>
+                
+                <div class="solutions-content">
+                    <div class="solution-panel active" id="prefeituras">
+                        <div class="solution-grid">
+                            <div class="solution-text">
+                                <h3>Gestíµ£o Urbana Inteligente</h3>
+                                <p>Transforme sua cidade com dados em tempo real para tomada de decisíµµes sobre trã¡¡fego, transporte pãººblico e planejamento urbano.</p>
+                                <ul class="solution-list">
+                                    <li><i class="fas fa-check-circle"></i> Centro de Operaçı¡Ìµes integrado</li>
+                                    <li><i class="fas fa-check-circle"></i> Monitoramento de íreas crã¡¡ticas</li>
+                                    <li><i class="fas fa-check-circle"></i> Relatã¡¡rios para secretarias</li>
+                                    <li><i class="fas fa-check-circle"></i> Integraçı¡Ì£o com semã¡¡foros</li>
+                                    <li><i class="fas fa-check-circle"></i> API para apps municipais</li>
+                                </ul>
+                                <a href="#contact" class="btn btn-primary">Falar com Consultor</a>
+                            </div>
+                            <div class="solution-visual">
+                                <div class="visual-card">
+                                    <i class="fas fa-city"></i>
+                                    <h4>Smart Cities</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="solution-panel" id="empresas">
+                        <div class="solution-grid">
+                            <div class="solution-text">
+                                <h3>Otimizaçı¡Ì£o de Frotas e Logã¡¡stica</h3>
+                                <p>Reduza custos operacionais e melhore a eficiãªªncia das suas rotas com monitoramento em tempo real e anã¡¡lises preditivas.</p>
+                                <ul class="solution-list">
+                                    <li><i class="fas fa-check-circle"></i> Roteirizaçı¡Ì£o inteligente</li>
+                                    <li><i class="fas fa-check-circle"></i> Monitoramento de frotas</li>
+                                    <li><i class="fas fa-check-circle"></i> Reduçı¡Ì£o de tempo de viagem</li>
+                                    <li><i class="fas fa-check-circle"></i> Relatã¡¡rios de desempenho</li>
+                                    <li><i class="fas fa-check-circle"></i> Integraçı¡Ì£o com ERPs</li>
+                                </ul>
+                                <a href="#pricing" class="btn btn-primary">Ver Planos</a>
+                            </div>
+                            <div class="solution-visual">
+                                <div class="visual-card">
+                                    <i class="fas fa-truck"></i>
+                                    <h4>Logã¡¡stica</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="solution-panel" id="desenvolvedores">
+                        <div class="solution-grid">
+                            <div class="solution-text">
+                                <h3>API para Desenvolvedores</h3>
+                                <p>Construa aplicaçı¡Ìµes inovadoras com nossa API RESTful completa. Documentaçı¡Ì£o detalhada, SDKs e suporte tã©©cnico especializado.</p>
+                                <ul class="solution-list">
+                                    <li><i class="fas fa-check-circle"></i> API RESTful documentada</li>
+                                    <li><i class="fas fa-check-circle"></i> SDKs Python, PHP, Node.js</li>
+                                    <li><i class="fas fa-check-circle"></i> Webhooks em tempo real</li>
+                                    <li><i class="fas fa-check-circle"></i> Sandbox para testes</li>
+                                    <li><i class="fas fa-check-circle"></i> Suporte tã©©cnico dedicado</li>
+                                </ul>
+                                <a href="{{ path('api_docs') }}" class="btn btn-primary">Ver Documentaçı¡Ì£o</a>
+                            </div>
+                            <div class="solution-visual">
+                                <div class="visual-card">
+                                    <i class="fas fa-code"></i>
+                                    <h4>Developers</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {# How It Works #}
+        <section class="how-it-works">
+            <div class="container">
+                <div class="section-header">
+                    <span class="section-tag">Como Funciona</span>
+                    <h2 class="section-title">Implementaçı¡Ì£o <span class="highlight">rã¡¡pida e simples</span></h2>
+                    <p class="section-subtitle">Comece a usar em minutos, níµ£o em meses</p>
+                </div>
+                
+                <div class="steps-grid">
+                    <div class="step-card">
+                        <div class="step-number">1</div>
+                        <div class="step-icon">
+                            <i class="fas fa-user-plus"></i>
+                        </div>
+                        <h3>Crie sua conta</h3>
+                        <p>Cadastro grã¡¡tis em menos de 2 minutos. Sem cartíµ£o de crã©©dito necessã¡¡rio.</p>
+                    </div>
+                    
+                    <div class="step-card">
+                        <div class="step-number">2</div>
+                        <div class="step-icon">
+                            <i class="fas fa-cog"></i>
+                        </div>
+                        <h3>Configure sua ãrea</h3>
+                        <p>Selecione as regiíµµes e vias que deseja monitorar. Defina alertas e preferãªªncias.</p>
+                    </div>
+                    
+                    <div class="step-card">
+                        <div class="step-number">3</div>
+                        <div class="step-icon">
+                            <i class="fas fa-plug"></i>
+                        </div>
+                        <h3>Integre com seus sistemas</h3>
+                        <p>Use nossa API ou conecte com ferramentas existentes via webhooks.</p>
+                    </div>
+                    
+                    <div class="step-card">
+                        <div class="step-number">4</div>
+                        <div class="step-icon">
+                            <i class="fas fa-chart-bar"></i>
+                        </div>
+                        <h3>Acompanhe os resultados</h3>
+                        <p>Acesse dashboards em tempo real e receba insights automã¡¡ticos.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {# Pricing Section #}
+        <section class="pricing-section" id="pricing">
+            <div class="container">
+                <div class="section-header">
+                    <span class="section-tag">Planos e Preã§§os</span>
+                    <h2 class="section-title">Escolha o plano <span class="highlight">ideal para vocãªª</span></h2>
+                    <p class="section-subtitle">Todos os planos incluem 14 dias de teste grã¡¡tis</p>
+                </div>
+                
+                <div class="pricing-toggle">
+                    <span class="toggle-label">Mensal</span>
+                    <label class="switch">
+                        <input type="checkbox" id="pricing-switch">
+                        <span class="slider"></span>
+                    </label>
+                    <span class="toggle-label">Anual <span class="save-badge">Economize 20%</span></span>
+                </div>
+                
+                <div class="pricing-grid">
+                    <div class="pricing-card">
+                        <div class="pricing-header">
+                            <h3>Starter</h3>
+                            <p>Para pequenos projetos e testes</p>
+                        </div>
+                        <div class="pricing-price">
+                            <span class="currency">R$</span>
+                            <span class="amount">197</span>
+                            <span class="period">/mãªªs</span>
+                        </div>
+                        <ul class="pricing-features">
+                            <li><i class="fas fa-check"></i> Atã©© 5.000 requisiçı¡Ìµes/dia</li>
+                            <li><i class="fas fa-check"></i> 1 cidade monitorada</li>
+                            <li><i class="fas fa-check"></i> Atualizaçı¡Ì£o a cada 5 min</li>
+                            <li><i class="fas fa-check"></i> Dashboard bã¡¡sico</li>
+                            <li><i class="fas fa-check"></i> API access</li>
+                            <li><i class="fas fa-check"></i> Suporte por email</li>
+                            <li class="disabled"><i class="fas fa-times"></i> Alertas em tempo real</li>
+                            <li class="disabled"><i class="fas fa-times"></i> Relatã¡¡rios avanã§§ados</li>
+                        </ul>
+                        <a href="#" class="btn btn-outline btn-block">Comeã§§ar Grã¡¡tis</a>
+                    </div>
+                    
+                    <div class="pricing-card popular">
+                        <div class="popular-badge">
+                            <i class="fas fa-star"></i>
+                            <span>Mais Popular</span>
+                        </div>
+                        <div class="pricing-header">
+                            <h3>Professional</h3>
+                            <p>Para empresas em crescimento</p>
+                        </div>
+                        <div class="pricing-price">
+                            <span class="currency">R$</span>
+                            <span class="amount">497</span>
+                            <span class="period">/mãªªs</span>
+                        </div>
+                        <ul class="pricing-features">
+                            <li><i class="fas fa-check"></i> Atã©© 50.000 requisiçı¡Ìµes/dia</li>
+                            <li><i class="fas fa-check"></i> Atã©© 10 cidades</li>
+                            <li><i class="fas fa-check"></i> Atualizaçı¡Ì£o a cada 30s</li>
+                            <li><i class="fas fa-check"></i> Dashboard completo</li>
+                            <li><i class="fas fa-check"></i> API access completo</li>
+                            <li><i class="fas fa-check"></i> Suporte prioritã¡¡rio</li>
+                            <li><i class="fas fa-check"></i> Alertas em tempo real</li>
+                            <li><i class="fas fa-check"></i> Relatã¡¡rios avanã§§ados</li>
+                        </ul>
+                        <a href="#" class="btn btn-primary btn-block">Comeã§§ar Grã¡¡tis</a>
+                    </div>
+                    
+                    <div class="pricing-card">
+                        <div class="pricing-header">
+                            <h3>Enterprise</h3>
+                            <p>Para grandes operaçı¡Ìµes</p>
+                        </div>
+                        <div class="pricing-price">
+                            <span class="currency">R$</span>
+                            <span class="amount">997</span>
+                            <span class="period">/mãªªs</span>
+                        </div>
+                        <ul class="pricing-features">
+                            <li><i class="fas fa-check"></i> Requisiçı¡Ìµes ilimitadas</li>
+                            <li><i class="fas fa-check"></i> Cidades ilimitadas</li>
+                            <li><i class="fas fa-check"></i> Atualizaçı¡Ì£o em tempo real</li>
+                            <li><i class="fas fa-check"></i> Dashboard customizã¡¡vel</li>
+                            <li><i class="fas fa-check"></i> API dedicada</li>
+                            <li><i class="fas fa-check"></i> Suporte 24/7</li>
+                            <li><i class="fas fa-check"></i> SLA garantido</li>
+                            <li><i class="fas fa-check"></i> Treinamento incluso</li>
+                        </ul>
+                        <a href="#contact" class="btn btn-outline btn-block">Falar com Vendas</a>
+                    </div>
+                </div>
+                
+                <div class="pricing-cta">
+                    <p>Precisa de um plano personalizado? <a href="#contact">Entre em contato</a> para orã§§amento customizado.</p>
+                </div>
+            </div>
+        </section>
+
+        {# Testimonials Section #}
+        <section class="testimonials-section" id="testimonials">
+            <div class="container">
+                <div class="section-header">
+                    <span class="section-tag">Depoimentos</span>
+                    <h2 class="section-title">Quem usa, <span class="highlight">recomenda</span></h2>
+                    <p class="section-subtitle">Veja o que nossos clientes estão dizendo</p>
+                </div>
+                
+                <div class="testimonials-grid">
+                    <div class="testimonial-card">
+                        <div class="testimonial-rating">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <p class="testimonial-text">"O wazeBR transformou nossa operaçı¡Ì£o de logã¡¡stica. Reduzimos em 23% o tempo mÃ©dio das entregas e economizamos mais de R$ 50k por mãªªs em combustã¡¡vel."</p>
+                        <div class="testimonial-author">
+                            <div class="author-avatar">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="author-info">
+                                <strong>Carlos Mendes</strong>
+                                <span>CEO, Logã¡¡stica Express</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="testimonial-card">
+                        <div class="testimonial-rating">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <p class="testimonial-text">"A API do wazeBR ã incrã¡¡vel de fã¡¡cil de usar. Integramos em menos de uma semana com nosso app de mobilidade urbana. O suporte tã©©cnico ã excepcional."</p>
+                        <div class="testimonial-author">
+                            <div class="author-avatar">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="author-info">
+                                <strong>Ana Paula Silva</strong>
+                                <span>CTO, MobiApp</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="testimonial-card">
+                        <div class="testimonial-rating">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <p class="testimonial-text">"Como gestor de trã¡¡fego, o wazeBR me dÃ¡ visibilidade completa da cidade. Os alertas em tempo real nos ajudam a responder rã¡¡pido a incidentes."</p>
+                        <div class="testimonial-author">
+                            <div class="author-avatar">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="author-info">
+                                <strong>Roberto Oliveira</strong>
+                                <span>Secretã¡¡rio de Mobilidade</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {# FAQ Section #}
+        <section class="faq-section" id="faq">
+            <div class="container">
+                <div class="section-header">
+                    <span class="section-tag">FAQ</span>
+                    <h2 class="section-title">Perguntas <span class="highlight">frequentes</span></h2>
+                    <p class="section-subtitle">Tire suas dãººvidas sobre o wazeBR</p>
+                </div>
+                
+                <div class="faq-grid">
+                    <div class="faq-item">
+                        <button class="faq-question">
+                            <span>Como funciona o perã¡¡odo de teste grã¡¡tis?</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="faq-answer">
+                            <p>Você¹¹ tem acesso completo a todas as funcionalidades do plano escolhido por 14 dias, sem compromisso. Níµ£o pedimos cartíµ£o de crã©©dito no cadastro. Apã¡¡s o perã¡¡odo, vocãªª pode escolher um plano ou cancelar sem custos.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="faq-item">
+                        <button class="faq-question">
+                            <span>Quais fontes de dados o wazeBR utiliza?</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="faq-answer">
+                            <p>Utilizamos mãººltiplas fontes: APIs de navegaçı¡Ì£o (Waze, Google), sensores de trã¡¡fego municipais, dados de operadoras de transporte, e contribuiçı¡Ìµes da comunidade. Nossa IA cruza esses dados para garantir precisíµ£o de atã©© 99%.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="faq-item">
+                        <button class="faq-question">
+                            <span>Posso integrar com meus sistemas existentes?</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="faq-answer">
+                            <p>Sim! Nossa API RESTful ã completa e documentada. Oferecemos SDKs em PHP, Python, Node.js e Java. Tambã©©m suportamos webhooks para notificaçı¡Ìµes em tempo real e temos integraçı¡Ìµes prã©©-construã¡¡das para ERPs populares.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="faq-item">
+                        <button class="faq-question">
+                            <span>Qual a frequãªªncia de atualizaçı¡Ì£o dos dados?</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="faq-answer">
+                            <p>Depende do plano: Starter atualiza a cada 5 minutos, Professional a cada 30 segundos, e Enterprise em tempo real (atualizaçı¡Ì£o contã¡¡nua). Para a maioria dos casos de uso, 30 segundos oferece o equilã¡¡brio ideal entre performance e custo.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="faq-item">
+                        <button class="faq-question">
+                            <span>Existe limite de requisiçı¡Ìµes na API?</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="faq-answer">
+                            <p>Sim, cada plano tem um limite diã¡¡rio: Starter (5k), Professional (50k), Enterprise (ilimitado). Se precisar de mais, vocãªª pode fazer upgrade do plano ou comprar pacotes adicionais de requisiçı¡Ìµes.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="faq-item">
+                        <button class="faq-question">
+                            <span>Como funciona o suporte tã©©cnico?</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="faq-answer">
+                            <p>Starter: suporte por email com resposta em atã©© 48h. Professional: suporte prioritã¡¡rio por email e chat em atã©© 4h. Enterprise: suporte 24/7 por telefone, email, chat e Slack dedicado com SLA garantido.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {# CTA Section #}
+        <section class="cta-section">
+            <div class="container">
+                <div class="cta-box">
+                    <div class="cta-content">
+                        <h2>Pronto para transformar a mobilidade da sua cidade?</h2>
+                        <p>Comece grã¡¡tis hoje mesmo e veja a diferença em 14 dias.</p>
+                        <div class="cta-buttons">
+                            <a href="#pricing" class="btn btn-white btn-lg">
+                                <span>Comeã§§ar Teste Grã¡¡tis</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </a>
+                            <a href="#contact" class="btn btn-outline-white btn-lg">
+                                <i class="fas fa-envelope"></i>
+                                <span>Falar com Consultor</span>
+                            </a>
+                        </div>
+                        <p class="cta-note"><i class="fas fa-check-circle"></i> Sem cartíµ£o de crã©©dito ã necessã¡¡rio</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    {# Footer #}
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <a href="{{ path('home') }}" class="footer-logo">
+                        <div class="logo-icon">
+                            <i class="fas fa-road"></i>
+                        </div>
+                        <span class="logo-text">waze<span class="highlight">BR</span></span>
+                    </a>
+                    <p class="footer-desc">Monitoramento inteligente de trã¡¡fego e mobilidade urbana para cidades e empresas que pensam no futuro.</p>
+                    <div class="footer-social">
+                        <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+                        <a href="#" aria-label="GitHub"><i class="fab fa-github"></i></a>
+                        <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                    </div>
+                </div>
+                
+                <div class="footer-col">
+                    <h4>Produto</h4>
+                    <ul>
+                        <li><a href="#features">Funcionalidades</a></li>
+                        <li><a href="#pricing">Planos</a></li>
+                        <li><a href="{{ path('api_docs') }}">API</a></li>
+                        <li><a href="#">Documentaçı¡Ì£o</a></li>
+                        <li><a href="#">Changelog</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-col">
+                    <h4>Soluçı¡Ìµes</h4>
+                    <ul>
+                        <li><a href="#">Prefeituras</a></li>
+                        <li><a href="#">Empresas</a></li>
+                        <li><a href="#">Desenvolvedores</a></li>
+                        <li><a href="#">Logã¡¡stica</a></li>
+                        <li><a href="#">Smart Cities</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-col">
+                    <h4>Empresa</h4>
+                    <ul>
+                        <li><a href="#">Sobre</a></li>
+                        <li><a href="#">Blog</a></li>
+                        <li><a href="#">Carreiras</a></li>
+                        <li><a href="#contact">Contato</a></li>
+                        <li><a href="#">Parceiros</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-col">
+                    <h4>Suporte</h4>
+                    <ul>
+                        <li><a href="#faq">FAQ</a></li>
+                        <li><a href="#">Central de Ajuda</a></li>
+                        <li><a href="#">Status</a></li>
+                        <li><a href="#">Termos de Uso</a></li>
+                        <li><a href="#">Privacidade</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; {{ "now"|date("Y") }} wazeBR. Todos os direitos reservados.</p>
+                <p>Feito com <i class="fas fa-heart"></i> no Brasil ãã¡¡</p>
+            </div>
+        </div>
+    </footer>
+
+    {# JavaScript #}
+    <script src="{{ asset('assets/js/landing.js') }}"></script>
+</body>
+</html>
