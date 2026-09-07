@@ -29,11 +29,18 @@ class PartnerController extends AbstractController
         private readonly UserPasswordHasherInterface $hasher,
     ) {}
 
-    #[Route('', name: 'index', methods: ['GET'])]
+    #[Route(path: '', name: 'admin_partner_index')]
+    #[IsGranted('IS_AUTHENTICATED_FULLY')]
     public function index(): Response
     {
+        $partners = $this->partnerRepository->findAll();
+
+        // Define quem pode editar (ajuste conforme suas regras de role)
+        $canEdit = $this->isGranted('ROLE_PARTNER') || $this->isGranted('ROLE_ADMIN');
+
         return $this->render('admin/partner/index.html.twig', [
-            'partners' => $this->partnerRepository->findAllWithUserCount(),
+            'partners' => $partners,
+            'can_edit' => $canEdit,
         ]);
     }
 

@@ -30,7 +30,6 @@ security:
         - { path: ^/login, roles: PUBLIC_ACCESS }
         - { path: ^/forgot-password, roles: PUBLIC_ACCESS }
         - { path: ^/reset-password, roles: PUBLIC_ACCESS }
-        - { path: ^/partner/register, roles: PUBLIC_ACCESS }
-        - { path: ^/$, roles: PUBLIC_ACCESS }
+        - { path: ^/$, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/health, roles: PUBLIC_ACCESS }
-        - { path: ^/, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/, roles: PUBLIC_ACCESS }

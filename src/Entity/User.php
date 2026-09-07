@@ -312,4 +312,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             $this->getPartner()?->getName() ?? 'None (Global)'
         );
     }
+
+    // Campo apenas para o formulário, não persistido
+    private ?string $plainPassword = null;
+
+    public function getPlainPassword(): ?string
+    {
+        return $this->plainPassword;
+    }
+
+    public function setPlainPassword(?string $plainPassword): static
+    {
+        $this->plainPassword = $plainPassword;
+        return $this;
+    }
 }

@@ -5,125 +5,110 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\User;
-use App\Form\ResetPasswordFormType;
-use App\Form\ResetPasswordRequestFormType;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Form\RegistrationFormType;
+use App\Service\UserRegistrationService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Mailer\MailerInterface;
-use Symfony\Component\Mime\Email;
-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
-use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
-use SymfonyCasts\Bundle\ResetPassword\Controller\ResetPasswordControllerTrait;
-use SymfonyCasts\Bundle\ResetPassword\Exception\ResetPasswordExceptionInterface;
-use SymfonyCasts\Bundle\ResetPassword\ResetPasswordHelperInterface;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-final class AuthController extends AbstractController
+#[Route(path: '/')]
+class AuthController extends AbstractController
 {
-    use ResetPasswordControllerTrait;
-
     public function __construct(
-        private readonly ResetPasswordHelperInterface $resetPasswordHelper,
-        private readonly EntityManagerInterface $entityManager,
-        private readonly MailerInterface $mailer,
-    ) {}
+        private readonly AuthenticationUtils $authenticationUtils,
+        private readonly UserRegistrationService $registrationService,
+    ) {
+    }
 
-    #[Route('/login', name: 'app_login', methods: ['GET', 'POST'])]
-    public function login(AuthenticationUtils $authenticationUtils): Response
+    /**
+     * Página inicial pública (/)
+     */
+    #[Route(path: '/', name: 'app_home')]
+    public function home(): Response
     {
         if ($this->getUser()) {
-            return $this->redirectToRoute('dashboard_index');
+            // Se já estiver logado, manda para o dashboard
+            return $this->redirectToRoute('app_dashboard');
         }
+
+        return $this->render('auth/home.html.twig');
+    }
+
+    #[Route(path: '/login', name: 'app_login')]
+    public function login(Request $request): Response
+    {
+        if ($this->getUser()) {
+            return $this->redirectToRoute('app_dashboard');
+        }
+
+        $error = $this->authenticationUtils->getLastAuthenticationError();
+        $lastUsername = $this->authenticationUtils->getLastUsername();
 
         return $this->render('auth/login.html.twig', [
-            'last_username' => $authenticationUtils->getLastUsername(),
-            'error' => $authenticationUtils->getLastAuthenticationError(),
+            'last_username' => $lastUsername,
+            'error' => $error,
         ]);
     }
 
-    #[Route('/logout', name: 'app_logout', methods: ['GET'])]
-    public function logout(): never
+    #[Route(path: '/logout', name: 'app_logout')]
+    public function logout(): void
     {
-        throw new \LogicException('Esta rota é interceptada pelo firewall de logout.');
+        throw new \LogicException(
+            'This method can be blank - it will be intercepted by the logout key on your firewall.'
+        );
     }
 
-    #[Route('/forgot-password', name: 'app_forgot_password', methods: ['GET', 'POST'])]
-    public function forgotPassword(Request $request): Response
+    #[Route(path: '/register', name: 'app_register')]
+    public function register(Request $request): Response
     {
-        $form = $this->createForm(ResetPasswordRequestFormType::class);
+        if ($this->getUser()) {
+            return $this->redirectToRoute('app_dashboard');
+        }
+
+        $form = $this->createForm(RegistrationFormType::class);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $email = $form->get('email')->getData();
-            $user = $this->entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
+            /** @var User $user */
+            $user = $form->getData();
 
-            // Mensagem sempre idêntica, exista ou não o e-mail, para não permitir
-            // que alguém descubra quais e-mails têm conta no sistema (account enumeration).
-            $genericMessage = 'Se este e-mail estiver cadastrado, você receberá as instruções em instantes.';
+            try {
+                $this->registrationService->register($user);
 
-            if ($user) {
-                try {
-                    $resetToken = $this->resetPasswordHelper->generateResetToken($user);
-                    $this->sendResetEmail($user->getEmail(), $resetToken);
-                } catch (ResetPasswordExceptionInterface|\Exception) {
-                    // Propositalmente silencioso: mesmo em caso de erro (token já gerado
-                    // recentemente, falha de envio, etc.) a resposta ao usuário não muda,
-                    // para manter a mesma proteção contra enumeração de e-mails.
-                }
+                $this->addFlash('success', 'Cadastro realizado com sucesso. Faça login para continuar.');
+
+                return $this->redirectToRoute('app_login');
+            } catch (\InvalidArgumentException $e) {
+                $this->addFlash('error', $e->getMessage());
+            } catch (\Throwable $e) {
+                $this->addFlash('error', 'Ocorreu um erro ao realizar o cadastro. Tente novamente.');
             }
 
-            $this->addFlash('reset_password_success', $genericMessage);
-
-            return $this->redirectToRoute('app_forgot_password');
+            return $this->render('auth/register.html.twig', [
+                'registrationForm' => $form,
+            ]);
         }
 
-        return $this->render('auth/forgot.html.twig', [
-            'requestForm' => $form->createView(),
+        return $this->render('auth/register.html.twig', [
+            'registrationForm' => $form,
         ]);
     }
 
-    private function sendResetEmail(string $toEmail, \SymfonyCasts\Bundle\ResetPassword\Model\ResetPasswordToken $resetToken): void
+    /**
+     * Dashboard restrito (/dashboard)
+     */
+    #[IsGranted('IS_AUTHENTICATED_FULLY')]
+    #[Route(path: '/dashboard', name: 'app_dashboard')]
+    public function dashboard(): Response
     {
-        $email = (new Email())
-            ->from('no-reply@wazebr.com')
-            ->to($toEmail)
-            ->subject('Redefinição de senha - wazeBR')
-            ->html($this->renderView('email/reset_password.html.twig', [
-                'resetToken' => $resetToken,
-            ]));
+        /** @var User $user */
+        $user = $this->getUser();
 
-        $this->mailer->send($email);
-    }
-
-    #[Route('/reset-password/{token}', name: 'app_reset_password', methods: ['GET', 'POST'])]
-    public function resetPassword(Request $request, string $token, UserPasswordHasherInterface $passwordHasher): Response
-    {
-        try {
-            $user = $this->resetPasswordHelper->validateTokenAndFetchUser($token);
-        } catch (ResetPasswordExceptionInterface $e) {
-            $this->addFlash('reset_password_error', $e->getReason());
-            return $this->redirectToRoute('app_forgot_password');
-        }
-
-        $form = $this->createForm(ResetPasswordFormType::class);
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $plainPassword = $form->get('plainPassword')->getData();
-            $user->setPassword($passwordHasher->hashPassword($user, $plainPassword));
-            $this->entityManager->flush();
-
-            $this->resetPasswordHelper->removeResetRequest($token);
-
-            $this->addFlash('reset_password_success', 'Senha redefinida com sucesso!');
-            return $this->redirectToRoute('app_login');
-        }
-
-        return $this->render('auth/reset.html.twig', [
-            'resetForm' => $form->createView(),
-            'token' => $token,
+        return $this->render('auth/dashboard.html.twig', [
+            'user' => $user,
         ]);
     }
 }
