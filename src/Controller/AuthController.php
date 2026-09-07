@@ -115,27 +115,78 @@ class AuthController extends AbstractController
 
     /**
      * Password Reset - Request (/reset-password)
-     * Formulário para solicitar reset de senha
+     * Formul\u00e1rio para solicitar reset de senha
      */
-    #[Route(path: '/reset-password', name: 'app_reset_password_request')]
+    #[Route(path: '/reset-password', name: 'app_reset_password_request', methods: ['GET', 'POST'])]
     public function resetPasswordRequest(Request $request): Response
     {
         if ($this->getUser()) {
             return $this->redirectToRoute('app_dashboard');
         }
 
-        return $this->render('auth/reset_password_request.html.twig', [
-            'requestForm' => null, // Form will be created in template
-        ]);
+        if ($request->isMethod('POST')) {
+            $email = $request->request->get('email', '');
+            
+            // TODO: Send reset email logic here
+            // 1. Find user by email
+            // 2. Generate reset token
+            // 3. Save token to database
+            // 4. Send email with reset link
+            
+            // For now, just redirect to check-email page
+            return $this->redirectToRoute('app_reset_password_check_email');
+        }
+
+        return $this->render('auth/reset_password_request.html.twig');
     }
 
     /**
      * Password Reset - Check Email (/reset-password/check-email)
-     * Página de confirmação após envio do email
+     * P\u00e1gina de confirma\u00e7\u00e3o ap\u00f3s envio do email
      */
     #[Route(path: '/reset-password/check-email', name: 'app_reset_password_check_email')]
     public function resetPasswordCheckEmail(): Response
     {
         return $this->render('auth/reset_password_check_email.html.twig');
+    }
+
+    /**
+     * Password Reset - Reset Password (/reset-password/{token})
+     * P\u00e1gina para criar nova senha
+     */
+    #[Route(path: '/reset-password/{token}', name: 'app_reset_password_reset', methods: ['GET', 'POST'])]
+    public function resetPassword(Request $request, string $token): Response
+    {
+        if ($this->getUser()) {
+            return $this->redirectToRoute('app_dashboard');
+        }
+
+        // TODO: Validate token logic here
+        // 1. Find token in database
+        // 2. Check if token is expired
+        // 3. Get user from token
+        
+        if ($request->isMethod('POST')) {
+            $newPassword = $request->request->get('password', '');
+            $confirmPassword = $request->request->get('confirm_password', '');
+            
+            // Validate passwords match
+            if ($newPassword !== $confirmPassword) {
+                $this->addFlash('error', 'As senhas n\u00e3o coincidem.');
+                return $this->redirectToRoute('app_reset_password_reset', ['token' => $token]);
+            }
+            
+            // TODO: Update user password
+            // 1. Hash new password
+            // 2. Save to database
+            // 3. Delete used token
+            
+            $this->addFlash('success', 'Senha alterada com sucesso! Fa\u00e7a login.');
+            return $this->redirectToRoute('app_login');
+        }
+
+        return $this->render('auth/reset_password_reset.html.twig', [
+            'token' => $token,
+        ]);
     }
 }
