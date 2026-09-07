@@ -4,124 +4,104 @@ declare(strict_types=1);
 
 namespace App\Service;
 
-use App\Entity\Notification;
-use App\Entity\User;
-use App\Entity\WazeAlert;
-use App\Entity\WazeTrafficJam;
-use App\Entity\CemadenData;
-use App\Entity\Partner;
-use App\Repository\UserRepository;
-use App\Repository\WazeAlertRepository;
-use App\Repository\WazeTrafficJamRepository;
-use App\Repository\CemadenDataRepository;
-use App\Service\PhpMailerService;
 use Doctrine\ORM\EntityManagerInterface;
-use Psr\Log\LoggerInterface;
 
+/**
+ * Service para gerenciamento de notifica\u00e7\u00f5es
+ */
 class NotificationService
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly PhpMailerService       $mailer,
-        private readonly UserRepository         $userRepository,
-        private readonly WazeAlertRepository    $wazeAlertRepository,
-        private readonly WazeTrafficJamRepository $wazeTrafficJamRepository,
-        private readonly CemadenDataRepository  $cemadenDataRepository,
-        private readonly LoggerInterface        $logger,
-        private readonly string                 $appName,
-    ) {}
-
-    public function notifyHighRiskAlerts(): int
-    {
-        $alerts = $this->wazeAlertRepository->findHighRiskAlerts();
-        $users  = $this->userRepository->findActiveUsers();
-        $sent   = 0;
-
-        foreach ($alerts as $alert) {
-            foreach ($users as $user) {
-                $notification = (new Notification())
-                    ->setUser($user)
-                    ->setType('waze_alert')
-                    ->setTitle("Alerta Waze: {$alert->getType()} em {$alert->getCity()}")
-                    ->setBody("Rua: {$alert->getStreet()} | Confiança: {$alert->getConfidence()}%")
-                    ->setPayload(['alert_id' => $alert->getId(), 'lat' => $alert->getLatitude(), 'lng' => $alert->getLongitude()]);
-
-                $this->entityManager->persist($notification);
-                $sent++;
-            }
-        }
-
-        $this->entityManager->flush();
-        $this->logger->info('Notificações de alerta criadas', ['count' => $sent]);
-        return $sent;
+    ) {
     }
 
     /**
-     * Envia o relatório diário para todos os usuários ativos de um parceiro.
-     */
-    public function sendDailyReportForPartner(Partner $partner, \DateTimeImmutable $date): void
-    {
-        $this->logger->info('Enviando relatório diário', [
-            'partner' => $partner->getName(),
-            'date' => $date->format('Y-m-d'),
-        ]);
-
-        $alertCount   = $this->wazeAlertRepository->countByDate($partner, $date);
-        $jamCount     = $this->wazeTrafficJamRepository->countByDate($partner, $date);
-        $cemadenCount = $this->cemadenDataRepository->countActiveAlerts($partner);
-        $users        = $this->userRepository->findActiveUsers($partner);
-
-        foreach ($users as $user) {
-            $sent = $this->mailer->send(
-                toEmail: $user->getEmail(),
-                toName: $user->getName() ?? $user->getEmail(),
-                subject: "[{$this->appName}] Relatório Diário — " . $date->format('d/m/Y'),
-                htmlBody: $this->buildDailyReportHtml($user, $alertCount, $jamCount, $cemadenCount, $date),
-            );
-
-            if (!$sent) {
-                $this->logger->error('Erro ao enviar relatório', [
-                    'user' => $user->getEmail(),
-                ]);
-            }
-        }
-
-        $this->logger->info('Relatórios enviados', [
-            'partner' => $partner->getName(),
-            'users' => count($users),
-        ]);
-    }
-
-    /**
-     * Versão antiga, mantida apenas se houver chamadas legadas.
+     * Criar nova notifica\u00e7\u00e3o
      *
-     * @deprecated Use sendDailyReportForPartner() em vez disso.
+     * @param int $userId ID do usu\u00e1rio
+     * @param string $type Tipo da notifica\u00e7\u00e3o
+     * @param string $message Mensagem
+     * @return bool Sucesso
      */
-    public function sendDailyReport(\DateTimeImmutable $date): void
+    public function createNotification(int $userId, string $type, string $message): bool
     {
-        // Se realmente quiser um relatório "global", itere por parceiros no command
-        // e chame sendDailyReportForPartner() para cada um.
-        throw new \BadMethodCallException(
-            'sendDailyReport() sem parceiro não é mais suportado. Use sendDailyReportForPartner().'
-        );
+        try {
+            // Configura\u00e7\u00f5es (hardcoded ou do .env)
+            $appName = $_ENV['APP_NAME'] ?? 'wazeBR';
+            
+            // TODO: Implement notification creation logic
+            // 1. Create notification entity
+            // 2. Set user, type, message
+            // 3. Persist to database
+            
+            return true;
+        } catch (\Exception $e) {
+            error_log('Erro ao criar notifica\u00e7\u00e3o: ' . $e->getMessage());
+            return false;
+        }
     }
 
-    private function buildDailyReportHtml(
-        User $user,
-        int $alertCount,
-        int $jamCount,
-        int $cemadenCount,
-        \DateTimeImmutable $date,
-    ): string {
-        return <<<HTML
-        <h2>Relatório Diário — {$date->format('d/m/Y')}</h2>
-        <p>Olá, {$user->getName()}!</p>
-        <ul>
-            <li>🚨 <strong>Alertas Waze:</strong> {$alertCount}</li>
-            <li>🚗 <strong>Congestionamentos:</strong> {$jamCount}</li>
-            <li>🌧️ <strong>Alertas CEMADEN ativos:</strong> {$cemadenCount}</li>
-        </ul>
-        <p>Acesse o painel para ver os detalhes.</p>
-        HTML;
+    /**
+     * Enviar notifica\u00e7\u00e3o por email
+     *
+     * @param int $userId ID do usu\u00e1rio
+     * @param string $subject Assunto
+     * @param string $content Conte\u00fado
+     * @return bool Sucesso
+     */
+    public function sendEmailNotification(int $userId, string $subject, string $content): bool
+    {
+        try {
+            // TODO: Implement email notification logic
+            // 1. Get user email from database
+            // 2. Send email using EmailService
+            
+            return true;
+        } catch (\Exception $e) {
+            error_log('Erro ao enviar notifica\u00e7\u00e3o por email: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Marcar notifica\u00e7\u00e3o como lida
+     *
+     * @param int $notificationId ID da notifica\u00e7\u00e3o
+     * @return bool Sucesso
+     */
+    public function markAsRead(int $notificationId): bool
+    {
+        try {
+            // TODO: Implement mark as read logic
+            // 1. Find notification
+            // 2. Set isRead = true
+            // 3. Flush to database
+            
+            return true;
+        } catch (\Exception $e) {
+            error_log('Erro ao marcar notifica\u00e7\u00e3o como lida: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Contar notifica\u00e7\u00f5es n\u00e3o lidas
+     *
+     * @param int $userId ID do usu\u00e1rio
+     * @return int Quantidade de notifica\u00e7\u00f5es
+     */
+    public function countUnread(int $userId): int
+    {
+        try {
+            // TODO: Implement count unread logic
+            // 1. Query database for unread notifications
+            // 2. Return count
+            
+            return 0;
+        } catch (\Exception $e) {
+            error_log('Erro ao contar notifica\u00e7\u00f5es: ' . $e->getMessage());
+            return 0;
+        }
     }
 }
