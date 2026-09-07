@@ -1,0 +1,261 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Dashboard - wazeBR{% endblock %}
+
+{% block body_class %}dashboard-page{% endblock %}
+
+{% block stylesheets %}
+    <link rel="stylesheet" href="{{ asset('assets/css/base-layout.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/css/dashboard.css') }}">
+{% endblock %}
+
+{% block body %}
+<div class="dashboard-wrapper">
+    {# Sidebar #}
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="{{ path('app_home') }}" class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-road"></i>
+                </div>
+                <span class="logo-text">waze<span class="highlight">BR</span></span>
+            </a>
+            <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+
+        <nav class="sidebar-nav">
+            <ul class="nav-list">
+                <li class="nav-item">
+                    <a href="{{ path('app_dashboard') }}" class="nav-link active">
+                        <i class="fas fa-home"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Relat\u00f3rios</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <i class="fas fa-map-marked-alt"></i>
+                        <span>Mapas</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <i class="fas fa-bell"></i>
+                        <span>Alertas</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <i class="fas fa-cog"></i>
+                        <span>Configura\u00e7\u00f5es</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="user-details">
+                    <div class="user-name">{{ app.user.email|split('@')|first }}</div>
+                    <div class="user-role">{% if 'ROLE_ACCOUNT_ADMIN' in app.user.roles %}Admin{% elseif 'ROLE_ADMIN_PARTNER' in app.user.roles %}Partner{% elseif 'ROLE_FIELD_AGENT' in app.user.roles %}Agente{% else %}Usu\u00e1rio{% endif %}</div>
+                </div>
+            </div>
+            <a href="{{ path('app_logout') }}" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Sair</span>
+            </a>
+        </div>
+    </aside>
+
+    {# Main Content #}
+    <main class="main-content">
+        {# Top Bar #}
+        <header class="top-bar">
+            <div class="top-bar-left">
+                <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1 class="page-title">{{ hero.title|default('Dashboard') }}</h1>
+            </div>
+            <div class="top-bar-right">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Buscar..." class="search-input">
+                </div>
+                <div class="notifications">
+                    <button class="notification-btn">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge">{{ alertCount|default(0) }}</span>
+                    </button>
+                </div>
+                <div class="user-menu">
+                    <button class="user-menu-btn" onclick="toggleUserMenu()">
+                        <div class="user-avatar-small">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <span class="user-name-small">{{ app.user.email|split('@')|first }}</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        {# Dashboard Content #}
+        <div class="content-wrapper">
+            <div class="dashboard-content">
+                {# Stats Grid #}
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon blue">
+                            <i class="fas fa-car"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>{{ hero.jamsTotal|default(0) }}</h3>
+                            <p>Congestionamentos</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon orange">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>{{ hero.alertsTotal|default(0) }}</h3>
+                            <p>Alertas Totais</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon green">
+                            <i class="fas fa-route"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>{{ hero.routesMonitored|default(0) }}</h3>
+                            <p>Rotas Monitoradas</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon purple">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>{{ hero.monitoredCities|default(0) }}</h3>
+                            <p>Cidades</p>
+                        </div>
+                    </div>
+                </div>
+
+                {# Content Grid #}
+                <div class="content-grid">
+                    {# Recent Jams #}
+                    <div class="card large">
+                        <div class="card-header">
+                            <h3>Congestionamentos Recentes</h3>
+                            <a href="#" class="view-all">Ver todos</a>
+                        </div>
+                        <div class="card-body">
+                            {% if recentJams|length > 0 %}
+                                <ul class="jam-list">
+                                    {% for jam in recentJams|slice(0, 5) %}
+                                        <li class="jam-item">
+                                            <div class="jam-level level-{{ jam.level|default(1) }}">
+                                                <span>{{ jam.level|default(1) }}</span>
+                                            </div>
+                                            <div class="jam-info">
+                                                <p><strong>{{ jam.street|default('Rua Desconhecida') }}</strong></p>
+                                                <span class="jam-location"><i class="fas fa-map-marker-alt"></i> {{ jam.city|default('Cidade') }}</span>
+                                            </div>
+                                            <div class="jam-meta">
+                                                <span class="jam-speed">{{ jam.speed|default(0)|number_format(1) }} km/h</span>
+                                                <span class="jam-time">{{ jam.timestamp|date('H:i') }}</span>
+                                            </div>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <div class="empty-state">
+                                    <i class="fas fa-car"></i>
+                                    <p>Nenhum congestionamento registrado</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {# Recent Alerts #}
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Alertas Recentes</h3>
+                            <a href="#" class="view-all">Ver todos</a>
+                        </div>
+                        <div class="card-body">
+                            {% if recentAlerts|length > 0 %}
+                                <ul class="alert-list">
+                                    {% for alert in recentAlerts|slice(0, 5) %}
+                                        <li class="alert-item">
+                                            <div class="alert-icon">
+                                                <i class="fas fa-{{ alert.type == 'ACCIDENT' ? 'car-crash' : (alert.type == 'HAZARD' ? 'exclamation-triangle' : 'info-circle') }}"></i>
+                                            </div>
+                                            <div class="alert-info">
+                                                <p><strong>{{ alert.type|default('ALERTA') }}</strong></p>
+                                                <span class="alert-time">{{ alert.timestamp|date('H:i') }}</span>
+                                            </div>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <div class="empty-state">
+                                    <i class="fas fa-bell"></i>
+                                    <p>Nenhum alerta recente</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                {# Partner Info #}
+                {% if partner %}
+                    <div class="partner-card">
+                        <div class="partner-header">
+                            <h3><i class="fas fa-building"></i> {{ partnerLabel|default('Parceiro') }}</h3>
+                        </div>
+                        <div class="partner-stats">
+                            <div class="partner-stat">
+                                <strong>{{ partnerStats.jams|default(0) }}</strong>
+                                <span>Congestionamentos</span>
+                            </div>
+                            <div class="partner-stat">
+                                <strong>{{ partnerStats.alerts|default(0) }}</strong>
+                                <span>Alertas</span>
+                            </div>
+                            <div class="partner-stat">
+                                <strong>{{ partnerStats.routes|default(0) }}</strong>
+                                <span>Rotas</span>
+                            </div>
+                            <div class="partner-stat">
+                                <strong>{{ partnerStats.monitoredLinks|default(0) }}</strong>
+                                <span>Links Monitorados</span>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    <script src="{{ asset('assets/js/base-layout.js') }}"></script>
+    <script src="{{ asset('assets/js/dashboard.js') }}"></script>
+{% endblock %}
