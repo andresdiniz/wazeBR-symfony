@@ -1,47 +1,166 @@
+{# ========================================
+   wazeBR - Premium Base Template
+   Complete HTML structure with SEO and performance optimizations
+   ======================================== #}
+
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="no-js">
 <head>
+    {# ========================================
+       Meta Tags
+       ======================================== #}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}wazeBR{% endblock %}</title>
-
-    {# Meta tags #}
-    <meta name="description" content="{% block meta_description %}wazeBR - Monitoramento de Tr\u00e2nsito e Mobilidade{% endblock %}">
-    <meta name="keywords" content="{% block meta_keywords %}tr\u00e2nsito, mobilidade, monitoramento, waze{% endblock %}">
-
-    {# Fonts #}
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-
-    {# Icons #}
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    {# Global Stylesheet (loaded on every page) #}
-    <link rel="stylesheet" href="{{ asset('css/global.css') }}">
-
-    {# Page-specific Stylesheets #}
-    {% block stylesheets %}{% endblock %}
-
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    
+    {# SEO Meta Tags #}
+    <title>{% block title %}wazeBR - Monitoramento de Trâ©§nsito e Mobilidade{% endblock %}</title>
+    <meta name="title" content="{% block meta_title %}wazeBR - Monitoramento de Trâ©§nsito e Mobilidade{% endblock %}">
+    <meta name="description" content="{% block meta_description %}Sistema inteligente de monitoramento de trâ©§nsito e mobilidade urbana para cidades e empresas.{% endblock %}">
+    <meta name="keywords" content="{% block meta_keywords %}trâ©§nsito, mobilidade, monitoramento, waze, smart city, prefeitura, alertas{% endblock %}">
+    <meta name="author" content="wazeBR">
+    <meta name="robots" content="index, follow">
+    <meta name="language" content="pt-BR">
+    <meta name="theme-color" content="#2563eb">
+    
+    {# Open Graph / Facebook #}
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ app.request.uri }}">
+    <meta property="og:title" content="{% block og_title %}wazeBR - Monitoramento de Trâ©§nsito{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}Sistema inteligente de monitoramento de trâ©§nsito e mobilidade urbana.{% endblock %}">
+    <meta property="og:image" content="{% block og_image %}{{ asset('images/og-image.jpg') }}{% endblock %}">
+    <meta property="og:locale" content="pt_BR">
+    <meta property="og:site_name" content="wazeBR">
+    
+    {# Twitter #}
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="{{ app.request.uri }}">
+    <meta property="twitter:title" content="{% block twitter_title %}wazeBR - Monitoramento de Trâ©§nsito{% endblock %}">
+    <meta property="twitter:description" content="{% block twitter_description %}Sistema inteligente de monitoramento de trâ©§nsito e mobilidade urbana.{% endblock %}">
+    <meta property="twitter:image" content="{% block twitter_image %}{{ asset('images/twitter-image.jpg') }}{% endblock %}">
+    
     {# Favicon #}
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
+    <link rel="manifest" href="{{ asset('manifest.json') }}">
+    
+    {# Preconnect for Performance #}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    
+    {# DNS Prefetch #}
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+    
+    {# Preload Critical Assets #}
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" as="style">
+    
+    {# ========================================
+       Fonts
+       ======================================== #}
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    {# ========================================
+       Icons
+       ======================================== #}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    {# ========================================
+       Stylesheets
+       ======================================== #}
+    
+    {# Global CSS (loaded on every page) #}
+    <link rel="stylesheet" href="{{ asset('assets/css/global.css') }}">
+    
+    {# Header/Nav/Footer CSS #}
+    <link rel="stylesheet" href="{{ asset('assets/css/header.css') }}">
+    
+    {# Page-specific CSS #}
+    {% block stylesheets %}{% endblock %}
+    
+    {# Inline Critical CSS (optional) #}
+    {% block inline_css %}{% endblock %}
+    
+    {# ========================================
+       JavaScript Head (for critical JS) #}
+       ======================================== #}
+    <script>
+        // Detect if JS is enabled
+        document.documentElement.classList.remove('no-js');
+        document.documentElement.classList.add('js');
+        
+        // Theme detection
+        (function() {
+            const savedTheme = localStorage.getItem('wazeBR_theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
 </head>
-<body class="{% block body_class %}{% endblock %}">
-    {# Header #}
-    {% include 'partials/header.html.twig' %}
 
-    {# Main Content #}
-    <main class="main-content">
+<body class="{% block body_class %}{% endblock %}">
+    {# ========================================
+       Skip to Main Content (Accessibility)
+       ======================================== #}
+    <a href="#main-content" class="skip-link">
+        Pular para o conte\u00fado principal
+    </a>
+    
+    {# ========================================
+       Header
+       ======================================== #}
+    {% include 'partials/header.html.twig' %}
+    
+    {# ========================================
+       Main Content
+       ======================================== #}
+    <main id="main-content" class="main-content">
+        {# Flash Messages #}
+        {% for label, messages in app.flashes %}
+            {% for message in messages %}
+                <div class="alert alert-{{ label }}" data-auto-hide="5000" role="alert">
+                    <i class="fas fa-{{ label == 'success' ? 'check-circle' : label == 'error' ? 'exclamation-circle' : 'info-circle' }} alert-icon"></i>
+                    <div class="alert-content">
+                        <div class="alert-message">{{ message }}</div>
+                    </div>
+                    <button class="alert-close" data-alert-close aria-label="Fechar">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            {% endfor %}
+        {% endfor %}
+        
+        {# Page Content #}
         {% block body %}{% endblock %}
     </main>
-
-    {# Footer #}
+    
+    {# ========================================
+       Footer
+       ======================================== #}
     {% include 'partials/footer.html.twig' %}
-
-    {# Global JavaScript (loaded on every page) #}
-    <script src="{{ asset('js/global.js') }}"></script>
-
-    {# Page-specific JavaScript #}
+    
+    {# ========================================
+       JavaScript
+       ======================================== #}
+    
+    {# Global JS (loaded on every page) #}
+    <script src="{{ asset('assets/js/global.js') }}"></script>
+    
+    {# Header/Nav JS #}
+    <script src="{{ asset('assets/js/header.js') }}"></script>
+    
+    {# Page-specific JS #}
     {% block javascripts %}{% endblock %}
+    
+    {# ========================================
+       Analytics (optional)
+       ======================================== #}
+    {% block analytics %}{% endblock %}
 </body>
 </html>
