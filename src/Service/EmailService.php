@@ -6,6 +6,7 @@ namespace App\Service;
 
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mailer\Mime\Address;
+use Symfony\Component\Mime\Email;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Twig\Environment as TwigEnvironment;
 
@@ -52,7 +53,7 @@ class EmailService
             $textContent = $this->generateTextContent($toEmail, $token, $resetUrl);
 
             // Criar email
-            $email = (new \Symfony\Component\Mailer\Mime\Email())
+            $email = (new Email())
                 ->from(new Address($mailerFromEmail, $mailerFromName))
                 ->to($toEmail)
                 ->subject('wazeBR - Redefini\u00e7\u00e3o de Senha')
@@ -117,7 +118,7 @@ class EmailService
                 'userName' => $userName,
             ]);
 
-            $email = (new \Symfony\Component\Mailer\Mime\Email())
+            $email = (new Email())
                 ->from(new Address($mailerFromEmail, $mailerFromName))
                 ->to($toEmail)
                 ->subject('Bem-vindo ao wazeBR!')
