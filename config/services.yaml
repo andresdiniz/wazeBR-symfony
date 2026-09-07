@@ -1,43 +1,29 @@
+# This file is the entry point to configure your own services.
+# Files in the config/ directory are loaded first.
+
 parameters:
-    app.waze_api_url: '%env(string:WAZE_API_URL)%'
-    app.waze_api_key: '%env(string:WAZE_API_KEY)%'
-    app.waze_bbox: '%env(string:WAZE_BBOX)%'
-    app.cemaden_api_url: '%env(string:CEMADEN_API_URL)%'
-    app.cemaden_api_key: '%env(string:CEMADEN_API_KEY)%'
-    app.app_name: '%env(string:APP_NAME)%'
-    app.sender_email: '%env(string:SENDER_EMAIL)%'
-    app.mailer_dsn: '%env(string:MAILER_DSN)%'
+    # Email configuration
+    mailer_from_email: '%env(MAILER_FROM_EMAIL)%'
+    mailer_from_name: '%env(MAILER_FROM_NAME)%'
 
 services:
+    # Default configuration for services in *this* file
     _defaults:
-        autowire: true
-        autoconfigure: true
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
 
-        bind:
-            string $apiUrl: '%app.waze_api_url%'
-            string $apiKey: '%app.waze_api_key%'
-            string $bbox: '%app.waze_bbox%'
-            string $appName: '%app.app_name%'
-            string $senderEmail: '%app.sender_email%'
-            string $mailerDsn: '%app.mailer_dsn%'
-
-    App\:
+    # Makes classes in src/ available to be used as services
+    # This creates a service per class whose id is the fully-qualified class name
+    App\\:
         resource: '../src/'
         exclude:
             - '../src/DependencyInjection/'
             - '../src/Entity/'
             - '../src/Kernel.php'
 
-    App\Service\CemadenService:
-        arguments:
-            $apiUrl: '%app.cemaden_api_url%'
-            $apiKey: '%app.cemaden_api_key%'
-
-    App\Service\PhpMailerService:
-        arguments:
-            $mailerDsn: '%app.mailer_dsn%'
-            $senderEmail: '%app.sender_email%'
-            $appName: '%app.app_name%'
-
-    App\Twig\UserExtension:
-        tags: ['twig.extension']
+    # Add more service definitions when explicit configuration is needed.
+    # Please note that explicit definitions override the auto-discovered ones.
+    # App\\Service\\EmailService:
+    #     arguments:
+    #         $mailerFromEmail: '%mailer_from_email%'
+    #         $mailerFromName: '%mailer_from_name%'

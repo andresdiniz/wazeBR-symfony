@@ -18,8 +18,6 @@ class EmailService
         private readonly MailerInterface $mailer,
         private readonly TwigEnvironment $twig,
         private readonly UrlGeneratorInterface $urlGenerator,
-        private readonly string $mailerFromEmail,
-        private readonly string $mailerFromName,
     ) {
     }
 
@@ -33,6 +31,10 @@ class EmailService
     public function sendPasswordResetEmail(string $toEmail, string $token): bool
     {
         try {
+            // Configura\u00e7\u00f5es de email (hardcoded ou do .env)
+            $mailerFromEmail = $_ENV['MAILER_FROM_EMAIL'] ?? 'noreply@wazebr.com';
+            $mailerFromName = $_ENV['MAILER_FROM_NAME'] ?? 'wazeBR';
+            
             // Gerar URL de reset
             $resetUrl = $this->urlGenerator->generate(
                 'app_reset_password_reset',
@@ -51,9 +53,9 @@ class EmailService
 
             // Criar email
             $email = (new \Symfony\Component\Mailer\Mime\Email())
-                ->from(new Address($this->mailerFromEmail, $this->mailerFromName))
+                ->from(new Address($mailerFromEmail, $mailerFromName))
                 ->to($toEmail)
-                ->subject('wazeBR - Redefini&ccedil;&atilde;o de Senha')
+                ->subject('wazeBR - Redefini\u00e7\u00e3o de Senha')
                 ->html($htmlContent)
                 ->text($textContent)
                 ->addHeader('X-Priority', '1'); // High priority
@@ -108,12 +110,15 @@ class EmailService
     public function sendWelcomeEmail(string $toEmail, string $userName): bool
     {
         try {
+            $mailerFromEmail = $_ENV['MAILER_FROM_EMAIL'] ?? 'noreply@wazebr.com';
+            $mailerFromName = $_ENV['MAILER_FROM_NAME'] ?? 'wazeBR';
+            
             $htmlContent = $this->twig->render('emails/welcome.html.twig', [
                 'userName' => $userName,
             ]);
 
             $email = (new \Symfony\Component\Mailer\Mime\Email())
-                ->from(new Address($this->mailerFromEmail, $this->mailerFromName))
+                ->from(new Address($mailerFromEmail, $mailerFromName))
                 ->to($toEmail)
                 ->subject('Bem-vindo ao wazeBR!')
                 ->html($htmlContent);
