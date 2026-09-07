@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use Symfony\Component\Mailer\MailerInterface;
-use Symfony\Component\Mailer\Mime\Address;
+use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Twig\Environment as TwigEnvironment;
