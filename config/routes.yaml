@@ -1,15 +1,10 @@
+# wazeBR Routes Configuration
+
 controllers:
     resource:
         path: ../src/Controller/
         namespace: App\Controller
     type: attribute
 
-    # config/routes.yaml
-wme_ur_sync:
-  path: /api/wme/urs
-  controller: App\Controller\WmeUrSyncController::receive
-  methods: [POST]
-
-partner_register:
-    path: /partner/register
-    controller: App\Controller\PartnerRegistrationController::register
+# Home route is defined in HomeController attribute
+# Additional routes can be added here as needed

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="wazeBR - Monitoramento de trã¡¡fego e mobilidade urbana em tempo real">
+    <meta name="keywords" content="trã¡¡fego, mobilidade, monitoramento, waze, brasil, tempo real">
+    <title>wazeBR - Monitoramento de Trã¡¡fego e Mobilidade</title>
+    
+    {# Preconnect to Google Fonts #}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    {# Stylesheets #}
+    <link rel="stylesheet" href="{{ asset('assets/css/home.css') }}">
+    
+    {# Favicon #}
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+</head>
+<body>
+    {# Header #}
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <a href="{{ path('home') }}" class="logo">
+                    <div class="logo-icon">W</div>
+                    wazeBR
+                </a>
+                <nav>
+                    <ul class="nav-links">
+                        <li><a href="#features">Funcionalidades</a></li>
+                        <li><a href="#stats">Estatã¡¡sticas</a></li>
+                        <li><a href="#about">Sobre</a></li>
+                        <li><a href="{{ path('app_login') }}">Login</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        {# Hero Section #}
+        <section class="hero">
+            <div class="container">
+                <h1>Monitoramento de Trã¡¡fego<br>em Tempo Real</h1>
+                <p>Acompanhe o fluxo de veã¡¡culos, incidentes e condiçı¡Ìµes das vias brasileiras com dados atualizados e precisos para tomada de decisíµµes inteligentes.</p>
+                <div class="cta-buttons">
+                    <a href="{{ path('app_dashboard') }}" class="btn btn-primary">
+                        <span>ã¡¡</span>
+                        Acessar Dashboard
+                    </a>
+                    <a href="#features" class="btn btn-secondary">
+                        <span>ã¡¿</span>
+                        Saiba Mais
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        {# Features Section #}
+        <section id="features" class="features">
+            <div class="container">
+                <div class="section-title">
+                    <h2>Funcionalidades</h2>
+                    <p>Tudo que você precisa para monitorar o trã¡¡fego e a mobilidade urbana</p>
+                </div>
+                
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">ã¡¡</div>
+                        <h3>Monitoramento em Tempo Real</h3>
+                        <p>Acompanhe o fluxo de veã¡¡culos, congestionamentos e incidentes nas principais vias com atualizaçı¡Ìµes contã¡¡nuas.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">ã¡¡</div>
+                        <h3>Mapas Interativos</h3>
+                        <p>Visualize dados georreferenciados em mapas dinã¡¡micos com camadas de informação personalizã¡¡veis.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">ã¡¡</div>
+                        <h3>Alertas Inteligentes</h3>
+                        <p>Receba notificaçı¡Ìµes automã¡¡ticas sobre incidentes, acidentes e condiçı¡Ìµes adversas nas rotas monitoradas.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">ã¡¡</div>
+                        <h3>Relatã¡¡rios e Anã¡¡lises</h3>
+                        <p>Gere relatã¡¡rios detalhados e anã¡¡lise histã¡¡ricos para identificar padríµµes e tomar decisíµµes baseadas em dados.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">ã¡¡</div>
+                        <h3>API Integrada</h3>
+                        <p>Conecte seu sistema com nossa API RESTful para acessar dados de trã¡¡fego, alertas e métricas em tempo real.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">ã¡¡</div>
+                        <h3>Multi-Plataforma</h3>
+                        <p>Acesse de qualquer dispositivo: desktop, tablet ou mobile. Interface responsiva e otimizada para todos os dispositivos.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {# Stats Section #}
+        <section id="stats" class="stats">
+            <div class="container">
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <h3 data-value="5000">5K+</h3>
+                        <p>Veã¡¡culos Monitorados</p>
+                    </div>
+                    <div class="stat-item">
+                        <h3 data-value="150">150+</h3>
+                        <p>Cidades Cobertas</p>
+                    </div>
+                    <div class="stat-item">
+                        <h3 data-value="1000000">1M+</h3>
+                        <p>Dados Processados/dia</p>
+                    </div>
+                    <div class="stat-item">
+                        <h3 data-value="99">99%</h3>
+                        <p>Precisíµ£o dos Dados</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {# About Section #}
+        <section id="about" class="features">
+            <div class="container">
+                <div class="section-title">
+                    <h2>Sobre o wazeBR</h2>
+                    <p>Uma solução brasileira para monitoramento inteligente de trã¡¡fego</p>
+                </div>
+                
+                <div style="max-width: 800px; margin: 0 auto; text-align: center;">
+                    <p style="font-size: 1.125rem; line-height: 1.8; color: var(--text-light);">
+                        O <strong>wazeBR</strong> é uma plataforma desenvolvida para atender às necessidades especã¡¡ficas do trã¡¡fego brasileiro. 
+                        Utilizamos dados em tempo real de múltiplas fontes, incluindo APIs de navegaçı¡Ì£o, sensores de trã¡¡fego e contribuiçı¡Ìµes da comunidade, 
+                        para fornecer informações precisas e atualizadas sobre as condiçı¡Ìµes das vias.
+                    </p>
+                    <br>
+                    <p style="font-size: 1.125rem; line-height: 1.8; color: var(--text-light);">
+                        Nossa missão é melhorar a mobilidade urbana no Brasil, ajudando motoristas, gestores pãººblicos e empresas 
+                        a tomarem decisíµµes mais inteligentes sobre rotas, horã¡¡rios e planejamento de viagens.
+                    </p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    {# Footer #}
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-logo">wazeBR</div>
+                <ul class="footer-links">
+                    <li><a href="#">Termos de Uso</a></li>
+                    <li><a href="#">Privacidade</a></li>
+                    <li><a href="#">Contato</a></li>
+                    <li><a href="{{ path('app_login') }}">Login</a></li>
+                </ul>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; {{ "now"|date("Y") }} wazeBR. Todos os direitos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    {# JavaScript #}
+    <script src="{{ asset('assets/js/home.js') }}"></script>
+</body>
+</html>

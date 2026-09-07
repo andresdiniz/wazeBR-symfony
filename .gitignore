@@ -1,54 +1,41 @@
-###> symfony ###
-/.env.local
-/.env.local.php
-/.env.*.local
-/config/secrets/prod/prod.decrypt.private.pem
-/public/bundles/
-/var/
-/vendor/
-###< symfony ###
-
-###> doctrine ###
-/var/log/
-###< doctrine ###
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs gerados localmente
-*.log
-
-# Segredos — NUNCA versionar
-.env
-.env.prod
-
 ###> symfony/framework-bundle ###
+/.env
 /.env.local
 /.env.local.php
 /.env.*.local
 /config/secrets/prod/prod.decrypt.private.php
 /public/bundles/
+/public/hot-controller/
 /var/
 /vendor/
 ###< symfony/framework-bundle ###
 
-###> phpstan/phpstan ###
-phpstan.neon
-###< phpstan/phpstan ###
+###> symfony/webpack-encore-bundle ###
+/node_modules/
+/build/
+###< symfony/webpack-encore-bundle ###
 
 ###> phpunit/phpunit ###
 /phpunit.xml
-/.phpunit.cache/
+/.phpunit/
 ###< phpunit/phpunit ###
 
-###> symfony/asset-mapper ###
-/public/assets/
-/assets/vendor/
-###< symfony/asset-mapper ###
+###> symfony/panther ###
+/browsers.json
+###< symfony/panther ###
+
+###> symfony/runtime ###
+/.runtime/
+###< symfony/runtime ###
+
+###> Local development ###
+*.log
+*.log.*
+.phpunit.result.cache
+.php-cs-fixer.cache
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
