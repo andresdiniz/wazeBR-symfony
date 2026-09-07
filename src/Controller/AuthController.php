@@ -34,7 +34,7 @@ class AuthController extends AbstractController
             return $this->redirectToRoute('app_dashboard');
         }
 
-        return $this->render('auth/home.html.twig');
+        return $this->render('home/landing.html.twig');
     }
 
     #[Route(path: '/login', name: 'app_login')]
