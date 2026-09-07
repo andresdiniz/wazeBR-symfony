@@ -19,6 +19,11 @@ use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use SymfonyCasts\Bundle\ResetPassword\Exception\ResetPasswordExceptionInterface;
 use SymfonyCasts\Bundle\ResetPassword\ResetPasswordHelperInterface;
+<<<<<<< Updated upstream
+=======
+use Symfony\Component\Mime\Email;
+
+>>>>>>> Stashed changes
 
 #[Route(path: '/')]
 class AuthController extends AbstractController
@@ -139,17 +144,28 @@ class AuthController extends AbstractController
             $email = $request->request->get('email', '');
             $user = $this->userRepository->findOneBy(['email' => $email]);
 
+<<<<<<< Updated upstream
             // S\u00f3 tenta gerar/enviar o token se o usu\u00e1rio existir e n\u00e3o estiver
             // sob throttle do bundle. A resposta ao usu\u00e1rio \u00e9 sempre a mesma
             // (redirect para check-email) independentemente do resultado, para
             // n\u00e3o revelar quais e-mails est\u00e3o cadastrados no sistema.
+=======
+            // Só tenta gerar/enviar o token se o usuário existir e não estiver
+            // sob throttle do bundle. A resposta ao usuário é sempre a mesma
+            // (redirect para check-email) independentemente do resultado, para
+            // não revelar quais e-mails estão cadastrados no sistema.
+>>>>>>> Stashed changes
             if ($user) {
                 try {
                     $resetToken = $this->resetPasswordHelper->generateResetToken($user);
                     $this->emailService->sendPasswordResetEmail($email, $resetToken->getToken());
                 } catch (ResetPasswordExceptionInterface $e) {
                     // Token recente demais (throttle) ou outro erro esperado do
+<<<<<<< Updated upstream
                     // bundle: ignoramos silenciosamente por seguran\u00e7a.
+=======
+                    // bundle: ignoramos silenciosamente por segurança.
+>>>>>>> Stashed changes
                 }
             }
 
@@ -180,27 +196,37 @@ class AuthController extends AbstractController
             return $this->redirectToRoute('app_dashboard');
         }
 
+<<<<<<< Updated upstream
         // Valida o token (assinatura + expira\u00e7\u00e3o de 1h, configurada em
         // reset_password.yaml) sem consumi-lo. Isso \u00e9 seguro tanto no GET
         // (renderizar o form s\u00f3 se o link ainda for v\u00e1lido) quanto de novo
+=======
+        // Valida o token (assinatura + expiração de 1h, configurada em
+        // reset_password.yaml) sem consumi-lo. Isso é seguro tanto no GET
+        // (renderizar o form só se o link ainda for válido) quanto de novo
+>>>>>>> Stashed changes
         // no POST antes de efetivamente trocar a senha.
         try {
             $user = $this->resetPasswordHelper->validateTokenAndFetchUser($token);
         } catch (ResetPasswordExceptionInterface $e) {
+<<<<<<< Updated upstream
             $this->addFlash('error', 'Este link de redefini\u00e7\u00e3o de senha \u00e9 inv\u00e1lido ou expirou. Solicite um novo.');
+=======
+            $this->addFlash('error', 'Este link de redefinição de senha é inválido ou expirou. Solicite um novo.');
+>>>>>>> Stashed changes
             return $this->redirectToRoute('app_reset_password_request');
         }
 
         if ($request->isMethod('POST')) {
             $newPassword = $request->request->get('password', '');
             $confirmPassword = $request->request->get('confirm_password', '');
-            
+
             // Validate passwords match
             if ($newPassword !== $confirmPassword) {
                 $this->addFlash('error', 'As senhas n\u00e3o coincidem.');
                 return $this->redirectToRoute('app_reset_password_reset', ['token' => $token]);
             }
-            
+
             // Validate password length
             if (strlen($newPassword) < 6) {
                 $this->addFlash('error', 'A senha deve ter pelo menos 6 caracteres.');
@@ -208,11 +234,19 @@ class AuthController extends AbstractController
             }
 
             $user->setPassword($this->passwordHasher->hashPassword($user, $newPassword));
+<<<<<<< Updated upstream
             // Invalida o token (e qualquer outro pendente do mesmo usu\u00e1rio)
             // para que n\u00e3o possa ser reutilizado.
             $this->resetPasswordHelper->removeResetRequest($user);
             $this->entityManager->flush();
             
+=======
+            // Invalida o token (e qualquer outro pendente do mesmo usuário)
+            // para que não possa ser reutilizado.
+            $this->resetPasswordHelper->removeResetRequest($user);
+            $this->entityManager->flush();
+
+>>>>>>> Stashed changes
             $this->addFlash('success', 'Senha alterada com sucesso! Fa\u00e7a login.');
             return $this->redirectToRoute('app_login');
         }
