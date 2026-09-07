@@ -2,6 +2,13 @@ framework:
     mailer:
         dsn: '%env(MAILER_DSN)%'
         envelope:
-            sender: '%env(SENDER_EMAIL)%'
+            sender: '%env(MAILER_FROM_EMAIL)%'
         headers:
-            From: '%env(APP_NAME)% <%env(SENDER_EMAIL)%>'
+            From: '%env(MAILER_FROM_NAME)% <%env(MAILER_FROM_EMAIL)%>'
+            Reply-To: '%env(MAILER_FROM_EMAIL)%'
+            X-Mailer: 'wazeBR Mailer'
+
+when@test:
+    framework:
+        mailer:
+            dsn: 'null://null'

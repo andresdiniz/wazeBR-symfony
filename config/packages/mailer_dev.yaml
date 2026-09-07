@@ -1,0 +1,23 @@
+# Configura\u00e7\u00e3o para ambiente de desenvolvimento
+# Emails s\u00e3o capturados e n\u00e3o enviados
+
+framework:
+    mailer:
+        dsn: '%env(MAILER_DSN)%'
+        envelope:
+            sender: '%env(MAILER_FROM_EMAIL)%'
+        headers:
+            From: '%env(MAILER_FROM_NAME)% <%env(MAILER_FROM_EMAIL)%>'
+
+when@dev:
+    framework:
+        mailer:
+            # Usa mailer que mostra emails no browser
+            dsn: 'smtp://localhost:1025'
+            # Ou para testar sem enviar:
+            # dsn: 'null://null'
+
+when@test:
+    framework:
+        mailer:
+            dsn: 'null://null'
