@@ -58,8 +58,7 @@ class EmailService
                 ->to($toEmail)
                 ->subject('wazeBR - Redefini\u00e7\u00e3o de Senha')
                 ->html($htmlContent)
-                ->text($textContent)
-                ->addHeader('X-Priority', '1'); // High priority
+                ->text($textContent);
 
             // Enviar email
             $this->mailer->send($email);
