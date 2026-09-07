@@ -24,7 +24,9 @@ class AuthController extends AbstractController
     }
 
     /**
-     * Página inicial pública (/)
+     * Página inicial (/)
+     * - Se logado: vai para dashboard
+     * - Se NÃO logado: vai para login
      */
     #[Route(path: '/', name: 'app_home')]
     public function home(): Response
@@ -34,7 +36,8 @@ class AuthController extends AbstractController
             return $this->redirectToRoute('app_dashboard');
         }
 
-        return $this->render('home/landing.html.twig');
+        // Se NÃO estiver logado, manda para login
+        return $this->redirectToRoute('app_login');
     }
 
     #[Route(path: '/login', name: 'app_login')]
