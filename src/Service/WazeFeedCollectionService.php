@@ -154,14 +154,14 @@ class WazeFeedCollectionService
             $definition->setWazeTvtRoute($route);
             $definition->setVersionNumber(1);
             $definition->setName($name);
-            $definition->setGeometry($this->decodeJsonColumn($line));
+            $definition->setGeometry(is_array($line) ? $line : $this->decodeJsonColumn($line));
             $definition->setMetadata(['bbox' => $bbox]);
             $definition->setIsCurrent(true);
             $route->setCurrentDefinition($definition);
             $this->em->persist($definition);
         } else {
             $definition->setName($name);
-            $definition->setGeometry($this->decodeJsonColumn($line));
+            $definition->setGeometry(is_array($line) ? $line : $this->decodeJsonColumn($line));
             $definition->setMetadata(['bbox' => $bbox]);
         }
 
@@ -204,10 +204,13 @@ class WazeFeedCollectionService
         return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
     }
 
-    private function decodeJsonColumn(?string $value): array
+    private function decodeJsonColumn(mixed $value): array
     {
         if ($value === null || $value === '') {
             return [];
+        }
+        if (is_array($value)) {
+            return $value;
         }
         $decoded = json_decode($value, true);
         return is_array($decoded) ? $decoded : [];
