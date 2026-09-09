@@ -6,6 +6,9 @@ use App\Entity\WazeTvtRouteDefinition;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
+/**
+ * @extends ServiceEntityRepository<WazeTvtRouteDefinition>
+ */
 class WazeTvtRouteDefinitionRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
@@ -13,40 +16,35 @@ class WazeTvtRouteDefinitionRepository extends ServiceEntityRepository
         parent::__construct($registry, WazeTvtRouteDefinition::class);
     }
 
-    public function findOneByRouteAndHash(int $routeId, string $definitionHash): ?WazeTvtRouteDefinition
+    public function findOneByRouteId(string $routeId): ?WazeTvtRouteDefinition
     {
-        return $this->createQueryBuilder('d')
-            ->join('d.wazeTvtRoute', 'r')
-            ->where('r.id = :routeId')
-            ->andWhere('d.definitionHash = :hash')
-            ->setParameter('routeId', $routeId)
-            ->setParameter('hash', $definitionHash)
-            ->getQuery()
-            ->getOneOrNullResult();
+        return $this->findOneBy(['routeId' => $routeId]);
     }
 
-    public function findCurrentByRoute(int $routeId): ?WazeTvtRouteDefinition
-    {
-        return $this->createQueryBuilder('d')
-            ->join('d.wazeTvtRoute', 'r')
-            ->where('r.id = :routeId')
-            ->andWhere('d.isCurrent = :current')
-            ->setParameter('routeId', $routeId)
-            ->setParameter('current', true)
-            ->getQuery()
-            ->getOneOrNullResult();
-    }
+    //    /**
+    //     * @return WazeTvtRouteDefinition[] Returns an array of WazeTvtRouteDefinition objects
+    //     */
+    //    public function findByExampleField($value): array
+    //    {
+    //        return $this->createQueryBuilder('w')
+    //            ->andWhere('w.exampleField = :val')
+    //            ->setParameter('val', $value)
+    //            ->orderBy('w.id', 'ASC')
+    //            ->setMaxResults(10)
+    //            ->getQuery()
+    //            ->getResult()
+    //        ;
+    //    }
 
-    public function getNextVersionNumber(int $routeId): int
-    {
-        $result = $this->createQueryBuilder('d')
-            ->select('MAX(d.versionNumber)')
-            ->join('d.wazeTvtRoute', 'r')
-            ->where('r.id = :routeId')
-            ->setParameter('routeId', $routeId)
-            ->getQuery()
-            ->getSingleScalarResult();
+    //    public function save(WazeTvtRouteDefinition $entity): void
+    //    {
+    //        $this->getEntityManager()->persist($entity);
+    //        $this->getEntityManager()->flush();
+    //    }
 
-        return ($result ?? 0) + 1;
-    }
+    //    public function remove(WazeTvtRouteDefinition $entity): void
+    //    {
+    //        $this->getEntityManager()->remove($entity);
+    //        $this->getEntityManager()->flush();
+    //    }
 }

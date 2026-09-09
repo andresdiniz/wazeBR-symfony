@@ -132,6 +132,7 @@ class WazeFeedCollectionService
         $bbox = $item['bbox'] ?? null;
         $line = $item['line'] ?? null;
 
+        // Upsert WazeTvtRoute
         $route = $this->tvtRouteRepo->findOneByExternalRouteId($routeId);
         if (!$route) {
             $route = new WazeTvtRoute();
@@ -146,16 +147,26 @@ class WazeFeedCollectionService
         $route->setLabel($name);
         $route->setLastSeenAt(new DateTime());
 
-        $definition = new WazeTvtRouteDefinition();
-        $definition->setRouteId($routeId);
-        $definition->setName($name);
-        $definition->setBbox($this->encodeJsonColumn($bbox));
-        $definition->setLine($this->encodeJsonColumn($line));
-        $this->em->persist($definition);
+        // Upsert WazeTvtRouteDefinition - check if exists first
+        $definition = $this->tvtRouteDefRepo->findOneByRouteId($routeId);
+        if (!$definition) {
+            $definition = new WazeTvtRouteDefinition();
+            $definition->setRouteId($routeId);
+            $definition->setName($name);
+            $definition->setBbox($this->encodeJsonColumn($bbox));
+            $definition->setLine($this->encodeJsonColumn($line));
+            $this->em->persist($definition);
+        } else {
+            // Update existing definition
+            $definition->setName($name);
+            $definition->setBbox($this->encodeJsonColumn($bbox));
+            $definition->setLine($this->encodeJsonColumn($line));
+        }
 
         $speedKmh = $time > 0 ? round(($length / $time) * 3.6, 2) : null;
         $delaySeconds = $time - $historicTime;
 
+        // Always create new history entry
         $history = new WazeTvtRouteHistory();
         $history->setRouteId($routeId);
         $history->setObservedAt(new DateTime());
