@@ -23,7 +23,7 @@ class WazeFeedRepository extends ServiceEntityRepository
     {
         return $this->createQueryBuilder('f')
             ->where('f.type = :type')
-            ->andWhere('f.isActive = :active')
+            ->andWhere('f.active = :active')
             ->setParameter('type', $feedType)
             ->setParameter('active', true)
             ->getQuery()
@@ -36,7 +36,7 @@ class WazeFeedRepository extends ServiceEntityRepository
     public function findAllActive(): array
     {
         return $this->createQueryBuilder('f')
-            ->where('f.isActive = :active')
+            ->where('f.active = :active')
             ->setParameter('active', true)
             ->getQuery()
             ->getResult();
