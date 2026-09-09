@@ -89,8 +89,14 @@ class WazeFeedCollectionService
 
             foreach ($data as $item) {
                 if (!$dryRun) {
-                    $this->processTvtItem($item, $partner, $feedCollection);
-                    $routesCount++;
+                    // Converte item para array se for string (JSON decode)
+                    if (is_string($item)) {
+                        $item = json_decode($item, true) ?? [];
+                    }
+                    if (is_array($item)) {
+                        $this->processTvtItem($item, $partner, $feedCollection);
+                        $routesCount++;
+                    }
                 }
             }
 
@@ -116,6 +122,12 @@ class WazeFeedCollectionService
     private function processTvtItem(array $item, $partner, WazeFeedCollection $feedCollection): void
     {
         // Implementacao da logica de processamento do item TVT
+        // Extrai dados e cria/atualiza entidades WazeTvtRoute, WazeTvtRouteDefinition, WazeTvtRouteHistory
+        
+        // Por enquanto, apenas loga o item recebido
+        $this->logger->debug('Processing TVT item', [
+            'route_id' => $item['routeId'] ?? $item['id'] ?? 'unknown',
+        ]);
     }
 
     public function getLastFeedCollection(WazeFeed $feed): ?WazeFeedCollection
