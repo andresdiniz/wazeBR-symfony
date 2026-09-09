@@ -6,8 +6,15 @@ namespace App\Service;
 
 use App\Entity\WazeFeed;
 use App\Entity\WazeFeedCollection;
+use App\Entity\WazeTvtRoute;
+use App\Entity\WazeTvtRouteDefinition;
+use App\Entity\WazeTvtRouteHistory;
 use App\Repository\WazeFeedCollectionRepository;
 use App\Repository\WazeFeedRepository;
+use App\Repository\WazeTvtRouteDefinitionRepository;
+use App\Repository\WazeTvtRouteHistoryRepository;
+use App\Repository\WazeTvtRouteRepository;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -19,9 +26,11 @@ class WazeFeedCollectionService
         private readonly EntityManagerInterface $em,
         private readonly WazeFeedCollectionRepository $feedCollectionRepo,
         private readonly WazeFeedRepository $feedRepo,
+        private readonly WazeTvtRouteRepository $tvtRouteRepo,
+        private readonly WazeTvtRouteDefinitionRepository $tvtRouteDefRepo,
+        private readonly WazeTvtRouteHistoryRepository $tvtRouteHistoryRepo,
         private readonly HttpClientInterface $httpClient,
         private readonly LoggerInterface $logger,
-        private readonly WazeTvtSynchronizer $tvtSynchronizer,
     ) {
     }
 
@@ -130,20 +139,75 @@ class WazeFeedCollectionService
     private function processTvtItem(array $item, $partner, WazeFeed $feed, WazeFeedCollection $feedCollection): array
     {
         try {
-            // Usa o synchronizer para salvar os dados
-            $result = $this->tvtSynchronizer->synchronize($item, $partner, $feed, $feedCollection);
+            $definitionsCount = 0;
+            $historyCount = 0;
+
+            // Extrair dados do item
+            $routeId = $item['routeId'] ?? $item['id'] ?? null;
+            $routeName = $item['routeName'] ?? $item['name'] ?? '';
+            $from = $item['from'] ?? '';
+            $to = $item['to'] ?? '';
+            $length = $item['length'] ?? 0;
+            $speed = $item['speed'] ?? 0;
+            $delay = $item['delay'] ?? 0;
+            $level = $item['level'] ?? 0;
+            $type = $item['type'] ?? '';
+            $coords = $item['coords'] ?? $item['geometry'] ?? [];
+
+            if (!$routeId) {
+                $this->logger->warning('Item TVT sem routeId', ['item' => $item]);
+                return ['definitions' => 0, 'history' => 0];
+            }
+
+            // Buscar ou criar a rota
+            $route = $this->tvtRouteRepo->findOneBy(['externalRouteId' => (string) $routeId]);
             
-            $this->logger->debug('TVT item synchronized', [
-                'route_id' => $item['routeId'] ?? $item['id'] ?? 'unknown',
-                'definitions' => $result['definitions'] ?? 0,
-                'history' => $result['history'] ?? 0,
+            if (!$route) {
+                $route = new WazeTvtRoute();
+                $route->setExternalRouteId((string) $routeId);
+                $route->setName($routeName);
+                $route->setFrom($from);
+                $route->setTo($to);
+                $route->setLength((float) $length);
+                $route->setPartner($partner);
+                $this->em->persist($route);
+            }
+
+            // Criar definicao da rota
+            $definition = new WazeTvtRouteDefinition();
+            $definition->setRoute($route);
+            $definition->setSpeed((float) $speed);
+            $definition->setDelay((float) $delay);
+            $definition->setLevel((int) $level);
+            $definition->setType($type);
+            $definition->setCoords($coords);
+            $this->em->persist($definition);
+            $definitionsCount++;
+
+            // Criar historico
+            $history = new WazeTvtRouteHistory();
+            $history->setRoute($route);
+            $history->setDefinition($definition);
+            $history->setTimestamp(new DateTimeImmutable());
+            $history->setSpeed((float) $speed);
+            $history->setDelay((float) $delay);
+            $history->setLevel((int) $level);
+            $this->em->persist($history);
+            $historyCount++;
+
+            $this->logger->debug('TVT item saved', [
+                'route_id' => $routeId,
+                'route_name' => $routeName,
+                'speed' => $speed,
+                'delay' => $delay,
             ]);
 
-            return $result;
+            return ['definitions' => $definitionsCount, 'history' => $historyCount];
         } catch (\Throwable $e) {
-            $this->logger->error('Erro ao sincronizar item TVT', [
+            $this->logger->error('Erro ao salvar item TVT', [
                 'route_id' => $item['routeId'] ?? 'unknown',
                 'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return ['definitions' => 0, 'history' => 0];
