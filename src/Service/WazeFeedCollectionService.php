@@ -43,11 +43,17 @@ class WazeFeedCollectionService
             $feedUuid = $feed->getFeedUuid();
             $apiToken = $partner->getApiToken();
             $feedId = $feed->getFeedId();
+            $endpointUrl = $feed->getEndpointUrl();
 
-            $url = sprintf(
-                'https://www.waze.com/row-partnerhub-api/feeds-tvt/%s',
-                $feedUuid
-            );
+            // Usa endpoint_url se existir, senao constroi URL padrao
+            if ($endpointUrl) {
+                $url = $endpointUrl;
+            } else {
+                $url = sprintf(
+                    'https://www.waze.com/row-partnerhub-api/feeds-tvt/%s',
+                    $feedUuid
+                );
+            }
 
             $options = [
                 'headers' => [
@@ -63,7 +69,7 @@ class WazeFeedCollectionService
             }
 
             // Adiciona feed ID numerico se existir (requerido pela API Waze)
-            if ($feedId) {
+            if ($feedId && !str_contains($url, '?id=')) {
                 $options['query'] = ['id' => (string) $feedId];
             }
 
@@ -75,6 +81,7 @@ class WazeFeedCollectionService
                 'partner' => $partner->getId(),
                 'feed' => $feedUuid,
                 'feed_id' => $feedId,
+                'url' => $url,
                 'items_count' => count($data),
             ]);
 

@@ -32,6 +32,9 @@ class WazeFeed
     #[ORM\Column(name: 'feed_id', type: Types::INTEGER, nullable: true, options: ['comment' => 'Waze numeric feed ID'])]
     private ?int $feedId = null;
 
+    #[ORM\Column(name: 'endpoint_url', type: Types::STRING, length: 500, nullable: true, options: ['comment' => 'Full Waze API endpoint URL'])]
+    private ?string $endpointUrl = null;
+
     #[ORM\Column(length: 50)]
     private ?string $type = null;
 
@@ -81,6 +84,17 @@ class WazeFeed
     public function setFeedId(?int $feedId): static
     {
         $this->feedId = $feedId;
+        return $this;
+    }
+
+    public function getEndpointUrl(): ?string
+    {
+        return $this->endpointUrl;
+    }
+
+    public function setEndpointUrl(?string $endpointUrl): static
+    {
+        $this->endpointUrl = $endpointUrl;
         return $this;
     }
 
