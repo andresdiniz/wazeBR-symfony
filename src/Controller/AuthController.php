@@ -261,7 +261,7 @@ class AuthController extends AbstractController
     #[Route(path: '/account-admin/dashboard', name: 'app_account_admin_dashboard')]
     public function accountAdminDashboard(): Response
     {
-        return $this->render('admin/account_admin_dashboard.html.twig');
+        return $this->render('admin/account_admin/dashboard.html.twig');
     }
 
     /**

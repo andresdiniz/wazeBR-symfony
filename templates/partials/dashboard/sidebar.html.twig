@@ -1,197 +1,371 @@
-{% set currentRoute = app.request.attributes.get('_route') %}
+{# ==========================================================================
+    Dashboard sidebar
 
-<aside class="dashboard-sidebar" id="dashboard-sidebar">
-    <div class="dashboard-sidebar-header">
-        <a
-            href="{{ path('app_dashboard') }}"
-            class="dashboard-brand"
-            aria-label="wazeBR Dashboard"
-        >
-            <span class="dashboard-brand-icon">
-                <i class="fa-solid fa-road" aria-hidden="true"></i>
-            </span>
+    Regras de acesso:
+    - Um usuário pode ter uma ou várias roles.
+    - Cada grupo é avaliado de forma independente.
+    - ROLE_SUPER_ADMIN possui acesso visual a todos os grupos do menu.
+    - A proteção real das rotas deve continuar no security.yaml/controllers.
+    ========================================================================== #}
 
-            <span class="dashboard-brand-text">
-                waze<span>BR</span>
-            </span>
-        </a>
+ {% set currentRoute = app.request.attributes.get('_route')|default('') %}
+ {% set isSuperAdmin = is_granted('ROLE_SUPER_ADMIN') %}
 
-        <button
-            type="button"
-            class="dashboard-sidebar-close"
-            data-dashboard-sidebar-close
-            aria-label="Fechar menu lateral"
-        >
-            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-        </button>
-    </div>
+ {# --------------------------------------------------------------------------
+    Flags de acesso por área.
 
-    <nav class="dashboard-nav" aria-label="Navegação do dashboard">
-        <p class="dashboard-nav-label">Principal</p>
+    O super admin recebe acesso a todas as áreas mesmo que, no token atual,
+    esteja listado apenas com ROLE_SUPER_ADMIN.
+    -------------------------------------------------------------------------- #}
+ {% set canAccessAccountAdmin = isSuperAdmin or is_granted('ROLE_ACCOUNT_ADMIN') %}
+ {% set canAccessPartner = isSuperAdmin or is_granted('ROLE_ADMIN_PARTNER') %}
+ {% set canAccessFieldAgent = isSuperAdmin or is_granted('ROLE_FIELD_AGENT') %}
+ {% set canAccessUserArea = isSuperAdmin or is_granted('ROLE_USER') %}
 
-        <ul class="dashboard-nav-list">
+ {# --------------------------------------------------------------------------
+    Roles que aparecem no resumo do usuário no rodapé da sidebar.
+    -------------------------------------------------------------------------- #}
+ {% set grantedRoles = [] %}
+
+ {% if isSuperAdmin %}
+     {% set grantedRoles = grantedRoles|merge([
+         'Super Admin',
+         'Administrador',
+         'Parceiro',
+         'Agente de campo',
+         'Usuário'
+     ]) %}
+ {% else %}
+     {% if canAccessAccountAdmin %}
+         {% set grantedRoles = grantedRoles|merge(['Administrador']) %}
+     {% endif %}
+
+     {% if canAccessPartner %}
+         {% set grantedRoles = grantedRoles|merge(['Parceiro']) %}
+     {% endif %}
+
+     {% if canAccessFieldAgent %}
+         {% set grantedRoles = grantedRoles|merge(['Agente de campo']) %}
+     {% endif %}
+
+     {% if canAccessUserArea %}
+         {% set grantedRoles = grantedRoles|merge(['Usuário']) %}
+     {% endif %}
+ {% endif %}
+
+ <aside
+     class="dashboard-sidebar"
+     id="dashboard-sidebar"
+     aria-label="Menu lateral do dashboard"
+ >
+     {# ----------------------------------------------------------------------
+        Marca e botão de fechamento no mobile.
+        ---------------------------------------------------------------------- #}
+     <div class="dashboard-sidebar-header">
+         <a
+             href="{{ path('app_dashboard') }}"
+             class="dashboard-brand"
+             aria-label="wazeBR Dashboard"
+         >
+             <span class="dashboard-brand-icon" aria-hidden="true">
+                 <i class="fa-solid fa-road"></i>
+             </span>
+
+             <span class="dashboard-brand-text">
+                 waze<span>BR</span>
+             </span>
+         </a>
+
+         <button
+             type="button"
+             class="dashboard-sidebar-close"
+             data-dashboard-sidebar-close
+             aria-label="Fechar menu lateral"
+         >
+             <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+         </button>
+     </div>
+
+     <nav class="dashboard-nav" aria-label="Navegação do dashboard">
+         {# ------------------------------------------------------------------
+            Visão geral: disponível para qualquer usuário autenticado.
+            ------------------------------------------------------------------ #}
+         <p class="dashboard-nav-label">Visão geral</p>
+
+         <ul class="dashboard-nav-list">
+             <li>
+                 <a
+                     href="{{ path('app_dashboard') }}"
+                     class="dashboard-nav-link {{ currentRoute == 'app_dashboard' ? 'is-active' : '' }}"
+                     {% if currentRoute == 'app_dashboard' %}aria-current="page"{% endif %}
+                 >
+                     <i class="fa-solid fa-chart-pie" aria-hidden="true"></i>
+                     <span>Dashboard</span>
+                 </a>
+             </li>
+
+             <li>
+                <a
+                    href="{{ path('admin_routes_index') }}"
+                    class="dashboard-nav-link {{ currentRoute starts with 'admin_routes_' ? 'is-active' : '' }}"
+                    {% if currentRoute starts with 'admin_routes_' %}aria-current="page"{% endif %}
+                >
+                    <i class="fa-solid fa-route" aria-hidden="true"></i>
+                    <span>Rotas</span>
+                </a>
+            </li>
             <li>
                 <a
-                    href="{{ path('app_dashboard') }}"
-                    class="dashboard-nav-link {% if currentRoute == 'app_dashboard' %}is-active{% endif %}"
+                    href="{{ path('alert_index') }}"
+                    class="dashboard-nav-link {{ currentRoute starts with 'alert_' ? 'is-active' : '' }}"
+                    {% if currentRoute starts with 'alert_' %}aria-current="page"{% endif %}
                 >
-                    <i class="fa-solid fa-chart-pie" aria-hidden="true"></i>
-                    <span>Dashboard</span>
-                </a>
-            </li>
-
-            <li>
-                <a href="#" class="dashboard-nav-link">
-                    <i class="fa-solid fa-map-location-dot" aria-hidden="true"></i>
-                    <span>Mapa</span>
-                </a>
-            </li>
-
-            <li>
-                <a href="#" class="dashboard-nav-link">
                     <i class="fa-solid fa-bell" aria-hidden="true"></i>
                     <span>Alertas</span>
                     <span class="dashboard-nav-badge">3</span>
                 </a>
             </li>
-        </ul>
+         </ul>
 
-        {% if is_granted('ROLE_ACCOUNT_ADMIN') %}
-            <p class="dashboard-nav-label">Administração</p>
+         {# ==================================================================
+            Administração
+            Liberado para ROLE_ACCOUNT_ADMIN e ROLE_SUPER_ADMIN.
+            ================================================================== #}
+         {% if canAccessAccountAdmin %}
+             <p class="dashboard-nav-label">Administração</p>
 
-            <ul class="dashboard-nav-list">
-                <li>
+             <ul class="dashboard-nav-list">
+                 <li>
+                     <a
+                         href="{{ path('app_account_admin_dashboard') }}"
+                         class="dashboard-nav-link {{ currentRoute == 'app_account_admin_dashboard' ? 'is-active' : '' }}"
+                         {% if currentRoute == 'app_account_admin_dashboard' %}aria-current="page"{% endif %}
+                     >
+                         <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+                         <span>Painel administrativo</span>
+                     </a>
+                 </li>
+
+                 <li>
                     <a
-                        href="{{ path('app_account_admin_dashboard') }}"
-                        class="dashboard-nav-link {% if currentRoute == 'app_account_admin_dashboard' %}is-active{% endif %}"
+                        href="{{ path('admin_user_index') }}"
+                        class="dashboard-nav-link {{ app.request.attributes.get('_route') starts with 'admin_user' ? 'is-active' : '' }}"
+                        {% if app.request.attributes.get('_route') starts with 'admin_user' %}aria-current="page"{% endif %}
                     >
-                        <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
-                        <span>Painel Admin</span>
-                    </a>
-                </li>
-
-                <li>
-                    <a href="#" class="dashboard-nav-link">
                         <i class="fa-solid fa-users" aria-hidden="true"></i>
                         <span>Usuários</span>
                     </a>
                 </li>
 
-                <li>
-                    <a href="#" class="dashboard-nav-link">
-                        <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
-                        <span>Relatórios</span>
-                    </a>
-                </li>
+                 <li>
+                     <span
+                         class="dashboard-nav-link is-disabled"
+                         title="Módulo em implantação"
+                         aria-disabled="true"
+                     >
+                         <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
+                         <span>Relatórios</span>
+                         <span class="dashboard-nav-status">Em breve</span>
+                     </span>
+                 </li>
 
-                <li>
-                    <a href="#" class="dashboard-nav-link">
-                        <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
-                        <span>Auditoria</span>
-                    </a>
-                </li>
-            </ul>
-        {% endif %}
+                 <li>
+                     <span
+                         class="dashboard-nav-link is-disabled"
+                         title="Módulo em implantação"
+                         aria-disabled="true"
+                     >
+                         <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
+                         <span>Auditoria</span>
+                     </span>
+                 </li>
+             </ul>
+         {% endif %}
 
-        {% if is_granted('ROLE_ADMIN_PARTNER') %}
-            <p class="dashboard-nav-label">Parcerias</p>
+         {# ==================================================================
+            Parcerias
+            Liberado para ROLE_ADMIN_PARTNER e ROLE_SUPER_ADMIN.
+            ================================================================== #}
+         {% if canAccessPartner %}
+             <p class="dashboard-nav-label">Parcerias</p>
 
-            <ul class="dashboard-nav-list">
-                <li>
-                    <a
-                        href="{{ path('app_partner_dashboard') }}"
-                        class="dashboard-nav-link {% if currentRoute == 'app_partner_dashboard' %}is-active{% endif %}"
-                    >
-                        <i class="fa-solid fa-handshake" aria-hidden="true"></i>
-                        <span>Painel Parceiro</span>
-                    </a>
-                </li>
+             <ul class="dashboard-nav-list">
+                 <li>
+                     <a
+                         href="{{ path('app_partner_dashboard') }}"
+                         class="dashboard-nav-link {{ currentRoute == 'app_partner_dashboard' ? 'is-active' : '' }}"
+                         {% if currentRoute == 'app_partner_dashboard' %}aria-current="page"{% endif %}
+                     >
+                         <i class="fa-solid fa-handshake" aria-hidden="true"></i>
+                         <span>Painel do parceiro</span>
+                     </a>
+                 </li>
 
-                <li>
-                    <a href="#" class="dashboard-nav-link">
-                        <i class="fa-solid fa-building" aria-hidden="true"></i>
-                        <span>Empresas</span>
-                    </a>
-                </li>
+                 <li>
+                     <span
+                         class="dashboard-nav-link is-disabled"
+                         title="Módulo em implantação"
+                         aria-disabled="true"
+                     >
+                         <i class="fa-solid fa-building" aria-hidden="true"></i>
+                         <span>Empresas</span>
+                         <span class="dashboard-nav-status">Em breve</span>
+                     </span>
+                 </li>
 
-                <li>
-                    <a href="#" class="dashboard-nav-link">
-                        <i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i>
-                        <span>Faturamento</span>
-                    </a>
-                </li>
-            </ul>
-        {% endif %}
+                 <li>
+                     <span
+                         class="dashboard-nav-link is-disabled"
+                         title="Módulo em implantação"
+                         aria-disabled="true"
+                     >
+                         <i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i>
+                         <span>Faturamento</span>
+                     </span>
+                 </li>
 
-        {% if is_granted('ROLE_FIELD_AGENT') %}
-            <p class="dashboard-nav-label">Operação de Campo</p>
+                 <li>
+                     <span
+                         class="dashboard-nav-link is-disabled"
+                         title="Módulo em implantação"
+                         aria-disabled="true"
+                     >
+                         <i class="fa-solid fa-file-signature" aria-hidden="true"></i>
+                         <span>Contratos</span>
+                     </span>
+                 </li>
+             </ul>
+         {% endif %}
 
-            <ul class="dashboard-nav-list">
-                <li>
-                    <a
-                        href="{{ path('app_field_agent_dashboard') }}"
-                        class="dashboard-nav-link {% if currentRoute == 'app_field_agent_dashboard' %}is-active{% endif %}"
-                    >
-                        <i class="fa-solid fa-clipboard-list" aria-hidden="true"></i>
-                        <span>Minhas Tarefas</span>
-                    </a>
-                </li>
+         {# ==================================================================
+            Operação de campo
+            Liberado para ROLE_FIELD_AGENT e ROLE_SUPER_ADMIN.
+            ================================================================== #}
+         {% if canAccessFieldAgent %}
+             <p class="dashboard-nav-label">Operação de campo</p>
 
-                <li>
-                    <a href="#" class="dashboard-nav-link">
-                        <i class="fa-solid fa-route" aria-hidden="true"></i>
-                        <span>Rotas</span>
-                    </a>
-                </li>
+             <ul class="dashboard-nav-list">
+                 <li>
+                     <a
+                         href="{{ path('app_field_agent_dashboard') }}"
+                         class="dashboard-nav-link {{ currentRoute == 'app_field_agent_dashboard' ? 'is-active' : '' }}"
+                         {% if currentRoute == 'app_field_agent_dashboard' %}aria-current="page"{% endif %}
+                     >
+                         <i class="fa-solid fa-clipboard-list" aria-hidden="true"></i>
+                         <span>Minhas tarefas</span>
+                     </a>
+                 </li>
 
-                <li>
-                    <a href="#" class="dashboard-nav-link">
-                        <i class="fa-solid fa-camera" aria-hidden="true"></i>
-                        <span>Registrar Ocorrência</span>
-                    </a>
-                </li>
-            </ul>
-        {% endif %}
+                 <li>
+                     <span
+                         class="dashboard-nav-link is-disabled"
+                         title="Módulo em implantação"
+                         aria-disabled="true"
+                     >
+                         <i class="fa-solid fa-route" aria-hidden="true"></i>
+                         <span>Rotas</span>
+                     </span>
+                 </li>
 
-        {% if is_granted('ROLE_USER') %}
-            <p class="dashboard-nav-label">Minha Conta</p>
+                 <li>
+                     <span
+                         class="dashboard-nav-link is-disabled"
+                         title="Módulo em implantação"
+                         aria-disabled="true"
+                     >
+                         <i class="fa-solid fa-camera" aria-hidden="true"></i>
+                         <span>Registrar ocorrência</span>
+                         <span class="dashboard-nav-status">Em breve</span>
+                     </span>
+                 </li>
 
-            <ul class="dashboard-nav-list">
-                <li>
-                    <a
-                        href="{{ path('app_user_dashboard') }}"
-                        class="dashboard-nav-link {% if currentRoute == 'app_user_dashboard' %}is-active{% endif %}"
-                    >
-                        <i class="fa-solid fa-user" aria-hidden="true"></i>
-                        <span>Meu Painel</span>
-                    </a>
-                </li>
+                 <li>
+                     <span
+                         class="dashboard-nav-link is-disabled"
+                         title="Módulo em implantação"
+                         aria-disabled="true"
+                     >
+                         <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+                         <span>Histórico de tarefas</span>
+                     </span>
+                 </li>
+             </ul>
+         {% endif %}
 
-                <li>
-                    <a href="#" class="dashboard-nav-link">
-                        <i class="fa-solid fa-route" aria-hidden="true"></i>
-                        <span>Minhas Rotas</span>
-                    </a>
-                </li>
-            </ul>
-        {% endif %}
-    </nav>
+         {# ==================================================================
+            Minha conta
+            Liberado para ROLE_USER e ROLE_SUPER_ADMIN.
+            ================================================================== #}
+         {% if canAccessUserArea %}
+             <p class="dashboard-nav-label">Minha conta</p>
 
-    <div class="dashboard-sidebar-footer">
-        <div class="dashboard-user-summary">
-            <span class="dashboard-user-avatar">
-                <i class="fa-solid fa-user" aria-hidden="true"></i>
-            </span>
+             <ul class="dashboard-nav-list">
+                 <li>
+                     <a
+                         href="{{ path('app_user_dashboard') }}"
+                         class="dashboard-nav-link {{ currentRoute == 'app_user_dashboard' ? 'is-active' : '' }}"
+                         {% if currentRoute == 'app_user_dashboard' %}aria-current="page"{% endif %}
+                     >
+                         <i class="fa-solid fa-user" aria-hidden="true"></i>
+                         <span>Meu painel</span>
+                     </a>
+                 </li>
 
-            <span class="dashboard-user-data">
-                <strong>{{ app.user ? app.user.email|split('@')|first : 'Usuário' }}</strong>
-                <small>Online agora</small>
-            </span>
-        </div>
+                 <li>
+                     <span
+                         class="dashboard-nav-link is-disabled"
+                         title="Módulo em implantação"
+                         aria-disabled="true"
+                     >
+                         <i class="fa-solid fa-route" aria-hidden="true"></i>
+                         <span>Minhas rotas</span>
+                     </span>
+                 </li>
 
-        <a href="{{ path('app_logout') }}" class="dashboard-logout-link">
-            <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
-            <span>Sair</span>
-        </a>
-    </div>
-</aside>
+                 <li>
+                     <span
+                         class="dashboard-nav-link is-disabled"
+                         title="Módulo em implantação"
+                         aria-disabled="true"
+                     >
+                         <i class="fa-solid fa-sliders" aria-hidden="true"></i>
+                         <span>Preferências</span>
+                     </span>
+                 </li>
+             </ul>
+         {% endif %}
+     </nav>
+
+     {# ----------------------------------------------------------------------
+        Usuário autenticado e perfil(es) disponíveis.
+        ---------------------------------------------------------------------- #}
+     <div class="dashboard-sidebar-footer">
+         <div class="dashboard-user-summary">
+             <span class="dashboard-user-avatar" aria-hidden="true">
+                 <i class="fa-solid fa-user"></i>
+             </span>
+
+             <span class="dashboard-user-data">
+                 <strong>
+                     {{ app.user ? app.user.email|split('@')|first : 'Usuário' }}
+                 </strong>
+
+                 <small>
+                     {% if grantedRoles is not empty %}
+                         {{ grantedRoles|join(' · ') }}
+                     {% else %}
+                         Usuário autenticado
+                     {% endif %}
+                 </small>
+             </span>
+         </div>
+
+         <a
+             href="{{ path('app_logout') }}"
+             class="dashboard-logout-link"
+         >
+             <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+             <span>Sair</span>
+         </a>
+     </div>
+ </aside>

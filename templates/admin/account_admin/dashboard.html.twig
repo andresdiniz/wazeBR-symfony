@@ -1,0 +1,227 @@
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}Dashboard - Account Admin | wazeBR{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/account-admin.css') }}">
+{% endblock %}
+
+{% block page_body_class %}account-admin-dashboard-page{% endblock %}
+
+{% block dashboard_page_title %}Dashboard - Account Admin{% endblock %}
+
+{% block page_content %}
+    <div class="dashboard-content account-admin-dashboard-content">
+        {# ── Stats Principais ───────────────────────────────── #}
+        <section class="stats-grid account-admin-stats">
+            <article class="stat-card">
+                <div class="stat-icon blue">
+                    <i class="fa-solid fa-users" aria-hidden="true"></i>
+                </div>
+
+                <div class="stat-info">
+                    <span>Usuários Ativos</span>
+                    <strong>1,234</strong>
+                    <small>Total de contas ativas</small>
+                </div>
+            </article>
+
+            <article class="stat-card">
+                <div class="stat-icon purple">
+                    <i class="fa-solid fa-car" aria-hidden="true"></i>
+                </div>
+
+                <div class="stat-info">
+                    <span>Veículos Monitorados</span>
+                    <strong>5,678</strong>
+                    <small>Veículos em monitoramento</small>
+                </div>
+            </article>
+
+            <article class="stat-card">
+                <div class="stat-icon orange">
+                    <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                </div>
+
+                <div class="stat-info">
+                    <span>Alertas Hoje</span>
+                    <strong>89</strong>
+                    <small>Alertas registrados hoje</small>
+                </div>
+            </article>
+
+            <article class="stat-card">
+                <div class="stat-icon green">
+                    <i class="fa-solid fa-check-double" aria-hidden="true"></i>
+                </div>
+
+                <div class="stat-info">
+                    <span>Precisão</span>
+                    <strong>94%</strong>
+                    <small>Taxa de acerto dos dados</small>
+                </div>
+            </article>
+        </section>
+
+        {# ── Grid Principal ─────────────────────────────────── #}
+        <section class="dashboard-grid">
+            {# Atividade Recente #}
+            <article class="card dashboard-card">
+                <header class="card-header">
+                    <div>
+                        <h3>Atividade Recente</h3>
+                        <p>Últimas ações registradas no sistema.</p>
+                    </div>
+
+                    <a href="#" class="btn btn-ghost btn-sm">
+                        Ver tudo
+                        <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </a>
+                </header>
+
+                <div class="card-body">
+                    <ul class="activity-list">
+                        <li class="activity-item">
+                            <div class="activity-icon blue">
+                                <i class="fa-solid fa-user-plus" aria-hidden="true"></i>
+                            </div>
+
+                            <div class="activity-content">
+                                <strong>Novo usuário cadastrado</strong>
+                                <small>Há 5 minutos</small>
+                            </div>
+                        </li>
+
+                        <li class="activity-item">
+                            <div class="activity-icon orange">
+                                <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                            </div>
+
+                            <div class="activity-content">
+                                <strong>Alerta de trânsito registrado</strong>
+                                <small>Há 15 minutos</small>
+                            </div>
+                        </li>
+
+                        <li class="activity-item">
+                            <div class="activity-icon green">
+                                <i class="fa-solid fa-file-export" aria-hidden="true"></i>
+                            </div>
+
+                            <div class="activity-content">
+                                <strong>Relatório gerado com sucesso</strong>
+                                <small>Há 1 hora</small>
+                            </div>
+                        </li>
+
+                        <li class="activity-item">
+                            <div class="activity-icon purple">
+                                <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+                            </div>
+
+                            <div class="activity-content">
+                                <strong>Dados sincronizados</strong>
+                                <small>Há 2 horas</small>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </article>
+
+            {# Quick Actions #}
+            <article class="card dashboard-card">
+                <header class="card-header">
+                    <div>
+                        <h3>Quick Actions</h3>
+                        <p>Ações rápidas para administração.</p>
+                    </div>
+                </header>
+
+                <div class="card-body">
+                    <div class="quick-actions-grid">
+                        <a href="#" class="quick-action-card">
+                            <div class="quick-action-icon blue">
+                                <i class="fa-solid fa-user-plus" aria-hidden="true"></i>
+                            </div>
+
+                            <span class="quick-action-label">
+                                Adicionar Usuário
+                            </span>
+                        </a>
+
+                        <a href="#" class="quick-action-card">
+                            <div class="quick-action-icon purple">
+                                <i class="fa-solid fa-file-export" aria-hidden="true"></i>
+                            </div>
+
+                            <span class="quick-action-label">
+                                Exportar Relatório
+                            </span>
+                        </a>
+
+                        <a href="#" class="quick-action-card">
+                            <div class="quick-action-icon orange">
+                                <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                            </div>
+
+                            <span class="quick-action-label">
+                                Enviar Alerta
+                            </span>
+                        </a>
+
+                        <a href="#" class="quick-action-card">
+                            <div class="quick-action-icon green">
+                                <i class="fa-solid fa-gear" aria-hidden="true"></i>
+                            </div>
+
+                            <span class="quick-action-label">
+                                Configurações
+                            </span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+        </section>
+
+        {# ── Informações da Conta ──────────────────────────── #}
+        <section class="card dashboard-card">
+            <header class="card-header">
+                <div>
+                    <h3>Informações da Conta</h3>
+                    <p>Dados do administrador logado.</p>
+                </div>
+            </header>
+
+            <div class="card-body">
+                <dl class="details-list details-list-single">
+                    <div>
+                        <dt>Usuário</dt>
+                        <dd>
+                            <strong>andresoares0100</strong>
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>Perfil</dt>
+                        <dd>
+                            <span class="badge badge-primary">
+                                Administrador de Conta
+                            </span>
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>Último acesso</dt>
+                        <dd>
+                            {{ app.user.lastLogin is defined and app.user.lastLogin
+                                ? app.user.lastLogin|date('d/m/Y H:i')
+                                : 'Não disponível'
+                            }}
+                        </dd>
+                    </div>
+                </dl>
+            </div>
+        </section>
+    </div>
+{% endblock %}

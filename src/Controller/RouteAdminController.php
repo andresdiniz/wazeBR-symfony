@@ -52,10 +52,10 @@ class RouteAdminController extends AbstractController
         $definition = null;
         $executions = [];
 
-        if ($route->getExternalId()) {
-            $definition = $this->definitionRepo->findOneByRouteId($route->getExternalId());
+        if ($route->getWazeId()) {
+            $definition = $this->definitionRepo->findOneByRouteId($route->getWazeId());
             if ($definition) {
-                $executions = $this->executionRepo->findByRouteId($route->getExternalId(), 50);
+                $executions = $this->executionRepo->findByRouteId($route->getWazeId(), 50);
             }
         }
 
@@ -76,20 +76,20 @@ class RouteAdminController extends AbstractController
             throw $this->createNotFoundException('Route not found');
         }
 
-        if (!$route->getExternalId()) {
+        if (!$route->getWazeId()) {
             $this->addFlash('error', 'Route has no external ID defined.');
             return $this->redirectToRoute('admin_routes_index');
         }
 
-        $definition = $this->definitionRepo->findOneByRouteId($route->getExternalId());
+        $definition = $this->definitionRepo->findOneByRouteId($route->getWazeId());
         if (!$definition) {
             $this->addFlash('warning', 'No TVT definition found for this route yet.');
         } else {
-            $executions = $this->executionRepo->findByRouteId($route->getExternalId(), 1);
+            $executions = $this->executionRepo->findByRouteId($route->getWazeId(), 1);
             if (empty($executions)) {
                 $this->addFlash('info', 'Definition exists but no executions collected yet.');
             } else {
-                $this->addFlash('success', sprintf('Found %d execution(s) for this route.', count($this->executionRepo->findByRouteId($route->getExternalId(), 100))));
+                $this->addFlash('success', sprintf('Found %d execution(s) for this route.', count($this->executionRepo->findByRouteId($route->getWazeId(), 100))));
             }
         }
 
@@ -102,11 +102,11 @@ class RouteAdminController extends AbstractController
         $this->denyAccessUnlessGranted('ROLE_ADMIN');
 
         $route = $this->routeRepo->find($id);
-        if (!$route || !$route->getExternalId()) {
+        if (!$route || !$route->getWazeId()) {
             throw $this->createNotFoundException('Route not found');
         }
 
-        $definition = $this->definitionRepo->findOneByRouteId($route->getExternalId());
+        $definition = $this->definitionRepo->findOneByRouteId($route->getWazeId());
         if (!$definition) {
             throw $this->createNotFoundException('TVT definition not found');
         }
@@ -122,12 +122,12 @@ class RouteAdminController extends AbstractController
         $this->denyAccessUnlessGranted('ROLE_ADMIN');
 
         $route = $this->routeRepo->find($id);
-        if (!$route || !$route->getExternalId()) {
+        if (!$route || !$route->getWazeId()) {
             throw $this->createNotFoundException('Route not found');
         }
 
         $limit = (int) $request->query->get('limit', '50');
-        $executions = $this->executionRepo->findByRouteId($route->getExternalId(), $limit);
+        $executions = $this->executionRepo->findByRouteId($route->getWazeId(), $limit);
 
         return $this->render('admin/routes/executions.html.twig', [
             'route' => $route,

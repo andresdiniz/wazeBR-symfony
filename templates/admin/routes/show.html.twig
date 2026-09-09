@@ -1,0 +1,377 @@
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}
+    {{ route.name|default('Rota #' ~ route.id) }} | wazeBR
+{% endblock %}
+
+{% block page_body_class %}admin-routes-show-page{% endblock %}
+
+{% block dashboard_page_title %}Detalhes da rota{% endblock %}
+
+{% block page_content %}
+    {% set routeName = route.name|default('Rota #' ~ route.id) %}
+    {% set routeWazeId = route.wazeId|default(null) %}
+
+    <div class="dashboard-content admin-routes-content">
+        <section class="dashboard-hero">
+            <div>
+                <a
+                    href="{{ path('admin_routes_index') }}"
+                    class="dashboard-back-link"
+                >
+                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                    Voltar para rotas
+                </a>
+
+                <p class="dashboard-hero-kicker">Rota #{{ route.id }}</p>
+                <h2>{{ routeName }}</h2>
+
+                <p>
+                    {{ route.fromName|default('Origem não informada') }}
+                    <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    {{ route.toName|default('Destino não informado') }}
+                </p>
+            </div>
+
+            <form
+                method="post"
+                action="{{ path('admin_routes_sync', { id: route.id }) }}"
+            >
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+                    Sincronizar rota
+                </button>
+            </form>
+        </section>
+
+        <section class="stats-grid admin-route-stats">
+            <article class="stat-card">
+                <div class="stat-icon blue">
+                    <i class="fa-solid fa-clock" aria-hidden="true"></i>
+                </div>
+
+                <div class="stat-info">
+                    <span>Tempo atual</span>
+
+                    <strong>
+                        {% if route.time is not null %}
+                            {{ (route.time / 60)|round }} min
+                        {% else %}
+                            —
+                        {% endif %}
+                    </strong>
+
+                    <small>
+                        Histórico:
+                        {% if route.historicTime is not null %}
+                            {{ (route.historicTime / 60)|round }} min
+                        {% else %}
+                            —
+                        {% endif %}
+                    </small>
+                </div>
+            </article>
+
+            <article class="stat-card">
+                <div class="stat-icon purple">
+                    <i class="fa-solid fa-road" aria-hidden="true"></i>
+                </div>
+
+                <div class="stat-info">
+                    <span>Extensão</span>
+
+                    <strong>
+                        {% if route.length is not null %}
+                            {{ (route.length / 1000)|number_format(1, ',', '.') }} km
+                        {% else %}
+                            —
+                        {% endif %}
+                    </strong>
+
+                    <small>{{ route.type|default('Tipo não informado') }}</small>
+                </div>
+            </article>
+
+            <article class="stat-card">
+                <div class="stat-icon orange">
+                    <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                </div>
+
+                <div class="stat-info">
+                    <span>Nível de congestionamento</span>
+                    <strong>{{ route.jamLevel|default('—') }}</strong>
+                    <small>Último nível registrado</small>
+                </div>
+            </article>
+
+            <article class="stat-card">
+                <div class="stat-icon green">
+                    <i class="fa-solid fa-code-branch" aria-hidden="true"></i>
+                </div>
+
+                <div class="stat-info">
+                    <span>Execuções TVT</span>
+                    <strong>{{ executions|length }}</strong>
+                    <small>{{ definition ? 'Definição encontrada' : 'Sem definição' }}</small>
+                </div>
+            </article>
+        </section>
+
+        <section class="dashboard-grid">
+            <article class="card dashboard-card">
+                <header class="card-header">
+                    <div>
+                        <h3>Dados da rota</h3>
+                        <p>Informações armazenadas em WazeRoute.</p>
+                    </div>
+                </header>
+
+                <div class="card-body">
+                    <dl class="details-list">
+                        <div>
+                            <dt>ID interno</dt>
+                            <dd>#{{ route.id }}</dd>
+                        </div>
+
+                        <div>
+                            <dt>Waze ID</dt>
+                            <dd>
+                                {% if routeWazeId %}
+                                    <code class="external-id">{{ routeWazeId }}</code>
+                                {% else %}
+                                    <span class="text-muted">Não informado</span>
+                                {% endif %}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt>Nome</dt>
+                            <dd>{{ routeName }}</dd>
+                        </div>
+
+                        <div>
+                            <dt>Tipo</dt>
+                            <dd>{{ route.type|default('Não informado') }}</dd>
+                        </div>
+
+                        <div>
+                            <dt>Origem</dt>
+                            <dd>{{ route.fromName|default('Não informado') }}</dd>
+                        </div>
+
+                        <div>
+                            <dt>Destino</dt>
+                            <dd>{{ route.toName|default('Não informado') }}</dd>
+                        </div>
+
+                        <div>
+                            <dt>Status</dt>
+                            <dd>
+                                {% if route.isActive %}
+                                    <span class="badge badge-success">Ativa</span>
+                                {% else %}
+                                    <span class="badge badge-muted">Inativa</span>
+                                {% endif %}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt>Coletada em</dt>
+                            <dd>
+                                {% if route.collectedAt %}
+                                    {{ route.collectedAt|date('d/m/Y H:i') }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </dd>
+                        </div>
+
+                        {% if route.description %}
+                            <div class="details-list-wide">
+                                <dt>Descrição</dt>
+                                <dd>{{ route.description }}</dd>
+                            </div>
+                        {% endif %}
+                    </dl>
+                </div>
+            </article>
+
+            <article class="card dashboard-card">
+                <header class="card-header">
+                    <div>
+                        <h3>Definição TVT</h3>
+                        <p>Configuração externa vinculada à rota.</p>
+                    </div>
+
+                    {% if definition %}
+                        <a
+                            href="{{ path('admin_routes_definition', { id: route.id }) }}"
+                            class="btn btn-ghost btn-sm"
+                        >
+                            Ver definição
+                        </a>
+                    {% endif %}
+                </header>
+
+                <div class="card-body">
+                    {% if definition %}
+                        <dl class="details-list details-list-single">
+                            <div>
+                                <dt>ID</dt>
+                                <dd>#{{ definition.id }}</dd>
+                            </div>
+
+                            <div>
+                                <dt>Route ID</dt>
+                                <dd>
+                                    <code class="external-id">
+                                        {{ definition.routeId }}
+                                    </code>
+                                </dd>
+                            </div>
+
+                            <div>
+                                <dt>Nome</dt>
+                                <dd>{{ definition.name|default('Não informado') }}</dd>
+                            </div>
+
+                            <div>
+                                <dt>Atualização</dt>
+                                <dd>
+                                    {% if definition.updatedAt %}
+                                        {{ definition.updatedAt|date('d/m/Y H:i') }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </dd>
+                            </div>
+                        </dl>
+                    {% else %}
+                        <div class="empty-state">
+                            <span class="empty-state-icon">
+                                <i class="fa-solid fa-code-branch" aria-hidden="true"></i>
+                            </span>
+
+                            <h3>Sem definição TVT</h3>
+                            <p>
+                                Nenhuma definição foi encontrada para o Waze ID desta rota.
+                            </p>
+                        </div>
+                    {% endif %}
+                </div>
+            </article>
+        </section>
+
+        <section class="card dashboard-card">
+            <header class="card-header">
+                <div>
+                    <h3>Execuções recentes</h3>
+                    <p>Indicadores das últimas execuções carregadas.</p>
+                </div>
+
+                {% if routeWazeId %}
+                    <a
+                        href="{{ path('admin_routes_executions', { id: route.id }) }}"
+                        class="btn btn-ghost btn-sm"
+                    >
+                        Ver todas
+                        <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </a>
+                {% endif %}
+            </header>
+
+            <div class="card-body">
+                {% if executions is not empty %}
+                    <div class="admin-table-wrapper">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Data</th>
+                                    <th>Duração</th>
+                                    <th>Distância</th>
+                                    <th>Velocidade média</th>
+                                    <th>Congestionamentos</th>
+                                    <th>Irregularidades</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                {% for execution in executions %}
+                                    <tr>
+                                        <td>#{{ execution.id }}</td>
+
+                                        <td>
+                                            {% if execution.timestamp %}
+                                                {{ execution.timestamp|date('d/m/Y H:i') }}
+                                            {% else %}
+                                                {{ execution.createdAt|date('d/m/Y H:i') }}
+                                            {% endif %}
+                                        </td>
+
+                                        <td>
+                                            {% if execution.duration is not null %}
+                                                {{ (execution.duration / 60)|round }} min
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        </td>
+
+                                        <td>
+                                            {% if execution.length is not null %}
+                                                {{ (execution.length / 1000)|number_format(1, ',', '.') }} km
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        </td>
+
+                                        <td>
+                                            {% if execution.avgSpeed is not null %}
+                                                {{ execution.avgSpeed|number_format(1, ',', '.') }} km/h
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        </td>
+
+                                        <td>
+                                            <span class="badge
+                                                {% if execution.trafficJams > 0 %}
+                                                    badge-warning
+                                                {% else %}
+                                                    badge-success
+                                                {% endif %}
+                                            ">
+                                                {{ execution.trafficJams }}
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            <span class="badge
+                                                {% if execution.irregularities > 0 %}
+                                                    badge-danger
+                                                {% else %}
+                                                    badge-success
+                                                {% endif %}
+                                            ">
+                                                {{ execution.irregularities }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <span class="empty-state-icon">
+                            <i class="fa-solid fa-play" aria-hidden="true"></i>
+                        </span>
+
+                        <h3>Nenhuma execução encontrada</h3>
+                        <p>Não há execuções registradas para esta rota.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+{% endblock %}
