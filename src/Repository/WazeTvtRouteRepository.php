@@ -13,6 +13,15 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
         parent::__construct($registry, WazeTvtRoute::class);
     }
 
+    public function findOneByExternalRouteId(string $externalRouteId): ?WazeTvtRoute
+    {
+        return $this->createQueryBuilder('r')
+            ->where('r.externalRouteId = :externalRouteId')
+            ->setParameter('externalRouteId', $externalRouteId)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
     public function findOneByFeedAndExternalRouteId(int $feedId, string $externalRouteId): ?WazeTvtRoute
     {
         return $this->createQueryBuilder('r')

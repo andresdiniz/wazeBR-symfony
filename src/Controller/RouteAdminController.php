@@ -2,12 +2,11 @@
 
 namespace App\Controller;
 
-use App\Entity\WazeRoute;
-use App\Entity\WazeTvtRouteDefinition;
-use App\Entity\WazeTvtRouteExecution;
+use App\Entity\WazeTvtRouteHistory;
 use App\Repository\WazeRouteRepository;
 use App\Repository\WazeTvtRouteDefinitionRepository;
-use App\Repository\WazeTvtRouteExecutionRepository;
+use App\Repository\WazeTvtRouteHistoryRepository;
+use App\Repository\WazeTvtRouteRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -18,23 +17,23 @@ use Symfony\Component\Routing\Annotation\Route;
 class RouteAdminController extends AbstractController
 {
     public function __construct(
-        private WazeRouteRepository $routeRepo,
-        private WazeTvtRouteDefinitionRepository $definitionRepo,
-        private WazeTvtRouteExecutionRepository $executionRepo,
-        private EntityManagerInterface $em,
-    ) {
-    }
+        private readonly WazeRouteRepository $routeRepo,
+        private readonly WazeTvtRouteRepository $tvtRouteRepo,
+        private readonly WazeTvtRouteDefinitionRepository $definitionRepo,
+        private readonly WazeTvtRouteHistoryRepository $historyRepo,
+        private readonly EntityManagerInterface $em,
+    ) {}
 
     #[Route('', name: 'admin_routes_index', methods: ['GET'])]
     public function index(): Response
     {
         $this->denyAccessUnlessGranted('ROLE_ADMIN');
 
-        $routes = $this->routeRepo->findAll();
+        $routes      = $this->routeRepo->findAll();
         $definitions = $this->definitionRepo->findAll();
 
         return $this->render('admin/routes/index.html.twig', [
-            'routes' => $routes,
+            'routes'      => $routes,
             'definitions' => $definitions,
         ]);
     }
@@ -53,14 +52,15 @@ class RouteAdminController extends AbstractController
         $executions = [];
 
         if ($route->getWazeId()) {
-            $definition = $this->definitionRepo->findOneByRouteId($route->getWazeId());
-            if ($definition) {
-                $executions = $this->executionRepo->findByRouteId($route->getWazeId(), 50);
+            $tvtRoute = $this->tvtRouteRepo->findOneByExternalRouteId($route->getWazeId());
+            if ($tvtRoute) {
+                $definition = $tvtRoute->getCurrentDefinition();
+                $executions = $this->historyRepo->findRecentByRoute($tvtRoute->getId(), 50);
             }
         }
 
         return $this->render('admin/routes/show.html.twig', [
-            'route' => $route,
+            'route'      => $route,
             'definition' => $definition,
             'executions' => $executions,
         ]);
@@ -81,15 +81,16 @@ class RouteAdminController extends AbstractController
             return $this->redirectToRoute('admin_routes_index');
         }
 
-        $definition = $this->definitionRepo->findOneByRouteId($route->getWazeId());
-        if (!$definition) {
+        $tvtRoute = $this->tvtRouteRepo->findOneByExternalRouteId($route->getWazeId());
+
+        if (!$tvtRoute || !$tvtRoute->getCurrentDefinition()) {
             $this->addFlash('warning', 'No TVT definition found for this route yet.');
         } else {
-            $executions = $this->executionRepo->findByRouteId($route->getWazeId(), 1);
-            if (empty($executions)) {
+            $count = count($this->historyRepo->findRecentByRoute($tvtRoute->getId(), 100));
+            if ($count === 0) {
                 $this->addFlash('info', 'Definition exists but no executions collected yet.');
             } else {
-                $this->addFlash('success', sprintf('Found %d execution(s) for this route.', count($this->executionRepo->findByRouteId($route->getWazeId(), 100))));
+                $this->addFlash('success', sprintf('Found %d execution(s) for this route.', $count));
             }
         }
 
@@ -106,7 +107,9 @@ class RouteAdminController extends AbstractController
             throw $this->createNotFoundException('Route not found');
         }
 
-        $definition = $this->definitionRepo->findOneByRouteId($route->getWazeId());
+        $tvtRoute = $this->tvtRouteRepo->findOneByExternalRouteId($route->getWazeId());
+        $definition = $tvtRoute?->getCurrentDefinition();
+
         if (!$definition) {
             throw $this->createNotFoundException('TVT definition not found');
         }
@@ -126,11 +129,14 @@ class RouteAdminController extends AbstractController
             throw $this->createNotFoundException('Route not found');
         }
 
-        $limit = (int) $request->query->get('limit', '50');
-        $executions = $this->executionRepo->findByRouteId($route->getWazeId(), $limit);
+        $limit    = max(1, (int) $request->query->get('limit', '50'));
+        $tvtRoute = $this->tvtRouteRepo->findOneByExternalRouteId($route->getWazeId());
+        $executions = $tvtRoute
+            ? $this->historyRepo->findRecentByRoute($tvtRoute->getId(), $limit)
+            : [];
 
         return $this->render('admin/routes/executions.html.twig', [
-            'route' => $route,
+            'route'      => $route,
             'executions' => $executions,
         ]);
     }

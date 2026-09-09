@@ -68,7 +68,7 @@ class Partner
     #[ORM\OneToMany(mappedBy: 'partner', targetEntity: MonitoredLink::class)]
     private Collection $links;
 
-    #[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeAlert::class, inversedBy: 'partner')]
+    #[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeAlert::class)]
     private Collection $alerts;
 
     #[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeCount::class)]
@@ -77,25 +77,25 @@ class Partner
     #[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeRoute::class)]
     private Collection $routes;
 
-    #[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeTrafficJam::class, inversedBy: 'partner')]
+    #[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeTrafficJam::class)]
     private Collection $trafficJams;
 
-    #[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeFeed::class, inversedBy: 'partner')]
+    #[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeFeed::class)]
     private Collection $wazeFeeds;
 
     public function __construct()
     {
-        $this->users        = new ArrayCollection();
-        $this->cemadenData  = new ArrayCollection();
-        $this->cities       = new ArrayCollection();
-        $this->links        = new ArrayCollection();
-        $this->alerts       = new ArrayCollection();
-        $this->wazeCounts   = new ArrayCollection();
-        $this->routes       = new ArrayCollection();
-        $this->trafficJams  = new ArrayCollection();
-        $this->wazeFeeds    = new ArrayCollection();
-        $this->createdAt    = new \DateTimeImmutable();
-        $this->active       = true;
+        $this->users       = new ArrayCollection();
+        $this->cemadenData = new ArrayCollection();
+        $this->cities      = new ArrayCollection();
+        $this->links       = new ArrayCollection();
+        $this->alerts      = new ArrayCollection();
+        $this->wazeCounts  = new ArrayCollection();
+        $this->routes      = new ArrayCollection();
+        $this->trafficJams = new ArrayCollection();
+        $this->wazeFeeds   = new ArrayCollection();
+        $this->createdAt   = new \DateTimeImmutable();
+        $this->active      = true;
         $this->generateApiToken();
     }
 
@@ -142,7 +142,7 @@ class Partner
     public function setIsActive(?bool $active): static { $this->active = $active; return $this; }
 
     public function getRefreshIntervalMinutes(): ?int { return $this->refreshIntervalMinutes; }
-    public function setRefreshIntervalMinutes(?int $refreshIntervalMinutes): static { $this->refreshIntervalMinutes = $refreshIntervalMinutes; return $this; }
+    public function setRefreshIntervalMinutes(?int $v): static { $this->refreshIntervalMinutes = $v; return $this; }
 
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
     public function setCreatedAt(\DateTimeImmutable $createdAt): static { $this->createdAt = $createdAt; return $this; }

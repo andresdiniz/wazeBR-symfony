@@ -20,7 +20,7 @@ class WazeTrafficJam
 
     // ── Vínculos ────────────────────────────────────────────────────────────
 
-    #[ORM\ManyToOne(targetEntity: Partner::class)]
+    #[ORM\ManyToOne(targetEntity: Partner::class, inversedBy: 'trafficJams')]
     #[ORM\JoinColumn(nullable: false)]
     private ?Partner $partner = null;
 
@@ -169,17 +169,17 @@ class WazeTrafficJam
     public function getRoadType(): ?int { return $this->roadType; }
     public function setRoadType(?int $roadType): static { $this->roadType = $roadType; return $this; }
 
-    public function getStartLatitude(): ?float { return $this->startLatitude; }
-    public function setStartLatitude(?float $startLatitude): static { $this->startLatitude = $startLatitude; return $this; }
+    public function getStartLatitude(): ?string { return $this->startLatitude; }
+    public function setStartLatitude(null|string|float $startLatitude): static { $this->startLatitude = $startLatitude !== null ? (string)$startLatitude : null; return $this; }
 
-    public function getStartLongitude(): ?float { return $this->startLongitude; }
-    public function setStartLongitude(?float $startLongitude): static { $this->startLongitude = $startLongitude; return $this; }
+    public function getStartLongitude(): ?string { return $this->startLongitude; }
+    public function setStartLongitude(null|string|float $startLongitude): static { $this->startLongitude = $startLongitude !== null ? (string)$startLongitude : null; return $this; }
 
-    public function getEndLatitude(): ?float { return $this->endLatitude; }
-    public function setEndLatitude(?float $endLatitude): static { $this->endLatitude = $endLatitude; return $this; }
+    public function getEndLatitude(): ?string { return $this->endLatitude; }
+    public function setEndLatitude(null|string|float $endLatitude): static { $this->endLatitude = $endLatitude !== null ? (string)$endLatitude : null; return $this; }
 
-    public function getEndLongitude(): ?float { return $this->endLongitude; }
-    public function setEndLongitude(?float $endLongitude): static { $this->endLongitude = $endLongitude; return $this; }
+    public function getEndLongitude(): ?string { return $this->endLongitude; }
+    public function setEndLongitude(null|string|float $endLongitude): static { $this->endLongitude = $endLongitude !== null ? (string)$endLongitude : null; return $this; }
 
     public function getGeometryHash(): ?string { return $this->geometryHash; }
     public function setGeometryHash(?string $geometryHash): static { $this->geometryHash = $geometryHash; return $this; }

@@ -20,7 +20,7 @@ class WazeAlert
 
     // ── Vínculos ────────────────────────────────────────────────────────────
 
-    #[ORM\ManyToOne(targetEntity: Partner::class)]
+    #[ORM\ManyToOne(targetEntity: Partner::class, inversedBy: 'alerts')]
     #[ORM\JoinColumn(nullable: false)]
     private ?Partner $partner = null;
 
@@ -156,11 +156,11 @@ class WazeAlert
     public function getSubtype(): ?string { return $this->subtype; }
     public function setSubtype(?string $subtype): static { $this->subtype = $subtype; return $this; }
 
-    public function getLatitude(): float { return $this->latitude; }
-    public function setLatitude(float $latitude): static { $this->latitude = $latitude; return $this; }
+    public function getLatitude(): string { return $this->latitude; }
+    public function setLatitude(string|float $latitude): static { $this->latitude = (string)$latitude; return $this; }
 
-    public function getLongitude(): float { return $this->longitude; }
-    public function setLongitude(float $longitude): static { $this->longitude = $longitude; return $this; }
+    public function getLongitude(): string { return $this->longitude; }
+    public function setLongitude(string|float $longitude): static { $this->longitude = (string)$longitude; return $this; }
 
     public function getGeohash(): string { return $this->geohash; }
     public function setGeohash(string $geohash): static { $this->geohash = $geohash; return $this; }
