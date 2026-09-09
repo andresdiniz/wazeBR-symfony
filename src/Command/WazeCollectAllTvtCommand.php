@@ -76,13 +76,14 @@ class WazeCollectAllTvtCommand extends Command
             }
 
             foreach ($feeds as $feed) {
-                $io->text(sprintf('  Feed: %s', $feed->getFeedId()));
+                $feedUuid = $feed->getFeedUuid();
+                $io->text(sprintf('  Feed: %s', $feedUuid));
 
                 try {
-                    $result = $this->collectionService->collect($partner, $feed->getFeedId(), $dryRun);
+                    $result = $this->collectionService->collect($partner, $feedUuid, $dryRun);
 
                     if (!$dryRun) {
-                        $feedCollection = $this->collectionService->getLastFeedCollection($partner, $feed->getFeedId());
+                        $feedCollection = $this->collectionService->getLastFeedCollection($partner, $feedUuid);
                         if ($feedCollection) {
                             $this->collectionService->success($feedCollection);
                         }
@@ -98,7 +99,7 @@ class WazeCollectAllTvtCommand extends Command
                 } catch (EntityManagerClosed $e) {
                     $this->logger->critical('EntityManager fechado durante coleta TVT', [
                         'partner' => $partner->getId(),
-                        'feed' => $feed->getFeedId(),
+                        'feed' => $feedUuid,
                         'message' => $e->getMessage(),
                     ]);
                     $io->text(sprintf('    ✗ Critical error: %s', $e->getMessage()));
@@ -106,7 +107,7 @@ class WazeCollectAllTvtCommand extends Command
                 } catch (ORMException $e) {
                     $this->logger->error('Erro ORM durante coleta TVT', [
                         'partner' => $partner->getId(),
-                        'feed' => $feed->getFeedId(),
+                        'feed' => $feedUuid,
                         'message' => $e->getMessage(),
                     ]);
                     $io->text(sprintf('    ✗ DB error: %s', $e->getMessage()));
@@ -114,7 +115,7 @@ class WazeCollectAllTvtCommand extends Command
                 } catch (\Throwable $e) {
                     $this->logger->error('Erro inesperado durante coleta TVT', [
                         'partner' => $partner->getId(),
-                        'feed' => $feed->getFeedId(),
+                        'feed' => $feedUuid,
                         'message' => $e->getMessage(),
                     ]);
                     $io->text(sprintf('    ✗ Error: %s', $e->getMessage()));

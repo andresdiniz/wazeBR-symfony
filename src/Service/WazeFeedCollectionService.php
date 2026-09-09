@@ -28,15 +28,15 @@ class WazeFeedCollectionService
     /**
      * @return array{routes: int, definitions: int, history: int}
      */
-    public function collect(Partner $partner, string $feedId, bool $dryRun = false): array
+    public function collect(Partner $partner, string $feedUuid, bool $dryRun = false): array
     {
         // Busca ou cria o WazeFeed
-        $feed = $this->feedRepo->findOneBy(['partner' => $partner, 'feedId' => $feedId]);
+        $feed = $this->feedRepo->findOneBy(['partner' => $partner, 'feedUuid' => $feedUuid]);
         
         if (!$feed && !$dryRun) {
             $feed = new WazeFeed();
             $feed->setPartner($partner);
-            $feed->setFeedId($feedId);
+            $feed->setFeedUuid($feedUuid);
             $feed->setType('tvt');
             $this->em->persist($feed);
             $this->em->flush();
@@ -57,7 +57,7 @@ class WazeFeedCollectionService
             $url = sprintf(
                 'https://www.waze.com/row-partnerhub-api/feeds-tvt/%s?id=%s',
                 $partner->getWazePartnerUuid(),
-                $feedId
+                $feedUuid
             );
 
             $response = $this->httpClient->request('GET', $url, [
@@ -72,7 +72,7 @@ class WazeFeedCollectionService
 
             $this->logger->info('Waze TVT feed response', [
                 'partner' => $partner->getId(),
-                'feed' => $feedId,
+                'feed' => $feedUuid,
                 'items_count' => count($data),
             ]);
 
@@ -99,7 +99,7 @@ class WazeFeedCollectionService
         } catch (ExceptionInterface $e) {
             $this->logger->error('Erro ao coletar feed Waze TVT', [
                 'partner' => $partner->getId(),
-                'feed' => $feedId,
+                'feed' => $feedUuid,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -113,9 +113,9 @@ class WazeFeedCollectionService
         // Extrai dados e cria/atualiza entidades WazeTvtRoute, WazeTvtRouteDefinition, WazeTvtRouteHistory
     }
 
-    public function getLastFeedCollection(Partner $partner, string $feedId): ?WazeFeedCollection
+    public function getLastFeedCollection(Partner $partner, string $feedUuid): ?WazeFeedCollection
     {
-        $feed = $this->feedRepo->findOneBy(['partner' => $partner, 'feedId' => $feedId]);
+        $feed = $this->feedRepo->findOneBy(['partner' => $partner, 'feedUuid' => $feedUuid]);
         if (!$feed) {
             return null;
         }
