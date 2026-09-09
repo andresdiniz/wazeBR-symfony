@@ -122,9 +122,6 @@ class WazeFeedCollectionService
     private function processTvtItem(array $item, $partner, WazeFeedCollection $feedCollection): void
     {
         // Implementacao da logica de processamento do item TVT
-        // Extrai dados e cria/atualiza entidades WazeTvtRoute, WazeTvtRouteDefinition, WazeTvtRouteHistory
-        
-        // Por enquanto, apenas loga o item recebido
         $this->logger->debug('Processing TVT item', [
             'route_id' => $item['routeId'] ?? $item['id'] ?? 'unknown',
         ]);
@@ -149,7 +146,6 @@ class WazeFeedCollectionService
 
         try {
             $fc->setStatus('success');
-            $fc->setFinishedAt(new \DateTimeImmutable());
             $this->em->flush();
         } catch (\Throwable $e) {
             $this->logger->error('Erro ao marcar coleta como sucesso', [
@@ -172,8 +168,6 @@ class WazeFeedCollectionService
 
         try {
             $fc->setStatus('error');
-            $fc->setErrorMessage($reason);
-            $fc->setFinishedAt(new \DateTimeImmutable());
             $this->em->flush();
         } catch (\Throwable $e) {
             $this->logger->error('Erro ao marcar coleta como falha', [
