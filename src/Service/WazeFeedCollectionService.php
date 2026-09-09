@@ -42,6 +42,7 @@ class WazeFeedCollectionService
             $partner = $feed->getPartner();
             $feedUuid = $feed->getFeedUuid();
             $apiToken = $partner->getApiToken();
+            $feedId = $feed->getFeedId();
 
             $url = sprintf(
                 'https://www.waze.com/row-partnerhub-api/feeds-tvt/%s',
@@ -61,6 +62,11 @@ class WazeFeedCollectionService
                 $options['headers']['Authorization'] = 'Bearer ' . $apiToken;
             }
 
+            // Adiciona feed ID numerico se existir (requerido pela API Waze)
+            if ($feedId) {
+                $options['query'] = ['id' => (string) $feedId];
+            }
+
             $response = $this->httpClient->request('GET', $url, $options);
 
             $data = $response->toArray();
@@ -68,6 +74,7 @@ class WazeFeedCollectionService
             $this->logger->info('Waze TVT feed response', [
                 'partner' => $partner->getId(),
                 'feed' => $feedUuid,
+                'feed_id' => $feedId,
                 'items_count' => count($data),
             ]);
 
