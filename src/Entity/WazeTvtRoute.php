@@ -10,16 +10,14 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: WazeTvtRouteRepository::class)]
 #[ORM\Table(name: 'waze_tvt_route')]
-#[ORM\Index(columns: ['partner_id', 'waze_feed_id', 'external_route_id'], name: 'IDX_WAZE_TVT_ROUTE_EXTERNAL')]
-#[ORM\UniqueConstraint(name: 'UQ_WAZE_TVT_ROUTE', columns: ['waze_feed_id', 'external_route_id'])]
 class WazeTvtRoute
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'bigint')]
+    #[ORM\Column(type: 'integer')]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(targetEntity: Partner::class)]
+    #[ORM\ManyToOne(targetEntity: Partner::class, inversedBy: 'wazeTvtRoutes')]
     #[ORM\JoinColumn(nullable: false)]
     private ?Partner $partner = null;
 
@@ -39,7 +37,7 @@ class WazeTvtRoute
     #[ORM\Column]
     private bool $isActive = true;
 
-    #[ORM\ManyToOne(targetEntity: WazeTvtRouteDefinition::class)]
+    #[ORM\ManyToOne(targetEntity: WazeTvtRouteDefinition::class, cascade: ['persist'])]
     #[ORM\JoinColumn(nullable: true)]
     private ?WazeTvtRouteDefinition $currentDefinition = null;
 
@@ -49,16 +47,16 @@ class WazeTvtRoute
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private \DateTimeInterface $lastSeenAt;
 
-    #[ORM\OneToMany(targetEntity: WazeTvtRouteDefinition::class, mappedBy: 'wazeTvtRoute')]
+    #[ORM\OneToMany(targetEntity: WazeTvtRouteDefinition::class, mappedBy: 'wazeTvtRoute', cascade: ['persist'])]
     private Collection $definitions;
 
     #[ORM\OneToMany(targetEntity: WazeTvtRouteHistory::class, mappedBy: 'wazeTvtRoute')]
-    private Collection $history;
+    private Collection $histories;
 
     public function __construct()
     {
         $this->definitions = new ArrayCollection();
-        $this->history = new ArrayCollection();
+        $this->histories = new ArrayCollection();
         $this->firstSeenAt = new \DateTime();
         $this->lastSeenAt = new \DateTime();
     }
@@ -93,5 +91,5 @@ class WazeTvtRoute
     public function setLastSeenAt(\DateTimeInterface $lastSeenAt): static { $this->lastSeenAt = $lastSeenAt; return $this; }
 
     public function getDefinitions(): Collection { return $this->definitions; }
-    public function getHistory(): Collection { return $this->history; }
+    public function getHistories(): Collection { return $this->histories; }
 }

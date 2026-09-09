@@ -15,28 +15,40 @@ class WazeTvtRouteHistory
     #[ORM\Column(type: 'integer')]
     private ?int $id = null;
 
-    #[ORM\Column(name: 'route_id', type: Types::STRING, length: 255)]
-    private string $routeId = '';
+    #[ORM\ManyToOne(targetEntity: WazeTvtRoute::class, inversedBy: 'histories')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?WazeTvtRoute $wazeTvtRoute = null;
 
-    #[ORM\Column(name: 'observed_at', type: Types::DATETIME_MUTABLE)]
+    #[ORM\ManyToOne(targetEntity: WazeTvtRouteDefinition::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?WazeTvtRouteDefinition $wazeTvtRouteDefinition = null;
+
+    #[ORM\ManyToOne(targetEntity: WazeFeedCollection::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?WazeFeedCollection $wazeFeedCollection = null;
+
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private \DateTimeInterface $observedAt;
 
-    #[ORM\Column(name: 'travel_time_seconds', type: Types::INTEGER, nullable: true)]
+    #[ORM\Column(nullable: true)]
     private ?int $travelTimeSeconds = null;
 
-    #[ORM\Column(name: 'speed_kmh', type: Types::DECIMAL, precision: 8, scale: 2, nullable: true)]
+    #[ORM\Column(type: 'decimal', precision: 10, scale: 2, nullable: true)]
+    private ?string $travelTimeMinutes = null;
+
+    #[ORM\Column(type: 'decimal', precision: 8, scale: 2, nullable: true)]
     private ?string $speedKmh = null;
 
-    #[ORM\Column(name: 'delay_seconds', type: Types::INTEGER, nullable: true)]
+    #[ORM\Column(nullable: true)]
     private ?int $delaySeconds = null;
 
-    #[ORM\Column(name: 'length_meters', type: Types::INTEGER, nullable: true)]
+    #[ORM\Column(nullable: true)]
     private ?int $lengthMeters = null;
 
-    #[ORM\Column(name: 'status', type: Types::STRING, length: 40, nullable: true)]
+    #[ORM\Column(length: 40, nullable: true)]
     private ?string $status = null;
 
-    #[ORM\Column(name: 'raw_metrics', type: Types::JSON, nullable: true)]
+    #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $rawMetrics = null;
 
     public function __construct()
@@ -46,14 +58,23 @@ class WazeTvtRouteHistory
 
     public function getId(): ?int { return $this->id; }
 
-    public function getRouteId(): string { return $this->routeId; }
-    public function setRouteId(string $routeId): static { $this->routeId = $routeId; return $this; }
+    public function getWazeTvtRoute(): ?WazeTvtRoute { return $this->wazeTvtRoute; }
+    public function setWazeTvtRoute(?WazeTvtRoute $wazeTvtRoute): static { $this->wazeTvtRoute = $wazeTvtRoute; return $this; }
+
+    public function getWazeTvtRouteDefinition(): ?WazeTvtRouteDefinition { return $this->wazeTvtRouteDefinition; }
+    public function setWazeTvtRouteDefinition(?WazeTvtRouteDefinition $wazeTvtRouteDefinition): static { $this->wazeTvtRouteDefinition = $wazeTvtRouteDefinition; return $this; }
+
+    public function getWazeFeedCollection(): ?WazeFeedCollection { return $this->wazeFeedCollection; }
+    public function setWazeFeedCollection(?WazeFeedCollection $wazeFeedCollection): static { $this->wazeFeedCollection = $wazeFeedCollection; return $this; }
 
     public function getObservedAt(): \DateTimeInterface { return $this->observedAt; }
     public function setObservedAt(\DateTimeInterface $observedAt): static { $this->observedAt = $observedAt; return $this; }
 
     public function getTravelTimeSeconds(): ?int { return $this->travelTimeSeconds; }
     public function setTravelTimeSeconds(?int $travelTimeSeconds): static { $this->travelTimeSeconds = $travelTimeSeconds; return $this; }
+
+    public function getTravelTimeMinutes(): ?string { return $this->travelTimeMinutes; }
+    public function setTravelTimeMinutes(?string $travelTimeMinutes): static { $this->travelTimeMinutes = $travelTimeMinutes; return $this; }
 
     public function getSpeedKmh(): ?string { return $this->speedKmh; }
     public function setSpeedKmh(?string $speedKmh): static { $this->speedKmh = $speedKmh; return $this; }

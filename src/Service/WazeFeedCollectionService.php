@@ -123,7 +123,7 @@ class WazeFeedCollectionService
             return null;
         }
 
-        $routeId = (string) $item['id'];
+        $externalRouteId = (string) $item['id'];
         $name = isset($item['name']) ? (string) $item['name'] : null;
         $length = (int) ($item['length'] ?? 0);
         $time = (int) ($item['time'] ?? 0);
@@ -133,12 +133,12 @@ class WazeFeedCollectionService
         $line = $item['line'] ?? null;
 
         // Upsert WazeTvtRoute
-        $route = $this->tvtRouteRepo->findOneByExternalRouteId($routeId);
+        $route = $this->tvtRouteRepo->findOneByExternalRouteId($externalRouteId);
         if (!$route) {
             $route = new WazeTvtRoute();
             $route->setPartner($partner);
             $route->setWazeFeed($feed);
-            $route->setExternalRouteId($routeId);
+            $route->setExternalRouteId($externalRouteId);
             $route->setLabel($name);
             $route->setIsActive(true);
             $route->setFirstSeenAt(new DateTime());
@@ -147,30 +147,36 @@ class WazeFeedCollectionService
         $route->setLabel($name);
         $route->setLastSeenAt(new DateTime());
 
-        // Upsert WazeTvtRouteDefinition - check if exists first
-        $definition = $this->tvtRouteDefRepo->findOneByRouteId($routeId);
+        // Upsert WazeTvtRouteDefinition
+        $definition = $this->tvtRouteDefRepo->findOneByRouteAndCurrent($route, true);
         if (!$definition) {
             $definition = new WazeTvtRouteDefinition();
-            $definition->setRouteId($routeId);
+            $definition->setWazeTvtRoute($route);
+            $definition->setVersionNumber(1);
             $definition->setName($name);
-            $definition->setBbox($this->encodeJsonColumn($bbox));
-            $definition->setLine($this->encodeJsonColumn($line));
+            $definition->setGeometry($this->decodeJsonColumn($line));
+            $definition->setMetadata(['bbox' => $bbox]);
+            $definition->setIsCurrent(true);
+            $route->setCurrentDefinition($definition);
             $this->em->persist($definition);
         } else {
-            // Update existing definition
             $definition->setName($name);
-            $definition->setBbox($this->encodeJsonColumn($bbox));
-            $definition->setLine($this->encodeJsonColumn($line));
+            $definition->setGeometry($this->decodeJsonColumn($line));
+            $definition->setMetadata(['bbox' => $bbox]);
         }
 
         $speedKmh = $time > 0 ? round(($length / $time) * 3.6, 2) : null;
         $delaySeconds = $time - $historicTime;
 
-        // Always create new history entry
+        // Create new history entry
         $history = new WazeTvtRouteHistory();
-        $history->setRouteId($routeId);
+        $history->setWazeTvtRoute($route);
+        $history->setWazeTvtRouteDefinition($definition);
+        $history->setWazeFeedCollection($feedCollection);
         $history->setObservedAt(new DateTime());
         $history->setTravelTimeSeconds($time);
+        $speedMinutes = $speedKmh !== null ? round($time / 60, 2) : null;
+        $history->setTravelTimeMinutes($speedMinutes === null ? null : (string) $speedMinutes);
         $history->setSpeedKmh($speedKmh === null ? null : (string) $speedKmh);
         $history->setDelaySeconds($delaySeconds > 0 ? $delaySeconds : null);
         $history->setLengthMeters($length);
@@ -196,6 +202,15 @@ class WazeFeedCollectionService
             return $value;
         }
         return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+    }
+
+    private function decodeJsonColumn(?string $value): array
+    {
+        if ($value === null || $value === '') {
+            return [];
+        }
+        $decoded = json_decode($value, true);
+        return is_array($decoded) ? $decoded : [];
     }
 
     public function getLastFeedCollection(WazeFeed $feed): ?WazeFeedCollection

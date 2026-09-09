@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\Entity\WazeTvtRoute;
 use App\Entity\WazeTvtRouteDefinition;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -16,35 +17,11 @@ class WazeTvtRouteDefinitionRepository extends ServiceEntityRepository
         parent::__construct($registry, WazeTvtRouteDefinition::class);
     }
 
-    public function findOneByRouteId(string $routeId): ?WazeTvtRouteDefinition
+    public function findOneByRouteAndCurrent(WazeTvtRoute $route, bool $isCurrent): ?WazeTvtRouteDefinition
     {
-        return $this->findOneBy(['routeId' => $routeId]);
+        return $this->findOneBy([
+            'wazeTvtRoute' => $route,
+            'isCurrent' => $isCurrent,
+        ]);
     }
-
-    //    /**
-    //     * @return WazeTvtRouteDefinition[] Returns an array of WazeTvtRouteDefinition objects
-    //     */
-    //    public function findByExampleField($value): array
-    //    {
-    //        return $this->createQueryBuilder('w')
-    //            ->andWhere('w.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->orderBy('w.id', 'ASC')
-    //            ->setMaxResults(10)
-    //            ->getQuery()
-    //            ->getResult()
-    //        ;
-    //    }
-
-    //    public function save(WazeTvtRouteDefinition $entity): void
-    //    {
-    //        $this->getEntityManager()->persist($entity);
-    //        $this->getEntityManager()->flush();
-    //    }
-
-    //    public function remove(WazeTvtRouteDefinition $entity): void
-    //    {
-    //        $this->getEntityManager()->remove($entity);
-    //        $this->getEntityManager()->flush();
-    //    }
 }
