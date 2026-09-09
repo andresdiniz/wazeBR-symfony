@@ -39,10 +39,9 @@ class WazeFeedCollectionService
         }
 
         try {
-            $partner = $feed->getPartner();
             $feedUuid = $feed->getFeedUuid();
 
-            // URL correta: feedUuid vai no path, partner ID ou outro param vai na query
+            // URL sem parâı¿metro id - testa se a API aceita apenas o UUID
             $url = sprintf(
                 'https://www.waze.com/row-partnerhub-api/feeds-tvt/%s',
                 $feedUuid
@@ -53,16 +52,12 @@ class WazeFeedCollectionService
                     'Accept' => 'application/json',
                     'User-Agent' => 'wazeBR-symfony/1.0',
                 ],
-                'query' => [
-                    'id' => $partner->getId(),
-                ],
                 'timeout' => 30,
             ]);
 
             $data = $response->toArray();
 
             $this->logger->info('Waze TVT feed response', [
-                'partner' => $partner->getId(),
                 'feed' => $feedUuid,
                 'items_count' => count($data),
             ]);
@@ -71,7 +66,7 @@ class WazeFeedCollectionService
 
             foreach ($data as $item) {
                 if (!$dryRun) {
-                    $this->processTvtItem($item, $partner, $feedCollection);
+                    $this->processTvtItem($item, $feed, $feedCollection);
                     $routesCount++;
                 }
             }
@@ -87,7 +82,6 @@ class WazeFeedCollectionService
             ];
         } catch (ExceptionInterface $e) {
             $this->logger->error('Erro ao coletar feed Waze TVT', [
-                'partner' => $feed->getPartner()->getId(),
                 'feed' => $feed->getFeedUuid(),
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -96,7 +90,7 @@ class WazeFeedCollectionService
         }
     }
 
-    private function processTvtItem(array $item, $partner, WazeFeedCollection $feedCollection): void
+    private function processTvtItem(array $item, WazeFeed $feed, WazeFeedCollection $feedCollection): void
     {
         // Implementacao da logica de processamento do item TVT
     }
