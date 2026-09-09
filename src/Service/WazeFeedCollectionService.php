@@ -46,7 +46,7 @@ class WazeFeedCollectionService
         }
 
         try {
-            $feedType = $feed->getFeedType();
+            $feedType = $feed->getType();
             
             if ($feedType === 'TVT') {
                 return $this->collectTvt($feed, $feedCollection, $dryRun);
@@ -56,7 +56,7 @@ class WazeFeedCollectionService
         } catch (ExceptionInterface $e) {
             $this->logger->error('Erro ao coletar feed Waze', [
                 'feed' => $feed->getFeedUuid(),
-                'type' => $feed->getFeedType(),
+                'type' => $feed->getType(),
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);

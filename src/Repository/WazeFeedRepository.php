@@ -22,7 +22,7 @@ class WazeFeedRepository extends ServiceEntityRepository
     public function findActiveFeedsByType(string $feedType): array
     {
         return $this->createQueryBuilder('f')
-            ->where('f.feedType = :type')
+            ->where('f.type = :type')
             ->andWhere('f.isActive = :active')
             ->setParameter('type', $feedType)
             ->setParameter('active', true)
