@@ -43,10 +43,9 @@ class WazeCollectFeedCommand extends Command
         foreach ($feeds as $feed) {
             $partner = $feed->getPartner();
             $feedUuid = $feed->getFeedUuid();
-            $label = $feed->getLabel() ?? 'Sem label';
             $feedType = $feed->getType() ?? 'UNKNOWN';
 
-            $io->section(sprintf('Feed: %s (%s) - %s', $label, $feedUuid, $feedType));
+            $io->section(sprintf('Feed: %s - %s', $feedUuid, $feedType));
 
             try {
                 $result = $this->collectionService->collect($feed);
