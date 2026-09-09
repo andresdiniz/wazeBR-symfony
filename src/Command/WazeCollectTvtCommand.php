@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Entity\Partner;
 use App\Repository\PartnerRepository;
+use App\Repository\WazeFeedRepository;
 use App\Service\WazeFeedCollectionService;
 use Doctrine\ORM\Exception\EntityManagerClosed;
 use Doctrine\ORM\ORMException;
@@ -25,6 +25,7 @@ class WazeCollectTvtCommand extends Command
 {
     public function __construct(
         private readonly PartnerRepository $partnerRepo,
+        private readonly WazeFeedRepository $feedRepo,
         private readonly WazeFeedCollectionService $collectionService,
         private readonly LoggerInterface $logger,
     ) {
@@ -35,7 +36,7 @@ class WazeCollectTvtCommand extends Command
     {
         $this
             ->addOption('partner', 'p', InputOption::VALUE_REQUIRED, 'Partner ID')
-            ->addOption('feed', 'f', InputOption::VALUE_REQUIRED, 'Feed ID')
+            ->addOption('feed', 'f', InputOption::VALUE_REQUIRED, 'Feed UUID')
             ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Do not persist data')
         ;
     }
@@ -45,50 +46,44 @@ class WazeCollectTvtCommand extends Command
         $io = new SymfonyStyle($input, $output);
 
         $partnerId = $input->getOption('partner');
-        $feedId = $input->getOption('feed');
+        $feedUuid = $input->getOption('feed');
         $dryRun = $input->getOption('dry-run');
 
-        if (!$partnerId || !$feedId) {
+        if (!$partnerId || !$feedUuid) {
             $io->error('Options --partner and --feed are required');
             return Command::FAILURE;
         }
 
-        /** @var Partner|null $partner */
-        $partner = $this->partnerRepo->find($partnerId);
+        $feed = $this->feedRepo->findOneBy(['partner' => $this->partnerRepo->find($partnerId), 'feedUuid' => $feedUuid]);
 
-        if (!$partner) {
-            $io->error(sprintf('Partner with ID %s not found', $partnerId));
+        if (!$feed) {
+            $io->error(sprintf('Feed with UUID %s not found for partner %s', $feedUuid, $partnerId));
             return Command::FAILURE;
         }
 
-        $io->text(sprintf('Collecting TVT feed %s for partner %s (%s)', $feedId, $partner->getName(), $partner->getId()));
+        $io->text(sprintf('Collecting TVT feed %s for partner %s (%s)', $feedUuid, $feed->getPartner()->getName(), $feed->getPartner()->getId()));
 
         if ($dryRun) {
             $io->note('DRY RUN: No data will be persisted');
         }
 
         try {
-            $result = $this->collectionService->collect($partner, $feedId, $dryRun);
+            $result = $this->collectionService->collect($feed, $dryRun);
 
             if (!$dryRun) {
-                $feedCollection = $this->collectionService->getLastFeedCollection($partner, $feedId);
+                $feedCollection = $this->collectionService->getLastFeedCollection($feed);
                 if ($feedCollection) {
                     $this->collectionService->success($feedCollection);
                 }
             }
 
-            $io->success(sprintf(
-                'Collection completed: %d routes, %d definitions, %d history items',
-                $result['routes'] ?? 0,
-                $result['definitions'] ?? 0,
-                $result['history'] ?? 0
-            ));
+            $io->success(sprintf('Collection completed: %d routes', $result['routes'] ?? 0));
 
             return Command::SUCCESS;
         } catch (EntityManagerClosed $e) {
             $this->logger->critical('EntityManager fechado durante coleta TVT', [
                 'partner' => $partnerId,
-                'feed' => $feedId,
+                'feed' => $feedUuid,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -96,7 +91,7 @@ class WazeCollectTvtCommand extends Command
             $io->error('Erro crítico: EntityManager fechado. Verifique os logs para detalhes.');
 
             try {
-                $feedCollection = $this->collectionService->getLastFeedCollection($partner, $feedId);
+                $feedCollection = $this->collectionService->getLastFeedCollection($feed);
                 if ($feedCollection) {
                     $this->collectionService->fail($e->getMessage(), $feedCollection);
                 }
@@ -110,7 +105,7 @@ class WazeCollectTvtCommand extends Command
         } catch (ORMException $e) {
             $this->logger->error('Erro ORM durante coleta TVT', [
                 'partner' => $partnerId,
-                'feed' => $feedId,
+                'feed' => $feedUuid,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -118,7 +113,7 @@ class WazeCollectTvtCommand extends Command
             $io->error(sprintf('Erro de persistencia: %s', $e->getMessage()));
 
             try {
-                $feedCollection = $this->collectionService->getLastFeedCollection($partner, $feedId);
+                $feedCollection = $this->collectionService->getLastFeedCollection($feed);
                 if ($feedCollection) {
                     $this->collectionService->fail($e->getMessage(), $feedCollection);
                 }
@@ -132,7 +127,7 @@ class WazeCollectTvtCommand extends Command
         } catch (\Throwable $e) {
             $this->logger->error('Erro inesperado durante coleta TVT', [
                 'partner' => $partnerId,
-                'feed' => $feedId,
+                'feed' => $feedUuid,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -140,7 +135,7 @@ class WazeCollectTvtCommand extends Command
             $io->error(sprintf('Erro: %s', $e->getMessage()));
 
             try {
-                $feedCollection = $this->collectionService->getLastFeedCollection($partner, $feedId);
+                $feedCollection = $this->collectionService->getLastFeedCollection($feed);
                 if ($feedCollection) {
                     $this->collectionService->fail($e->getMessage(), $feedCollection);
                 }

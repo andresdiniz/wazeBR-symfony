@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Service;
 
-use App\Entity\Partner;
 use App\Entity\WazeFeed;
 use App\Entity\WazeFeedCollection;
 use App\Repository\WazeFeedCollectionRepository;
@@ -28,25 +27,11 @@ class WazeFeedCollectionService
     /**
      * @return array{routes: int, definitions: int, history: int}
      */
-    public function collect(Partner $partner, string $feedUuid, bool $dryRun = false): array
+    public function collect(WazeFeed $feed, bool $dryRun = false): array
     {
-        // Busca ou cria o WazeFeed
-        $feed = $this->feedRepo->findOneBy(['partner' => $partner, 'feedUuid' => $feedUuid]);
-        
-        if (!$feed && !$dryRun) {
-            $feed = new WazeFeed();
-            $feed->setPartner($partner);
-            $feed->setFeedUuid($feedUuid);
-            $feed->setType('tvt');
-            $this->em->persist($feed);
-            $this->em->flush();
-        }
-
         $feedCollection = new WazeFeedCollection();
-        $feedCollection->setPartner($partner);
-        $feedCollection->setFeed($feed);
+        $feedCollection->setWazeFeed($feed);
         $feedCollection->setStatus('processing');
-        $feedCollection->setStartedAt(new \DateTimeImmutable());
 
         if (!$dryRun) {
             $this->em->persist($feedCollection);
@@ -54,6 +39,9 @@ class WazeFeedCollectionService
         }
 
         try {
+            $partner = $feed->getPartner();
+            $feedUuid = $feed->getFeedUuid();
+
             $url = sprintf(
                 'https://www.waze.com/row-partnerhub-api/feeds-tvt/%s?id=%s',
                 $partner->getWazePartnerUuid(),
@@ -77,8 +65,6 @@ class WazeFeedCollectionService
             ]);
 
             $routesCount = 0;
-            $definitionsCount = 0;
-            $historyCount = 0;
 
             foreach ($data as $item) {
                 if (!$dryRun) {
@@ -93,13 +79,13 @@ class WazeFeedCollectionService
 
             return [
                 'routes' => $routesCount,
-                'definitions' => $definitionsCount,
-                'history' => $historyCount,
+                'definitions' => 0,
+                'history' => 0,
             ];
         } catch (ExceptionInterface $e) {
             $this->logger->error('Erro ao coletar feed Waze TVT', [
-                'partner' => $partner->getId(),
-                'feed' => $feedUuid,
+                'partner' => $feed->getPartner()->getId(),
+                'feed' => $feed->getFeedUuid(),
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -107,21 +93,15 @@ class WazeFeedCollectionService
         }
     }
 
-    private function processTvtItem(array $item, Partner $partner, WazeFeedCollection $feedCollection): void
+    private function processTvtItem(array $item, $partner, WazeFeedCollection $feedCollection): void
     {
         // Implementacao da logica de processamento do item TVT
-        // Extrai dados e cria/atualiza entidades WazeTvtRoute, WazeTvtRouteDefinition, WazeTvtRouteHistory
     }
 
-    public function getLastFeedCollection(Partner $partner, string $feedUuid): ?WazeFeedCollection
+    public function getLastFeedCollection(WazeFeed $feed): ?WazeFeedCollection
     {
-        $feed = $this->feedRepo->findOneBy(['partner' => $partner, 'feedUuid' => $feedUuid]);
-        if (!$feed) {
-            return null;
-        }
-        
         return $this->feedCollectionRepo->findOneBy(
-            ['feed' => $feed],
+            ['wazeFeed' => $feed],
             ['id' => 'DESC']
         );
     }
@@ -137,7 +117,7 @@ class WazeFeedCollectionService
 
         try {
             $fc->setStatus('success');
-            $fc->setCompletedAt(new \DateTimeImmutable());
+            $fc->setFinishedAt(new \DateTimeImmutable());
             $this->em->flush();
         } catch (\Throwable $e) {
             $this->logger->error('Erro ao marcar coleta como sucesso', [
@@ -160,8 +140,8 @@ class WazeFeedCollectionService
 
         try {
             $fc->setStatus('error');
-            $fc->setLastError($reason);
-            $fc->setUpdatedAt(new \DateTimeImmutable());
+            $fc->setErrorMessage($reason);
+            $fc->setFinishedAt(new \DateTimeImmutable());
             $this->em->flush();
         } catch (\Throwable $e) {
             $this->logger->error('Erro ao marcar coleta como falha', [

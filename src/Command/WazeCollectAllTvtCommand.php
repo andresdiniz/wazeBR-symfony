@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Entity\Partner;
 use App\Repository\PartnerRepository;
 use App\Service\WazeFeedCollectionService;
 use Doctrine\ORM\Exception\EntityManagerClosed;
@@ -50,7 +49,6 @@ class WazeCollectAllTvtCommand extends Command
             $io->note('DRY RUN: No data will be persisted');
         }
 
-        // Busca todos os partners
         $partners = $partnerFilter ? [$this->partnerRepo->find($partnerFilter)] : $this->partnerRepo->findAll();
 
         if (empty($partners)) {
@@ -63,11 +61,9 @@ class WazeCollectAllTvtCommand extends Command
         $totalSuccess = 0;
         $totalErrors = 0;
 
-        /** @var Partner $partner */
         foreach ($partners as $partner) {
             $io->section(sprintf('Partner: %s (%d)', $partner->getName(), $partner->getId()));
 
-            // Busca todos os feeds deste partner
             $feeds = $partner->getWazeFeeds()->toArray();
 
             if (empty($feeds)) {
@@ -80,20 +76,18 @@ class WazeCollectAllTvtCommand extends Command
                 $io->text(sprintf('  Feed: %s', $feedUuid));
 
                 try {
-                    $result = $this->collectionService->collect($partner, $feedUuid, $dryRun);
+                    $result = $this->collectionService->collect($feed, $dryRun);
 
                     if (!$dryRun) {
-                        $feedCollection = $this->collectionService->getLastFeedCollection($partner, $feedUuid);
+                        $feedCollection = $this->collectionService->getLastFeedCollection($feed);
                         if ($feedCollection) {
                             $this->collectionService->success($feedCollection);
                         }
                     }
 
                     $io->text(sprintf(
-                        '    ✓ %d routes, %d definitions, %d history',
-                        $result['routes'] ?? 0,
-                        $result['definitions'] ?? 0,
-                        $result['history'] ?? 0
+                        '    ✓ %d routes',
+                        $result['routes'] ?? 0
                     ));
                     $totalSuccess++;
                 } catch (EntityManagerClosed $e) {
