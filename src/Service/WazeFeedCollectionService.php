@@ -15,7 +15,6 @@ use App\Repository\WazeTvtRouteDefinitionRepository;
 use App\Repository\WazeTvtRouteHistoryRepository;
 use App\Repository\WazeTvtRouteRepository;
 use DateTime;
-use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -187,8 +186,6 @@ class WazeFeedCollectionService
             'to' => $toName,
             'length' => $length,
             'time' => $time,
-            'historic_time' => $historicTime,
-            'jam_level' => $jamLevel,
         ]);
 
         // Buscar ou criar a rota
@@ -216,61 +213,19 @@ class WazeFeedCollectionService
         $speedKmh = $time > 0 ? round(($length / $time) * 3.6, 2) : null;
         $delaySeconds = $time - $historicTime;
 
-        // Criar hash da definicao baseado nos dados
-        $definitionHash = md5(json_encode([
-            'name' => $name,
-            'from' => $fromName,
-            'to' => $toName,
-            'length' => $length,
-            'geometry' => $line,
-        ]));
-
-        // Buscar definicao existente
-        $definition = $this->tvtRouteDefRepo->findOneByRouteAndHash($route->getId() ?? 0, $definitionHash);
-        
-        if (!$definition) {
-            // Criar nova definicao
-            $definition = new WazeTvtRouteDefinition();
-            $definition->setWazeTvtRoute($route);
-            $definition->setVersionNumber($this->tvtRouteDefRepo->getNextVersionNumber($route->getId() ?? 0));
-            $definition->setDefinitionHash($definitionHash);
-            $definition->setName($name);
-            $definition->setOriginName($fromName);
-            $definition->setDestinationName($toName);
-            $definition->setDistanceMeters($length);
-            $definition->setGeometry($line);
-            $definition->setGeometryHash(md5(json_encode($line)));
-            $definition->setSegmentCount(is_array($line) ? count($line) : null);
-            $definition->setMetadata([
-                'type' => $type,
-                'jamLevel' => $jamLevel,
-                'bbox' => $bbox,
-                'historicTime' => $historicTime,
-            ]);
-            $definition->setIsCurrent(true);
-            $definition->setValidFrom(new DateTime());
-            $this->em->persist($definition);
-
-            // Marcar definicoes anteriores como nao atuais
-            foreach ($route->getDefinitions() as $def) {
-                if ($def !== $definition) {
-                    $def->setIsCurrent(false);
-                    $def->setValidUntil(new DateTime());
-                }
-            }
-
-            // Atualizar definicao atual da rota
-            $route->setCurrentDefinition($definition);
-        }
+        // Criar definicao simplificada (apenas campos que existem no banco)
+        $definition = new WazeTvtRouteDefinition();
+        $definition->setRouteId($routeId);
+        $definition->setName($name);
+        $definition->setBbox($bbox);
+        $definition->setLine($line);
+        $this->em->persist($definition);
 
         // Criar historico
         $history = new WazeTvtRouteHistory();
-        $history->setWazeTvtRoute($route);
-        $history->setWazeTvtRouteDefinition($definition);
-        $history->setWazeFeedCollection($feedCollection);
+        $history->setRouteId($routeId);
         $history->setObservedAt(new DateTime());
         $history->setTravelTimeSeconds($time);
-        $history->setTravelTimeMinutes($time > 0 ? round($time / 60, 2) : null);
         $history->setSpeedKmh($speedKmh !== null ? (string) $speedKmh : null);
         $history->setDelaySeconds($delaySeconds > 0 ? $delaySeconds : null);
         $history->setLengthMeters($length);
@@ -279,6 +234,8 @@ class WazeFeedCollectionService
             'jamLevel' => $jamLevel,
             'historicTime' => $historicTime,
             'type' => $type,
+            'fromName' => $fromName,
+            'toName' => $toName,
         ]);
         $this->em->persist($history);
 
