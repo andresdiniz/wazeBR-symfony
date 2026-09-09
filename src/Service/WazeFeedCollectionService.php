@@ -39,25 +39,34 @@ class WazeFeedCollectionService
         }
 
         try {
+            $partner = $feed->getPartner();
             $feedUuid = $feed->getFeedUuid();
+            $apiToken = $partner->getApiToken();
 
-            // URL sem parâı¿metro id - testa se a API aceita apenas o UUID
             $url = sprintf(
                 'https://www.waze.com/row-partnerhub-api/feeds-tvt/%s',
                 $feedUuid
             );
 
-            $response = $this->httpClient->request('GET', $url, [
+            $options = [
                 'headers' => [
                     'Accept' => 'application/json',
                     'User-Agent' => 'wazeBR-symfony/1.0',
                 ],
                 'timeout' => 30,
-            ]);
+            ];
+
+            // Adiciona token de autenticacao se existir
+            if ($apiToken) {
+                $options['headers']['Authorization'] = 'Bearer ' . $apiToken;
+            }
+
+            $response = $this->httpClient->request('GET', $url, $options);
 
             $data = $response->toArray();
 
             $this->logger->info('Waze TVT feed response', [
+                'partner' => $partner->getId(),
                 'feed' => $feedUuid,
                 'items_count' => count($data),
             ]);
@@ -66,7 +75,7 @@ class WazeFeedCollectionService
 
             foreach ($data as $item) {
                 if (!$dryRun) {
-                    $this->processTvtItem($item, $feed, $feedCollection);
+                    $this->processTvtItem($item, $partner, $feedCollection);
                     $routesCount++;
                 }
             }
@@ -90,7 +99,7 @@ class WazeFeedCollectionService
         }
     }
 
-    private function processTvtItem(array $item, WazeFeed $feed, WazeFeedCollection $feedCollection): void
+    private function processTvtItem(array $item, $partner, WazeFeedCollection $feedCollection): void
     {
         // Implementacao da logica de processamento do item TVT
     }
