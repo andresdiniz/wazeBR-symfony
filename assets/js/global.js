@@ -41,12 +41,6 @@
         initKeyboardShortcuts();
         initOnlineStatus();
         initThemeSwitcher();
-        
-        // Console branding
-        console.log('%c🚀 wazeBR', 'font-size: 32px; font-weight: bold; color: #2563eb;');
-        console.log('%cSistema de Monitoramento de Trâ©§nsito', 'font-size: 16px; color: #94a3b8;');
-        console.log('%c✨ Premium Global JavaScript loaded successfully!', 'font-size: 14px; color: #22c55e;');
-        console.log('%c📦 Version: 2.0.0 | ©️ 2026', 'font-size: 12px; color: #64748b;');
     });
 
     // ========================================
@@ -1032,7 +1026,10 @@
     };
 
     // Session Storage helpers
-    window.sessionStorage = {
+    // IMPORTANTE: não usar o nome "sessionStorage" aqui — isso sobrescreveria a API
+    // nativa do navegador (window.sessionStorage) e pode quebrar qualquer outro
+    // script/lib que dependa dela.
+    window.wazeSession = {
         get: function(key) {
             const item = sessionStorage.getItem(`${CONFIG.storagePrefix}${key}`);
             return item ? JSON.parse(item) : null;
@@ -1082,7 +1079,10 @@
     };
 
     // Performance timing
-    window.performance = {
+    // IMPORTANTE: não usar o nome "performance" aqui — isso sobrescreveria a API
+    // nativa do navegador (window.performance / performance.now()) usada por libs
+    // de terceiros e ferramentas de monitoramento.
+    window.wazePerf = {
         start: function(label) {
             console.time(label);
         },
