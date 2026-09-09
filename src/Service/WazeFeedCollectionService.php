@@ -42,9 +42,9 @@ class WazeFeedCollectionService
             $partner = $feed->getPartner();
             $feedUuid = $feed->getFeedUuid();
 
+            // URL correta: feedUuid vai no path, partner ID ou outro param vai na query
             $url = sprintf(
-                'https://www.waze.com/row-partnerhub-api/feeds-tvt/%s?id=%s',
-                $partner->getWazePartnerUuid(),
+                'https://www.waze.com/row-partnerhub-api/feeds-tvt/%s',
                 $feedUuid
             );
 
@@ -52,6 +52,9 @@ class WazeFeedCollectionService
                 'headers' => [
                     'Accept' => 'application/json',
                     'User-Agent' => 'wazeBR-symfony/1.0',
+                ],
+                'query' => [
+                    'id' => $partner->getId(),
                 ],
                 'timeout' => 30,
             ]);
