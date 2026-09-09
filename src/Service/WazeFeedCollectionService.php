@@ -14,6 +14,7 @@ use App\Repository\WazeFeedRepository;
 use App\Repository\WazeTvtRouteDefinitionRepository;
 use App\Repository\WazeTvtRouteHistoryRepository;
 use App\Repository\WazeTvtRouteRepository;
+use DateTime;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -99,23 +100,40 @@ class WazeFeedCollectionService
             $definitionsCount = 0;
             $historyCount = 0;
 
-            foreach ($data as $item) {
-                if (!$dryRun) {
-                    // Converte item para array se for string (JSON decode)
-                    if (is_string($item)) {
-                        $item = json_decode($item, true) ?? [];
-                    }
-                    if (is_array($item)) {
-                        $result = $this->processTvtItem($item, $partner, $feed, $feedCollection);
-                        $routesCount++;
-                        $definitionsCount += $result['definitions'] ?? 0;
-                        $historyCount += $result['history'] ?? 0;
+            foreach ($data as $index => $item) {
+                if (!$dryRun && is_array($item)) {
+                    try {
+                        $result = $this->processTvtItem($item, $partner, $feed, $feedCollection, $index);
+                        if ($result !== null) {
+                            $routesCount++;
+                            $definitionsCount += $result['definitions'];
+                            $historyCount += $result['history'];
+                        }
+                    } catch (\Throwable $e) {
+                        $this->logger->error('Erro ao processar item TVT', [
+                            'index' => $index,
+                            'message' => $e->getMessage(),
+                        ]);
                     }
                 }
             }
 
-            if (!$dryRun) {
-                $this->em->flush();
+            // Flush explicito para garantir que tudo seja salvo
+            if (!$dryRun && ($routesCount > 0 || $definitionsCount > 0 || $historyCount > 0)) {
+                try {
+                    $this->em->flush();
+                    $this->logger->info('Dados TVT salvos com sucesso', [
+                        'routes' => $routesCount,
+                        'definitions' => $definitionsCount,
+                        'history' => $historyCount,
+                    ]);
+                } catch (\Throwable $e) {
+                    $this->logger->critical('Erro ao salvar dados TVT no banco', [
+                        'message' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                    throw $e;
+                }
             }
 
             return [
@@ -134,84 +152,138 @@ class WazeFeedCollectionService
     }
 
     /**
-     * @return array{definitions: int, history: int}
+     * @return array{definitions: int, history: int}|null
      */
-    private function processTvtItem(array $item, $partner, WazeFeed $feed, WazeFeedCollection $feedCollection): array
+    private function processTvtItem(array $item, $partner, WazeFeed $feed, WazeFeedCollection $feedCollection, int $index): ?array
     {
-        try {
-            $definitionsCount = 0;
-            $historyCount = 0;
-
-            // Extrair dados do item
-            $routeId = $item['routeId'] ?? $item['id'] ?? null;
-            $routeName = $item['routeName'] ?? $item['name'] ?? '';
-            $from = $item['from'] ?? '';
-            $to = $item['to'] ?? '';
-            $length = $item['length'] ?? 0;
-            $speed = $item['speed'] ?? 0;
-            $delay = $item['delay'] ?? 0;
-            $level = $item['level'] ?? 0;
-            $type = $item['type'] ?? '';
-            $coords = $item['coords'] ?? $item['geometry'] ?? [];
-
-            if (!$routeId) {
-                $this->logger->warning('Item TVT sem routeId', ['item' => $item]);
-                return ['definitions' => 0, 'history' => 0];
-            }
-
-            // Buscar ou criar a rota
-            $route = $this->tvtRouteRepo->findOneBy(['externalRouteId' => (string) $routeId]);
-            
-            if (!$route) {
-                $route = new WazeTvtRoute();
-                $route->setExternalRouteId((string) $routeId);
-                $route->setName($routeName);
-                $route->setFrom($from);
-                $route->setTo($to);
-                $route->setLength((float) $length);
-                $route->setPartner($partner);
-                $this->em->persist($route);
-            }
-
-            // Criar definicao da rota
-            $definition = new WazeTvtRouteDefinition();
-            $definition->setRoute($route);
-            $definition->setSpeed((float) $speed);
-            $definition->setDelay((float) $delay);
-            $definition->setLevel((int) $level);
-            $definition->setType($type);
-            $definition->setCoords($coords);
-            $this->em->persist($definition);
-            $definitionsCount++;
-
-            // Criar historico
-            $history = new WazeTvtRouteHistory();
-            $history->setRoute($route);
-            $history->setDefinition($definition);
-            $history->setTimestamp(new DateTimeImmutable());
-            $history->setSpeed((float) $speed);
-            $history->setDelay((float) $delay);
-            $history->setLevel((int) $level);
-            $this->em->persist($history);
-            $historyCount++;
-
-            $this->logger->debug('TVT item saved', [
-                'route_id' => $routeId,
-                'route_name' => $routeName,
-                'speed' => $speed,
-                'delay' => $delay,
-            ]);
-
-            return ['definitions' => $definitionsCount, 'history' => $historyCount];
-        } catch (\Throwable $e) {
-            $this->logger->error('Erro ao salvar item TVT', [
-                'route_id' => $item['routeId'] ?? 'unknown',
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return ['definitions' => 0, 'history' => 0];
+        // Pula itens que nao sao rotas (sem campo 'id')
+        if (!isset($item['id']) || !is_scalar($item['id'])) {
+            $this->logger->debug('Item TVT ignorado (sem id)', ['index' => $index]);
+            return null;
         }
+
+        $routeId = (string) $item['id'];
+        $name = $item['name'] ?? null;
+        $fromName = $item['fromName'] ?? null;
+        $toName = $item['toName'] ?? null;
+        $length = (int) ($item['length'] ?? 0);
+        $time = (int) ($item['time'] ?? 0);
+        $historicTime = (int) ($item['historicTime'] ?? 0);
+        $jamLevel = (int) ($item['jamLevel'] ?? 0);
+        $line = $item['line'] ?? [];
+        $type = $item['type'] ?? null;
+        $bbox = $item['bbox'] ?? null;
+
+        $this->logger->debug('Processando rota TVT', [
+            'index' => $index,
+            'route_id' => $routeId,
+            'name' => $name,
+            'from' => $fromName,
+            'to' => $toName,
+            'length' => $length,
+            'time' => $time,
+            'historic_time' => $historicTime,
+            'jam_level' => $jamLevel,
+        ]);
+
+        // Buscar ou criar a rota
+        $route = $this->tvtRouteRepo->findOneByExternalRouteId($routeId);
+        
+        if (!$route) {
+            $route = new WazeTvtRoute();
+            $route->setPartner($partner);
+            $route->setWazeFeed($feed);
+            $route->setExternalRouteId($routeId);
+            $route->setLabel($name);
+            $route->setIsActive(true);
+            $route->setFirstSeenAt(new DateTime());
+            $route->setLastSeenAt(new DateTime());
+            $this->em->persist($route);
+            
+            $this->logger->debug('Nova rota TVT criada', ['route_id' => $routeId]);
+        } else {
+            // Atualizar ultima visualizacao
+            $route->setLastSeenAt(new DateTime());
+            $route->setLabel($name);
+        }
+
+        // Calcular velocidade (km/h) = (metros / segundos) * 3.6
+        $speedKmh = $time > 0 ? round(($length / $time) * 3.6, 2) : null;
+        $delaySeconds = $time - $historicTime;
+
+        // Criar hash da definicao baseado nos dados
+        $definitionHash = md5(json_encode([
+            'name' => $name,
+            'from' => $fromName,
+            'to' => $toName,
+            'length' => $length,
+            'geometry' => $line,
+        ]));
+
+        // Buscar definicao existente
+        $definition = $this->tvtRouteDefRepo->findOneByRouteAndHash($route->getId() ?? 0, $definitionHash);
+        
+        if (!$definition) {
+            // Criar nova definicao
+            $definition = new WazeTvtRouteDefinition();
+            $definition->setWazeTvtRoute($route);
+            $definition->setVersionNumber($this->tvtRouteDefRepo->getNextVersionNumber($route->getId() ?? 0));
+            $definition->setDefinitionHash($definitionHash);
+            $definition->setName($name);
+            $definition->setOriginName($fromName);
+            $definition->setDestinationName($toName);
+            $definition->setDistanceMeters($length);
+            $definition->setGeometry($line);
+            $definition->setGeometryHash(md5(json_encode($line)));
+            $definition->setSegmentCount(is_array($line) ? count($line) : null);
+            $definition->setMetadata([
+                'type' => $type,
+                'jamLevel' => $jamLevel,
+                'bbox' => $bbox,
+                'historicTime' => $historicTime,
+            ]);
+            $definition->setIsCurrent(true);
+            $definition->setValidFrom(new DateTime());
+            $this->em->persist($definition);
+
+            // Marcar definicoes anteriores como nao atuais
+            foreach ($route->getDefinitions() as $def) {
+                if ($def !== $definition) {
+                    $def->setIsCurrent(false);
+                    $def->setValidUntil(new DateTime());
+                }
+            }
+
+            // Atualizar definicao atual da rota
+            $route->setCurrentDefinition($definition);
+        }
+
+        // Criar historico
+        $history = new WazeTvtRouteHistory();
+        $history->setWazeTvtRoute($route);
+        $history->setWazeTvtRouteDefinition($definition);
+        $history->setWazeFeedCollection($feedCollection);
+        $history->setObservedAt(new DateTime());
+        $history->setTravelTimeSeconds($time);
+        $history->setTravelTimeMinutes($time > 0 ? round($time / 60, 2) : null);
+        $history->setSpeedKmh($speedKmh !== null ? (string) $speedKmh : null);
+        $history->setDelaySeconds($delaySeconds > 0 ? $delaySeconds : null);
+        $history->setLengthMeters($length);
+        $history->setStatus($jamLevel > 3 ? 'congested' : ($jamLevel > 0 ? 'moderate' : 'free'));
+        $history->setRawMetrics([
+            'jamLevel' => $jamLevel,
+            'historicTime' => $historicTime,
+            'type' => $type,
+        ]);
+        $this->em->persist($history);
+
+        $this->logger->debug('Rota TVT salva', [
+            'route_id' => $routeId,
+            'speed_kmh' => $speedKmh,
+            'delay_seconds' => $delaySeconds,
+        ]);
+
+        return ['definitions' => 1, 'history' => 1];
     }
 
     public function getLastFeedCollection(WazeFeed $feed): ?WazeFeedCollection
