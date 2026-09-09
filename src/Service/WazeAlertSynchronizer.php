@@ -18,7 +18,7 @@ class WazeAlertSynchronizer
 
     public function upsert(WazeFeed $feed, WazeFeedCollection $collection, array $data): WazeAlert
     {
-        $partner = $feed->getPartner();
+        $partner      = $feed->getPartner();
         $externalUuid = $data['uuid'] ?? null;
 
         // Regra 1: UUID externo
@@ -36,7 +36,7 @@ class WazeAlertSynchronizer
 
         // Regra 2: dedupKey
         $dedupKey = $this->calculateDedupKey($feed, $data);
-        $existing = $this->alertRepository->findOneByDedupKey($partner->getId(), $dedupKey);
+        $existing  = $this->alertRepository->findOneByDedupKey($partner->getId(), $dedupKey);
         if ($existing) {
             $this->updateAlert($existing, $data, $collection);
             return $existing;
@@ -73,14 +73,14 @@ class WazeAlertSynchronizer
 
     private function populateAlert(WazeAlert $alert, array $data): void
     {
-        $alert->setLatitude((string)($data['location']['y'] ?? '0.0000000'));
-        $alert->setLongitude((string)($data['location']['x'] ?? '0.0000000'));
+        $lat    = (float)($data['location']['y'] ?? 0.0);
+        $lon    = (float)($data['location']['x'] ?? 0.0);
         $street = $data['street'] ?? null;
 
         $alert->setType($data['type'] ?? '');
         $alert->setSubtype($data['subtype'] ?? null);
-        $alert->setLatitude($lat);
-        $alert->setLongitude($lon);
+        $alert->setLatitude((string)$lat);
+        $alert->setLongitude((string)$lon);
         $alert->setGeohash($this->geohashService->encode($lat, $lon, 8));
         $alert->setStreet($street);
         $alert->setStreetNormalized($this->normalizeStreet($street));
@@ -104,10 +104,10 @@ class WazeAlertSynchronizer
 
     private function calculateDedupKey(WazeFeed $feed, array $data): string
     {
-        $street = $this->normalizeStreet($data['street'] ?? '');
-        $lat = (float)($data['location']['y'] ?? 0.0);
-        $lon = (float)($data['location']['x'] ?? 0.0);
-        $geohash = $this->geohashService->encode($lat, $lon, 6); // precisão reduzida para dedup
+        $lat     = (float)($data['location']['y'] ?? 0.0);
+        $lon     = (float)($data['location']['x'] ?? 0.0);
+        $street  = $this->normalizeStreet($data['street'] ?? '');
+        $geohash = $this->geohashService->encode($lat, $lon, 6);
         $pubMillisRounded = isset($data['pubMillis'])
             ? (int)((int)$data['pubMillis'] / 300000) * 300000
             : 0;

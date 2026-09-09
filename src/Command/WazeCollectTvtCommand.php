@@ -5,6 +5,7 @@ namespace App\Command;
 use App\Repository\WazeFeedRepository;
 use App\Service\WazeFeedCollectionService;
 use App\Service\WazeTvtSynchronizer;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -23,7 +24,8 @@ class WazeCollectTvtCommand extends Command
         private readonly WazeFeedRepository $feedRepository,
         private readonly WazeFeedCollectionService $collectionService,
         private readonly WazeTvtSynchronizer $tvtSynchronizer,
-        private readonly HttpClientInterface $httpClient
+        private readonly HttpClientInterface $httpClient,
+        private readonly EntityManagerInterface $em
     ) {
         parent::__construct();
     }
@@ -37,7 +39,7 @@ class WazeCollectTvtCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $io = new SymfonyStyle($input, $output);
+        $io     = new SymfonyStyle($input, $output);
         $dryRun = (bool)$input->getOption('dry-run');
 
         $feeds = $this->feedRepository->findActiveTvtFeeds();
@@ -55,7 +57,7 @@ class WazeCollectTvtCommand extends Command
         }
 
         $totalRoutes = 0;
-        $errors = 0;
+        $errors      = 0;
 
         foreach ($feeds as $feed) {
             $label = sprintf('[Feed #%d | %s | Partner #%d]',
@@ -69,6 +71,12 @@ class WazeCollectTvtCommand extends Command
                 continue;
             }
 
+            // Reabrir EM se fechou por erro anterior
+            if (!$this->em->isOpen()) {
+                $this->em->getConnection()->close();
+                $this->em->getConnection()->connect();
+            }
+
             $collection = $this->collectionService->start($feed);
 
             try {
@@ -77,10 +85,10 @@ class WazeCollectTvtCommand extends Command
                     'headers' => ['Accept' => 'application/json'],
                 ]);
 
-                $payload = $response->toArray();
+                $payload     = $response->toArray();
                 $payloadHash = hash('sha256', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 
-                // O payload TVT pode ter rotas em 'routes', 'tvtRoutes' ou diretamente como array
+                // Payload TVT pode ter rotas em 'routes', 'tvtRoutes' ou ser objeto único
                 $routes = $payload['routes'] ?? $payload['tvtRoutes'] ?? (isset($payload['id']) ? [$payload] : []);
 
                 $routesCount = 0;
