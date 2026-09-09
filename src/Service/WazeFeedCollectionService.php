@@ -100,7 +100,12 @@ class WazeFeedCollectionService
             $definitionsCount = 0;
             $historyCount = 0;
 
-            foreach ($data as $index => $item) {
+            // As rotas estao dentro de $data['routes']
+            $routes = $data['routes'] ?? [];
+            
+            $this->logger->debug('Routes found', ['count' => count($routes)]);
+
+            foreach ($routes as $index => $item) {
                 if (!$dryRun && is_array($item)) {
                     try {
                         $result = $this->processTvtItem($item, $partner, $feed, $feedCollection, $index);
