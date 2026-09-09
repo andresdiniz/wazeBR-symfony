@@ -12,7 +12,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'waze:collect-feed',
-    description: 'Coleta alertas e congestionamentos de todos os feeds EVENTS ativos'
+    description: 'Coleta alertas e congestionamentos de todos os feeds ativos'
 )]
 class WazeCollectFeedCommand extends Command
 {
@@ -26,12 +26,12 @@ class WazeCollectFeedCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        $io->title('Coletando feeds Waze EVENTS');
+        $io->title('Coletando feeds Waze');
 
-        $feeds = $this->feedRepository->findActiveFeedsByType('EVENTS');
+        $feeds = $this->feedRepository->findAllActive();
 
         if (empty($feeds)) {
-            $io->warning('Nenhum feed EVENTS ativo encontrado');
+            $io->warning('Nenhum feed ativo encontrado');
             return Command::SUCCESS;
         }
 
@@ -44,8 +44,9 @@ class WazeCollectFeedCommand extends Command
             $partner = $feed->getPartner();
             $feedUuid = $feed->getFeedUuid();
             $label = $feed->getLabel() ?? 'Sem label';
+            $feedType = $feed->getType() ?? 'UNKNOWN';
 
-            $io->section(sprintf('Feed: %s (%s)', $label, $feedUuid));
+            $io->section(sprintf('Feed: %s (%s) - %s', $label, $feedUuid, $feedType));
 
             try {
                 $result = $this->collectionService->collect($feed);
