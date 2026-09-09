@@ -7,7 +7,7 @@ namespace App\Command;
 use App\Entity\Partner;
 use App\Repository\PartnerRepository;
 use App\Service\WazeFeedCollectionService;
-use Doctrine\ORM\EntityManagerClosed;
+use Doctrine\ORM\Exception\EntityManagerClosed;
 use Doctrine\ORM\ORMException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -68,12 +68,10 @@ class WazeCollectAllTvtCommand extends Command
             $io->section(sprintf('Partner: %s (%d)', $partner->getName(), $partner->getId()));
 
             // Busca todos os feeds deste partner
-            $feeds = $partner->getWazeFeeds()->filter(function($feed) {
-                return $feed->getType() === 'tvt';
-            })->toArray();
+            $feeds = $partner->getWazeFeeds()->toArray();
 
             if (empty($feeds)) {
-                $io->text('  No TVT feeds configured');
+                $io->text('  No feeds configured');
                 continue;
             }
 
