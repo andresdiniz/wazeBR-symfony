@@ -6,14 +6,7 @@ namespace App\Service;
 
 use App\Entity\Partner;
 use App\Entity\WazeFeedCollection;
-use App\Entity\WazeTvtRoute;
-use App\Entity\WazeTvtRouteDefinition;
-use App\Entity\WazeTvtRouteHistory;
 use App\Repository\WazeFeedCollectionRepository;
-use App\Repository\WazeTvtRouteDefinitionRepository;
-use App\Repository\WazeTvtRouteHistoryRepository;
-use App\Repository\WazeTvtRouteRepository;
-use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -24,9 +17,6 @@ class WazeFeedCollectionService
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly WazeFeedCollectionRepository $feedCollectionRepo,
-        private readonly WazeTvtRouteRepository $tvtRouteRepo,
-        private readonly WazeTvtRouteDefinitionRepository $tvtRouteDefRepo,
-        private readonly WazeTvtRouteHistoryRepository $tvtRouteHistoryRepo,
         private readonly HttpClientInterface $httpClient,
         private readonly LoggerInterface $logger,
     ) {
@@ -41,7 +31,7 @@ class WazeFeedCollectionService
         $feedCollection->setPartner($partner);
         $feedCollection->setFeedId($feedId);
         $feedCollection->setStatus('processing');
-        $feedCollection->setStartedAt(new DateTimeImmutable());
+        $feedCollection->setStartedAt(new \DateTimeImmutable());
 
         if (!$dryRun) {
             $this->em->persist($feedCollection);
@@ -77,7 +67,6 @@ class WazeFeedCollectionService
 
             foreach ($data as $item) {
                 if (!$dryRun) {
-                    // Processa o item e persiste as entidades
                     $this->processTvtItem($item, $partner, $feedCollection);
                     $routesCount++;
                 }
@@ -103,13 +92,16 @@ class WazeFeedCollectionService
         }
     }
 
-    /**
-     * Processa um item da resposta TVT e persiste as entidades
-     */
     private function processTvtItem(array $item, Partner $partner, WazeFeedCollection $feedCollection): void
     {
-        // Implementacao da logica de processamento do item TVT
-        // Extrai dados e cria/atualiza entidades WazeTvtRoute, WazeTvtRouteDefinition, WazeTvtRouteHistory
+    }
+
+    public function getLastFeedCollection(Partner $partner, string $feedId): ?WazeFeedCollection
+    {
+        return $this->feedCollectionRepo->findOneBy(
+            ['partner' => $partner, 'feedId' => $feedId],
+            ['id' => 'DESC']
+        );
     }
 
     public function success(WazeFeedCollection $fc): void
@@ -123,7 +115,7 @@ class WazeFeedCollectionService
 
         try {
             $fc->setStatus('success');
-            $fc->setCompletedAt(new DateTimeImmutable());
+            $fc->setCompletedAt(new \DateTimeImmutable());
             $this->em->flush();
         } catch (\Throwable $e) {
             $this->logger->error('Erro ao marcar coleta como sucesso', [
@@ -147,14 +139,13 @@ class WazeFeedCollectionService
         try {
             $fc->setStatus('error');
             $fc->setLastError($reason);
-            $fc->setUpdatedAt(new DateTimeImmutable());
+            $fc->setUpdatedAt(new \DateTimeImmutable());
             $this->em->flush();
         } catch (\Throwable $e) {
             $this->logger->error('Erro ao marcar coleta como falha', [
                 'feed_collection' => $fc->getId(),
                 'message' => $e->getMessage(),
             ]);
-            // Nao faz nada - o EM ja esta fechado e nao ha como recuperar
         }
     }
 }
