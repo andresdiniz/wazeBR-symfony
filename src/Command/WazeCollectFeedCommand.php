@@ -1,148 +1,75 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Command;
 
-use App\Repository\PartnerRepository;
 use App\Repository\WazeFeedRepository;
 use App\Service\WazeFeedCollectionService;
-use Doctrine\ORM\Exception\EntityManagerClosed;
-use Doctrine\ORM\ORMException;
-use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'waze:collect-feed',
-    description: 'Collects Waze feed data (legacy command)',
+    description: 'Coleta alertas e congestionamentos de todos os feeds EVENTS ativos'
 )]
 class WazeCollectFeedCommand extends Command
 {
     public function __construct(
-        private readonly PartnerRepository $partnerRepo,
-        private readonly WazeFeedRepository $feedRepo,
-        private readonly WazeFeedCollectionService $collectionService,
-        private readonly LoggerInterface $logger,
+        private WazeFeedRepository $feedRepository,
+        private WazeFeedCollectionService $collectionService,
     ) {
         parent::__construct();
-    }
-
-    protected function configure(): void
-    {
-        $this
-            ->addOption('partner', 'p', InputOption::VALUE_REQUIRED, 'Partner ID')
-            ->addOption('feed', 'f', InputOption::VALUE_REQUIRED, 'Feed UUID')
-            ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Do not persist data')
-        ;
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+        $io->title('Coletando feeds Waze EVENTS');
 
-        $partnerId = $input->getOption('partner');
-        $feedUuid = $input->getOption('feed');
-        $dryRun = $input->getOption('dry-run');
+        $feeds = $this->feedRepository->findActiveFeedsByType('EVENTS');
 
-        if (!$partnerId || !$feedUuid) {
-            $io->error('Options --partner and --feed are required');
-            return Command::FAILURE;
-        }
-
-        $feed = $this->feedRepo->findOneBy(['partner' => $this->partnerRepo->find($partnerId), 'feedUuid' => $feedUuid]);
-
-        if (!$feed) {
-            $io->error(sprintf('Feed with UUID %s not found for partner %s', $feedUuid, $partnerId));
-            return Command::FAILURE;
-        }
-
-        $io->text(sprintf('Collecting Waze feed %s for partner %s (%s)', $feedUuid, $feed->getPartner()->getName(), $feed->getPartner()->getId()));
-
-        if ($dryRun) {
-            $io->note('DRY RUN: No data will be persisted');
-        }
-
-        try {
-            $result = $this->collectionService->collect($feed, $dryRun);
-
-            if (!$dryRun) {
-                $feedCollection = $this->collectionService->getLastFeedCollection($feed);
-                if ($feedCollection) {
-                    $this->collectionService->success($feedCollection);
-                }
-            }
-
-            $io->success(sprintf('Collection completed: %d items', $result['routes'] ?? 0));
-
+        if (empty($feeds)) {
+            $io->warning('Nenhum feed EVENTS ativo encontrado');
             return Command::SUCCESS;
-        } catch (EntityManagerClosed $e) {
-            $this->logger->critical('EntityManager fechado durante coleta', [
-                'partner' => $partnerId,
-                'feed' => $feedUuid,
-                'message' => $e->getMessage(),
-            ]);
-
-            $io->error('Erro crítico: EntityManager fechado. Verifique os logs para detalhes.');
-
-            try {
-                $feedCollection = $this->collectionService->getLastFeedCollection($feed);
-                if ($feedCollection) {
-                    $this->collectionService->fail($e->getMessage(), $feedCollection);
-                }
-            } catch (\Throwable $failError) {
-                $this->logger->error('Falha ao marcar coleta como erro', [
-                    'message' => $failError->getMessage(),
-                ]);
-            }
-
-            return Command::FAILURE;
-        } catch (ORMException $e) {
-            $this->logger->error('Erro ORM durante coleta', [
-                'partner' => $partnerId,
-                'feed' => $feedUuid,
-                'message' => $e->getMessage(),
-            ]);
-
-            $io->error(sprintf('Erro de persistencia: %s', $e->getMessage()));
-
-            try {
-                $feedCollection = $this->collectionService->getLastFeedCollection($feed);
-                if ($feedCollection) {
-                    $this->collectionService->fail($e->getMessage(), $feedCollection);
-                }
-            } catch (\Throwable $failError) {
-                $this->logger->error('Falha ao marcar coleta como erro', [
-                    'message' => $failError->getMessage(),
-                ]);
-            }
-
-            return Command::FAILURE;
-        } catch (\Throwable $e) {
-            $this->logger->error('Erro inesperado durante coleta', [
-                'partner' => $partnerId,
-                'feed' => $feedUuid,
-                'message' => $e->getMessage(),
-            ]);
-
-            $io->error(sprintf('Erro: %s', $e->getMessage()));
-
-            try {
-                $feedCollection = $this->collectionService->getLastFeedCollection($feed);
-                if ($feedCollection) {
-                    $this->collectionService->fail($e->getMessage(), $feedCollection);
-                }
-            } catch (\Throwable $failError) {
-                $this->logger->error('Falha ao marcar coleta como erro', [
-                    'message' => $failError->getMessage(),
-                ]);
-            }
-
-            return Command::FAILURE;
         }
+
+        $io->text(sprintf('Encontrados %d feed(s) ativos', count($feeds)));
+
+        $successCount = 0;
+        $errorCount = 0;
+
+        foreach ($feeds as $feed) {
+            $partner = $feed->getPartner();
+            $feedUuid = $feed->getFeedUuid();
+            $label = $feed->getLabel() ?? 'Sem label';
+
+            $io->section(sprintf('Feed: %s (%s)', $label, $feedUuid));
+
+            try {
+                $result = $this->collectionService->collect($feed);
+                
+                $io->success(sprintf(
+                    '%d alerts, %d jams, %d routes',
+                    $result['alerts'] ?? 0,
+                    $result['jams'] ?? 0,
+                    $result['routes'] ?? 0
+                ));
+                
+                $successCount++;
+            } catch (\Throwable $e) {
+                $io->error(sprintf('Erro: %s', $e->getMessage()));
+                $errorCount++;
+            }
+        }
+
+        $io->text(sprintf(
+            '<info>Completed: %d successful, %d errors</info>',
+            $successCount,
+            $errorCount
+        ));
+
+        return $errorCount > 0 ? Command::FAILURE : Command::SUCCESS;
     }
 }

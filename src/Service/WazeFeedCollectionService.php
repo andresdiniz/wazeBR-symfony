@@ -46,75 +46,154 @@ class WazeFeedCollectionService
         }
 
         try {
-            $partner = $feed->getPartner();
-            $feedUuid = $feed->getFeedUuid();
-            $apiToken = $partner->getApiToken();
-            $feedId = $feed->getFeedId();
-            $url = $feed->getEndpointUrl() ?: sprintf(
-                'https://www.waze.com/row-partnerhub-api/feeds-tvt/%s',
-                $feedUuid
-            );
-
-            $options = [
-                'headers' => [
-                    'Accept' => 'application/json',
-                    'User-Agent' => 'wazeBR-symfony/1.0',
-                ],
-                'timeout' => 30,
-            ];
-
-            if ($apiToken) {
-                $options['headers']['Authorization'] = 'Bearer '.$apiToken;
+            $feedType = $feed->getFeedType();
+            
+            if ($feedType === 'TVT') {
+                return $this->collectTvt($feed, $feedCollection, $dryRun);
+            } else {
+                return $this->collectEvents($feed, $feedCollection, $dryRun);
             }
-
-            if ($feedId && !str_contains($url, '?id=')) {
-                $options['query'] = ['id' => (string) $feedId];
-            }
-
-            $data = $this->httpClient->request('GET', $url, $options)->toArray();
-            $routes = $data['routes'] ?? [];
-            $routesCount = 0;
-            $definitionsCount = 0;
-            $historyCount = 0;
-
-            foreach ($routes as $index => $item) {
-                if (!is_array($item)) {
-                    continue;
-                }
-
-                try {
-                    $result = $this->processTvtItem($item, $partner, $feed, $feedCollection, (int) $index);
-                    if ($result !== null) {
-                        ++$routesCount;
-                        $definitionsCount += $result['definitions'];
-                        $historyCount += $result['history'];
-                    }
-                } catch (\Throwable $e) {
-                    $this->logger->error('Erro ao processar item TVT', [
-                        'index' => $index,
-                        'route_id' => $item['id'] ?? null,
-                        'message' => $e->getMessage(),
-                    ]);
-                }
-            }
-
-            if (!$dryRun) {
-                $this->em->flush();
-            }
-
-            return [
-                'routes' => $routesCount,
-                'definitions' => $definitionsCount,
-                'history' => $historyCount,
-            ];
         } catch (ExceptionInterface $e) {
-            $this->logger->error('Erro ao coletar feed Waze TVT', [
+            $this->logger->error('Erro ao coletar feed Waze', [
                 'feed' => $feed->getFeedUuid(),
+                'type' => $feed->getFeedType(),
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
             throw $e;
         }
+    }
+
+    private function collectTvt(WazeFeed $feed, WazeFeedCollection $feedCollection, bool $dryRun): array
+    {
+        $partner = $feed->getPartner();
+        $feedUuid = $feed->getFeedUuid();
+        $apiToken = $partner->getApiToken();
+        $feedId = $feed->getFeedId();
+        $url = $feed->getEndpointUrl() ?: sprintf(
+            'https://www.waze.com/row-partnerhub-api/feeds-tvt/%s',
+            $feedUuid
+        );
+
+        $options = [
+            'headers' => [
+                'Accept' => 'application/json',
+                'User-Agent' => 'wazeBR-symfony/1.0',
+            ],
+            'timeout' => 30,
+        ];
+
+        if ($apiToken) {
+            $options['headers']['Authorization'] = 'Bearer '.$apiToken;
+        }
+
+        if ($feedId && !str_contains($url, '?id=')) {
+            $options['query'] = ['id' => (string) $feedId];
+        }
+
+        $data = $this->httpClient->request('GET', $url, $options)->toArray();
+        $routes = $data['routes'] ?? [];
+        $routesCount = 0;
+        $definitionsCount = 0;
+        $historyCount = 0;
+
+        foreach ($routes as $index => $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            try {
+                $result = $this->processTvtItem($item, $partner, $feed, $feedCollection, (int) $index);
+                if ($result !== null) {
+                    ++$routesCount;
+                    $definitionsCount += $result['definitions'];
+                    $historyCount += $result['history'];
+                }
+            } catch (\Throwable $e) {
+                $this->logger->error('Erro ao processar item TVT', [
+                    'index' => $index,
+                    'route_id' => $item['id'] ?? null,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        if (!$dryRun) {
+            $this->em->flush();
+        }
+
+        return [
+            'routes' => $routesCount,
+            'definitions' => $definitionsCount,
+            'history' => $historyCount,
+        ];
+    }
+
+    private function collectEvents(WazeFeed $feed, WazeFeedCollection $feedCollection, bool $dryRun): array
+    {
+        $partner = $feed->getPartner();
+        $apiToken = $partner->getApiToken();
+        $url = $feed->getEndpointUrl();
+
+        $options = [
+            'headers' => [
+                'Accept' => 'application/json',
+                'User-Agent' => 'wazeBR-symfony/1.0',
+            ],
+            'timeout' => 30,
+        ];
+
+        if ($apiToken) {
+            $options['headers']['Authorization'] = 'Bearer '.$apiToken;
+        }
+
+        $data = $this->httpClient->request('GET', $url, $options)->toArray();
+        $alerts = $data['alerts'] ?? [];
+        $jams = $data['jams'] ?? [];
+        $alertsCount = 0;
+        $jamsCount = 0;
+
+        // Processar alertas (apenas log por enquanto)
+        foreach ($alerts as $index => $alertData) {
+            if (!is_array($alertData)) {
+                continue;
+            }
+            try {
+                // TODO: Implementar upsert de alertas
+                ++$alertsCount;
+            } catch (\Throwable $e) {
+                $this->logger->error('Erro ao processar alerta', [
+                    'index' => $index,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Processar jams (apenas log por enquanto)
+        foreach ($jams as $index => $jamData) {
+            if (!is_array($jamData)) {
+                continue;
+            }
+            try {
+                // TODO: Implementar upsert de jams
+                ++$jamsCount;
+            } catch (\Throwable $e) {
+                $this->logger->error('Erro ao processar jam', [
+                    'index' => $index,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        if (!$dryRun) {
+            $this->em->flush();
+        }
+
+        return [
+            'alerts' => $alertsCount,
+            'jams' => $jamsCount,
+            'routes' => 0,
+        ];
     }
 
     private function processTvtItem(array $item, $partner, WazeFeed $feed, WazeFeedCollection $feedCollection, int $index): ?array
