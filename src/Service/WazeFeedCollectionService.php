@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\Partner;
+use App\Entity\WazeFeed;
 use App\Entity\WazeFeedCollection;
 use App\Repository\WazeFeedCollectionRepository;
+use App\Repository\WazeFeedRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -17,6 +19,7 @@ class WazeFeedCollectionService
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly WazeFeedCollectionRepository $feedCollectionRepo,
+        private readonly WazeFeedRepository $feedRepo,
         private readonly HttpClientInterface $httpClient,
         private readonly LoggerInterface $logger,
     ) {
@@ -27,9 +30,21 @@ class WazeFeedCollectionService
      */
     public function collect(Partner $partner, string $feedId, bool $dryRun = false): array
     {
+        // Busca ou cria o WazeFeed
+        $feed = $this->feedRepo->findOneBy(['partner' => $partner, 'feedId' => $feedId]);
+        
+        if (!$feed && !$dryRun) {
+            $feed = new WazeFeed();
+            $feed->setPartner($partner);
+            $feed->setFeedId($feedId);
+            $feed->setType('tvt');
+            $this->em->persist($feed);
+            $this->em->flush();
+        }
+
         $feedCollection = new WazeFeedCollection();
         $feedCollection->setPartner($partner);
-        $feedCollection->setFeedId($feedId);
+        $feedCollection->setFeed($feed);
         $feedCollection->setStatus('processing');
         $feedCollection->setStartedAt(new \DateTimeImmutable());
 
@@ -94,12 +109,19 @@ class WazeFeedCollectionService
 
     private function processTvtItem(array $item, Partner $partner, WazeFeedCollection $feedCollection): void
     {
+        // Implementacao da logica de processamento do item TVT
+        // Extrai dados e cria/atualiza entidades WazeTvtRoute, WazeTvtRouteDefinition, WazeTvtRouteHistory
     }
 
     public function getLastFeedCollection(Partner $partner, string $feedId): ?WazeFeedCollection
     {
+        $feed = $this->feedRepo->findOneBy(['partner' => $partner, 'feedId' => $feedId]);
+        if (!$feed) {
+            return null;
+        }
+        
         return $this->feedCollectionRepo->findOneBy(
-            ['partner' => $partner, 'feedId' => $feedId],
+            ['feed' => $feed],
             ['id' => 'DESC']
         );
     }
