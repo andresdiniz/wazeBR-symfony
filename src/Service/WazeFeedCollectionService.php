@@ -21,6 +21,7 @@ class WazeFeedCollectionService
         private readonly WazeFeedRepository $feedRepo,
         private readonly HttpClientInterface $httpClient,
         private readonly LoggerInterface $logger,
+        private readonly WazeTvtSynchronizer $tvtSynchronizer,
     ) {
     }
 
@@ -86,6 +87,8 @@ class WazeFeedCollectionService
             ]);
 
             $routesCount = 0;
+            $definitionsCount = 0;
+            $historyCount = 0;
 
             foreach ($data as $item) {
                 if (!$dryRun) {
@@ -94,8 +97,10 @@ class WazeFeedCollectionService
                         $item = json_decode($item, true) ?? [];
                     }
                     if (is_array($item)) {
-                        $this->processTvtItem($item, $partner, $feedCollection);
+                        $result = $this->processTvtItem($item, $partner, $feed, $feedCollection);
                         $routesCount++;
+                        $definitionsCount += $result['definitions'] ?? 0;
+                        $historyCount += $result['history'] ?? 0;
                     }
                 }
             }
@@ -106,8 +111,8 @@ class WazeFeedCollectionService
 
             return [
                 'routes' => $routesCount,
-                'definitions' => 0,
-                'history' => 0,
+                'definitions' => $definitionsCount,
+                'history' => $historyCount,
             ];
         } catch (ExceptionInterface $e) {
             $this->logger->error('Erro ao coletar feed Waze TVT', [
@@ -119,12 +124,30 @@ class WazeFeedCollectionService
         }
     }
 
-    private function processTvtItem(array $item, $partner, WazeFeedCollection $feedCollection): void
+    /**
+     * @return array{definitions: int, history: int}
+     */
+    private function processTvtItem(array $item, $partner, WazeFeed $feed, WazeFeedCollection $feedCollection): array
     {
-        // Implementacao da logica de processamento do item TVT
-        $this->logger->debug('Processing TVT item', [
-            'route_id' => $item['routeId'] ?? $item['id'] ?? 'unknown',
-        ]);
+        try {
+            // Usa o synchronizer para salvar os dados
+            $result = $this->tvtSynchronizer->synchronize($item, $partner, $feed, $feedCollection);
+            
+            $this->logger->debug('TVT item synchronized', [
+                'route_id' => $item['routeId'] ?? $item['id'] ?? 'unknown',
+                'definitions' => $result['definitions'] ?? 0,
+                'history' => $result['history'] ?? 0,
+            ]);
+
+            return $result;
+        } catch (\Throwable $e) {
+            $this->logger->error('Erro ao sincronizar item TVT', [
+                'route_id' => $item['routeId'] ?? 'unknown',
+                'message' => $e->getMessage(),
+            ]);
+
+            return ['definitions' => 0, 'history' => 0];
+        }
     }
 
     public function getLastFeedCollection(WazeFeed $feed): ?WazeFeedCollection
