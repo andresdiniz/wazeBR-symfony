@@ -7,15 +7,9 @@ namespace App\Command;
 use App\Entity\Partner;
 use App\Repository\PartnerRepository;
 use App\Service\WazeFeedCollectionService;
-use App\Entity\Partner;
-use App\Repository\PartnerRepository;
-use App\Service\WazeFeedCollectionService;
-use App\Service\WazeTvtSynchronizer;
-use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\EntityManagerClosed;
 use Doctrine\ORM\ORMException;
 use Psr\Log\LoggerInterface;
-
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -32,11 +26,7 @@ class WazeCollectTvtCommand extends Command
     public function __construct(
         private readonly PartnerRepository $partnerRepo,
         private readonly WazeFeedCollectionService $collectionService,
-        private readonly WazeFeedCollectionService $collectionService,
-        private readonly WazeTvtSynchronizer $tvtSynchronizer,
-        private readonly HttpClientInterface $httpClient,
-        private readonly EntityManagerInterface $em,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
     ) {
         parent::__construct();
     }
@@ -52,8 +42,7 @@ class WazeCollectTvtCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $io     = new SymfonyStyle($input, $output);
-        $dryRun = (bool)$input->getOption('dry-run');
+        $io = new SymfonyStyle($input, $output);
 
         $partnerId = $input->getOption('partner');
         $feedId = $input->getOption('feed');
@@ -72,8 +61,6 @@ class WazeCollectTvtCommand extends Command
             return Command::FAILURE;
         }
 
-        $totalRoutes = 0;
-        $errors      = 0;
         $io->text(sprintf('Collecting TVT feed %s for partner %s (%s)', $feedId, $partner->getName(), $partner->getId()));
 
         if ($dryRun) {
@@ -84,92 +71,56 @@ class WazeCollectTvtCommand extends Command
             $result = $this->collectionService->collect($partner, $feedId, $dryRun);
 
             if (!$dryRun) {
-                // Busca a entidade WazeFeedCollection recem-criada
                 $feedCollection = $this->collectionService->getLastFeedCollection($partner, $feedId);
                 if ($feedCollection) {
                     $this->collectionService->success($feedCollection);
                 }
             }
 
-            // Reabrir EM se fechou por erro anterior
-            if (!$this->em->isOpen()) {
-                $this->em->getConnection()->close();
-                $this->em->getConnection()->connect();
-            }
+            $io->success(sprintf(
+                'Collection completed: %d routes, %d definitions, %d history items',
+                $result['routes'] ?? 0,
+                $result['definitions'] ?? 0,
+                $result['history'] ?? 0
+            ));
 
-            $collection = $this->collectionService->start($feed);
+            return Command::SUCCESS;
+        } catch (EntityManagerClosed $e) {
+            $this->logger->critical('EntityManager fechado durante coleta TVT', [
+                'partner' => $partnerId,
+                'feed' => $feedId,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            $io->error('Erro crítico: EntityManager fechado. Verifique os logs para detalhes.');
 
             try {
-                $response = $this->httpClient->request('GET', $feed->getEndpointUrl(), [
-                    'timeout' => 30,
-                    'headers' => ['Accept' => 'application/json'],
-                ]);
-
-                $payload     = $response->toArray();
-                $payloadHash = hash('sha256', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-
-                // Payload TVT pode ter rotas em 'routes', 'tvtRoutes' ou ser objeto único
-                $routes = $payload['routes'] ?? $payload['tvtRoutes'] ?? (isset($payload['id']) ? [$payload] : []);
-
-                $routesCount = 0;
-                foreach ($routes as $routeData) {
-                    $this->tvtSynchronizer->upsert($feed, $collection, $routeData);
-                    $routesCount++;
+                $feedCollection = $this->collectionService->getLastFeedCollection($partner, $feedId);
+                if ($feedCollection) {
+                    $this->collectionService->fail($e->getMessage(), $feedCollection);
                 }
-
-                $io->success(sprintf(
-                    'Collection completed: %d routes, %d definitions, %d history items',
-                    $routesCount,
-                    0,
-                    0
-                ));
-
-                return Command::SUCCESS;
-            } catch (EntityManagerClosed $e) {
-                $this->logger->critical('EntityManager fechado durante coleta TVT', [
-                    'partner' => $partnerId,
-                    'feed' => $feedId,
-                    'message' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
+            } catch (\Throwable $failError) {
+                $this->logger->error('Falha ao marcar coleta como erro', [
+                    'message' => $failError->getMessage(),
                 ]);
-
-                $io->error('Erro crítico: EntityManager fechado. Verifique os logs para detalhes.');
-
-                try {
-                    $feedCollection = $this->collectionService->getLastFeedCollection($partner, $feedId);
-                    if ($feedCollection) {
-                        $this->collectionService->fail($e->getMessage(), $feedCollection);
-                    }
-                } catch (\Throwable $failError) {
-                    $this->logger->error('Falha ao marcar coleta como erro', [
-                        'message' => $failError->getMessage(),
-                    ]);
-                }
-
-                return Command::FAILURE;
-            } catch (ORMException $e) {
-                $this->logger->error('Erro ORM durante coleta TVT', [
-                    'partner' => $partnerId,
-                    'feed' => $feedId,
-                    'message' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-
-                $io->error(sprintf('Erro de persistencia: %s', $e->getMessage()));
-
-                try {
-                    $feedCollection = $this->collectionService->getLastFeedCollection($partner, $feedId);
-                    if ($feedCollection) {
-                        $this->collectionService->fail($e->getMessage(), $feedCollection);
-                    }
-                } catch (\Throwable $failError) {
-                    $this->logger->error('Falha ao marcar coleta como erro', [
-                        'message' => $failError->getMessage(),
-                    ]);
-                }
-
-                return Command::FAILURE;
             }
+
+            return Command::FAILURE;
+        } catch (ORMException $e) {
+            $this->logger->error('Erro ORM durante coleta TVT', [
+                'partner' => $partnerId,
+                'feed' => $feedId,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            $io->error(sprintf('Erro de persistencia: %s', $e->getMessage()));
+
+            try {
+                $feedCollection = $this->collectionService->getLastFeedCollection($partner, $feedId);
+                if ($feedCollection) {
+                    $this->collectionService->fail($e->getMessage(), $feedCollection);
                 }
             } catch (\Throwable $failError) {
                 $this->logger->error('Falha ao marcar coleta como erro', [
