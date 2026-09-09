@@ -68,7 +68,7 @@ class Partner
     #[ORM\OneToMany(mappedBy: 'partner', targetEntity: MonitoredLink::class)]
     private Collection $links;
 
-    #[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeAlert::class)]
+    #[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeAlert::class, inversedBy: 'partner')]
     private Collection $alerts;
 
     #[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeCount::class)]
@@ -77,21 +77,25 @@ class Partner
     #[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeRoute::class)]
     private Collection $routes;
 
-    #[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeTrafficJam::class)]
+    #[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeTrafficJam::class, inversedBy: 'partner')]
     private Collection $trafficJams;
+
+    #[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeFeed::class, inversedBy: 'partner')]
+    private Collection $wazeFeeds;
 
     public function __construct()
     {
-        $this->users = new ArrayCollection();
-        $this->cemadenData = new ArrayCollection();
-        $this->cities = new ArrayCollection();
-        $this->links = new ArrayCollection();
-        $this->alerts = new ArrayCollection();
-        $this->wazeCounts = new ArrayCollection();
-        $this->routes = new ArrayCollection();
-        $this->trafficJams = new ArrayCollection();
-        $this->createdAt = new \DateTimeImmutable();
-        $this->active = true;
+        $this->users        = new ArrayCollection();
+        $this->cemadenData  = new ArrayCollection();
+        $this->cities       = new ArrayCollection();
+        $this->links        = new ArrayCollection();
+        $this->alerts       = new ArrayCollection();
+        $this->wazeCounts   = new ArrayCollection();
+        $this->routes       = new ArrayCollection();
+        $this->trafficJams  = new ArrayCollection();
+        $this->wazeFeeds    = new ArrayCollection();
+        $this->createdAt    = new \DateTimeImmutable();
+        $this->active       = true;
         $this->generateApiToken();
     }
 
@@ -106,159 +110,47 @@ class Partner
         $this->apiToken = bin2hex(random_bytes(32));
     }
 
-    public function getId(): ?int
-    {
-        return $this->id;
-    }
+    public function getId(): ?int { return $this->id; }
 
-    public function getName(): ?string
-    {
-        return $this->name;
-    }
+    public function getName(): ?string { return $this->name; }
+    public function setName(?string $name): static { $this->name = $name; return $this; }
 
-    public function setName(?string $name): static
-    {
-        $this->name = $name;
-        return $this;
-    }
+    public function getCode(): ?string { return $this->code; }
+    public function setCode(?string $code): static { $this->code = $code; return $this; }
 
-    public function getCode(): ?string
-    {
-        return $this->code;
-    }
+    public function getSlug(): ?string { return $this->slug; }
+    public function setSlug(?string $slug): static { $this->slug = $slug; return $this; }
 
-    public function setCode(?string $code): static
-    {
-        $this->code = $code;
-        return $this;
-    }
+    public function getEmail(): ?string { return $this->email; }
+    public function setEmail(?string $email): static { $this->email = $email; return $this; }
 
-    public function getSlug(): ?string
-    {
-        return $this->slug;
-    }
+    public function getDescription(): ?string { return $this->description; }
+    public function setDescription(?string $description): static { $this->description = $description; return $this; }
 
-    public function setSlug(?string $slug): static
-    {
-        $this->slug = $slug;
-        return $this;
-    }
+    public function getBbox(): ?string { return $this->bbox; }
+    public function setBbox(?string $bbox): static { $this->bbox = $bbox; return $this; }
 
-    public function getEmail(): ?string
-    {
-        return $this->email;
-    }
+    public function getCemadenStates(): ?string { return $this->cemadenStates; }
+    public function setCemadenStates(?string $cemadenStates): static { $this->cemadenStates = $cemadenStates; return $this; }
 
-    public function setEmail(?string $email): static
-    {
-        $this->email = $email;
-        return $this;
-    }
+    public function getApiToken(): ?string { return $this->apiToken; }
+    public function setApiToken(?string $apiToken): static { $this->apiToken = $apiToken; return $this; }
 
-    public function getDescription(): ?string
-    {
-        return $this->description;
-    }
+    public function isActive(): ?bool { return $this->active; }
+    public function getIsActive(): ?bool { return $this->active; }
+    public function setActive(?bool $active): static { $this->active = $active; return $this; }
+    public function setIsActive(?bool $active): static { $this->active = $active; return $this; }
 
-    public function setDescription(?string $description): static
-    {
-        $this->description = $description;
-        return $this;
-    }
+    public function getRefreshIntervalMinutes(): ?int { return $this->refreshIntervalMinutes; }
+    public function setRefreshIntervalMinutes(?int $refreshIntervalMinutes): static { $this->refreshIntervalMinutes = $refreshIntervalMinutes; return $this; }
 
-    public function getBbox(): ?string
-    {
-        return $this->bbox;
-    }
+    public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
+    public function setCreatedAt(\DateTimeImmutable $createdAt): static { $this->createdAt = $createdAt; return $this; }
 
-    public function setBbox(?string $bbox): static
-    {
-        $this->bbox = $bbox;
-        return $this;
-    }
+    public function getUpdatedAt(): ?\DateTimeImmutable { return $this->updatedAt; }
+    public function setUpdatedAt(?\DateTimeImmutable $updatedAt): static { $this->updatedAt = $updatedAt; return $this; }
 
-    public function getCemadenStates(): ?string
-    {
-        return $this->cemadenStates;
-    }
-
-    public function setCemadenStates(?string $cemadenStates): static
-    {
-        $this->cemadenStates = $cemadenStates;
-        return $this;
-    }
-
-    public function getApiToken(): ?string
-    {
-        return $this->apiToken;
-    }
-
-    public function setApiToken(?string $apiToken): static
-    {
-        $this->apiToken = $apiToken;
-        return $this;
-    }
-
-    public function isActive(): ?bool
-    {
-        return $this->active;
-    }
-
-    public function getIsActive(): ?bool
-    {
-        return $this->active;
-    }
-
-    public function setActive(?bool $active): static
-    {
-        $this->active = $active;
-        return $this;
-    }
-
-    public function setIsActive(?bool $active): static
-    {
-        $this->active = $active;
-        return $this;
-    }
-
-    public function getRefreshIntervalMinutes(): ?int
-    {
-        return $this->refreshIntervalMinutes;
-    }
-
-    public function setRefreshIntervalMinutes(?int $refreshIntervalMinutes): static
-    {
-        $this->refreshIntervalMinutes = $refreshIntervalMinutes;
-        return $this;
-    }
-
-    public function getCreatedAt(): \DateTimeImmutable
-    {
-        return $this->createdAt;
-    }
-
-    public function setCreatedAt(\DateTimeImmutable $createdAt): static
-    {
-        $this->createdAt = $createdAt;
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeImmutable
-    {
-        return $this->updatedAt;
-    }
-
-    public function setUpdatedAt(?\DateTimeImmutable $updatedAt): static
-    {
-        $this->updatedAt = $updatedAt;
-        return $this;
-    }
-
-    public function getUsers(): Collection
-    {
-        return $this->users;
-    }
-
+    public function getUsers(): Collection { return $this->users; }
     public function addUser(User $user): static
     {
         if (!$this->users->contains($user)) {
@@ -267,7 +159,6 @@ class Partner
         }
         return $this;
     }
-
     public function removeUser(User $user): static
     {
         if ($this->users->removeElement($user)) {
@@ -278,38 +169,12 @@ class Partner
         return $this;
     }
 
-    public function getCemadenData(): Collection
-    {
-        return $this->cemadenData;
-    }
-
-    public function getCities(): Collection
-    {
-        return $this->cities;
-    }
-
-    public function getLinks(): Collection
-    {
-        return $this->links;
-    }
-
-    public function getAlerts(): Collection
-    {
-        return $this->alerts;
-    }
-
-    public function getWazeCounts(): Collection
-    {
-        return $this->wazeCounts;
-    }
-
-    public function getRoutes(): Collection
-    {
-        return $this->routes;
-    }
-
-    public function getTrafficJams(): Collection
-    {
-        return $this->trafficJams;
-    }
+    public function getCemadenData(): Collection { return $this->cemadenData; }
+    public function getCities(): Collection      { return $this->cities; }
+    public function getLinks(): Collection       { return $this->links; }
+    public function getAlerts(): Collection      { return $this->alerts; }
+    public function getWazeCounts(): Collection  { return $this->wazeCounts; }
+    public function getRoutes(): Collection      { return $this->routes; }
+    public function getTrafficJams(): Collection { return $this->trafficJams; }
+    public function getWazeFeeds(): Collection   { return $this->wazeFeeds; }
 }

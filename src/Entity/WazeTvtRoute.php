@@ -7,189 +7,91 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use Doctrine\ORM\Mapping\Id;
-use Doctrine\ORM\Mapping\GeneratedValue;
-use Doctrine\ORM\Mapping\Column;
-use Doctrine\ORM\Mapping\Entity;
-use Doctrine\ORM\Mapping\ManyToOne;
-use Doctrine\ORM\Mapping\JoinColumn;
-use Doctrine\ORM\Mapping\OneToMany;
-use Doctrine\ORM\Mapping\Table;
 
-#[Entity(repositoryClass: WazeTvtRouteRepository::class)]
-#[Table(name: 'waze_tvt_route')]
+#[ORM\Entity(repositoryClass: WazeTvtRouteRepository::class)]
+#[ORM\Table(name: 'waze_tvt_route')]
+#[ORM\Index(columns: ['partner_id', 'waze_feed_id', 'external_route_id'], name: 'IDX_WAZE_TVT_ROUTE_EXTERNAL')]
+#[ORM\UniqueConstraint(name: 'UQ_WAZE_TVT_ROUTE', columns: ['waze_feed_id', 'external_route_id'])]
 class WazeTvtRoute
 {
-    #[Id]
-    #[GeneratedValue]
-    #[Column(type: Types::INTEGER)]
+    #[ORM\Id]
+    #[ORM\GeneratedValue]
+    #[ORM\Column(type: 'bigint')]
     private ?int $id = null;
 
-    #[ManyToOne(targetEntity: Partner::class, inversedBy: 'wazeTvtRoutes')]
-    #[JoinColumn(name: 'partner_id', referencedColumnName: 'id', nullable: false)]
+    #[ORM\ManyToOne(targetEntity: Partner::class)]
+    #[ORM\JoinColumn(nullable: false)]
     private ?Partner $partner = null;
 
-    #[Column(type: Types::STRING, length: 36, unique: true)]
-    private ?string $wazeRouteId = null;
+    #[ORM\ManyToOne(targetEntity: WazeFeed::class, inversedBy: 'wazeTvtRoutes')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?WazeFeed $wazeFeed = null;
 
-    #[Column(type: Types::STRING, length: 255, nullable: true)]
-    private ?string $name = null;
+    #[ORM\Column(length: 80)]
+    private string $externalRouteId = '';
 
-    #[Column(type: Types::STRING, length: 50, nullable: true)]
-    private ?string $from = null;
+    #[ORM\Column(length: 80, nullable: true)]
+    private ?string $externalUuid = null;
 
-    #[Column(type: Types::STRING, length: 50, nullable: true)]
-    private ?string $to = null;
+    #[ORM\Column(length: 200, nullable: true)]
+    private ?string $label = null;
 
-    #[Column(type: Types::DECIMAL, precision: 10, scale: 6, nullable: true)]
-    private ?float $startLat = null;
+    #[ORM\Column]
+    private bool $isActive = true;
 
-    #[Column(type: Types::DECIMAL, precision: 10, scale: 6, nullable: true)]
-    private ?float $startLng = null;
+    #[ORM\ManyToOne(targetEntity: WazeTvtRouteDefinition::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?WazeTvtRouteDefinition $currentDefinition = null;
 
-    #[Column(type: Types::DECIMAL, precision: 10, scale: 6, nullable: true)]
-    private ?float $endLat = null;
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    private \DateTimeInterface $firstSeenAt;
 
-    #[Column(type: Types::DECIMAL, precision: 10, scale: 6, nullable: true)]
-    private ?float $endLng = null;
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    private \DateTimeInterface $lastSeenAt;
 
-    #[Column(type: Types::STRING, length: 20, nullable: true)]
-    private ?string $direction = null;
+    #[ORM\OneToMany(targetEntity: WazeTvtRouteDefinition::class, mappedBy: 'wazeTvtRoute')]
+    private Collection $definitions;
 
-    #[OneToMany(targetEntity: WazeTvtRouteExecution::class, mappedBy: 'tvtRoute')]
-    private Collection $executions;
-
-    #[OneToMany(targetEntity: WazeTvtRouteHistory::class, mappedBy: 'route', cascade: ['persist', 'remove'])]
-    private Collection $histories;
+    #[ORM\OneToMany(targetEntity: WazeTvtRouteHistory::class, mappedBy: 'wazeTvtRoute')]
+    private Collection $history;
 
     public function __construct()
     {
-        $this->executions = new ArrayCollection();
-        $this->histories = new ArrayCollection();
+        $this->definitions = new ArrayCollection();
+        $this->history = new ArrayCollection();
+        $this->firstSeenAt = new \DateTime();
+        $this->lastSeenAt = new \DateTime();
     }
 
-    public function getId(): ?int
-    {
-        return $this->id;
-    }
+    public function getId(): ?int { return $this->id; }
 
-    public function getPartner(): ?Partner
-    {
-        return $this->partner;
-    }
+    public function getPartner(): ?Partner { return $this->partner; }
+    public function setPartner(?Partner $partner): static { $this->partner = $partner; return $this; }
 
-    public function setPartner(?Partner $partner): static
-    {
-        $this->partner = $partner;
-        return $this;
-    }
+    public function getWazeFeed(): ?WazeFeed { return $this->wazeFeed; }
+    public function setWazeFeed(?WazeFeed $wazeFeed): static { $this->wazeFeed = $wazeFeed; return $this; }
 
-    public function getWazeRouteId(): ?string
-    {
-        return $this->wazeRouteId;
-    }
+    public function getExternalRouteId(): string { return $this->externalRouteId; }
+    public function setExternalRouteId(string $externalRouteId): static { $this->externalRouteId = $externalRouteId; return $this; }
 
-    public function setWazeRouteId(?string $wazeRouteId): static
-    {
-        $this->wazeRouteId = $wazeRouteId;
-        return $this;
-    }
+    public function getExternalUuid(): ?string { return $this->externalUuid; }
+    public function setExternalUuid(?string $externalUuid): static { $this->externalUuid = $externalUuid; return $this; }
 
-    public function getName(): ?string
-    {
-        return $this->name;
-    }
+    public function getLabel(): ?string { return $this->label; }
+    public function setLabel(?string $label): static { $this->label = $label; return $this; }
 
-    public function setName(?string $name): static
-    {
-        $this->name = $name;
-        return $this;
-    }
+    public function isActive(): bool { return $this->isActive; }
+    public function setIsActive(bool $isActive): static { $this->isActive = $isActive; return $this; }
 
-    public function getFrom(): ?string
-    {
-        return $this->from;
-    }
+    public function getCurrentDefinition(): ?WazeTvtRouteDefinition { return $this->currentDefinition; }
+    public function setCurrentDefinition(?WazeTvtRouteDefinition $currentDefinition): static { $this->currentDefinition = $currentDefinition; return $this; }
 
-    public function setFrom(?string $from): static
-    {
-        $this->from = $from;
-        return $this;
-    }
+    public function getFirstSeenAt(): \DateTimeInterface { return $this->firstSeenAt; }
+    public function setFirstSeenAt(\DateTimeInterface $firstSeenAt): static { $this->firstSeenAt = $firstSeenAt; return $this; }
 
-    public function getTo(): ?string
-    {
-        return $this->to;
-    }
+    public function getLastSeenAt(): \DateTimeInterface { return $this->lastSeenAt; }
+    public function setLastSeenAt(\DateTimeInterface $lastSeenAt): static { $this->lastSeenAt = $lastSeenAt; return $this; }
 
-    public function setTo(?string $to): static
-    {
-        $this->to = $to;
-        return $this;
-    }
-
-    public function getStartLat(): ?float
-    {
-        return $this->startLat;
-    }
-
-    public function setStartLat(?float $startLat): static
-    {
-        $this->startLat = $startLat;
-        return $this;
-    }
-
-    public function getStartLng(): ?float
-    {
-        return $this->startLng;
-    }
-
-    public function setStartLng(?float $startLng): static
-    {
-        $this->startLng = $startLng;
-        return $this;
-    }
-
-    public function getEndLat(): ?float
-    {
-        return $this->endLat;
-    }
-
-    public function setEndLat(?float $endLat): static
-    {
-        $this->endLat = $endLat;
-        return $this;
-    }
-
-    public function getEndLng(): ?float
-    {
-        return $this->endLng;
-    }
-
-    public function setEndLng(?float $endLng): static
-    {
-        $this->endLng = $endLng;
-        return $this;
-    }
-
-    public function getDirection(): ?string
-    {
-        return $this->direction;
-    }
-
-    public function setDirection(?string $direction): static
-    {
-        $this->direction = $direction;
-        return $this;
-    }
-
-    public function getExecutions(): Collection
-    {
-        return $this->executions;
-    }
-
-    public function getHistories(): Collection
-    {
-        return $this->histories;
-    }
+    public function getDefinitions(): Collection { return $this->definitions; }
+    public function getHistory(): Collection { return $this->history; }
 }

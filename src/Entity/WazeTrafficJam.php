@@ -1,259 +1,231 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Entity;
 
 use App\Repository\WazeTrafficJamRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
-/**
- * Congestionamento coletado do feed PartnerHub do Waze (format=1).
- *
- * Estrutura do JSON (jams[]):
- * {
- *   "uuid": "string",
- *   "street": "string|null",
- *   "city": "string|null",
- *   "country": "string",
- *   "level": int,          // 0-5
- *   "speedKMH": float,     // velocidade em km/h
- *   "speed": float,        // velocidade em m/s
- *   "length": int|float,   // comprimento em metros (API pode retornar float ex: 450.0)
- *   "delay": int,          // atraso em segundos
- *   "type": "string",      // NONE, JAM, SMALL_JAM...
- *   "turnType": "string",
- *   "roadType": int,
- *   "startNode": "string|null",
- *   "endNode": "string|null",
- *   "causedBy": "string|null",
- *   "blocking": bool,
- *   "severity": int,
- *   "id": int,
- *   "line": [{"x": float, "y": float}],
- *   "segments": [],
- *   "pubMillis": int
- * }
- */
 #[ORM\Entity(repositoryClass: WazeTrafficJamRepository::class)]
-#[ORM\Table(name: 'waze_traffic_jams')]
-#[ORM\UniqueConstraint(name: 'uq_waze_jam_uuid', columns: ['waze_id'])]
-#[ORM\Index(name: 'idx_city_level', columns: ['city', 'level'])]
-#[ORM\Index(name: 'idx_jam_pubmillis', columns: ['pub_millis'])]
-#[ORM\Index(name: 'idx_jam_partner_pub', columns: ['partner_id', 'pub_millis'])]
-#[ORM\HasLifecycleCallbacks]
+#[ORM\Table(name: 'waze_traffic_jam')]
+#[ORM\Index(columns: ['partner_id', 'waze_feed_id', 'external_uuid'], name: 'IDX_WAZE_JAM_EXTERNAL')]
+#[ORM\Index(columns: ['partner_id', 'dedup_key'], name: 'IDX_WAZE_JAM_DEDUP')]
+#[ORM\Index(columns: ['partner_id', 'is_active', 'last_seen_at'], name: 'IDX_WAZE_JAM_ACTIVE_SEEN')]
 class WazeTrafficJam
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
-    #[ORM\Column]
+    #[ORM\Column(type: 'bigint')]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(targetEntity: Partner::class, inversedBy: 'trafficJams')]
-    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    // ── Vínculos ────────────────────────────────────────────────────────────
+
+    #[ORM\ManyToOne(targetEntity: Partner::class)]
+    #[ORM\JoinColumn(nullable: false)]
     private ?Partner $partner = null;
 
-    /** Link de feed de onde este jam foi coletado */
-    #[ORM\ManyToOne(targetEntity: MonitoredLink::class)]
-    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
-    private ?MonitoredLink $sourceLink = null;
+    #[ORM\ManyToOne(targetEntity: WazeFeed::class, inversedBy: 'wazeTrafficJams')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?WazeFeed $wazeFeed = null;
 
-    /** UUID único Waze — chave de deduplicação (campo "uuid" no JSON) */
-    #[ORM\Column(length: 80, unique: true)]
-    private string $wazeId = '';
+    #[ORM\ManyToOne(targetEntity: WazeFeedCollection::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?WazeFeedCollection $lastSeenCollection = null;
 
-    /** ID numérico interno do Waze (campo "id" no JSON) */
+    // ── Identificadores ─────────────────────────────────────────────────────
+
     #[ORM\Column(nullable: true)]
-    private ?int $wazeNumericId = null;
+    private ?int $externalId = null;
 
-    #[ORM\Column(length: 120, nullable: true)]
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $externalUuid = null;
+
+    #[ORM\Column(length: 64)]
+    private string $dedupKey = '';
+
+    // ── Localização ─────────────────────────────────────────────────────────
+
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $street = null;
 
-    #[ORM\Column(length: 80, nullable: true)]
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $streetNormalized = null;
+
+    #[ORM\Column(length: 150, nullable: true)]
     private ?string $city = null;
 
-    #[ORM\Column(length: 10, nullable: true)]
+    #[ORM\Column(length: 2, nullable: true)]
     private ?string $country = null;
 
-    /** Nível de congestionamento (0-5) */
-    #[ORM\Column(nullable: true)]
-    private ?int $level = null;
+    #[ORM\Column(type: 'smallint', nullable: true)]
+    private ?int $roadType = null;
 
-    /**
-     * Velocidade média em km/h (campo "speedKMH").
-     * DECIMAL(8,2) — Doctrine retorna string do DBAL; armazenamos como string.
-     */
+    #[ORM\Column(type: 'decimal', precision: 10, scale: 7, nullable: true)]
+    private ?string $startLatitude = null;
+
+    #[ORM\Column(type: 'decimal', precision: 10, scale: 7, nullable: true)]
+    private ?string $startLongitude = null;
+
+    #[ORM\Column(type: 'decimal', precision: 10, scale: 7, nullable: true)]
+    private ?string $endLatitude = null;
+
+    #[ORM\Column(type: 'decimal', precision: 10, scale: 7, nullable: true)]
+    private ?string $endLongitude = null;
+
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $geometryHash = null;
+
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $geometry = null;
+
+    // ── Métricas ────────────────────────────────────────────────────────────
+
+    #[ORM\Column(nullable: true)]
+    private ?int $lengthMeters = null;
+
     #[ORM\Column(type: 'decimal', precision: 8, scale: 2, nullable: true)]
     private ?string $speedKmh = null;
 
-    /**
-     * Velocidade em m/s (campo "speed").
-     * DECIMAL(8,3) — Doctrine retorna string do DBAL; armazenamos como string.
-     */
-    #[ORM\Column(type: 'decimal', precision: 8, scale: 3, nullable: true)]
-    private ?string $speed = null;
+    #[ORM\Column(type: 'decimal', precision: 8, scale: 2, nullable: true)]
+    private ?string $speedMps = null;
 
-    /** Comprimento do jam em metros (campo "length") — armazenado como int */
     #[ORM\Column(nullable: true)]
-    private ?int $length = null;
+    private ?int $delaySeconds = null;
 
-    /** Atraso estimado em segundos (campo "delay") */
-    #[ORM\Column(nullable: true)]
-    private ?int $delay = null;
+    #[ORM\Column(type: 'smallint', nullable: true)]
+    private ?int $level = null;
 
-    /** Tipo do jam (NONE, JAM, SMALL_JAM, LARGE_JAM, HUGE_JAM) */
-    #[ORM\Column(length: 40, nullable: true)]
-    private ?string $type = null;
-
-    /** Tipo de curva/conversão */
-    #[ORM\Column(length: 40, nullable: true)]
+    #[ORM\Column(length: 50, nullable: true)]
     private ?string $turnType = null;
 
-    /** Código de tipo de via Waze */
-    #[ORM\Column(nullable: true)]
-    private ?int $roadType = null;
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $blockingAlertUuid = null;
 
-    /** Nó de início do segmento */
-    #[ORM\Column(length: 200, nullable: true)]
-    private ?string $startNode = null;
+    // ── Timestamps ──────────────────────────────────────────────────────────
 
-    /** Nó de fim do segmento */
-    #[ORM\Column(length: 200, nullable: true)]
-    private ?string $endNode = null;
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $publishedAt = null;
 
-    /** UUID do alerta que causou o jam (campo "causedBy") */
-    #[ORM\Column(length: 80, nullable: true)]
-    private ?string $causedBy = null;
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    private \DateTimeInterface $firstSeenAt;
 
-    /** Jam bloqueia a via completamente (campo "blocking") */
-    #[ORM\Column(nullable: true)]
-    private ?bool $blocking = null;
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    private \DateTimeInterface $lastSeenAt;
 
-    /** Severidade do jam (campo "severity") */
-    #[ORM\Column(nullable: true)]
-    private ?int $severity = null;
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $missingSinceAt = null;
 
-    /** Linha geográfica do jam — array de {x: lon, y: lat} */
-    #[ORM\Column(type: 'json')]
-    private array $line = [];
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $deactivatedAt = null;
 
-    /** Segmentos de via do jam */
-    #[ORM\Column(type: 'json')]
-    private array $segments = [];
+    // ── Estado ──────────────────────────────────────────────────────────────
 
-    /** Timestamp de publicação no Waze (milissegundos) */
-    #[ORM\Column(type: 'bigint')]
-    private int $pubMillis = 0;
+    #[ORM\Column]
+    private bool $isActive = true;
 
-    /** startTimeMillis do feed onde este jam foi coletado */
-    #[ORM\Column(type: 'bigint', nullable: true)]
-    private ?int $feedStartMillis = null;
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $rawPayload = null;
 
-    #[ORM\Column(type: 'datetime_immutable')]
-    private \DateTimeImmutable $createdAt;
+    public function __construct()
+    {
+        $this->firstSeenAt = new \DateTime();
+        $this->lastSeenAt = new \DateTime();
+    }
 
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
-    private ?\DateTimeImmutable $updatedAt = null;
-
-    #[ORM\PrePersist]
-    public function onPrePersist(): void { $this->createdAt = new \DateTimeImmutable(); }
-
-    #[ORM\PreUpdate]
-    public function onPreUpdate(): void { $this->updatedAt = new \DateTimeImmutable(); }
-
-    // ── Getters & Setters ─────────────────────────────────────────
+    // ── Getters / Setters ────────────────────────────────────────────────────
 
     public function getId(): ?int { return $this->id; }
 
     public function getPartner(): ?Partner { return $this->partner; }
-    public function setPartner(?Partner $p): static { $this->partner = $p; return $this; }
+    public function setPartner(?Partner $partner): static { $this->partner = $partner; return $this; }
 
-    public function getSourceLink(): ?MonitoredLink { return $this->sourceLink; }
-    public function setSourceLink(?MonitoredLink $l): static { $this->sourceLink = $l; return $this; }
+    public function getWazeFeed(): ?WazeFeed { return $this->wazeFeed; }
+    public function setWazeFeed(?WazeFeed $wazeFeed): static { $this->wazeFeed = $wazeFeed; return $this; }
 
-    public function getWazeId(): string { return $this->wazeId; }
-    public function setWazeId(string $v): static { $this->wazeId = $v; return $this; }
+    public function getLastSeenCollection(): ?WazeFeedCollection { return $this->lastSeenCollection; }
+    public function setLastSeenCollection(?WazeFeedCollection $c): static { $this->lastSeenCollection = $c; return $this; }
 
-    public function getWazeNumericId(): ?int { return $this->wazeNumericId; }
-    public function setWazeNumericId(?int $v): static { $this->wazeNumericId = $v; return $this; }
+    public function getExternalId(): ?int { return $this->externalId; }
+    public function setExternalId(?int $externalId): static { $this->externalId = $externalId; return $this; }
+
+    public function getExternalUuid(): ?string { return $this->externalUuid; }
+    public function setExternalUuid(?string $externalUuid): static { $this->externalUuid = $externalUuid; return $this; }
+
+    public function getDedupKey(): string { return $this->dedupKey; }
+    public function setDedupKey(string $dedupKey): static { $this->dedupKey = $dedupKey; return $this; }
 
     public function getStreet(): ?string { return $this->street; }
-    public function setStreet(?string $v): static { $this->street = $v; return $this; }
+    public function setStreet(?string $street): static { $this->street = $street; return $this; }
+
+    public function getStreetNormalized(): ?string { return $this->streetNormalized; }
+    public function setStreetNormalized(?string $streetNormalized): static { $this->streetNormalized = $streetNormalized; return $this; }
 
     public function getCity(): ?string { return $this->city; }
-    public function setCity(?string $v): static { $this->city = $v; return $this; }
+    public function setCity(?string $city): static { $this->city = $city; return $this; }
 
     public function getCountry(): ?string { return $this->country; }
-    public function setCountry(?string $v): static { $this->country = $v; return $this; }
-
-    public function getLevel(): ?int { return $this->level; }
-    public function setLevel(?int $v): static { $this->level = $v; return $this; }
-
-    /** Retorna velocidade em km/h como float */
-    public function getSpeedKmh(): ?float { return $this->speedKmh !== null ? (float) $this->speedKmh : null; }
-    public function setSpeedKmh(float|string|null $v): static { $this->speedKmh = $v !== null ? (string) $v : null; return $this; }
-
-    /** Retorna velocidade em m/s como float */
-    public function getSpeed(): ?float { return $this->speed !== null ? (float) $this->speed : null; }
-    public function setSpeed(float|string|null $v): static { $this->speed = $v !== null ? (string) $v : null; return $this; }
-
-    public function getLength(): ?int { return $this->length; }
-
-    /**
-     * A API do Waze pode retornar length como float (ex: 450.0).
-     * Aceitamos int|float|null e armazenamos sempre como int.
-     */
-    public function setLength(int|float|null $v): static
-    {
-        $this->length = $v !== null ? (int) $v : null;
-        return $this;
-    }
-
-    public function getDelay(): ?int { return $this->delay; }
-    public function setDelay(?int $v): static { $this->delay = $v; return $this; }
-
-    public function getType(): ?string { return $this->type; }
-    public function setType(?string $v): static { $this->type = $v; return $this; }
-
-    public function getTurnType(): ?string { return $this->turnType; }
-    public function setTurnType(?string $v): static { $this->turnType = $v; return $this; }
+    public function setCountry(?string $country): static { $this->country = $country; return $this; }
 
     public function getRoadType(): ?int { return $this->roadType; }
-    public function setRoadType(?int $v): static { $this->roadType = $v; return $this; }
+    public function setRoadType(?int $roadType): static { $this->roadType = $roadType; return $this; }
 
-    public function getStartNode(): ?string { return $this->startNode; }
-    public function setStartNode(?string $v): static { $this->startNode = $v; return $this; }
+    public function getStartLatitude(): ?float { return $this->startLatitude; }
+    public function setStartLatitude(?float $startLatitude): static { $this->startLatitude = $startLatitude; return $this; }
 
-    public function getEndNode(): ?string { return $this->endNode; }
-    public function setEndNode(?string $v): static { $this->endNode = $v; return $this; }
+    public function getStartLongitude(): ?float { return $this->startLongitude; }
+    public function setStartLongitude(?float $startLongitude): static { $this->startLongitude = $startLongitude; return $this; }
 
-    public function getCausedBy(): ?string { return $this->causedBy; }
-    public function setCausedBy(?string $v): static { $this->causedBy = $v; return $this; }
+    public function getEndLatitude(): ?float { return $this->endLatitude; }
+    public function setEndLatitude(?float $endLatitude): static { $this->endLatitude = $endLatitude; return $this; }
 
-    public function getBlocking(): ?bool { return $this->blocking; }
-    public function setBlocking(?bool $v): static { $this->blocking = $v; return $this; }
+    public function getEndLongitude(): ?float { return $this->endLongitude; }
+    public function setEndLongitude(?float $endLongitude): static { $this->endLongitude = $endLongitude; return $this; }
 
-    public function getSeverity(): ?int { return $this->severity; }
-    public function setSeverity(?int $v): static { $this->severity = $v; return $this; }
+    public function getGeometryHash(): ?string { return $this->geometryHash; }
+    public function setGeometryHash(?string $geometryHash): static { $this->geometryHash = $geometryHash; return $this; }
 
-    public function getLine(): array { return $this->line; }
-    public function setLine(array $v): static { $this->line = $v; return $this; }
+    public function getGeometry(): ?array { return $this->geometry; }
+    public function setGeometry(?array $geometry): static { $this->geometry = $geometry; return $this; }
 
-    public function getSegments(): array { return $this->segments; }
-    public function setSegments(array $v): static { $this->segments = $v; return $this; }
+    public function getLengthMeters(): ?int { return $this->lengthMeters; }
+    public function setLengthMeters(?int $lengthMeters): static { $this->lengthMeters = $lengthMeters; return $this; }
 
-    public function getPubMillis(): int { return $this->pubMillis; }
-    public function setPubMillis(int $v): static { $this->pubMillis = $v; return $this; }
+    public function getSpeedKmh(): ?string { return $this->speedKmh; }
+    public function setSpeedKmh(?string $speedKmh): static { $this->speedKmh = $speedKmh; return $this; }
 
-    public function getFeedStartMillis(): ?int { return $this->feedStartMillis; }
-    public function setFeedStartMillis(?int $v): static { $this->feedStartMillis = $v; return $this; }
+    public function getSpeedMps(): ?string { return $this->speedMps; }
+    public function setSpeedMps(?string $speedMps): static { $this->speedMps = $speedMps; return $this; }
 
-    public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
-    public function getUpdatedAt(): ?\DateTimeImmutable { return $this->updatedAt; }
+    public function getDelaySeconds(): ?int { return $this->delaySeconds; }
+    public function setDelaySeconds(?int $delaySeconds): static { $this->delaySeconds = $delaySeconds; return $this; }
 
-    /** Converte pubMillis em DateTimeImmutable (UTC) */
-    public function getPubDate(): \DateTimeImmutable
-    {
-        return new \DateTimeImmutable('@' . intdiv($this->pubMillis, 1000));
-    }
+    public function getLevel(): ?int { return $this->level; }
+    public function setLevel(?int $level): static { $this->level = $level; return $this; }
+
+    public function getTurnType(): ?string { return $this->turnType; }
+    public function setTurnType(?string $turnType): static { $this->turnType = $turnType; return $this; }
+
+    public function getBlockingAlertUuid(): ?string { return $this->blockingAlertUuid; }
+    public function setBlockingAlertUuid(?string $blockingAlertUuid): static { $this->blockingAlertUuid = $blockingAlertUuid; return $this; }
+
+    public function getPublishedAt(): ?\DateTimeInterface { return $this->publishedAt; }
+    public function setPublishedAt(?\DateTimeInterface $publishedAt): static { $this->publishedAt = $publishedAt; return $this; }
+
+    public function getFirstSeenAt(): \DateTimeInterface { return $this->firstSeenAt; }
+    public function setFirstSeenAt(\DateTimeInterface $firstSeenAt): static { $this->firstSeenAt = $firstSeenAt; return $this; }
+
+    public function getLastSeenAt(): \DateTimeInterface { return $this->lastSeenAt; }
+    public function setLastSeenAt(\DateTimeInterface $lastSeenAt): static { $this->lastSeenAt = $lastSeenAt; return $this; }
+
+    public function getMissingSinceAt(): ?\DateTimeInterface { return $this->missingSinceAt; }
+    public function setMissingSinceAt(?\DateTimeInterface $missingSinceAt): static { $this->missingSinceAt = $missingSinceAt; return $this; }
+
+    public function getDeactivatedAt(): ?\DateTimeInterface { return $this->deactivatedAt; }
+    public function setDeactivatedAt(?\DateTimeInterface $deactivatedAt): static { $this->deactivatedAt = $deactivatedAt; return $this; }
+
+    public function isActive(): bool { return $this->isActive; }
+    public function setIsActive(bool $isActive): static { $this->isActive = $isActive; return $this; }
+
+    public function getRawPayload(): ?array { return $this->rawPayload; }
+    public function setRawPayload(?array $rawPayload): static { $this->rawPayload = $rawPayload; return $this; }
 }

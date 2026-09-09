@@ -1,262 +1,221 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Entity;
 
 use App\Repository\WazeAlertRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
-/**
- * Alerta coletado do feed PartnerHub do Waze (format=1).
- *
- * Estrutura do JSON (alerts[]):
- * {
- *   "uuid": "string",
- *   "type": "ACCIDENT|JAM|WEATHERHAZARD|HAZARD|MISC|CONSTRUCTION|ROAD_CLOSED",
- *   "subtype": "string|null",
- *   "street": "string|null",
- *   "city": "string|null",
- *   "country": "string",
- *   "location": {"x": float, "y": float},
- *   "pubMillis": int,
- *   "reliability": int,
- *   "confidence": int,
- *   "reportRating": int,
- *   "nThumbsUp": int,
- *   "nComments": int,
- *   "reportDescription": "string|null",
- *   "magvar": int,
- *   "roadType": int,
- *   "additionalInfo": "string|null",
- *   "comments": [],
- *   "jamUuid": "string|null",
- *   "inscale": bool,
- *   "isJamUnifiedAlert": bool,
- *   "reportByMunicipalityUser": bool
- * }
- */
 #[ORM\Entity(repositoryClass: WazeAlertRepository::class)]
-#[ORM\Table(name: 'waze_alerts')]
-#[ORM\UniqueConstraint(name: 'uq_waze_alert_uuid', columns: ['waze_id'])]
-#[ORM\Index(name: 'idx_type_city', columns: ['type', 'city'])]
-#[ORM\Index(name: 'idx_pubmillis', columns: ['pub_millis'])]
-#[ORM\Index(name: 'idx_partner_pub', columns: ['partner_id', 'pub_millis'])]
-#[ORM\HasLifecycleCallbacks]
+#[ORM\Table(name: 'waze_alert')]
+#[ORM\Index(columns: ['partner_id', 'waze_feed_id', 'external_uuid'], name: 'IDX_WAZE_ALERT_EXTERNAL')]
+#[ORM\Index(columns: ['partner_id', 'dedup_key'], name: 'IDX_WAZE_ALERT_DEDUP')]
+#[ORM\Index(columns: ['partner_id', 'is_active', 'last_seen_at'], name: 'IDX_WAZE_ALERT_ACTIVE_SEEN')]
 class WazeAlert
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
-    #[ORM\Column]
+    #[ORM\Column(type: 'bigint')]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(targetEntity: Partner::class, inversedBy: 'alerts')]
-    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    // ── Vínculos ────────────────────────────────────────────────────────────
+
+    #[ORM\ManyToOne(targetEntity: Partner::class)]
+    #[ORM\JoinColumn(nullable: false)]
     private ?Partner $partner = null;
 
-    /** Link de feed de onde este alerta foi coletado */
-    #[ORM\ManyToOne(targetEntity: MonitoredLink::class)]
-    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
-    private ?MonitoredLink $sourceLink = null;
+    #[ORM\ManyToOne(targetEntity: WazeFeed::class, inversedBy: 'wazeAlerts')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?WazeFeed $wazeFeed = null;
 
-    /** UUID único do Waze — chave de deduplicação (campo "uuid" no JSON) */
-    #[ORM\Column(length: 80, unique: true)]
-    private string $wazeId = '';
+    #[ORM\ManyToOne(targetEntity: WazeFeedCollection::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?WazeFeedCollection $lastSeenCollection = null;
 
-    /** ACCIDENT, JAM, WEATHERHAZARD, HAZARD, MISC, CONSTRUCTION, ROAD_CLOSED */
-    #[ORM\Column(length: 60)]
+    // ── Identificadores ─────────────────────────────────────────────────────
+
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $externalUuid = null;
+
+    #[ORM\Column(length: 64)]
+    private string $dedupKey = '';
+
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $semanticClusterKey = null;
+
+    // ── Tipo ────────────────────────────────────────────────────────────────
+
+    #[ORM\Column(length: 50)]
     private string $type = '';
 
-    /** Ex: ACCIDENT_MINOR, HAZARD_ON_ROAD_POT_HOLE, ROAD_CLOSED_CONSTRUCTION */
-    #[ORM\Column(length: 60, nullable: true)]
+    #[ORM\Column(length: 100, nullable: true)]
     private ?string $subtype = null;
 
-    /**
-     * Latitude — campo "y" do objeto location.
-     * Armazenado como DECIMAL(10,7); Doctrine retorna string do DBAL.
-     */
+    // ── Localização ─────────────────────────────────────────────────────────
+
     #[ORM\Column(type: 'decimal', precision: 10, scale: 7)]
     private string $latitude = '0.0000000';
 
-    /**
-     * Longitude — campo "x" do objeto location.
-     * Armazenado como DECIMAL(10,7); Doctrine retorna string do DBAL.
-     */
     #[ORM\Column(type: 'decimal', precision: 10, scale: 7)]
     private string $longitude = '0.0000000';
 
-    #[ORM\Column(length: 120, nullable: true)]
+    #[ORM\Column(length: 12)]
+    private string $geohash = '';
+
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $street = null;
 
-    #[ORM\Column(length: 80, nullable: true)]
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $streetNormalized = null;
+
+    #[ORM\Column(length: 150, nullable: true)]
     private ?string $city = null;
 
-    #[ORM\Column(length: 10, nullable: true)]
+    #[ORM\Column(length: 2, nullable: true)]
     private ?string $country = null;
 
-    #[ORM\Column(nullable: true)]
-    private ?int $reliability = null;
-
-    #[ORM\Column(nullable: true)]
-    private ?int $confidence = null;
-
-    #[ORM\Column(nullable: true)]
-    private ?int $reportRating = null;
-
-    /** Número de thumbs up recebidos */
-    #[ORM\Column(nullable: true)]
-    private ?int $nThumbsUp = null;
-
-    /** Número de comentários no alerta */
-    #[ORM\Column(nullable: true)]
-    private ?int $nComments = null;
-
-    /** Descrição livre do relato */
-    #[ORM\Column(type: 'text', nullable: true)]
-    private ?string $reportDescription = null;
-
-    /** Direção magnética do veículo (0-359) */
-    #[ORM\Column(nullable: true)]
-    private ?int $magvar = null;
-
-    /** Tipo de via (código Waze: 1=Street, 2=Primary, 3=Freeway...) */
-    #[ORM\Column(nullable: true)]
+    #[ORM\Column(type: 'smallint', nullable: true)]
     private ?int $roadType = null;
 
-    /** Informações adicionais do feed */
-    #[ORM\Column(type: 'text', nullable: true)]
-    private ?string $additionalInfo = null;
+    // ── Métricas ────────────────────────────────────────────────────────────
 
-    /** Comentários dos usuários (array JSON) */
-    #[ORM\Column(type: 'json')]
-    private array $comments = [];
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $description = null;
 
-    /** UUID do jam associado a este alerta (campo "jamUuid") */
-    #[ORM\Column(length: 80, nullable: true)]
-    private ?string $jamUuid = null;
+    #[ORM\Column(type: 'smallint', nullable: true)]
+    private ?int $confidence = null;
 
-    /** Alerta visível na escala atual do mapa (campo "inscale") */
+    #[ORM\Column(type: 'smallint', nullable: true)]
+    private ?int $reliability = null;
+
+    #[ORM\Column(type: 'smallint', nullable: true)]
+    private ?int $reportRating = null;
+
     #[ORM\Column(nullable: true)]
-    private ?bool $inscale = null;
+    private ?int $thumbsUp = null;
 
-    /** Alerta unificado de jam (campo "isJamUnifiedAlert") */
-    #[ORM\Column(nullable: true)]
-    private ?bool $isJamUnifiedAlert = null;
+    #[ORM\Column(type: 'smallint', nullable: true)]
+    private ?int $magvar = null;
 
-    /** Relato feito por usuário municipal (campo "reportByMunicipalityUser") */
-    #[ORM\Column(nullable: true)]
-    private ?bool $reportByMunicipalityUser = null;
+    // ── Timestamps ──────────────────────────────────────────────────────────
 
-    /** Timestamp de publicação no Waze (milissegundos) */
-    #[ORM\Column(type: 'bigint')]
-    private int $pubMillis = 0;
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $reportedAt = null;
 
-    /** startTimeMillis do feed onde este alerta foi coletado */
-    #[ORM\Column(type: 'bigint', nullable: true)]
-    private ?int $feedStartMillis = null;
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    private \DateTimeInterface $firstSeenAt;
 
-    #[ORM\Column(type: 'datetime_immutable')]
-    private \DateTimeImmutable $createdAt;
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    private \DateTimeInterface $lastSeenAt;
 
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
-    private ?\DateTimeImmutable $updatedAt = null;
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $missingSinceAt = null;
 
-    #[ORM\PrePersist]
-    public function onPrePersist(): void { $this->createdAt = new \DateTimeImmutable(); }
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $deactivatedAt = null;
 
-    #[ORM\PreUpdate]
-    public function onPreUpdate(): void { $this->updatedAt = new \DateTimeImmutable(); }
+    // ── Estado ──────────────────────────────────────────────────────────────
 
-    // ── Getters & Setters ──────────────────────────────────────────────────────
+    #[ORM\Column]
+    private bool $isActive = true;
+
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $rawPayload = null;
+
+    public function __construct()
+    {
+        $this->firstSeenAt = new \DateTime();
+        $this->lastSeenAt = new \DateTime();
+    }
+
+    // ── Getters / Setters ────────────────────────────────────────────────────
 
     public function getId(): ?int { return $this->id; }
 
     public function getPartner(): ?Partner { return $this->partner; }
-    public function setPartner(?Partner $p): static { $this->partner = $p; return $this; }
+    public function setPartner(?Partner $partner): static { $this->partner = $partner; return $this; }
 
-    public function getSourceLink(): ?MonitoredLink { return $this->sourceLink; }
-    public function setSourceLink(?MonitoredLink $l): static { $this->sourceLink = $l; return $this; }
+    public function getWazeFeed(): ?WazeFeed { return $this->wazeFeed; }
+    public function setWazeFeed(?WazeFeed $wazeFeed): static { $this->wazeFeed = $wazeFeed; return $this; }
 
-    public function getWazeId(): string { return $this->wazeId; }
-    public function setWazeId(string $v): static { $this->wazeId = $v; return $this; }
+    public function getLastSeenCollection(): ?WazeFeedCollection { return $this->lastSeenCollection; }
+    public function setLastSeenCollection(?WazeFeedCollection $c): static { $this->lastSeenCollection = $c; return $this; }
+
+    public function getExternalUuid(): ?string { return $this->externalUuid; }
+    public function setExternalUuid(?string $externalUuid): static { $this->externalUuid = $externalUuid; return $this; }
+
+    public function getDedupKey(): string { return $this->dedupKey; }
+    public function setDedupKey(string $dedupKey): static { $this->dedupKey = $dedupKey; return $this; }
+
+    public function getSemanticClusterKey(): ?string { return $this->semanticClusterKey; }
+    public function setSemanticClusterKey(?string $k): static { $this->semanticClusterKey = $k; return $this; }
 
     public function getType(): string { return $this->type; }
-    public function setType(string $v): static { $this->type = $v; return $this; }
+    public function setType(string $type): static { $this->type = $type; return $this; }
 
     public function getSubtype(): ?string { return $this->subtype; }
-    public function setSubtype(?string $v): static { $this->subtype = $v; return $this; }
+    public function setSubtype(?string $subtype): static { $this->subtype = $subtype; return $this; }
 
-    /** Retorna latitude como float (faz cast da string DBAL) */
-    public function getLatitude(): float { return (float) $this->latitude; }
-    public function setLatitude(float|string $v): static { $this->latitude = (string) $v; return $this; }
+    public function getLatitude(): float { return $this->latitude; }
+    public function setLatitude(float $latitude): static { $this->latitude = $latitude; return $this; }
 
-    /** Retorna longitude como float (faz cast da string DBAL) */
-    public function getLongitude(): float { return (float) $this->longitude; }
-    public function setLongitude(float|string $v): static { $this->longitude = (string) $v; return $this; }
+    public function getLongitude(): float { return $this->longitude; }
+    public function setLongitude(float $longitude): static { $this->longitude = $longitude; return $this; }
+
+    public function getGeohash(): string { return $this->geohash; }
+    public function setGeohash(string $geohash): static { $this->geohash = $geohash; return $this; }
 
     public function getStreet(): ?string { return $this->street; }
-    public function setStreet(?string $v): static { $this->street = $v; return $this; }
+    public function setStreet(?string $street): static { $this->street = $street; return $this; }
+
+    public function getStreetNormalized(): ?string { return $this->streetNormalized; }
+    public function setStreetNormalized(?string $streetNormalized): static { $this->streetNormalized = $streetNormalized; return $this; }
 
     public function getCity(): ?string { return $this->city; }
-    public function setCity(?string $v): static { $this->city = $v; return $this; }
+    public function setCity(?string $city): static { $this->city = $city; return $this; }
 
     public function getCountry(): ?string { return $this->country; }
-    public function setCountry(?string $v): static { $this->country = $v; return $this; }
-
-    public function getReliability(): ?int { return $this->reliability; }
-    public function setReliability(?int $v): static { $this->reliability = $v; return $this; }
-
-    public function getConfidence(): ?int { return $this->confidence; }
-    public function setConfidence(?int $v): static { $this->confidence = $v; return $this; }
-
-    public function getReportRating(): ?int { return $this->reportRating; }
-    public function setReportRating(?int $v): static { $this->reportRating = $v; return $this; }
-
-    public function getNThumbsUp(): ?int { return $this->nThumbsUp; }
-    public function setNThumbsUp(?int $v): static { $this->nThumbsUp = $v; return $this; }
-
-    public function getNComments(): ?int { return $this->nComments; }
-    public function setNComments(?int $v): static { $this->nComments = $v; return $this; }
-
-    public function getReportDescription(): ?string { return $this->reportDescription; }
-    public function setReportDescription(?string $v): static { $this->reportDescription = $v; return $this; }
-
-    public function getMagvar(): ?int { return $this->magvar; }
-    public function setMagvar(?int $v): static { $this->magvar = $v; return $this; }
+    public function setCountry(?string $country): static { $this->country = $country; return $this; }
 
     public function getRoadType(): ?int { return $this->roadType; }
-    public function setRoadType(?int $v): static { $this->roadType = $v; return $this; }
+    public function setRoadType(?int $roadType): static { $this->roadType = $roadType; return $this; }
 
-    public function getAdditionalInfo(): ?string { return $this->additionalInfo; }
-    public function setAdditionalInfo(?string $v): static { $this->additionalInfo = $v; return $this; }
+    public function getDescription(): ?string { return $this->description; }
+    public function setDescription(?string $description): static { $this->description = $description; return $this; }
 
-    public function getComments(): array { return $this->comments; }
-    public function setComments(array $v): static { $this->comments = $v; return $this; }
+    public function getConfidence(): ?int { return $this->confidence; }
+    public function setConfidence(?int $confidence): static { $this->confidence = $confidence; return $this; }
 
-    public function getJamUuid(): ?string { return $this->jamUuid; }
-    public function setJamUuid(?string $v): static { $this->jamUuid = $v; return $this; }
+    public function getReliability(): ?int { return $this->reliability; }
+    public function setReliability(?int $reliability): static { $this->reliability = $reliability; return $this; }
 
-    public function getInscale(): ?bool { return $this->inscale; }
-    public function setInscale(?bool $v): static { $this->inscale = $v; return $this; }
+    public function getReportRating(): ?int { return $this->reportRating; }
+    public function setReportRating(?int $reportRating): static { $this->reportRating = $reportRating; return $this; }
 
-    public function getIsJamUnifiedAlert(): ?bool { return $this->isJamUnifiedAlert; }
-    public function setIsJamUnifiedAlert(?bool $v): static { $this->isJamUnifiedAlert = $v; return $this; }
+    public function getThumbsUp(): ?int { return $this->thumbsUp; }
+    public function setThumbsUp(?int $thumbsUp): static { $this->thumbsUp = $thumbsUp; return $this; }
 
-    public function getReportByMunicipalityUser(): ?bool { return $this->reportByMunicipalityUser; }
-    public function setReportByMunicipalityUser(?bool $v): static { $this->reportByMunicipalityUser = $v; return $this; }
+    public function getMagvar(): ?int { return $this->magvar; }
+    public function setMagvar(?int $magvar): static { $this->magvar = $magvar; return $this; }
 
-    public function getPubMillis(): int { return $this->pubMillis; }
-    public function setPubMillis(int $v): static { $this->pubMillis = $v; return $this; }
+    public function getReportedAt(): ?\DateTimeInterface { return $this->reportedAt; }
+    public function setReportedAt(?\DateTimeInterface $reportedAt): static { $this->reportedAt = $reportedAt; return $this; }
 
-    public function getFeedStartMillis(): ?int { return $this->feedStartMillis; }
-    public function setFeedStartMillis(?int $v): static { $this->feedStartMillis = $v; return $this; }
+    public function getFirstSeenAt(): \DateTimeInterface { return $this->firstSeenAt; }
+    public function setFirstSeenAt(\DateTimeInterface $firstSeenAt): static { $this->firstSeenAt = $firstSeenAt; return $this; }
 
-    public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
-    public function getUpdatedAt(): ?\DateTimeImmutable { return $this->updatedAt; }
+    public function getLastSeenAt(): \DateTimeInterface { return $this->lastSeenAt; }
+    public function setLastSeenAt(\DateTimeInterface $lastSeenAt): static { $this->lastSeenAt = $lastSeenAt; return $this; }
 
-    /** Converte pubMillis em DateTimeImmutable (UTC) */
-    public function getPubDate(): \DateTimeImmutable
-    {
-        return new \DateTimeImmutable('@' . intdiv($this->pubMillis, 1000));
-    }
+    public function getMissingSinceAt(): ?\DateTimeInterface { return $this->missingSinceAt; }
+    public function setMissingSinceAt(?\DateTimeInterface $missingSinceAt): static { $this->missingSinceAt = $missingSinceAt; return $this; }
+
+    public function getDeactivatedAt(): ?\DateTimeInterface { return $this->deactivatedAt; }
+    public function setDeactivatedAt(?\DateTimeInterface $deactivatedAt): static { $this->deactivatedAt = $deactivatedAt; return $this; }
+
+    public function isActive(): bool { return $this->isActive; }
+    public function setIsActive(bool $isActive): static { $this->isActive = $isActive; return $this; }
+
+    public function getRawPayload(): ?array { return $this->rawPayload; }
+    public function setRawPayload(?array $rawPayload): static { $this->rawPayload = $rawPayload; return $this; }
 }

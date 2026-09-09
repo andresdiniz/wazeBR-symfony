@@ -4,9 +4,7 @@ namespace App\Command;
 
 use App\Repository\WazeFeedRepository;
 use App\Service\WazeFeedCollectionService;
-use App\Service\WazeAlertSynchronizer;
-use App\Service\WazeJamSynchronizer;
-use App\Service\WazeEventLifecycleService;
+use App\Service\WazeTvtSynchronizer;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -16,17 +14,15 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 #[AsCommand(
-    name: 'waze:collect-feed',
-    description: 'Coleta alertas e congestionamentos dos feeds operacionais Waze (tipo EVENTS)'
+    name: 'waze:collect-tvt',
+    description: 'Coleta rotas TVT dos feeds Waze (tipo TVT)'
 )]
-class WazeCollectFeedCommand extends Command
+class WazeCollectTvtCommand extends Command
 {
     public function __construct(
         private readonly WazeFeedRepository $feedRepository,
         private readonly WazeFeedCollectionService $collectionService,
-        private readonly WazeAlertSynchronizer $alertSynchronizer,
-        private readonly WazeJamSynchronizer $jamSynchronizer,
-        private readonly WazeEventLifecycleService $lifecycleService,
+        private readonly WazeTvtSynchronizer $tvtSynchronizer,
         private readonly HttpClientInterface $httpClient
     ) {
         parent::__construct();
@@ -44,25 +40,21 @@ class WazeCollectFeedCommand extends Command
         $io = new SymfonyStyle($input, $output);
         $dryRun = (bool)$input->getOption('dry-run');
 
-        $feeds = $this->feedRepository->findActiveEventsFeeds();
+        $feeds = $this->feedRepository->findActiveTvtFeeds();
 
-        // Filtro por partner
         if ($partnerId = $input->getOption('partner')) {
             $feeds = array_filter($feeds, fn($f) => $f->getPartner()->getId() == (int)$partnerId);
         }
-
-        // Filtro por feed
         if ($feedId = $input->getOption('feed')) {
             $feeds = array_filter($feeds, fn($f) => $f->getId() == (int)$feedId);
         }
 
         if (empty($feeds)) {
-            $io->warning('Nenhum feed EVENTS ativo encontrado.');
+            $io->warning('Nenhum feed TVT ativo encontrado.');
             return Command::SUCCESS;
         }
 
-        $totalAlerts = 0;
-        $totalJams = 0;
+        $totalRoutes = 0;
         $errors = 0;
 
         foreach ($feeds as $feed) {
@@ -88,30 +80,19 @@ class WazeCollectFeedCommand extends Command
                 $payload = $response->toArray();
                 $payloadHash = hash('sha256', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 
-                $alertsCount = 0;
-                foreach ($payload['alerts'] ?? [] as $alertData) {
-                    $this->alertSynchronizer->upsert($feed, $collection, $alertData);
-                    $alertsCount++;
+                // O payload TVT pode ter rotas em 'routes', 'tvtRoutes' ou diretamente como array
+                $routes = $payload['routes'] ?? $payload['tvtRoutes'] ?? (isset($payload['id']) ? [$payload] : []);
+
+                $routesCount = 0;
+                foreach ($routes as $routeData) {
+                    $this->tvtSynchronizer->upsert($feed, $collection, $routeData);
+                    $routesCount++;
                 }
 
-                $jamsCount = 0;
-                foreach ($payload['jams'] ?? [] as $jamData) {
-                    $this->jamSynchronizer->upsert($feed, $collection, $jamData);
-                    $jamsCount++;
-                }
+                $this->collectionService->succeed($collection, 0, 0, $routesCount, $payloadHash);
+                $totalRoutes += $routesCount;
 
-                $this->collectionService->succeed($collection, $alertsCount, $jamsCount, 0, $payloadHash);
-                $this->lifecycleService->markMissingAndDeactivateExpired($feed, $collection);
-
-                $totalAlerts += $alertsCount;
-                $totalJams += $jamsCount;
-
-                $io->writeln(sprintf(
-                    '%s %d alerts, %d jams',
-                    $label,
-                    $alertsCount,
-                    $jamsCount
-                ));
+                $io->writeln(sprintf('%s %d rotas', $label, $routesCount));
 
             } catch (\Throwable $e) {
                 $this->collectionService->fail($collection, $e);
@@ -120,7 +101,7 @@ class WazeCollectFeedCommand extends Command
             }
         }
 
-        $io->success(sprintf('Concluído. Alerts: %d | Jams: %d | Erros: %d', $totalAlerts, $totalJams, $errors));
+        $io->success(sprintf('Concluído. Rotas: %d | Erros: %d', $totalRoutes, $errors));
 
         return $errors > 0 ? Command::FAILURE : Command::SUCCESS;
     }
