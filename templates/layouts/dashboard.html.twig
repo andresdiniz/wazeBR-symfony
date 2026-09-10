@@ -1,8 +1,4 @@
 {% extends 'base.html.twig' %}
-{% extends '/partials/sidebar.html.twig' %}
-{% extends '/partials/footer.html.twig' %}
-{% extends '/partials/header.html.twig' %}
-
 
 {% block stylesheets %}
     <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
@@ -14,20 +10,13 @@
 
 {% block body %}
 <div class="dashboard-wrapper">
-    <!-- Topbar -->
     {% include 'partials/dashboard/topbar.html.twig' %}
-
     <div class="dashboard-layout">
-        <!-- Sidebar -->
         {% include 'partials/dashboard/sidebar.html.twig' %}
-
-        <!-- Main Content -->
         <main class="dashboard-main">
             {% block dashboard_content %}{% endblock %}
         </main>
     </div>
-
-    <!-- Footer -->
     {% include 'partials/dashboard/footer.html.twig' %}
 </div>
 {% endblock %}
