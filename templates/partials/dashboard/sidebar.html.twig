@@ -4,6 +4,7 @@
     </div>
     <nav class="sidebar-nav">
         <ul class="dashboard-nav">
+            {% set currentRoute = app.request.attributes.get('_route') %}
             <li class="dashboard-nav-item">
                 <a href="{{ path('dashboard') }}"
                    class="dashboard-nav-link {{ currentRoute == 'dashboard' ? 'is-active' : '' }}"
