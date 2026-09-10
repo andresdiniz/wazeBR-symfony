@@ -9,6 +9,8 @@ use App\Entity\WazeFeedCollection;
 use App\Entity\WazeTvtRoute;
 use App\Entity\WazeTvtRouteDefinition;
 use App\Entity\WazeTvtRouteHistory;
+use App\Entity\WazeAlert;
+use App\Entity\WazeTrafficJam;
 use App\Repository\WazeFeedCollectionRepository;
 use App\Repository\WazeFeedRepository;
 use App\Repository\WazeTvtRouteDefinitionRepository;
@@ -49,7 +51,6 @@ class WazeFeedCollectionService
             $feedType = $feed->getType();
             $endpointUrl = $feed->getEndpointUrl();
             
-            // Detect feed type by URL if type is NULL
             if ($feedType === null || $feedType === '') {
                 $feedType = str_contains($endpointUrl, 'feeds-tvt') ? 'TVT' : 'EVENTS';
             }
@@ -164,6 +165,7 @@ class WazeFeedCollectionService
                 continue;
             }
             try {
+                $this->processAlert($alertData, $partner, $feed, $feedCollection);
                 ++$alertsCount;
             } catch (\Throwable $e) {
                 $this->logger->error('Erro ao processar alerta', [
@@ -178,6 +180,7 @@ class WazeFeedCollectionService
                 continue;
             }
             try {
+                $this->processJam($jamData, $partner, $feed, $feedCollection);
                 ++$jamsCount;
             } catch (\Throwable $e) {
                 $this->logger->error('Erro ao processar jam', [
@@ -196,6 +199,90 @@ class WazeFeedCollectionService
             'jams' => $jamsCount,
             'routes' => 0,
         ];
+    }
+
+    private function processAlert(array $data, $partner, WazeFeed $feed, WazeFeedCollection $collection): void
+    {
+        $externalUuid = $data['uuid'] ?? null;
+        
+        if ($externalUuid) {
+            $existing = $this->em->getRepository(WazeAlert::class)->findOneBy([
+                'partner' => $partner,
+                'wazeFeed' => $feed,
+                'externalUuid' => $externalUuid,
+            ]);
+            
+            if ($existing) {
+                $existing->setLastSeenAt(new DateTime());
+                $existing->setIsActive(true);
+                $existing->setMissingSinceAt(null);
+                return;
+            }
+        }
+
+        $alert = new WazeAlert();
+        $alert->setPartner($partner);
+        $alert->setWazeFeed($feed);
+        $alert->setExternalUuid($externalUuid);
+        $alert->setType($data['type'] ?? '');
+        $alert->setSubtype($data['subtype'] ?? null);
+        $alert->setLatitude((float) ($data['location']['y'] ?? 0));
+        $alert->setLongitude((float) ($data['location']['x'] ?? 0));
+        $alert->setStreet($data['street'] ?? null);
+        $alert->setCity($data['city'] ?? null);
+        $alert->setCountry($data['country'] ?? null);
+        $alert->setRoadType($data['roadType'] ?? null);
+        $alert->setDescription($data['description'] ?? null);
+        $alert->setConfidence($data['confidence'] ?? null);
+        $alert->setReliability($data['reliability'] ?? null);
+        $alert->setReportRating($data['reportRating'] ?? null);
+        $alert->setThumbsUp($data['thumbsUp'] ?? null);
+        $alert->setMagvar($data['magvar'] ?? null);
+        
+        if (isset($data['pubMillis'])) {
+            $alert->setReportedAt((new DateTime())->setTimestamp((int) $data['pubMillis'] / 1000));
+        }
+        
+        $alert->setFirstSeenAt(new DateTime());
+        $alert->setLastSeenAt(new DateTime());
+        $alert->setIsActive(true);
+        $alert->setRawPayload($data);
+
+        $this->em->persist($alert);
+    }
+
+    private function processJam(array $data, $partner, WazeFeed $feed, WazeFeedCollection $collection): void
+    {
+        $externalId = $data['id'] ?? null;
+        
+        if ($externalId) {
+            $existing = $this->em->getRepository(WazeTrafficJam::class)->findOneBy([
+                'partner' => $partner,
+                'wazeFeed' => $feed,
+                'externalId' => $externalId,
+            ]);
+            
+            if ($existing) {
+                $existing->setLastSeenAt(new DateTime());
+                $existing->setIsActive(true);
+                return;
+            }
+        }
+
+        $jam = new WazeTrafficJam();
+        $jam->setPartner($partner);
+        $jam->setWazeFeed($feed);
+        $jam->setExternalId($externalId);
+        $jam->setLengthMeters($data['length'] ?? null);
+        $jam->setSpeedKmh(isset($data['speedKMH']) ? (string) round((float) $data['speedKMH'], 2) : null);
+        $jam->setDelaySeconds($data['delay'] ?? null);
+        $jam->setLevel($data['level'] ?? null);
+        $jam->setFirstSeenAt(new DateTime());
+        $jam->setLastSeenAt(new DateTime());
+        $jam->setIsActive(true);
+        $jam->setRawPayload($data);
+
+        $this->em->persist($jam);
     }
 
     private function processTvtItem(array $item, $partner, WazeFeed $feed, WazeFeedCollection $feedCollection, int $index): ?array
