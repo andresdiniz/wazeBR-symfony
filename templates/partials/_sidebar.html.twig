@@ -1,32 +1,8 @@
-<nav id="sidebar" class="sidebar">
-    <div class="sidebar-content">
-        <ul class="sidebar-nav">
-            <li class="sidebar-header">Principal</li>
-            <li class="sidebar-item">
-                <a class="sidebar-link" href="{{ path('dashboard') }}">
-                    <i class="bi bi-speedometer2"></i>
-                    <span class="align-middle">Dashboard</span>
-                </a>
-            </li>
-            <li class="sidebar-item">
-                <a class="sidebar-link" href="{{ path('alert_index') }}">
-                    <i class="bi bi-exclamation-triangle"></i>
-                    <span class="align-middle">Alertas</span>
-                </a>
-            </li>
-            <li class="sidebar-item">
-                <a class="sidebar-link" href="{{ path('traffic_jam_index') }}">
-                    <i class="bi bi-car-front"></i>
-                    <span class="align-middle">Engarrafamentos</span>
-                </a>
-            </li>
-            <li class="sidebar-header">Administraç°µes</li>
-            <li class="sidebar-item">
-                <a class="sidebar-link" href="{{ path('admin_dashboard') }}">
-                    <i class="bi bi-gear"></i>
-                    <span class="align-middle">Admin</span>
-                </a>
-            </li>
-        </ul>
-    </div>
-</nav>
+<aside class="sidebar">
+    <div class="sidebar-header">Principal</div>
+    <a class="sidebar-link" href="{{ path('dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a>
+    <a class="sidebar-link" href="{{ path('alert_index') }}"><i class="bi bi-exclamation-triangle"></i> Alertas</a>
+    <a class="sidebar-link" href="{{ path('traffic_jam_index') }}"><i class="bi bi-car-front"></i> Congestionamentos</a>
+    <div class="sidebar-header">AdministraÃ§Ã£o</div>
+    <a class="sidebar-link" href="{{ path('admin_dashboard') }}"><i class="bi bi-gear"></i> Admin</a>
+</aside>

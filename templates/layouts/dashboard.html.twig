@@ -1,21 +1,25 @@
 {% extends 'base.html.twig' %}
 
+{% block stylesheets %}
+<style>
+.app-shell { min-height: 100vh; display: flex; flex-direction: column; }
+.app-layout { display: flex; flex: 1; }
+.sidebar { width: 260px; background: #0f172a; color: #e2e8f0; flex-shrink: 0; }
+.sidebar-header { font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; color: #94a3b8; padding: 1rem 1.25rem .5rem; }
+.sidebar-link { display: flex; align-items: center; gap: .75rem; padding: .625rem 1.25rem; color: #e2e8f0; text-decoration: none; }
+.sidebar-link:hover { background: rgba(255,255,255,.08); color: #fff; }
+.main-content { flex: 1; min-width: 0; background: #f8fafc; }
+.navbar { min-height: 56px; }
+</style>
+{% endblock %}
+
 {% block body %}
 <div class="app-shell">
     {% include 'partials/_navbar.html.twig' %}
     <div class="app-layout">
         {% include 'partials/_sidebar.html.twig' %}
         <main class="main-content">
-            {% for label, messages in app.flashes %}
-                {% for message in messages %}
-                    <div class="alert alert-{{ label }} alert-dismissible fade show m-3" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                {% endfor %}
-            {% endfor %}
             {% block dashboard_content %}{% endblock %}
-            {% block page_content %}{% endblock %}
         </main>
     </div>
 </div>
