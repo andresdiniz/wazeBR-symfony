@@ -6,6 +6,9 @@ use App\Entity\WazeTrafficJam;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
+/**
+ * @extends ServiceEntityRepository<WazeTrafficJam>
+ */
 class WazeTrafficJamRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
@@ -13,71 +16,30 @@ class WazeTrafficJamRepository extends ServiceEntityRepository
         parent::__construct($registry, WazeTrafficJam::class);
     }
 
-    public function findOneByExternalId(int $partnerId, int $feedId, int $externalId): ?WazeTrafficJam
+    public function countInPeriod(\DateTimeInterface $start, \DateTimeInterface $end, ?int $partnerId = null): int
     {
-        return $this->createQueryBuilder('j')
-            ->join('j.partner', 'p')
-            ->join('j.wazeFeed', 'f')
-            ->where('p.id = :partnerId')
-            ->andWhere('f.id = :feedId')
-            ->andWhere('j.externalId = :externalId')
-            ->setParameter('partnerId', $partnerId)
-            ->setParameter('feedId', $feedId)
-            ->setParameter('externalId', $externalId)
-            ->getQuery()
-            ->getOneOrNullResult();
+        $qb = $this->createQueryBuilder('j')
+            ->select('COUNT(j.id)')
+            ->where('j.lastSeenAt >= :start')
+            ->andWhere('j.lastSeenAt <= :end')
+            ->setParameter('start', $start)
+            ->setParameter('end', $end);
+
+        if ($partnerId !== null) {
+            $qb->andWhere('j.partner = :partner')
+               ->setParameter('partner', $partnerId);
+        }
+
+        return (int) $qb->getQuery()->getSingleScalarResult();
     }
 
-    public function findOneByDedupKey(int $partnerId, string $dedupKey): ?WazeTrafficJam
+    public function findActiveByPartner(int $partnerId): array
     {
         return $this->createQueryBuilder('j')
-            ->join('j.partner', 'p')
-            ->where('p.id = :partnerId')
-            ->andWhere('j.dedupKey = :dedupKey')
-            ->setParameter('partnerId', $partnerId)
-            ->setParameter('dedupKey', $dedupKey)
-            ->getQuery()
-            ->getOneOrNullResult();
-    }
-
-    public function findActiveByFeed(int $feedId): array
-    {
-        return $this->createQueryBuilder('j')
-            ->join('j.wazeFeed', 'f')
-            ->where('f.id = :feedId')
-            ->andWhere('j.isActive = :active')
-            ->setParameter('feedId', $feedId)
-            ->setParameter('active', true)
-            ->getQuery()
-            ->getResult();
-    }
-
-    public function findMissingSince(int $feedId, \DateTimeInterface $cutoff): array
-    {
-        return $this->createQueryBuilder('j')
-            ->join('j.wazeFeed', 'f')
-            ->where('f.id = :feedId')
-            ->andWhere('j.isActive = :active')
-            ->andWhere('j.lastSeenAt < :cutoff')
-            ->andWhere('j.missingSinceAt IS NULL')
-            ->setParameter('feedId', $feedId)
-            ->setParameter('active', true)
-            ->setParameter('cutoff', $cutoff)
-            ->getQuery()
-            ->getResult();
-    }
-
-    public function findExpired(int $feedId, \DateTimeInterface $cutoff): array
-    {
-        return $this->createQueryBuilder('j')
-            ->join('j.wazeFeed', 'f')
-            ->where('f.id = :feedId')
-            ->andWhere('j.isActive = :active')
-            ->andWhere('j.missingSinceAt IS NOT NULL')
-            ->andWhere('j.missingSinceAt < :cutoff')
-            ->setParameter('feedId', $feedId)
-            ->setParameter('active', true)
-            ->setParameter('cutoff', $cutoff)
+            ->where('j.partner = :partner')
+            ->andWhere('j.isActive = true')
+            ->setParameter('partner', $partnerId)
+            ->orderBy('j.lastSeenAt', 'DESC')
             ->getQuery()
             ->getResult();
     }
