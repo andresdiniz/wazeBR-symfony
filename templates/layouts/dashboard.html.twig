@@ -14,12 +14,13 @@
 
 {% block body %}
 <div class="app-shell">
-    {% include 'partials/header.html.twig' %}
+    {% include 'partials/dashboard/topbar.html.twig' %}
     <div class="app-layout">
-        {% include 'partials/_sidebar.html.twig' %}
+        {% include 'partials/dashboard/sidebar.html.twig' %}
         <main class="main-content">
             {% block dashboard_content %}{% endblock %}
         </main>
     </div>
+    {% include 'partials/dashboard/footer.html.twig' %}
 </div>
 {% endblock %}
