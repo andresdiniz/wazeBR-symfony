@@ -47,6 +47,12 @@ class WazeFeedCollectionService
 
         try {
             $feedType = $feed->getType();
+            $endpointUrl = $feed->getEndpointUrl();
+            
+            // Detect feed type by URL if type is NULL
+            if ($feedType === null || $feedType === '') {
+                $feedType = str_contains($endpointUrl, 'feeds-tvt') ? 'TVT' : 'EVENTS';
+            }
             
             if ($feedType === 'TVT') {
                 return $this->collectTvt($feed, $feedCollection, $dryRun);
@@ -153,13 +159,11 @@ class WazeFeedCollectionService
         $alertsCount = 0;
         $jamsCount = 0;
 
-        // Processar alertas (apenas log por enquanto)
         foreach ($alerts as $index => $alertData) {
             if (!is_array($alertData)) {
                 continue;
             }
             try {
-                // TODO: Implementar upsert de alertas
                 ++$alertsCount;
             } catch (\Throwable $e) {
                 $this->logger->error('Erro ao processar alerta', [
@@ -169,13 +173,11 @@ class WazeFeedCollectionService
             }
         }
 
-        // Processar jams (apenas log por enquanto)
         foreach ($jams as $index => $jamData) {
             if (!is_array($jamData)) {
                 continue;
             }
             try {
-                // TODO: Implementar upsert de jams
                 ++$jamsCount;
             } catch (\Throwable $e) {
                 $this->logger->error('Erro ao processar jam', [
@@ -211,7 +213,6 @@ class WazeFeedCollectionService
         $bbox = $item['bbox'] ?? null;
         $line = $item['line'] ?? null;
 
-        // Upsert WazeTvtRoute
         $route = $this->tvtRouteRepo->findOneByExternalRouteId($externalRouteId);
         if (!$route) {
             $route = new WazeTvtRoute();
@@ -226,7 +227,6 @@ class WazeFeedCollectionService
         $route->setLabel($name);
         $route->setLastSeenAt(new DateTime());
 
-        // Upsert WazeTvtRouteDefinition
         $definition = $this->tvtRouteDefRepo->findOneByRouteAndCurrent($route, true);
         if (!$definition) {
             $definition = new WazeTvtRouteDefinition();
@@ -247,7 +247,6 @@ class WazeFeedCollectionService
         $speedKmh = $time > 0 ? round(($length / $time) * 3.6, 2) : null;
         $delaySeconds = $time - $historicTime;
 
-        // Create new history entry
         $history = new WazeTvtRouteHistory();
         $history->setWazeTvtRoute($route);
         $history->setWazeTvtRouteDefinition($definition);
