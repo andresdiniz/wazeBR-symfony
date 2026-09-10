@@ -1,34 +1,147 @@
-<aside class="sidebar">
-    <div class="sidebar-header">
-        <span class="brand">WazeBR</span>
+<aside class="dashboard-sidebar">
+    <div class="sidebar-container">
+        {# User Quick Info #}
+        <div class="sidebar-user">
+            <div class="user-avatar-large">
+                {% if app.user %}{{ app.user.email|first|upper }}{% endif %}
+            </div>
+            <div class="user-details">
+                <span class="user-name">{% if app.user %}{{ app.user.email }}{% endif %}</span>
+                <span class="user-status online">Online</span>
+            </div>
+        </div>
+
+        {# Main Navigation #}
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <span class="nav-section-title">Principal</span>
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="{{ path('dashboard') }}" class="nav-link {{ app.request.attributes.get('_route') == 'dashboard' ? 'active' : '' }}">
+                            <i class="bi bi-speedometer2"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ path('alert_index') }}" class="nav-link {{ app.request.attributes.get('_route') == 'alert_index' ? 'active' : '' }}">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <span>Alertas</span>
+                            <span class="nav-badge bg-primary">{{ alerts|length|default(0) }}</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ path('traffic_jam_index') }}" class="nav-link {{ app.request.attributes.get('_route') == 'traffic_jam_index' ? 'active' : '' }}">
+                            <i class="bi bi-car-front"></i>
+                            <span>Congestionamentos</span>
+                            <span class="nav-badge bg-warning">{{ jams|length|default(0) }}</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <i class="bi bi-signpost-2"></i>
+                            <span>Rotas TVT</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="nav-section">
+                <span class="nav-section-title">Monitoramento</span>
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <i class="bi bi-activity"></i>
+                            <span>Tempo Real</span>
+                            <span class="live-indicator"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <i class="bi bi-graph-up"></i>
+                            <span>Estat&iacute;sticas</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <i class="bi bi-map"></i>
+                            <span>Mapa</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="nav-section">
+                <span class="nav-section-title">Administra&ccedil;&atilde;o</span>
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="{{ path('admin_dashboard') }}" class="nav-link">
+                            <i class="bi bi-gear"></i>
+                            <span>Painel Admin</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <i class="bi bi-people"></i>
+                            <span>Usu&aacute;rios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <i class="bi bi-file-earmark-text"></i>
+                            <span>Relat&oacute;rios</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        {# Advertisement Section #}
+        <div class="sidebar-ad">
+            <div class="ad-header">
+                <span class="ad-label">Publicidade</span>
+                <button class="ad-close" aria-label="Fechar">&times;</button>
+            </div>
+            <div class="ad-content">
+                <div class="ad-banner">
+                    <div class="ad-icon">
+                        <i class="bi bi-megaphone"></i>
+                    </div>
+                    <div class="ad-text">
+                        <h6>Upgrade Premium</h6>
+                        <p>Acesse recursos exclusivos e an&aacute;lises avan&ccedil;adas</p>
+                    </div>
+                </div>
+                <a href="#" class="ad-cta">Saiba mais</a>
+            </div>
+        </div>
+
+        {# Quick Actions #}
+        <div class="sidebar-quick-actions">
+            <button class="quick-action-btn" title="Atualizar" data-bs-toggle="tooltip">
+                <i class="bi bi-arrow-clockwise"></i>
+            </button>
+            <button class="quick-action-btn" title="Exportar" data-bs-toggle="tooltip">
+                <i class="bi bi-download"></i>
+            </button>
+            <button class="quick-action-btn" title="Configura&ccedil;&otilde;es" data-bs-toggle="tooltip">
+                <i class="bi bi-sliders"></i>
+            </button>
+        </div>
+
+        {# System Status #}
+        <div class="sidebar-status">
+            <div class="status-item">
+                <span class="status-dot online"></span>
+                <span class="status-text">Sistema Online</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">API:</span>
+                <span class="status-value">Operacional</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Dados:</span>
+                <span class="status-value">Atualizado agora</span>
+            </div>
+        </div>
     </div>
-    <nav class="sidebar-nav">
-        <ul class="dashboard-nav">
-            {% set currentRoute = app.request.attributes.get('_route') %}
-            <li class="dashboard-nav-item">
-                <a href="{{ path('dashboard') }}"
-                   class="dashboard-nav-link {{ currentRoute == 'dashboard' ? 'is-active' : '' }}"
-                   {% if currentRoute == 'dashboard' %}aria-current="page"{% endif %}>
-                    <i class="bi bi-speedometer2"></i>
-                    <span>Dashboard</span>
-                </a>
-            </li>
-            <li class="dashboard-nav-item">
-                <a href="{{ path('alert_index') }}"
-                   class="dashboard-nav-link {{ currentRoute == 'alert_index' ? 'is-active' : '' }}"
-                   {% if currentRoute == 'alert_index' %}aria-current="page"{% endif %}>
-                    <i class="bi bi-exclamation-triangle"></i>
-                    <span>Alertas</span>
-                </a>
-            </li>
-            <li class="dashboard-nav-item">
-                <a href="{{ path('traffic_jam_index') }}"
-                   class="dashboard-nav-link {{ currentRoute == 'traffic_jam_index' ? 'is-active' : '' }}"
-                   {% if currentRoute == 'traffic_jam_index' %}aria-current="page"{% endif %}>
-                    <i class="bi bi-car-front"></i>
-                    <span>Congestionamentos</span>
-                </a>
-            </li>
-        </ul>
-    </nav>
 </aside>
