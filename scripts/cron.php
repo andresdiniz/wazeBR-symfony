@@ -3,10 +3,14 @@
 declare(strict_types=1);
 
 /**
- * Script para execução via cron
+ * Script para execucao via cron
  * 
- * Uso no crontab:
- * */5 * * * * cd /path/to/wazeBR-symfony && /usr/bin/php scripts/cron.php >> var/log/cron.log 2>&1
+ * Uso no crontab (Linux):
+ * */ . '5 * * * * cd /path/to/wazeBR-symfony && /usr/bin/php scripts/cron.php >> var/log/cron.log 2>&1
+ * 
+ * Windows Task Scheduler:
+ * - Trigger: Every 5 minutes
+ * - Action: php.exe scripts/cron.php
  */
 
 require_once dirname(__DIR__) . '/vendor/autoload.php';
@@ -37,7 +41,7 @@ echo sprintf(
 );
 
 // Executa comando de coleta de feeds (EVENTS + TVT)
-echo "\n[1/2] Coletando feeds (alerts, jams, routes)...\n";
+echo "\n[1/1] Coletando feeds (alerts, jams, routes)...\n";
 try {
     $input = new ArrayInput(['command' => 'waze:collect-feed']);
     $output = new BufferedOutput();
