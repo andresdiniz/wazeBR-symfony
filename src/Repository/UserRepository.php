@@ -1,21 +1,16 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Repository;
 
+use App\Entity\Partner;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
-use Symfony\Bridge\Doctrine\Security\User\UserLoaderInterface;
-use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
-use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
-use Symfony\Component\Security\Core\User\PasswordUpgraderInterface;
 
 /**
  * @extends ServiceEntityRepository<User>
  */
-class UserRepository extends ServiceEntityRepository implements UserLoaderInterface, PasswordUpgraderInterface
+class UserRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
     {
@@ -23,26 +18,42 @@ class UserRepository extends ServiceEntityRepository implements UserLoaderInterf
     }
 
     /**
-     * Load user by email identifier for authentication.
+     * Retorna administradores ativos vinculados ao parceiro.
+     * Aceita tanto o papel ADMIN quanto ROLE_ADMIN, conforme o formato salvo.
+     *
+     * @return User[]
      */
-    public function loadUserByIdentifier(string $identifier): ?User
+    public function findAdminsByPartner(Partner $partner): array
     {
-        return $this->findOneBy(['email' => $identifier]);
+        return $this->createQueryBuilder('u')
+            ->andWhere('u.partner = :partner')
+            ->andWhere('u.roles LIKE :adminRole OR u.roles LIKE :adminRoleWithPrefix')
+            ->setParameter('partner', $partner)
+            ->setParameter('adminRole', '%"ADMIN"%')
+            ->setParameter('adminRoleWithPrefix', '%"ROLE_ADMIN"%')
+            ->orderBy('u.id', 'ASC')
+            ->getQuery()
+            ->getResult();
     }
 
     /**
-     * Upgrade user password hash when needed.
+     * Alternativa útil para o dispatcher: somente usuários com e-mail válido.
+     *
+     * @return User[]
      */
-    public function upgradePassword(PasswordAuthenticatedUserInterface $user, string $newHashedPassword): void
+    public function findNotificationRecipientsByPartner(Partner $partner): array
     {
-        if (!$user instanceof User) {
-            throw new UnsupportedUserException(sprintf('Instances of "%s" are not supported.', get_class($user)));
-        }
-
-        $user->setPassword($newHashedPassword);
-        $this->getEntityManager()->persist($user);
-        $this->getEntityManager()->flush();
+        return $this->createQueryBuilder('u')
+            ->andWhere('u.partner = :partner')
+            ->andWhere('u.email IS NOT NULL')
+            ->andWhere('u.email <> :empty')
+            ->andWhere('u.roles LIKE :adminRole OR u.roles LIKE :adminRoleWithPrefix')
+            ->setParameter('partner', $partner)
+            ->setParameter('empty', '')
+            ->setParameter('adminRole', '%"ADMIN"%')
+            ->setParameter('adminRoleWithPrefix', '%"ROLE_ADMIN"%')
+            ->orderBy('u.id', 'ASC')
+            ->getQuery()
+            ->getResult();
     }
-
-    // Additional query methods can be added here
 }
