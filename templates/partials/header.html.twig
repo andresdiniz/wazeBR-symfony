@@ -1,41 +1,95 @@
-<header class="app-header">
-    <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="{{ path('dashboard') }}">WazeBR</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+<header class="app-header" id="appHeader">
+    <div class="header-container">
+        <nav class="navbar navbar-expand-lg">
+            {# Logo #}
+            <a class="navbar-brand" href="{{ path('dashboard') }}">
+                <div class="brand-logo">
+                    <i class="bi bi-signpost-2-fill"></i>
+                </div>
+                <span class="brand-text">Waze<span class="brand-highlight">BR</span></span>
+            </a>
+
+            {# Mobile Toggle #}
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
+
+            {# Navigation #}
             <div class="collapse navbar-collapse" id="navbarNav">
+                {# Left Menu #}
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ path('dashboard') }}">Dashboard</a>
+                        <a class="nav-link {{ app.request.attributes.get('_route') == 'dashboard' ? 'active' : '' }}" href="{{ path('dashboard') }}">
+                            <i class="bi bi-speedometer2"></i>
+                            <span>Dashboard</span>
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ path('alert_index') }}">Alertas</a>
+                        <a class="nav-link {{ app.request.attributes.get('_route') == 'alert_index' ? 'active' : '' }}" href="{{ path('alert_index') }}">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <span>Alertas</span>
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ path('traffic_jam_index') }}">Congestionamentos</a>
+                        <a class="nav-link {{ app.request.attributes.get('_route') == 'traffic_jam_index' ? 'active' : '' }}" href="{{ path('traffic_jam_index') }}">
+                            <i class="bi bi-car-front"></i>
+                            <span>Congestionamentos</span>
+                        </a>
                     </li>
                 </ul>
+
+                {# Right Menu #}
                 <ul class="navbar-nav">
+                    {# Search #}
+                    <li class="nav-item nav-search">
+                        <div class="search-box">
+                            <i class="bi bi-search search-icon"></i>
+                            <input type="text" class="search-input" placeholder="Buscar..." aria-label="Buscar">
+                        </div>
+                    </li>
+
+                    {# Notifications #}
+                    <li class="nav-item nav-notification">
+                        <a class="nav-link notification-link" href="#" aria-label="Notifica&ccedil;&otilde;es">
+                            <i class="bi bi-bell"></i>
+                            <span class="notification-badge">3</span>
+                        </a>
+                    </li>
+
+                    {# User Menu #}
                     {% if app.user %}
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                                {{ app.user.email }}
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="{{ path('account_settings') }}">Configura&ccedil;&otilde;es</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{{ path('app_logout') }}">Sair</a></li>
-                            </ul>
+                        <li class="nav-item nav-user">
+                            <div class="user-menu">
+                                <div class="user-avatar">
+                                    {{ app.user.email|first|upper }}
+                                </div>
+                                <div class="user-info">
+                                    <span class="user-name">{{ app.user.email }}</span>
+                                    <span class="user-role">Usu&aacute;rio</span>
+                                </div>
+                                <i class="bi bi-chevron-down user-arrow"></i>
+                                <div class="user-dropdown">
+                                    <a class="dropdown-item" href="{{ path('account_settings') }}">
+                                        <i class="bi bi-gear"></i>
+                                        <span>Configura&ccedil;&otilde;es</span>
+                                    </a>
+                                    <a class="dropdown-item" href="{{ path('app_logout') }}">
+                                        <i class="bi bi-box-arrow-right"></i>
+                                        <span>Sair</span>
+                                    </a>
+                                </div>
+                            </div>
                         </li>
                     {% else %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ path('auth_login') }}">Login</a>
+                            <a class="btn btn-primary btn-login" href="{{ path('auth_login') }}">
+                                <i class="bi bi-box-arrow-in-right"></i>
+                                <span>Login</span>
+                            </a>
                         </li>
                     {% endif %}
                 </ul>
             </div>
-        </div>
-    </nav>
+        </nav>
+    </div>
 </header>
