@@ -1,11 +1,17 @@
 {% extends 'base.html.twig' %}
 
+{% block stylesheets %}
+    <link rel="stylesheet" href="{{ asset('assets/css/admin.css') }}">
+{% endblock %}
+
 {% block body %}
-<div class="wrapper">
-    {% include 'partials/_navbar.html.twig' %}
-    {% include 'partials/_sidebar.html.twig' %}
-    <div class="main-content">
-        {% block admin_content %}{% endblock %}
+<div class="app-shell">
+    {% include 'partials/header.html.twig' %}
+    <div class="app-layout">
+        {% include 'partials/_sidebar.html.twig' %}
+        <main class="main-content admin-content">
+            {% block admin_content %}{% endblock %}
+        </main>
     </div>
 </div>
 {% endblock %}

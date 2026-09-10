@@ -1,28 +1,13 @@
 {% extends 'base.html.twig' %}
 
-{% block body_class %}
-    layout-public
-    {% block page_body_class %}{% endblock %}
-{% endblock %}
-
 {% block stylesheets %}
-    <link rel="stylesheet" href="{{ asset('css/header.css') }}">
-
-    {% block page_stylesheets %}{% endblock %}
+    <link rel="stylesheet" href="{{ asset('assets/css/landing-0pDZkGT.css') }}">
 {% endblock %}
 
-{% block application %}
+{% block body %}
     {% include 'partials/header.html.twig' %}
-
-    <main id="main-content" class="site-main" tabindex="-1">
-        {% block page_content %}{% endblock %}
+    <main class="public-content">
+        {% block public_content %}{% endblock %}
     </main>
-
     {% include 'partials/footer.html.twig' %}
-{% endblock %}
-
-{% block javascripts %}
-    <script src="{{ asset('js/header.js') }}" defer></script>
-
-    {% block page_javascripts %}{% endblock %}
 {% endblock %}
