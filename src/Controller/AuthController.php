@@ -41,10 +41,4 @@ class AuthController extends AbstractController
     {
         throw new \LogicException('This method can be blank - it will be intercepted by the logout key on your firewall.');
     }
-
-    #[Route('/dashboard', name: 'app_post_login_redirect')]
-    public function dashboard(): Response
-    {
-        return $this->redirectToRoute('dashboard');
-    }
 }
