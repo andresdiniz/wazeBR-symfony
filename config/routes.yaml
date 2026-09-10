@@ -1,10 +1,5 @@
-# wazeBR Routes Configuration
-
 controllers:
     resource:
         path: ../src/Controller/
         namespace: App\Controller
     type: attribute
-
-# Home route is defined in HomeController attribute
-# Additional routes can be added here as needed
