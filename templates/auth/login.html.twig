@@ -1,228 +1,29 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Fa&ccedil;a login no wazeBR para acessar seu dashboard de monitoramento de tr&acirc;fego">
-    <title>Login - wazeBR</title>
+{% extends 'base.html.twig' %}
 
-    {# Fonts #}
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+{% block title %}Login{% endblock %}
 
-    {# Icons #}
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    {# Stylesheets #}
-    <link rel="stylesheet" href="{{ asset('css/login.css') }}">
-
-    {# Favicon #}
-    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
-</head>
-<body>
-    <div class="login-page">
-        {# Left Side - Form #}
-        <div class="login-left">
-            <div class="login-container">
-                {# Logo #}
-                <a href="{{ path('app_home') }}" class="logo">
-                    <div class="logo-icon">
-                        <i class="fas fa-road"></i>
-                    </div>
-                    <span class="logo-text">waze<span class="highlight">BR</span></span>
-                </a>
-
-                {# Welcome Text #}
-                <div class="welcome-section">
-                    <h1>Bem-vindo de volta!</h1>
-                    <p>Acesse sua conta para continuar</p>
-                </div>
-
-                {# Error Messages #}
-                {% if error %}
-                    <div class="alert alert-error">
-                        <i class="fas fa-exclamation-circle"></i>
-                        <span>{{ error.messageKey|trans(error.messageData, 'security') }}</span>
-                    </div>
-                {% endif %}
-
-                {% if app.request.hasPreviousSession %}
-                    {% for type, messages in app.session.flashBag.all %}
-                        {% for message in messages %}
-                            <div class="alert alert-{{ type }}">
-                                <i class="fas fa-{{ type == 'success' ? 'check-circle' : 'info-circle' }}"></i>
-                                <span>{{ message }}</span>
-                            </div>
-                        {% endfor %}
-                    {% endfor %}
-                {% endif %}
-
-                {# Login Form #}
-                <form method="post" class="login-form" novalidate>
-                    <div class="form-group">
-                        <label for="username">
-                            <i class="fas fa-envelope"></i>
-                            <span>Email</span>
-                        </label>
-                        <input
-                            type="email"
-                            id="username"
-                            name="_username"
-                            value="{{ last_username }}"
-                            required
-                            autofocus
-                            autocomplete="email"
-                            placeholder="seu@email.com"
-                            class="form-control"
-                        >
-                    </div>
-
-                    <div class="form-group">
-                        <label for="password">
-                            <i class="fas fa-lock"></i>
-                            <span>Senha</span>
-                        </label>
-                        <div class="password-wrapper">
-                            <input
-                                type="password"
-                                id="password"
-                                name="_password"
-                                required
-                                autocomplete="current-password"
-                                placeholder="Sua senha"
-                                class="form-control"
-                            >
-                            <button type="button" class="toggle-password" onclick="togglePassword()">
-                                <i class="fas fa-eye" id="toggleIcon"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="form-options">
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="_remember_me" id="remember_me">
-                            <span>Lembrar-me por 7 dias</span>
-                        </label>
-                        <a href="{{ path('app_reset_password_request') }}" class="forgot-link">Esqueceu a senha?</a>
-                    </div>
-
-                    <input type="hidden" name="_target_path" value="{{ path('app_dashboard') }}">
-                    <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
-
-                    <button type="submit" class="btn btn-primary btn-block btn-login">
-                        <span>Entrar</span>
-                        <i class="fas fa-arrow-right"></i>
-                    </button>
-                </form>
-
-                {# Divider #}
-                <div class="divider">
-                    <span>ou</span>
-                </div>
-
-                {# Social Login (Optional) #}
-                <div class="social-login">
-                    <button type="button" class="btn btn-social btn-google">
-                        <i class="fab fa-google"></i>
-                        <span>Continuar com Google</span>
-                    </button>
-                    <button type="button" class="btn btn-social btn-microsoft">
-                        <i class="fab fa-microsoft"></i>
-                        <span>Continuar com Microsoft</span>
-                    </button>
-                </div>
-
-                {# Register Link #}
-                <div class="register-link">
-                    <p>N&atilde;o tem uma conta? <a href="{{ path('app_register') }}">Cadastre-se gratuitamente</a></p>
-                </div>
-
-                {# Back to Home #}
-                <div class="back-home">
-                    <a href="{{ path('app_home') }}">
-                        <i class="fas fa-arrow-left"></i>
-                        <span>Voltar para home</span>
-                    </a>
-                </div>
-            </div>
+{% block body %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h1 class="auth-title">Login</h1>
         </div>
-
-        {# Right Side - Visual #}
-        <div class="login-right">
-            <div class="login-visual">
-                <div class="visual-content">
-                    <div class="visual-header">
-                        <div class="logo-large">
-                            <i class="fas fa-road"></i>
-                        </div>
-                        <h2>wazeBR</h2>
-                    </div>
-
-                    <div class="visual-body">
-                        <h3>Monitoramento Inteligente de Tr&acirc;fego</h3>
-                        <p>Acesse dados em tempo real, alertas e an&aacute;lises para otimizar a mobilidade da sua cidade.</p>
-
-                        <div class="features-list">
-                            <div class="feature-item">
-                                <i class="fas fa-check-circle"></i>
-                                <span>Dashboard em tempo real</span>
-                            </div>
-                            <div class="feature-item">
-                                <i class="fas fa-check-circle"></i>
-                                <span>Alertas inteligentes</span>
-                            </div>
-                            <div class="feature-item">
-                                <i class="fas fa-check-circle"></i>
-                                <span>Relat&oacute;rios avan&ccedil;ados</span>
-                            </div>
-                            <div class="feature-item">
-                                <i class="fas fa-check-circle"></i>
-                                <span>API integrada</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="visual-stats">
-                        <div class="stat-item">
-                            <div class="stat-icon">
-                                <i class="fas fa-city"></i>
-                            </div>
-                            <div class="stat-info">
-                                <strong>150+</strong>
-                                <span>Cidades</span>
-                            </div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-icon">
-                                <i class="fas fa-car"></i>
-                            </div>
-                            <div class="stat-info">
-                                <strong>50K+</strong>
-                                <span>Ve&iacute;culos</span>
-                            </div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-icon">
-                                <i class="fas fa-database"></i>
-                            </div>
-                            <div class="stat-info">
-                                <strong>1M+</strong>
-                                <span>Dados/dia</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {# Background Elements #}
-                <div class="bg-circle bg-circle-1"></div>
-                <div class="bg-circle bg-circle-2"></div>
-                <div class="bg-circle bg-circle-3"></div>
+        <form method="post" class="auth-form">
+            {% if error %}
+                <div class="alert alert-danger">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
+            {% endif %}
+            <input type="hidden" name="_target_path" value="{{ path('dashboard') }}">
+            <div class="form-group">
+                <label for="username">Email</label>
+                <input type="email" value="{{ last_username }}" name="_username" id="username" class="form-control" autocomplete="email" required autofocus>
             </div>
-        </div>
+            <div class="form-group">
+                <label for="password">Senha</label>
+                <input type="password" name="_password" id="password" class="form-control" autocomplete="current-password" required>
+            </div>
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+            <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+        </form>
     </div>
-
-    {# JavaScript #}
-    <script src="{{ asset('js/login.js') }}"></script>
-</body>
-</html>
+</div>
+{% endblock %}
