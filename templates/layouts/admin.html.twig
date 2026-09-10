@@ -1,5 +1,17 @@
 {% extends 'base.html.twig' %}
 
+{% block stylesheets %}
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/header.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/account-admin.css') }}">
+{% endblock %}
+
+{% block javascripts %}
+    <script src="{{ asset('js/dashboard.js') }}" defer></script>
+    <script src="{{ asset('js/header.js') }}" defer></script>
+    <script src="{{ asset('js/admin-users.js') }}" defer></script>
+{% endblock %}
+
 {% block body %}
 <div class="app-shell">
     {% include 'partials/dashboard/topbar.html.twig' %}

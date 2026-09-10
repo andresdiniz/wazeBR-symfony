@@ -1,5 +1,13 @@
 {% extends 'base.html.twig' %}
 
+{% block stylesheets %}
+    <link rel="stylesheet" href="{{ asset('css/landing.css') }}">
+{% endblock %}
+
+{% block javascripts %}
+    <script src="{{ asset('js/landing.js') }}" defer></script>
+{% endblock %}
+
 {% block body %}
     {% include 'partials/header.html.twig' %}
     <main class="public-content">
