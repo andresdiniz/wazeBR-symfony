@@ -4,11 +4,15 @@
             <p class="copyright">
                 &copy; {{ "now"|date("Y") }} WazeBR. Todos os direitos reservados.
             </p>
-            <div class="footer-links">
-                <a href="#">Termos</a>
-                <a href="#">Privacidade</a>
-                <a href="#">Suporte</a>
-            </div>
+            <p class="footer-text">
+                Sistema de monitoramento de tr&acirc;nsito em tempo real
+            </p>
+            <p class="footer-datetime">
+                <i class="bi bi-calendar3"></i>
+                <span>{{ "now"|date("d/m/Y") }}</span>
+                <i class="bi bi-clock"></i>
+                <span id="footerTime">{{ "now"|date("H:i") }}</span>
+            </p>
         </div>
     </div>
 </footer>
