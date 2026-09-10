@@ -11,41 +11,19 @@
 {% block body %}
 <div class="dashboard-wrapper">
     <!-- Topbar -->
-    <nav class="dashboard-topbar">
-        <div class="container-fluid">
-            <div class="d-flex align-items-center justify-content-between">
-                <a class="topbar-brand" href="{{ path('dashboard') }}">WazeBR</a>
-                <div class="d-flex align-items-center gap-3">
-                    <span class="user-email">{{ app.user.email }}</span>
-                    <a href="{{ path('app_logout') }}" class="btn btn-outline-light btn-sm">Sair</a>
-                </div>
-            </div>
-        </div>
-    </nav>
+    {% include 'partials/dashboard/topbar.html.twig' %}
 
     <div class="dashboard-layout">
         <!-- Sidebar -->
-        <aside class="dashboard-sidebar">
-            <nav class="sidebar-nav">
-                <a href="{{ path('dashboard') }}" class="sidebar-link active">
-                    <i class="bi bi-speedometer2"></i>
-                    <span>Dashboard</span>
-                </a>
-                <a href="{{ path('alert_index') }}" class="sidebar-link">
-                    <i class="bi bi-exclamation-triangle"></i>
-                    <span>Alertas</span>
-                </a>
-                <a href="{{ path('traffic_jam_index') }}" class="sidebar-link">
-                    <i class="bi bi-car-front"></i>
-                    <span>Congestionamentos</span>
-                </a>
-            </nav>
-        </aside>
+        {% include 'partials/dashboard/sidebar.html.twig' %}
 
         <!-- Main Content -->
         <main class="dashboard-main">
             {% block dashboard_content %}{% endblock %}
         </main>
     </div>
+
+    <!-- Footer -->
+    {% include 'partials/dashboard/footer.html.twig' %}
 </div>
 {% endblock %}
