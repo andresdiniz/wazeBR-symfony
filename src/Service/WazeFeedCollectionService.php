@@ -216,6 +216,7 @@ class WazeFeedCollectionService
                 $existing->setLastSeenAt(new DateTime());
                 $existing->setIsActive(true);
                 $existing->setMissingSinceAt(null);
+                $this->em->persist($existing);
                 return;
             }
         }
@@ -265,6 +266,7 @@ class WazeFeedCollectionService
             if ($existing) {
                 $existing->setLastSeenAt(new DateTime());
                 $existing->setIsActive(true);
+                $this->em->persist($existing);
                 return;
             }
         }
