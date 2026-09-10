@@ -1,457 +1,68 @@
 {% extends 'layouts/dashboard.html.twig' %}
-<link rel="stylesheet" href="{{ asset('css/alerts.css') }}">
 
-{% block title %}
-    {{ typesMap[alert.type]|default(alert.type) }} #{{ alert.id }} | wazeBR
-{% endblock %}
+{% block title %}Detalhes do Alerta{% endblock %}
 
 {% block stylesheets %}
-    {{ parent() }}
     <link rel="stylesheet" href="{{ asset('css/alerts.css') }}">
 {% endblock %}
 
-{% block page_body_class %}alerts-show-page{% endblock %}
-
-{% block dashboard_page_title %}Detalhes do alerta{% endblock %}
-
-{% block page_content %}
-    <div class="dashboard-content alerts-show-content">
-        {# ── Hero ────────────────────────────────────────────── #}
-        <section class="dashboard-hero">
-            <div>
-                <a
-                    href="{{ path('alert_index', app.request.query.all) }}"
-                    class="dashboard-back-link"
-                >
-                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
-                    Voltar para alertas
-                </a>
-
-                <p class="dashboard-hero-kicker">Alerta #{{ alert.id }}</p>
-
-                <h2>
-                    {{ typesMap[alert.type]|default(alert.type) }}
-                </h2>
-
-                <p>
-                    {{ subtypesMap[alert.type ~ '|' ~ alert.subtype]|default(alert.subtype|default('Sem subtipo')) }}
-                    ·
-                    {{ alert.street|default('Localização não informada') }}
-                    ·
-                    {{ alert.city|default('Cidade não informada') }}
-                </p>
-            </div>
-
-            <div class="dashboard-hero-actions">
-                <span class="badge
-                    {% if alert.confidence is not null and alert.confidence >= 7 %}
-                        badge-success
-                    {% elseif alert.confidence is not null and alert.confidence >= 4 %}
-                        badge-warning
-                    {% else %}
-                        badge-danger
-                    {% endif %}
-                ">
-                    <i class="fa-solid fa-bullseye" aria-hidden="true"></i>
-                    Confiança {{ alert.confidence|default('—') }}
-                </span>
-
-                <span class="badge badge-secondary">
-                    <i class="fa-solid fa-scale-balanced" aria-hidden="true"></i>
-                    Confiabilidade {{ alert.reliability|default('—') }}
-                </span>
-            </div>
-        </section>
-
-        {# ── Métricas principais ─────────────────────────────── #}
-        <section class="stats-grid alerts-stats">
-            <article class="stat-card">
-                <div class="stat-icon blue">
-                    <i class="fa-regular fa-clock" aria-hidden="true"></i>
-                </div>
-
-                <div class="stat-info">
-                    <span>Publicado em</span>
-                    <strong>
-                        {{ alert.pubDate|date('d/m/Y') }}
-                    </strong>
-                    <small>
-                        {{ alert.pubDate|date('H:i') }}
-                    </small>
-                </div>
-            </article>
-
-            <article class="stat-card">
-                <div class="stat-icon purple">
-                    <i class="fa-solid fa-thumbs-up" aria-hidden="true"></i>
-                </div>
-
-                <div class="stat-info">
-                    <span>Curtidas</span>
-                    <strong>{{ alert.nThumbsUp|default(0) }}</strong>
-                    <small>Aprovações da comunidade</small>
-                </div>
-            </article>
-
-            <article class="stat-card">
-                <div class="stat-icon orange">
-                    <i class="fa-solid fa-comments" aria-hidden="true"></i>
-                </div>
-
-                <div class="stat-info">
-                    <span>Comentários</span>
-                    <strong>{{ alert.nComments|default(0) }}</strong>
-                    <small>Interações no relato</small>
-                </div>
-            </article>
-
-            <article class="stat-card">
-                <div class="stat-icon green">
-                    <i class="fa-solid fa-road" aria-hidden="true"></i>
-                </div>
-
-                <div class="stat-info">
-                    <span>Tipo de via</span>
-                    <strong>
-                        {% set roadTypes = {
-                            1: 'Rua local',
-                            2: 'Via primária',
-                            3: 'Rodovia',
-                            4: 'Via rápida',
-                            5: 'Freeway',
-                            6: 'Passagem municipal',
-                            7: 'Via secundária',
-                            8: 'Trilha / Caminho',
-                            14: 'Rua 4x4',
-                            15: 'Via de pedestres',
-                            17: 'Private road'
-                        } %}
-
-                        {{ roadTypes[alert.roadType]|default('Código ' ~ alert.roadType|default('—')) }}
-                    </strong>
-                    <small>Classificação Waze</small>
-                </div>
-            </article>
-        </section>
-
-        {# ── Dados do alerta ─────────────────────────────────── #}
-        <section class="dashboard-grid">
-            <article class="card dashboard-card">
-                <header class="card-header">
-                    <div>
-                        <h3>Informações do alerta</h3>
-                        <p>Dados principais coletados do feed do Waze.</p>
-                    </div>
-                </header>
-
-                <div class="card-body">
-                    <dl class="details-list">
-                        <div>
-                            <dt>ID interno</dt>
-                            <dd>#{{ alert.id }}</dd>
-                        </div>
-
-                        <div>
-                            <dt>UUID Waze</dt>
-                            <dd>
-                                <code class="external-id">{{ alert.wazeId }}</code>
-                            </dd>
-                        </div>
-
-                        <div>
-                            <dt>Tipo</dt>
-                            <dd>
-                                <strong>{{ typesMap[alert.type]|default(alert.type) }}</strong>
-                                <small>({{ alert.type }})</small>
-                            </dd>
-                        </div>
-
-                        <div>
-                            <dt>Subtipo</dt>
-                            <dd>
-                                {{ subtypesMap[alert.type ~ '|' ~ alert.subtype]|default(alert.subtype|default('Sem subtipo')) }}
-                            </dd>
-                        </div>
-
-                        <div>
-                            <dt>Localização</dt>
-                            <dd>
-                                {{ alert.street|default('Não informada') }}
-                                {% if alert.city %}
-                                    · {{ alert.city }}
-                                {% endif %}
-                                {% if alert.country %}
-                                    · {{ alert.country }}
-                                {% endif %}
-                            </dd>
-                        </div>
-
-                        <div>
-                            <dt>Coordenadas</dt>
-                            <dd>
-                                <code class="route-data-block">
-                                    {{ alert.latitude }}, {{ alert.longitude }}
-                                </code>
-                            </dd>
-                        </div>
-
-                        <div>
-                            <dt>Publicado em</dt>
-                            <dd>
-                                {{ alert.pubDate|date('d/m/Y H:i:s') }}
-                                <small>({{ alert.pubDate|date('T') }})</small>
-                            </dd>
-                        </div>
-
-                        <div>
-                            <dt>Confiabilidade</dt>
-                            <dd>
-                                <span class="badge badge-secondary">
-                                    {{ alert.reliability|default('—') }}
-                                </span>
-                            </dd>
-                        </div>
-
-                        <div>
-                            <dt>Confiança</dt>
-                            <dd>
-                                <span class="badge
-                                    {% if alert.confidence is not null and alert.confidence >= 7 %}
-                                        badge-success
-                                    {% elseif alert.confidence is not null and alert.confidence >= 4 %}
-                                        badge-warning
-                                    {% else %}
-                                        badge-danger
-                                    {% endif %}
-                                ">
-                                    {{ alert.confidence|default('—') }}
-                                </span>
-                            </dd>
-                        </div>
-
-                        <div>
-                            <dt>Avaliação do relato</dt>
-                            <dd>
-                                {{ alert.reportRating|default('—') }}
-                            </dd>
-                        </div>
-                    </dl>
-                </div>
-            </article>
-
-            <article class="card dashboard-card">
-                <header class="card-header">
-                    <div>
-                        <h3>Metadados do feed</h3>
-                        <p>Informações técnicas do registro no Waze.</p>
-                    </div>
-                </header>
-
-                <div class="card-body">
-                    <dl class="details-list details-list-single">
-                        <div>
-                            <dt>pubMillis</dt>
-                            <dd>
-                                <code>{{ alert.pubMillis }}</code>
-                            </dd>
-                        </div>
-
-                        <div>
-                            <dt>feedStartMillis</dt>
-                            <dd>
-                                {{ alert.feedStartMillis|default('—') }}
-                            </dd>
-                        </div>
-
-                        <div>
-                            <dt>magvar</dt>
-                            <dd>
-                                {{ alert.magvar|default('—') }}
-                            </dd>
-                        </div>
-
-                        <div>
-                            <dt>inscale</dt>
-                            <dd>
-                                {% if alert.inscale is not null %}
-                                    {% if alert.inscale %}
-                                        <span class="badge badge-success">Sim</span>
-                                    {% else %}
-                                        <span class="badge badge-muted">Não</span>
-                                    {% endif %}
-                                {% else %}
-                                    <span class="text-muted">—</span>
-                                {% endif %}
-                            </dd>
-                        </div>
-
-                        <div>
-                            <dt>isJamUnifiedAlert</dt>
-                            <dd>
-                                {% if alert.isJamUnifiedAlert is not null %}
-                                    {% if alert.isJamUnifiedAlert %}
-                                        <span class="badge badge-primary">Sim</span>
-                                    {% else %}
-                                        <span class="badge badge-muted">Não</span>
-                                    {% endif %}
-                                {% else %}
-                                    <span class="text-muted">—</span>
-                                {% endif %}
-                            </dd>
-                        </div>
-
-                        <div>
-                            <dt>reportByMunicipalityUser</dt>
-                            <dd>
-                                {% if alert.reportByMunicipalityUser is not null %}
-                                    {% if alert.reportByMunicipalityUser %}
-                                        <span class="badge badge-success">Sim</span>
-                                    {% else %}
-                                        <span class="badge badge-muted">Não</span>
-                                    {% endif %}
-                                {% else %}
-                                    <span class="text-muted">—</span>
-                                {% endif %}
-                            </dd>
-                        </div>
-
-                        {% if alert.jamUuid %}
-                            <div>
-                                <dt>jamUuid</dt>
-                                <dd>
-                                    <code class="external-id">{{ alert.jamUuid }}</code>
-                                </dd>
-                            </div>
-                        {% endif %}
-                    </dl>
-                </div>
-            </article>
-        </section>
-
-        {# ── Descrição e informações adicionais ─────────────── #}
-        {% if alert.reportDescription or alert.additionalInfo %}
-            <section class="dashboard-grid">
-                {% if alert.reportDescription %}
-                    <article class="card dashboard-card">
-                        <header class="card-header">
-                            <div>
-                                <h3>Descrição do relato</h3>
-                                <p>Texto livre enviado pelo usuário no Waze.</p>
-                            </div>
-                        </header>
-
-                        <div class="card-body">
-                            <div class="report-description">
-                                <i class="fa-solid fa-comment-dots" aria-hidden="true"></i>
-                                <p>{{ alert.reportDescription }}</p>
-                            </div>
-                        </div>
-                    </article>
-                {% endif %}
-
-                {% if alert.additionalInfo %}
-                    <article class="card dashboard-card">
-                        <header class="card-header">
-                            <div>
-                                <h3>Informações adicionais</h3>
-                                <p>Dados complementares do feed.</p>
-                            </div>
-                        </header>
-
-                        <div class="card-body">
-                            <pre class="route-data-block">{{ alert.additionalInfo }}</pre>
-                        </div>
-                    </article>
-                {% endif %}
-            </section>
-        {% endif %}
-
-        {# ── Comentários (se houver) ─────────────────────────── #}
-        {% if alert.comments is defined and alert.comments is not empty %}
-            <section class="card dashboard-card">
-                <header class="card-header">
-                    <div>
-                        <h3>Comentários</h3>
-                        <p>
-                            Comentários associados a este alerta (JSON do feed).
-                        </p>
-                    </div>
-                </header>
-
-                <div class="card-body">
-                    <div class="comments-list">
-                        {% for comment in alert.comments %}
-                            <div class="comment-item">
-                                <div class="comment-meta">
-                                    <strong>Comentário #{{ loop.index }}</strong>
-                                    <small class="text-muted">
-                                        {{ comment|json_encode(constant('JSON_UNESCAPED_UNICODE')) }}
-                                    </small>
-                                </div>
-                            </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </section>
-        {% endif %}
-
-        {# ── Mapa / Localização ─────────────────────────────── #}
-        <section class="card dashboard-card">
-            <header class="card-header">
-                <div>
-                    <h3>Localização no mapa</h3>
-                    <p>Coordenadas do alerta no Waze.</p>
-                </div>
-            </header>
-
-            <div class="card-body">
-                <div class="map-placeholder">
-                    <i class="fa-solid fa-map-location-dot" aria-hidden="true"></i>
-                    <p>
-                        Mapa com o ponto do alerta:
-                        <strong>{{ alert.latitude }}, {{ alert.longitude }}</strong>
-                    </p>
-                    <small class="text-muted">
-                        Rua: {{ alert.street|default('Não informada') }}
-                        · Cidade: {{ alert.city|default('Não informada') }}
-                    </small>
-                </div>
-            </div>
-        </section>
-
-        {# ── Ações ───────────────────────────────────────────── #}
-        <section class="card dashboard-card">
-            <header class="card-header">
-                <div>
-                    <h3>Ações</h3>
-                    <p>Operações disponíveis para este alerta.</p>
-                </div>
-            </header>
-
-            <div class="card-body">
-                <div class="actions-grid">
-                    <a
-                        href="{{ path('alert_index', app.request.query.all) }}"
-                        class="btn btn-ghost"
-                    >
-                        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
-                        Voltar para a lista
-                    </a>
-
-                    <a
-                        href="{{ path('alert_export', app.request.query.all|merge({
-                            type: alert.type,
-                            subtype: alert.subtype,
-                            city: alert.city,
-                            street: alert.street
-                        })) }}"
-                        class="btn btn-primary"
-                    >
-                        <i class="fa-solid fa-download" aria-hidden="true"></i>
-                        Exportar CSV (com filtros)
-                    </a>
-                </div>
-            </div>
-        </section>
+{% block body %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-3">Detalhes do Alerta</h1>
+            <a href="{{ path('alert_index') }}" class="btn btn-sm btn-secondary mb-3">Voltar</a>
+        </div>
     </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>Tipo</h5>
+                    <p>{{ alert.type }}</p>
+                    
+                    <h5>Subtipo</h5>
+                    <p>{{ alert.subtype }}</p>
+                    
+                    <h5>Rua</h5>
+                    <p>{{ alert.street }}</p>
+                    
+                    <h5>Cidade</h5>
+                    <p>{{ alert.city }}</p>
+                </div>
+                <div class="col-md-6">
+                    <h5>Estado</h5>
+                    <p>{{ alert.state }}</p>
+                    
+                    <h5>Pa&iacute;s</h5>
+                    <p>{{ alert.country }}</p>
+                    
+                    <h5>Magr&uave;</h5>
+                    <p>{{ alert.magr }}</p>
+                    
+                    <h5>&Uacute;ltima Vez</h5>
+                    <p>{{ alert.lastSeenAt|date('d/m/Y H:i:s') }}</p>
+                </div>
+            </div>
+            
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <h5>Latitude</h5>
+                    <p>{{ alert.latitude }}</p>
+                    
+                    <h5>Longitude</h5>
+                    <p>{{ alert.longitude }}</p>
+                </div>
+                <div class="col-md-6">
+                    <h5>Reliabilidade</h5>
+                    <p>{{ alert.reliability }}</p>
+                    
+                    <h5>Confian&ccedil;a</h5>
+                    <p>{{ alert.confidence }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
