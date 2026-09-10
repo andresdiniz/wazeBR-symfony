@@ -1,0 +1,30 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Health Check{% endblock %}
+
+{% block body %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h1 class="display-4 text-success">✓</h1>
+                    <h5 class="card-title">Sistema Operacional</h5>
+                    <p class="card-text">Todos os serviços estão funcionando normalmente.</p>
+                    <hr>
+                    <div class="row">
+                        <div class="col-6">
+                            <strong>Database</strong><br>
+                            <span class="badge bg-success">OK</span>
+                        </div>
+                        <div class="col-6">
+                            <strong>Cache</strong><br>
+                            <span class="badge bg-success">OK</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

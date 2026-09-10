@@ -1,0 +1,60 @@
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}Configuraç°µes da Conta{% endblock %}
+
+{% block body %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-3">Configuraç°µes da Conta</h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Perfil</h5>
+                </div>
+                <div class="card-body">
+                    {{ form_start(form) }}
+                        <div class="mb-3">
+                            {{ form_label(form.email) }}
+                            {{ form_widget(form.email) }}
+                            {{ form_errors(form.email) }}
+                        </div>
+                        <div class="mb-3">
+                            {{ form_label(form.name) }}
+                            {{ form_widget(form.name) }}
+                            {{ form_errors(form.name) }}
+                        </div>
+                        <button type="submit" class="btn btn-primary">Salvar</button>
+                    {{ form_end(form) }}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Senha</h5>
+                </div>
+                <div class="card-body">
+                    {{ form_start(passwordForm) }}
+                        <div class="mb-3">
+                            {{ form_label(passwordForm.currentPassword) }}
+                            {{ form_widget(passwordForm.currentPassword) }}
+                            {{ form_errors(passwordForm.currentPassword) }}
+                        </div>
+                        <div class="mb-3">
+                            {{ form_label(passwordForm.newPassword) }}
+                            {{ form_widget(passwordForm.newPassword) }}
+                            {{ form_errors(passwordForm.newPassword) }}
+                        </div>
+                        <button type="submit" class="btn btn-primary">Alterar Senha</button>
+                    {{ form_end(passwordForm) }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,352 +1,49 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API Documentation - wazeBR</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ asset('css/api-docs.css') }}">
-</head>
-<body>
-    <nav class="navbar">
-        <div class="container nav-container">
-            <a href="{{ path('app_home') }}" class="logo">
-                <div class="logo-icon">W</div>
-                <span>waze<span class="highlight">BR</span></span>
-            </a>
-            <div class="nav-links">
-                <a href="{{ path('app_home') }}">Home</a>
-                <a href="#endpoints">Endpoints</a>
-                <a href="#authentication">Autentica&ccedil;&atilde;o</a>
-                <a href="#examples">Exemplos</a>
-                <a href="{{ path('app_login') }}" class="btn btn-sm">Login</a>
+{% extends 'base.html.twig' %}
+
+{% block title %}API Docs{% endblock %}
+
+{% block body %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="display-5 mb-4">Documentaç°µo da API</h1>
+            
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Autenticaç°µo</h5>
+                    <p class="card-text">Todas as requisiç°µes à API devem incluir um token de autenticaç°µo no header:</p>
+                    <pre><code>Authorization: Bearer YOUR_API_TOKEN</code></pre>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Endpoints</h5>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item">
+                            <strong>GET /api/alerts</strong><br>
+                            <small>Lista todos os alertas do partner autenticado</small>
+                        </li>
+                        <li class="list-group-item">
+                            <strong>GET /api/traffic-jams</strong><br>
+                            <small>Lista todos os engarrafamentos do partner autenticado</small>
+                        </li>
+                        <li class="list-group-item">
+                            <strong>POST /api/webhooks/waze</strong><br>
+                            <small>Recebe webhooks do Waze</small>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Exemplo de Uso</h5>
+                    <pre><code>curl -X GET "https://api.acheireviews.com.br/api/alerts" \
+  -H "Authorization: Bearer YOUR_API_TOKEN"</code></pre>
+                </div>
             </div>
         </div>
-    </nav>
-
-    <main>
-        <section class="hero">
-            <div class="container">
-                <div class="badge">
-                    <i class="fas fa-code"></i>
-                    <span>API v1.0</span>
-                </div>
-                <h1>Documenta&ccedil;&atilde;o da API</h1>
-                <p>Integre com o wazeBR e acesse dados de tr&aacute;fego em tempo real, alertas, congestionamentos e muito mais.</p>
-                <div class="hero-actions">
-                    <a href="#endpoints" class="btn btn-primary">
-                        <i class="fas fa-book"></i>
-                        <span>Ver Endpoints</span>
-                    </a>
-                    <a href="{{ path('api_traffic') }}" class="btn btn-outline" target="_blank">
-                        <i class="fas fa-play"></i>
-                        <span>Testar API</span>
-                    </a>
-                </div>
-            </div>
-        </section>
-
-        <section class="content-section" id="endpoints">
-            <div class="container">
-                <div class="section-header">
-                    <h2>Endpoints Dispon&iacute;veis</h2>
-                    <p>Principais endpoints da API wazeBR</p>
-                </div>
-
-                <div class="endpoint-card">
-                    <div class="endpoint-header">
-                        <span class="method get">GET</span>
-                        <code class="endpoint-url">/api/traffic</code>
-                    </div>
-                    <div class="endpoint-body">
-                        <h3>Obter Dados de Tr&aacute;fego</h3>
-                        <p>Retorna alertas e congestionamentos em tempo real para todas as regi&otilde;es monitoradas.</p>
-
-                        <div class="code-block">
-                            <div class="code-header">
-                                <span>Response Example</span>
-                                <button class="copy-btn" onclick="copyCode('traffic-example')">
-                                    <i class="fas fa-copy"></i>
-                                    <span>Copy</span>
-                                </button>
-                            </div>
-                            <pre><code id="traffic-example">{
-  "status": "success",
-  "timestamp": "2026-09-06 22:53:00",
-  "data": {
-    "alerts": [
-      {
-        "uuid": "alert-001",
-        "type": "ACCIDENT",
-        "subtype": "ACCIDENT_MINOR",
-        "location": "Av. Paulista, 1000 - S&atilde;o Paulo, SP",
-        "latitude": -23.561414,
-        "longitude": -46.655881,
-        "reliability": 8,
-        "confidence": 5
-      }
-    ],
-    "jams": [
-      {
-        "uuid": "jam-001",
-        "level": 4,
-        "speed": 15.5,
-        "delay": 180,
-        "length": 500,
-        "street": "Av. Paulista",
-        "city": "S&atilde;o Paulo"
-      }
-    ]
-  }
-}</code></pre>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="endpoint-card">
-                    <div class="endpoint-header">
-                        <span class="method get">GET</span>
-                        <code class="endpoint-url">/api/alerts</code>
-                    </div>
-                    <div class="endpoint-body">
-                        <h3>Obter Apenas Alertas</h3>
-                        <p>Retorna apenas os alertas de tr&aacute;fego (acidentes, perigos, obstru&ccedil;&otilde;es).</p>
-                        <div class="endpoint-params">
-                            <h4>Par&acirc;metros Opcionais:</h4>
-                            <table class="params-table">
-                                <thead>
-                                    <tr>
-                                        <th>Par&acirc;metro</th>
-                                        <th>Tipo</th>
-                                        <th>Descri&ccedil;&atilde;o</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><code>type</code></td>
-                                        <td>string</td>
-                                        <td>Filtrar por tipo: ACCIDENT, HAZARD, WEATHERHAZARD</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>limit</code></td>
-                                        <td>integer</td>
-                                        <td>Limite de resultados (default: 100, max: 1000)</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>offset</code></td>
-                                        <td>integer</td>
-                                        <td>Offset para pagina&ccedil;&atilde;o (default: 0)</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="endpoint-card">
-                    <div class="endpoint-header">
-                        <span class="method get">GET</span>
-                        <code class="endpoint-url">/api/jams</code>
-                    </div>
-                    <div class="endpoint-body">
-                        <h3>Obter Apenas Congestionamentos</h3>
-                        <p>Retorna apenas os congestionamentos (jams) com informa&ccedil;&otilde;es de velocidade e delay.</p>
-                        <div class="endpoint-params">
-                            <h4>Par&acirc;metros Opcionais:</h4>
-                            <table class="params-table">
-                                <thead>
-                                    <tr>
-                                        <th>Par&acirc;metro</th>
-                                        <th>Tipo</th>
-                                        <th>Descri&ccedil;&atilde;o</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><code>level</code></td>
-                                        <td>integer</td>
-                                        <td>Filtrar por n&iacute;vel (1-5)</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>min_speed</code></td>
-                                        <td>float</td>
-                                        <td>Filtrar por velocidade m&iacute;nima (km/h)</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="content-section" id="authentication">
-            <div class="container">
-                <div class="section-header">
-                    <h2>Autentica&ccedil;&atilde;o</h2>
-                    <p>Como autenticar suas requisi&ccedil;&otilde;es</p>
-                </div>
-
-                <div class="auth-card">
-                    <div class="auth-icon">
-                        <i class="fas fa-key"></i>
-                    </div>
-                    <div class="auth-content">
-                        <h3>API Key Authentication</h3>
-                        <p>Todas as requisi&ccedil;&otilde;es devem incluir sua API key no header:</p>
-
-                        <div class="code-block">
-                            <div class="code-header">
-                                <span>Request Header</span>
-                                <button class="copy-btn" onclick="copyCode('auth-example')">
-                                    <i class="fas fa-copy"></i>
-                                    <span>Copy</span>
-                                </button>
-                            </div>
-                            <pre><code id="auth-example">Authorization: Bearer YOUR_API_KEY_HERE
-Content-Type: application/json</code></pre>
-                        </div>
-
-                        <div class="auth-steps">
-                            <h4>Passos para obter sua API Key:</h4>
-                            <ol>
-                                <li>Fa&ccedil;a login no dashboard do wazeBR</li>
-                                <li>V&aacute; em Configura&ccedil;&otilde;es &gt; API</li>
-                                <li>Clique em "Gerar Nova API Key"</li>
-                                <li>Copie e guarde em um local seguro</li>
-                            </ol>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="content-section" id="examples">
-            <div class="container">
-                <div class="section-header">
-                    <h2>Exemplos de Uso</h2>
-                    <p>Como integrar a API wazeBR no seu c&oacute;digo</p>
-                </div>
-
-                <div class="examples-grid">
-                    <div class="example-card">
-                        <div class="example-header">
-                            <i class="fab fa-php"></i>
-                            <span>PHP</span>
-                        </div>
-                        <div class="code-block">
-                            <pre><code>&lt;?php
-$ch = curl_init('https://api.wazebr.com/api/traffic');
-
-curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER =&gt; true,
-    CURLOPT_HTTPHEADER =&gt; [
-        'Authorization: Bearer YOUR_API_KEY',
-        'Content-Type: application/json'
-    ]
-]);
-
-$response = curl_exec($ch);
-$data = json_decode($response, true);
-
-foreach ($data['data']['alerts'] as $alert) {
-    echo "Alerta: " . $alert['type'] . "\n";
-}</code></pre>
-                        </div>
-                    </div>
-
-                    <div class="example-card">
-                        <div class="example-header">
-                            <i class="fab fa-python"></i>
-                            <span>Python</span>
-                        </div>
-                        <div class="code-block">
-                            <pre><code>import requests
-
-headers = {
-    'Authorization': 'Bearer YOUR_API_KEY',
-    'Content-Type': 'application/json'
-}
-
-response = requests.get(
-    'https://api.wazebr.com/api/traffic',
-    headers=headers
-)
-
-data = response.json()
-for alert in data['data']['alerts']:
-    print(f"Alerta: {alert['type']}")</code></pre>
-                        </div>
-                    </div>
-
-                    <div class="example-card">
-                        <div class="example-header">
-                            <i class="fab fa-node-js"></i>
-                            <span>Node.js</span>
-                        </div>
-                        <div class="code-block">
-                            <pre><code>const axios = require('axios');
-
-const config = {
-    headers: {
-        'Authorization': 'Bearer YOUR_API_KEY',
-        'Content-Type': 'application/json'
-    }
-};
-
-axios.get('https://api.wazebr.com/api/traffic', config)
-    .then(response =&gt; {
-        response.data.data.alerts.forEach(alert =&gt; {
-            console.log(`Alerta: ${alert.type}`);
-        });
-    });</code></pre>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="cta-section">
-            <div class="container">
-                <div class="cta-box">
-                    <h2>Pronto para come&ccedil;ar?</h2>
-                    <p>Crie sua conta e obtenha sua API key gratuitamente.</p>
-                    <div class="cta-buttons">
-                        <a href="{{ path('app_register') }}" class="btn btn-white">
-                            <span>Criar Conta</span>
-                            <i class="fas fa-arrow-right"></i>
-                        </a>
-                        <a href="{{ path('app_login') }}" class="btn btn-outline-white">
-                            <span>Fazer Login</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-logo">
-                    <div class="logo-icon">W</div>
-                    <span>waze<span class="highlight">BR</span></span>
-                </div>
-                <p>&copy; {{ "now"|date("Y") }} wazeBR. API Documentation v1.0</p>
-            </div>
-        </div>
-    </footer>
-
-    <script>
-        function copyCode(elementId) {
-            const code = document.getElementById(elementId).textContent;
-            navigator.clipboard.writeText(code).then(() => {
-                alert('C&oacute;digo copiado!');
-            });
-        }
-    </script>
-</body>
-</html>
+    </div>
+</div>
+{% endblock %}

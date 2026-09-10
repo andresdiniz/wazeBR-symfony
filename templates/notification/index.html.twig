@@ -1,0 +1,48 @@
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}Notificaç°µes{% endblock %}
+
+{% block body %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-3">Notificaç°µes</h1>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            {% if notifications|length > 0 %}
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Tipo</th>
+                            <th>Mensagem</th>
+                            <th>Destinatáº¡rio</th>
+                            <th>Status</th>
+                            <th>Data</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for notification in notifications %}
+                            <tr>
+                                <td>{{ notification.type }}</td>
+                                <td>{{ notification.message|truncate(50) }}</td>
+                                <td>{{ notification.recipientEmail }}</td>
+                                <td>
+                                    <span class="badge bg-{{ notification.sent ? 'success' : 'secondary' }}">
+                                        {{ notification.sent ? 'Enviada' : 'Pendente' }}
+                                    </span>
+                                </td>
+                                <td>{{ notification.createdAt|date('d/m/Y H:i') }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="text-muted mb-0">Nenhuma notificaç°µo encontrada</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
