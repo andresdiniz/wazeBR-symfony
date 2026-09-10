@@ -2,108 +2,80 @@
 
 {% block title %}Dashboard{% endblock %}
 
-{% block body %}
-<div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col-12">
-            <h1 class="h3 mb-3">Dashboard</h1>
+{% block dashboard_content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">Dashboard</h1>
+            <p class="text-muted mb-0">Resumo operacional do seu partner</p>
+        </div>
+        <span class="badge text-bg-success">Atualizado agora</span>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <div class="text-muted">Alertas hoje</div>
+                <div class="display-6 fw-semibold">{{ alerts_count|default(0) }}</div>
+            </div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <div class="text-muted">Congestionamentos hoje</div>
+                <div class="display-6 fw-semibold">{{ jams_count|default(0) }}</div>
+            </div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <div class="text-muted">Rotas TVT</div>
+                <div class="display-6 fw-semibold">{{ routes_count|default(0) }}</div>
+            </div></div>
         </div>
     </div>
 
-    <div class="row mb-4">
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Alertas</h5>
-                    <p class="display-4">{{ alerts_count }}</p>
-                    <small class="text-muted">Hoje</small>
-                </div>
+    <div class="row g-3">
+        <div class="col-lg-4"><div class="card h-100 shadow-sm">
+            <div class="card-header">Alertas ativos</div>
+            <div class="card-body p-0">
+                {% if alerts|default([])|length %}
+                    <ul class="list-group list-group-flush">
+                    {% for alert in alerts|slice(0, 10) %}
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>{{ alert.type|default('Alerta') }}</span>
+                            <small class="text-muted">{{ alert.lastSeenAt is defined and alert.lastSeenAt ? alert.lastSeenAt|date('H:i') : '' }}</small>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                {% else %}<p class="text-muted p-3 mb-0">Nenhum alerta ativo.</p>{% endif %}
             </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Engarrafamentos</h5>
-                    <p class="display-4">{{ jams_count }}</p>
-                    <small class="text-muted">Hoje</small>
-                </div>
+        </div></div>
+        <div class="col-lg-4"><div class="card h-100 shadow-sm">
+            <div class="card-header">Congestionamentos ativos</div>
+            <div class="card-body p-0">
+                {% if jams|default([])|length %}
+                    <ul class="list-group list-group-flush">
+                    {% for jam in jams|slice(0, 10) %}
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Nível {{ jam.level|default('-') }}</span>
+                            <small class="text-muted">{{ jam.lastSeenAt is defined and jam.lastSeenAt ? jam.lastSeenAt|date('H:i') : '' }}</small>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                {% else %}<p class="text-muted p-3 mb-0">Nenhum congestionamento ativo.</p>{% endif %}
             </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Rotas TVT</h5>
-                    <p class="display-4">{{ routes_count }}</p>
-                    <small class="text-muted">Total</small>
-                </div>
+        </div></div>
+        <div class="col-lg-4"><div class="card h-100 shadow-sm">
+            <div class="card-header">Rotas ativas</div>
+            <div class="card-body p-0">
+                {% if routes|default([])|length %}
+                    <ul class="list-group list-group-flush">
+                    {% for route in routes|slice(0, 10) %}
+                        <li class="list-group-item">{{ route.name|default('Rota') }}</li>
+                    {% endfor %}
+                    </ul>
+                {% else %}<p class="text-muted p-3 mb-0">Nenhuma rota ativa.</p>{% endif %}
             </div>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Alertas Ativos</h5>
-                </div>
-                <div class="card-body">
-                    {% if alerts|length > 0 %}
-                        <ul class="list-group list-group-flush">
-                            {% for alert in alerts|slice(0, 10) %}
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    {{ alert.type }}
-                                    <span class="badge bg-primary rounded-pill">{{ alert.lastSeenAt|date('H:i') }}</span>
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <p class="text-muted mb-0">Nenhum alerta ativo</p>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Engarrafamentos Ativos</h5>
-                </div>
-                <div class="card-body">
-                    {% if jams|length > 0 %}
-                        <ul class="list-group list-group-flush">
-                            {% for jam in jams|slice(0, 10) %}
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    Nvl {{ jam.level }}
-                                    <span class="badge bg-danger rounded-pill">{{ jam.lastSeenAt|date('H:i') }}</span>
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <p class="text-muted mb-0">Nenhum engarrafamento ativo</p>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Rotas TVT Ativas</h5>
-                </div>
-                <div class="card-body">
-                    {% if routes|length > 0 %}
-                        <ul class="list-group list-group-flush">
-                            {% for route in routes|slice(0, 10) %}
-                                <li class="list-group-item">
-                                    {{ route.name }}
-                                    <small class="text-muted d-block">{{ route.lastSeenAt|date('H:i') }}</small>
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <p class="text-muted mb-0">Nenhuma rota ativa</p>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
+        </div></div>
     </div>
 </div>
 {% endblock %}

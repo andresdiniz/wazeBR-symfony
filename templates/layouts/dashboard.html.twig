@@ -1,11 +1,22 @@
 {% extends 'base.html.twig' %}
 
 {% block body %}
-<div class="wrapper">
+<div class="app-shell">
     {% include 'partials/_navbar.html.twig' %}
-    {% include 'partials/_sidebar.html.twig' %}
-    <div class="main-content">
-        {% block dashboard_content %}{% endblock %}
+    <div class="app-layout">
+        {% include 'partials/_sidebar.html.twig' %}
+        <main class="main-content">
+            {% for label, messages in app.flashes %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ label }} alert-dismissible fade show m-3" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endfor %}
+            {% block dashboard_content %}{% endblock %}
+            {% block page_content %}{% endblock %}
+        </main>
     </div>
 </div>
 {% endblock %}
