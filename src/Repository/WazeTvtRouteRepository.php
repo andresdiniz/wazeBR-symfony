@@ -6,6 +6,9 @@ use App\Entity\WazeTvtRoute;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
+/**
+ * @extends ServiceEntityRepository<WazeTvtRoute>
+ */
 class WazeTvtRouteRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
@@ -13,35 +16,13 @@ class WazeTvtRouteRepository extends ServiceEntityRepository
         parent::__construct($registry, WazeTvtRoute::class);
     }
 
-    public function findOneByExternalRouteId(string $externalRouteId): ?WazeTvtRoute
+    public function findActiveByPartner(int $partnerId): array
     {
         return $this->createQueryBuilder('r')
-            ->where('r.externalRouteId = :externalRouteId')
-            ->setParameter('externalRouteId', $externalRouteId)
-            ->getQuery()
-            ->getOneOrNullResult();
-    }
-
-    public function findOneByFeedAndExternalRouteId(int $feedId, string $externalRouteId): ?WazeTvtRoute
-    {
-        return $this->createQueryBuilder('r')
-            ->join('r.wazeFeed', 'f')
-            ->where('f.id = :feedId')
-            ->andWhere('r.externalRouteId = :externalRouteId')
-            ->setParameter('feedId', $feedId)
-            ->setParameter('externalRouteId', $externalRouteId)
-            ->getQuery()
-            ->getOneOrNullResult();
-    }
-
-    public function findActiveByFeed(int $feedId): array
-    {
-        return $this->createQueryBuilder('r')
-            ->join('r.wazeFeed', 'f')
-            ->where('f.id = :feedId')
-            ->andWhere('r.isActive = :active')
-            ->setParameter('feedId', $feedId)
-            ->setParameter('active', true)
+            ->where('r.partner = :partner')
+            ->andWhere('r.isActive = true')
+            ->setParameter('partner', $partnerId)
+            ->orderBy('r.lastSeenAt', 'DESC')
             ->getQuery()
             ->getResult();
     }
