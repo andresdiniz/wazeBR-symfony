@@ -17,22 +17,22 @@ declare(strict_types=1);
  *
  *   2. Via HTTP, através de /cron/trigger/{job} (ver CronController) —
  *      usado quando o cron da Hostinger só permite configurar uma URL
- *      (ex.: usando wget) em vez de rodar um binário diretamente.
+ *      (ex.: usando wget) em vez de rodar um binario diretamente.
  *
- * Jobs disponíveis: waze_feed, waze_routes, waze_tvt, cemaden,
- * cemaden_hydro, notify, notify_high_risk, report, all (debug).
+ * Jobs disponiveis: waze_feed, waze_routes, waze_tvt, waze_collect_all,
+ * cemaden, cemaden_hydro, notify, notify_high_risk, report, all (debug).
  *
- * Detecção do binário PHP: por padrão usa a constante PHP_BINARY (o
- * mesmo interpretador que já está executando este script — sempre
+ * Detecao do binario PHP: por padrao usa a constante PHP_BINARY (o
+ * mesmo interpretador que ja esta executando este script — sempre
  * correto, tanto em Linux quanto em Windows, sem precisar hardcodar
- * caminho nenhum). Pode ser sobrescrito com a variável de ambiente
+ * caminho nenhum). Pode ser sobrescrito com a variavel de ambiente
  * CRON_PHP_BINARY, ou com um arquivo opcional `cron.local.php` na
- * mesma pasta (não versionado — ideal para overrides só do seu ambiente
- * local), que se existir é incluído e pode redefinir $phpBinary.
+ * mesma pasta (nao versionado — ideal para overrides so do seu ambiente
+ * local), que se existir e incluido e pode redefinir $phpBinary.
  */
 
 // -----------------------------------------------------------------------------
-// Configuração
+// Configuraao
 // -----------------------------------------------------------------------------
 
 $projectDir = __DIR__;
@@ -40,13 +40,6 @@ $logDir     = $projectDir . '/var/log';
 $lockDir    = $projectDir . '/var/cron-locks';
 $statusFile = $logDir . '/cron_status.json';
 
-// Defesa extra: STDIN/STDOUT/STDERR só são pré-definidas pelo SAPI CLI.
-// Se este script for chamado por engano sob outro SAPI (ex.: CGI, como
-// pode acontecer se CRON_PHP_BINARY apontar pro binário errado no
-// Windows/XAMPP), essas constantes não existem e o script quebra antes
-// de conseguir logar o motivo. Definimos manualmente para nunca falhar
-// silenciosamente por isso — mas o binário correto (CLI) ainda deve ser
-// configurado; ver CRON_PHP_BINARY no .env.
 if (!defined('STDIN')) {
     define('STDIN', fopen('php://stdin', 'r'));
 }
@@ -57,30 +50,18 @@ if (!defined('STDERR')) {
     define('STDERR', fopen('php://stderr', 'w'));
 }
 
-// Ordem de resolução do binário PHP: env var explícita > PHP_BINARY
-// (o interpretador que já está rodando este script) > fallback 'php'
-// (assume que está no PATH).
 $phpBinary = getenv('CRON_PHP_BINARY');
 if ($phpBinary === false || $phpBinary === '') {
     $phpBinary = (defined('PHP_BINARY') && PHP_BINARY !== '') ? PHP_BINARY : 'php';
 }
 
-// Override opcional só deste ambiente (crie um cron.local.php ao lado
-// deste arquivo, NÃO versionado, com algo como:
-//   <?php $phpBinary = 'C:\\php\\php.exe';
-// útil se PHP_BINARY não bater com o binário certo no seu ambiente).
 $localOverride = $projectDir . '/cron.local.php';
 if (is_file($localOverride)) {
     require $localOverride;
 }
 
-/** Tamanho máximo (bytes) de cada log antes de rotacionar. */
-const CRON_MAX_LOG_BYTES = 2 * 1024 * 1024; // 2MB
+const CRON_MAX_LOG_BYTES = 2 * 1024 * 1024;
 
-/**
- * Mapa de jobs → comando Symfony + timeout (segundos). Mantenha esta
- * lista sincronizada com CronController::ALLOWED_JOBS.
- */
 $jobs = [
     'waze_feed' => [
         'cmd'     => ['app:waze:collect-feed'],
@@ -97,30 +78,35 @@ $jobs = [
         'timeout' => 50,
         'desc'    => 'Snapshots de rotas do feed TVT',
     ],
+    'waze_collect_all' => [
+        'cmd'     => ['waze:collect-feed'],
+        'timeout' => 90,
+        'desc'    => 'Coleta completa Waze: alerts, jams E routes (EVENTS + TVT)',
+    ],
     'cemaden' => [
         'cmd'     => ['cemaden:collect'],
         'timeout' => 50,
-        'desc'    => 'Dados pluviométricos CEMADEN (todos os parceiros)',
+        'desc'    => 'Dados pluviometricos CEMADEN (todos os parceiros)',
     ],
     'cemaden_hydro' => [
         'cmd'     => ['cemaden:collect-hydro'],
         'timeout' => 60,
-        'desc'    => 'Níveis de rios (hidrológico) CEMADEN — todos os parceiros ativos',
+        'desc'    => 'Niveis de rios (hidrologico) CEMADEN — todos os parceiros ativos',
     ],
     'notify' => [
         'cmd'     => ['notifications:dispatch'],
         'timeout' => 40,
-        'desc'    => 'Notificações de alertas críticos e CEMADEN por parceiro',
+        'desc'    => 'Notificaoes de alertas criticos e CEMADEN por parceiro',
     ],
     'notify_high_risk' => [
         'cmd'     => ['waze:notify:high-risk'],
         'timeout' => 40,
-        'desc'    => 'Notificações legadas de alto risco (single-tenant)',
+        'desc'    => 'Notificaoes legadas de alto risco (single-tenant)',
     ],
     'report' => [
         'cmd'     => ['waze:report:daily'],
         'timeout' => 90,
-        'desc'    => 'Relatório diário por e-mail',
+        'desc'    => 'Relatorio diario por e-mail',
     ],
 ];
 
@@ -131,21 +117,21 @@ $jobs = [
 $job = $argv[1] ?? null;
 
 if ($job === null) {
-    fwrite(STDERR, "Uso: php cron.php <job>\n\nJobs disponíveis:\n");
+    fwrite(STDERR, "Uso: php cron.php <job>\n\nJobs disponiveis:\n");
     foreach ($jobs as $name => $def) {
         fwrite(STDERR, sprintf("  %-18s %s\n", $name, $def['desc']));
     }
-    fwrite(STDERR, "  all               Roda todos os jobs em sequência (uso manual/debug)\n");
+    fwrite(STDERR, "  all               Roda todos os jobs em sequencia (uso manual/debug)\n");
     exit(1);
 }
 
 if (!is_dir($logDir) && !mkdir($logDir, 0755, true) && !is_dir($logDir)) {
-    fwrite(STDERR, "Não foi possível criar o diretório de log: {$logDir}\n");
+    fwrite(STDERR, "Nao foi possivel criar o diretorio de log: {$logDir}\n");
     exit(1);
 }
 
 if (!is_dir($lockDir) && !mkdir($lockDir, 0755, true) && !is_dir($lockDir)) {
-    fwrite(STDERR, "Não foi possível criar o diretório de locks: {$lockDir}\n");
+    fwrite(STDERR, "Nao foi possivel criar o diretorio de locks: {$lockDir}\n");
     exit(1);
 }
 
@@ -160,20 +146,16 @@ if ($job === 'all') {
 
 if (!isset($jobs[$job])) {
     fwrite(STDERR, "Job desconhecido: {$job}\n");
-    fwrite(STDERR, "Jobs válidos: " . implode(', ', array_keys($jobs)) . ", all\n");
+    fwrite(STDERR, "Jobs validos: " . implode(', ', array_keys($jobs)) . ", all\n");
     exit(1);
 }
 
 exit(cronRunJob($job, $jobs[$job], $phpBinary, $projectDir, $logDir, $lockDir, $statusFile));
 
 // =============================================================================
-// Funções
+// Funoes
 // =============================================================================
 
-/**
- * Executa um único job: adquire lock, roda bin/console com timeout,
- * grava log e atualiza o status.json. Retorna 0 em sucesso, 1 caso contrário.
- */
 function cronRunJob(
     string $name,
     array $def,
@@ -187,16 +169,15 @@ function cronRunJob(
     $lockHandle = fopen($lockPath, 'c');
 
     if ($lockHandle === false) {
-        fwrite(STDERR, "[{$name}] Não foi possível abrir o arquivo de lock: {$lockPath}\n");
+        fwrite(STDERR, "[{$name}] Nao foi possivel abrir o arquivo de lock: {$lockPath}\n");
         return 1;
     }
 
     if (!flock($lockHandle, LOCK_EX | LOCK_NB)) {
-        // Execução anterior deste job ainda em andamento — não é erro, apenas pula.
         cronWriteStatus($statusFile, $name, [
             'status'    => 'skipped_running',
             'timestamp' => date('c'),
-            'message'   => 'Execução anterior ainda em andamento — pulado para não sobrepor.',
+            'message'   => 'Execuao anterior ainda em andamento — pulado para nao sobrepor.',
         ]);
         fclose($lockHandle);
         return 0;
@@ -226,7 +207,7 @@ function cronRunJob(
         fclose($lockHandle);
 
         cronAppendLog($logFile, sprintf(
-            "[%s] ERRO: não foi possível iniciar o processo para o job '%s' (binário: %s).\n",
+            "[%s] ERRO: nao foi possivel iniciar o processo para o job '%s' (binario: %s).\n",
             date('c'),
             $name,
             $phpBinary,
@@ -235,13 +216,12 @@ function cronRunJob(
         cronWriteStatus($statusFile, $name, [
             'status'    => 'error',
             'timestamp' => date('c'),
-            'message'   => 'Falha ao iniciar proc_open() com o binário: ' . $phpBinary,
+            'message'   => 'Falha ao iniciar proc_open() com o binario: ' . $phpBinary,
         ]);
 
         return 1;
     }
 
-    // Não usamos stdin.
     fclose($pipes[0]);
     stream_set_blocking($pipes[1], false);
     stream_set_blocking($pipes[2], false);
@@ -261,12 +241,12 @@ function cronRunJob(
         }
 
         if ((microtime(true) - $startedAt) > $timeout) {
-            proc_terminate($process, 15); // SIGTERM
+            proc_terminate($process, 15);
             usleep(500_000);
 
             $status = proc_get_status($process);
             if ($status['running']) {
-                proc_terminate($process, 9); // SIGKILL
+                proc_terminate($process, 9);
             }
 
             $killed = true;
@@ -276,7 +256,6 @@ function cronRunJob(
         usleep(200_000);
     }
 
-    // Coleta qualquer resquício de saída após o loop.
     $output .= (string) stream_get_contents($pipes[1]);
     $output .= (string) stream_get_contents($pipes[2]);
 
@@ -293,7 +272,7 @@ function cronRunJob(
         $exitCode,
         $durationSec,
         $killed ? ' KILLED_TIMEOUT' : '',
-        trim($output) !== '' ? trim($output) : '(sem saída)',
+        trim($output) !== '' ? trim($output) : '(sem saida)',
     ));
 
     cronWriteStatus($statusFile, $name, [
@@ -310,13 +289,11 @@ function cronRunJob(
     return $killed ? 1 : ($exitCode === 0 ? 0 : 1);
 }
 
-/** Anexa uma linha ao log do job, com lock para evitar corrupção em escrita concorrente. */
 function cronAppendLog(string $path, string $line): void
 {
     file_put_contents($path, $line, FILE_APPEND | LOCK_EX);
 }
 
-/** Rotaciona o log se ele passar do tamanho máximo, mantendo 1 arquivo anterior (.1). */
 function cronRotateLogIfNeeded(string $path, int $maxBytes): void
 {
     if (is_file($path) && filesize($path) > $maxBytes) {
@@ -328,12 +305,6 @@ function cronRotateLogIfNeeded(string $path, int $maxBytes): void
     }
 }
 
-/**
- * Atualiza a entrada de um job dentro de var/log/cron_status.json,
- * preservando o status dos demais jobs. Usa lock exclusivo no
- * arquivo para evitar leitura/escrita concorrente entre jobs
- * disparados quase ao mesmo tempo.
- */
 function cronWriteStatus(string $statusFile, string $job, array $data): void
 {
     $fp = fopen($statusFile, 'c+');
