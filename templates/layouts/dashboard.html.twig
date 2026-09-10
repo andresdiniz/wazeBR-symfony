@@ -1,17 +1,5 @@
 {% extends 'base.html.twig' %}
 
-{% block stylesheets %}
-    <link rel="stylesheet" href="{{ asset('css/global.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/base-layout.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
-{% endblock %}
-
-{% block javascripts %}
-    <script src="{{ asset('js/global.js') }}" defer></script>
-    <script src="{{ asset('js/base-layout.js') }}" defer></script>
-    <script src="{{ asset('js/dashboard.js') }}" defer></script>
-{% endblock %}
-
 {% block body %}
 <div class="app-shell">
     {% include 'partials/dashboard/topbar.html.twig' %}
