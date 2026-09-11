@@ -1,115 +1,88 @@
 /**
- * Header - Professional Interactions
+ * Header interactions
+ *
+ * Responsabilidades:
+ * - scroll effect (.header-scrolled)
+ * - search focus highlight
+ * - user dropdown via .is-open (click + fechar ao clicar fora)
+ * - notification badge dismiss
  */
 
-(function() {
+(function () {
     'use strict';
 
+    // ── Scroll effect ────────────────────────────────────────────
     const header = document.getElementById('appHeader');
+
+    if (header) {
+        const onScroll = () => {
+            header.classList.toggle('header-scrolled', window.scrollY > 20);
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
+    }
+
+    // ── Search focus ─────────────────────────────────────────────
     const searchInput = document.querySelector('.search-input');
-    const notificationLink = document.querySelector('.notification-link');
+
+    if (searchInput) {
+        const box = searchInput.closest('.search-box');
+
+        searchInput.addEventListener('focus', () => box?.classList.add('search-focused'));
+        searchInput.addEventListener('blur',  () => box?.classList.remove('search-focused'));
+
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter') return;
+            const query = searchInput.value.trim();
+            if (query) {
+                // Substituir pela rota de busca quando implementada
+                console.log('Busca:', query);
+            }
+        });
+    }
+
+    // ── User dropdown ─────────────────────────────────────────────
     const userMenu = document.querySelector('.user-menu');
 
-    // Scroll Effect
-    function handleScroll() {
-        if (window.scrollY > 20) {
-            header.classList.add('header-scrolled');
-        } else {
-            header.classList.remove('header-scrolled');
-        }
-    }
-
-    // Search Focus Effect
-    function initSearch() {
-        if (!searchInput) return;
-
-        searchInput.addEventListener('focus', function() {
-            this.parentElement.classList.add('search-focused');
+    if (userMenu) {
+        userMenu.addEventListener('click', (e) => {
+            // Não fecha ao clicar em links dentro do dropdown
+            if (e.target.closest('.dropdown-item')) return;
+            userMenu.classList.toggle('is-open');
         });
 
-        searchInput.addEventListener('blur', function() {
-            this.parentElement.classList.remove('search-focused');
-        });
-
-        // Search on Enter
-        searchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                const query = this.value.trim();
-                if (query) {
-                    // Implement search logic here
-                    console.log('Searching for:', query);
-                }
-            }
-        });
-    }
-
-    // Notification Click
-    function initNotifications() {
-        if (!notificationLink) return;
-
-        notificationLink.addEventListener('click', function(e) {
-            e.preventDefault();
-            // Implement notification dropdown logic here
-            const badge = this.querySelector('.notification-badge');
-            if (badge) {
-                badge.style.transform = 'scale(0)';
-                setTimeout(() => {
-                    badge.remove();
-                }, 200);
-            }
-        });
-    }
-
-    // User Menu Animation
-    function initUserMenu() {
-        if (!userMenu) return;
-
-        userMenu.addEventListener('click', function() {
-            const dropdown = this.querySelector('.user-dropdown');
-            if (dropdown) {
-                dropdown.classList.toggle('show');
-            }
-        });
-
-        // Close on outside click
-        document.addEventListener('click', function(e) {
+        document.addEventListener('click', (e) => {
             if (!userMenu.contains(e.target)) {
-                const dropdown = userMenu.querySelector('.user-dropdown');
-                if (dropdown) {
-                    dropdown.classList.remove('show');
-                }
+                userMenu.classList.remove('is-open');
+            }
+        });
+
+        // Fecha ao pressionar Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                userMenu.classList.remove('is-open');
             }
         });
     }
 
-    // Mobile Menu Animation
-    function initMobileMenu() {
-        const toggler = document.querySelector('.navbar-toggler');
-        const collapse = document.querySelector('.navbar-collapse');
+    // ── Notification badge ────────────────────────────────────────
+    const notificationLink = document.querySelector('.notification-link');
 
-        if (!toggler || !collapse) return;
+    if (notificationLink) {
+        notificationLink.addEventListener('click', (e) => {
+            e.preventDefault();
 
-        toggler.addEventListener('click', function() {
-            collapse.classList.toggle('show');
-            this.classList.toggle('active');
+            const badge = notificationLink.querySelector('.notification-badge');
+            if (!badge) return;
+
+            badge.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+            badge.style.transform  = 'scale(0)';
+            badge.style.opacity    = '0';
+
+            setTimeout(() => badge.remove(), 200);
+
+            // Substituir pelo handler real de notificações quando implementado
         });
     }
 
-    // Initialize
-    function init() {
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        handleScroll(); // Check initial state
-
-        initSearch();
-        initNotifications();
-        initUserMenu();
-        initMobileMenu();
-    }
-
-    // Run when DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
 })();
