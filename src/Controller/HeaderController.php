@@ -2,23 +2,32 @@
 
 namespace App\Controller;
 
+use App\Entity\Partner;
 use App\Repository\NotificationRepository;
+use App\Repository\PartnerRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Routing\Annotation\Route;
 
 class HeaderController extends AbstractController
 {
-    #[Route('/_partial/header', name: 'partial_header')]
-    public function index(NotificationRepository $notificationRepository): Response
+    public function __construct(
+        private NotificationRepository $notificationRepository,
+        private PartnerRepository $partnerRepository
+    ) {}
+
+    #[Route('/_header', name: '_header', methods: ['GET'])]
+    public function index(Request $request): Response
     {
+        $user = $this->getUser();
         $notificationCount = 0;
 
-        if ($this->getUser()) {
-            $partner = $this->getUser()->getPartner();
-            $notificationCount = $notificationRepository->countUnreadByPartner(
-                $partner->getId()
-            );
+        if ($user) {
+            $partner = $this->partnerRepository->find($user->getUserIdentifier());
+            if ($partner instanceof Partner) {
+                $notificationCount = $this->notificationRepository->countUnreadByPartner($partner);
+            }
         }
 
         return $this->render('partials/header.html.twig', [
