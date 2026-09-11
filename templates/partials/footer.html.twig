@@ -1,18 +1,26 @@
-<footer class="app-footer">
-    <div class="footer-container">
-        <div class="footer-content">
-            <p class="copyright">
-                &copy; {{ "now"|date("Y") }} WazeBR. Todos os direitos reservados.
-            </p>
-            <p class="footer-text">
-                Sistema de monitoramento de tr&acirc;nsito em tempo real
-            </p>
-            <div class="footer-datetime">
-                <i class="bi bi-calendar3"></i>
-                <span>{{ "now"|date("d/m/Y") }}</span>
-                <i class="bi bi-clock"></i>
-                <span id="footerTime">{{ "now"|date("H:i") }}</span>
-            </div>
+<footer class="app-footer footer" data-component="footer">
+    <div class="footer-inner">
+        <div class="footer-brand-block">
+            <a href="{{ path('home') }}" class="footer-brand" aria-label="WazeBR - início">
+                <span class="footer-brand-mark" aria-hidden="true">W</span>
+                <span><strong>WazeBR</strong><small>Monitoramento inteligente</small></span>
+            </a>
+            <p class="footer-description">Dados claros para decisões melhores no trânsito.</p>
         </div>
+
+        <nav class="footer-links" aria-label="Links institucionais">
+            <a href="{{ path('home') }}">Início</a>
+            <a href="#sobre">Sobre o sistema</a>
+            <a href="#suporte">Suporte</a>
+        </nav>
+
+        <div class="footer-meta">
+            <span class="footer-status"><i aria-hidden="true"></i> Sistema online</span>
+            <span>© <span data-footer-year>{{ 'now'|date('Y') }}</span> WazeBR</span>
+        </div>
+
+        <button type="button" class="footer-top-button" data-action="scroll-to-top" aria-label="Voltar ao topo" hidden>
+            <span aria-hidden="true">↑</span>
+        </button>
     </div>
 </footer>
