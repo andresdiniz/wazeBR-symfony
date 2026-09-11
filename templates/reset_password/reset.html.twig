@@ -1,0 +1,186 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Nova Senha — WazeBR{% endblock %}
+
+{% block stylesheets %}
+    <link rel="stylesheet" href="{{ asset('css/auth.css') }}">
+{% endblock %}
+
+{% block javascripts %}
+    <script src="{{ asset('js/auth.js') }}" defer></script>
+{% endblock %}
+
+{% block body %}
+<div class="auth-page">
+
+    {# ── Lado esquerdo — formulário ───────────────────────────── #}
+    <div class="auth-left">
+        <div class="auth-container">
+
+            <a href="{{ path('home') }}" class="auth-brand">
+                <div class="auth-brand-mark">
+                    <i class="bi bi-signpost-2-fill"></i>
+                </div>
+                <span class="auth-brand-name">Waze<em>BR</em></span>
+            </a>
+
+            <div class="auth-icon-header">
+                <div class="auth-icon-circle auth-icon-circle-green">
+                    <i class="bi bi-shield-lock-fill"></i>
+                </div>
+                <div class="auth-heading">
+                    <h1>Crie uma nova senha</h1>
+                    <p>Sua nova senha deve ser diferente da anterior e ter ao menos 6 caracteres.</p>
+                </div>
+            </div>
+
+            {% for type, messages in app.flashes %}
+                {% for message in messages %}
+                    <div class="auth-alert auth-alert-{{ type }}" role="alert">
+                        <i class="bi bi-{{ type == 'success' ? 'check-circle-fill' : 'exclamation-circle-fill' }}"></i>
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+            {% endfor %}
+
+            <form method="post" class="auth-form" novalidate>
+
+                <div class="auth-field">
+                    <label for="new_password">
+                        <i class="bi bi-lock"></i>
+                        Nova senha
+                    </label>
+                    <div class="auth-input-wrap">
+                        <input
+                            type="password"
+                            id="new_password"
+                            name="password"
+                            class="auth-input"
+                            autocomplete="new-password"
+                            placeholder="Mínimo 6 caracteres"
+                            minlength="6"
+                            required
+                            autofocus
+                        >
+                        <button type="button" class="auth-toggle-pw" data-target="new_password" aria-label="Mostrar senha">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                    <span class="auth-field-help">
+                        <i class="bi bi-info-circle"></i>
+                        Use letras, números e símbolos para mais segurança
+                    </span>
+                </div>
+
+                <div class="auth-field">
+                    <label for="confirm_password">
+                        <i class="bi bi-lock-fill"></i>
+                        Confirmar nova senha
+                    </label>
+                    <div class="auth-input-wrap">
+                        <input
+                            type="password"
+                            id="confirm_password"
+                            name="confirm_password"
+                            class="auth-input"
+                            autocomplete="new-password"
+                            placeholder="Repita a nova senha"
+                            minlength="6"
+                            required
+                        >
+                        <button type="button" class="auth-toggle-pw" data-target="confirm_password" aria-label="Mostrar senha">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                {# Barra de força da senha #}
+                <div class="auth-strength" id="passwordStrength" aria-live="polite">
+                    <div class="auth-strength-bar">
+                        <div class="auth-strength-fill" id="strengthFill"></div>
+                    </div>
+                    <span class="auth-strength-label" id="strengthLabel">Digite a senha</span>
+                </div>
+
+                <div class="auth-requirements">
+                    <div class="req-item" id="req-length">
+                        <i class="bi bi-circle"></i>
+                        Mínimo de 6 caracteres
+                    </div>
+                    <div class="req-item" id="req-letter">
+                        <i class="bi bi-circle"></i>
+                        Contém letras
+                    </div>
+                    <div class="req-item" id="req-number">
+                        <i class="bi bi-circle"></i>
+                        Contém números
+                    </div>
+                </div>
+
+                <button type="submit" class="auth-btn auth-btn-primary" id="resetSubmit">
+                    <span>Alterar senha</span>
+                    <i class="bi bi-check-lg"></i>
+                </button>
+
+            </form>
+
+            <div class="auth-footer-link">
+                <a href="{{ path('auth_login') }}">
+                    <i class="bi bi-arrow-left"></i>
+                    Voltar ao login
+                </a>
+            </div>
+
+        </div>
+    </div>
+
+    {# ── Lado direito — visual ────────────────────────────────── #}
+    <div class="auth-right">
+        <div class="auth-visual">
+
+            <div class="auth-right-orb auth-right-orb-1" aria-hidden="true"></div>
+            <div class="auth-right-orb auth-right-orb-2" aria-hidden="true"></div>
+
+            <div class="auth-visual-content">
+                <div class="auth-visual-logo">
+                    <i class="bi bi-shield-check"></i>
+                </div>
+                <h2>Segurança em primeiro lugar</h2>
+                <p>Uma senha forte é sua melhor defesa contra acessos não autorizados.</p>
+
+                <div class="auth-security-items">
+                    <div class="auth-security-item">
+                        <i class="bi bi-key-fill"></i>
+                        <span>Use combinações únicas</span>
+                    </div>
+                    <div class="auth-security-item">
+                        <i class="bi bi-shuffle"></i>
+                        <span>Misture letras, números e símbolos</span>
+                    </div>
+                    <div class="auth-security-item">
+                        <i class="bi bi-person-lock"></i>
+                        <span>Nunca compartilhe sua senha</span>
+                    </div>
+                </div>
+
+                <div class="auth-visual-stats">
+                    <div class="auth-stat">
+                        <strong>100%</strong>
+                        <span>Seguro</span>
+                    </div>
+                    <div class="auth-stat">
+                        <strong>1h</strong>
+                        <span>Link válido</span>
+                    </div>
+                    <div class="auth-stat">
+                        <strong>1x</strong>
+                        <span>Uso único</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}

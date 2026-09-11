@@ -1,26 +1,33 @@
 /**
  * Landing — WazeBR
+ * Inicializado via <script defer> no template.
+ * Sem dependências externas.
  */
+
 (function () {
     'use strict';
 
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    // ── Init ─────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', init);
 
     function init() {
-        if (!document.querySelector('.landing-shell')) return;
+        const shell = document.querySelector('.landing-shell');
+        if (!shell) return;
+
         initHamburger();
-        initHeaderScroll();
         initReveal();
         initCounters();
+        initHeaderScroll();
+
         if (!reduced) {
             initParallaxOrbs();
             initCardParallax();
         }
     }
 
-    /* ── Hamburger ─────────────────────────────────────────────── */
+    // ── Hamburger ────────────────────────────────────────────────
     function initHamburger() {
         const btn    = document.querySelector('[data-landing-menu]');
         const header = document.querySelector('.landing-header');
@@ -32,6 +39,7 @@
             btn.setAttribute('aria-expanded', String(open));
         });
 
+        // Fecha ao clicar em link da nav mobile
         header.querySelectorAll('.landing-nav-link').forEach(link => {
             link.addEventListener('click', () => {
                 header.classList.remove('is-open');
@@ -41,24 +49,26 @@
         });
     }
 
-    /* ── Header scroll ─────────────────────────────────────────── */
+    // ── Header scroll shadow ─────────────────────────────────────
     function initHeaderScroll() {
         const header = document.querySelector('.landing-header');
         if (!header) return;
+
         const update = () => {
             header.style.boxShadow = window.scrollY > 10
-                ? '0 1px 20px rgba(15,23,42,.08)' : '';
+                ? '0 1px 20px rgba(15,23,42,.08)'
+                : '';
         };
+
         window.addEventListener('scroll', update, { passive: true });
         update();
     }
 
-    /* ── Reveal ────────────────────────────────────────────────── */
+    // ── Reveal por scroll ────────────────────────────────────────
     function initReveal() {
         const items = document.querySelectorAll('[data-reveal]');
         if (!items.length) return;
 
-        // Fallback sem suporte a IntersectionObserver
         if (!('IntersectionObserver' in window) || reduced) {
             items.forEach(el => el.classList.add('is-visible'));
             return;
@@ -69,41 +79,35 @@
                 if (!entry.isIntersecting) return;
 
                 const delay = parseInt(entry.target.dataset.revealDelay ?? '0', 10);
-                setTimeout(() => entry.target.classList.add('is-visible'), delay);
+
+                setTimeout(() => {
+                    entry.target.classList.add('is-visible');
+                }, delay);
+
                 obs.unobserve(entry.target);
             });
-        }, {
-            threshold: 0.08,
-            rootMargin: '0px 0px -60px 0px'
-        });
+        }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
 
         items.forEach(el => observer.observe(el));
-
-        // Process steps: escalonamento extra dentro do grupo
-        document.querySelectorAll('.process-step').forEach((step, i) => {
-            step.dataset.revealDelay = String(i * 130);
-        });
-
-        // Feature cards: escalonamento
-        document.querySelectorAll('.feature-card').forEach((card, i) => {
-            card.dataset.revealDelay = String(i * 90);
-        });
     }
 
-    /* ── Contadores animados ───────────────────────────────────── */
+    // ── Contadores animados ──────────────────────────────────────
     function initCounters() {
         const counters = document.querySelectorAll('[data-count]');
-        if (!counters.length || reduced) return;
+        if (!counters.length) return;
+
+        if (reduced) return; // Já renderizado com valor final
 
         const animate = (el) => {
             const target   = Number(el.dataset.count);
-            const duration = 1100;
+            const duration = 1200;
             const start    = performance.now();
 
             const step = (now) => {
-                const t = Math.min((now - start) / duration, 1);
-                el.textContent = String(Math.round(target * (1 - Math.pow(1 - t, 3))));
-                if (t < 1) requestAnimationFrame(step);
+                const progress = Math.min((now - start) / duration, 1);
+                const eased    = 1 - Math.pow(1 - progress, 3);
+                el.textContent = String(Math.round(target * eased));
+                if (progress < 1) requestAnimationFrame(step);
             };
 
             requestAnimationFrame(step);
@@ -114,23 +118,23 @@
             return;
         }
 
-        const obs = new IntersectionObserver((entries, o) => {
+        const observer = new IntersectionObserver((entries, obs) => {
             entries.forEach(entry => {
                 if (!entry.isIntersecting) return;
                 animate(entry.target);
-                o.unobserve(entry.target);
+                obs.unobserve(entry.target);
             });
         }, { threshold: 0.8 });
 
-        counters.forEach(el => obs.observe(el));
+        counters.forEach(el => observer.observe(el));
     }
 
-    /* ── Parallax orbs ─────────────────────────────────────────── */
+    // ── Parallax nos orbs do hero ────────────────────────────────
     function initParallaxOrbs() {
         const orbs = document.querySelectorAll('.hero-orb');
         if (!orbs.length) return;
 
-        const factors = [0.022, -0.014, 0.018];
+        const factors = [0.025, -0.015, 0.02];
         let frame;
 
         document.addEventListener('mousemove', (e) => {
@@ -149,10 +153,13 @@
         });
     }
 
-    /* ── Parallax card visual ──────────────────────────────────── */
+    // ── Parallax suave no card visual ───────────────────────────
     function initCardParallax() {
         const visual = document.querySelector('.landing-hero-visual');
-        if (!visual || !window.matchMedia('(min-width: 901px)').matches) return;
+        if (!visual) return;
+
+        const mq = window.matchMedia('(min-width: 901px)');
+        if (!mq.matches) return;
 
         let frame;
 
@@ -160,16 +167,16 @@
             cancelAnimationFrame(frame);
             frame = requestAnimationFrame(() => {
                 const rect = visual.getBoundingClientRect();
-                const x = ((e.clientX - rect.left) / rect.width  - .5) * 9;
-                const y = ((e.clientY - rect.top)  / rect.height - .5) * 6;
+                const x = ((e.clientX - rect.left) / rect.width  - .5) * 10;
+                const y = ((e.clientY - rect.top)  / rect.height - .5) * 7;
                 visual.style.transform = `translate3d(${x}px, ${y}px, 0)`;
             });
         });
 
         visual.addEventListener('pointerleave', () => {
             cancelAnimationFrame(frame);
+            visual.style.transform = '';
             visual.style.transition = 'transform .5s ease';
-            visual.style.transform  = '';
             setTimeout(() => { visual.style.transition = ''; }, 500);
         });
     }

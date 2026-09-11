@@ -2,108 +2,387 @@
 
 {% block title %}WazeBR | Trânsito inteligente{% endblock %}
 
-{% block body_class %}landing-page{% endblock %}
-
 {% block stylesheets %}
-    <link rel="stylesheet" href="{{ asset('css/core/variables.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/core/reset.css') }}">
     <link rel="stylesheet" href="{{ asset('css/landing.css') }}">
 {% endblock %}
 
+{% block javascripts %}
+    <script src="{{ asset('js/landing.js') }}" defer></script>
+{% endblock %}
+
 {% block body %}
-    <div class="landing-shell">
-        <header class="landing-header">
-            <a href="{{ path('home') }}" class="landing-brand" aria-label="WazeBR - início">
-                <span class="landing-brand-mark">W</span>
-                <span><strong>WazeBR</strong><small>Trânsito inteligente</small></span>
-            </a>
+<div class="landing-shell">
 
-            <nav class="landing-nav" aria-label="Navegação pública">
-                <a href="#recursos">Recursos</a>
-                <a href="#como-funciona">Como funciona</a>
-                <a href="#visao">Visão geral</a>
-            </nav>
+    {# ════════════════════════════════════════
+       HEADER
+    ════════════════════════════════════════ #}
+    <header class="landing-header" id="landingHeader">
+        <a href="{{ path('home') }}" class="landing-brand" aria-label="WazeBR — início">
+            <div class="landing-brand-mark">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+            </div>
+            <span class="landing-brand-name"><strong>Waze</strong><em>BR</em></span>
+        </a>
 
-            <div class="landing-header-actions">
-                <span class="landing-status"><i></i> Sistema online</span>
-                {% if not app.user %}
-                    <a href="{{ path('auth_login') }}" class="landing-login-link">Entrar</a>
-                    <a href="{{ path('auth_login') }}" class="landing-button landing-button-primary">Acessar plataforma <span aria-hidden="true">→</span></a>
-                {% else %}
-                    <a href="{{ path('dashboard') }}" class="landing-button landing-button-primary">Ir para dashboard <span aria-hidden="true">→</span></a>
-                {% endif %}
+        <nav class="landing-nav" aria-label="Navegação pública">
+            <a href="#recursos" class="landing-nav-link">Recursos</a>
+            <a href="#como-funciona" class="landing-nav-link">Como funciona</a>
+            <a href="#visao" class="landing-nav-link">Visão geral</a>
+        </nav>
+
+        <div class="landing-header-actions">
+            <span class="landing-status-badge">
+                <span class="landing-status-dot"></span>
+                Sistema online
+            </span>
+            {% if not app.user %}
+                <a href="{{ path('auth_login') }}" class="landing-link-btn">Entrar</a>
+                <a href="{{ path('auth_login') }}" class="landing-btn landing-btn-primary">
+                    Acessar plataforma
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M12 5l5 5-5 5"/></svg>
+                </a>
+            {% else %}
+                <a href="{{ path('dashboard') }}" class="landing-btn landing-btn-primary">
+                    Ir para dashboard
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M12 5l5 5-5 5"/></svg>
+                </a>
+            {% endif %}
+        </div>
+
+        <button type="button" class="landing-hamburger" data-landing-menu aria-label="Abrir menu" aria-expanded="false">
+            <span></span><span></span><span></span>
+        </button>
+    </header>
+
+    <main>
+
+        {# ════════════════════════════════════════
+           HERO
+        ════════════════════════════════════════ #}
+        <section class="landing-hero" id="visao">
+
+            {# Orbs de fundo #}
+            <div class="hero-orb hero-orb-1" aria-hidden="true"></div>
+            <div class="hero-orb hero-orb-2" aria-hidden="true"></div>
+            <div class="hero-orb hero-orb-3" aria-hidden="true"></div>
+
+            <div class="landing-hero-content" data-reveal>
+                <div class="landing-eyebrow">
+                    <span class="eyebrow-dot"></span>
+                    Inteligência para cada caminho
+                </div>
+
+                <h1>
+                    Entenda o trânsito<br>
+                    antes que ele <span class="hero-gradient-text">pare você.</span>
+                </h1>
+
+                <p class="landing-hero-desc">
+                    O WazeBR transforma dados de mobilidade em decisões rápidas. Monitore ocorrências, congestionamentos e rotas em um único lugar.
+                </p>
+
+                <div class="landing-hero-actions">
+                    {% if not app.user %}
+                        <a href="{{ path('auth_login') }}" class="landing-btn landing-btn-primary landing-btn-lg">
+                            Começar agora
+                            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M12 5l5 5-5 5"/></svg>
+                        </a>
+                    {% else %}
+                        <a href="{{ path('dashboard') }}" class="landing-btn landing-btn-primary landing-btn-lg">
+                            Abrir dashboard
+                            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M12 5l5 5-5 5"/></svg>
+                        </a>
+                    {% endif %}
+                    <a href="#como-funciona" class="landing-btn landing-btn-ghost landing-btn-lg">
+                        Conheça a plataforma
+                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4v12M5 12l5 5 5-5"/></svg>
+                    </a>
+                </div>
+
+                <div class="landing-trust">
+                    <div class="landing-avatars">
+                        <span>A</span><span>M</span><span>R</span><span>+</span>
+                    </div>
+                    <p>Dados atualizados continuamente para sua operação</p>
+                </div>
             </div>
 
-            <button type="button" class="landing-menu-button" data-landing-menu aria-label="Abrir navegação" aria-expanded="false">☰</button>
-        </header>
+            {# Card visual #}
+            <div class="landing-hero-visual" data-reveal data-reveal-delay="200">
+                <div class="hero-card-glow" aria-hidden="true"></div>
 
-        <main>
-            <section class="landing-hero" id="visao">
-                <div class="landing-hero-content" data-landing-reveal>
-                    <span class="landing-eyebrow"><i></i> Inteligência para cada caminho</span>
-                    <h1>Entenda o trânsito antes que ele <em>pare você.</em></h1>
-                    <p class="landing-hero-text">O WazeBR transforma dados de mobilidade em decisões rápidas. Monitore ocorrências, congestionamentos e rotas em um único lugar.</p>
-                    <div class="landing-hero-actions">
-                        {% if not app.user %}
-                            <a href="{{ path('auth_login') }}" class="landing-button landing-button-primary landing-button-large">Começar agora <span aria-hidden="true">→</span></a>
-                        {% else %}
-                            <a href="{{ path('dashboard') }}" class="landing-button landing-button-primary landing-button-large">Abrir dashboard <span aria-hidden="true">→</span></a>
-                        {% endif %}
-                        <a href="#como-funciona" class="landing-text-link">Conheça a plataforma <span aria-hidden="true">↓</span></a>
-                    </div>
-                    <div class="landing-trust-line"><span class="landing-avatar-stack"><i>A</i><i>M</i><i>R</i></span><span>Dados atualizados continuamente para sua operação.</span></div>
-                </div>
-
-                <div class="landing-hero-visual" data-landing-reveal>
-                    <div class="landing-glow"></div>
-                    <div class="landing-dashboard-card">
-                        <div class="landing-card-topbar"><span><i></i> Monitoramento ao vivo</span><small>Atualizado agora</small></div>
-                        <div class="landing-map-preview">
-                            <span class="map-route route-one"></span><span class="map-route route-two"></span><span class="map-route route-three"></span>
-                            <span class="map-pin pin-one">!</span><span class="map-pin pin-two">≈</span><span class="map-pin pin-three">✓</span>
-                            <span class="map-location location-one">Centro</span><span class="map-location location-two">Zona Sul</span><span class="map-location location-three">Marginal</span>
+                <div class="landing-dashboard-card">
+                    <div class="ldc-header">
+                        <div class="ldc-header-left">
+                            <span class="ldc-live-dot"></span>
+                            <span class="ldc-title">Monitoramento ao vivo</span>
                         </div>
-                        <div class="landing-card-stats">
-                            <div><strong>35</strong><span>Alertas ativos</span></div>
-                            <div><strong>17</strong><span>Congestionamentos</span></div>
-                            <div><strong>38</strong><span>Rotas monitoradas</span></div>
+                        <span class="ldc-updated">Agora</span>
+                    </div>
+
+                    <div class="ldc-map">
+                        {# Grid do mapa #}
+                        <div class="ldc-map-grid" aria-hidden="true"></div>
+
+                        {# Rotas animadas #}
+                        <svg class="ldc-routes-svg" viewBox="0 0 460 240" fill="none" aria-hidden="true">
+                            <path class="ldc-route ldc-route-blue" d="M20 180 Q120 60 280 100 Q360 120 440 80"/>
+                            <path class="ldc-route ldc-route-amber" d="M20 100 Q80 160 200 140 Q320 120 440 160"/>
+                            <path class="ldc-route ldc-route-green" d="M60 220 Q140 180 240 190 Q340 200 440 200"/>
+                        </svg>
+
+                        {# Pins #}
+                        <div class="ldc-pin ldc-pin-red"   style="top:38%;left:38%"  aria-label="Alerta">!</div>
+                        <div class="ldc-pin ldc-pin-amber" style="top:62%;left:68%"  aria-label="Lentidão">≈</div>
+                        <div class="ldc-pin ldc-pin-green" style="top:80%;left:26%"  aria-label="Livre">✓</div>
+
+                        {# Labels #}
+                        <span class="ldc-label" style="top:10%;left:8%">Centro</span>
+                        <span class="ldc-label" style="top:70%;right:8%">Zona Sul</span>
+                        <span class="ldc-label" style="bottom:8%;left:44%">Marginal</span>
+                    </div>
+
+                    <div class="ldc-stats">
+                        <div class="ldc-stat">
+                            <strong data-count="35">35</strong>
+                            <span>Alertas ativos</span>
+                        </div>
+                        <div class="ldc-stat">
+                            <strong data-count="17">17</strong>
+                            <span>Congestionamentos</span>
+                        </div>
+                        <div class="ldc-stat">
+                            <strong data-count="38">38</strong>
+                            <span>Rotas monitoradas</span>
                         </div>
                     </div>
-                    <div class="landing-floating-card landing-floating-alert"><span>!</span><div><strong>Alerta detectado</strong><small>Há 2 minutos</small></div></div>
-                    <div class="landing-floating-card landing-floating-status"><span>✓</span><div><strong>Operação estável</strong><small>Todos os sistemas online</small></div></div>
                 </div>
-            </section>
 
-            <section class="landing-metrics" data-landing-reveal>
-                <div><strong>Tempo real</strong><span>Informação quando importa</span></div>
-                <div><strong>Visão centralizada</strong><span>Todos os dados em um painel</span></div>
-                <div><strong>Decisões rápidas</strong><span>Menos surpresa no caminho</span></div>
-            </section>
-
-            <section class="landing-section" id="recursos">
-                <div class="landing-section-heading" data-landing-reveal><span class="landing-eyebrow">Tudo sob controle</span><h2>Uma visão mais clara para uma operação mais inteligente.</h2><p>Ferramentas essenciais para acompanhar o que acontece nas ruas e agir com confiança.</p></div>
-                <div class="landing-feature-grid">
-                    <article class="landing-feature-card" data-landing-reveal><span class="feature-icon feature-icon-blue">◉</span><h3>Monitoramento em tempo real</h3><p>Acompanhe as condições de trânsito enquanto elas acontecem, com dados organizados e fáceis de interpretar.</p><a href="#como-funciona">Explorar recurso <span>→</span></a></article>
-                    <article class="landing-feature-card" data-landing-reveal><span class="feature-icon feature-icon-orange">≈</span><h3>Alertas acionáveis</h3><p>Identifique ocorrências, fechamentos e pontos críticos antes que se transformem em grandes impactos.</p><a href="#como-funciona">Explorar recurso <span>→</span></a></article>
-                    <article class="landing-feature-card" data-landing-reveal><span class="feature-icon feature-icon-green">⌁</span><h3>Rotas sob controle</h3><p>Tenha uma visão única das rotas monitoradas e encontre oportunidades para melhorar sua operação.</p><a href="#como-funciona">Explorar recurso <span>→</span></a></article>
+                {# Floating cards #}
+                <div class="lfc lfc-alert" aria-hidden="true">
+                    <div class="lfc-icon lfc-icon-red">
+                        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                    </div>
+                    <div class="lfc-body">
+                        <strong>Alerta detectado</strong>
+                        <small>Há 2 minutos</small>
+                    </div>
                 </div>
-            </section>
 
-            <section class="landing-process" id="como-funciona">
-                <div class="landing-process-heading" data-landing-reveal><span class="landing-eyebrow">Como funciona</span><h2>Do dado à decisão em poucos passos.</h2></div>
-                <div class="landing-process-grid">
-                    <div data-landing-reveal><span>01</span><h3>Conecte-se</h3><p>Acesse a plataforma com suas credenciais e encontre tudo em um só lugar.</p></div>
-                    <div data-landing-reveal><span>02</span><h3>Observe</h3><p>Leia o cenário através de indicadores claros, alertas e rotas monitoradas.</p></div>
-                    <div data-landing-reveal><span>03</span><h3>Aja melhor</h3><p>Use informação atualizada para priorizar ações e reduzir imprevistos.</p></div>
+                <div class="lfc lfc-status" aria-hidden="true">
+                    <div class="lfc-icon lfc-icon-green">
+                        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    </div>
+                    <div class="lfc-body">
+                        <strong>Operação estável</strong>
+                        <small>Todos os sistemas online</small>
+                    </div>
                 </div>
-            </section>
+            </div>
+        </section>
 
-            <section class="landing-cta" data-landing-reveal>
-                <div><span class="landing-eyebrow">Pronto para avançar?</span><h2>Tenha o trânsito sob sua perspectiva.</h2><p>Entre na plataforma e transforme informação em movimento.</p></div>
-                {% if not app.user %}<a href="{{ path('auth_login') }}" class="landing-button landing-button-light landing-button-large">Acessar WazeBR <span aria-hidden="true">→</span></a>{% else %}<a href="{{ path('dashboard') }}" class="landing-button landing-button-light landing-button-large">Abrir dashboard <span aria-hidden="true">→</span></a>{% endif %}
-            </section>
-        </main>
+        {# ════════════════════════════════════════
+           MÉTRICAS
+        ════════════════════════════════════════ #}
+        <section class="landing-metrics" data-reveal>
+            <div class="metrics-inner">
+                <div class="metric-item">
+                    <div class="metric-icon metric-icon-blue">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    </div>
+                    <div>
+                        <strong>Tempo real</strong>
+                        <span>Informação quando importa</span>
+                    </div>
+                </div>
+                <div class="metric-divider" aria-hidden="true"></div>
+                <div class="metric-item">
+                    <div class="metric-icon metric-icon-purple">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    </div>
+                    <div>
+                        <strong>Visão centralizada</strong>
+                        <span>Todos os dados em um painel</span>
+                    </div>
+                </div>
+                <div class="metric-divider" aria-hidden="true"></div>
+                <div class="metric-item">
+                    <div class="metric-icon metric-icon-green">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    </div>
+                    <div>
+                        <strong>Decisões rápidas</strong>
+                        <span>Menos surpresa no caminho</span>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-        <footer class="landing-footer"><a href="{{ path('home') }}" class="landing-brand"><span class="landing-brand-mark">W</span><span><strong>WazeBR</strong><small>Trânsito inteligente</small></span></a><span>© {{ 'now'|date('Y') }} WazeBR. Monitoramento para decisões melhores.</span><a href="{{ path('auth_login') }}">Entrar na plataforma →</a></footer>
-    </div>
+        {# ════════════════════════════════════════
+           RECURSOS
+        ════════════════════════════════════════ #}
+        <section class="landing-features" id="recursos">
+            <div class="section-heading" data-reveal>
+                <div class="landing-eyebrow">
+                    <span class="eyebrow-dot"></span>
+                    Tudo sob controle
+                </div>
+                <h2>Uma visão mais clara para uma operação mais inteligente.</h2>
+                <p>Ferramentas essenciais para acompanhar o que acontece nas ruas e agir com confiança.</p>
+            </div>
+
+            <div class="features-grid">
+                <article class="feature-card" data-reveal data-reveal-delay="0">
+                    <div class="feature-card-top">
+                        <div class="feature-icon feature-icon-blue">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                        </div>
+                        <div class="feature-badge feature-badge-blue">Ao vivo</div>
+                    </div>
+                    <h3>Monitoramento em tempo real</h3>
+                    <p>Acompanhe as condições de trânsito enquanto elas acontecem, com dados organizados e fáceis de interpretar.</p>
+                    <a href="#como-funciona" class="feature-link">
+                        Explorar recurso
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+                    </a>
+                </article>
+
+                <article class="feature-card feature-card-highlight" data-reveal data-reveal-delay="100">
+                    <div class="feature-card-top">
+                        <div class="feature-icon feature-icon-orange">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        </div>
+                        <div class="feature-badge feature-badge-orange">Essencial</div>
+                    </div>
+                    <h3>Alertas acionáveis</h3>
+                    <p>Identifique ocorrências, fechamentos e pontos críticos antes que se transformem em grandes impactos.</p>
+                    <a href="#como-funciona" class="feature-link">
+                        Explorar recurso
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+                    </a>
+                </article>
+
+                <article class="feature-card" data-reveal data-reveal-delay="200">
+                    <div class="feature-card-top">
+                        <div class="feature-icon feature-icon-green">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        </div>
+                        <div class="feature-badge feature-badge-green">Inteligente</div>
+                    </div>
+                    <h3>Rotas sob controle</h3>
+                    <p>Tenha uma visão única das rotas monitoradas e encontre oportunidades para melhorar sua operação.</p>
+                    <a href="#como-funciona" class="feature-link">
+                        Explorar recurso
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+                    </a>
+                </article>
+            </div>
+        </section>
+
+        {# ════════════════════════════════════════
+           COMO FUNCIONA
+        ════════════════════════════════════════ #}
+        <section class="landing-process" id="como-funciona">
+            <div class="process-inner">
+                <div class="process-heading" data-reveal>
+                    <div class="landing-eyebrow landing-eyebrow-light">
+                        <span class="eyebrow-dot"></span>
+                        Como funciona
+                    </div>
+                    <h2>Do dado à decisão<br>em poucos passos.</h2>
+                </div>
+
+                <div class="process-steps">
+                    <div class="process-step" data-reveal data-reveal-delay="0">
+                        <div class="step-number">01</div>
+                        <div class="step-connector" aria-hidden="true"></div>
+                        <div class="step-body">
+                            <div class="step-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                            </div>
+                            <h3>Conecte-se</h3>
+                            <p>Acesse a plataforma com suas credenciais e encontre tudo em um só lugar.</p>
+                        </div>
+                    </div>
+
+                    <div class="process-step" data-reveal data-reveal-delay="120">
+                        <div class="step-number">02</div>
+                        <div class="step-connector" aria-hidden="true"></div>
+                        <div class="step-body">
+                            <div class="step-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </div>
+                            <h3>Observe</h3>
+                            <p>Leia o cenário através de indicadores claros, alertas e rotas monitoradas.</p>
+                        </div>
+                    </div>
+
+                    <div class="process-step" data-reveal data-reveal-delay="240">
+                        <div class="step-number">03</div>
+                        <div class="step-body">
+                            <div class="step-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                            </div>
+                            <h3>Aja melhor</h3>
+                            <p>Use informação atualizada para priorizar ações e reduzir imprevistos.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {# ════════════════════════════════════════
+           CTA
+        ════════════════════════════════════════ #}
+        <section class="landing-cta" data-reveal>
+            <div class="cta-inner">
+                <div class="cta-glow" aria-hidden="true"></div>
+                <div class="cta-content">
+                    <div class="landing-eyebrow landing-eyebrow-light">
+                        <span class="eyebrow-dot"></span>
+                        Pronto para avançar?
+                    </div>
+                    <h2>Tenha o trânsito sob<br>sua perspectiva.</h2>
+                    <p>Entre na plataforma e transforme informação em movimento.</p>
+                </div>
+                {% if not app.user %}
+                    <a href="{{ path('auth_login') }}" class="landing-btn landing-btn-white landing-btn-lg">
+                        Acessar WazeBR
+                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M12 5l5 5-5 5"/></svg>
+                    </a>
+                {% else %}
+                    <a href="{{ path('dashboard') }}" class="landing-btn landing-btn-white landing-btn-lg">
+                        Abrir dashboard
+                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M12 5l5 5-5 5"/></svg>
+                    </a>
+                {% endif %}
+            </div>
+        </section>
+
+    </main>
+
+    {# ════════════════════════════════════════
+       FOOTER
+    ════════════════════════════════════════ #}
+    <footer class="landing-footer">
+        <a href="{{ path('home') }}" class="landing-brand" aria-label="WazeBR — início">
+            <div class="landing-brand-mark landing-brand-mark-sm">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+            </div>
+            <span class="landing-brand-name"><strong>Waze</strong><em>BR</em></span>
+        </a>
+        <span class="landing-footer-copy">© {{ 'now'|date('Y') }} WazeBR. Monitoramento para decisões melhores.</span>
+        <a href="{{ path('auth_login') }}" class="landing-footer-link">
+            Entrar na plataforma
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+        </a>
+    </footer>
+
+</div>
 {% endblock %}

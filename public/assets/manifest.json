@@ -1,4 +1,5 @@
 {
+    "css\/auth.css": "\/assets\/css\/auth-IicAR6P.css",
     "css\/components\/alerts.css": "\/assets\/css\/components\/alerts-y3GqqP3.css",
     "css\/components\/buttons.css": "\/assets\/css\/components\/buttons--4Bs8gF.css",
     "css\/components\/cards.css": "\/assets\/css\/components\/cards-C3M_kNY.css",
@@ -7,17 +8,16 @@
     "css\/core\/reset.css": "\/assets\/css\/core\/reset-_S4S4g2.css",
     "css\/core\/utilities.css": "\/assets\/css\/core\/utilities-hSZRVi_.css",
     "css\/core\/variables.css": "\/assets\/css\/core\/variables-NSI80R5.css",
-    "css\/landing.css": "\/assets\/css\/landing-W-3cljz.css",
+    "css\/landing.css": "\/assets\/css\/landing-P52wpL-.css",
     "css\/layout\/base-layout.css": "\/assets\/css\/layout\/base-layout-xRKH1nh.css",
     "css\/layout\/header.css": "\/assets\/css\/layout\/header-AlmeC5i.css",
     "css\/layout\/sidebar.css": "\/assets\/css\/layout\/sidebar-ILTwSgM.css",
-    "css\/login.css": "\/assets\/css\/login-dyfzEuf.css",
     "css\/pages\/admin-users.css": "\/assets\/css\/pages\/admin-users-H6hIPGr.css",
     "css\/pages\/cifs.css": "\/assets\/css\/pages\/cifs-G40S1gJ.css",
     "css\/pages\/dashboard.css": "\/assets\/css\/pages\/dashboard-DLJGljx.css",
     "css\/pages\/login.css": "\/assets\/css\/pages\/login-oi4PFqq.css",
-    "css\/reset-password.css": "\/assets\/css\/reset-password-fW1cF6k.css",
     "js\/app.js": "\/assets\/js\/app-hSC9lGY.js",
+    "js\/auth.js": "\/assets\/js\/auth-V2iD__V.js",
     "js\/components\/charts.js": "\/assets\/js\/components\/charts-2B3Uxw-.js",
     "js\/components\/filters.js": "\/assets\/js\/components\/filters-F8DHynO.js",
     "js\/components\/map.js": "\/assets\/js\/components\/map-irYs2QF.js",
@@ -28,7 +28,7 @@
     "js\/core\/http-client.js": "\/assets\/js\/core\/http-client-RQhmgQO.js",
     "js\/core\/modal.js": "\/assets\/js\/core\/modal-rdjQPOm.js",
     "js\/core\/notifications.js": "\/assets\/js\/core\/notifications-OIx-3qx.js",
-    "js\/landing.js": "\/assets\/js\/landing-mNqUvne.js",
+    "js\/landing.js": "\/assets\/js\/landing-B3Dzl3s.js",
     "js\/layout\/base-layout.js": "\/assets\/js\/layout\/base-layout-K39iwjF.js",
     "js\/layout\/header.js": "\/assets\/js\/layout\/header-T95G17b.js",
     "js\/layout\/sidebar.js": "\/assets\/js\/layout\/sidebar-llsLrq1.js",
@@ -38,6 +38,5 @@
     "js\/pages\/dashboard.js": "\/assets\/js\/pages\/dashboard-sAy6A9d.js",
     "js\/pages\/landing.js": "\/assets\/js\/pages\/landing-ZtuVgZk.js",
     "js\/pages\/login.js": "\/assets\/js\/pages\/login-GlRiS4p.js",
-    "js\/pages\/reset-password.js": "\/assets\/js\/pages\/reset-password-uuvLDvd.js",
-    "js\/reset-password.js": "\/assets\/js\/reset-password-ltKT1ol.js"
+    "js\/pages\/reset-password.js": "\/assets\/js\/pages\/reset-password-uuvLDvd.js"
 }

@@ -1,29 +1,164 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Login{% endblock %}
+{% block title %}Login — WazeBR{% endblock %}
+
+{% block stylesheets %}
+    <link rel="stylesheet" href="{{ asset('css/auth.css') }}">
+{% endblock %}
+
+{% block javascripts %}
+    <script src="{{ asset('js/auth.js') }}" defer></script>
+{% endblock %}
 
 {% block body %}
-<div class="auth-container">
-    <div class="auth-card">
-        <div class="auth-header">
-            <h1 class="auth-title">Login</h1>
-        </div>
-        <form method="post" class="auth-form">
+<div class="auth-page">
+
+    {# ── Lado esquerdo — formulário ───────────────────────────── #}
+    <div class="auth-left">
+        <div class="auth-container">
+
+            <a href="{{ path('home') }}" class="auth-brand">
+                <div class="auth-brand-mark">
+                    <i class="bi bi-signpost-2-fill"></i>
+                </div>
+                <span class="auth-brand-name">Waze<em>BR</em></span>
+            </a>
+
+            <div class="auth-heading">
+                <h1>Bem-vindo de volta</h1>
+                <p>Acesse sua conta para monitorar o trânsito em tempo real.</p>
+            </div>
+
             {% if error %}
-                <div class="alert alert-danger">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
+                <div class="auth-alert auth-alert-error" role="alert">
+                    <i class="bi bi-exclamation-circle-fill"></i>
+                    <span>{{ error.messageKey|trans(error.messageData, 'security') }}</span>
+                </div>
             {% endif %}
-            <input type="hidden" name="_target_path" value="{{ path('dashboard') }}">
-            <div class="form-group">
-                <label for="username">Email</label>
-                <input type="email" value="{{ last_username }}" name="_username" id="username" class="form-control" autocomplete="email" required autofocus>
+
+            <form method="post" class="auth-form" novalidate>
+                <input type="hidden" name="_target_path" value="{{ path('dashboard') }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+                <div class="auth-field">
+                    <label for="username">
+                        <i class="bi bi-envelope"></i>
+                        Email
+                    </label>
+                    <input
+                        type="email"
+                        id="username"
+                        name="_username"
+                        value="{{ last_username }}"
+                        class="auth-input"
+                        autocomplete="email"
+                        placeholder="seu@email.com"
+                        required
+                        autofocus
+                    >
+                </div>
+
+                <div class="auth-field">
+                    <div class="auth-field-row">
+                        <label for="password">
+                            <i class="bi bi-lock"></i>
+                            Senha
+                        </label>
+                        <a href="{{ path('app_reset_password_request') }}" class="auth-field-link">
+                            Esqueceu a senha?
+                        </a>
+                    </div>
+                    <div class="auth-input-wrap">
+                        <input
+                            type="password"
+                            id="password"
+                            name="_password"
+                            class="auth-input"
+                            autocomplete="current-password"
+                            placeholder="Sua senha"
+                            required
+                        >
+                        <button type="button" class="auth-toggle-pw" data-target="password" aria-label="Mostrar senha">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="auth-remember">
+                    <label class="auth-checkbox-label">
+                        <input type="checkbox" name="_remember_me" id="remember_me">
+                        <span class="auth-checkbox-box"></span>
+                        Manter conectado
+                    </label>
+                </div>
+
+                <button type="submit" class="auth-btn auth-btn-primary" id="loginSubmit">
+                    <span>Entrar</span>
+                    <i class="bi bi-arrow-right"></i>
+                </button>
+            </form>
+
+            <div class="auth-footer-link">
+                <a href="{{ path('home') }}">
+                    <i class="bi bi-arrow-left"></i>
+                    Voltar ao início
+                </a>
             </div>
-            <div class="form-group">
-                <label for="password">Senha</label>
-                <input type="password" name="_password" id="password" class="form-control" autocomplete="current-password" required>
-            </div>
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
-            <button type="submit" class="btn btn-primary btn-block">Entrar</button>
-        </form>
+
+        </div>
     </div>
+
+    {# ── Lado direito — visual ────────────────────────────────── #}
+    <div class="auth-right">
+        <div class="auth-visual">
+
+            <div class="auth-right-orb auth-right-orb-1" aria-hidden="true"></div>
+            <div class="auth-right-orb auth-right-orb-2" aria-hidden="true"></div>
+
+            <div class="auth-visual-content">
+                <div class="auth-visual-logo">
+                    <i class="bi bi-signpost-2-fill"></i>
+                </div>
+                <h2>Monitoramento inteligente de trânsito</h2>
+                <p>Dados em tempo real para decisões mais rápidas e operações mais eficientes.</p>
+
+                <ul class="auth-features">
+                    <li>
+                        <span class="auth-feature-icon"><i class="bi bi-broadcast"></i></span>
+                        Atualizações em tempo real
+                    </li>
+                    <li>
+                        <span class="auth-feature-icon"><i class="bi bi-exclamation-triangle"></i></span>
+                        Alertas e ocorrências
+                    </li>
+                    <li>
+                        <span class="auth-feature-icon"><i class="bi bi-car-front"></i></span>
+                        Monitoramento de congestionamentos
+                    </li>
+                    <li>
+                        <span class="auth-feature-icon"><i class="bi bi-signpost-2"></i></span>
+                        Gestão de rotas TVT
+                    </li>
+                </ul>
+
+                <div class="auth-visual-stats">
+                    <div class="auth-stat">
+                        <strong>35+</strong>
+                        <span>Alertas/dia</span>
+                    </div>
+                    <div class="auth-stat">
+                        <strong>100%</strong>
+                        <span>Online</span>
+                    </div>
+                    <div class="auth-stat">
+                        <strong>24h</strong>
+                        <span>Monitoramento</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
 </div>
 {% endblock %}

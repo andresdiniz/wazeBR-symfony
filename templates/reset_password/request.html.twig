@@ -1,0 +1,160 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Recuperar Senha — WazeBR{% endblock %}
+
+{% block stylesheets %}
+    <link rel="stylesheet" href="{{ asset('css/auth.css') }}">
+{% endblock %}
+
+{% block javascripts %}
+    <script src="{{ asset('js/auth.js') }}" defer></script>
+{% endblock %}
+
+{% block body %}
+<div class="auth-page">
+
+    {# ── Lado esquerdo — formulário ───────────────────────────── #}
+    <div class="auth-left">
+        <div class="auth-container">
+
+            <a href="{{ path('home') }}" class="auth-brand">
+                <div class="auth-brand-mark">
+                    <i class="bi bi-signpost-2-fill"></i>
+                </div>
+                <span class="auth-brand-name">Waze<em>BR</em></span>
+            </a>
+
+            <div class="auth-icon-header">
+                <div class="auth-icon-circle auth-icon-circle-blue">
+                    <i class="bi bi-key-fill"></i>
+                </div>
+                <div class="auth-heading">
+                    <h1>Esqueceu a senha?</h1>
+                    <p>Digite seu email e enviaremos um link para criar uma nova senha.</p>
+                </div>
+            </div>
+
+            {% for type, messages in app.flashes %}
+                {% for message in messages %}
+                    <div class="auth-alert auth-alert-{{ type }}" role="alert">
+                        <i class="bi bi-{{ type == 'success' ? 'check-circle-fill' : 'info-circle-fill' }}"></i>
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+            {% endfor %}
+
+            <form method="post" action="{{ path('app_reset_password_request') }}" class="auth-form" novalidate>
+
+                <div class="auth-field">
+                    <label for="reset_email">
+                        <i class="bi bi-envelope"></i>
+                        Email cadastrado
+                    </label>
+                    <input
+                        type="email"
+                        id="reset_email"
+                        name="email"
+                        class="auth-input"
+                        autocomplete="email"
+                        placeholder="seu@email.com"
+                        required
+                        autofocus
+                    >
+                    <span class="auth-field-help">
+                        <i class="bi bi-info-circle"></i>
+                        Digite o email associado à sua conta WazeBR
+                    </span>
+                </div>
+
+                <button type="submit" class="auth-btn auth-btn-primary" id="resetSubmit">
+                    <span>Enviar instruções</span>
+                    <i class="bi bi-send"></i>
+                </button>
+
+            </form>
+
+            <div class="auth-info-box">
+                <div class="auth-info-box-icon">
+                    <i class="bi bi-shield-check"></i>
+                </div>
+                <div>
+                    <strong>Processo seguro</strong>
+                    <p>O link enviado expira em 1 hora e só pode ser usado uma vez.</p>
+                </div>
+            </div>
+
+            <div class="auth-footer-link">
+                <a href="{{ path('auth_login') }}">
+                    <i class="bi bi-arrow-left"></i>
+                    Voltar ao login
+                </a>
+            </div>
+
+        </div>
+    </div>
+
+    {# ── Lado direito — visual ────────────────────────────────── #}
+    <div class="auth-right">
+        <div class="auth-visual">
+
+            <div class="auth-right-orb auth-right-orb-1" aria-hidden="true"></div>
+            <div class="auth-right-orb auth-right-orb-2" aria-hidden="true"></div>
+
+            <div class="auth-visual-content">
+                <div class="auth-visual-logo">
+                    <i class="bi bi-lock-fill"></i>
+                </div>
+                <h2>Como funciona a recuperação?</h2>
+
+                <ol class="auth-steps">
+                    <li>
+                        <span class="auth-step-num">01</span>
+                        <div>
+                            <strong>Digite seu email</strong>
+                            <p>O email cadastrado na sua conta WazeBR</p>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="auth-step-num">02</span>
+                        <div>
+                            <strong>Receba o link</strong>
+                            <p>Verifique sua caixa de entrada e spam</p>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="auth-step-num">03</span>
+                        <div>
+                            <strong>Crie uma nova senha</strong>
+                            <p>Use uma senha forte e única</p>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="auth-step-num">04</span>
+                        <div>
+                            <strong>Acesse sua conta</strong>
+                            <p>Faça login normalmente</p>
+                        </div>
+                    </li>
+                </ol>
+
+                <div class="auth-visual-tips">
+                    <div class="auth-tip">
+                        <i class="bi bi-check-circle-fill"></i>
+                        Link válido por 1 hora
+                    </div>
+                    <div class="auth-tip">
+                        <i class="bi bi-check-circle-fill"></i>
+                        Uso único e seguro
+                    </div>
+                    <div class="auth-tip">
+                        <i class="bi bi-check-circle-fill"></i>
+                        Criptografia ponta a ponta
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}
