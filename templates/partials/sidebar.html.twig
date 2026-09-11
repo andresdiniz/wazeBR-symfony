@@ -1,13 +1,57 @@
-<aside id="app-sidebar" class="app-sidebar sidebar" data-component="sidebar">
-    <nav aria-label="Navegação principal">
-        <a href="{{ path('dashboard') }}" class="sidebar-link{% if app.request.attributes.get('_route') == 'dashboard' %} is-active{% endif %}">
-            <span>Dashboard</span>
-        </a>
+<aside
+    id="app-sidebar"
+    class="app-sidebar sidebar"
+    data-component="sidebar"
+    data-sidebar
+    aria-label="Navegação principal"
+>
+    <div class="sidebar-inner">
+        <div class="sidebar-heading">
+            <span class="sidebar-heading-label">Menu principal</span>
+            <button
+                type="button"
+                class="sidebar-collapse-button"
+                data-action="toggle-sidebar-collapse"
+                aria-label="Recolher menu lateral"
+                aria-expanded="true"
+            >
+                <span aria-hidden="true">‹</span>
+            </button>
+        </div>
 
-        {% if is_granted('ROLE_ADMIN') %}
-            <a href="{{ path('admin_users') }}" class="sidebar-link{% if app.request.attributes.get('_route') starts with 'admin_' %} is-active{% endif %}">
-                <span>Usuários</span>
+        <nav class="sidebar-nav" aria-label="Menu principal">
+            <a href="{{ path('app_dashboard') }}" class="sidebar-link{% if app.request.attributes.get('_route') == 'app_dashboard' %} is-active{% endif %}" data-sidebar-link title="Dashboard">
+                <span class="sidebar-link-icon" aria-hidden="true">⌂</span>
+                <span class="sidebar-link-label">Dashboard</span>
+                {% if app.request.attributes.get('_route') == 'app_dashboard' %}<span class="sidebar-active-dot" aria-hidden="true"></span>{% endif %}
             </a>
-        {% endif %}
-    </nav>
+            <a href="{{ path('app_alerts_index') }}" class="sidebar-link{% if app.request.attributes.get('_route') starts with 'app_alerts' %} is-active{% endif %}" data-sidebar-link title="Alertas">
+                <span class="sidebar-link-icon" aria-hidden="true">!</span>
+                <span class="sidebar-link-label">Alertas</span>
+            </a>
+            <a href="{{ path('app_jams_index') }}" class="sidebar-link{% if app.request.attributes.get('_route') starts with 'app_jams' %} is-active{% endif %}" data-sidebar-link title="Congestionamentos">
+                <span class="sidebar-link-icon" aria-hidden="true">≈</span>
+                <span class="sidebar-link-label">Congestionamentos</span>
+            </a>
+            <a href="{{ path('app_routes_index') }}" class="sidebar-link{% if app.request.attributes.get('_route') starts with 'app_routes' %} is-active{% endif %}" data-sidebar-link title="Rotas">
+                <span class="sidebar-link-icon" aria-hidden="true">⌁</span>
+                <span class="sidebar-link-label">Rotas</span>
+            </a>
+            <a href="{{ path('app_admin_users') }}" class="sidebar-link{% if app.request.attributes.get('_route') starts with 'app_admin' %} is-active{% endif %}" data-sidebar-link title="Usuários">
+                <span class="sidebar-link-icon" aria-hidden="true">◉</span>
+                <span class="sidebar-link-label">Usuários</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-spacer"></div>
+
+        <div class="sidebar-status" aria-label="Status do sistema">
+            <span class="sidebar-status-indicator" aria-hidden="true"></span>
+            <div class="sidebar-status-content">
+                <strong>Sistema online</strong>
+                <span>Monitoramento ativo</span>
+            </div>
+        </div>
+    </div>
 </aside>
+<div class="sidebar-overlay" data-sidebar-overlay hidden></div>
