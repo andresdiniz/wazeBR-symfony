@@ -24,87 +24,46 @@ class WazeFeed
     #[ORM\OneToMany(mappedBy: 'wazeFeed', targetEntity: WazeTvtRoute::class)]
     private Collection $wazeTvtRoutes;
 
+    #[ORM\OneToMany(mappedBy: 'wazeFeed', targetEntity: WazeFeedCollection::class)]
+    private Collection $collections;
+
     public function __construct()
     {
         $this->wazeAlerts = new ArrayCollection();
         $this->wazeTrafficJams = new ArrayCollection();
         $this->wazeTvtRoutes = new ArrayCollection();
+        $this->collections = new ArrayCollection();
     }
 
-    public function getId(): ?int
-    {
-        return $this->id;
-    }
+    public function getId(): ?int { return $this->id; }
+    public function getWazeAlerts(): Collection { return $this->wazeAlerts; }
+    public function getWazeTrafficJams(): Collection { return $this->wazeTrafficJams; }
+    public function getWazeTvtRoutes(): Collection { return $this->wazeTvtRoutes; }
+    public function getCollections(): Collection { return $this->collections; }
 
-    public function getWazeAlerts(): Collection
-    {
-        return $this->wazeAlerts;
-    }
+    public function addWazeAlert(WazeAlert $item): static { return $this->addTo($this->wazeAlerts, $item, $this); }
+    public function removeWazeAlert(WazeAlert $item): static { return $this->removeFrom($this->wazeAlerts, $item, $this); }
+    public function addWazeTrafficJam(WazeTrafficJam $item): static { return $this->addTo($this->wazeTrafficJams, $item, $this); }
+    public function removeWazeTrafficJam(WazeTrafficJam $item): static { return $this->removeFrom($this->wazeTrafficJams, $item, $this); }
+    public function addWazeTvtRoute(WazeTvtRoute $item): static { return $this->addTo($this->wazeTvtRoutes, $item, $this); }
+    public function removeWazeTvtRoute(WazeTvtRoute $item): static { return $this->removeFrom($this->wazeTvtRoutes, $item, $this); }
+    public function addCollection(WazeFeedCollection $item): static { return $this->addTo($this->collections, $item, $this); }
+    public function removeCollection(WazeFeedCollection $item): static { return $this->removeFrom($this->collections, $item, $this); }
 
-    public function addWazeAlert(WazeAlert $wazeAlert): static
+    private function addTo(Collection $collection, object $item, self $feed): static
     {
-        if (!$this->wazeAlerts->contains($wazeAlert)) {
-            $this->wazeAlerts->add($wazeAlert);
-            $wazeAlert->setWazeFeed($this);
+        if (!$collection->contains($item)) {
+            $collection->add($item);
+            $item->setWazeFeed($feed);
         }
-
         return $this;
     }
 
-    public function removeWazeAlert(WazeAlert $wazeAlert): static
+    private function removeFrom(Collection $collection, object $item, self $feed): static
     {
-        if ($this->wazeAlerts->removeElement($wazeAlert) && $wazeAlert->getWazeFeed() === $this) {
-            $wazeAlert->setWazeFeed(null);
+        if ($collection->removeElement($item) && $item->getWazeFeed() === $feed) {
+            $item->setWazeFeed(null);
         }
-
-        return $this;
-    }
-
-    public function getWazeTrafficJams(): Collection
-    {
-        return $this->wazeTrafficJams;
-    }
-
-    public function addWazeTrafficJam(WazeTrafficJam $wazeTrafficJam): static
-    {
-        if (!$this->wazeTrafficJams->contains($wazeTrafficJam)) {
-            $this->wazeTrafficJams->add($wazeTrafficJam);
-            $wazeTrafficJam->setWazeFeed($this);
-        }
-
-        return $this;
-    }
-
-    public function removeWazeTrafficJam(WazeTrafficJam $wazeTrafficJam): static
-    {
-        if ($this->wazeTrafficJams->removeElement($wazeTrafficJam) && $wazeTrafficJam->getWazeFeed() === $this) {
-            $wazeTrafficJam->setWazeFeed(null);
-        }
-
-        return $this;
-    }
-
-    public function getWazeTvtRoutes(): Collection
-    {
-        return $this->wazeTvtRoutes;
-    }
-
-    public function addWazeTvtRoute(WazeTvtRoute $wazeTvtRoute): static
-    {
-        if (!$this->wazeTvtRoutes->contains($wazeTvtRoute)) {
-            $this->wazeTvtRoutes->add($wazeTvtRoute);
-            $wazeTvtRoute->setWazeFeed($this);
-        }
-
-        return $this;
-    }
-
-    public function removeWazeTvtRoute(WazeTvtRoute $wazeTvtRoute): static
-    {
-        if ($this->wazeTvtRoutes->removeElement($wazeTvtRoute) && $wazeTvtRoute->getWazeFeed() === $this) {
-            $wazeTvtRoute->setWazeFeed(null);
-        }
-
         return $this;
     }
 }
