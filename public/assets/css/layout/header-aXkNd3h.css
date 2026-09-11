@@ -1,0 +1,9 @@
+/* Header component. */
+.app-header,
+.header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+
+.header-actions,
+.header-user,
+.header-notifications { display: flex; align-items: center; gap: 0.75rem; }
+
+[data-action="toggle-sidebar"] { cursor: pointer; }

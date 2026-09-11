@@ -1,1 +1,42 @@
-[]
+{
+    "app-init": {
+        "path": "\/assets\/js\/core\/app-init-Srm-aEz.js",
+        "type": "js"
+    },
+    "\/assets\/js\/layout\/base-layout.js": {
+        "path": "\/assets\/js\/layout\/base-layout-K39iwjF.js",
+        "type": "js"
+    },
+    "\/assets\/js\/core\/dom.js": {
+        "path": "\/assets\/js\/core\/dom-8DDsUoW.js",
+        "type": "js"
+    },
+    "\/assets\/js\/layout\/header.js": {
+        "path": "\/assets\/js\/layout\/header-2089fWH.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/table.js": {
+        "path": "\/assets\/js\/components\/table-iYRhwjd.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/login.js": {
+        "path": "\/assets\/js\/pages\/login-GlRiS4p.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/reset-password.js": {
+        "path": "\/assets\/js\/pages\/reset-password-uuvLDvd.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/dashboard.js": {
+        "path": "\/assets\/js\/pages\/dashboard-sAy6A9d.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/admin-users.js": {
+        "path": "\/assets\/js\/pages\/admin-users-gMfiOmi.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/cifs.js": {
+        "path": "\/assets\/js\/pages\/cifs-PksJA8O.js",
+        "type": "js"
+    }
+}

@@ -1,0 +1,20 @@
+/* Login, authentication and password reset pages. */
+.auth-page,
+.login-page,
+.reset-password-page { min-height: 100vh; display: grid; place-items: center; padding: 1rem; }
+
+.auth-card,
+.login-card,
+.reset-password-card { width: min(100%, 28rem); }
+
+.auth-form,
+.login-form,
+.reset-password-form { display: grid; gap: 1rem; }
+
+.auth-form label,
+.login-form label,
+.reset-password-form label { display: block; margin-bottom: 0.35rem; font-weight: 600; }
+
+.auth-form input,
+.login-form input,
+.reset-password-form input { width: 100%; }

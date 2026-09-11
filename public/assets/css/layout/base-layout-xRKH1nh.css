@@ -1,0 +1,12 @@
+/* Application shell and authenticated layout. */
+.app-shell { min-height: 100vh; }
+.app-content { min-width: 0; }
+
+.app-layout { display: flex; min-height: 100vh; }
+.app-main { flex: 1 1 auto; min-width: 0; }
+
+.sidebar { flex: 0 0 auto; }
+
+@media (max-width: 768px) {
+    .app-layout { display: block; }
+}

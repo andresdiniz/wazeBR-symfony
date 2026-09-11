@@ -1,8 +1,8 @@
 <?php
 
-/**
- * Returns the importmap for this application.
- *
- * @return array<string, array{path: string, version?: string}>
- */
-return [];
+return [
+    'app-init' => [
+        'path' => './assets/js/core/app-init.js',
+        'entrypoint' => true,
+    ],
+];
