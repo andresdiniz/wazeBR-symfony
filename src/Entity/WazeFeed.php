@@ -12,8 +12,12 @@ class WazeFeed
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
-    #[ORM\Column]
+    #[ORM\Column(type: 'bigint')]
     private ?int $id = null;
+
+    #[ORM\ManyToOne(targetEntity: Partner::class)]
+    #[ORM\JoinColumn(name: 'partner_id', referencedColumnName: 'id', nullable: false)]
+    private ?Partner $partner = null;
 
     #[ORM\OneToMany(mappedBy: 'wazeFeed', targetEntity: WazeAlert::class)]
     private Collection $wazeAlerts;
@@ -36,34 +40,10 @@ class WazeFeed
     }
 
     public function getId(): ?int { return $this->id; }
+    public function getPartner(): ?Partner { return $this->partner; }
+    public function setPartner(?Partner $partner): static { $this->partner = $partner; return $this; }
     public function getWazeAlerts(): Collection { return $this->wazeAlerts; }
     public function getWazeTrafficJams(): Collection { return $this->wazeTrafficJams; }
     public function getWazeTvtRoutes(): Collection { return $this->wazeTvtRoutes; }
     public function getCollections(): Collection { return $this->collections; }
-
-    public function addWazeAlert(WazeAlert $item): static { return $this->addTo($this->wazeAlerts, $item, $this); }
-    public function removeWazeAlert(WazeAlert $item): static { return $this->removeFrom($this->wazeAlerts, $item, $this); }
-    public function addWazeTrafficJam(WazeTrafficJam $item): static { return $this->addTo($this->wazeTrafficJams, $item, $this); }
-    public function removeWazeTrafficJam(WazeTrafficJam $item): static { return $this->removeFrom($this->wazeTrafficJams, $item, $this); }
-    public function addWazeTvtRoute(WazeTvtRoute $item): static { return $this->addTo($this->wazeTvtRoutes, $item, $this); }
-    public function removeWazeTvtRoute(WazeTvtRoute $item): static { return $this->removeFrom($this->wazeTvtRoutes, $item, $this); }
-    public function addCollection(WazeFeedCollection $item): static { return $this->addTo($this->collections, $item, $this); }
-    public function removeCollection(WazeFeedCollection $item): static { return $this->removeFrom($this->collections, $item, $this); }
-
-    private function addTo(Collection $collection, object $item, self $feed): static
-    {
-        if (!$collection->contains($item)) {
-            $collection->add($item);
-            $item->setWazeFeed($feed);
-        }
-        return $this;
-    }
-
-    private function removeFrom(Collection $collection, object $item, self $feed): static
-    {
-        if ($collection->removeElement($item) && $item->getWazeFeed() === $feed) {
-            $item->setWazeFeed(null);
-        }
-        return $this;
-    }
 }
