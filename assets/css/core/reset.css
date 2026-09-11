@@ -1,0 +1,11 @@
+/* Safe baseline reset for the new asset hierarchy. */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+img,
+svg {
+    max-width: 100%;
+}
