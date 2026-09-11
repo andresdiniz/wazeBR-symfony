@@ -6,8 +6,8 @@ export async function request(url, options = {}) {
 
 export async function requestJson(url, options = {}) {
     const response = await request(url, {
-        headers: { Accept: 'application/json', ...(options.headers ?? {}) },
         ...options,
+        headers: { Accept: 'application/json', ...(options.headers ?? {}) },
     });
     return response.json();
 }
