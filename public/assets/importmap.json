@@ -1,6 +1,6 @@
 {
     "app": {
-        "path": "\/assets\/js\/app-Zz_SQex.js",
+        "path": "\/assets\/js\/app-hSC9lGY.js",
         "type": "js"
     },
     "\/assets\/js\/layout\/base-layout.js": {
@@ -12,7 +12,11 @@
         "type": "js"
     },
     "\/assets\/js\/layout\/header.js": {
-        "path": "\/assets\/js\/layout\/header-2089fWH.js",
+        "path": "\/assets\/js\/layout\/header-oQ03ihw.js",
+        "type": "js"
+    },
+    "\/assets\/js\/layout\/sidebar.js": {
+        "path": "\/assets\/js\/layout\/sidebar-llsLrq1.js",
         "type": "js"
     },
     "\/assets\/js\/components\/table.js": {

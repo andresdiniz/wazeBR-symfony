@@ -1,6 +1,7 @@
 [
     "\/assets\/js\/layout\/base-layout.js",
     "\/assets\/js\/layout\/header.js",
+    "\/assets\/js\/layout\/sidebar.js",
     "\/assets\/js\/components\/table.js",
     "\/assets\/js\/components\/filters.js",
     "\/assets\/js\/components\/map.js",
