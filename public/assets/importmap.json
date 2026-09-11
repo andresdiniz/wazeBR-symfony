@@ -1,6 +1,6 @@
 {
-    "app-init": {
-        "path": "\/assets\/js\/core\/app-init-Srm-aEz.js",
+    "app": {
+        "path": "\/assets\/js\/app-Zz_SQex.js",
         "type": "js"
     },
     "\/assets\/js\/layout\/base-layout.js": {
@@ -19,6 +19,22 @@
         "path": "\/assets\/js\/components\/table-iYRhwjd.js",
         "type": "js"
     },
+    "\/assets\/js\/components\/filters.js": {
+        "path": "\/assets\/js\/components\/filters-F8DHynO.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/map.js": {
+        "path": "\/assets\/js\/components\/map-irYs2QF.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/charts.js": {
+        "path": "\/assets\/js\/components\/charts-2B3Uxw-.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/dashboard.js": {
+        "path": "\/assets\/js\/pages\/dashboard-sAy6A9d.js",
+        "type": "js"
+    },
     "\/assets\/js\/pages\/login.js": {
         "path": "\/assets\/js\/pages\/login-GlRiS4p.js",
         "type": "js"
@@ -27,16 +43,16 @@
         "path": "\/assets\/js\/pages\/reset-password-uuvLDvd.js",
         "type": "js"
     },
-    "\/assets\/js\/pages\/dashboard.js": {
-        "path": "\/assets\/js\/pages\/dashboard-sAy6A9d.js",
-        "type": "js"
-    },
     "\/assets\/js\/pages\/admin-users.js": {
         "path": "\/assets\/js\/pages\/admin-users-gMfiOmi.js",
         "type": "js"
     },
     "\/assets\/js\/pages\/cifs.js": {
         "path": "\/assets\/js\/pages\/cifs-PksJA8O.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/landing.js": {
+        "path": "\/assets\/js\/pages\/landing-ZtuVgZk.js",
         "type": "js"
     }
 }

@@ -1,0 +1,15 @@
+[
+    "\/assets\/js\/layout\/base-layout.js",
+    "\/assets\/js\/layout\/header.js",
+    "\/assets\/js\/components\/table.js",
+    "\/assets\/js\/components\/filters.js",
+    "\/assets\/js\/components\/map.js",
+    "\/assets\/js\/components\/charts.js",
+    "\/assets\/js\/pages\/dashboard.js",
+    "\/assets\/js\/pages\/login.js",
+    "\/assets\/js\/pages\/reset-password.js",
+    "\/assets\/js\/pages\/admin-users.js",
+    "\/assets\/js\/pages\/cifs.js",
+    "\/assets\/js\/pages\/landing.js",
+    "\/assets\/js\/core\/dom.js"
+]
