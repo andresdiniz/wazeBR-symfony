@@ -1,23 +1,109 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Bem-vindo{% endblock %}
+{% block title %}WazeBR | Trânsito inteligente{% endblock %}
+
+{% block body_class %}landing-page{% endblock %}
+
+{% block stylesheets %}
+    <link rel="stylesheet" href="{{ asset('css/core/variables.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/core/reset.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/landing.css') }}">
+{% endblock %}
 
 {% block body %}
-<div class="container">
-    <div class="row justify-content-center mt-5">
-        <div class="col-md-8 text-center">
-            <h1 class="display-4">Bem-vindo ao WazeBR</h1>
-            <p class="lead">Sistema de monitoramento de trâº£nsito em tempo real</p>
-            {% if not app.user %}
-                <div class="mt-4">
-                    <a href="{{ path('auth_login') }}" class="btn btn-primary btn-lg me-2">Entrar</a>
+    <div class="landing-shell">
+        <header class="landing-header">
+            <a href="{{ path('home') }}" class="landing-brand" aria-label="WazeBR - início">
+                <span class="landing-brand-mark">W</span>
+                <span><strong>WazeBR</strong><small>Trânsito inteligente</small></span>
+            </a>
+
+            <nav class="landing-nav" aria-label="Navegação pública">
+                <a href="#recursos">Recursos</a>
+                <a href="#como-funciona">Como funciona</a>
+                <a href="#visao">Visão geral</a>
+            </nav>
+
+            <div class="landing-header-actions">
+                <span class="landing-status"><i></i> Sistema online</span>
+                {% if not app.user %}
+                    <a href="{{ path('auth_login') }}" class="landing-login-link">Entrar</a>
+                    <a href="{{ path('auth_login') }}" class="landing-button landing-button-primary">Acessar plataforma <span aria-hidden="true">→</span></a>
+                {% else %}
+                    <a href="{{ path('dashboard') }}" class="landing-button landing-button-primary">Ir para dashboard <span aria-hidden="true">→</span></a>
+                {% endif %}
+            </div>
+
+            <button type="button" class="landing-menu-button" data-landing-menu aria-label="Abrir navegação" aria-expanded="false">☰</button>
+        </header>
+
+        <main>
+            <section class="landing-hero" id="visao">
+                <div class="landing-hero-content" data-landing-reveal>
+                    <span class="landing-eyebrow"><i></i> Inteligência para cada caminho</span>
+                    <h1>Entenda o trânsito antes que ele <em>pare você.</em></h1>
+                    <p class="landing-hero-text">O WazeBR transforma dados de mobilidade em decisões rápidas. Monitore ocorrências, congestionamentos e rotas em um único lugar.</p>
+                    <div class="landing-hero-actions">
+                        {% if not app.user %}
+                            <a href="{{ path('auth_login') }}" class="landing-button landing-button-primary landing-button-large">Começar agora <span aria-hidden="true">→</span></a>
+                        {% else %}
+                            <a href="{{ path('dashboard') }}" class="landing-button landing-button-primary landing-button-large">Abrir dashboard <span aria-hidden="true">→</span></a>
+                        {% endif %}
+                        <a href="#como-funciona" class="landing-text-link">Conheça a plataforma <span aria-hidden="true">↓</span></a>
+                    </div>
+                    <div class="landing-trust-line"><span class="landing-avatar-stack"><i>A</i><i>M</i><i>R</i></span><span>Dados atualizados continuamente para sua operação.</span></div>
                 </div>
-            {% else %}
-                <div class="mt-4">
-                    <a href="{{ path('dashboard') }}" class="btn btn-primary btn-lg">Ir para Dashboard</a>
+
+                <div class="landing-hero-visual" data-landing-reveal>
+                    <div class="landing-glow"></div>
+                    <div class="landing-dashboard-card">
+                        <div class="landing-card-topbar"><span><i></i> Monitoramento ao vivo</span><small>Atualizado agora</small></div>
+                        <div class="landing-map-preview">
+                            <span class="map-route route-one"></span><span class="map-route route-two"></span><span class="map-route route-three"></span>
+                            <span class="map-pin pin-one">!</span><span class="map-pin pin-two">≈</span><span class="map-pin pin-three">✓</span>
+                            <span class="map-location location-one">Centro</span><span class="map-location location-two">Zona Sul</span><span class="map-location location-three">Marginal</span>
+                        </div>
+                        <div class="landing-card-stats">
+                            <div><strong>35</strong><span>Alertas ativos</span></div>
+                            <div><strong>17</strong><span>Congestionamentos</span></div>
+                            <div><strong>38</strong><span>Rotas monitoradas</span></div>
+                        </div>
+                    </div>
+                    <div class="landing-floating-card landing-floating-alert"><span>!</span><div><strong>Alerta detectado</strong><small>Há 2 minutos</small></div></div>
+                    <div class="landing-floating-card landing-floating-status"><span>✓</span><div><strong>Operação estável</strong><small>Todos os sistemas online</small></div></div>
                 </div>
-            {% endif %}
-        </div>
+            </section>
+
+            <section class="landing-metrics" data-landing-reveal>
+                <div><strong>Tempo real</strong><span>Informação quando importa</span></div>
+                <div><strong>Visão centralizada</strong><span>Todos os dados em um painel</span></div>
+                <div><strong>Decisões rápidas</strong><span>Menos surpresa no caminho</span></div>
+            </section>
+
+            <section class="landing-section" id="recursos">
+                <div class="landing-section-heading" data-landing-reveal><span class="landing-eyebrow">Tudo sob controle</span><h2>Uma visão mais clara para uma operação mais inteligente.</h2><p>Ferramentas essenciais para acompanhar o que acontece nas ruas e agir com confiança.</p></div>
+                <div class="landing-feature-grid">
+                    <article class="landing-feature-card" data-landing-reveal><span class="feature-icon feature-icon-blue">◉</span><h3>Monitoramento em tempo real</h3><p>Acompanhe as condições de trânsito enquanto elas acontecem, com dados organizados e fáceis de interpretar.</p><a href="#como-funciona">Explorar recurso <span>→</span></a></article>
+                    <article class="landing-feature-card" data-landing-reveal><span class="feature-icon feature-icon-orange">≈</span><h3>Alertas acionáveis</h3><p>Identifique ocorrências, fechamentos e pontos críticos antes que se transformem em grandes impactos.</p><a href="#como-funciona">Explorar recurso <span>→</span></a></article>
+                    <article class="landing-feature-card" data-landing-reveal><span class="feature-icon feature-icon-green">⌁</span><h3>Rotas sob controle</h3><p>Tenha uma visão única das rotas monitoradas e encontre oportunidades para melhorar sua operação.</p><a href="#como-funciona">Explorar recurso <span>→</span></a></article>
+                </div>
+            </section>
+
+            <section class="landing-process" id="como-funciona">
+                <div class="landing-process-heading" data-landing-reveal><span class="landing-eyebrow">Como funciona</span><h2>Do dado à decisão em poucos passos.</h2></div>
+                <div class="landing-process-grid">
+                    <div data-landing-reveal><span>01</span><h3>Conecte-se</h3><p>Acesse a plataforma com suas credenciais e encontre tudo em um só lugar.</p></div>
+                    <div data-landing-reveal><span>02</span><h3>Observe</h3><p>Leia o cenário através de indicadores claros, alertas e rotas monitoradas.</p></div>
+                    <div data-landing-reveal><span>03</span><h3>Aja melhor</h3><p>Use informação atualizada para priorizar ações e reduzir imprevistos.</p></div>
+                </div>
+            </section>
+
+            <section class="landing-cta" data-landing-reveal>
+                <div><span class="landing-eyebrow">Pronto para avançar?</span><h2>Tenha o trânsito sob sua perspectiva.</h2><p>Entre na plataforma e transforme informação em movimento.</p></div>
+                {% if not app.user %}<a href="{{ path('auth_login') }}" class="landing-button landing-button-light landing-button-large">Acessar WazeBR <span aria-hidden="true">→</span></a>{% else %}<a href="{{ path('dashboard') }}" class="landing-button landing-button-light landing-button-large">Abrir dashboard <span aria-hidden="true">→</span></a>{% endif %}
+            </section>
+        </main>
+
+        <footer class="landing-footer"><a href="{{ path('home') }}" class="landing-brand"><span class="landing-brand-mark">W</span><span><strong>WazeBR</strong><small>Trânsito inteligente</small></span></a><span>© {{ 'now'|date('Y') }} WazeBR. Monitoramento para decisões melhores.</span><a href="{{ path('auth_login') }}">Entrar na plataforma →</a></footer>
     </div>
-</div>
 {% endblock %}
