@@ -1,23 +1,75 @@
 <header class="app-header header" data-component="header">
-    <div class="header-brand">
-        <a href="{{ path('dashboard') }}" aria-label="Página inicial">WazeBR</a>
-    </div>
-
-    <div class="header-actions">
+    <div class="header-main">
         <button
             type="button"
+            class="header-menu-button"
             data-action="toggle-sidebar"
             aria-controls="app-sidebar"
-            aria-expanded="true"
-            aria-label="Alternar menu lateral"
+            aria-expanded="false"
+            aria-label="Abrir menu lateral"
         >
             <span aria-hidden="true">☰</span>
         </button>
 
-        <div class="header-user">
-            {% if app.user %}
-                <span>{{ app.user.userIdentifier }}</span>
-            {% endif %}
+        <a href="{{ path('app_dashboard') }}" class="header-brand" aria-label="WazeBR - Dashboard">
+            <span class="header-brand-mark" aria-hidden="true">W</span>
+            <span class="header-brand-copy">
+                <strong>WazeBR</strong>
+                <small>Monitoramento inteligente</small>
+            </span>
+        </a>
+
+        <div class="header-search" role="search">
+            <span class="header-search-icon" aria-hidden="true">⌕</span>
+            <input
+                type="search"
+                name="header_search"
+                placeholder="Buscar no sistema..."
+                aria-label="Buscar no sistema"
+                data-header-search
+            >
+            <kbd>⌘ K</kbd>
+        </div>
+    </div>
+
+    <div class="header-actions">
+        <div class="header-connection" title="Sistema conectado">
+            <span class="header-connection-dot" aria-hidden="true"></span>
+            <span>Online</span>
+        </div>
+
+        <button
+            type="button"
+            class="header-action-button"
+            aria-label="Notificações"
+            data-action="toggle-notifications"
+        >
+            <span aria-hidden="true">♢</span>
+            <span class="header-notification-badge">3</span>
+        </button>
+
+        <div class="header-user" data-user-menu>
+            <button
+                type="button"
+                class="header-user-button"
+                data-action="toggle-user-menu"
+                aria-expanded="false"
+                aria-haspopup="menu"
+            >
+                <span class="header-avatar" aria-hidden="true">{{ app.user ? app.user.userIdentifier|first|upper : 'U' }}</span>
+                <span class="header-user-copy">
+                    <strong>{{ app.user ? app.user.userIdentifier : 'Usuário' }}</strong>
+                    <small>Administrador</small>
+                </span>
+                <span class="header-user-chevron" aria-hidden="true">⌄</span>
+            </button>
+
+            <div class="header-user-menu" data-user-dropdown role="menu" hidden>
+                <a href="#perfil" role="menuitem">Meu perfil</a>
+                <a href="#configuracoes" role="menuitem">Configurações</a>
+                <div class="header-user-menu-divider"></div>
+                <a href="{{ path('app_logout') }}" role="menuitem">Sair</a>
+            </div>
         </div>
     </div>
 </header>
