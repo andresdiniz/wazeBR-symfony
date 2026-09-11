@@ -1,52 +1,13 @@
-<nav class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-        <a href="#" class="sidebar-brand">
-            <i class="bi bi-geo-alt-fill"></i>
-            <span>WazeBR</span>
+<aside id="app-sidebar" class="app-sidebar sidebar" data-component="sidebar">
+    <nav aria-label="Navegação principal">
+        <a href="{{ path('dashboard') }}" class="sidebar-link{% if app.request.attributes.get('_route') == 'dashboard' %} is-active{% endif %}">
+            <span>Dashboard</span>
         </a>
-        <button class="sidebar-toggle d-lg-none" id="sidebarToggle">
-            <i class="bi bi-x-lg"></i>
-        </button>
-    </div>
 
-    <div class="sidebar-body">
-        <ul class="sidebar-nav">
-            <li class="nav-item">
-                <a href="#" class="nav-link active">
-                    <i class="bi bi-speedometer2"></i>
-                    <span>Dashboard</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="#" class="nav-link">
-                    <i class="bi bi-exclamation-triangle"></i>
-                    <span>Alertas</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="#" class="nav-link">
-                    <i class="bi bi-car-front"></i>
-                    <span>Congestionamentos</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="#" class="nav-link">
-                    <i class="bi bi-signpost-2"></i>
-                    <span>Rotas</span>
-                </a>
-            </li>
-        </ul>
-    </div>
-
-    <div class="sidebar-footer">
-        <div class="user-info">
-            <div class="user-avatar">
-                <i class="bi bi-person-circle"></i>
-            </div>
-            <div class="user-details">
-                <p class="user-name">{{ app.user ? app.user.userIdentifier : 'Visitante' }}</p>
-                <small class="user-role">Monitor de Tr&acirc;nsito</small>
-            </div>
-        </div>
-    </div>
-</nav>
+        {% if is_granted('ROLE_ADMIN') %}
+            <a href="{{ path('admin_users') }}" class="sidebar-link{% if app.request.attributes.get('_route') starts with 'admin_' %} is-active{% endif %}">
+                <span>Usuários</span>
+            </a>
+        {% endif %}
+    </nav>
+</aside>
