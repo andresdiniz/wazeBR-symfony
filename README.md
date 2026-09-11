@@ -77,7 +77,7 @@ wazeBR-symfony/
 |------|------|------------|
 | `/` | `home` | Pã¡¡gina inicial pãººblica |
 | `/login` | `app_login` | Login de usuários |
-| `/dashboard` | `app_dashboard` | Dashboard principal |
+| `/dashboard` | `dashboard` | Dashboard principal |
 | `/api/traffic` | `api_traffic` | API de trã¡¡fego |
 
 ## ãá¡¡ Comandos Disponã¡¡veis

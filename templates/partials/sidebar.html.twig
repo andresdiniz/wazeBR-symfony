@@ -20,24 +20,24 @@
         </div>
 
         <nav class="sidebar-nav" aria-label="Menu principal">
-            <a href="{{ path('app_dashboard') }}" class="sidebar-link{% if app.request.attributes.get('_route') == 'app_dashboard' %} is-active{% endif %}" data-sidebar-link title="Dashboard">
+            <a href="{{ path('dashboard') }}" class="sidebar-link{% if app.request.attributes.get('_route') == 'dashboard' %} is-active{% endif %}" data-sidebar-link title="Dashboard">
                 <span class="sidebar-link-icon" aria-hidden="true">⌂</span>
                 <span class="sidebar-link-label">Dashboard</span>
-                {% if app.request.attributes.get('_route') == 'app_dashboard' %}<span class="sidebar-active-dot" aria-hidden="true"></span>{% endif %}
+                {% if app.request.attributes.get('_route') == 'dashboard' %}<span class="sidebar-active-dot" aria-hidden="true"></span>{% endif %}
             </a>
-            <a href="{{ path('app_alerts_index') }}" class="sidebar-link{% if app.request.attributes.get('_route') starts with 'app_alerts' %} is-active{% endif %}" data-sidebar-link title="Alertas">
+            <a href="{{ path('alert_index') }}" class="sidebar-link{% if app.request.attributes.get('_route') starts with 'app_alerts' %} is-active{% endif %}" data-sidebar-link title="Alertas">
                 <span class="sidebar-link-icon" aria-hidden="true">!</span>
                 <span class="sidebar-link-label">Alertas</span>
             </a>
-            <a href="{{ path('app_jams_index') }}" class="sidebar-link{% if app.request.attributes.get('_route') starts with 'app_jams' %} is-active{% endif %}" data-sidebar-link title="Congestionamentos">
+            <a href="{{ path('jam_index') }}" class="sidebar-link{% if app.request.attributes.get('_route') starts with 'app_jams' %} is-active{% endif %}" data-sidebar-link title="Congestionamentos">
                 <span class="sidebar-link-icon" aria-hidden="true">≈</span>
                 <span class="sidebar-link-label">Congestionamentos</span>
             </a>
-            <a href="{{ path('app_routes_index') }}" class="sidebar-link{% if app.request.attributes.get('_route') starts with 'app_routes' %} is-active{% endif %}" data-sidebar-link title="Rotas">
+            <a href="#" class="sidebar-link{% if app.request.attributes.get('_route') starts with 'app_routes' %} is-active{% endif %}" data-sidebar-link title="Rotas">
                 <span class="sidebar-link-icon" aria-hidden="true">⌁</span>
                 <span class="sidebar-link-label">Rotas</span>
             </a>
-            <a href="{{ path('app_admin_users') }}" class="sidebar-link{% if app.request.attributes.get('_route') starts with 'app_admin' %} is-active{% endif %}" data-sidebar-link title="Usuários">
+            <a href="{{ path('admin_user_index') }}" class="sidebar-link{% if app.request.attributes.get('_route') starts with 'app_admin' %} is-active{% endif %}" data-sidebar-link title="Usuários">
                 <span class="sidebar-link-icon" aria-hidden="true">◉</span>
                 <span class="sidebar-link-label">Usuários</span>
             </a>
