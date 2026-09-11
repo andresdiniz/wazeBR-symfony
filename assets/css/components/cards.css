@@ -1,1 +1,21 @@
-/* Card component styles will be extracted from global.css in the next migration step. */
+/* Shared card component. */
+.card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+}
+
+.card-header,
+.card-body,
+.card-footer {
+    padding: 1rem;
+}
+
+.card-header {
+    border-bottom: 1px solid var(--color-border);
+}
+
+.card-footer {
+    border-top: 1px solid var(--color-border);
+}

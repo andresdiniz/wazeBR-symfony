@@ -1,11 +1,28 @@
-/* Safe baseline reset for the new asset hierarchy. */
+/* Predictable baseline for the modular stylesheets. */
 *,
 *::before,
 *::after {
     box-sizing: border-box;
 }
 
+html {
+    line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
 img,
 svg {
+    display: block;
     max-width: 100%;
 }

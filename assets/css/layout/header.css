@@ -1,2 +1,2 @@
-/* Compatibility entry point for header styles. */
+/* Header styles are kept here as a modular entry point. */
 @import url('../header.css');
