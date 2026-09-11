@@ -1,5 +1,6 @@
 import { initBaseLayout } from './layout/base-layout.js';
 import { initHeader } from './layout/header.js';
+import { initSidebar } from './layout/sidebar.js';
 
 import { initTables } from './components/table.js';
 import { initFilters } from './components/filters.js';
@@ -18,6 +19,7 @@ function boot() {
 
     initBaseLayout(root);
     initHeader(root);
+    initSidebar(root);
 
     initTables(root);
     initFilters(root);
