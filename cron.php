@@ -2,25 +2,25 @@
 
 declare(strict_types=1);
 
-use App\Kernel;
-use Symfony\Component\Console\Application;
-use Symfony\Component\Dotenv\Dotenv;
-
 require_once __DIR__ . '/vendor/autoload.php';
 
-$projectDir = __DIR__;
+$console = __DIR__ . DIRECTORY_SEPARATOR . 'bin' . DIRECTORY_SEPARATOR . 'console';
 
-// Symfony loads .env, .env.local and the environment-specific files.
-if (class_exists(Dotenv::class)) {
-    (new Dotenv())->bootEnv($projectDir . '/.env');
+if (!is_file($console)) {
+    fwrite(STDERR, sprintf("Symfony console not found: %s%s", $console, PHP_EOL));
+    exit(1);
 }
 
-$environment = $_SERVER['APP_ENV'] ?? $_ENV['APP_ENV'] ?? 'dev';
-$debugValue = $_SERVER['APP_DEBUG'] ?? $_ENV['APP_DEBUG'] ?? '0';
-$debug = filter_var($debugValue, FILTER_VALIDATE_BOOL);
+$command = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($console);
 
-$kernel = new Kernel($environment, $debug);
-$application = new Application($kernel);
-$application->setAutoExit(true);
+$arguments = array_slice($_SERVER['argv'] ?? [], 1);
+if ($arguments === []) {
+    $arguments = ['list'];
+}
 
-exit($application->run());
+foreach ($arguments as $argument) {
+    $command .= ' ' . escapeshellarg((string) $argument);
+}
+
+passthru($command, $exitCode);
+exit($exitCode);
