@@ -1,18 +1,13 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Entity;
 
 use App\Repository\WazeFeedRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
-use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: WazeFeedRepository::class)]
-#[ORM\Table(name: 'waze_feed')]
-#[ORM\HasLifecycleCallbacks]
 class WazeFeed
 {
     #[ORM\Id]
@@ -20,46 +15,20 @@ class WazeFeed
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(inversedBy: 'wazeFeeds')]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?Partner $partner = null;
+    #[ORM\OneToMany(mappedBy: 'wazeFeed', targetEntity: WazeAlert::class)]
+    private Collection $wazeAlerts;
 
-    #[ORM\Column(length: 36, unique: true)]
-    private ?string $feedUuid = null;
+    #[ORM\OneToMany(mappedBy: 'wazeFeed', targetEntity: WazeTrafficJam::class)]
+    private Collection $wazeTrafficJams;
 
-    #[ORM\Column(name: 'feed_id', type: Types::INTEGER, nullable: true, options: ['comment' => 'Waze numeric feed ID'])]
-    private ?int $feedId = null;
-
-    #[ORM\Column(name: 'endpoint_url', type: Types::STRING, length: 500, nullable: true, options: ['comment' => 'Full Waze API endpoint URL'])]
-    private ?string $endpointUrl = null;
-
-    #[ORM\Column(length: 50)]
-    private ?string $type = null;
-
-    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
-    private bool $active = true;
-
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
-    private \DateTimeImmutable $createdAt;
-
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
-    private \DateTimeImmutable $updatedAt;
-
-    #[ORM\OneToMany(mappedBy: 'wazeFeed', targetEntity: WazeFeedCollection::class, cascade: ['remove'])]
-    private Collection $collections;
+    #[ORM\OneToMany(mappedBy: 'wazeFeed', targetEntity: WazeTvtRoute::class)]
+    private Collection $wazeTvtRoutes;
 
     public function __construct()
     {
-        $this->collections = new ArrayCollection();
-        $this->createdAt = new \DateTimeImmutable();
-        $this->updatedAt = new \DateTimeImmutable();
-    }
-
-    #[ORM\PrePersist]
-    #[ORM\PreUpdate]
-    public function onPreFlush(): void
-    {
-        $this->updatedAt = new \DateTimeImmutable();
+        $this->wazeAlerts = new ArrayCollection();
+        $this->wazeTrafficJams = new ArrayCollection();
+        $this->wazeTvtRoutes = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -67,106 +36,73 @@ class WazeFeed
         return $this->id;
     }
 
-    public function getPartner(): ?Partner
+    public function getWazeAlerts(): Collection
     {
-        return $this->partner;
+        return $this->wazeAlerts;
     }
 
-    public function setPartner(?Partner $partner): static
+    public function addWazeAlert(WazeAlert $wazeAlert): static
     {
-        $this->partner = $partner;
-        return $this;
-    }
-
-    public function getFeedUuid(): ?string
-    {
-        return $this->feedUuid;
-    }
-
-    public function setFeedUuid(?string $feedUuid): static
-    {
-        $this->feedUuid = $feedUuid;
-        return $this;
-    }
-
-    public function getFeedId(): ?int
-    {
-        return $this->feedId;
-    }
-
-    public function setFeedId(?int $feedId): static
-    {
-        $this->feedId = $feedId;
-        return $this;
-    }
-
-    public function getEndpointUrl(): ?string
-    {
-        return $this->endpointUrl;
-    }
-
-    public function setEndpointUrl(?string $endpointUrl): static
-    {
-        $this->endpointUrl = $endpointUrl;
-        return $this;
-    }
-
-    public function getType(): ?string
-    {
-        return $this->type;
-    }
-
-    public function setType(?string $type): static
-    {
-        $this->type = $type;
-        return $this;
-    }
-
-    public function isActive(): bool
-    {
-        return $this->active;
-    }
-
-    public function setActive(bool $active): static
-    {
-        $this->active = $active;
-        return $this;
-    }
-
-    public function getCreatedAt(): \DateTimeImmutable
-    {
-        return $this->createdAt;
-    }
-
-    public function getUpdatedAt(): \DateTimeImmutable
-    {
-        return $this->updatedAt;
-    }
-
-    /**
-     * @return Collection<int, WazeFeedCollection>
-     */
-    public function getCollections(): Collection
-    {
-        return $this->collections;
-    }
-
-    public function addCollection(WazeFeedCollection $collection): static
-    {
-        if (!$this->collections->contains($collection)) {
-            $this->collections->add($collection);
-            $collection->setWazeFeed($this);
+        if (!$this->wazeAlerts->contains($wazeAlert)) {
+            $this->wazeAlerts->add($wazeAlert);
+            $wazeAlert->setWazeFeed($this);
         }
 
         return $this;
     }
 
-    public function removeCollection(WazeFeedCollection $collection): static
+    public function removeWazeAlert(WazeAlert $wazeAlert): static
     {
-        if ($this->collections->removeElement($collection)) {
-            if ($collection->getWazeFeed() === $this) {
-                $collection->setWazeFeed(null);
-            }
+        if ($this->wazeAlerts->removeElement($wazeAlert) && $wazeAlert->getWazeFeed() === $this) {
+            $wazeAlert->setWazeFeed(null);
+        }
+
+        return $this;
+    }
+
+    public function getWazeTrafficJams(): Collection
+    {
+        return $this->wazeTrafficJams;
+    }
+
+    public function addWazeTrafficJam(WazeTrafficJam $wazeTrafficJam): static
+    {
+        if (!$this->wazeTrafficJams->contains($wazeTrafficJam)) {
+            $this->wazeTrafficJams->add($wazeTrafficJam);
+            $wazeTrafficJam->setWazeFeed($this);
+        }
+
+        return $this;
+    }
+
+    public function removeWazeTrafficJam(WazeTrafficJam $wazeTrafficJam): static
+    {
+        if ($this->wazeTrafficJams->removeElement($wazeTrafficJam) && $wazeTrafficJam->getWazeFeed() === $this) {
+            $wazeTrafficJam->setWazeFeed(null);
+        }
+
+        return $this;
+    }
+
+    public function getWazeTvtRoutes(): Collection
+    {
+        return $this->wazeTvtRoutes;
+    }
+
+    public function addWazeTvtRoute(WazeTvtRoute $wazeTvtRoute): static
+    {
+        if (!$this->wazeTvtRoutes->contains($wazeTvtRoute)) {
+            $this->wazeTvtRoutes->add($wazeTvtRoute);
+            $wazeTvtRoute->setWazeFeed($this);
+        }
+
+        return $this;
+    }
+
+    public function removeWazeTvtRoute(WazeTvtRoute $wazeTvtRoute): static
+    {
+        if ($this->wazeTvtRoutes->removeElement($wazeTvtRoute) && $wazeTvtRoute->getWazeFeed() === $this) {
+            $wazeTvtRoute->setWazeFeed(null);
         }
 
         return $this;
