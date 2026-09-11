@@ -1,13 +1,6 @@
 <header class="app-header header" data-component="header">
     <div class="header-main">
-        <button
-            type="button"
-            class="header-menu-button"
-            data-action="toggle-sidebar"
-            aria-controls="app-sidebar"
-            aria-expanded="false"
-            aria-label="Abrir menu lateral"
-        >
+        <button type="button" class="header-menu-button" data-action="toggle-sidebar" aria-controls="app-sidebar" aria-expanded="false" aria-label="Abrir menu lateral">
             <span aria-hidden="true">☰</span>
         </button>
 
@@ -21,13 +14,7 @@
 
         <div class="header-search" role="search">
             <span class="header-search-icon" aria-hidden="true">⌕</span>
-            <input
-                type="search"
-                name="header_search"
-                placeholder="Buscar no sistema..."
-                aria-label="Buscar no sistema"
-                data-header-search
-            >
+            <input type="search" name="header_search" placeholder="Buscar no sistema..." aria-label="Buscar no sistema" data-header-search>
             <kbd>⌘ K</kbd>
         </div>
     </div>
@@ -38,24 +25,35 @@
             <span>Online</span>
         </div>
 
-        <button
-            type="button"
-            class="header-action-button"
-            aria-label="Notificações"
-            data-action="toggle-notifications"
-        >
-            <span aria-hidden="true">♢</span>
-            <span class="header-notification-badge">3</span>
-        </button>
+        <div class="header-notifications" data-notifications-menu>
+            <button type="button" class="header-action-button" data-action="toggle-notifications" aria-label="Notificações" aria-controls="header-notifications-dropdown" aria-expanded="false">
+                <span aria-hidden="true">♢</span>
+                <span class="header-notification-badge">3</span>
+            </button>
+
+            <div id="header-notifications-dropdown" class="header-notifications-dropdown" data-notifications-dropdown role="dialog" aria-label="Notificações" hidden>
+                <div class="header-dropdown-heading">
+                    <strong>Notificações</strong>
+                    <button type="button" data-action="mark-notifications-read">Marcar como lidas</button>
+                </div>
+                <div class="header-notification-item is-unread">
+                    <span class="header-notification-icon">!</span>
+                    <span><strong>Alerta de trânsito</strong><small>Nova ocorrência registrada</small></span>
+                </div>
+                <div class="header-notification-item is-unread">
+                    <span class="header-notification-icon">≈</span>
+                    <span><strong>Congestionamento</strong><small>Nível elevado em uma rota</small></span>
+                </div>
+                <div class="header-notification-item is-unread">
+                    <span class="header-notification-icon">✓</span>
+                    <span><strong>Sistema online</strong><small>Monitoramento funcionando</small></span>
+                </div>
+                <div class="header-dropdown-empty" data-notifications-empty hidden>Nenhuma notificação nova.</div>
+            </div>
+        </div>
 
         <div class="header-user" data-user-menu>
-            <button
-                type="button"
-                class="header-user-button"
-                data-action="toggle-user-menu"
-                aria-expanded="false"
-                aria-haspopup="menu"
-            >
+            <button type="button" class="header-user-button" data-action="toggle-user-menu" aria-expanded="false" aria-controls="header-user-dropdown" aria-haspopup="menu">
                 <span class="header-avatar" aria-hidden="true">{{ app.user ? app.user.userIdentifier|first|upper : 'U' }}</span>
                 <span class="header-user-copy">
                     <strong>{{ app.user ? app.user.userIdentifier : 'Usuário' }}</strong>
@@ -64,7 +62,7 @@
                 <span class="header-user-chevron" aria-hidden="true">⌄</span>
             </button>
 
-            <div class="header-user-menu" data-user-dropdown role="menu" hidden>
+            <div id="header-user-dropdown" class="header-user-menu" data-user-dropdown role="menu" hidden>
                 <a href="#perfil" role="menuitem">Meu perfil</a>
                 <a href="#configuracoes" role="menuitem">Configurações</a>
                 <div class="header-user-menu-divider"></div>
