@@ -1,6 +1,6 @@
-/* Dashboard page styles. */
-@import url('../dashboard.css');
-
-.dashboard-page {
-    min-width: 0;
-}
+/* Dashboard page. */
+.dashboard-page { min-width: 0; }
+.dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; }
+.dashboard-card { min-width: 0; }
+.dashboard-filters { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: end; }
+.dashboard-map { min-height: 20rem; }

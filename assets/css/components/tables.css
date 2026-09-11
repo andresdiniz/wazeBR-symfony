@@ -1,24 +1,7 @@
-/* Shared responsive table styles. */
-.table-container {
-    width: 100%;
-    overflow-x: auto;
-}
-
-.table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.table th,
-.table td {
-    padding: 0.75rem;
-    text-align: left;
-    vertical-align: middle;
-    border-bottom: 1px solid var(--color-border);
-}
-
-.table th {
-    color: var(--color-text-muted);
-    font-weight: 600;
-    background: var(--color-surface-muted);
-}
+/* Tables and API documentation tables. */
+.table-container { width: 100%; overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td { padding: 0.75rem; text-align: left; vertical-align: middle; border-bottom: 1px solid var(--color-border); }
+.table th { color: var(--color-text-muted); font-weight: 600; background: var(--color-surface-muted); }
+.api-docs table, .api-documentation table { width: 100%; border-collapse: collapse; }
+.api-docs pre, .api-documentation pre { max-width: 100%; overflow-x: auto; padding: 1rem; background: #0f172a; color: #e2e8f0; border-radius: var(--radius-sm); }

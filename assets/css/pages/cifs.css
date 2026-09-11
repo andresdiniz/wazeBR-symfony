@@ -1,2 +1,5 @@
-/* CIFS page styles. */
-@import url('../cifs.css');
+/* CIFS page and data panels. */
+.cifs-page { min-width: 0; }
+.cifs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; }
+.cifs-panel { min-width: 0; }
+.cifs-status { display: inline-flex; align-items: center; gap: 0.35rem; }

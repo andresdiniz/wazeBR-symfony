@@ -1,10 +1,12 @@
-/* Layout styles are kept here as a modular entry point. */
-@import url('../base-layout.css');
+/* Application shell and authenticated layout. */
+.app-shell { min-height: 100vh; }
+.app-content { min-width: 0; }
 
-.app-content {
-    min-width: 0;
-}
+.app-layout { display: flex; min-height: 100vh; }
+.app-main { flex: 1 1 auto; min-width: 0; }
 
-.app-shell {
-    min-height: 100vh;
+.sidebar { flex: 0 0 auto; }
+
+@media (max-width: 768px) {
+    .app-layout { display: block; }
 }
