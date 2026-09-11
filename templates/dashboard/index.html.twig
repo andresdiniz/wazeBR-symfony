@@ -1,183 +1,145 @@
-{% extends 'base.html.twig' %}
+{% extends 'layouts/dashboard.html.twig' %}
 
 {% block title %}Dashboard{% endblock %}
 
-{% block stylesheets %}
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
+{% block page_stylesheets %}
+    <link rel="stylesheet" href="{{ asset('assets/css/pages/dashboard.css') }}">
 {% endblock %}
 
-{% block javascripts %}
-    <script src="{{ asset('js/dashboard.js') }}" defer></script>
-{% endblock %}
-
-{% block body %}
-<div class="dashboard-wrapper">
-    <div class="dashboard-layout">
-        <main class="dashboard-main">
-            <div class="dashboard-container">
-                <header class="dashboard-header">
-                    <div class="container-fluid">
-                        <div class="row align-items-center">
-                            <div class="col">
-                                <h1 class="dashboard-title">Dashboard</h1>
-                                <p class="dashboard-subtitle">Vis&atilde;o geral do tr&acirc;nsito em tempo real</p>
-                            </div>
-                            <div class="col-auto">
-                                <span class="badge bg-success">Ao vivo</span>
-                            </div>
+{% block content %}
+    <section class="dashboard-page" data-page="dashboard">
+        <div class="dashboard-container">
+            <header class="dashboard-header">
+                <div class="container-fluid">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h1 class="dashboard-title">Dashboard</h1>
+                            <p class="dashboard-subtitle">Visão geral do trânsito em tempo real</p>
+                        </div>
+                        <div class="col-auto">
+                            <span class="badge bg-success">Ao vivo</span>
                         </div>
                     </div>
-                </header>
+                </div>
+            </header>
 
-                <div class="container-fluid py-4">
-                    <div class="row g-4 mb-4">
-                        <div class="col-md-4">
-                            <div class="stat-card stat-card-primary">
-                                <div class="stat-card-body">
-                                    <div class="stat-icon">
-                                        <i class="bi bi-exclamation-triangle-fill"></i>
-                                    </div>
-                                    <div class="stat-content">
-                                        <h3 class="stat-value">{{ alerts_count|default(0) }}</h3>
-                                        <p class="stat-label">Alertas hoje</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="stat-card stat-card-warning">
-                                <div class="stat-card-body">
-                                    <div class="stat-icon">
-                                        <i class="bi bi-car-front-fill"></i>
-                                    </div>
-                                    <div class="stat-content">
-                                        <h3 class="stat-value">{{ jams_count|default(0) }}</h3>
-                                        <p class="stat-label">Congestionamentos</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="stat-card stat-card-info">
-                                <div class="stat-card-body">
-                                    <div class="stat-icon">
-                                        <i class="bi bi-signpost-2-fill"></i>
-                                    </div>
-                                    <div class="stat-content">
-                                        <h3 class="stat-value">{{ routes_count|default(0) }}</h3>
-                                        <p class="stat-label">Rotas TVT</p>
-                                    </div>
+            <div class="container-fluid py-4">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-4">
+                        <div class="stat-card stat-card-primary">
+                            <div class="stat-card-body">
+                                <div class="stat-icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
+                                <div class="stat-content">
+                                    <h3 class="stat-value">{{ alerts_count|default(0) }}</h3>
+                                    <p class="stat-label">Alertas hoje</p>
                                 </div>
                             </div>
                         </div>
                     </div>
-
-                    <div class="row g-4">
-                        <div class="col-lg-4">
-                            <div class="content-card">
-                                <div class="content-card-header">
-                                    <h5 class="content-card-title">
-                                        <i class="bi bi-exclamation-triangle"></i>
-                                        Alertas Ativos
-                                    </h5>
-                                    <span class="badge bg-primary">{{ alerts|length }}</span>
+                    <div class="col-md-4">
+                        <div class="stat-card stat-card-warning">
+                            <div class="stat-card-body">
+                                <div class="stat-icon"><i class="bi bi-car-front-fill"></i></div>
+                                <div class="stat-content">
+                                    <h3 class="stat-value">{{ jams_count|default(0) }}</h3>
+                                    <p class="stat-label">Congestionamentos</p>
                                 </div>
-                                <div class="content-card-body">
-                                    {% if alerts|length > 0 %}
-                                        <ul class="activity-list">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-card stat-card-info">
+                            <div class="stat-card-body">
+                                <div class="stat-icon"><i class="bi bi-signpost-2-fill"></i></div>
+                                <div class="stat-content">
+                                    <h3 class="stat-value">{{ routes_count|default(0) }}</h3>
+                                    <p class="stat-label">Rotas TVT</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-lg-4">
+                        <div class="content-card">
+                            <div class="content-card-header">
+                                <h5 class="content-card-title"><i class="bi bi-exclamation-triangle"></i> Alertas Ativos</h5>
+                                <span class="badge bg-primary">{{ alerts|length }}</span>
+                            </div>
+                            <div class="content-card-body">
+                                {% if alerts|length > 0 %}
+                                    <ul class="activity-list">
                                         {% for alert in alerts|slice(0, 8) %}
                                             <li class="activity-item">
-                                                <div class="activity-icon bg-primary">
-                                                    <i class="bi bi-exclamation-triangle"></i>
-                                                </div>
+                                                <div class="activity-icon bg-primary"><i class="bi bi-exclamation-triangle"></i></div>
                                                 <div class="activity-content">
                                                     <p class="activity-text">{{ alert.type|default('Alerta') }}</p>
                                                     <small class="activity-time">{{ alert.lastSeenAt is defined and alert.lastSeenAt ? alert.lastSeenAt|date('H:i') : '' }}</small>
                                                 </div>
                                             </li>
                                         {% endfor %}
-                                        </ul>
-                                    {% else %}
-                                        <div class="empty-state">
-                                            <i class="bi bi-check-circle"></i>
-                                            <p>Nenhum alerta ativo</p>
-                                        </div>
-                                    {% endif %}
-                                </div>
+                                    </ul>
+                                {% else %}
+                                    <div class="empty-state"><i class="bi bi-check-circle"></i><p>Nenhum alerta ativo</p></div>
+                                {% endif %}
                             </div>
                         </div>
+                    </div>
 
-                        <div class="col-lg-4">
-                            <div class="content-card">
-                                <div class="content-card-header">
-                                    <h5 class="content-card-title">
-                                        <i class="bi bi-car-front"></i>
-                                        Engarrafamentos
-                                    </h5>
-                                    <span class="badge bg-warning">{{ jams|length }}</span>
-                                </div>
-                                <div class="content-card-body">
-                                    {% if jams|length > 0 %}
-                                        <ul class="activity-list">
+                    <div class="col-lg-4">
+                        <div class="content-card">
+                            <div class="content-card-header">
+                                <h5 class="content-card-title"><i class="bi bi-car-front"></i> Engarrafamentos</h5>
+                                <span class="badge bg-warning">{{ jams|length }}</span>
+                            </div>
+                            <div class="content-card-body">
+                                {% if jams|length > 0 %}
+                                    <ul class="activity-list">
                                         {% for jam in jams|slice(0, 8) %}
                                             <li class="activity-item">
-                                                <div class="activity-icon bg-warning">
-                                                    <i class="bi bi-car-front"></i>
-                                                </div>
+                                                <div class="activity-icon bg-warning"><i class="bi bi-car-front"></i></div>
                                                 <div class="activity-content">
-                                                    <p class="activity-text">N&iacute;vel {{ jam.level|default('-') }}</p>
+                                                    <p class="activity-text">Nível {{ jam.level|default('-') }}</p>
                                                     <small class="activity-time">{{ jam.lastSeenAt is defined and jam.lastSeenAt ? jam.lastSeenAt|date('H:i') : '' }}</small>
                                                 </div>
                                             </li>
                                         {% endfor %}
-                                        </ul>
-                                    {% else %}
-                                        <div class="empty-state">
-                                            <i class="bi bi-check-circle"></i>
-                                            <p>Tudo fluindo</p>
-                                        </div>
-                                    {% endif %}
-                                </div>
+                                    </ul>
+                                {% else %}
+                                    <div class="empty-state"><i class="bi bi-check-circle"></i><p>Tudo fluindo</p></div>
+                                {% endif %}
                             </div>
                         </div>
+                    </div>
 
-                        <div class="col-lg-4">
-                            <div class="content-card">
-                                <div class="content-card-header">
-                                    <h5 class="content-card-title">
-                                        <i class="bi bi-signpost-2"></i>
-                                        Rotas Ativas
-                                    </h5>
-                                    <span class="badge bg-info">{{ routes|length }}</span>
-                                </div>
-                                <div class="content-card-body">
-                                    {% if routes|length > 0 %}
-                                        <ul class="activity-list">
+                    <div class="col-lg-4">
+                        <div class="content-card">
+                            <div class="content-card-header">
+                                <h5 class="content-card-title"><i class="bi bi-signpost-2"></i> Rotas Ativas</h5>
+                                <span class="badge bg-info">{{ routes|length }}</span>
+                            </div>
+                            <div class="content-card-body">
+                                {% if routes|length > 0 %}
+                                    <ul class="activity-list">
                                         {% for route in routes|slice(0, 8) %}
                                             <li class="activity-item">
-                                                <div class="activity-icon bg-info">
-                                                    <i class="bi bi-signpost-2"></i>
-                                                </div>
+                                                <div class="activity-icon bg-info"><i class="bi bi-signpost-2"></i></div>
                                                 <div class="activity-content">
                                                     <p class="activity-text">{{ route.name|default('Rota') }}</p>
                                                     <small class="activity-time">{{ route.lastSeenAt is defined and route.lastSeenAt ? route.lastSeenAt|date('H:i') : '' }}</small>
                                                 </div>
                                             </li>
                                         {% endfor %}
-                                        </ul>
-                                    {% else %}
-                                        <div class="empty-state">
-                                            <i class="bi bi-check-circle"></i>
-                                            <p>Nenhuma rota ativa</p>
-                                        </div>
-                                    {% endif %}
-                                </div>
+                                    </ul>
+                                {% else %}
+                                    <div class="empty-state"><i class="bi bi-check-circle"></i><p>Nenhuma rota ativa</p></div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </main>
-    </div>
-</div>
+        </div>
+    </section>
 {% endblock %}
