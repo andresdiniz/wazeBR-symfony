@@ -1,0 +1,52 @@
+<nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <a href="{{ path('app_dashboard') }}" class="sidebar-brand">
+            <i class="bi bi-geo-alt-fill"></i>
+            <span>WazeBR</span>
+        </a>
+        <button class="sidebar-toggle d-lg-none" id="sidebarToggle">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
+
+    <div class="sidebar-body">
+        <ul class="sidebar-nav">
+            <li class="nav-item">
+                <a href="{{ path('app_dashboard') }}" class="nav-link {% if app.request.attributes.get('_route') == 'app_dashboard' %}active{% endif %}">
+                    <i class="bi bi-speedometer2"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ path('app_alerts') }}" class="nav-link {% if app.request.attributes.get('_route') == 'app_alerts' %}active{% endif %}">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <span>Alertas</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ path('app_jams') }}" class="nav-link {% if app.request.attributes.get('_route') == 'app_jams' %}active{% endif %}">
+                    <i class="bi bi-car-front"></i>
+                    <span>Congestionamentos</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ path('app_routes') }}" class="nav-link {% if app.request.attributes.get('_route') == 'app_routes' %}active{% endif %}">
+                    <i class="bi bi-signpost-2"></i>
+                    <span>Rotas</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <div class="sidebar-footer">
+        <div class="user-info">
+            <div class="user-avatar">
+                <i class="bi bi-person-circle"></i>
+            </div>
+            <div class="user-details">
+                <p class="user-name">{{ app.user ? app.user.userIdentifier : 'Visitante' }}</p>
+                <small class="user-role">Monitor de Tr&acirc;nsito</small>
+            </div>
+        </div>
+    </div>
+</nav>
