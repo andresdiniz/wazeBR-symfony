@@ -1,8 +1,8 @@
 <?php
 
 return [
-    'app-init' => [
-        'path' => './assets/js/core/app-init.js',
+    'app' => [
+        'path' => './assets/js/app.js',
         'entrypoint' => true,
     ],
 ];
