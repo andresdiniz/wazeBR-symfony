@@ -1,4 +1,4 @@
-{% extends 'base.html.twig' %}
+{% extends 'layouts/dashboard.html.twig' %}
 
 {% block title %}Dashboard{% endblock %}
 
@@ -10,7 +10,7 @@
     <script src="{{ asset('js/dashboard.js') }}" defer></script>
 {% endblock %}
 
-{% block body %}
+{% block content %}
 <div class="dashboard-wrapper">
     <div class="dashboard-layout">
         <main class="dashboard-main">
