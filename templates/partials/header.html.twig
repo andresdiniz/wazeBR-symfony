@@ -1,78 +1,76 @@
 <header class="app-header" id="appHeader">
-    <div class="header-container">
-        <nav class="navbar navbar-expand-lg">
+    <nav class="navbar navbar-expand-lg w-100 px-4">
 
-            {# Logo #}
-            <a class="navbar-brand" href="{{ path('dashboard') }}">
-                <div class="brand-logo">
-                    <i class="bi bi-signpost-2-fill"></i>
-                </div>
-                <span class="brand-text">Waze<span class="brand-highlight">BR</span></span>
-            </a>
+        {# Logo #}
+        <a class="navbar-brand" href="{{ path('dashboard') }}">
+            <div class="brand-logo">
+                <i class="bi bi-signpost-2-fill"></i>
+            </div>
+            <span class="brand-text">Waze<span class="brand-highlight">BR</span></span>
+        </a>
 
-            {# Mobile Toggle #}
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#headerNav" aria-controls="headerNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+        {# Mobile Toggle #}
+        <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#headerNav" aria-controls="headerNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
 
-            {# Right Controls #}
-            <div class="collapse navbar-collapse" id="headerNav">
-                <ul class="navbar-nav ms-auto align-items-center">
+        {# Right Controls #}
+        <div class="collapse navbar-collapse flex-grow-0" id="headerNav">
+            <ul class="navbar-nav ms-auto align-items-center">
 
-                    {# Search #}
-                    <li class="nav-item nav-search">
-                        <div class="search-box">
-                            <i class="bi bi-search search-icon"></i>
-                            <input type="text" class="search-input" placeholder="Buscar..." aria-label="Buscar">
+                {# Search #}
+                <li class="nav-item nav-search">
+                    <div class="search-box">
+                        <i class="bi bi-search search-icon"></i>
+                        <input type="text" class="search-input" placeholder="Buscar..." aria-label="Buscar">
+                    </div>
+                </li>
+
+                {# Notifications #}
+                <li class="nav-item nav-notification">
+                    <a class="nav-link notification-link" href="#" aria-label="Notificações">
+                        <i class="bi bi-bell"></i>
+                        {% if notification_count is defined and notification_count > 0 %}
+                            <span class="notification-badge">{{ notification_count }}</span>
+                        {% endif %}
+                    </a>
+                </li>
+
+                {# User Menu #}
+                {% if app.user %}
+                    <li class="nav-item nav-user">
+                        <div class="user-menu">
+                            <div class="user-avatar">
+                                {{ app.user.email|first|upper }}
+                            </div>
+                            <div class="user-info">
+                                <span class="user-name">{{ app.user.email }}</span>
+                                <span class="user-role">Usuário</span>
+                            </div>
+                            <i class="bi bi-chevron-down user-arrow"></i>
+                            <div class="user-dropdown">
+                                <a class="dropdown-item" href="{{ path('account_settings') }}">
+                                    <i class="bi bi-gear"></i>
+                                    <span>Configurações</span>
+                                </a>
+                                <a class="dropdown-item" href="{{ path('app_logout') }}">
+                                    <i class="bi bi-box-arrow-right"></i>
+                                    <span>Sair</span>
+                                </a>
+                            </div>
                         </div>
                     </li>
-
-                    {# Notifications #}
-                    <li class="nav-item nav-notification">
-                        <a class="nav-link notification-link" href="#" aria-label="Notificações">
-                            <i class="bi bi-bell"></i>
-                            {% if notification_count is defined and notification_count > 0 %}
-                                <span class="notification-badge">{{ notification_count }}</span>
-                            {% endif %}
+                {% else %}
+                    <li class="nav-item">
+                        <a class="btn btn-primary btn-login" href="{{ path('auth_login') }}">
+                            <i class="bi bi-box-arrow-in-right"></i>
+                            <span>Login</span>
                         </a>
                     </li>
+                {% endif %}
 
-                    {# User Menu #}
-                    {% if app.user %}
-                        <li class="nav-item nav-user">
-                            <div class="user-menu">
-                                <div class="user-avatar">
-                                    {{ app.user.email|first|upper }}
-                                </div>
-                                <div class="user-info">
-                                    <span class="user-name">{{ app.user.email }}</span>
-                                    <span class="user-role">Usuário</span>
-                                </div>
-                                <i class="bi bi-chevron-down user-arrow"></i>
-                                <div class="user-dropdown">
-                                    <a class="dropdown-item" href="{{ path('account_settings') }}">
-                                        <i class="bi bi-gear"></i>
-                                        <span>Configurações</span>
-                                    </a>
-                                    <a class="dropdown-item" href="{{ path('app_logout') }}">
-                                        <i class="bi bi-box-arrow-right"></i>
-                                        <span>Sair</span>
-                                    </a>
-                                </div>
-                            </div>
-                        </li>
-                    {% else %}
-                        <li class="nav-item">
-                            <a class="btn btn-primary btn-login" href="{{ path('auth_login') }}">
-                                <i class="bi bi-box-arrow-in-right"></i>
-                                <span>Login</span>
-                            </a>
-                        </li>
-                    {% endif %}
+            </ul>
+        </div>
 
-                </ul>
-            </div>
-
-        </nav>
-    </div>
+    </nav>
 </header>
