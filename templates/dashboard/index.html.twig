@@ -1,20 +1,22 @@
 {% extends 'layouts/dashboard.html.twig' %}
 
-{% block title %}Dashboard{% endblock %}
-
-{% block stylesheets %}
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
+{% block title %}
+    Dashboard
 {% endblock %}
 
-{% block javascripts %}
-    <script src="{{ asset('js/dashboard.js') }}" defer></script>
+{% block page_stylesheets %}
+    <link
+        rel="stylesheet"
+        href="{{ asset('assets/css/pages/dashboard.css') }}"
+    >
 {% endblock %}
 
 {% block content %}
-<div class="dashboard-wrapper">
-    <div class="dashboard-layout">
-        <main class="dashboard-main">
-            <div class="dashboard-container">
+    <section
+        class="dashboard-page"
+        data-page="dashboard"
+    >
+        <div class="dashboard-container">
                 <header class="dashboard-header">
                     <div class="container-fluid">
                         <div class="row align-items-center">
