@@ -11,7 +11,6 @@
             {% if not app.user %}
                 <div class="mt-4">
                     <a href="{{ path('auth_login') }}" class="btn btn-primary btn-lg me-2">Entrar</a>
-                    <a href="{{ path('app_register') }}" class="btn btn-outline-secondary btn-lg">Registrar</a>
                 </div>
             {% else %}
                 <div class="mt-4">
