@@ -11,21 +11,34 @@ final class Version20260909230000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Create TVT tables with correct schema';
+        return 'Create TVT tables with deterministic foreign keys';
     }
 
     public function up(Schema $schema): void
     {
-        $this->addSql('CREATE TABLE IF NOT EXISTS waze_feed (id INT AUTO_INCREMENT NOT NULL, partner_id INT NOT NULL, endpoint_url VARCHAR(255) DEFAULT NULL, feed_uuid VARCHAR(255) NOT NULL, feed_id INT DEFAULT NULL, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL, INDEX IDX_741E8694D0DB441 (partner_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
-        $this->addSql('CREATE TABLE IF NOT EXISTS waze_feed_collection (id INT AUTO_INCREMENT NOT NULL, waze_feed_id INT NOT NULL, status VARCHAR(40) NOT NULL, created_at DATETIME NOT NULL, INDEX IDX_9A8B3E6D0DB441 (waze_feed_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE IF NOT EXISTS waze_partner (id INT AUTO_INCREMENT NOT NULL, name VARCHAR(100) NOT NULL, api_token VARCHAR(255) DEFAULT NULL, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL, PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
-        $this->addSql('CREATE TABLE IF NOT EXISTS waze_tvt_route (id INT AUTO_INCREMENT NOT NULL, partner_id INT NOT NULL, waze_feed_id INT NOT NULL, external_route_id VARCHAR(255) NOT NULL, label VARCHAR(255) DEFAULT NULL, is_active TINYINT(1) NOT NULL, first_seen_at DATETIME NOT NULL, last_seen_at DATETIME DEFAULT NULL, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL, UNIQUE INDEX UNIQ_741E8694D0DB441 (partner_id, waze_feed_id, external_route_id), INDEX IDX_741E8694D0DB441 (partner_id), INDEX IDX_741E8694D0DB441 (waze_feed_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
+        $this->addSql('CREATE TABLE IF NOT EXISTS waze_feed (id INT AUTO_INCREMENT NOT NULL, partner_id INT NOT NULL, endpoint_url VARCHAR(255) DEFAULT NULL, feed_uuid VARCHAR(255) NOT NULL, feed_id INT DEFAULT NULL, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL, INDEX IDX_WAZE_FEED_PARTNER (partner_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
+        $this->addSql('CREATE TABLE IF NOT EXISTS waze_feed_collection (id INT AUTO_INCREMENT NOT NULL, waze_feed_id INT NOT NULL, status VARCHAR(40) NOT NULL, created_at DATETIME NOT NULL, INDEX IDX_WAZE_FEED_COLLECTION_FEED (waze_feed_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE IF NOT EXISTS waze_tvt_route_definition (id INT AUTO_INCREMENT NOT NULL, route_id VARCHAR(255) NOT NULL, name VARCHAR(255) DEFAULT NULL, bbox LONGTEXT DEFAULT NULL, line LONGTEXT DEFAULT NULL, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL, PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
-        $this->addSql('CREATE TABLE IF NOT EXISTS waze_tvt_route_history (id INT AUTO_INCREMENT NOT NULL, route_id VARCHAR(255) NOT NULL, observed_at DATETIME NOT NULL, travel_time_seconds INT DEFAULT NULL, speed_kmh DECIMAL(8, 2) DEFAULT NULL, delay_seconds INT DEFAULT NULL, length_meters INT DEFAULT NULL, status VARCHAR(40) DEFAULT NULL, raw_metrics JSON DEFAULT NULL, INDEX IDX_route_id (route_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
-        $this->addSql('ALTER TABLE waze_feed ADD CONSTRAINT FK_741E8694D0DB441 FOREIGN KEY (partner_id) REFERENCES waze_partner (id)');
-        $this->addSql('ALTER TABLE waze_feed_collection ADD CONSTRAINT FK_9A8B3E6D0DB441 FOREIGN KEY (waze_feed_id) REFERENCES waze_feed (id)');
-        $this->addSql('ALTER TABLE waze_tvt_route ADD CONSTRAINT FK_741E8694D0DB441 FOREIGN KEY (partner_id) REFERENCES waze_partner (id)');
-        $this->addSql('ALTER TABLE waze_tvt_route ADD CONSTRAINT FK_741E8694D0DB441 FOREIGN KEY (waze_feed_id) REFERENCES waze_feed (id)');
+        $this->addSql('CREATE TABLE IF NOT EXISTS waze_tvt_route_history (id INT AUTO_INCREMENT NOT NULL, route_id VARCHAR(255) NOT NULL, observed_at DATETIME NOT NULL, travel_time_seconds INT DEFAULT NULL, speed_kmh DECIMAL(8, 2) DEFAULT NULL, delay_seconds INT DEFAULT NULL, length_meters INT DEFAULT NULL, status VARCHAR(40) DEFAULT NULL, raw_metrics JSON DEFAULT NULL, INDEX IDX_WAZE_TVT_HISTORY_ROUTE (route_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
+        $this->addSql('CREATE TABLE IF NOT EXISTS waze_tvt_route (id INT AUTO_INCREMENT NOT NULL, partner_id INT NOT NULL, waze_feed_id INT NOT NULL, external_route_id VARCHAR(255) NOT NULL, label VARCHAR(255) DEFAULT NULL, is_active TINYINT(1) NOT NULL, first_seen_at DATETIME NOT NULL, last_seen_at DATETIME DEFAULT NULL, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL, UNIQUE INDEX UNIQ_WAZE_TVT_ROUTE_KEYS (partner_id, waze_feed_id, external_route_id), INDEX IDX_WAZE_TVT_ROUTE_PARTNER (partner_id), INDEX IDX_WAZE_TVT_ROUTE_FEED (waze_feed_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
+
+        $this->addForeignKeyIfMissing('waze_feed', 'FK_WAZE_FEED_PARTNER', 'partner_id', 'waze_partner');
+        $this->addForeignKeyIfMissing('waze_feed_collection', 'FK_WAZE_FEED_COLLECTION_FEED', 'waze_feed_id', 'waze_feed');
+        $this->addForeignKeyIfMissing('waze_tvt_route', 'FK_WAZE_TVT_ROUTE_PARTNER', 'partner_id', 'waze_partner');
+        $this->addForeignKeyIfMissing('waze_tvt_route', 'FK_WAZE_TVT_ROUTE_FEED', 'waze_feed_id', 'waze_feed');
+    }
+
+    private function addForeignKeyIfMissing(string $table, string $constraint, string $column, string $referencedTable): void
+    {
+        $exists = $this->connection->fetchOne(
+            'SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = ? AND CONSTRAINT_NAME = ? AND CONSTRAINT_TYPE = \'FOREIGN KEY\'',
+            [$table, $constraint]
+        );
+
+        if ((int) $exists === 0) {
+            $this->addSql(sprintf('ALTER TABLE `%s` ADD CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s` (`id`)', $table, $constraint, $column, $referencedTable));
+        }
     }
 
     public function down(Schema $schema): void
