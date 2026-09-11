@@ -1,3 +1,9 @@
+import { qs } from '../core/dom.js';
+
 export function getMapElement(root = document) {
-    return root.querySelector('[data-map]');
+    return qs('[data-map]', root);
+}
+
+export function initMapPlaceholder(root = document) {
+    return getMapElement(root);
 }
