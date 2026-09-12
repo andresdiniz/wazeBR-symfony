@@ -2,17 +2,18 @@
 
 **Repository:** `andresdiniz/wazeBR-symfony`  
 **Last updated:** 2026-09-12  
-**Scope:** Core domain entities for partners, users, and API links.
+**Scope:** Core domain entities for partners, users, API links, and Waze alerts.
 
 ---
 
 ## Overview
 
-The application is built around three main entities:
+The application is built around these main entities:
 
 - `Partner`: represents an organization (e.g., city hall, traffic agency).
 - `User`: represents system users, optionally scoped to a partner.
 - `PartnerApiLink`: represents external API endpoints (alerts, traffic) owned by a partner.
+- `WazeAlert`: normalized alert data fetched from Waze Partner API per partner.
 
 All relationships are defined using Doctrine ORM annotations/attributes in PHP.
 
@@ -46,6 +47,24 @@ All relationships are defined using Doctrine ORM annotations/attributes in PHP.
         +----------------------------------------------------------+
                           | apiLinks (Collection)
                           | N
+                          |
+        +-----------------+
+        | 1
+        |
+        +------------------------+
+        |      waze_alert        |
+        +------------------------+
+        | id                     |
+        | partner_id (FK)        |
+        | uuid (unique)          |
+        | type, subtype          |
+        | pub_millis             |
+        | location_x, location_y |
+        | street, city, country  |
+        | road_type, confidence, |
+        | reliability, ...       |
+        | created_at, updated_at |
+        +------------------------+
 ```
 
 ### Relationships
@@ -61,11 +80,18 @@ All relationships are defined using Doctrine ORM annotations/attributes in PHP.
   - Currently: **non-nullable in practice** (every link must have a partner).  
   - Inverse side: `Partner.apiLinks` (Collection).  
 
+- `WazeAlert.partner` → `Partner.id`  
+  - Type: **Many-to-One** (multiple alerts belong to one partner).  
+  - **Non-nullable**: every alert must have a partner.  
+  - Inverse side: `Partner.wazeAlerts` (to be added as Collection if needed).  
+  - Alerts are fetched from `PartnerApiLink.url` (type = 'alerts') and stored normalized (no raw JSON column).  
+
 - `Partner` has:
   - `users`: `Collection<User>`  
   - `apiLinks`: `Collection<PartnerApiLink>`  
+  - (optionally) `wazeAlerts`: `Collection<WazeAlert>` (can be added as inverse side).  
 
-There is **no direct relationship** between `User` and `PartnerApiLink`; both are associated independently to `Partner`.
+There is **no direct relationship** between `User` and `PartnerApiLink` or `WazeAlert`; all are associated independently to `Partner`.
 
 ---
 
@@ -88,6 +114,7 @@ There is **no direct relationship** between `User` and `PartnerApiLink`; both ar
 - `cemadenData`, `cities`, `links`, `users`, `alerts`
 - `wazeCounts`, `routes`, `trafficJams`
 - `wazeTvtRoutes`, `wazeFeeds`, `apiLinks`
+- (optionally) `wazeAlerts` (if inverse side is added).
 
 **Key methods:**
 
@@ -196,6 +223,58 @@ private ?Partner $partner = null;
 
 ---
 
+### `WazeAlert`
+
+**File:** `src/Entity/WazeAlert.php`
+
+**Purpose:** Store normalized Waze alert data fetched from `PartnerApiLink` (type `alerts`). No raw JSON column; all relevant fields are stored in dedicated columns.
+
+**Main fields:**
+
+- `id`
+- `partner` (ManyToOne → `Partner`, **not null**)
+- `uuid` (unique, from Waze API)
+- `type` (e.g. `ROAD_CLOSED`, `HAZARD`, `ACCIDENT`, `WEATHERHAZARD`, `JAM`)
+- `subtype` (e.g. `HAZARD_ON_ROAD_POT_HOLE`, etc.)
+- `pubMillis` (publication time in milliseconds since epoch, stored as BIGINT string)
+- `reportByMunicipalityUser` (string "true"/"false")
+- `reportRating`, `confidence`, `reliability` (integers)
+- `locationX`, `locationY` (longitude/latitude as DECIMAL)
+- `street`, `city`, `country` (strings)
+- `roadType` (integer code from Waze)
+- `nThumbsUp`, `magvar` (integers)
+- `createdAt`, `updatedAt` (local timestamps)
+
+**Relationship:**
+
+```php
+#[ORM\ManyToOne]
+#[ORM\JoinColumn(nullable: false)]
+private ?Partner $partner = null;
+```
+
+**Key methods:**
+
+- `getPartner(): ?Partner`
+- `setPartner(?Partner $partner): static`
+- `getUuid(): ?string`
+- `getType(): ?string`
+- `getSubtype(): ?string`
+- `getPubMillis(): ?string`
+- `getLocationX(): ?string`, `getLocationY(): ?string`
+- `getLatitude(): ?float`, `getLongitude(): ?float` (convenience methods)
+- `getPubDateTime(): ?\DateTimeImmutable` (converts pubMillis to DateTime)
+- Getters/setters for all fields.
+
+**Business rules:**
+
+- Every alert must belong to a partner (`partner_id NOT NULL`).
+- `uuid` is unique across all alerts (prevents duplicates from same feed).
+- Data is stored normalized; no raw JSON column.
+- Alerts are expected to be inserted/updated by a background job or command that consumes `PartnerApiLink` URLs (type `alerts`).
+
+---
+
 ## Business Rules Summary
 
 ### Current rules
@@ -210,10 +289,16 @@ private ?Partner $partner = null;
    - Every API link must belong to a partner.
    - Type is restricted to `alerts` or `traffic`.
 
-3. **Data scoping**
+3. **WazeAlert ↔ Partner**
+   - Every alert must belong to a partner.
+   - Alerts are fetched from partner's `PartnerApiLink` (type `alerts`).
+   - Each alert has a unique `uuid` from Waze.
+   - Data is stored normalized (no raw JSON).
+
+4. **Data scoping**
    - Users are scoped to a partner via `User.partner` (except global admins).
-   - API links are configuration for data collection per partner.
-   - No direct link between a specific user and a specific API link.
+   - API links and alerts are configuration and data per partner.
+   - No direct link between a specific user and a specific API link or alert.
 
 ---
 
@@ -260,16 +345,33 @@ Documented constraints:
 - Only global admins can exist without a partner.
 - Partner admins can only manage users within their partner.
 
-### 3. API links per user (if ever needed)
+### 3. Waze jams (traffic) entity
 
-If in the future you need **per-user API links**:
+If you later want to store `jams` from the same Waze feed:
 
-- Introduce a new entity `UserApiLink` or add `user_id` to `partner_api_link`.
-- Adjust relationships accordingly (ManyToOne or ManyToMany).
+- Create a `WazeJam` entity with fields like `uuid`, `level`, `length`, `delay`, `speed`, `line` (maybe JSON or separate table), `street`, `city`, `pubMillis`, `partner_id`.
+- Add relationship `WazeJam.partner` → `Partner`.
+- Update this document accordingly.
+
+### 4. Inverse side for WazeAlert on Partner
+
+If you need to navigate from `Partner` to its alerts:
+
+- Add to `Partner.php`:
+  ```php
+  #[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeAlert::class)]
+  private Collection $wazeAlerts;
+  ```
+- Add `getWazeAlerts(): Collection` and helper methods.
 
 ---
 
 ## Change Log
+
+- **2026-09-12** (WazeAlert)
+  - Added `WazeAlert` entity with normalized fields (no raw JSON).
+  - Each alert has `partner_id`, `uuid` (unique), type, subtype, location, and metadata.
+  - Updated ER diagram and business rules.
 
 - **2026-09-12** (update)
   - Strengthened `User` entity validation:
