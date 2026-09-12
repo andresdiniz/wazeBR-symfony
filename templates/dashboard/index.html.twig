@@ -3,57 +3,138 @@
 {% block title %}Dashboard - wazeBR{% endblock %}
 
 {% block page_stylesheets %}
-<style>
-    .dashboard-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
-    .stat-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; text-align: center; }
-    .stat-card h3 { margin: 0; font-size: 2rem; color: #1976d2; }
-    .stat-card p { margin: 8px 0 0; color: #666; font-size: 0.9rem; }
-    .dashboard-section { margin-bottom: 24px; }
-    .dashboard-section h2 { font-size: 1.25rem; margin-bottom: 12px; color: #333; }
-    .recent-list { list-style: none; padding: 0; margin: 0; }
-    .recent-item { background: #f5f5f5; border-radius: 6px; padding: 12px 16px; margin-bottom: 8px; font-size: 0.9rem; }
-</style>
+<link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
 {% endblock %}
 
 {% block content %}
-<div class="dashboard-content-inner">
-    <h1>Dashboard</h1>
-    
-    <div class="dashboard-stats">
-        <div class="stat-card">
-            <h3>{{ stats.total_alerts }}</h3>
-            <p>Alertas</p>
-        </div>
-        <div class="stat-card">
-            <h3>{{ stats.total_jams }}</h3>
-            <p>Congestionamentos</p>
-        </div>
-    </div>
+<div class="dashboard-wrapper">
+    <header class="dashboard-header">
+        <h1>Dashboard</h1>
+        <p class="dashboard-subtitle">Vis\u00e3o geral do monitoramento</p>
+    </header>
 
-    <div class="dashboard-section">
-        <h2>Alertas Recentes</h2>
-        {% if stats.recent_alerts is empty %}
-            <p>Nenhum alerta recente.</p>
-        {% else %}
-            <ul class="recent-list">
-                {% for alert in stats.recent_alerts %}
-                    <li class="recent-item">#{{ alert.id }} - {{ alert.type }} - {{ alert.reportTime|date('d/m/Y H:i') }}</li>
-                {% endfor %}
-            </ul>
-        {% endif %}
-    </div>
+    <!-- Stats Cards -->
+    <section class="stats-grid">
+        <div class="stat-card stat-alerts">
+            <div class="stat-icon">!</div>
+            <div class="stat-value">{{ stats.total_alerts }}</div>
+            <div class="stat-label">Alertas</div>
+        </div>
+        <div class="stat-card stat-jams">
+            <div class="stat-icon">\u2248</div>
+            <div class="stat-value">{{ stats.total_jams }}</div>
+            <div class="stat-label">Congestionamentos</div>
+        </div>
+        <div class="stat-card stat-weather">
+            <div class="stat-icon">\u26c5</div>
+            <div class="stat-value">{{ stats.total_weather }}</div>
+            <div class="stat-label">Observa\u00e7\u00f5es Clim\u00e1ticas</div>
+        </div>
+        <div class="stat-card stat-partners">
+            <div class="stat-icon">\u25c9</div>
+            <div class="stat-value">{{ stats.total_partners }}</div>
+            <div class="stat-label">Parceiros</div>
+        </div>
+        <div class="stat-card stat-users">
+            <div class="stat-icon">\u263a</div>
+            <div class="stat-value">{{ stats.total_users }}</div>
+            <div class="stat-label">Usu\u00e1rios</div>
+        </div>
+    </section>
 
-    <div class="dashboard-section">
-        <h2>Congestionamentos Recentes</h2>
-        {% if stats.recent_jams is empty %}
-            <p>Nenhum congestionamento recente.</p>
-        {% else %}
-            <ul class="recent-list">
-                {% for jam in stats.recent_jams %}
-                    <li class="recent-item">#{{ jam.id }} - Nos: {{ jam.line }} - {{ jam.reportTime|date('d/m/Y H:i') }}</li>
-                {% endfor %}
-            </ul>
-        {% endif %}
+    <!-- Recent Items Grid -->
+    <div class="dashboard-grid">
+        <!-- Recent Alerts -->
+        <section class="dashboard-card">
+            <h2>Alertas Recentes</h2>
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Tipo</th>
+                            <th>Data</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for alert in stats.recent_alerts %}
+                        <tr>
+                            <td>#{{ alert.id }}</td>
+                            <td><span class="badge badge-alert">{{ alert.type }}</span></td>
+                            <td>{{ alert.reportTime|date('d/m/Y H:i') }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="3">Nenhum alerta encontrado</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Recent Jams -->
+        <section class="dashboard-card">
+            <h2>Congestionamentos Recentes</h2>
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>N\u00f3s</th>
+                            <th>Velocidade</th>
+                            <th>Data</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for jam in stats.recent_jams %}
+                        <tr>
+                            <td>#{{ jam.id }}</td>
+                            <td>{{ jam.line }}</td>
+                            <td>{{ jam.speed }} km/h</td>
+                            <td>{{ jam.reportTime|date('d/m/Y H:i') }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4">Nenhum congestionamento encontrado</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Recent Weather -->
+        <section class="dashboard-card full-width">
+            <h2>\u00daltimas Observa\u00e7\u00f5es Clim\u00e1ticas</h2>
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Local</th>
+                            <th>Temp (\u00b0C)</th>
+                            <th>Umidade (%)</th>
+                            <th>Data</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for weather in stats.recent_weather %}
+                        <tr>
+                            <td>#{{ weather.id }}</td>
+                            <td>{{ weather.location }}</td>
+                            <td>{{ weather.airTemperature }}</td>
+                            <td>{{ weather.relativeHumidity }}</td>
+                            <td>{{ weather.date|date('d/m/Y H:i') }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5">Nenhuma observa\u00e7\u00e3o encontrada</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
     </div>
 </div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script type="module" src="{{ asset('js/dashboard.js') }}"></script>
 {% endblock %}
