@@ -21,11 +21,9 @@ class PartnerApiLinkRepository extends ServiceEntityRepository
     public function findAllByType(string $type): array
     {
         return $this->createQueryBuilder('pal')
-            ->innerJoin('pal.partner', 'p')
-            ->addSelect('p')
             ->where('pal.type = :type')
             ->setParameter('type', $type)
-            ->orderBy('p.id', 'ASC')
+            ->orderBy('pal.id', 'ASC')
             ->getQuery()
             ->getResult();
     }
