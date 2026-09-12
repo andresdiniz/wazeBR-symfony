@@ -8,7 +8,6 @@ use App\Entity\Partner;
 use App\Entity\User;
 use App\Repository\PartnerRepository;
 use App\Repository\UserRepository;
-use App\Security\EmailVerifier;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -29,7 +28,6 @@ final class CreatePartnerUserCommand extends Command
         private readonly UserPasswordHasherInterface $passwordHasher,
         private readonly PartnerRepository $partnerRepository,
         private readonly UserRepository $userRepository,
-        private readonly EmailVerifier $emailVerifier,
         private readonly ValidatorInterface $validator,
     ) {
         parent::__construct();
