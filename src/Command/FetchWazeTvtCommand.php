@@ -84,7 +84,7 @@ class FetchWazeTvtCommand extends Command
 
             try {
                 $io->section($label);
-                $payload = $this->fetchTvtFeed($apiLink->getUrl(), $apiLink->getToken());
+                $payload = $this->fetchTvtFeed($apiLink->getUrl());
                 $this->processFeed($payload, $partner, $dryRun, $io);
             } catch (\Throwable $e) {
                 ++$errors;
@@ -267,11 +267,9 @@ class FetchWazeTvtCommand extends Command
         return hash('sha256', json_encode($canonical, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE));
     }
 
-    private function fetchTvtFeed(string $url, ?string $token): array
+    private function fetchTvtFeed(string $url): array
     {
-        $options = ['timeout' => 15];
-        if ($token !== null && $token !== '') $options['headers'] = ['Authorization' => 'Bearer ' . $token];
-        $response = $this->httpClient->request('GET', $url, $options);
+        $response = $this->httpClient->request('GET', $url, ['timeout' => 15]);
         return $response->toArray();
     }
 }
