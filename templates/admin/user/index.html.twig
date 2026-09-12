@@ -1,200 +1,38 @@
-{% extends 'layouts/dashboard.html.twig' %}
+{% extends 'base.html.twig' %}
 
-{% block title %}Usuários | wazeBR{% endblock %}
+{% block title %}UsuÃ¡rios{% endblock %}
 
-{% block page_body_class %}admin-users-page{% endblock %}
+{% block page_stylesheets %}
+<style>
+    .users-list { list-style: none; padding: 0; margin: 0; }
+    .user-item { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+    .user-item h3 { margin: 0 0 8px 0; font-size: 1rem; }
+    .user-meta { font-size: 0.85rem; color: #666; }
+</style>
+{% endblock %}
 
-{% block dashboard_page_title %}Usuários{% endblock %}
+{% block body_class %}dashboard-page{% endblock %}
 
-{% block page_content %}
-    <div class="dashboard-content admin-users-content">
-        {# ── Breadcrumbs ────────────────────────────────────── #}
-        <nav class="breadcrumbs" aria-label="Breadcrumbs">
-            <ol class="breadcrumbs-list">
-                <li class="breadcrumbs-item">
-                    <a href="{{ path('app_account_admin_dashboard') }}">
-                        <i class="fa-solid fa-house" aria-hidden="true"></i>
-                        Admin
-                    </a>
-                </li>
-
-                <li class="breadcrumbs-item" aria-current="page">
-                    Usuários
-                </li>
-            </ol>
-        </nav>
-
-        {# ── Flash Messages ─────────────────────────────────── #}
-        {% for type, messages in app.flashes %}
-            {% for message in messages %}
-                <div class="flash-message flash-{{ type }}">
-                    <i class="fa-solid {% if type == 'success' %}fa-check-circle{% elseif type == 'error' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %}" aria-hidden="true"></i>
-                    <span>{{ message }}</span>
-                </div>
-            {% endfor %}
-        {% endfor %}
-
-        {# ── Header ─────────────────────────────────────────── #}
-        <section class="dashboard-hero">
-            <div>
-                <p class="dashboard-hero-kicker">Administração</p>
-                <h2>Gerenciar Usuários</h2>
-                <p>
-                    Visualize e gerencie os usuários cadastrados no sistema.
-                </p>
-            </div>
-
-            <div class="dashboard-hero-actions">
-                <span class="badge badge-primary">
-                    <i class="fa-solid fa-users" aria-hidden="true"></i>
-                    {{ users|length }} usuário(s)
-                </span>
-
-                <a href="{{ path('admin_user_new') }}" class="btn btn-primary">
-                    <i class="fa-solid fa-user-plus" aria-hidden="true"></i>
-                    Novo Usuário
-                </a>
-            </div>
-        </section>
-
-        {# ── Lista de Usuários ─────────────────────────────── #}
-        <section class="card dashboard-card">
-            <header class="card-header">
-                <div>
-                    <h3>Lista de usuários</h3>
-                    <p>
-                        Todos os usuários cadastrados na plataforma.
-                    </p>
-                </div>
-            </header>
-
-            <div class="card-body">
-                {% if users is not empty %}
-                    <div class="admin-table-wrapper">
-                        <table class="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Nome</th>
-                                    <th>Email</th>
-                                    <th>Roles</th>
-                                    <th>Status</th>
-                                    <th>Último Acesso</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-
-                            <tbody>
-                                {% for user in users %}
-                                    <tr>
-                                        <td>
-                                            <span class="table-id">#{{ user.id }}</span>
-                                        </td>
-
-                                        <td>
-                                            <div class="table-main-cell">
-                                                <strong>
-                                                    {{ user.name|default('Sem nome') }}
-                                                </strong>
-
-                                                {% if user.email %}
-                                                    <small>{{ user.email }}</small>
-                                                {% endif %}
-                                            </div>
-                                        </td>
-
-                                        <td>
-                                            <span class="table-location">
-                                                {{ user.email|default('—') }}
-                                            </span>
-                                        </td>
-
-                                        <td>
-                                            {% if user.roles is not empty %}
-                                                {% for role in user.roles %}
-                                                    <span class="badge badge-secondary">
-                                                        {{ role|replace({'ROLE_': ''}) }}
-                                                    </span>
-                                                {% endfor %}
-                                            {% else %}
-                                                <span class="text-muted">—</span>
-                                            {% endif %}
-                                        </td>
-
-                                        <td>
-                                            {% if user.enabled is defined %}
-                                                {% if user.enabled %}
-                                                    <span class="badge badge-success">
-                                                        <i class="fa-solid fa-check" aria-hidden="true"></i>
-                                                        Ativo
-                                                    </span>
-                                                {% else %}
-                                                    <span class="badge badge-muted">
-                                                        Inativo
-                                                    </span>
-                                                {% endif %}
-                                            {% else %}
-                                                <span class="badge badge-success">Ativo</span>
-                                            {% endif %}
-                                        </td>
-
-                                        <td>
-                                            {% if user.lastLogin is defined and user.lastLogin %}
-                                                {{ user.lastLogin|date('d/m/Y H:i') }}
-                                            {% else %}
-                                                <span class="text-muted">Nunca</span>
-                                            {% endif %}
-                                        </td>
-
-                                        <td class="admin-table-actions">
-                                            <a
-                                                href="{{ path('admin_user_edit', { id: user.id }) }}"
-                                                class="btn btn-primary btn-sm"
-                                                title="Editar"
-                                            >
-                                                <i class="fa-solid fa-pen" aria-hidden="true"></i>
-                                                Editar
-                                            </a>
-
-                                            <form
-                                                method="post"
-                                                action="{{ path('admin_user_delete', { id: user.id }) }}"
-                                                class="inline-form"
-                                                onsubmit="return confirm('Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.')"
-                                            >
-                                                <button
-                                                    type="submit"
-                                                    class="btn btn-danger btn-sm"
-                                                    title="Excluir"
-                                                >
-                                                    <i class="fa-solid fa-trash" aria-hidden="true"></i>
-                                                    Excluir
-                                                </button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% else %}
-                    <div class="empty-state">
-                        <span class="empty-state-icon">
-                            <i class="fa-solid fa-users" aria-hidden="true"></i>
-                        </span>
-
-                        <h3>Nenhum usuário encontrado</h3>
-                        <p>
-                            Não há usuários cadastrados no sistema.
-                        </p>
-
-                        <a href="{{ path('admin_user_new') }}" class="btn btn-primary">
-                            <i class="fa-solid fa-user-plus" aria-hidden="true"></i>
-                            Cadastrar primeiro usuário
-                        </a>
-                    </div>
-                {% endif %}
-            </div>
-        </section>
-    </div>
+{% block body %}
+<div class="dashboard-layout">
+    {% include 'partials/sidebar.html.twig' %}
+    <main class="dashboard-content">
+        {% include 'partials/topbar.html.twig' %}
+        <div class="dashboard-content-inner">
+            <h1>UsuÃ¡rios</h1>
+            {% if users is empty %}
+                <p>Nenhum usuÃ¡rio encontrado.</p>
+            {% else %}
+                <ul class="users-list">
+                    {% for user in users %}
+                        <li class="user-item">
+                            <h3>{{ user.email }}</h3>
+                            <p class="user-meta">ID: {{ user.id }}</p>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </div>
+    </main>
+</div>
 {% endblock %}
