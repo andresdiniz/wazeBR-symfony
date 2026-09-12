@@ -9,12 +9,11 @@ use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use SymfonyCasts\Bundle\ResetPassword\Model\ResetPasswordRequestInterface;
-use SymfonyCasts\Bundle\ResetPassword\Repository\ResetPasswordRequestRepositoryInterface;
 
 /**
  * @extends ServiceEntityRepository<ResetPasswordRequest>
  */
-class ResetPasswordRequestRepository extends ServiceEntityRepository implements ResetPasswordRequestRepositoryInterface
+class ResetPasswordRequestRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
     {
