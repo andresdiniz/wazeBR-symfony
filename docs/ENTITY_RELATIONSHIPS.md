@@ -2,7 +2,7 @@
 
 **Repository:** `andresdiniz/wazeBR-symfony`  
 **Last updated:** 2026-09-12  
-**Scope:** Core domain entities for partners, users, API links, Waze alerts, Waze jams, and Waze TVT routes.
+**Scope:** Core domain entities for partners, users, API links, Waze alerts, Waze jams, TVT routes, and TVT route history.
 
 ---
 
@@ -15,7 +15,8 @@ The application is built around these main entities:
 - `PartnerApiLink`: represents external API endpoints (alerts, traffic) owned by a partner.
 - `WazeAlert`: normalized alert data fetched from Waze Partner API per partner.
 - `WazeJam`: normalized traffic-jam data fetched from Waze Partner API per partner.
-- `WazeTvtRoute`: normalized route/TVT data fetched from Waze feeds-tvt per partner.
+- `WazeTvtRoute`: master record with complete normalized route/TVT data fetched from Waze feeds-tvt per partner.
+- `WazeTvtRouteSnapshot`: append-only, lightweight history of the changing TVT route metrics at each feed reading.
 
 All relationships are defined using Doctrine ORM annotations/attributes in PHP.
 
@@ -65,6 +66,23 @@ All relationships are defined using Doctrine ORM annotations/attributes in PHP.
                                                                                                       | optional logical reference
                                                                                                       v
                                                                                          waze_alert.uuid
+
++--------------------------+
+| waze_tvt_route_snapshot  |
++--------------------------+
+| id                       |
+| partner_id (FK)          |
+| route_id (FK)            |-----> waze_tvt_route.id
+| waze_route_id            |
+| time                     |
+| historic_time            |
+| jam_level                |
+| recorded_at              |
+| created_at               |
++--------------------------+
+         ^
+         |
+         +-- N snapshots per partner and per master TVT route
 ```
 
 `* blocking_alert_uuid` is an optional value received from Waze. It may match `waze_alert.uuid`, but it is not a physical database foreign key at this stage.
@@ -102,178 +120,75 @@ All relationships are defined using Doctrine ORM annotations/attributes in PHP.
   - Routes are fetched from Waze feeds-tvt endpoints and stored normalized, with geometry (`line`) and `subRoutes` stored as JSON arrays.  
   - Uniqueness is enforced per partner via composite unique constraint on `(partner_id, route_id)`.  
 
-There is no direct relationship between `User` and `PartnerApiLink`, `WazeAlert`, `WazeJam`, or `WazeTvtRoute`; all are associated independently to `Partner`.
+- `WazeTvtRouteSnapshot.partner` → `Partner.id`  
+  - Type: **Many-to-One** (a partner has many historical route snapshots).  
+  - **Non-nullable**: every snapshot is scoped to a partner.  
+
+- `WazeTvtRouteSnapshot.route` → `WazeTvtRoute.id`  
+  - Type: **Many-to-One** (a master route has many snapshots).  
+  - **Non-nullable**: every snapshot belongs to one master TVT route.  
+  - Each feed reading creates a new snapshot; snapshots are append-only and are never used to duplicate complete route metadata.  
+
+There is no direct relationship between `User` and `PartnerApiLink`, `WazeAlert`, `WazeJam`, `WazeTvtRoute`, or `WazeTvtRouteSnapshot`; all are associated independently to `Partner`.
 
 ---
 
 ## Entity Details
 
-### `Partner`
-
-**File:** `src/Entity/Partner.php`
-
-**Main fields:**
-
-- `id`, `name`, `code`, `slug`
-- `email`, `description`, `bbox`
-- `api_token`, `active`
-- `refreshIntervalMinutes`
-- `createdAt`, `updatedAt`
-
-**Current collections:**
-
-- `cemadenData`, `cities`, `links`, `users`, `alerts`
-- `wazeCounts`, `routes`, `trafficJams`
-- `wazeTvtRoutes`, `wazeFeeds`, `apiLinks`
-
-Optional inverse collections may be added later:
-
-- `wazeAlerts`: `Collection<WazeAlert>`
-- `wazeJams`: `Collection<WazeJam>`
-- `wazeTvtRoutes`: `Collection<WazeTvtRoute>`
-
----
-
-### `User`
-
-**File:** `src/Entity/User.php`
-
-**Main fields:**
-
-- `id`, `email`, `password`
-- `name`, `phone`
-- `roles` (JSON array)
-- `active`
-- `partner` (ManyToOne → `Partner`)
-- `createdAt`, `updatedAt`, `lastLoginAt`
-
-**Roles:**
-
-- `ROLE_ADMIN`
-- `ROLE_PARTNER_ADMIN`
-- `ROLE_OPERATOR`
-- `ROLE_VIEWER`
-
-**Relationship:**
-
-```php
-#[ORM\ManyToOne(inversedBy: 'users')]
-#[ORM\JoinColumn(nullable: true)]
-private ?Partner $partner = null;
-```
-
-**Business rules (enforced in entity):**
-
-- Global admins (`ROLE_ADMIN` with `partner === null`) are allowed.
-- Users with `ROLE_PARTNER_ADMIN` or `ROLE_OPERATOR` must have a partner.
-- `setPartner()` blocks removal of partner from a user with those roles.
-- `setRoles()` and `addRole()` block assignment of those roles without a partner.
-
----
-
-### `PartnerApiLink`
-
-**File:** `src/Entity/PartnerApiLink.php`
-
-**Main fields:**
-
-- `id`
-- `partner` (ManyToOne → `Partner`)
-- `type` (`alerts` or `traffic`)
-- `name`, `url`
-- `active`
-- `createdAt`, `updatedAt`
-
-**Business rules:**
-
-- `type` must be either `alerts` or `traffic`.
-- Each API link belongs to one partner.
-- Active links are the sources used by collection jobs.
-
----
-
-### `WazeAlert`
-
-**File:** `src/Entity/WazeAlert.php`
-
-**Purpose:** Stores normalized alert data fetched from a partner's Waze API feed. No raw JSON column is stored.
-
-**Main fields:**
-
-- `id`, `partner` (ManyToOne → `Partner`, not null)
-- `uuid` (unique Waze identifier)
-- `type`, `subtype`, `pubMillis`
-- `reportByMunicipalityUser`, `reportRating`, `confidence`, `reliability`
-- `locationX` (longitude), `locationY` (latitude)
-- `street`, `city`, `country`, `roadType`
-- `nThumbsUp`, `magvar`
-- `createdAt`, `updatedAt`
-
-**Business rules:**
-
-- Every alert must have a partner (`partner_id NOT NULL`).
-- `uuid` is globally unique to prevent duplicate alert imports.
-- Alert fields are stored in separate columns; no raw JSON payload is saved.
-
----
-
-### `WazeJam`
-
-**File:** `src/Entity/WazeJam.php`
-
-**Purpose:** Stores normalized Waze traffic-jam data fetched from a partner's traffic feed. No raw JSON payload is stored.
-
-**Main fields:**
-
-- `id`, `partner` (ManyToOne → `Partner`, not null)
-- `uuid` (unique Waze jam identifier)
-- `level` (severity), `length` (meters), `delay` (seconds)
-- `speed`, `speedKMH`
-- `street`, `city`, `country`, `roadType`
-- `pubMillis`, `turnType`
-- `blockingAlertUuid` (optional Waze alert UUID reference)
-- `line` (JSON geometry array of points `{x, y}`)
-- `createdAt`, `updatedAt`
-
-**Business rules:**
-
-- Every jam must have a partner (`partner_id NOT NULL`).
-- `uuid` is globally unique to prevent duplicate jam imports.
-- The `line` field stores only the geometry array from the response; it is not a full raw payload.
-- `blockingAlertUuid` is optional and remains a string reference, not a foreign key, at this stage.
-
----
-
 ### `WazeTvtRoute`
 
 **File:** `src/Entity/WazeTvtRoute.php`
 
-**Purpose:** Stores normalized route/TVT data fetched from Waze feeds-tvt per partner. No raw JSON payload is stored; only geometry (`line`) and `subRoutes` are kept as JSON arrays.
+**Purpose:** Master record for complete normalized route/TVT data from Waze feeds-tvt per partner. It stores metadata and geometry that do not need duplication on every feed reading.
 
 **Main fields:**
 
 - `id`, `partner` (ManyToOne → `Partner`, not null)
-- `routeId` (unique per partner via composite unique constraint on `partner_id, route_id`)
-- `name`, `fromName`, `toName`
-- `city`, `country`
-- `length` (meters), `time` (seconds), `historicTime` (seconds)
-- `jamLevel` (0–10), `routeType` (e.g. `STATIC`)
-- `wazersCount` (integer)
-- `bboxMinY`, `bboxMinX`, `bboxMaxY`, `bboxMaxX` (bounding box coordinates)
-- `line` (JSON array of points `{x, y}`)
-- `subRoutes` (JSON array of sub-route objects)
+- `routeId` (unique per partner via `(partner_id, route_id)`)
+- `name`, `fromName`, `toName`, `city`, `country`
+- `length` (meters), `routeType`, `wazersCount`
+- `bboxMinY`, `bboxMinX`, `bboxMaxY`, `bboxMaxX`
+- `line` (JSON geometry), `subRoutes` (JSON)
 - `createdAt`, `updatedAt`
 
 **Business rules:**
 
-- Every route must have a partner (`partner_id NOT NULL`).
-- `(partner_id, route_id)` is unique to prevent duplicate route imports for the same partner.
-- Geometry (`line`) and `subRoutes` are stored as JSON; other fields are normalized into dedicated columns.
-- Routes are expected to be inserted/updated by a background job or command that consumes Waze feeds-tvt URLs.
+- One master route exists for each `(partner_id, route_id)` pair.
+- Complete feed metadata and geometry are saved only when the route is created, or when a metadata change is intentionally detected.
+- Historical travel metrics are stored separately in `WazeTvtRouteSnapshot`.
 
-**Helper method:**
+---
 
-- `getLineLonLat(): array` – returns `[[lon, lat], ...]` for use with mapping libraries.
+### `WazeTvtRouteSnapshot`
+
+**File:** `src/Entity/WazeTvtRouteSnapshot.php`
+
+**Purpose:** Append-only, lightweight history for TVT route readings. A record is inserted for every successful feed reading and retains only fields that change during the day.
+
+**Main fields:**
+
+- `id`
+- `partner` (ManyToOne → `Partner`, not null; database column `partner_id`)
+- `route` (ManyToOne → `WazeTvtRoute`, not null; database column `route_id`)
+- `wazeRouteId` (Waze feed route ID; database column `waze_route_id`)
+- `time` (seconds, current travel time)
+- `historicTime` (seconds, historical reference travel time)
+- `jamLevel` (integer, 0–10)
+- `recordedAt` (timestamp of the feed reading)
+- `createdAt` (timestamp of snapshot creation)
+
+**Business rules:**
+
+- Every snapshot must have a partner and a master route.
+- Each successful feed reading inserts a new snapshot; snapshots are never overwritten.
+- Snapshot data contains only `partner_id`, `route_id` (FK), `waze_route_id`, `time`, `historicTime`, `jamLevel`, `recordedAt`, and `createdAt`.
+- `route_id` is the foreign key to `waze_tvt_route.id`; `waze_route_id` is the route identifier received from Waze. These are distinct columns.
+
+**Indexes:**
+
+- `(partner_id, route_id)`
+- `(partner_id, recorded_at)`
+- `(route_id, recorded_at)`
 
 ---
 
@@ -287,74 +202,33 @@ private ?Partner $partner = null;
    - Every API link belongs to one partner.
    - `alerts` links feed `WazeAlert`; `traffic` links feed `WazeJam`.
 
-3. **WazeAlert ↔ Partner**
-   - Every alert is owned by one partner.
-   - Data is normalized into dedicated columns, without raw JSON storage.
+3. **Waze TVT master routes**
+   - Each master route belongs to one partner and is unique by `(partner_id, route_id)`.
+   - Its descriptive data and geometry are not copied for every feed read.
 
-4. **WazeJam ↔ Partner**
-   - Every jam is owned by one partner.
-   - Data is normalized into dedicated columns; only its route line is stored in JSON.
-   - A jam may carry an optional logical reference to an alert through `blockingAlertUuid`.
-
-5. **WazeTvtRoute ↔ Partner**
-   - Every TVT route is owned by one partner.
-   - Data is normalized into dedicated columns; `line` and `subRoutes` are stored as JSON.
-   - Routes are uniquely identified per partner by `(partner_id, route_id)`.
-
----
-
-## Planned Evolutions
-
-### Inverse collections on Partner
-
-If navigation from `Partner` to imported data is needed, add:
-
-```php
-#[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeAlert::class)]
-private Collection $wazeAlerts;
-
-#[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeJam::class)]
-private Collection $wazeJams;
-
-#[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeTvtRoute::class)]
-private Collection $wazeTvtRoutes;
-```
-
-Also add collection initialization and helper methods in `Partner.php`.
-
-### Strong alert/jam link
-
-If imports guarantee that a blocking alert always exists in the same partner, `blockingAlertUuid` can later become a nullable `ManyToOne` association to `WazeAlert`. Keep the UUID column or add a migration strategy before making that change.
-
-### Sub-route entity (optional)
-
-If you later need to query sub-routes individually, you can extract `subRoutes` into a separate `WazeTvtSubRoute` entity with `ManyToOne → WazeTvtRoute` and normalized fields (toName, historicTime, line, bbox, etc.).
+4. **Waze TVT history**
+   - Every successful feeds-tvt read creates a new `WazeTvtRouteSnapshot`.
+   - A snapshot stores `partner_id`, master-route `route_id`, `waze_route_id`, `time`, `historicTime`, `jamLevel`, `recordedAt`, and `createdAt`.
+   - Snapshots preserve travel-time and congestion evolution without duplicating route geometry and metadata.
 
 ---
 
 ## Change Log
 
+- **2026-09-12** (WazeTvtRouteSnapshot)
+  - Added append-only TVT route history model.
+  - Records partner, master route, Waze route ID, `time`, `historicTime`, `jamLevel`, and reading timestamps.
+  - Added time-series indexes for partner/route and timestamp queries.
+
 - **2026-09-12** (WazeTvtRoute)
-  - Added `WazeTvtRoute` entity for TVT route records from Waze feeds-tvt.
-  - Added required `partner_id`, unique `routeId` per partner, names, city, country, length, times, jam level, type, wazers count, bbox, line (JSON), and subRoutes (JSON).
-  - Stored geometry and sub-routes in JSON; did not add raw payload storage.
-  - Enforced uniqueness via composite constraint `(partner_id, route_id)`.
+  - Added master entity for complete feeds-tvt route data.
+  - Enforced uniqueness by `(partner_id, route_id)`.
 
 - **2026-09-12** (WazeJam)
-  - Added `WazeJam` entity for traffic-jam records from Waze feeds.
-  - Added required `partner_id`, unique `uuid`, speed, severity, delay, address, publication, and geometry fields.
-  - Stored route geometry in `line` JSON; did not add raw payload storage.
-  - Documented `blockingAlertUuid` as an optional logical reference to `WazeAlert.uuid`.
+  - Added Waze traffic-jam entity with normalized fields and geometry JSON.
 
 - **2026-09-12** (WazeAlert)
-  - Added `WazeAlert` entity with normalized fields (no raw JSON).
-  - Each alert has `partner_id`, `uuid` (unique), type, subtype, location, and metadata.
-
-- **2026-09-12** (User partner rule)
-  - Strengthened `User` entity validation: global admin may have no partner; partner roles require one.
-
-- **2026-09-12** (initial)
-  - Initial documentation of `Partner`, `User`, and `PartnerApiLink` relationships.
+  - Added Waze alert entity with normalized fields.
 
 ---
 
@@ -362,7 +236,7 @@ If you later need to query sub-routes individually, you can extract `subRoutes` 
 
 When modifying entities:
 
-1. Update the **Entity Details** section (fields, relationships, methods).
-2. Adjust the **ER diagram** if new entities or relationships are added.
-3. Record new or changed **business rules** in the corresponding section.
-4. Add an entry in the **Change Log** with date and summary.
+1. Update the **Entity Details** section.
+2. Adjust the **ER diagram** for new entities or relationships.
+3. Record business-rule changes.
+4. Add a dated entry in the **Change Log**.
