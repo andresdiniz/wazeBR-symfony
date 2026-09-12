@@ -1,4 +1,4 @@
-{% extends 'base.html.twig' %}
+{% extends 'layouts/dashboard.html.twig' %}
 
 {% block title %}Dashboard - wazeBR{% endblock %}
 
@@ -15,53 +15,45 @@
 </style>
 {% endblock %}
 
-{% block body_class %}dashboard-page{% endblock %}
-
-{% block body %}
-<div class="dashboard-layout">
-    {% include 'partials/sidebar.html.twig' %}
-    <main class="dashboard-content">
-        {% include 'partials/header.html.twig' %}
-        <div class="dashboard-content-inner">
-            <h1>Dashboard</h1>
-            
-            <div class="dashboard-stats">
-                <div class="stat-card">
-                    <h3>{{ stats.total_alerts }}</h3>
-                    <p>Alertas</p>
-                </div>
-                <div class="stat-card">
-                    <h3>{{ stats.total_jams }}</h3>
-                    <p>Congestionamentos</p>
-                </div>
-            </div>
-
-            <div class="dashboard-section">
-                <h2>Alertas Recentes</h2>
-                {% if stats.recent_alerts is empty %}
-                    <p>Nenhum alerta recente.</p>
-                {% else %}
-                    <ul class="recent-list">
-                        {% for alert in stats.recent_alerts %}
-                            <li class="recent-item">#{{ alert.id }} - {{ alert.type }} - {{ alert.reportTime|date('d/m/Y H:i') }}</li>
-                        {% endfor %}
-                    </ul>
-                {% endif %}
-            </div>
-
-            <div class="dashboard-section">
-                <h2>Congestionamentos Recentes</h2>
-                {% if stats.recent_jams is empty %}
-                    <p>Nenhum congestionamento recente.</p>
-                {% else %}
-                    <ul class="recent-list">
-                        {% for jam in stats.recent_jams %}
-                            <li class="recent-item">#{{ jam.id }} - Nos: {{ jam.line }} - {{ jam.reportTime|date('d/m/Y H:i') }}</li>
-                        {% endfor %}
-                    </ul>
-                {% endif %}
-            </div>
+{% block content %}
+<div class="dashboard-content-inner">
+    <h1>Dashboard</h1>
+    
+    <div class="dashboard-stats">
+        <div class="stat-card">
+            <h3>{{ stats.total_alerts }}</h3>
+            <p>Alertas</p>
         </div>
-    </main>
+        <div class="stat-card">
+            <h3>{{ stats.total_jams }}</h3>
+            <p>Congestionamentos</p>
+        </div>
+    </div>
+
+    <div class="dashboard-section">
+        <h2>Alertas Recentes</h2>
+        {% if stats.recent_alerts is empty %}
+            <p>Nenhum alerta recente.</p>
+        {% else %}
+            <ul class="recent-list">
+                {% for alert in stats.recent_alerts %}
+                    <li class="recent-item">#{{ alert.id }} - {{ alert.type }} - {{ alert.reportTime|date('d/m/Y H:i') }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+
+    <div class="dashboard-section">
+        <h2>Congestionamentos Recentes</h2>
+        {% if stats.recent_jams is empty %}
+            <p>Nenhum congestionamento recente.</p>
+        {% else %}
+            <ul class="recent-list">
+                {% for jam in stats.recent_jams %}
+                    <li class="recent-item">#{{ jam.id }} - Nos: {{ jam.line }} - {{ jam.reportTime|date('d/m/Y H:i') }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
 </div>
 {% endblock %}
