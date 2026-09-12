@@ -26,7 +26,7 @@ class ResetPasswordRequestRepository extends ServiceEntityRepository implements 
         return new ResetPasswordRequest($user, $expiresAt, $selector, $hashedToken);
     }
 
-    public function getUserIdentifier(): string
+    public function getUserIdentifier(object $user): string
     {
         return 'id';
     }
