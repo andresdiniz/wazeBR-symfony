@@ -26,3 +26,7 @@ services:
     
     App\Security\EmailVerifier:
         public: true
+    
+    App\Command\CreatePartnerUserCommand:
+        tags:
+            - { name: 'console.command' }
