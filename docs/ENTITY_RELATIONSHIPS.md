@@ -54,6 +54,7 @@ All relationships are defined using Doctrine ORM annotations/attributes in PHP.
   - Type: **Many-to-One** (multiple users can belong to one partner).  
   - Currently: **nullable** (`JoinColumn(nullable: true)`).  
   - Inverse side: `Partner.users` (Collection).  
+  - **Business rule:** Global admins (`ROLE_ADMIN` without partner) MAY have `partner === null`. Users with `ROLE_PARTNER_ADMIN` or `ROLE_OPERATOR` MUST have a partner. Enforced in `setPartner()`, `setRoles()`, and `addRole()`.  
 
 - `PartnerApiLink.partner` → `Partner.id`  
   - Type: **Many-to-One** (multiple API links can belong to one partner).  
@@ -117,7 +118,7 @@ There is **no direct relationship** between `User` and `PartnerApiLink`; both ar
 - `ROLE_OPERATOR`
 - `ROLE_VIEWER`
 
-Constant:
+Constants:
 
 ```php
 private const ROLES_REQUIRING_PARTNER = [self::ROLE_PARTNER_ADMIN, self::ROLE_OPERATOR];
@@ -142,11 +143,13 @@ private ?Partner $partner = null;
 - `isGlobalAdmin(): bool` (admin without partner)
 - `isPartnerScoped(): bool` (has a partner)
 
-**Current business rules:**
+**Current business rules (enforced in entity):**
 
-- Roles `ROLE_PARTNER_ADMIN` and `ROLE_OPERATOR` **require** a partner.
-- If `partner` is removed from a user with such roles, roles are downgraded to `[ROLE_VIEWER]`.
-- A user **may** exist without a partner (global admin / system user).
+- **Global admins** (`ROLE_ADMIN` with `partner === null`) are allowed.
+- Users with roles `ROLE_PARTNER_ADMIN` or `ROLE_OPERATOR` **must** have a partner.
+- `setPartner()` throws `LogicException` if trying to remove partner from a user with those roles.
+- `setRoles()` and `addRole()` throw `InvalidArgumentException` if assigning such roles without a partner.
+- If partner is removed from a user with those roles, the operation is blocked (exception).
 
 ---
 
@@ -198,16 +201,17 @@ private ?Partner $partner = null;
 ### Current rules
 
 1. **User ↔ Partner**
-   - A user **can** exist without a partner (nullable FK).
+   - A user **can** exist without a partner only if they are a global admin (`ROLE_ADMIN` without partner).
    - Users with roles `ROLE_PARTNER_ADMIN` or `ROLE_OPERATOR` **must** have a partner.
-   - Removing a partner from such a user automatically downgrades roles to `[ROLE_VIEWER]`.
+   - Removing a partner from such a user is blocked (throws `LogicException`).
+   - Assigning those roles to a user without a partner is blocked (throws `InvalidArgumentException`).
 
 2. **PartnerApiLink ↔ Partner**
    - Every API link must belong to a partner.
    - Type is restricted to `alerts` or `traffic`.
 
 3. **Data scoping**
-   - Users are scoped to a partner via `User.partner`.
+   - Users are scoped to a partner via `User.partner` (except global admins).
    - API links are configuration for data collection per partner.
    - No direct link between a specific user and a specific API link.
 
@@ -217,9 +221,9 @@ private ?Partner $partner = null;
 
 Use this section to track changes as development progresses.
 
-### 1. Enforce "every user must have a partner"
+### 1. Enforce "every user must have a partner" (if rules change)
 
-If the rule changes to **"all users must belong to a partner"**:
+If the rule changes to **"all users must belong to a partner"** (no global admins):
 
 - **Database:**
   - Change `user.partner_id` to `NOT NULL` via migration.
@@ -251,9 +255,9 @@ Current design supports:
 - **Global admins**: `ROLE_ADMIN` with `partner === null`.
 - **Partner-scoped users**: any role with `partner !== null`.
 
-If needed, document additional constraints, e.g.:
+Documented constraints:
 
-- Only global admins can create partners.
+- Only global admins can exist without a partner.
 - Partner admins can only manage users within their partner.
 
 ### 3. API links per user (if ever needed)
@@ -267,7 +271,13 @@ If in the future you need **per-user API links**:
 
 ## Change Log
 
-- **2026-09-12**
+- **2026-09-12** (update)
+  - Strengthened `User` entity validation:
+    - `setPartner()` now throws `LogicException` when removing partner from a user with `ROLE_PARTNER_ADMIN` or `ROLE_OPERATOR`.
+    - `setRoles()` and `addRole()` validate that roles requiring partner are not assigned when partner is null.
+    - Clarified business rule: global admin may have no partner; other roles require partner.
+
+- **2026-09-12** (initial)
   - Initial documentation of `Partner`, `User`, and `PartnerApiLink` relationships.
   - Added ER diagram in text format.
   - Described current business rules and possible evolutions.
