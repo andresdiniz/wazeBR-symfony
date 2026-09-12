@@ -66,6 +66,9 @@ class WazeTvtIrregularity
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $updatedAt = null;
 
+    #[ORM\Column(name: 'is_active', options: ['default' => 1])]
+    private int $isActive = 1;
+
     public function __construct()
     {
         $this->recordedAt = new \DateTimeImmutable();
@@ -99,6 +102,8 @@ class WazeTvtIrregularity
     public function setCreatedAt(\DateTimeImmutable $createdAt): static { $this->createdAt = $createdAt; return $this; }
     public function getUpdatedAt(): ?\DateTimeImmutable { return $this->updatedAt; }
     public function setUpdatedAt(?\DateTimeImmutable $updatedAt): static { $this->updatedAt = $updatedAt; return $this; }
+    public function getIsActive(): int { return $this->isActive; }
+    public function setIsActive(int $isActive): static { $this->isActive = $isActive; return $this; }
 
     public function generateContentHash(): static
     {
