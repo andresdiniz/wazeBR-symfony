@@ -83,6 +83,9 @@ class Partner
     #[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeFeed::class)]
     private Collection $wazeFeeds;
 
+    #[ORM\OneToMany(mappedBy: 'partner', targetEntity: PartnerApiLink::class, orphanRemoval: true)]
+    private Collection $apiLinks;
+
     public function __construct()
     {
         $this->cemadenData = new ArrayCollection();
@@ -95,156 +98,34 @@ class Partner
         $this->trafficJams = new ArrayCollection();
         $this->wazeTvtRoutes = new ArrayCollection();
         $this->wazeFeeds = new ArrayCollection();
+        $this->apiLinks = new ArrayCollection();
     }
 
-    public function getId(): ?int
-    {
-        return $this->id;
-    }
-
-    public function getName(): ?string
-    {
-        return $this->name;
-    }
-
-    public function setName(string $name): static
-    {
-        $this->name = $name;
-
-        return $this;
-    }
-
-    public function getCode(): ?string
-    {
-        return $this->code;
-    }
-
-    public function setCode(?string $code): static
-    {
-        $this->code = $code;
-
-        return $this;
-    }
-
-    public function getSlug(): ?string
-    {
-        return $this->slug;
-    }
-
-    public function setSlug(?string $slug): static
-    {
-        $this->slug = $slug;
-
-        return $this;
-    }
-
-    public function getEmail(): ?string
-    {
-        return $this->email;
-    }
-
-    public function setEmail(?string $email): static
-    {
-        $this->email = $email;
-
-        return $this;
-    }
-
-    public function getDescription(): ?string
-    {
-        return $this->description;
-    }
-
-    public function setDescription(?string $description): static
-    {
-        $this->description = $description;
-
-        return $this;
-    }
-
-    public function getBbox(): ?string
-    {
-        return $this->bbox;
-    }
-
-    public function setBbox(?string $bbox): static
-    {
-        $this->bbox = $bbox;
-
-        return $this;
-    }
-
-    public function getCemadenStates(): ?string
-    {
-        return $this->cemadenStates;
-    }
-
-    public function setCemadenStates(?string $cemadenStates): static
-    {
-        $this->cemadenStates = $cemadenStates;
-
-        return $this;
-    }
-
-    public function getApiToken(): ?string
-    {
-        return $this->apiToken;
-    }
-
-    public function setApiToken(?string $apiToken): static
-    {
-        $this->apiToken = $apiToken;
-
-        return $this;
-    }
-
-    public function isActive(): ?bool
-    {
-        return $this->active;
-    }
-
-    public function setActive(?bool $active): static
-    {
-        $this->active = $active;
-
-        return $this;
-    }
-
-    public function getRefreshIntervalMinutes(): ?int
-    {
-        return $this->refreshIntervalMinutes;
-    }
-
-    public function setRefreshIntervalMinutes(?int $refreshIntervalMinutes): static
-    {
-        $this->refreshIntervalMinutes = $refreshIntervalMinutes;
-
-        return $this;
-    }
-
-    public function getCreatedAt(): ?\DateTimeInterface
-    {
-        return $this->createdAt;
-    }
-
-    public function setCreatedAt(\DateTimeInterface $createdAt): static
-    {
-        $this->createdAt = $createdAt;
-
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeInterface
-    {
-        return $this->updatedAt;
-    }
-
-    public function setUpdatedAt(?\DateTimeInterface $updatedAt): static
-    {
-        $this->updatedAt = $updatedAt;
-
-        return $this;
-    }
+    public function getId(): ?int { return $this->id; }
+    public function getName(): ?string { return $this->name; }
+    public function setName(string $name): static { $this->name = $name; return $this; }
+    public function getCode(): ?string { return $this->code; }
+    public function setCode(?string $code): static { $this->code = $code; return $this; }
+    public function getSlug(): ?string { return $this->slug; }
+    public function setSlug(?string $slug): static { $this->slug = $slug; return $this; }
+    public function getEmail(): ?string { return $this->email; }
+    public function setEmail(?string $email): static { $this->email = $email; return $this; }
+    public function getDescription(): ?string { return $this->description; }
+    public function setDescription(?string $description): static { $this->description = $description; return $this; }
+    public function getBbox(): ?string { return $this->bbox; }
+    public function setBbox(?string $bbox): static { $this->bbox = $bbox; return $this; }
+    public function getCemadenStates(): ?string { return $this->cemadenStates; }
+    public function setCemadenStates(?string $cemadenStates): static { $this->cemadenStates = $cemadenStates; return $this; }
+    public function getApiToken(): ?string { return $this->apiToken; }
+    public function setApiToken(?string $apiToken): static { $this->apiToken = $apiToken; return $this; }
+    public function isActive(): ?bool { return $this->active; }
+    public function setActive(?bool $active): static { $this->active = $active; return $this; }
+    public function getRefreshIntervalMinutes(): ?int { return $this->refreshIntervalMinutes; }
+    public function setRefreshIntervalMinutes(?int $refreshIntervalMinutes): static { $this->refreshIntervalMinutes = $refreshIntervalMinutes; return $this; }
+    public function getCreatedAt(): ?\DateTimeInterface { return $this->createdAt; }
+    public function setCreatedAt(\DateTimeInterface $createdAt): static { $this->createdAt = $createdAt; return $this; }
+    public function getUpdatedAt(): ?\DateTimeInterface { return $this->updatedAt; }
+    public function setUpdatedAt(?\DateTimeInterface $updatedAt): static { $this->updatedAt = $updatedAt; return $this; }
 
     public function getCemadenData(): Collection { return $this->cemadenData; }
     public function getCities(): Collection { return $this->cities; }
@@ -256,4 +137,24 @@ class Partner
     public function getTrafficJams(): Collection { return $this->trafficJams; }
     public function getWazeTvtRoutes(): Collection { return $this->wazeTvtRoutes; }
     public function getWazeFeeds(): Collection { return $this->wazeFeeds; }
+
+    /** @return Collection<int, PartnerApiLink> */
+    public function getApiLinks(): Collection { return $this->apiLinks; }
+
+    public function addApiLink(PartnerApiLink $apiLink): static
+    {
+        if (!$this->apiLinks->contains($apiLink)) {
+            $this->apiLinks->add($apiLink);
+            $apiLink->setPartner($this);
+        }
+        return $this;
+    }
+
+    public function removeApiLink(PartnerApiLink $apiLink): static
+    {
+        if ($this->apiLinks->removeElement($apiLink) && $apiLink->getPartner() === $this) {
+            $apiLink->setPartner(null);
+        }
+        return $this;
+    }
 }
