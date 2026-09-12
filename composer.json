@@ -12,6 +12,7 @@
         "doctrine/doctrine-bundle": "^2.12",
         "doctrine/doctrine-migrations-bundle": "^3.3",
         "doctrine/orm": "^3.2",
+        "dragonmantank/cron-expression": "^3.6",
         "nelmio/security-bundle": "*",
         "phpmailer/phpmailer": "^7.1",
         "symfony/asset": "7.4.*",

@@ -1,15 +1,51 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use App\Repository\WazeJamRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: WazeJamRepository::class)]
-#[ORM\Table(name: 'waze_jam')]
-#[ORM\Index(columns: ['partner_id', 'pub_millis'])]
+#[ORM\Table(
+    name: 'waze_jams',
+    indexes: [
+        new ORM\Index(
+            name: 'idx_waze_jam_uuid',
+            columns: ['uuid'],
+        ),
+        new ORM\Index(
+            name: 'idx_waze_jam_partner_active',
+            columns: ['partner_id', 'is_active'],
+        ),
+        new ORM\Index(
+            name: 'idx_waze_jam_city_level',
+            columns: ['city', 'level'],
+        ),
+        new ORM\Index(
+            name: 'idx_waze_jam_pub_millis',
+            columns: ['pub_millis'],
+        ),
+        new ORM\Index(
+            name: 'idx_waze_jam_collected_at',
+            columns: ['collected_at'],
+        ),
+        new ORM\Index(
+            name: 'idx_waze_jam_last_seen_at',
+            columns: ['last_seen_at'],
+        ),
+        new ORM\Index(
+            name: 'idx_waze_jam_blocking_alert',
+            columns: ['blocking_alert_uuid'],
+        ),
+    ],
+)]
+#[ORM\UniqueConstraint(
+    name: 'uniq_waze_jam_partner_uuid',
+    columns: ['partner_id', 'uuid'],
+)]
 class WazeJam
 {
     #[ORM\Id]
@@ -17,129 +53,426 @@ class WazeJam
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne]
-    #[ORM\JoinColumn(nullable: false)]
-    #[Assert\NotNull]
+    #[ORM\ManyToOne(inversedBy: 'wazeJams')]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private ?Partner $partner = null;
 
-    #[ORM\Column(name: 'jam_id', length: 100, unique: true)]
-    #[Assert\NotBlank]
-    private ?string $jamId = null;
+    #[ORM\Column(length: 100)]
+    private ?string $uuid = null;
 
-    #[ORM\Column(name: 'street', type: Types::TEXT, nullable: true)]
-    private ?string $street = null;
+    #[ORM\Column(type: Types::BIGINT)]
+    private int $jamId = 0;
 
-    #[ORM\Column(name: 'city', length: 150, nullable: true)]
-    private ?string $city = null;
-
-    #[ORM\Column(name: 'country', length: 50, nullable: true)]
-    private ?string $country = null;
-
-    #[ORM\Column(name: 'level', type: Types::SMALLINT, nullable: true)]
-    #[Assert\Range(min: 1, max: 5)]
-    private ?int $level = null;
-
-    #[ORM\Column(name: 'delay', type: Types::INTEGER, nullable: true)]
-    #[Assert\PositiveOrZero]
-    private ?int $delay = null;
-
-    #[ORM\Column(name: 'length', type: Types::INTEGER, nullable: true)]
-    #[Assert\PositiveOrZero]
-    private ?int $length = null;
-
-    #[ORM\Column(name: 'turn_type', length: 50, nullable: true)]
-    private ?string $turnType = null;
-
-    #[ORM\Column(name: 'type', length: 50, nullable: true)]
-    private ?string $type = null;
-
-    #[ORM\Column(name: 'pub_millis', type: Types::BIGINT)]
-    #[Assert\Positive]
-    private ?int $pubMillis = null;
-
-    #[ORM\Column(name: 'pub_utc_date', type: Types::DATETIME_IMMUTABLE)]
-    #[Assert\NotNull]
-    private \DateTimeImmutable $pubUtcDate;
-
-    #[ORM\Column(name: 'start_location_latitude', type: Types::DECIMAL, precision: 10, scale: 7)]
-    #[Assert\Range(min: -90, max: 90)]
-    private ?string $startLocationLatitude = null;
-
-    #[ORM\Column(name: 'start_location_longitude', type: Types::DECIMAL, precision: 10, scale: 7)]
-    #[Assert\Range(min: -180, max: 180)]
-    private ?string $startLocationLongitude = null;
-
-    #[ORM\Column(name: 'end_location_latitude', type: Types::DECIMAL, precision: 10, scale: 7)]
-    #[Assert\Range(min: -90, max: 90)]
-    private ?string $endLocationLatitude = null;
-
-    #[ORM\Column(name: 'end_location_longitude', type: Types::DECIMAL, precision: 10, scale: 7)]
-    #[Assert\Range(min: -180, max: 180)]
-    private ?string $endLocationLongitude = null;
-
-    #[ORM\Column(name: 'line', type: Types::JSON, nullable: true)]
+    #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $line = null;
 
-    #[ORM\Column(name: 'source_payload', type: Types::JSON)]
-    private array $sourcePayload = [];
+    #[ORM\Column(type: Types::SMALLINT)]
+    private int $linePoints = 0;
 
-    #[ORM\Column(name: 'is_active', options: ['default' => 1])]
-    private int $isActive = 1;
+    #[ORM\Column(
+        type: Types::DECIMAL,
+        precision: 10,
+        scale: 3,
+    )]
+    private ?string $speed = '0';
+
+    #[ORM\Column(
+        type: Types::DECIMAL,
+        precision: 10,
+        scale: 3,
+    )]
+    private ?string $speedKmh = '0';
+
+    #[ORM\Column(type: Types::INTEGER)]
+    private int $length = 0;
+
+    #[ORM\Column(type: Types::INTEGER)]
+    private int $delay = -1;
+
+    #[ORM\Column(type: Types::SMALLINT)]
+    private int $level = 0;
+
+    #[ORM\Column(type: Types::BIGINT)]
+    private ?int $pubMillis = null;
+
+    #[ORM\Column(length: 20)]
+    private ?string $turnType = 'NONE';
+
+    #[ORM\Column(length: 100, nullable: true)]
+    private ?string $blockingAlertUuid = null;
+
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $segments = null;
+
+    #[ORM\Column(type: Types::SMALLINT)]
+    private int $segmentCount = 0;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $street = null;
+
+    #[ORM\Column(length: 100, nullable: true)]
+    private ?string $city = null;
+
+    #[ORM\Column(length: 2)]
+    private ?string $country = 'BR';
+
+    #[ORM\Column(type: Types::SMALLINT)]
+    private int $roadType = 0;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $endNode = null;
+
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
+    private bool $isActive = true;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
-    private \DateTimeImmutable $createdAt;
+    private ?\DateTimeImmutable $collectedAt = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
-    private \DateTimeImmutable $updatedAt;
+    private ?\DateTimeImmutable $lastSeenAt = null;
 
-    public function __construct()
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $deactivatedAt = null;
+
+    public function getId(): ?int
     {
-        $now = new \DateTimeImmutable();
-        $this->createdAt = $now;
-        $this->updatedAt = $now;
+        return $this->id;
     }
 
-    public function getId(): ?int { return $this->id; }
-    public function getPartner(): ?Partner { return $this->partner; }
-    public function setPartner(?Partner $partner): static { $this->partner = $partner; return $this; }
-    public function getJamId(): ?string { return $this->jamId; }
-    public function setJamId(string $jamId): static { $this->jamId = $jamId; return $this; }
-    public function getStreet(): ?string { return $this->street; }
-    public function setStreet(?string $street): static { $this->street = $street; return $this; }
-    public function getCity(): ?string { return $this->city; }
-    public function setCity(?string $city): static { $this->city = $city; return $this; }
-    public function getCountry(): ?string { return $this->country; }
-    public function setCountry(?string $country): static { $this->country = $country; return $this; }
-    public function getLevel(): ?int { return $this->level; }
-    public function setLevel(?int $level): static { $this->level = $level; return $this; }
-    public function getDelay(): ?int { return $this->delay; }
-    public function setDelay(?int $delay): static { $this->delay = $delay; return $this; }
-    public function getLength(): ?int { return $this->length; }
-    public function setLength(?int $length): static { $this->length = $length; return $this; }
-    public function getTurnType(): ?string { return $this->turnType; }
-    public function setTurnType(?string $turnType): static { $this->turnType = $turnType; return $this; }
-    public function getType(): ?string { return $this->type; }
-    public function setType(?string $type): static { $this->type = $type; return $this; }
-    public function getPubMillis(): ?int { return $this->pubMillis; }
-    public function setPubMillis(int $pubMillis): static { $this->pubMillis = $pubMillis; return $this; }
-    public function getPubUtcDate(): \DateTimeImmutable { return $this->pubUtcDate; }
-    public function setPubUtcDate(\DateTimeImmutable $pubUtcDate): static { $this->pubUtcDate = $pubUtcDate; return $this; }
-    public function getStartLocationLatitude(): ?string { return $this->startLocationLatitude; }
-    public function setStartLocationLatitude(string $startLocationLatitude): static { $this->startLocationLatitude = $startLocationLatitude; return $this; }
-    public function getStartLocationLongitude(): ?string { return $this->startLocationLongitude; }
-    public function setStartLocationLongitude(string $startLocationLongitude): static { $this->startLocationLongitude = $startLocationLongitude; return $this; }
-    public function getEndLocationLatitude(): ?string { return $this->endLocationLatitude; }
-    public function setEndLocationLatitude(string $endLocationLatitude): static { $this->endLocationLatitude = $endLocationLatitude; return $this; }
-    public function getEndLocationLongitude(): ?string { return $this->endLocationLongitude; }
-    public function setEndLocationLongitude(string $endLocationLongitude): static { $this->endLocationLongitude = $endLocationLongitude; return $this; }
-    public function getLine(): ?array { return $this->line; }
-    public function setLine(?array $line): static { $this->line = $line; return $this; }
-    public function getSourcePayload(): array { return $this->sourcePayload; }
-    public function setSourcePayload(array $sourcePayload): static { $this->sourcePayload = $sourcePayload; return $this; }
-    public function getIsActive(): int { return $this->isActive; }
-    public function setIsActive(int $isActive): static { $this->isActive = $isActive; return $this; }
-    public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
-    public function setCreatedAt(\DateTimeImmutable $createdAt): static { $this->createdAt = $createdAt; return $this; }
-    public function getUpdatedAt(): \DateTimeImmutable { return $this->updatedAt; }
-    public function setUpdatedAt(\DateTimeImmutable $updatedAt): static { $this->updatedAt = $updatedAt; return $this; }
+    public function getPartner(): ?Partner
+    {
+        return $this->partner;
+    }
+
+    public function setPartner(?Partner $partner): static
+    {
+        $this->partner = $partner;
+
+        return $this;
+    }
+
+    public function getUuid(): ?string
+    {
+        return $this->uuid;
+    }
+
+    public function setUuid(string $uuid): static
+    {
+        $this->uuid = $uuid;
+
+        return $this;
+    }
+
+    public function getJamId(): int
+    {
+        return $this->jamId;
+    }
+
+    public function setJamId(int $jamId): static
+    {
+        $this->jamId = $jamId;
+
+        return $this;
+    }
+
+    public function getLine(): ?array
+    {
+        return $this->line;
+    }
+
+    public function setLine(?array $line): static
+    {
+        $this->line = $line;
+        $this->linePoints = count($line ?? []);
+
+        return $this;
+    }
+
+    public function getLinePoints(): int
+    {
+        return $this->linePoints;
+    }
+
+    public function getSpeed(): ?string
+    {
+        return $this->speed;
+    }
+
+    public function setSpeed(float|string $speed): static
+    {
+        $this->speed = (string) $speed;
+
+        return $this;
+    }
+
+    public function getSpeedKmh(): ?string
+    {
+        return $this->speedKmh;
+    }
+
+    public function setSpeedKmh(float|string $speedKmh): static
+    {
+        $this->speedKmh = (string) $speedKmh;
+
+        return $this;
+    }
+
+    public function getLength(): int
+    {
+        return $this->length;
+    }
+
+    public function setLength(int $length): static
+    {
+        $this->length = $length;
+
+        return $this;
+    }
+
+    public function getDelay(): int
+    {
+        return $this->delay;
+    }
+
+    public function setDelay(int $delay): static
+    {
+        $this->delay = $delay;
+
+        return $this;
+    }
+
+    public function getLevel(): int
+    {
+        return $this->level;
+    }
+
+    public function setLevel(int $level): static
+    {
+        $this->level = $level;
+
+        return $this;
+    }
+
+    public function getPubMillis(): ?int
+    {
+        return $this->pubMillis;
+    }
+
+    public function setPubMillis(int $pubMillis): static
+    {
+        $this->pubMillis = $pubMillis;
+
+        return $this;
+    }
+
+    public function getTurnType(): ?string
+    {
+        return $this->turnType;
+    }
+
+    public function setTurnType(string $turnType): static
+    {
+        $this->turnType = $turnType;
+
+        return $this;
+    }
+
+    public function getBlockingAlertUuid(): ?string
+    {
+        return $this->blockingAlertUuid;
+    }
+
+    public function setBlockingAlertUuid(?string $blockingAlertUuid): static
+    {
+        $this->blockingAlertUuid = $blockingAlertUuid;
+
+        return $this;
+    }
+
+    public function getSegments(): ?array
+    {
+        return $this->segments;
+    }
+
+    public function setSegments(?array $segments): static
+    {
+        $this->segments = $segments;
+        $this->segmentCount = count($segments ?? []);
+
+        return $this;
+    }
+
+    public function getSegmentCount(): int
+    {
+        return $this->segmentCount;
+    }
+
+    public function getStreet(): ?string
+    {
+        return $this->street;
+    }
+
+    public function setStreet(?string $street): static
+    {
+        $this->street = $street;
+
+        return $this;
+    }
+
+    public function getCity(): ?string
+    {
+        return $this->city;
+    }
+
+    public function setCity(?string $city): static
+    {
+        $this->city = $city;
+
+        return $this;
+    }
+
+    public function getCountry(): ?string
+    {
+        return $this->country;
+    }
+
+    public function setCountry(string $country): static
+    {
+        $this->country = $country;
+
+        return $this;
+    }
+
+    public function getRoadType(): int
+    {
+        return $this->roadType;
+    }
+
+    public function setRoadType(int $roadType): static
+    {
+        $this->roadType = $roadType;
+
+        return $this;
+    }
+
+    public function getEndNode(): ?string
+    {
+        return $this->endNode;
+    }
+
+    public function setEndNode(?string $endNode): static
+    {
+        $this->endNode = $endNode;
+
+        return $this;
+    }
+
+    public function isActive(): bool
+    {
+        return $this->isActive;
+    }
+
+    public function setIsActive(bool $isActive): static
+    {
+        $this->isActive = $isActive;
+
+        if ($isActive) {
+            $this->deactivatedAt = null;
+        }
+
+        return $this;
+    }
+
+    public function getCollectedAt(): ?\DateTimeImmutable
+    {
+        return $this->collectedAt;
+    }
+
+    public function setCollectedAt(\DateTimeImmutable $collectedAt): static
+    {
+        $this->collectedAt = $collectedAt;
+
+        return $this;
+    }
+
+    public function getLastSeenAt(): ?\DateTimeImmutable
+    {
+        return $this->lastSeenAt;
+    }
+
+    public function setLastSeenAt(\DateTimeImmutable $lastSeenAt): static
+    {
+        $this->lastSeenAt = $lastSeenAt;
+
+        return $this;
+    }
+
+    public function getDeactivatedAt(): ?\DateTimeImmutable
+    {
+        return $this->deactivatedAt;
+    }
+
+    public function setDeactivatedAt(
+        ?\DateTimeImmutable $deactivatedAt,
+    ): static {
+        $this->deactivatedAt = $deactivatedAt;
+
+        return $this;
+    }
+
+    public function deactivate(
+        \DateTimeImmutable $deactivatedAt,
+    ): static {
+        $this->isActive = false;
+        $this->deactivatedAt = $deactivatedAt;
+
+        return $this;
+    }
+
+    public function getPubDateTime(): ?\DateTimeImmutable
+    {
+        if ($this->pubMillis === null || $this->pubMillis <= 0) {
+            return null;
+        }
+
+        return (new \DateTimeImmutable())->setTimestamp(
+            (int) floor($this->pubMillis / 1000),
+        );
+    }
+
+    public function getLevelLabel(): string
+    {
+        $labels = [
+            1 => 'Baixo',
+            2 => 'Moderado',
+            3 => 'Alto',
+            4 => 'Muito alto',
+            5 => 'Parado',
+        ];
+
+        return $labels[$this->level] ?? sprintf(
+            'Nível %d',
+            $this->level,
+        );
+    }
+
+    public function getFirstCoordinate(): ?array
+    {
+        if ($this->line === null || $this->line === []) {
+            return null;
+        }
+
+        return $this->line[0] ?? null;
+    }
+
+    public function getLastCoordinate(): ?array
+    {
+        if ($this->line === null || $this->line === []) {
+            return null;
+        }
+
+        $lastIndex = count($this->line) - 1;
+
+        return $this->line[$lastIndex] ?? null;
+    }
 }

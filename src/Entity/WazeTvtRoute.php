@@ -4,21 +4,23 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
-use App\Repository\WazeTvtSubRouteRepository;
+use App\Repository\WazeTvtRouteRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity(repositoryClass: WazeTvtSubRouteRepository::class)]
-#[ORM\Table(name: 'waze_tvt_sub_route')]
+#[ORM\Entity(repositoryClass: WazeTvtRouteRepository::class)]
+#[ORM\Table(name: 'waze_tvt_route')]
 #[ORM\Index(
-    name: 'idx_tvt_subroute_partner_active',
+    name: 'idx_tvt_route_partner_active',
     columns: ['partner_id', 'is_active'],
 )]
 #[ORM\UniqueConstraint(
-    name: 'uniq_tvt_subroute_identity',
-    columns: ['partner_id', 'route_id', 'sub_route_id'],
+    name: 'uniq_tvt_route_partner_route',
+    columns: ['partner_id', 'route_id'],
 )]
-class WazeTvtSubRoute
+class WazeTvtRoute
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -27,7 +29,7 @@ class WazeTvtSubRoute
 
     #[ORM\ManyToOne(
         targetEntity: Partner::class,
-        inversedBy: 'wazeTvtSubRoutes',
+        inversedBy: 'wazeTvtRoutes',
     )]
     #[ORM\JoinColumn(
         name: 'partner_id',
@@ -37,23 +39,8 @@ class WazeTvtSubRoute
     )]
     private ?Partner $partner = null;
 
-    #[ORM\ManyToOne(
-        targetEntity: WazeTvtRoute::class,
-        inversedBy: 'subRoutes',
-    )]
-    #[ORM\JoinColumn(
-        name: 'route_id',
-        referencedColumnName: 'id',
-        nullable: false,
-        onDelete: 'CASCADE',
-    )]
-    private ?WazeTvtRoute $route = null;
-
-    #[ORM\Column(name: 'waze_route_id', length: 100)]
-    private ?string $wazeRouteId = null;
-
-    #[ORM\Column(name: 'sub_route_id', length: 100)]
-    private ?string $subRouteId = null;
+    #[ORM\Column(length: 100)]
+    private ?string $routeId = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $name = null;
@@ -67,23 +54,8 @@ class WazeTvtSubRoute
     #[ORM\Column(type: Types::INTEGER, nullable: true)]
     private ?int $length = null;
 
-    #[ORM\Column(type: Types::INTEGER, nullable: true)]
-    private ?int $time = null;
-
-    #[ORM\Column(type: Types::INTEGER, nullable: true)]
-    private ?int $historicTime = null;
-
-    #[ORM\Column(type: Types::INTEGER, nullable: true)]
-    private ?int $jamLevel = null;
-
     #[ORM\Column(type: Types::JSON, nullable: true)]
-    private ?array $line = null;
-
-    #[ORM\Column(type: Types::JSON, nullable: true)]
-    private ?array $bbox = null;
-
-    #[ORM\Column(type: Types::JSON, nullable: true)]
-    private ?array $irregularities = null;
+    private ?array $geometry = null;
 
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
     private bool $isActive = true;
@@ -94,8 +66,15 @@ class WazeTvtSubRoute
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $deactivatedAt = null;
 
+    #[ORM\OneToMany(
+        targetEntity: WazeTvtSubRoute::class,
+        mappedBy: 'route',
+    )]
+    private Collection $subRoutes;
+
     public function __construct()
     {
+        $this->subRoutes = new ArrayCollection();
         $this->lastSeenAt = new \DateTimeImmutable();
     }
 
@@ -116,38 +95,14 @@ class WazeTvtSubRoute
         return $this;
     }
 
-    public function getRoute(): ?WazeTvtRoute
+    public function getRouteId(): ?string
     {
-        return $this->route;
+        return $this->routeId;
     }
 
-    public function setRoute(?WazeTvtRoute $route): static
+    public function setRouteId(string $routeId): static
     {
-        $this->route = $route;
-
-        return $this;
-    }
-
-    public function getWazeRouteId(): ?string
-    {
-        return $this->wazeRouteId;
-    }
-
-    public function setWazeRouteId(string $wazeRouteId): static
-    {
-        $this->wazeRouteId = $wazeRouteId;
-
-        return $this;
-    }
-
-    public function getSubRouteId(): ?string
-    {
-        return $this->subRouteId;
-    }
-
-    public function setSubRouteId(string $subRouteId): static
-    {
-        $this->subRouteId = $subRouteId;
+        $this->routeId = $routeId;
 
         return $this;
     }
@@ -200,74 +155,14 @@ class WazeTvtSubRoute
         return $this;
     }
 
-    public function getTime(): ?int
+    public function getGeometry(): ?array
     {
-        return $this->time;
+        return $this->geometry;
     }
 
-    public function setTime(?int $time): static
+    public function setGeometry(?array $geometry): static
     {
-        $this->time = $time;
-
-        return $this;
-    }
-
-    public function getHistoricTime(): ?int
-    {
-        return $this->historicTime;
-    }
-
-    public function setHistoricTime(?int $historicTime): static
-    {
-        $this->historicTime = $historicTime;
-
-        return $this;
-    }
-
-    public function getJamLevel(): ?int
-    {
-        return $this->jamLevel;
-    }
-
-    public function setJamLevel(?int $jamLevel): static
-    {
-        $this->jamLevel = $jamLevel;
-
-        return $this;
-    }
-
-    public function getLine(): ?array
-    {
-        return $this->line;
-    }
-
-    public function setLine(?array $line): static
-    {
-        $this->line = $line;
-
-        return $this;
-    }
-
-    public function getBbox(): ?array
-    {
-        return $this->bbox;
-    }
-
-    public function setBbox(?array $bbox): static
-    {
-        $this->bbox = $bbox;
-
-        return $this;
-    }
-
-    public function getIrregularities(): ?array
-    {
-        return $this->irregularities;
-    }
-
-    public function setIrregularities(?array $irregularities): static
-    {
-        $this->irregularities = $irregularities;
+        $this->geometry = $geometry;
 
         return $this;
     }
@@ -310,6 +205,30 @@ class WazeTvtSubRoute
         ?\DateTimeImmutable $deactivatedAt,
     ): static {
         $this->deactivatedAt = $deactivatedAt;
+
+        return $this;
+    }
+
+    public function getSubRoutes(): Collection
+    {
+        return $this->subRoutes;
+    }
+
+    public function addSubRoute(
+        WazeTvtSubRoute $subRoute,
+    ): static {
+        if (!$this->subRoutes->contains($subRoute)) {
+            $this->subRoutes->add($subRoute);
+            $subRoute->setRoute($this);
+        }
+
+        return $this;
+    }
+
+    public function removeSubRoute(
+        WazeTvtSubRoute $subRoute,
+    ): static {
+        $this->subRoutes->removeElement($subRoute);
 
         return $this;
     }

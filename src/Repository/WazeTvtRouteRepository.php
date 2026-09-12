@@ -9,63 +9,70 @@ use App\Entity\WazeTvtRoute;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
-/**
- * @extends ServiceEntityRepository<WazeTvtRoute>
- */
-class WazeTvtRouteRepository extends ServiceEntityRepository
+final class WazeTvtRouteRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, WazeTvtRoute::class);
     }
 
+    public function findOneByPartnerAndRouteId(
+        Partner $partner,
+        string $routeId,
+    ): ?WazeTvtRoute {
+        return $this->findOneBy([
+            'partner' => $partner,
+            'routeId' => $routeId,
+        ]);
+    }
+
     /**
-     * Retorna todas as rotas TVT de um partner, com subroutes pré-carregadas.
-     *
      * @return WazeTvtRoute[]
      */
-    public function findByPartnerWithSubRoutes(Partner $partner): array
-    {
-        return $this->createQueryBuilder('r')
-            ->addSelect('sr')
-            ->leftJoin('r.subRoutes', 'sr')
-            ->where('r.partner = :partner')
+    public function findActiveByPartner(
+        Partner $partner,
+    ): array {
+        return $this->createQueryBuilder('route')
+            ->andWhere('route.partner = :partner')
+            ->andWhere('route.isActive = :active')
             ->setParameter('partner', $partner)
-            ->orderBy('r.id', 'ASC')
+            ->setParameter('active', true)
+            ->orderBy('route.name', 'ASC')
             ->getQuery()
             ->getResult();
     }
 
     /**
-     * Retorna rotas TVT de todos os partners, agrupando por partner.
-     * Eager-load de partner e subRoutes para uso nos commands.
-     *
-     * @return WazeTvtRoute[]
+     * @param string[] $currentRouteIds
      */
-    public function findAllWithPartnerAndSubRoutes(): array
-    {
-        return $this->createQueryBuilder('r')
-            ->addSelect('p', 'sr')
-            ->join('r.partner', 'p')
-            ->leftJoin('r.subRoutes', 'sr')
-            ->orderBy('p.id', 'ASC')
-            ->addOrderBy('r.id', 'ASC')
-            ->getQuery()
-            ->getResult();
-    }
+    public function deactivateMissingForPartner(
+        Partner $partner,
+        array $currentRouteIds,
+        \DateTimeImmutable $now,
+    ): int {
+        $currentRouteIds = array_values(array_unique(array_filter(
+            $currentRouteIds,
+            static fn (mixed $id): bool =>
+                is_string($id) && trim($id) !== '',
+        )));
 
-    /**
-     * Busca uma rota pelo par (partner, routeId).
-     * Retorna null se ainda não existe — usado no upsert do command TVT.
-     */
-    public function findOneByPartnerAndRouteId(Partner $partner, string $routeId): ?WazeTvtRoute
-    {
-        return $this->createQueryBuilder('r')
-            ->where('r.partner = :partner')
-            ->andWhere('r.routeId = :routeId')
+        if ($currentRouteIds === []) {
+            return 0;
+        }
+
+        return $this->createQueryBuilder('route')
+            ->update()
+            ->set('route.isActive', ':inactive')
+            ->set('route.deactivatedAt', ':now')
+            ->where('route.partner = :partner')
+            ->andWhere('route.isActive = :active')
+            ->andWhere('route.routeId NOT IN (:routeIds)')
             ->setParameter('partner', $partner)
-            ->setParameter('routeId', $routeId)
+            ->setParameter('active', true)
+            ->setParameter('inactive', false)
+            ->setParameter('now', $now)
+            ->setParameter('routeIds', $currentRouteIds)
             ->getQuery()
-            ->getOneOrNullResult();
+            ->execute();
     }
 }
