@@ -1,48 +1,38 @@
-{% extends 'layouts/dashboard.html.twig' %}
+{% extends 'base.html.twig' %}
 
 {% block title %}Alertas{% endblock %}
 
-{% block body %}
-<div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col-12">
-            <h1 class="h3 mb-3">Alertas</h1>
-        </div>
-    </div>
+{% block page_stylesheets %}
+<style>
+    .alerts-list { list-style: none; padding: 0; margin: 0; }
+    .alert-item { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+    .alert-item h3 { margin: 0 0 8px 0; font-size: 1rem; }
+    .alert-meta { font-size: 0.85rem; color: #666; }
+</style>
+{% endblock %}
 
-    <div class="card">
-        <div class="card-body">
-            {% if alerts|length > 0 %}
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Tipo</th>
-                            <th>Subtipo</th>
-                            <th>Rua</th>
-                            <th>Cidade</th>
-                            <th>Data</th>
-                            <th>Aç°µes</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for alert in alerts %}
-                            <tr>
-                                <td>{{ alert.type }}</td>
-                                <td>{{ alert.subtype }}</td>
-                                <td>{{ alert.street }}</td>
-                                <td>{{ alert.city }}</td>
-                                <td>{{ alert.lastSeenAt|date('d/m/Y H:i') }}</td>
-                                <td>
-                                    <a href="{{ path('alert_show', {id: alert.id}) }}" class="btn btn-sm btn-primary">Ver</a>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+{% block body_class %}dashboard-page{% endblock %}
+
+{% block body %}
+<div class="dashboard-layout">
+    {% include 'partials/sidebar.html.twig' %}
+    <main class="dashboard-content">
+        {% include 'partials/topbar.html.twig' %}
+        <div class="dashboard-content-inner">
+            <h1>Alertas</h1>
+            {% if alerts is empty %}
+                <p>Nenhum alerta encontrado.</p>
             {% else %}
-                <p class="text-muted mb-0">Nenhum alerta encontrado</p>
+                <ul class="alerts-list">
+                    {% for alert in alerts %}
+                        <li class="alert-item">
+                            <h3>Alert #{{ alert.id }} - {{ alert.type }}</h3>
+                            <p class="alert-meta">{{ alert.reportTime|date('d/m/Y H:i') }}</p>
+                        </li>
+                    {% endfor %}
+                </ul>
             {% endif %}
         </div>
-    </div>
+    </main>
 </div>
 {% endblock %}
