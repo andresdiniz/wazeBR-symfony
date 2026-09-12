@@ -79,7 +79,7 @@ class FetchWazeFeedCommand extends Command
 
             try {
                 $io->section($label);
-                $payload = $this->fetchFeed($apiLink->getUrl(), $apiLink->getToken());
+                $payload = $this->fetchFeed($apiLink->getUrl());
                 $this->processFeed($payload, $partner, $dryRun, $io);
             } catch (\Throwable $e) {
                 ++$errors;
@@ -215,11 +215,9 @@ class FetchWazeFeedCommand extends Command
             ->getQuery()->execute();
     }
 
-    private function fetchFeed(string $url, ?string $token): array
+    private function fetchFeed(string $url): array
     {
-        $options = ['timeout' => 15];
-        if ($token !== null && $token !== '') $options['headers'] = ['Authorization' => 'Bearer ' . $token];
-        $response = $this->httpClient->request('GET', $url, $options);
+        $response = $this->httpClient->request('GET', $url, ['timeout' => 15]);
         return $response->toArray();
     }
 }
