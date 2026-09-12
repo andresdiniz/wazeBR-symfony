@@ -10,7 +10,7 @@
 <div class="dashboard-wrapper">
     <header class="dashboard-header">
         <h1>Dashboard</h1>
-        <p class="dashboard-subtitle">Vis\u00e3o geral do monitoramento</p>
+        <p class="dashboard-subtitle">Visão geral do monitoramento</p>
     </header>
 
     <!-- Stats Cards -->
@@ -28,7 +28,7 @@
         <div class="stat-card stat-weather">
             <div class="stat-icon">⛅</div>
             <div class="stat-value">{{ stats.total_weather }}</div>
-            <div class="stat-label">Observa\u00e7\u00f5es Clim\u00e1ticas</div>
+            <div class="stat-label">Observações Climáticas  </div>
         </div>
         <div class="stat-card stat-partners">
             <div class="stat-icon">◉</div>
@@ -38,7 +38,7 @@
         <div class="stat-card stat-users">
             <div class="stat-icon">☺</div>
             <div class="stat-value">{{ stats.total_users }}</div>
-            <div class="stat-label">Usu\u00e1rios</div>
+            <div class="stat-label">Usuários</div>
         </div>
     </section>
 
@@ -79,7 +79,7 @@
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>N\u00f3s</th>
+                            <th>Nós</th>
                             <th>Velocidade</th>
                             <th>Data</th>
                         </tr>
@@ -102,14 +102,14 @@
 
         <!-- Recent Weather -->
         <section class="dashboard-card full-width">
-            <h2>\u00daltimas Observa\u00e7\u00f5es Clim\u00e1ticas</h2>
+            <h2>Últimas Observações Climáticas</h2>
             <div class="table-responsive">
                 <table class="data-table">
                     <thead>
                         <tr>
                             <th>ID</th>
                             <th>Local</th>
-                            <th>Temp (\u00b0C)</th>
+                            <th>Temperatura</th>
                             <th>Umidade (%)</th>
                             <th>Data</th>
                         </tr>
@@ -124,7 +124,7 @@
                             <td>{{ weather.date|date('d/m/Y H:i') }}</td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="5">Nenhuma observa\u00e7\u00e3o encontrada</td></tr>
+                        <tr><td colspan="5">Nenhuma observação climática encontrada</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
