@@ -15,7 +15,7 @@ class WazeFeed
     #[ORM\Column(type: 'bigint')]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(targetEntity: Partner::class)]
+    #[ORM\ManyToOne(targetEntity: Partner::class, inversedBy: 'wazeFeeds')]
     #[ORM\JoinColumn(name: 'partner_id', referencedColumnName: 'id', nullable: false)]
     private ?Partner $partner = null;
 
