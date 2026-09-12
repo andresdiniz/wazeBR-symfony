@@ -18,7 +18,11 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[UniqueEntity(fields: ['email'], message: 'This email is already in use')]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
-    public const ROLE_ADMIN = 'ROLE_ADMIN';
+//ROLE_ADMIN - Admin global, can manage all users and partners
+//ROLE_PARTNER_ADMIN - Admin of a specific partner, can manage users within that partner, link e unlink partner, but cannot manage other partners or global settings
+//ROLE_OPERATOR - Operator of a specific partner, can manage users within that partner, but cannot manage partners or global settings
+//ROLE_VIEWER - Viewer of a specific partner, can view users
+public const ROLE_ADMIN = 'ROLE_ADMIN';
     public const ROLE_PARTNER_ADMIN = 'ROLE_PARTNER_ADMIN';
     public const ROLE_OPERATOR = 'ROLE_OPERATOR';
     public const ROLE_VIEWER = 'ROLE_VIEWER';
