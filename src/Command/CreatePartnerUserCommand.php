@@ -80,7 +80,6 @@ final class CreatePartnerUserCommand extends Command
         $user->setPassword($this->passwordHasher->hashPassword($user, $password));
         $user->setRoles($roles);
         $user->setPartner($partner);
-        $user->setIsVerified(true);
 
         // Validate user
         $errors = $this->validator->validate($user);
