@@ -31,6 +31,12 @@ class ResetPasswordRequestRepository extends ServiceEntityRepository implements 
         return 'id';
     }
 
+    public function persistResetPasswordRequest(ResetPasswordRequestInterface $resetPasswordRequest): void
+    {
+        $this->getEntityManager()->persist($resetPasswordRequest);
+        $this->getEntityManager()->flush();
+    }
+
     public function findAllNonExpiredRequestsForUser(object $user): array
     {
         return $this->createQueryBuilder('rpr')
