@@ -71,6 +71,7 @@ The application partitions operational integrations by `Partner`. Each external 
 **Purpose:** Normalized Waze alerts and jams associated with a partner.
 
 - Non-nullable `partner` foreign key.
+- Field `is_active` (1 = active, 0 = inactive) for lifecycle control; future automation will compute this value.
 - Used for Waze feed processing outside TVT.
 
 ---
@@ -117,6 +118,7 @@ The application partitions operational integrations by `Partner`. Each external 
 +------------------------+                  | description, payload    |
                                             | content_hash            |
                                             | recorded_at             |
+                                            | is_active               |
                                             +------------------------+
 ```
 
@@ -169,6 +171,7 @@ The application partitions operational integrations by `Partner`. Each external 
 - `payload` stores the complete irregularity object as JSON because its Waze schema can vary by item/type.
 - `contentHash` is a SHA-256 hash of canonicalized payload data and, together with partner/route/subroute, prevents duplicate identical irregularities.
 - `recordedAt` tracks the feed observation; `updatedAt` may be used when an existing irregularity is observed again.
+- `is_active` (1 = active, 0 = inactive) for lifecycle control; future automation will compute this value.
 
 ---
 
@@ -487,6 +490,7 @@ The application partitions operational integrations by `Partner`. Each external 
 
 ## Change Log
 
+- **2026-09-12**: Added `is_active` flag (1 = active, 0 = inactive) to `WazeAlert`, `WazeJam`, and `WazeTvtIrregularity` for lifecycle control; future automation will compute this value.
 - **2026-09-12**: Added `PartnerCameraLink` for partner-owned camera monitoring and proximity to events.
 - **2026-09-12**: Expanded `ENTITY_RELATIONSHIPS.md` with full entity explanations, relationship summary, persistence rules, and logical database map.
 - **2026-09-12**: Added `CemadenHidroStationLink` and `CemadenHidroObservation` for partner-scoped CEMADEN river-level monitoring.

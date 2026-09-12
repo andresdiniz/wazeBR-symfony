@@ -9,10 +9,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: WazeAlertRepository::class)]
 #[ORM\Table(name: 'waze_alert')]
-#[ORM\Index(columns: ['partner_id'])]
-#[ORM\Index(columns: ['type'])]
-#[ORM\Index(columns: ['city'])]
-#[ORM\Index(columns: ['pub_millis'])]
+#[ORM\Index(columns: ['partner_id', 'pub_millis'])]
 class WazeAlert
 {
     #[ORM\Id]
@@ -20,391 +17,136 @@ class WazeAlert
     #[ORM\Column]
     private ?int $id = null;
 
-    /**
-     * Partner that owns this alert (via partner_api_link).
-     */
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
     #[Assert\NotNull]
     private ?Partner $partner = null;
 
-    /**
-     * Unique alert UUID from Waze.
-     */
-    #[ORM\Column(length: 64, unique: true)]
+    #[ORM\Column(name: 'alert_id', length: 100, unique: true)]
     #[Assert\NotBlank]
-    #[Assert\Length(max: 64)]
-    private ?string $uuid = null;
+    private ?string $alertId = null;
 
-    /**
-     * Alert type (e.g. ROAD_CLOSED, HAZARD, ACCIDENT, WEATHERHAZARD, JAM).
-     */
-    #[ORM\Column(length: 50)]
-    #[Assert\NotBlank]
-    #[Assert\Length(max: 50)]
-    private ?string $type = null;
-
-    /**
-     * Alert subtype (e.g. HAZARD_ON_ROAD_POT_HOLE, etc.).
-     */
-    #[ORM\Column(length: 100, nullable: true)]
-    #[Assert\Length(max: 100)]
-    private ?string $subtype = null;
-
-    /**
-     * Publication time in milliseconds since epoch.
-     */
-    #[ORM\Column(type: Types::BIGINT)]
-    #[Assert\NotBlank]
-    private ?string $pubMillis = null;
-
-    /**
-     * Whether reported by municipality user (string "true"/"false" in API).
-     */
-    #[ORM\Column(length: 10, nullable: true)]
-    #[Assert\Length(max: 10)]
-    private ?string $reportByMunicipalityUser = null;
-
-    /**
-     * Report rating (1-5 typically).
-     */
-    #[ORM\Column(nullable: true)]
-    #[Assert\Range(min: 1, max: 10)]
-    private ?int $reportRating = null;
-
-    /**
-     * Confidence level (0-5 typically).
-     */
-    #[ORM\Column(nullable: true)]
-    #[Assert\Range(min: 0, max: 10)]
-    private ?int $confidence = null;
-
-    /**
-     * Reliability score.
-     */
-    #[ORM\Column(nullable: true)]
-    #[Assert\Range(min: 0, max: 10)]
-    private ?int $reliability = null;
-
-    /**
-     * Location latitude (y in Waze API).
-     */
-    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 6, nullable: true)]
-    private ?string $locationY = null;
-
-    /**
-     * Location longitude (x in Waze API).
-     */
-    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 6, nullable: true)]
-    private ?string $locationX = null;
-
-    /**
-     * Street name.
-     */
-    #[ORM\Column(length: 255, nullable: true)]
-    #[Assert\Length(max: 255)]
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $street = null;
 
-    /**
-     * City name.
-     */
-    #[ORM\Column(length: 150, nullable: true)]
-    #[Assert\Length(max: 150)]
+    #[ORM\Column(name: 'city', length: 150, nullable: true)]
     private ?string $city = null;
 
-    /**
-     * Country code (e.g. BR).
-     */
-    #[ORM\Column(length: 3, nullable: true)]
-    #[Assert\Length(max: 3)]
+    #[ORM\Column(name: 'country', length: 50, nullable: true)]
     private ?string $country = null;
 
-    /**
-     * Road type (numeric code from Waze).
-     */
-    #[ORM\Column(nullable: true)]
-    private ?int $roadType = null;
+    #[ORM\Column(name: 'alert_type', length: 50, nullable: true)]
+    private ?string $alertType = null;
 
-    /**
-     * Number of thumbs up on the report.
-     */
-    #[ORM\Column(nullable: true)]
-    private ?int $nThumbsUp = null;
+    #[ORM\Column(name: 'alert_subtype', length: 100, nullable: true)]
+    private ?string $alertSubtype = null;
 
-    /**
-     * Magnetic variation (magvar) in degrees.
-     */
-    #[ORM\Column(nullable: true)]
-    private ?int $magvar = null;
+    #[ORM\Column(name: 'reliability', type: Types::SMALLINT, nullable: true)]
+    private ?int $reliability = null;
 
-    /**
-     * Local creation timestamp.
-     */
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, options: ['default' => 'CURRENT_TIMESTAMP'])]
+    #[ORM\Column(name: 'report_description', type: Types::TEXT, nullable: true)]
+    private ?string $reportDescription = null;
+
+    #[ORM\Column(name: 'report_rating', type: Types::SMALLINT, nullable: true)]
+    private ?int $reportRating = null;
+
+    #[ORM\Column(name: 'confidence', type: Types::SMALLINT, nullable: true)]
+    private ?int $confidence = null;
+
+    #[ORM\Column(name: 'pub_millis', type: Types::BIGINT)]
+    #[Assert\Positive]
+    private ?int $pubMillis = null;
+
+    #[ORM\Column(name: 'pub_utc_date', type: Types::DATETIME_IMMUTABLE)]
+    #[Assert\NotNull]
+    private \DateTimeImmutable $pubUtcDate;
+
+    #[ORM\Column(name: 'location_latitude', type: Types::DECIMAL, precision: 10, scale: 7)]
+    #[Assert\Range(min: -90, max: 90)]
+    private ?string $locationLatitude = null;
+
+    #[ORM\Column(name: 'location_longitude', type: Types::DECIMAL, precision: 10, scale: 7)]
+    #[Assert\Range(min: -180, max: 180)]
+    private ?string $locationLongitude = null;
+
+    #[ORM\Column(name: 'magvar', type: Types::DECIMAL, precision: 10, scale: 7, nullable: true)]
+    private ?string $magvar = null;
+
+    #[ORM\Column(name: 'num_thumbs_up', type: Types::SMALLINT, nullable: true)]
+    #[Assert\PositiveOrZero]
+    private ?int $numThumbsUp = null;
+
+    #[ORM\Column(name: 'num_comments', type: Types::SMALLINT, nullable: true)]
+    #[Assert\PositiveOrZero]
+    private ?int $numComments = null;
+
+    #[ORM\Column(name: 'report_by', length: 100, nullable: true)]
+    private ?string $reportBy = null;
+
+    #[ORM\Column(name: 'source_payload', type: Types::JSON)]
+    private array $sourcePayload = [];
+
+    #[ORM\Column(name: 'is_active', options: ['default' => 1])]
+    private int $isActive = 1;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
-    /**
-     * Local update timestamp.
-     */
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
-    private ?\DateTimeImmutable $updatedAt = null;
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
+    private \DateTimeImmutable $updatedAt;
 
     public function __construct()
     {
-        $this->createdAt = new \DateTimeImmutable();
+        $now = new \DateTimeImmutable();
+        $this->createdAt = $now;
+        $this->updatedAt = $now;
     }
 
-    public function getId(): ?int
-    {
-        return $this->id;
-    }
-
-    public function getPartner(): ?Partner
-    {
-        return $this->partner;
-    }
-
-    public function setPartner(?Partner $partner): static
-    {
-        $this->partner = $partner;
-        return $this;
-    }
-
-    public function getUuid(): ?string
-    {
-        return $this->uuid;
-    }
-
-    public function setUuid(?string $uuid): static
-    {
-        $this->uuid = $uuid;
-        return $this;
-    }
-
-    public function getType(): ?string
-    {
-        return $this->type;
-    }
-
-    public function setType(?string $type): static
-    {
-        $this->type = $type;
-        return $this;
-    }
-
-    public function getSubtype(): ?string
-    {
-        return $this->subtype;
-    }
-
-    public function setSubtype(?string $subtype): static
-    {
-        $this->subtype = $subtype;
-        return $this;
-    }
-
-    public function getPubMillis(): ?string
-    {
-        return $this->pubMillis;
-    }
-
-    public function setPubMillis(?string $pubMillis): static
-    {
-        $this->pubMillis = $pubMillis;
-        return $this;
-    }
-
-    public function getReportByMunicipalityUser(): ?string
-    {
-        return $this->reportByMunicipalityUser;
-    }
-
-    public function setReportByMunicipalityUser(?string $reportByMunicipalityUser): static
-    {
-        $this->reportByMunicipalityUser = $reportByMunicipalityUser;
-        return $this;
-    }
-
-    public function getReportRating(): ?int
-    {
-        return $this->reportRating;
-    }
-
-    public function setReportRating(?int $reportRating): static
-    {
-        $this->reportRating = $reportRating;
-        return $this;
-    }
-
-    public function getConfidence(): ?int
-    {
-        return $this->confidence;
-    }
-
-    public function setConfidence(?int $confidence): static
-    {
-        $this->confidence = $confidence;
-        return $this;
-    }
-
-    public function getReliability(): ?int
-    {
-        return $this->reliability;
-    }
-
-    public function setReliability(?int $reliability): static
-    {
-        $this->reliability = $reliability;
-        return $this;
-    }
-
-    public function getLocationY(): ?string
-    {
-        return $this->locationY;
-    }
-
-    public function setLocationY(?string $locationY): static
-    {
-        $this->locationY = $locationY;
-        return $this;
-    }
-
-    public function getLocationX(): ?string
-    {
-        return $this->locationX;
-    }
-
-    public function setLocationX(?string $locationX): static
-    {
-        $this->locationX = $locationX;
-        return $this;
-    }
-
-    public function getStreet(): ?string
-    {
-        return $this->street;
-    }
-
-    public function setStreet(?string $street): static
-    {
-        $this->street = $street;
-        return $this;
-    }
-
-    public function getCity(): ?string
-    {
-        return $this->city;
-    }
-
-    public function setCity(?string $city): static
-    {
-        $this->city = $city;
-        return $this;
-    }
-
-    public function getCountry(): ?string
-    {
-        return $this->country;
-    }
-
-    public function setCountry(?string $country): static
-    {
-        $this->country = $country;
-        return $this;
-    }
-
-    public function getRoadType(): ?int
-    {
-        return $this->roadType;
-    }
-
-    public function setRoadType(?int $roadType): static
-    {
-        $this->roadType = $roadType;
-        return $this;
-    }
-
-    public function getNThumbsUp(): ?int
-    {
-        return $this->nThumbsUp;
-    }
-
-    public function setNThumbsUp(?int $nThumbsUp): static
-    {
-        $this->nThumbsUp = $nThumbsUp;
-        return $this;
-    }
-
-    public function getMagvar(): ?int
-    {
-        return $this->magvar;
-    }
-
-    public function setMagvar(?int $magvar): static
-    {
-        $this->magvar = $magvar;
-        return $this;
-    }
-
-    public function getCreatedAt(): \DateTimeImmutable
-    {
-        return $this->createdAt;
-    }
-
-    public function setCreatedAt(\DateTimeImmutable $createdAt): static
-    {
-        $this->createdAt = $createdAt;
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeImmutable
-    {
-        return $this->updatedAt;
-    }
-
-    public function setUpdatedAt(?\DateTimeImmutable $updatedAt): static
-    {
-        $this->updatedAt = $updatedAt;
-        return $this;
-    }
-
-    /**
-     * Return latitude as float (Y coordinate).
-     */
-    public function getLatitude(): ?float
-    {
-        return $this->locationY !== null ? (float) $this->locationY : null;
-    }
-
-    /**
-     * Return longitude as float (X coordinate).
-     */
-    public function getLongitude(): ?float
-    {
-        return $this->locationX !== null ? (float) $this->locationX : null;
-    }
-
-    /**
-     * Convert pubMillis (string) to DateTimeImmutable (UTC).
-     */
-    public function getPubDateTime(): ?\DateTimeImmutable
-    {
-        if ($this->pubMillis === null) {
-            return null;
-        }
-        $seconds = (int) (((int) $this->pubMillis) / 1000);
-        return \DateTimeImmutable::createFromFormat('U', (string) $seconds, new \DateTimeZone('UTC'));
-    }
-
-    public function __toString(): string
-    {
-        return sprintf(
-            'WazeAlert %s (%s) - %s in %s, %s',
-            $this->uuid ?? 'no-uuid',
-            $this->type ?? 'unknown',
-            $this->street ?? 'unknown street',
-            $this->city ?? 'unknown city',
-            $this->getPartner()?->getName() ?? 'no partner'
-        );
-    }
+    public function getId(): ?int { return $this->id; }
+    public function getPartner(): ?Partner { return $this->partner; }
+    public function setPartner(?Partner $partner): static { $this->partner = $partner; return $this; }
+    public function getAlertId(): ?string { return $this->alertId; }
+    public function setAlertId(string $alertId): static { $this->alertId = $alertId; return $this; }
+    public function getStreet(): ?string { return $this->street; }
+    public function setStreet(?string $street): static { $this->street = $street; return $this; }
+    public function getCity(): ?string { return $this->city; }
+    public function setCity(?string $city): static { $this->city = $city; return $this; }
+    public function getCountry(): ?string { return $this->country; }
+    public function setCountry(?string $country): static { $this->country = $country; return $this; }
+    public function getAlertType(): ?string { return $this->alertType; }
+    public function setAlertType(?string $alertType): static { $this->alertType = $alertType; return $this; }
+    public function getAlertSubtype(): ?string { return $this->alertSubtype; }
+    public function setAlertSubtype(?string $alertSubtype): static { $this->alertSubtype = $alertSubtype; return $this; }
+    public function getReliability(): ?int { return $this->reliability; }
+    public function setReliability(?int $reliability): static { $this->reliability = $reliability; return $this; }
+    public function getReportDescription(): ?string { return $this->reportDescription; }
+    public function setReportDescription(?string $reportDescription): static { $this->reportDescription = $reportDescription; return $this; }
+    public function getReportRating(): ?int { return $this->reportRating; }
+    public function setReportRating(?int $reportRating): static { $this->reportRating = $reportRating; return $this; }
+    public function getConfidence(): ?int { return $this->confidence; }
+    public function setConfidence(?int $confidence): static { $this->confidence = $confidence; return $this; }
+    public function getPubMillis(): ?int { return $this->pubMillis; }
+    public function setPubMillis(int $pubMillis): static { $this->pubMillis = $pubMillis; return $this; }
+    public function getPubUtcDate(): \DateTimeImmutable { return $this->pubUtcDate; }
+    public function setPubUtcDate(\DateTimeImmutable $pubUtcDate): static { $this->pubUtcDate = $pubUtcDate; return $this; }
+    public function getLocationLatitude(): ?string { return $this->locationLatitude; }
+    public function setLocationLatitude(string $locationLatitude): static { $this->locationLatitude = $locationLatitude; return $this; }
+    public function getLocationLongitude(): ?string { return $this->locationLongitude; }
+    public function setLocationLongitude(string $locationLongitude): static { $this->locationLongitude = $locationLongitude; return $this; }
+    public function getMagvar(): ?string { return $this->magvar; }
+    public function setMagvar(?string $magvar): static { $this->magvar = $magvar; return $this; }
+    public function getNumThumbsUp(): ?int { return $this->numThumbsUp; }
+    public function setNumThumbsUp(?int $numThumbsUp): static { $this->numThumbsUp = $numThumbsUp; return $this; }
+    public function getNumComments(): ?int { return $this->numComments; }
+    public function setNumComments(?int $numComments): static { $this->numComments = $numComments; return $this; }
+    public function getReportBy(): ?string { return $this->reportBy; }
+    public function setReportBy(?string $reportBy): static { $this->reportBy = $reportBy; return $this; }
+    public function getSourcePayload(): array { return $this->sourcePayload; }
+    public function setSourcePayload(array $sourcePayload): static { $this->sourcePayload = $sourcePayload; return $this; }
+    public function getIsActive(): int { return $this->isActive; }
+    public function setIsActive(int $isActive): static { $this->isActive = $isActive; return $this; }
+    public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
+    public function setCreatedAt(\DateTimeImmutable $createdAt): static { $this->createdAt = $createdAt; return $this; }
+    public function getUpdatedAt(): \DateTimeImmutable { return $this->updatedAt; }
+    public function setUpdatedAt(\DateTimeImmutable $updatedAt): static { $this->updatedAt = $updatedAt; return $this; }
 }
