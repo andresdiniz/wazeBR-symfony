@@ -16,6 +16,7 @@ use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use SymfonyCasts\Bundle\ResetPassword\Controller\ResetPasswordControllerTrait;
 use SymfonyCasts\Bundle\ResetPassword\Exception\ResetPasswordExceptionInterface;
 use SymfonyCasts\Bundle\ResetPassword\ResetPasswordHelperInterface;
@@ -61,7 +62,7 @@ class ResetPasswordController extends AbstractController
     public function checkEmail(): Response
     {
         // Gera um token falso caso o usuário acesse esta página diretamente
-        // (sem ter passado pelo formulário), para evitar enumeração de usuários.
+        // para evitar enumeração de usuários.
         if (null === ($resetToken = $this->getTokenObjectFromSession())) {
             $resetToken = $this->resetPasswordHelper->generateFakeResetToken();
         }
@@ -86,7 +87,7 @@ class ResetPasswordController extends AbstractController
 
         if ($token) {
             // Armazena o token na sessão e remove da URL
-            // para proteger o token contra ataques de referrer
+            // para proteger contra ataques de referrer
             $this->storeTokenInSession($token);
             return $this->redirectToRoute('app_reset_password');
         }
@@ -136,7 +137,7 @@ class ResetPasswordController extends AbstractController
 
     /**
      * Envia o email de recuperação.
-     * Não revela se o email existe ou não (prevenção de enumeração).
+     * Não revela se o email existe ou não (prevenção de enumeração de usuários).
      */
     private function processSendingPasswordResetEmail(
         string $emailFormData,
@@ -145,7 +146,7 @@ class ResetPasswordController extends AbstractController
     ): RedirectResponse {
         $user = $userRepository->findOneBy(['email' => $emailFormData]);
 
-        // Redireciona para check-email independente de o usuário existir
+        // Redireciona independente de o usuário existir — evita enumeração
         if (!$user) {
             return $this->redirectToRoute('app_check_email');
         }
@@ -153,9 +154,16 @@ class ResetPasswordController extends AbstractController
         try {
             $resetToken = $this->resetPasswordHelper->generateResetToken($user);
         } catch (ResetPasswordExceptionInterface $e) {
-            // Throttle: já foi enviado recentemente — redireciona sem revelar
+            // Throttle: solicitação recente — redireciona sem revelar
             return $this->redirectToRoute('app_check_email');
         }
+
+        // Gera a URL absoluta do link de reset para incluir no email
+        $signedUrl = $this->generateUrl(
+            'app_reset_password',
+            ['token' => $resetToken->getToken()],
+            UrlGeneratorInterface::ABSOLUTE_URL
+        );
 
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@wazebr.com.br', 'WazeBR'))
@@ -163,7 +171,8 @@ class ResetPasswordController extends AbstractController
             ->subject('Redefinição de senha — WazeBR')
             ->htmlTemplate('reset_password/email.html.twig')
             ->context([
-                'resetToken' => $resetToken,
+                'resetToken'    => $resetToken,
+                'signedUrl'     => $signedUrl,
                 'tokenLifetime' => $this->resetPasswordHelper->getTokenLifetime(),
             ]);
 
