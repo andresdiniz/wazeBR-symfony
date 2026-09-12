@@ -2,7 +2,7 @@
 
 **Repository:** `andresdiniz/wazeBR-symfony`  
 **Last updated:** 2026-09-12  
-**Scope:** Core domain entities for partners, users, API links, and Waze alerts.
+**Scope:** Core domain entities for partners, users, API links, Waze alerts, and Waze jams.
 
 ---
 
@@ -14,6 +14,7 @@ The application is built around these main entities:
 - `User`: represents system users, optionally scoped to a partner.
 - `PartnerApiLink`: represents external API endpoints (alerts, traffic) owned by a partner.
 - `WazeAlert`: normalized alert data fetched from Waze Partner API per partner.
+- `WazeJam`: normalized traffic-jam data fetched from Waze Partner API per partner.
 
 All relationships are defined using Doctrine ORM annotations/attributes in PHP.
 
@@ -22,50 +23,50 @@ All relationships are defined using Doctrine ORM annotations/attributes in PHP.
 ## Entity-Relationship Diagram (text)
 
 ```text
-+------------------+       +----------------------+       +------------------------+
-|      partner     |       |        user          |       |    partner_api_link    |
-+------------------+       +----------------------+       +------------------------+
-| id               |<------| partner_id (FK, null)|       | id                     |
-| name             |       | id                   |       | partner_id (FK)        |
-| code             |       | email                |       | type                   |
-| slug             |       | password             |       | name                   |
-| email            |       | name                 |       | url                    |
-| description      |       | phone                |       | active                 |
-| bbox             |       | active               |       | created_at             |
-| api_token        |       | roles (JSON)         |       | updated_at             |
-| active           |       | created_at           |       +------------------------+
-| refresh_interval |       | updated_at           |                ^
-| created_at       |       | last_login_at        |                |
-| updated_at       |       +----------------------+                |
-+------------------+                |                              |
-        |                           |                              |
-        | 1                         | N                            | 1
-        |                           |                              |
-        +---------------------------+                              |
-        | users (Collection)                                      |
-        |                                                          |
-        +----------------------------------------------------------+
-                          | apiLinks (Collection)
-                          | N
-                          |
-        +-----------------+
-        | 1
-        |
-        +------------------------+
-        |      waze_alert        |
-        +------------------------+
-        | id                     |
-        | partner_id (FK)        |
-        | uuid (unique)          |
-        | type, subtype          |
-        | pub_millis             |
-        | location_x, location_y |
-        | street, city, country  |
-        | road_type, confidence, |
-        | reliability, ...       |
-        | created_at, updated_at |
-        +------------------------+
++------------------+
+|      partner     |
++------------------+
+| id               |
+| name             |
+| code             |
+| slug             |
+| email            |
+| description      |
+| bbox             |
+| api_token        |
+| active           |
+| refresh_interval |
+| created_at       |
+| updated_at       |
++------------------+
+       | 1
+       |
+       +------------------------------+------------------------------+------------------------------+
+       |                              |                              |                              |
+       | N                            | N                            | N                            | N
+       v                              v                              v                              v
++----------------------+    +------------------------+    +------------------------+    +------------------------+
+|        user          |    |    partner_api_link    |    |      waze_alert        |    |       waze_jam         |
++----------------------+    +------------------------+    +------------------------+    +------------------------+
+| id                   |    | id                     |    | id                     |    | id                     |
+| partner_id (FK,NULL) |    | partner_id (FK)        |    | partner_id (FK)        |    | partner_id (FK)        |
+| email                |    | type                   |    | uuid (unique)          |    | uuid (unique)          |
+| password             |    | name                   |    | type, subtype          |    | level, length, delay   |
+| name                 |    | url                    |    | pub_millis             |    | speed, speed_kmh       |
+| phone                |    | active                 |    | location_x, location_y |    | street, city, country  |
+| active               |    | created_at             |    | street, city, country  |    | road_type, pub_millis  |
+| roles (JSON)         |    | updated_at             |    | road_type, ratings...  |    | turn_type              |
+| created_at           |    +------------------------+    | created_at, updated_at |    | blocking_alert_uuid*   |
+| updated_at           |                                  +------------------------+    | line (JSON)            |
+| last_login_at        |                                                                    | created_at, updated_at |
++----------------------+                                                                    +------------------------+
+                                                                                                      |
+                                                                                                      | optional logical reference
+                                                                                                      v
+                                                                                         waze_alert.uuid
 ```
+
+`* blocking_alert_uuid` is an optional value received from Waze. It may match `waze_alert.uuid`, but it is not a physical database foreign key at this stage.
 
 ### Relationships
 
@@ -83,15 +84,18 @@ All relationships are defined using Doctrine ORM annotations/attributes in PHP.
 - `WazeAlert.partner` → `Partner.id`  
   - Type: **Many-to-One** (multiple alerts belong to one partner).  
   - **Non-nullable**: every alert must have a partner.  
-  - Inverse side: `Partner.wazeAlerts` (to be added as Collection if needed).  
-  - Alerts are fetched from `PartnerApiLink.url` (type = 'alerts') and stored normalized (no raw JSON column).  
+  - Alerts are fetched from `PartnerApiLink.url` (type = `alerts`) and stored normalized (no raw JSON column).  
 
-- `Partner` has:
-  - `users`: `Collection<User>`  
-  - `apiLinks`: `Collection<PartnerApiLink>`  
-  - (optionally) `wazeAlerts`: `Collection<WazeAlert>` (can be added as inverse side).  
+- `WazeJam.partner` → `Partner.id`  
+  - Type: **Many-to-One** (multiple traffic jams belong to one partner).  
+  - **Non-nullable**: every jam must have a partner.  
+  - Jams are fetched from `PartnerApiLink.url` (type = `traffic`) and stored normalized, except the route geometry stored as a JSON array in `line`.  
 
-There is **no direct relationship** between `User` and `PartnerApiLink` or `WazeAlert`; all are associated independently to `Partner`.
+- `WazeJam.blockingAlertUuid` → `WazeAlert.uuid`  
+  - Type: optional **logical reference** only; it is copied from the Waze response.  
+  - No Doctrine association and no physical FK are defined yet, which avoids failures when the referenced alert is absent from a feed or has not been imported yet.  
+
+There is no direct relationship between `User` and `PartnerApiLink`, `WazeAlert`, or `WazeJam`; all are associated independently to `Partner`.
 
 ---
 
@@ -109,19 +113,16 @@ There is **no direct relationship** between `User` and `PartnerApiLink` or `Waze
 - `refreshIntervalMinutes`
 - `createdAt`, `updatedAt`
 
-**Collections:**
+**Current collections:**
 
 - `cemadenData`, `cities`, `links`, `users`, `alerts`
 - `wazeCounts`, `routes`, `trafficJams`
 - `wazeTvtRoutes`, `wazeFeeds`, `apiLinks`
-- (optionally) `wazeAlerts` (if inverse side is added).
 
-**Key methods:**
+Optional inverse collections may be added later:
 
-- `getUsers(): Collection`
-- `getApiLinks(): Collection`
-- `addApiLink(PartnerApiLink $apiLink): static`
-- `removeApiLink(PartnerApiLink $apiLink): static`
+- `wazeAlerts`: `Collection<WazeAlert>`
+- `wazeJams`: `Collection<WazeJam>`
 
 ---
 
@@ -145,12 +146,6 @@ There is **no direct relationship** between `User` and `PartnerApiLink` or `Waze
 - `ROLE_OPERATOR`
 - `ROLE_VIEWER`
 
-Constants:
-
-```php
-private const ROLES_REQUIRING_PARTNER = [self::ROLE_PARTNER_ADMIN, self::ROLE_OPERATOR];
-```
-
 **Relationship:**
 
 ```php
@@ -159,24 +154,12 @@ private const ROLES_REQUIRING_PARTNER = [self::ROLE_PARTNER_ADMIN, self::ROLE_OP
 private ?Partner $partner = null;
 ```
 
-**Key methods:**
+**Business rules (enforced in entity):**
 
-- `getPartner(): ?Partner`
-- `setPartner(?Partner $partner): static`
-- `getRoles(): array`
-- `setRoles(array $roles): static`
-- `addRole(string $role): static`
-- `removeRole(string $role): static`
-- `isGlobalAdmin(): bool` (admin without partner)
-- `isPartnerScoped(): bool` (has a partner)
-
-**Current business rules (enforced in entity):**
-
-- **Global admins** (`ROLE_ADMIN` with `partner === null`) are allowed.
-- Users with roles `ROLE_PARTNER_ADMIN` or `ROLE_OPERATOR` **must** have a partner.
-- `setPartner()` throws `LogicException` if trying to remove partner from a user with those roles.
-- `setRoles()` and `addRole()` throw `InvalidArgumentException` if assigning such roles without a partner.
-- If partner is removed from a user with those roles, the operation is blocked (exception).
+- Global admins (`ROLE_ADMIN` with `partner === null`) are allowed.
+- Users with `ROLE_PARTNER_ADMIN` or `ROLE_OPERATOR` must have a partner.
+- `setPartner()` blocks removal of partner from a user with those roles.
+- `setRoles()` and `addRole()` block assignment of those roles without a partner.
 
 ---
 
@@ -188,38 +171,16 @@ private ?Partner $partner = null;
 
 - `id`
 - `partner` (ManyToOne → `Partner`)
-- `type` (`'alerts'` or `'traffic'`)
+- `type` (`alerts` or `traffic`)
 - `name`, `url`
 - `active`
 - `createdAt`, `updatedAt`
 
-**Constants:**
-
-```php
-public const TYPE_ALERTS = 'alerts';
-public const TYPE_TRAFFIC = 'traffic';
-```
-
-**Relationship:**
-
-```php
-#[ORM\ManyToOne(inversedBy: 'apiLinks')]
-private ?Partner $partner = null;
-```
-
-**Key methods:**
-
-- `getPartner(): ?Partner`
-- `setPartner(?Partner $partner): static`
-- `getType(): ?string`
-- `setType(string $type): static` (validates `alerts` / `traffic`)
-- `isAlerts(): bool`
-- `isTraffic(): bool`
-
 **Business rules:**
 
 - `type` must be either `alerts` or `traffic`.
-- Each link belongs to exactly one partner.
+- Each API link belongs to one partner.
+- Active links are the sources used by collection jobs.
 
 ---
 
@@ -227,170 +188,111 @@ private ?Partner $partner = null;
 
 **File:** `src/Entity/WazeAlert.php`
 
-**Purpose:** Store normalized Waze alert data fetched from `PartnerApiLink` (type `alerts`). No raw JSON column; all relevant fields are stored in dedicated columns.
+**Purpose:** Stores normalized alert data fetched from a partner's Waze API feed. No raw JSON column is stored.
 
 **Main fields:**
 
-- `id`
-- `partner` (ManyToOne → `Partner`, **not null**)
-- `uuid` (unique, from Waze API)
-- `type` (e.g. `ROAD_CLOSED`, `HAZARD`, `ACCIDENT`, `WEATHERHAZARD`, `JAM`)
-- `subtype` (e.g. `HAZARD_ON_ROAD_POT_HOLE`, etc.)
-- `pubMillis` (publication time in milliseconds since epoch, stored as BIGINT string)
-- `reportByMunicipalityUser` (string "true"/"false")
-- `reportRating`, `confidence`, `reliability` (integers)
-- `locationX`, `locationY` (longitude/latitude as DECIMAL)
-- `street`, `city`, `country` (strings)
-- `roadType` (integer code from Waze)
-- `nThumbsUp`, `magvar` (integers)
-- `createdAt`, `updatedAt` (local timestamps)
-
-**Relationship:**
-
-```php
-#[ORM\ManyToOne]
-#[ORM\JoinColumn(nullable: false)]
-private ?Partner $partner = null;
-```
-
-**Key methods:**
-
-- `getPartner(): ?Partner`
-- `setPartner(?Partner $partner): static`
-- `getUuid(): ?string`
-- `getType(): ?string`
-- `getSubtype(): ?string`
-- `getPubMillis(): ?string`
-- `getLocationX(): ?string`, `getLocationY(): ?string`
-- `getLatitude(): ?float`, `getLongitude(): ?float` (convenience methods)
-- `getPubDateTime(): ?\DateTimeImmutable` (converts pubMillis to DateTime)
-- Getters/setters for all fields.
+- `id`, `partner` (ManyToOne → `Partner`, not null)
+- `uuid` (unique Waze identifier)
+- `type`, `subtype`, `pubMillis`
+- `reportByMunicipalityUser`, `reportRating`, `confidence`, `reliability`
+- `locationX` (longitude), `locationY` (latitude)
+- `street`, `city`, `country`, `roadType`
+- `nThumbsUp`, `magvar`
+- `createdAt`, `updatedAt`
 
 **Business rules:**
 
-- Every alert must belong to a partner (`partner_id NOT NULL`).
-- `uuid` is unique across all alerts (prevents duplicates from same feed).
-- Data is stored normalized; no raw JSON column.
-- Alerts are expected to be inserted/updated by a background job or command that consumes `PartnerApiLink` URLs (type `alerts`).
+- Every alert must have a partner (`partner_id NOT NULL`).
+- `uuid` is globally unique to prevent duplicate alert imports.
+- Alert fields are stored in separate columns; no raw JSON payload is saved.
+
+---
+
+### `WazeJam`
+
+**File:** `src/Entity/WazeJam.php`
+
+**Purpose:** Stores normalized Waze traffic-jam data fetched from a partner's traffic feed. No raw JSON payload is stored.
+
+**Main fields:**
+
+- `id`, `partner` (ManyToOne → `Partner`, not null)
+- `uuid` (unique Waze jam identifier)
+- `level` (severity), `length` (meters), `delay` (seconds)
+- `speed`, `speedKMH`
+- `street`, `city`, `country`, `roadType`
+- `pubMillis`, `turnType`
+- `blockingAlertUuid` (optional Waze alert UUID reference)
+- `line` (JSON geometry array of points `{x, y}`)
+- `createdAt`, `updatedAt`
+
+**Business rules:**
+
+- Every jam must have a partner (`partner_id NOT NULL`).
+- `uuid` is globally unique to prevent duplicate jam imports.
+- The `line` field stores only the geometry array from the response; it is not a full raw payload.
+- `blockingAlertUuid` is optional and remains a string reference, not a foreign key, at this stage.
 
 ---
 
 ## Business Rules Summary
 
-### Current rules
-
 1. **User ↔ Partner**
-   - A user **can** exist without a partner only if they are a global admin (`ROLE_ADMIN` without partner).
-   - Users with roles `ROLE_PARTNER_ADMIN` or `ROLE_OPERATOR` **must** have a partner.
-   - Removing a partner from such a user is blocked (throws `LogicException`).
-   - Assigning those roles to a user without a partner is blocked (throws `InvalidArgumentException`).
+   - A user can exist without a partner only if they are a global admin (`ROLE_ADMIN` without partner).
+   - `ROLE_PARTNER_ADMIN` and `ROLE_OPERATOR` require a partner.
 
 2. **PartnerApiLink ↔ Partner**
-   - Every API link must belong to a partner.
-   - Type is restricted to `alerts` or `traffic`.
+   - Every API link belongs to one partner.
+   - `alerts` links feed `WazeAlert`; `traffic` links feed `WazeJam`.
 
 3. **WazeAlert ↔ Partner**
-   - Every alert must belong to a partner.
-   - Alerts are fetched from partner's `PartnerApiLink` (type `alerts`).
-   - Each alert has a unique `uuid` from Waze.
-   - Data is stored normalized (no raw JSON).
+   - Every alert is owned by one partner.
+   - Data is normalized into dedicated columns, without raw JSON storage.
 
-4. **Data scoping**
-   - Users are scoped to a partner via `User.partner` (except global admins).
-   - API links and alerts are configuration and data per partner.
-   - No direct link between a specific user and a specific API link or alert.
+4. **WazeJam ↔ Partner**
+   - Every jam is owned by one partner.
+   - Data is normalized into dedicated columns; only its route line is stored in JSON.
+   - A jam may carry an optional logical reference to an alert through `blockingAlertUuid`.
 
 ---
 
-## Planned / Possible Evolutions
+## Planned Evolutions
 
-Use this section to track changes as development progresses.
+### Inverse collections on Partner
 
-### 1. Enforce "every user must have a partner" (if rules change)
+If navigation from `Partner` to imported data is needed, add:
 
-If the rule changes to **"all users must belong to a partner"** (no global admins):
+```php
+#[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeAlert::class)]
+private Collection $wazeAlerts;
 
-- **Database:**
-  - Change `user.partner_id` to `NOT NULL` via migration.
-- **Entity:**
-  - Update `User.php`:
-    ```php
-    #[ORM\JoinColumn(nullable: false)]
-    private ?Partner $partner = null;
-    ```
-  - Optionally require `Partner` in the constructor:
-    ```php
-    public function __construct(Partner $partner) { ... }
-    ```
-  - Throw exception when trying to set `null`:
-    ```php
-    public function setPartner(?Partner $partner): static
-    {
-        if ($partner === null && $this->partner !== null) {
-            throw new \LogicException('Cannot remove partner from user; every user must have a partner.');
-        }
-        // ...
-    }
-    ```
+#[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeJam::class)]
+private Collection $wazeJams;
+```
 
-### 2. Global admin vs partner-scoped users
+Also add collection initialization and helper methods in `Partner.php`.
 
-Current design supports:
+### Strong alert/jam link
 
-- **Global admins**: `ROLE_ADMIN` with `partner === null`.
-- **Partner-scoped users**: any role with `partner !== null`.
-
-Documented constraints:
-
-- Only global admins can exist without a partner.
-- Partner admins can only manage users within their partner.
-
-### 3. Waze jams (traffic) entity
-
-If you later want to store `jams` from the same Waze feed:
-
-- Create a `WazeJam` entity with fields like `uuid`, `level`, `length`, `delay`, `speed`, `line` (maybe JSON or separate table), `street`, `city`, `pubMillis`, `partner_id`.
-- Add relationship `WazeJam.partner` → `Partner`.
-- Update this document accordingly.
-
-### 4. Inverse side for WazeAlert on Partner
-
-If you need to navigate from `Partner` to its alerts:
-
-- Add to `Partner.php`:
-  ```php
-  #[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeAlert::class)]
-  private Collection $wazeAlerts;
-  ```
-- Add `getWazeAlerts(): Collection` and helper methods.
+If imports guarantee that a blocking alert always exists in the same partner, `blockingAlertUuid` can later become a nullable `ManyToOne` association to `WazeAlert`. Keep the UUID column or add a migration strategy before making that change.
 
 ---
 
 ## Change Log
 
+- **2026-09-12** (WazeJam)
+  - Added `WazeJam` entity for traffic-jam records from Waze feeds.
+  - Added required `partner_id`, unique `uuid`, speed, severity, delay, address, publication, and geometry fields.
+  - Stored route geometry in `line` JSON; did not add raw payload storage.
+  - Documented `blockingAlertUuid` as an optional logical reference to `WazeAlert.uuid`.
+
 - **2026-09-12** (WazeAlert)
   - Added `WazeAlert` entity with normalized fields (no raw JSON).
   - Each alert has `partner_id`, `uuid` (unique), type, subtype, location, and metadata.
-  - Updated ER diagram and business rules.
 
-- **2026-09-12** (update)
-  - Strengthened `User` entity validation:
-    - `setPartner()` now throws `LogicException` when removing partner from a user with `ROLE_PARTNER_ADMIN` or `ROLE_OPERATOR`.
-    - `setRoles()` and `addRole()` validate that roles requiring partner are not assigned when partner is null.
-    - Clarified business rule: global admin may have no partner; other roles require partner.
+- **2026-09-12** (User partner rule)
+  - Strengthened `User` entity validation: global admin may have no partner; partner roles require one.
 
 - **2026-09-12** (initial)
   - Initial documentation of `Partner`, `User`, and `PartnerApiLink` relationships.
-  - Added ER diagram in text format.
-  - Described current business rules and possible evolutions.
-
----
-
-## How to Update This File
-
-When modifying entities:
-
-1. Update the **Entity Details** section (fields, relationships, methods).
-2. Adjust the **ER diagram** if new entities or relationships are added.
-3. Record new or changed **business rules** in the corresponding section.
-4. Add an entry in the **Change Log** with date and summary.
