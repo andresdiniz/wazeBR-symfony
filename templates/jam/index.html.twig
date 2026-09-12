@@ -1,0 +1,38 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Congestionamentos{% endblock %}
+
+{% block page_stylesheets %}
+<style>
+    .jams-list { list-style: none; padding: 0; margin: 0; }
+    .jam-item { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+    .jam-item h3 { margin: 0 0 8px 0; font-size: 1rem; }
+    .jam-meta { font-size: 0.85rem; color: #666; }
+</style>
+{% endblock %}
+
+{% block body_class %}dashboard-page{% endblock %}
+
+{% block body %}
+<div class="dashboard-layout">
+    {% include 'partials/sidebar.html.twig' %}
+    <main class="dashboard-content">
+        {% include 'partials/topbar.html.twig' %}
+        <div class="dashboard-content-inner">
+            <h1>Congestionamentos</h1>
+            {% if jams is empty %}
+                <p>Nenhum congestionamento encontrado.</p>
+            {% else %}
+                <ul class="jams-list">
+                    {% for jam in jams %}
+                        <li class="jam-item">
+                            <h3>Jam #{{ jam.id }} - Level {{ jam.level }}</h3>
+                            <p class="jam-meta">{{ jam.reportTime|date('d/m/Y H:i') }}</p>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </div>
+    </main>
+</div>
+{% endblock %}
