@@ -1,11 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use App\Repository\PartnerRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
-use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: PartnerRepository::class)]
@@ -20,140 +21,204 @@ class Partner
     #[ORM\Column(length: 255)]
     private ?string $name = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
+    #[ORM\Column(length: 50, unique: true)]
     private ?string $code = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    private ?string $slug = null;
+    private ?string $city = null;
+
+    #[ORM\Column(length: 2, nullable: true)]
+    private ?string $state = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    private ?string $email = null;
+    private ?string $apiKey = null;
 
-    #[ORM\Column(type: Types::TEXT, nullable: true)]
-    private ?string $description = null;
-
-    #[ORM\Column(type: Types::TEXT, nullable: true)]
-    private ?string $bbox = null;
-
-    #[ORM\Column(type: Types::TEXT, nullable: true)]
-    private ?string $cemadenStates = null;
-
-    #[ORM\Column(length: 64, nullable: true)]
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $apiToken = null;
 
-    #[ORM\Column(nullable: true)]
-    private ?bool $active = null;
-
-    #[ORM\Column(nullable: true)]
-    private ?int $refreshIntervalMinutes = null;
-
-    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
-    private ?\DateTimeInterface $createdAt = null;
-
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
-    private ?\DateTimeInterface $updatedAt = null;
-
-    #[ORM\OneToMany(mappedBy: 'partner', targetEntity: CemadenData::class)]
-    private Collection $cemadenData;
-
-    #[ORM\OneToMany(mappedBy: 'partner', targetEntity: MonitoredCity::class)]
-    private Collection $cities;
-
-    #[ORM\OneToMany(mappedBy: 'partner', targetEntity: MonitoredLink::class)]
-    private Collection $links;
-
-    #[ORM\OneToMany(mappedBy: 'partner', targetEntity: User::class)]
+    #[ORM\OneToMany(targetEntity: User::class, mappedBy: 'partner')]
     private Collection $users;
 
-    #[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeAlert::class)]
-    private Collection $alerts;
+    #[ORM\OneToMany(targetEntity: WazeAlert::class, mappedBy: 'partner')]
+    private Collection $wazeAlerts;
 
-    #[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeCount::class)]
-    private Collection $wazeCounts;
+    #[ORM\OneToMany(targetEntity: WazeJam::class, mappedBy: 'partner')]
+    private Collection $wazeJams;
 
-    #[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeRoute::class)]
-    private Collection $routes;
-
-    #[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeTrafficJam::class)]
-    private Collection $trafficJams;
-
-    #[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeTvtRoute::class)]
-    private Collection $wazeTvtRoutes;
-
-    #[ORM\OneToMany(mappedBy: 'partner', targetEntity: WazeFeed::class)]
-    private Collection $wazeFeeds;
-
-    #[ORM\OneToMany(mappedBy: 'partner', targetEntity: PartnerApiLink::class, orphanRemoval: true)]
-    private Collection $apiLinks;
+    #[ORM\OneToMany(targetEntity: WeatherLocation::class, mappedBy: 'partner')]
+    private Collection $weatherLocations;
 
     public function __construct()
     {
-        $this->cemadenData = new ArrayCollection();
-        $this->cities = new ArrayCollection();
-        $this->links = new ArrayCollection();
         $this->users = new ArrayCollection();
-        $this->alerts = new ArrayCollection();
-        $this->wazeCounts = new ArrayCollection();
-        $this->routes = new ArrayCollection();
-        $this->trafficJams = new ArrayCollection();
-        $this->wazeTvtRoutes = new ArrayCollection();
-        $this->wazeFeeds = new ArrayCollection();
-        $this->apiLinks = new ArrayCollection();
+        $this->wazeAlerts = new ArrayCollection();
+        $this->wazeJams = new ArrayCollection();
+        $this->weatherLocations = new ArrayCollection();
     }
 
-    public function getId(): ?int { return $this->id; }
-    public function getName(): ?string { return $this->name; }
-    public function setName(string $name): static { $this->name = $name; return $this; }
-    public function getCode(): ?string { return $this->code; }
-    public function setCode(?string $code): static { $this->code = $code; return $this; }
-    public function getSlug(): ?string { return $this->slug; }
-    public function setSlug(?string $slug): static { $this->slug = $slug; return $this; }
-    public function getEmail(): ?string { return $this->email; }
-    public function setEmail(?string $email): static { $this->email = $email; return $this; }
-    public function getDescription(): ?string { return $this->description; }
-    public function setDescription(?string $description): static { $this->description = $description; return $this; }
-    public function getBbox(): ?string { return $this->bbox; }
-    public function setBbox(?string $bbox): static { $this->bbox = $bbox; return $this; }
-    public function getCemadenStates(): ?string { return $this->cemadenStates; }
-    public function setCemadenStates(?string $cemadenStates): static { $this->cemadenStates = $cemadenStates; return $this; }
-    public function getApiToken(): ?string { return $this->apiToken; }
-    public function setApiToken(?string $apiToken): static { $this->apiToken = $apiToken; return $this; }
-    public function isActive(): ?bool { return $this->active; }
-    public function setActive(?bool $active): static { $this->active = $active; return $this; }
-    public function getRefreshIntervalMinutes(): ?int { return $this->refreshIntervalMinutes; }
-    public function setRefreshIntervalMinutes(?int $refreshIntervalMinutes): static { $this->refreshIntervalMinutes = $refreshIntervalMinutes; return $this; }
-    public function getCreatedAt(): ?\DateTimeInterface { return $this->createdAt; }
-    public function setCreatedAt(\DateTimeInterface $createdAt): static { $this->createdAt = $createdAt; return $this; }
-    public function getUpdatedAt(): ?\DateTimeInterface { return $this->updatedAt; }
-    public function setUpdatedAt(?\DateTimeInterface $updatedAt): static { $this->updatedAt = $updatedAt; return $this; }
-
-    public function getCemadenData(): Collection { return $this->cemadenData; }
-    public function getCities(): Collection { return $this->cities; }
-    public function getLinks(): Collection { return $this->links; }
-    public function getUsers(): Collection { return $this->users; }
-    public function getAlerts(): Collection { return $this->alerts; }
-    public function getWazeCounts(): Collection { return $this->wazeCounts; }
-    public function getRoutes(): Collection { return $this->routes; }
-    public function getTrafficJams(): Collection { return $this->trafficJams; }
-    public function getWazeTvtRoutes(): Collection { return $this->wazeTvtRoutes; }
-    public function getWazeFeeds(): Collection { return $this->wazeFeeds; }
-
-    /** @return Collection<int, PartnerApiLink> */
-    public function getApiLinks(): Collection { return $this->apiLinks; }
-
-    public function addApiLink(PartnerApiLink $apiLink): static
+    public function getId(): ?int
     {
-        if (!$this->apiLinks->contains($apiLink)) {
-            $this->apiLinks->add($apiLink);
-            $apiLink->setPartner($this);
+        return $this->id;
+    }
+
+    public function getName(): ?string
+    {
+        return $this->name;
+    }
+
+    public function setName(?string $name): static
+    {
+        $this->name = $name;
+        return $this;
+    }
+
+    public function getCode(): ?string
+    {
+        return $this->code;
+    }
+
+    public function setCode(?string $code): static
+    {
+        $this->code = $code;
+        return $this;
+    }
+
+    public function getCity(): ?string
+    {
+        return $this->city;
+    }
+
+    public function setCity(?string $city): static
+    {
+        $this->city = $city;
+        return $this;
+    }
+
+    public function getState(): ?string
+    {
+        return $this->state;
+    }
+
+    public function setState(?string $state): static
+    {
+        $this->state = $state;
+        return $this;
+    }
+
+    public function getApiKey(): ?string
+    {
+        return $this->apiKey;
+    }
+
+    public function setApiKey(?string $apiKey): static
+    {
+        $this->apiKey = $apiKey;
+        return $this;
+    }
+
+    public function getApiToken(): ?string
+    {
+        return $this->apiToken;
+    }
+
+    public function setApiToken(?string $apiToken): static
+    {
+        $this->apiToken = $apiToken;
+        return $this;
+    }
+
+    public function getUsers(): Collection
+    {
+        return $this->users;
+    }
+
+    public function addUser(User $user): static
+    {
+        if (!$this->users->contains($user)) {
+            $this->users->add($user);
+            $user->setPartner($this);
         }
         return $this;
     }
 
-    public function removeApiLink(PartnerApiLink $apiLink): static
+    public function removeUser(User $user): static
     {
-        if ($this->apiLinks->removeElement($apiLink) && $apiLink->getPartner() === $this) {
-            $apiLink->setPartner(null);
+        if ($this->users->removeElement($user)) {
+            if ($user->getPartner() === $this) {
+                $user->setPartner(null);
+            }
+        }
+        return $this;
+    }
+
+    public function getWazeAlerts(): Collection
+    {
+        return $this->wazeAlerts;
+    }
+
+    public function addWazeAlert(WazeAlert $wazeAlert): static
+    {
+        if (!$this->wazeAlerts->contains($wazeAlert)) {
+            $this->wazeAlerts->add($wazeAlert);
+            $wazeAlert->setPartner($this);
+        }
+        return $this;
+    }
+
+    public function removeWazeAlert(WazeAlert $wazeAlert): static
+    {
+        if ($this->wazeAlerts->removeElement($wazeAlert)) {
+            if ($wazeAlert->getPartner() === $this) {
+                $wazeAlert->setPartner(null);
+            }
+        }
+        return $this;
+    }
+
+    public function getWazeJams(): Collection
+    {
+        return $this->wazeJams;
+    }
+
+    public function addWazeJam(WazeJam $wazeJam): static
+    {
+        if (!$this->wazeJams->contains($wazeJam)) {
+            $this->wazeJams->add($wazeJam);
+            $wazeJam->setPartner($this);
+        }
+        return $this;
+    }
+
+    public function removeWazeJam(WazeJam $wazeJam): static
+    {
+        if ($this->wazeJams->removeElement($wazeJam)) {
+            if ($wazeJam->getPartner() === $this) {
+                $wazeJam->setPartner(null);
+            }
+        }
+        return $this;
+    }
+
+    public function getWeatherLocations(): Collection
+    {
+        return $this->weatherLocations;
+    }
+
+    public function addWeatherLocation(WeatherLocation $weatherLocation): static
+    {
+        if (!$this->weatherLocations->contains($weatherLocation)) {
+            $this->weatherLocations->add($weatherLocation);
+            $weatherLocation->setPartner($this);
+        }
+        return $this;
+    }
+
+    public function removeWeatherLocation(WeatherLocation $weatherLocation): static
+    {
+        if ($this->weatherLocations->removeElement($weatherLocation)) {
+            if ($weatherLocation->getPartner() === $this) {
+                $weatherLocation->setPartner(null);
+            }
         }
         return $this;
     }
