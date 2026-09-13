@@ -6,14 +6,14 @@ services:
         autowire: true
         autoconfigure: true
 
-    App\\:
+    'App\\':
         resource: '../src/'
         exclude:
             - '../src/DependencyInjection/'
             - '../src/Entity/'
             - '../src/Kernel.php'
 
-    App\\Service\\PartnerFeedRawStorage:
+    'App\\Service\\PartnerFeedRawStorage':
         arguments:
             $projectDir: '%kernel.project_dir%'
             $enabled: '%partner_feeds_save_raw%'
