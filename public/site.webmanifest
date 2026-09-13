@@ -1,0 +1,23 @@
+{
+    "name": "WazeBR — Centro Operacional",
+    "short_name": "WazeBR",
+    "description": "Monitoramento inteligente de trânsito e mobilidade urbana.",
+    "start_url": "/dashboard",
+    "display": "standalone",
+    "background_color": "#f5f7fb",
+    "theme_color": "#2563eb",
+    "lang": "pt-BR",
+    "icons": [
+        {
+            "src": "/favicon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/favicon.ico",
+            "sizes": "48x48",
+            "type": "image/x-icon"
+        }
+    ]
+}

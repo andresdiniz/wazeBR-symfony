@@ -2,21 +2,48 @@ nelmio_security:
     clickjacking:
         paths:
             '^/.*': DENY
+
     xss_protection:
         enabled: true
         mode_block: true
+
     content_type:
         nosniff: true
+
     referrer_policy:
         enabled: true
         policies:
-            - no-referrer-when-downgrade
+            - strict-origin-when-cross-origin
+
     csp:
         enabled: true
         enforce:
             default-src: ['self']
-            script-src: ['self', 'https://cdn.jsdelivr.net']
-            style-src: ['self', 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com']
-            img-src: ['self', 'data:', 'https://*.tile.openstreetmap.org']
-            font-src: ['self', 'https://fonts.gstatic.com']
-            connect-src: ['self', 'https://api.waze.com']
+            script-src:
+                - 'self'
+                - 'nonce'
+                - 'strict-dynamic'
+                - 'https://cdn.jsdelivr.net'
+                - 'https://ga.jspm.io'
+            style-src:
+                - 'self'
+                - 'unsafe-inline'
+                - 'https://cdn.jsdelivr.net'
+                - 'https://fonts.googleapis.com'
+            img-src:
+                - 'self'
+                - 'data:'
+                - 'https:'
+            font-src:
+                - 'self'
+                - 'data:'
+                - 'https://fonts.gstatic.com'
+            connect-src:
+                - 'self'
+                - 'https://api.waze.com'
+            frame-ancestors:
+                - 'none'
+            base-uri:
+                - 'self'
+            form-action:
+                - 'self'
