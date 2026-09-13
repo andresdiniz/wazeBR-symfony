@@ -39,7 +39,7 @@ final class DashboardRepository extends ServiceEntityRepository
 
         $latestSnapshots = [];
         foreach ($snapshots as $snapshot) {
-            $routeId = $this->scalarValue($snapshot, ['getRouteId', 'getWazeRouteId']);
+            $routeId = $this->value($snapshot, 'getRouteId');
             if ($routeId !== null && $routeId !== '' && !isset($latestSnapshots[(string) $routeId])) {
                 $latestSnapshots[(string) $routeId] = $snapshot;
             }
@@ -47,33 +47,34 @@ final class DashboardRepository extends ServiceEntityRepository
 
         $recentRoutes = [];
         foreach ($routes as $route) {
-            $routeId = $this->scalarValue($route, ['getId']);
+            $routeId = $this->value($route, 'getId');
             $snapshot = $routeId !== null ? ($latestSnapshots[(string) $routeId] ?? null) : null;
             if ($snapshot === null) {
                 continue;
             }
 
-            $time = $this->numericValue($snapshot, ['getTime']);
-            $historicTime = $this->numericValue($snapshot, ['getHistoricTime']);
+            $time = $this->number($snapshot, 'getTime');
+            $historicTime = $this->number($snapshot, 'getHistoricTime');
             $delaySeconds = $time !== null && $historicTime !== null ? max(0, $historicTime - $time) : null;
-            $jamLevel = $this->scalarValue($snapshot, ['getJamLevel']);
-            $recordedAt = $this->firstValue($snapshot, ['getRecordedAt']);
 
             $recentRoutes[] = [
                 'id' => $routeId,
-                'name' => $this->firstValue($snapshot, ['getName']) ?? $this->firstValue($route, ['getName', 'getRouteName', 'getSlug', 'getCode']) ?? 'Rota monitorada',
-                'city' => $this->firstValue($snapshot, ['getCity']) ?? $this->firstValue($route, ['getCity', 'getMunicipality', 'getRegion']),
+                'route_id' => $routeId,
+                'waze_route_id' => $this->value($route, 'getRouteId'),
+                'name' => $this->value($snapshot, 'getName') ?? $this->value($route, 'getName') ?? 'Rota monitorada',
+                'city' => $this->value($snapshot, 'getCity') ?? 'Local não informado',
+                'state' => $this->value($snapshot, 'getState'),
                 'status' => $delaySeconds !== null && $delaySeconds > 0 ? 'Atrasada' : 'Normal',
                 'time' => $time,
                 'historic_time' => $historicTime,
                 'delay_seconds' => $delaySeconds,
                 'delay_minutes' => $delaySeconds !== null ? round($delaySeconds / 60, 1) : null,
-                'jam_level' => $jamLevel,
-                'recorded_at' => $recordedAt,
+                'jam_level' => $this->value($snapshot, 'getJamLevel'),
+                'recorded_at' => $this->value($snapshot, 'getRecordedAt'),
             ];
         }
 
-        usort($recentRoutes, static fn (array $left, array $right): int => ($right['delay_seconds'] ?? -1) <=> ($left['delay_seconds'] ?? -1));
+        usort($recentRoutes, static fn (array $a, array $b): int => ($b['delay_seconds'] ?? -1) <=> ($a['delay_seconds'] ?? -1));
 
         $alertsByType = [];
         foreach ($recentAlerts as $alert) {
@@ -96,39 +97,19 @@ final class DashboardRepository extends ServiceEntityRepository
         ];
     }
 
-    private function scalarValue(object $entity, array $methods): mixed
+    private function value(object $entity, string $method): mixed
     {
-        foreach ($methods as $method) {
-            if (!method_exists($entity, $method)) {
-                continue;
-            }
-            $value = $entity->{$method}();
-            if (is_scalar($value) || $value === null) {
-                return $value;
-            }
+        if (!method_exists($entity, $method)) {
+            return null;
         }
 
-        return null;
+        $value = $entity->{$method}();
+        return is_scalar($value) || $value instanceof \DateTimeInterface || $value === null ? $value : null;
     }
 
-    private function numericValue(object $entity, array $methods): ?float
+    private function number(object $entity, string $method): ?float
     {
-        $value = $this->scalarValue($entity, $methods);
+        $value = $this->value($entity, $method);
         return is_numeric($value) ? (float) $value : null;
-    }
-
-    private function firstValue(object $entity, array $methods): mixed
-    {
-        foreach ($methods as $method) {
-            if (!method_exists($entity, $method)) {
-                continue;
-            }
-            $value = $entity->{$method}();
-            if ($value !== null && $value !== '') {
-                return $value;
-            }
-        }
-
-        return null;
     }
 }
