@@ -1,27 +1,14 @@
-{% extends 'layouts/dashboard.html.twig' %}
+{% extends 'base.html.twig' %}
 
-{% block title %}Dashboard | WazeBR{% endblock %}
+{% block title %}Dashboard{% endblock %}
 
-{% block stylesheets %}
-    {{ parent() }}
-    <link rel="stylesheet" href="{{ asset('css/pages/dashboard.css') }}">
-{% endblock %}
-
-{% block content %}
-{% set alerts = stats.recent_alerts|default([]) %}
-{% set jams = stats.recent_jams|default([]) %}
-{% set routes = stats.recent_routes|default([]) %}
-<div class="dashboard-page" data-dashboard data-total-occurrences="{{ (stats.total_alerts|default(0)) + (stats.total_jams|default(0)) }}" data-alerts='{{ alerts|json_encode|e('html_attr') }}' data-jams='{{ jams|json_encode|e('html_attr') }}'>
-    <div class="dashboard-container">
-        <header class="dashboard-page-header"><div><span class="dashboard-eyebrow"><i></i> Centro operacional</span><h1>Visão geral da mobilidade</h1><p>Trânsito, alertas, rotas e condições operacionais em um só lugar.</p></div><div class="dashboard-header-tools"><span class="dashboard-last-update"><i></i> <time data-dashboard-clock>agora</time></span><button type="button" class="dashboard-button is-secondary" data-action="refresh-dashboard"><span>↻</span> Atualizar</button></div></header>
-        <section class="dashboard-filter-panel" aria-label="Filtros do dashboard"><div class="dashboard-filter-heading"><div><span class="dashboard-panel-kicker">Explorar dados</span><h2>Filtros e navegação</h2></div><button type="button" class="dashboard-button is-link" data-action="clear-filters">Limpar filtros</button></div><div class="dashboard-filter-form"><label class="dashboard-filter-field"><span>Período</span><select data-filter="period"><option value="all">Todos os registros</option><option value="today">Hoje</option><option value="week">Últimos 7 dias</option><option value="month">Últimos 30 dias</option></select></label><label class="dashboard-filter-field"><span>Buscar ocorrência</span><input type="search" data-filter="query" placeholder="Tipo, rua, cidade ou rota"></label><label class="dashboard-filter-field"><span>Seção</span><select data-filter="section"><option value="all">Todas</option><option value="alerts">Alertas</option><option value="jams">Congestionamentos</option><option value="routes">Rotas</option></select></label><div class="dashboard-filter-actions"><button type="button" class="dashboard-button is-primary" data-action="apply-filters">Aplicar filtros</button><button type="button" class="dashboard-button is-secondary" data-action="clear-filters">Limpar</button></div></div><p class="dashboard-filter-feedback" data-filter-feedback aria-live="polite"></p></section>
-        <section class="dashboard-kpi-grid" aria-label="Indicadores principais"><article class="dashboard-kpi-card kpi-blue"><strong class="dashboard-kpi-value" data-count-value="{{ stats.total_alerts|default(0) }}">{{ stats.total_alerts|default(0) }}</strong><span class="dashboard-kpi-label">Alertas registrados</span></article><article class="dashboard-kpi-card kpi-orange"><strong class="dashboard-kpi-value" data-count-value="{{ stats.total_jams|default(0) }}">{{ stats.total_jams|default(0) }}</strong><span class="dashboard-kpi-label">Congestionamentos</span></article><article class="dashboard-kpi-card kpi-green"><strong class="dashboard-kpi-value" data-count-value="{{ stats.total_weather|default(0) }}">{{ stats.total_weather|default(0) }}</strong><span class="dashboard-kpi-label">Observações climáticas</span></article><article class="dashboard-kpi-card kpi-purple"><strong class="dashboard-kpi-value" data-count-value="{{ stats.total_partners|default(0) }}">{{ stats.total_partners|default(0) }}</strong><span class="dashboard-kpi-label">Parceiros ativos</span></article></section>
-        <div class="dashboard-content-grid"><section class="dashboard-panel data-section" data-section="alerts"><header class="dashboard-panel-header"><h2>Alertas recentes</h2><span class="dashboard-panel-count is-orange">{{ alerts|length }}</span></header><div class="dashboard-data-list" data-list="alerts">{% for alert in alerts %}<div class="dashboard-data-row" data-search-text="{{ (alert.type|default('') ~ ' ' ~ alert.subtype|default('') ~ ' ' ~ alert.city|default(''))|lower }}"><strong>{{ alert.type|default('Alerta') }}</strong><small>#{{ alert.id }} · {{ alert.subtype|default('Subtipo não informado') }} · {{ alert.city|default('') }}</small><time>{{ alert.pubDateTime ? alert.pubDateTime|date('d/m H:i') : '—' }}</time></div>{% else %}<div class="dashboard-empty">Nenhum alerta recente.</div>{% endfor %}</div><div class="dashboard-pagination" data-pagination="alerts"></div></section><section class="dashboard-panel data-section" data-section="jams"><header class="dashboard-panel-header"><h2>Congestionamentos</h2><span class="dashboard-panel-count is-orange">{{ jams|length }}</span></header><div class="dashboard-data-list" data-list="jams">{% for jam in jams %}<div class="dashboard-data-row" data-search-text="{{ (jam.street|default('') ~ ' ' ~ jam.city|default(''))|lower }}"><strong>{{ jam.street|default('Via não informada') }}</strong><small>{{ jam.city|default('') }} · {{ jam.speedKmh|default(0) }} km/h</small></div>{% else %}<div class="dashboard-empty">Nenhum congestionamento.</div>{% endfor %}</div><div class="dashboard-pagination" data-pagination="jams"></div></section><section class="dashboard-panel data-section" data-section="routes"><header class="dashboard-panel-header"><h2>Maior atraso por rota</h2><span class="dashboard-panel-count is-orange">{{ routes|length }}</span></header><div class="dashboard-data-list" data-list="routes">{% for route in routes %}<div class="dashboard-data-row" data-search-text="{{ (route.name|default('') ~ ' ' ~ route.city|default('') ~ ' ' ~ route.waze_route_id|default(''))|lower }}"><strong>{{ route.name|default('Rota monitorada') }}</strong><small>{{ route.city|default('') }} · atual {{ route.time|default('—') }}s · histórico {{ route.historic_time|default('—') }}s</small><span class="dashboard-severity">{% if route.delay_minutes is not null %}+{{ route.delay_minutes }} min{% else %}{{ route.jam_level|default('Sem atraso') }}{% endif %}</span></div>{% else %}<div class="dashboard-empty">Nenhuma rota encontrada.</div>{% endfor %}</div><div class="dashboard-pagination" data-pagination="routes"></div></section></div>
+{% block body %}
+    <div class="dashboard-page">
+        {# Conteúdo do dashboard #}
     </div>
-</div>
 {% endblock %}
 
 {% block javascripts %}
     {{ parent() }}
-    {{ importmap('js/pages/dashboard.js') }}
+    {{ importmap('dashboard') }}
 {% endblock %}
