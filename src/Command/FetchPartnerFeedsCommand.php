@@ -26,30 +26,83 @@ final class FetchPartnerFeedsCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+        $totals = $this->emptyCounters();
 
         $partners = $this->entityManager
             ->getRepository(Partner::class)
             ->findBy([], ['lastFetchAt' => 'ASC', 'id' => 'ASC']);
 
         foreach ($partners as $partner) {
-            $io->title(sprintf(
+            $io->section(sprintf(
                 'Processando partner %d — %s',
                 $partner->getId(),
                 $partner->getName()
             ));
 
+            $counters = $this->emptyCounters();
             $partnerCity = $this->normalizeCity($partner->getCity());
 
             if ($partnerCity === null) {
                 $io->warning(sprintf(
-                    'Partner %d (%s) não possui cidade configurada; seus itens serão ignorados.',
+                    'Partner %d (%s) não possui cidade configurada; itens sem cidade serão ignorados.',
                     $partner->getId(),
                     $partner->getName()
                 ));
             }
+
+            // O parser real do feed deve chamar processFeedItem() para cada item recebido.
+            // O método mantém os contadores e impede city=NULL antes do persist.
+            $io->text(sprintf(
+                'Resultado: %d processados, %d inseridos, %d atualizados, %d ignorados, %d erros.',
+                $counters['processed'],
+                $counters['inserted'],
+                $counters['updated'],
+                $counters['skipped'],
+                $counters['errors']
+            ));
+
+            $this->addCounters($totals, $counters);
         }
 
+        $io->section('Resumo final');
+        $io->table(
+            ['Métrica', 'Total'],
+            [
+                ['Processados', $totals['processed']],
+                ['Inseridos', $totals['inserted']],
+                ['Atualizados', $totals['updated']],
+                ['Ignorados', $totals['skipped']],
+                ['Erros', $totals['errors']],
+            ]
+        );
+
+        $io->success(sprintf(
+            'Processamento concluído: %d registro(s) inserido(s), %d atualizado(s), %d ignorado(s).',
+            $totals['inserted'],
+            $totals['updated'],
+            $totals['skipped']
+        ));
+
         return Command::SUCCESS;
+    }
+
+    private function processFeedItem(array $item, Partner $partner, array &$counters): void
+    {
+        $counters['processed']++;
+
+        $city = $this->resolveCity($item, $partner);
+
+        if ($city === null) {
+            $counters['skipped']++;
+            return;
+        }
+
+        $alert = new WazeAlert();
+        $alert->setCity($city);
+        $alert->setPartner($partner);
+
+        $this->entityManager->persist($alert);
+        $counters['inserted']++;
     }
 
     private function resolveCity(array $item, Partner $partner): ?string
@@ -76,18 +129,21 @@ final class FetchPartnerFeedsCommand extends Command
         return $city === '' ? null : $city;
     }
 
-    private function persistFeedItem(array $item, Partner $partner): void
+    private function emptyCounters(): array
     {
-        $city = $this->resolveCity($item, $partner);
+        return [
+            'processed' => 0,
+            'inserted' => 0,
+            'updated' => 0,
+            'skipped' => 0,
+            'errors' => 0,
+        ];
+    }
 
-        if ($city === null) {
-            return;
+    private function addCounters(array &$totals, array $counters): void
+    {
+        foreach ($totals as $key => $value) {
+            $totals[$key] += $counters[$key] ?? 0;
         }
-
-        $alert = new WazeAlert();
-        $alert->setCity($city);
-        $alert->setPartner($partner);
-
-        $this->entityManager->persist($alert);
     }
 }
