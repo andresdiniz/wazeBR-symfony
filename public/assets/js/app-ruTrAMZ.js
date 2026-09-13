@@ -1,3 +1,4 @@
+/*console.log('App initialized');
 import '../css/core/reset.css';
 import '../css/core/variables.css';
 import '../css/core/utilities.css';

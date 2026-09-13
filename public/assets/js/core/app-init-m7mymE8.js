@@ -1,4 +1,6 @@
-// assets/js/core/app-init.js
+alert('App initialized');
+
+import '../app.js';
 
 import './csrf.js';
 import './dom.js';
@@ -24,35 +26,37 @@ import { initTable } from '../components/table.js';
 
 let initialized = false;
 
-export function initApp(doc = document) {
-  if (initialized || !doc) return;
-  initialized = true;
+export function initApp(document = globalThis.document) {
+  if (initialized || !document) return;
 
-  console.log('🚀 Inicializando WazeBR App UI...');
+  const start = () => {
+    if (initialized) return;
+    initialized = true;
 
-  initBaseLayout(doc);
-  initHeader(doc);
-  initSidebar(doc);
-  initFooter(doc);
+    initBaseLayout(document);
+    initHeader(document);
+    initSidebar(document);
+    initFooter(document);
 
-  initAccordions(doc);
-  initCharts(doc);
-  initExpandButtons(doc);
-  initFilters(doc);
-  initMap(doc);
-  initMenus(doc);
-  initNotifications(doc);
-  initPagination(doc);
-  initTable(doc);
+    initAccordions(document);
+    initCharts(document);
+    initExpandButtons(document);
+    initFilters(document);
+    initMap(document);
+    initMenus(document);
+    initNotifications(document);
+    initPagination(document);
+    initTable(document);
 
-  doc.documentElement.classList.add('app-ready');
-  doc.dispatchEvent(new CustomEvent('wazebr:ready'));
+    document.documentElement.classList.add('app-ready');
+    document.dispatchEvent(new CustomEvent('wazebr:ready'));
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else {
+    start();
+  }
 }
 
-// Auto-start garantido para ES Modules
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => initApp(), { once: true });
-} else {
-  initApp();
-  console.log('🚀 WazeBR App UI já inicializado (DOMContentLoaded já disparado).')  ;
-}
+initApp();

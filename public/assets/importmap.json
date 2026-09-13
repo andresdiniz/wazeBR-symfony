@@ -1,6 +1,6 @@
 {
     "app": {
-        "path": "\/assets\/js\/app-H-gN61G.js",
+        "path": "\/assets\/js\/app-R8zZbs0.js",
         "type": "js"
     },
     "\/assets\/css\/core\/reset.css": {
@@ -103,20 +103,8 @@
         "path": "\/assets\/css\/components\/empty-states-8rBdaEX.css",
         "type": "css"
     },
-    "dashboard": {
-        "path": "\/assets\/js\/pages\/dashboard-k73PNp_.js",
-        "type": "js"
-    },
-    "\/assets\/css\/pages\/dashboard.css": {
-        "path": "\/assets\/css\/pages\/dashboard-MxgMXH1.css",
-        "type": "css"
-    },
-    "\/assets\/js\/app.js": {
-        "path": "\/assets\/js\/app-H-gN61G.js",
-        "type": "js"
-    },
     "app-init": {
-        "path": "\/assets\/js\/core\/app-init-SquoDdX.js",
+        "path": "\/assets\/js\/core\/app-init-gceF8pa.js",
         "type": "js"
     },
     "\/assets\/js\/core\/csrf.js": {
@@ -193,6 +181,18 @@
     },
     "\/assets\/js\/components\/table.js": {
         "path": "\/assets\/js\/components\/table-E865E4j.js",
+        "type": "js"
+    },
+    "dashboard": {
+        "path": "\/assets\/js\/pages\/dashboard-k73PNp_.js",
+        "type": "js"
+    },
+    "\/assets\/css\/pages\/dashboard.css": {
+        "path": "\/assets\/css\/pages\/dashboard-MxgMXH1.css",
+        "type": "css"
+    },
+    "\/assets\/js\/app.js": {
+        "path": "\/assets\/js\/app-R8zZbs0.js",
         "type": "js"
     }
 }

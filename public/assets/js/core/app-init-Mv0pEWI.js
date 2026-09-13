@@ -54,5 +54,4 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => initApp(), { once: true });
 } else {
   initApp();
-  console.log('🚀 WazeBR App UI já inicializado (DOMContentLoaded já disparado).')  ;
 }
