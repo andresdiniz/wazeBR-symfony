@@ -1,6 +1,6 @@
 {
     "app": {
-        "path": "\/assets\/js\/app-hztu5xi.js",
+        "path": "\/assets\/js\/app-esKsNpD.js",
         "type": "js"
     },
     "\/assets\/css\/core\/reset.css": {
@@ -35,6 +35,74 @@
         "path": "\/assets\/css\/layout\/footer-UmyASUt.css",
         "type": "css"
     },
+    "\/assets\/css\/components\/buttons.css": {
+        "path": "\/assets\/css\/components\/buttons--4Bs8gF.css",
+        "type": "css"
+    },
+    "\/assets\/css\/components\/forms.css": {
+        "path": "\/assets\/css\/components\/forms-HQl8cTt.css",
+        "type": "css"
+    },
+    "\/assets\/css\/components\/tables.css": {
+        "path": "\/assets\/css\/components\/tables-I-ITvF9.css",
+        "type": "css"
+    },
+    "\/assets\/css\/components\/modals.css": {
+        "path": "\/assets\/css\/components\/modals-YBGMfih.css",
+        "type": "css"
+    },
+    "\/assets\/css\/components\/alerts.css": {
+        "path": "\/assets\/css\/components\/alerts-y3GqqP3.css",
+        "type": "css"
+    },
+    "\/assets\/css\/components\/typography.css": {
+        "path": "\/assets\/css\/components\/typography-BdIL7i6.css",
+        "type": "css"
+    },
+    "\/assets\/css\/components\/animations.css": {
+        "path": "\/assets\/css\/components\/animations-1PyIb9X.css",
+        "type": "css"
+    },
+    "\/assets\/css\/components\/charts.css": {
+        "path": "\/assets\/css\/components\/charts-XSevrGQ.css",
+        "type": "css"
+    },
+    "\/assets\/css\/components\/pagination.css": {
+        "path": "\/assets\/css\/components\/pagination-jcvJDHd.css",
+        "type": "css"
+    },
+    "\/assets\/css\/components\/expand-buttons.css": {
+        "path": "\/assets\/css\/components\/expand-buttons-ZP0ZNyw.css",
+        "type": "css"
+    },
+    "\/assets\/css\/components\/filters.css": {
+        "path": "\/assets\/css\/components\/filters-TAup3ba.css",
+        "type": "css"
+    },
+    "\/assets\/css\/components\/notifications.css": {
+        "path": "\/assets\/css\/components\/notifications-_zyc4K6.css",
+        "type": "css"
+    },
+    "\/assets\/css\/components\/avatars.css": {
+        "path": "\/assets\/css\/components\/avatars-LGgfsT8.css",
+        "type": "css"
+    },
+    "\/assets\/css\/components\/menus.css": {
+        "path": "\/assets\/css\/components\/menus-j-F92Hn.css",
+        "type": "css"
+    },
+    "\/assets\/css\/components\/accordions.css": {
+        "path": "\/assets\/css\/components\/accordions-h1R7ZhH.css",
+        "type": "css"
+    },
+    "\/assets\/css\/components\/scrollbars.css": {
+        "path": "\/assets\/css\/components\/scrollbars-qL3F-n9.css",
+        "type": "css"
+    },
+    "\/assets\/css\/components\/empty-states.css": {
+        "path": "\/assets\/css\/components\/empty-states-8rBdaEX.css",
+        "type": "css"
+    },
     "pages\/dashboard": {
         "path": "\/assets\/js\/pages\/dashboard-aRIJWaI.js",
         "type": "js"
@@ -44,7 +112,7 @@
         "type": "css"
     },
     "\/assets\/js\/app.js": {
-        "path": "\/assets\/js\/app-hztu5xi.js",
+        "path": "\/assets\/js\/app-esKsNpD.js",
         "type": "js"
     }
 }
