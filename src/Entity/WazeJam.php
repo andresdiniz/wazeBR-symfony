@@ -9,43 +9,15 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: WazeJamRepository::class)]
-#[ORM\Table(
-    name: 'waze_jams',
-    indexes: [
-        new ORM\Index(
-            name: 'idx_waze_jam_uuid',
-            columns: ['uuid'],
-        ),
-        new ORM\Index(
-            name: 'idx_waze_jam_partner_active',
-            columns: ['partner_id', 'is_active'],
-        ),
-        new ORM\Index(
-            name: 'idx_waze_jam_city_level',
-            columns: ['city', 'level'],
-        ),
-        new ORM\Index(
-            name: 'idx_waze_jam_pub_millis',
-            columns: ['pub_millis'],
-        ),
-        new ORM\Index(
-            name: 'idx_waze_jam_collected_at',
-            columns: ['collected_at'],
-        ),
-        new ORM\Index(
-            name: 'idx_waze_jam_last_seen_at',
-            columns: ['last_seen_at'],
-        ),
-        new ORM\Index(
-            name: 'idx_waze_jam_blocking_alert',
-            columns: ['blocking_alert_uuid'],
-        ),
-    ],
-)]
-#[ORM\UniqueConstraint(
-    name: 'uniq_waze_jam_partner_uuid',
-    columns: ['partner_id', 'uuid'],
-)]
+#[ORM\Table(name: 'waze_jams')]
+#[ORM\Index(name: 'idx_waze_jam_uuid', columns: ['uuid'])]
+#[ORM\Index(name: 'idx_waze_jam_partner_active', columns: ['partner_id', 'is_active'])]
+#[ORM\Index(name: 'idx_waze_jam_city_level', columns: ['city', 'level'])]
+#[ORM\Index(name: 'idx_waze_jam_pub_millis', columns: ['pub_millis'])]
+#[ORM\Index(name: 'idx_waze_jam_collected_at', columns: ['collected_at'])]
+#[ORM\Index(name: 'idx_waze_jam_last_seen_at', columns: ['last_seen_at'])]
+#[ORM\Index(name: 'idx_waze_jam_blocking_alert', columns: ['blocking_alert_uuid'])]
+#[ORM\UniqueConstraint(name: 'uniq_waze_jam_partner_uuid', columns: ['partner_id', 'uuid'])]
 class WazeJam
 {
     #[ORM\Id]
@@ -69,18 +41,10 @@ class WazeJam
     #[ORM\Column(type: Types::SMALLINT)]
     private int $linePoints = 0;
 
-    #[ORM\Column(
-        type: Types::DECIMAL,
-        precision: 10,
-        scale: 3,
-    )]
+    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 3)]
     private ?string $speed = '0';
 
-    #[ORM\Column(
-        type: Types::DECIMAL,
-        precision: 10,
-        scale: 3,
-    )]
+    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 3)]
     private ?string $speedKmh = '0';
 
     #[ORM\Column(type: Types::INTEGER)]
@@ -435,9 +399,7 @@ class WazeJam
             return null;
         }
 
-        return (new \DateTimeImmutable())->setTimestamp(
-            (int) floor($this->pubMillis / 1000),
-        );
+        return (new \DateTimeImmutable('@' . intdiv($this->pubMillis, 1000)));
     }
 
     public function getLevelLabel(): string

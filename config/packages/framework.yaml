@@ -21,6 +21,8 @@ framework:
     # Em produção, não mostrar detalhes de erro no browser
     # O Symfony já usa templates de erro genricos por padrão quando debug=false
 
+    default_locale: pt_BR
+
     scheduler: true
 
 when@test:

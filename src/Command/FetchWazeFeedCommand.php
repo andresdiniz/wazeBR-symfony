@@ -12,6 +12,7 @@ use App\Repository\PartnerApiLinkRepository;
 use App\Repository\WazeAlertRepository;
 use App\Repository\WazeJamRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -34,6 +35,7 @@ final class FetchWazeFeedCommand extends Command
         private readonly WazeJamRepository $jamRepository,
         private readonly PartnerApiLinkRepository $apiLinkRepository,
         private readonly LockFactory $lockFactory,
+        private readonly LoggerInterface $logger,
     ) {
         parent::__construct();
     }
@@ -213,6 +215,16 @@ final class FetchWazeFeedCommand extends Command
                     } catch (\Throwable $exception) {
                         $partnerSuccess = false;
 
+                        $this->logger->error(
+                            '[fetch-waze-feed] Erro no link {link} (partner {partner}): {msg}',
+                            [
+                                'link' => $apiLink->getName(),
+                                'partner' => $partner->getId(),
+                                'msg' => $exception->getMessage(),
+                                'exception' => $exception,
+                            ],
+                        );
+
                         $io->error(sprintf(
                             'Erro no link "%s": %s',
                             $apiLink->getName(),
@@ -227,7 +239,9 @@ final class FetchWazeFeedCommand extends Command
 
                 if ($partnerSuccess) {
                     if (!$dryRun) {
-                        $partner->setLastFetchAt(new \DateTimeImmutable());
+                        $partner->setLastFetchAt(
+                            new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+                        );
 
                         $this->entityManager->persist($partner);
                         $this->entityManager->flush();
@@ -518,7 +532,12 @@ final class FetchWazeFeedCommand extends Command
         $deactivated = 0;
         $skipped = 0;
         $currentUuids = [];
-        $now = new \DateTimeImmutable();
+
+        // Dedup dentro do MESMO lote — evita UniqueConstraintViolation
+        // quando o feed do Waze repete o mesmo uuid no mesmo payload.
+        $seenInBatch = [];
+
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
 
         $items = array_slice($alerts, 0, $limit);
 
@@ -556,6 +575,14 @@ final class FetchWazeFeedCommand extends Command
                 $progressBar->advance();
                 continue;
             }
+
+            // Pula duplicados dentro deste lote.
+            if (isset($seenInBatch[$uuid])) {
+                $skipped++;
+                $progressBar->advance();
+                continue;
+            }
+            $seenInBatch[$uuid] = true;
 
             $currentUuids[] = $uuid;
 
@@ -635,7 +662,12 @@ final class FetchWazeFeedCommand extends Command
         $deactivated = 0;
         $skipped = 0;
         $currentUuids = [];
-        $now = new \DateTimeImmutable();
+
+        // Dedup dentro do MESMO lote — evita UniqueConstraintViolation
+        // quando o feed do Waze repete o mesmo uuid no mesmo payload.
+        $seenInBatch = [];
+
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
 
         $items = array_slice($jams, 0, $limit);
 
@@ -673,6 +705,13 @@ final class FetchWazeFeedCommand extends Command
                 $progressBar->advance();
                 continue;
             }
+
+            if (isset($seenInBatch[$uuid])) {
+                $skipped++;
+                $progressBar->advance();
+                continue;
+            }
+            $seenInBatch[$uuid] = true;
 
             $currentUuids[] = $uuid;
 
@@ -1110,13 +1149,13 @@ final class FetchWazeFeedCommand extends Command
     }
 
     private function resetStaleConnection(): void
-{
-    $connection = $this->entityManager->getConnection();
+    {
+        $connection = $this->entityManager->getConnection();
 
-    try {
-        $connection->executeQuery('SELECT 1');
-    } catch (\Throwable) {
-        $connection->close();
+        try {
+            $connection->executeQuery('SELECT 1');
+        } catch (\Throwable) {
+            $connection->close();
+        }
     }
-}
 }

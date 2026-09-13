@@ -56,7 +56,7 @@ class ResetPasswordRequestRepository extends ServiceEntityRepository implements 
 
     public function removeExpiredResetPasswordRequests(): int
     {
-        $now = new \DateTimeImmutable();
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
         $qb = $this->createQueryBuilder('rpr')
             ->delete()
             ->where('rpr.expiresAt < :now')

@@ -1,38 +1,344 @@
-{% extends 'base.html.twig' %}
+{% extends 'layouts/dashboard.html.twig' %}
 
-{% block title %}Alertas{% endblock %}
+{% block title %}Alertas | WazeBR{% endblock %}
 
-{% block page_stylesheets %}
-<style>
-    .alerts-list { list-style: none; padding: 0; margin: 0; }
-    .alert-item { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
-    .alert-item h3 { margin: 0 0 8px 0; font-size: 1rem; }
-    .alert-meta { font-size: 0.85rem; color: #666; }
-</style>
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin="">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin="">
+    <link rel="stylesheet" href="{{ asset('css/pages/alerts.css') }}">
 {% endblock %}
 
-{% block body_class %}dashboard-page{% endblock %}
+{% block content %}
+{% set total = stats.total|default(0) %}
+{% set active = stats.active|default(0) %}
+{% set lastSeen = stats.last_seen %}
 
-{% block body %}
-<div class="dashboard-layout">
-    {% include 'partials/sidebar.html.twig' %}
-    <main class="dashboard-content">
-        {% include 'partials/topbar.html.twig' %}
-        <div class="dashboard-content-inner">
-            <h1>Alertas</h1>
-            {% if alerts is empty %}
-                <p>Nenhum alerta encontrado.</p>
-            {% else %}
-                <ul class="alerts-list">
-                    {% for alert in alerts %}
-                        <li class="alert-item">
-                            <h3>Alert #{{ alert.id }} - {{ alert.type }}</h3>
-                            <p class="alert-meta">{{ alert.reportTime|date('d/m/Y H:i') }}</p>
-                        </li>
-                    {% endfor %}
-                </ul>
-            {% endif %}
+<div class="alerts-page"
+     data-alerts-page
+     data-endpoint-live="{{ path('alert_api_live') }}"
+     data-endpoint-history="{{ path('alert_api_history') }}"
+     data-endpoint-list="{{ path('alert_api_list') }}"
+     data-endpoint-export="{{ path('alert_export') }}"
+     data-current-filters='{{ filters|json_encode|e('html_attr') }}'
+     data-initial-stats='{{ stats|json_encode|e('html_attr') }}'>
+
+    <div class="alerts-container">
+
+        {# ── Header ──────────────────────────────────────────────── #}
+        <header class="alerts-header">
+            <div>
+                <span class="alerts-eyebrow"><i></i> Central de alertas</span>
+                <h1>Alertas Waze{% if partner %} — {{ partner.name }}{% endif %}</h1>
+                <p>
+                    Monitoramento em tempo real, análise histórica com agrupamento por proximidade,
+                    filtros avançados e exportação.
+                </p>
+            </div>
+            <div class="alerts-header-tools">
+                <span class="alerts-live-badge" data-live-badge>
+                    <i></i> Ao vivo · <span data-live-clock>--:--</span>
+                </span>
+                <button type="button" class="alerts-button" data-action="refresh">
+                    <span>↻</span> Atualizar
+                </button>
+                <a class="alerts-button is-primary" data-export-link
+                   href="{{ path('alert_export', filters|filter(v => v is not empty)) }}">
+                    ⇩ Exportar CSV
+                </a>
+            </div>
+        </header>
+
+        {# ── KPIs ────────────────────────────────────────────────── #}
+        <section class="alerts-kpi-grid">
+            <article class="alerts-kpi-card kpi-blue">
+                <span class="kpi-icon" aria-hidden="true">⚠</span>
+                <strong class="kpi-value" data-kpi="active">{{ active }}</strong>
+                <span class="kpi-label">Alertas ativos</span>
+                <small class="kpi-foot" data-kpi="recent">{{ stats.recent|default(0) }} na última hora</small>
+            </article>
+            <article class="alerts-kpi-card kpi-purple">
+                <span class="kpi-icon" aria-hidden="true">∑</span>
+                <strong class="kpi-value" data-kpi="total">{{ total }}</strong>
+                <span class="kpi-label">Total no período</span>
+                <small class="kpi-foot">Aplicando filtros atuais</small>
+            </article>
+            <article class="alerts-kpi-card kpi-green">
+                <span class="kpi-icon" aria-hidden="true">◈</span>
+                <strong class="kpi-value kpi-value--sm" data-kpi="top_type">{{ stats.top_type|default('—') }}</strong>
+                <span class="kpi-label">Tipo mais frequente</span>
+                <small class="kpi-foot">Confiança média {{ stats.avg_confidence|default(0)|round(1) }}%</small>
+            </article>
+            <article class="alerts-kpi-card kpi-orange">
+                <span class="kpi-icon" aria-hidden="true">⏱</span>
+                <strong class="kpi-value kpi-value--sm" data-kpi="last_seen">
+                    {{ lastSeen ? lastSeen|date('d/m H:i') : '—' }}
+                </strong>
+                <span class="kpi-label">Último alerta recebido</span>
+                <small class="kpi-foot">{{ active > 0 ? 'Monitorando ativamente' : 'Sem alertas ativos' }}</small>
+            </article>
+        </section>
+
+        {# ── Filtros ─────────────────────────────────────────────── #}
+        <section class="alerts-filter-panel">
+            <header class="alerts-filter-head">
+                <div>
+                    <span class="alerts-kicker">Filtros</span>
+                    <h2>Refinar consulta</h2>
+                </div>
+                <button type="button" class="alerts-button is-link" data-action="clear-filters">Limpar</button>
+            </header>
+
+            <form class="alerts-filter-form" data-filter-form>
+                <label class="alerts-field">
+                    <span>Período</span>
+                    <select name="period">
+                        <option value="all"   {{ filters.period == 'all'   ? 'selected' }}>Todos</option>
+                        <option value="today" {{ filters.period == 'today' ? 'selected' }}>Hoje</option>
+                        <option value="week"  {{ filters.period == 'week'  ? 'selected' }}>Últimos 7 dias</option>
+                        <option value="month" {{ filters.period == 'month' ? 'selected' }}>Últimos 30 dias</option>
+                        <option value="year"  {{ filters.period == 'year'  ? 'selected' }}>Últimos 12 meses</option>
+                    </select>
+                </label>
+
+                <label class="alerts-field">
+                    <span>Tipo</span>
+                    <select name="type" data-filter-type>
+                        <option value="">Todos</option>
+                        {% for t in filter_options.types %}
+                            <option value="{{ t }}" {{ filters.type == t ? 'selected' }}>{{ t }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label class="alerts-field">
+                    <span>Subtipo</span>
+                    <select name="subtype">
+                        <option value="">Todos</option>
+                        {% for s in filter_options.subtypes %}
+                            <option value="{{ s }}" {{ filters.subtype == s ? 'selected' }}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label class="alerts-field">
+                    <span>Cidade</span>
+                    <select name="city">
+                        <option value="">Todas</option>
+                        {% for city, n in filter_options.cities %}
+                            <option value="{{ city }}" {{ filters.city == city ? 'selected' }}>{{ city }} ({{ n }})</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label class="alerts-field">
+                    <span>Confiança mínima</span>
+                    <select name="min_confidence">
+                        {% for v in [0, 40, 60, 80, 90] %}
+                            <option value="{{ v }}" {{ filters.min_confidence == v ? 'selected' }}>
+                                {{ v == 0 ? 'Qualquer' : '≥ ' ~ v ~ '%' }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label class="alerts-field alerts-field--grow">
+                    <span>Buscar</span>
+                    <input type="search" name="query" value="{{ filters.query }}"
+                           placeholder="UUID, tipo, rua, cidade...">
+                </label>
+
+                <label class="alerts-toggle">
+                    <input type="checkbox" name="active" value="1" {{ filters.active ? 'checked' }}>
+                    <span>Somente ativos</span>
+                </label>
+
+                <div class="alerts-filter-actions">
+                    <button type="submit" class="alerts-button is-primary" data-action="apply">Aplicar</button>
+                    <button type="button" class="alerts-button" data-action="clear-filters">Limpar</button>
+                </div>
+            </form>
+        </section>
+
+        {# ── Map + Sidebar ──────────────────────────────────────── #}
+        <div class="alerts-main-grid">
+            <section class="alerts-panel alerts-panel--map">
+                <header class="alerts-panel-head">
+                    <div>
+                        <span class="alerts-kicker">Geolocalização</span>
+                        <h2>Mapa de alertas</h2>
+                    </div>
+                    <div class="alerts-map-tabs" role="tablist">
+                        <button type="button" class="alerts-tab is-active" data-map-view="live" role="tab">Ao vivo</button>
+                        <button type="button" class="alerts-tab" data-map-view="history" role="tab">Histórico</button>
+                    </div>
+                    <select class="alerts-select" data-history-precision hidden>
+                        <option value="1">Grid ~11 km</option>
+                        <option value="2" selected>Grid ~1,1 km</option>
+                        <option value="3">Grid ~110 m</option>
+                        <option value="4">Grid ~11 m</option>
+                    </select>
+                </header>
+
+                <div class="alerts-map"
+                     data-alerts-map
+                     data-live='{{ map.live|json_encode|e('html_attr') }}'
+                     data-clusters='{{ map.clusters|json_encode|e('html_attr') }}'></div>
+
+                <div class="alerts-map-legend">
+                    <span><i class="lg-red"></i> Acidente</span>
+                    <span><i class="lg-orange"></i> Perigo</span>
+                    <span><i class="lg-dark"></i> Via fechada</span>
+                    <span><i class="lg-blue"></i> Polícia</span>
+                    <span><i class="lg-cyan"></i> Clima</span>
+                    <span class="lg-hint" data-map-hint>Clique em um agrupamento para expandir</span>
+                </div>
+            </section>
+
+            <aside class="alerts-side">
+                <section class="alerts-panel">
+                    <header class="alerts-panel-head">
+                        <div>
+                            <span class="alerts-kicker">Composição</span>
+                            <h2>Por tipo</h2>
+                        </div>
+                    </header>
+                    <div class="alerts-chart alerts-chart--doughnut">
+                        <canvas data-chart="by-type"
+                                data-chart-data='{{ charts.by_type|json_encode|e('html_attr') }}'></canvas>
+                    </div>
+                </section>
+
+                <section class="alerts-panel">
+                    <header class="alerts-panel-head">
+                        <div>
+                            <span class="alerts-kicker">Temporal</span>
+                            <h2>Por hora do dia</h2>
+                        </div>
+                    </header>
+                    <div class="alerts-chart">
+                        <canvas data-chart="by-hour"
+                                data-chart-data='{{ charts.by_hour|json_encode|e('html_attr') }}'></canvas>
+                    </div>
+                </section>
+            </aside>
         </div>
-    </main>
+
+        {# ── Segundo grid: séries + cidades + subtipos ──────────── #}
+        <div class="alerts-main-grid">
+            <section class="alerts-panel">
+                <header class="alerts-panel-head">
+                    <div><span class="alerts-kicker">Tendência</span><h2>Alertas por dia (14d)</h2></div>
+                </header>
+                <div class="alerts-chart alerts-chart--tall">
+                    <canvas data-chart="by-day"
+                            data-chart-data='{{ charts.by_day|json_encode|e('html_attr') }}'></canvas>
+                </div>
+            </section>
+
+            <section class="alerts-panel">
+                <header class="alerts-panel-head">
+                    <div><span class="alerts-kicker">Top</span><h2>Cidades com mais alertas</h2></div>
+                </header>
+                <div class="alerts-chart alerts-chart--tall">
+                    <canvas data-chart="by-city"
+                            data-chart-data='{{ charts.by_city|json_encode|e('html_attr') }}'></canvas>
+                </div>
+            </section>
+        </div>
+
+        <div class="alerts-main-grid alerts-main-grid--single">
+            <section class="alerts-panel">
+                <header class="alerts-panel-head">
+                    <div><span class="alerts-kicker">Subtipos</span><h2>Distribuição por subtipo</h2></div>
+                </header>
+                <div class="alerts-chart">
+                    <canvas data-chart="by-subtype"
+                            data-chart-data='{{ charts.by_subtype|json_encode|e('html_attr') }}'></canvas>
+                </div>
+            </section>
+        </div>
+
+        {# ── Tabela de alertas ──────────────────────────────────── #}
+        <section class="alerts-panel alerts-table-panel">
+            <header class="alerts-panel-head">
+                <div>
+                    <span class="alerts-kicker">Registros</span>
+                    <h2>Alertas recentes</h2>
+                </div>
+                <div class="alerts-table-actions">
+                    <input type="search" class="alerts-input" data-table-search
+                           placeholder="Filtrar nesta tabela..." autocomplete="off">
+                    <a class="alerts-button is-link" data-export-link
+                       href="{{ path('alert_export', filters|filter(v => v is not empty)) }}">
+                        ⇩ Exportar CSV
+                    </a>
+                </div>
+            </header>
+
+            <div class="alerts-table-wrap">
+                <table class="alerts-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Tipo</th>
+                            <th>Subtipo</th>
+                            <th>Cidade</th>
+                            <th>Rua</th>
+                            <th>Confiança</th>
+                            <th>Status</th>
+                            <th>Quando</th>
+                        </tr>
+                    </thead>
+                    <tbody data-table-body>
+                        {% for a in recent %}
+                            <tr data-search-text="{{ (a.type ~ ' ' ~ a.subtype ~ ' ' ~ a.city ~ ' ' ~ a.street ~ ' ' ~ a.uuid)|lower }}">
+                                <td>{{ a.id }}</td>
+                                <td><span class="alerts-badge type-{{ a.type|lower }}">{{ a.type }}</span></td>
+                                <td>{{ a.subtype|default('—') }}</td>
+                                <td>{{ a.city|default('—') }}</td>
+                                <td>{{ a.street|default('—') }}</td>
+                                <td>
+                                    <span class="alerts-conf">
+                                        <span class="alerts-conf-bar" style="--v:{{ a.confidence }}"></span>
+                                        {{ a.confidence }}%
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="alerts-state {{ a.isActive ? 'is-active' : 'is-off' }}">
+                                        {{ a.isActive ? 'Ativo' : 'Encerrado' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <time datetime="{{ a.when }}">
+                                        {{ a.when ? a.when|date('d/m H:i') : '—' }}
+                                    </time>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="8" class="alerts-empty">Nenhum alerta corresponde aos filtros.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="alerts-table-footer">
+                <button type="button" class="alerts-button" data-action="load-more">Carregar mais</button>
+                <span class="alerts-hint" data-table-count>{{ recent|length }} registros exibidos</span>
+            </div>
+        </section>
+
+    </div>
 </div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
+    <script type="module" src="{{ asset('js/pages/alerts.js') }}"></script>
 {% endblock %}

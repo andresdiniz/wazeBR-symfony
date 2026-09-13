@@ -4,274 +4,402 @@
 
 {% block stylesheets %}
     {{ parent() }}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard.css') }}">
 {% endblock %}
 
 {% block content %}
-{% set alerts  = stats.recent_alerts|default([]) %}
-{% set jams    = stats.recent_jams|default([]) %}
-{% set routes  = stats.recent_routes|default([]) %}
-{% set cities  = stats.top_cities|default([]) %}
-{% set hourly  = stats.hourly_activity|default([]) %}
-{% set health  = stats.health_score|default(100) %}
-{% set total_occurrences = (stats.total_alerts|default(0)) + (stats.total_jams|default(0)) %}
+{% set totals = stats.totals|default({}) %}
+{% set kpis   = stats.kpis|default({}) %}
+{% set health = kpis.health_score|default(100) %}
 
 <div class="dashboard-page"
      data-dashboard
-     data-total-alerts="{{ stats.total_alerts|default(0) }}"
-     data-total-jams="{{ stats.total_jams|default(0) }}"
-     data-hourly="{{ hourly|json_encode|e('html_attr') }}">
+     data-api-endpoint="{{ path('dashboard_api_data') }}"
+     data-partner-id="{{ partner ? partner.id : '' }}">
 
     <div class="dashboard-container">
 
-        {# ── Cabeçalho ───────────────────────────────────────────────────── #}
+        {# ── Cabeçalho ─────────────────────────────────────────────── #}
         <header class="dashboard-page-header">
             <div>
                 <span class="dashboard-eyebrow"><i></i> Centro operacional</span>
                 <h1>Visão geral da mobilidade</h1>
-                <p>Trânsito, alertas, rotas e condições operacionais em um só lugar.{% if partner is defined and partner %} — <strong>{{ partner.name }}</strong>{% endif %}</p>
+                <p>
+                    Trânsito, alertas, rotas, clima e câmeras em um só lugar.
+                    {% if partner %} — <strong>{{ partner.name }}</strong>{% endif %}
+                </p>
             </div>
             <div class="dashboard-header-tools">
-                <span class="dashboard-last-update"><i></i> Atualizado em <time data-dashboard-clock>{{ stats.updated_at|date('d/m H:i') }}</time></span>
+                <span class="dashboard-last-update">
+                    <i></i> Atualizado em
+                    <time data-dashboard-clock>{{ stats.updated_at|date('d/m H:i') }}</time>
+                </span>
                 <button type="button" class="dashboard-button" data-action="refresh-dashboard" aria-label="Recarregar dados">
                     <span>↻</span> Atualizar
                 </button>
             </div>
         </header>
 
-        {# ── Filtros ─────────────────────────────────────────────────────── #}
+        {# ── Filtros ────────────────────────────────────────────────── #}
         <section class="dashboard-filter-panel" aria-label="Filtros do dashboard">
             <div class="dashboard-filter-heading">
-                <div><span class="dashboard-panel-kicker">Explorar dados</span><h2>Filtros e navegação</h2></div>
+                <div>
+                    <span class="dashboard-panel-kicker">Explorar dados</span>
+                    <h2>Filtros e navegação</h2>
+                </div>
                 <button type="button" class="dashboard-button is-link" data-action="clear-filters">Limpar filtros</button>
             </div>
-            <div class="dashboard-filter-form">
+
+            <form class="dashboard-filter-form" data-filter-form>
                 <label class="dashboard-filter-field">
                     <span>Período</span>
-                    <select data-filter="period">
-                        <option value="all">Todos os registros</option>
-                        <option value="today">Hoje</option>
-                        <option value="week">Últimos 7 dias</option>
-                        <option value="month">Últimos 30 dias</option>
+                    <select name="period" data-filter="period">
+                        <option value="all"   {{ filters.period == 'all'   ? 'selected' }}>Todos os registros</option>
+                        <option value="today" {{ filters.period == 'today' ? 'selected' }}>Hoje</option>
+                        <option value="week"  {{ filters.period == 'week'  ? 'selected' }}>Últimos 7 dias</option>
+                        <option value="month" {{ filters.period == 'month' ? 'selected' }}>Últimos 30 dias</option>
+                        <option value="year"  {{ filters.period == 'year'  ? 'selected' }}>Últimos 12 meses</option>
                     </select>
                 </label>
+
                 <label class="dashboard-filter-field">
-                    <span>Buscar ocorrência</span>
-                    <input type="search" data-filter="query" placeholder="Tipo, rua, cidade ou rota" autocomplete="off">
-                </label>
-                <label class="dashboard-filter-field">
-                    <span>Seção</span>
-                    <select data-filter="section">
-                        <option value="all">Todas</option>
-                        <option value="alerts">Alertas</option>
-                        <option value="jams">Congestionamentos</option>
-                        <option value="routes">Rotas</option>
+                    <span>Tipo</span>
+                    <select name="type" data-filter="type">
+                        <option value="all"     {{ filters.type == 'all'     ? 'selected' }}>Todos</option>
+                        <option value="alerts"  {{ filters.type == 'alerts'  ? 'selected' }}>Alertas</option>
+                        <option value="jams"    {{ filters.type == 'jams'    ? 'selected' }}>Congestionamentos</option>
+                        <option value="weather" {{ filters.type == 'weather' ? 'selected' }}>Clima</option>
+                        <option value="routes"  {{ filters.type == 'routes'  ? 'selected' }}>Rotas</option>
                     </select>
                 </label>
+
+                <label class="dashboard-filter-field dashboard-filter-field--grow">
+                    <span>Buscar</span>
+                    <input type="search" name="query" data-filter="query"
+                           value="{{ filters.query }}"
+                           placeholder="Tipo, rua, cidade, uuid..." autocomplete="off">
+                </label>
+
+                <label class="dashboard-filter-field">
+                    <span>Cidade</span>
+                    <input type="text" name="city" data-filter="city"
+                           value="{{ filters.city }}"
+                           placeholder="Ex.: São Paulo" autocomplete="off">
+                </label>
+
                 <div class="dashboard-filter-actions">
-                    <button type="button" class="dashboard-button is-primary" data-action="apply-filters">Aplicar</button>
+                    <button type="submit" class="dashboard-button is-primary" data-action="apply-filters">Aplicar</button>
                     <button type="button" class="dashboard-button" data-action="clear-filters">Limpar</button>
                 </div>
-            </div>
+            </form>
+
             <p class="dashboard-filter-feedback" data-filter-feedback aria-live="polite"></p>
         </section>
 
-        {# ── KPIs ────────────────────────────────────────────────────────── #}
+        {# ── KPIs ───────────────────────────────────────────────────── #}
         <section class="dashboard-kpi-grid" aria-label="Indicadores principais">
             <article class="dashboard-kpi-card kpi-blue">
-                <div class="dashboard-kpi-top"><span class="dashboard-kpi-icon" aria-hidden="true">⚠</span><span class="dashboard-kpi-trend">Monitoramento</span></div>
-                <strong class="dashboard-kpi-value" data-count-value="{{ stats.total_alerts|default(0) }}">{{ stats.total_alerts|default(0) }}</strong>
+                <div class="dashboard-kpi-top">
+                    <span class="dashboard-kpi-icon" aria-hidden="true">⚠</span>
+                    <span class="dashboard-kpi-trend">{{ totals.alerts_active|default(0) }} ativos</span>
+                </div>
+                <strong class="dashboard-kpi-value" data-count-value="{{ kpis.alerts|default(0) }}">{{ kpis.alerts|default(0) }}</strong>
                 <span class="dashboard-kpi-label">Alertas registrados</span>
-                <div class="dashboard-kpi-footer"><span>Base Waze</span><span aria-hidden="true">→</span></div>
+                <div class="dashboard-kpi-footer"><span>Waze Partner Feed</span><span aria-hidden="true">→</span></div>
             </article>
+
             <article class="dashboard-kpi-card kpi-orange">
-                <div class="dashboard-kpi-top"><span class="dashboard-kpi-icon" aria-hidden="true">≋</span><span class="dashboard-kpi-trend {% if stats.total_jams|default(0) > 10 %}is-warning{% endif %}">{{ stats.total_jams|default(0) > 10 ? 'Atenção' : 'Normal' }}</span></div>
-                <strong class="dashboard-kpi-value" data-count-value="{{ stats.total_jams|default(0) }}">{{ stats.total_jams|default(0) }}</strong>
+                <div class="dashboard-kpi-top">
+                    <span class="dashboard-kpi-icon" aria-hidden="true">≋</span>
+                    <span class="dashboard-kpi-trend {{ totals.jams_active|default(0) > 10 ? 'is-warning' }}">{{ totals.jams_active|default(0) }} ativos</span>
+                </div>
+                <strong class="dashboard-kpi-value" data-count-value="{{ kpis.jams|default(0) }}">{{ kpis.jams|default(0) }}</strong>
                 <span class="dashboard-kpi-label">Congestionamentos</span>
-                <div class="dashboard-kpi-footer"><span>Ocorrências viárias</span><span aria-hidden="true">→</span></div>
+                <div class="dashboard-kpi-footer"><span>Atraso médio {{ totals.jams_avg_delay|default(0)|round(0) }}s</span><span aria-hidden="true">→</span></div>
             </article>
+
             <article class="dashboard-kpi-card kpi-green">
-                <div class="dashboard-kpi-top"><span class="dashboard-kpi-icon" aria-hidden="true">☁</span><span class="dashboard-kpi-trend is-positive">Ativo</span></div>
-                <strong class="dashboard-kpi-value" data-count-value="{{ stats.total_weather|default(0) }}">{{ stats.total_weather|default(0) }}</strong>
+                <div class="dashboard-kpi-top">
+                    <span class="dashboard-kpi-icon" aria-hidden="true">☁</span>
+                    <span class="dashboard-kpi-trend is-positive">Monitorado</span>
+                </div>
+                <strong class="dashboard-kpi-value" data-count-value="{{ kpis.weather|default(0) }}">{{ kpis.weather|default(0) }}</strong>
                 <span class="dashboard-kpi-label">Observações climáticas</span>
-                <div class="dashboard-kpi-footer"><span>Estações monitoradas</span><span aria-hidden="true">→</span></div>
+                <div class="dashboard-kpi-footer"><span>{{ kpis.stations|default(0) }} estações CEMADEN</span><span aria-hidden="true">→</span></div>
             </article>
+
             <article class="dashboard-kpi-card kpi-purple">
-                <div class="dashboard-kpi-top"><span class="dashboard-kpi-icon" aria-hidden="true">◎</span><span class="dashboard-kpi-trend is-positive">Conectado</span></div>
-                <strong class="dashboard-kpi-value" data-count-value="{{ stats.total_partners|default(0) }}">{{ stats.total_partners|default(0) }}</strong>
-                <span class="dashboard-kpi-label">Parceiros ativos</span>
-                <div class="dashboard-kpi-footer"><span>Integrações disponíveis</span><span aria-hidden="true">→</span></div>
+                <div class="dashboard-kpi-top">
+                    <span class="dashboard-kpi-icon" aria-hidden="true">◎</span>
+                    <span class="dashboard-kpi-trend is-positive">Conectado</span>
+                </div>
+                <strong class="dashboard-kpi-value" data-count-value="{{ kpis.cameras|default(0) }}">{{ kpis.cameras|default(0) }}</strong>
+                <span class="dashboard-kpi-label">Câmeras parceiras</span>
+                <div class="dashboard-kpi-footer"><span>{{ kpis.partners|default(0) }} parceiros · {{ kpis.users|default(0) }} usuários</span><span aria-hidden="true">→</span></div>
             </article>
         </section>
 
-        {# ── Grid principal: chart + saúde ───────────────────────────────── #}
+        {# ── Linha: gráficos (linha + doughnut) ─────────────────────── #}
         <div class="dashboard-main-grid">
             <section class="dashboard-panel">
                 <header class="dashboard-panel-header">
-                    <div><span class="dashboard-panel-kicker">Indicadores</span><h2>Atividade nas últimas 8 horas</h2></div>
-                    <span class="dashboard-panel-period">Por hora</span>
-                </header>
-                <div class="dashboard-chart" data-dashboard-line-chart>
-                    <div class="dashboard-chart-y" aria-hidden="true"><span>Alto</span><span></span><span>Méd</span><span></span><span>0</span></div>
-                    <div class="dashboard-chart-area">
-                        <div class="dashboard-chart-grid" aria-hidden="true"></div>
-                        <svg viewBox="0 0 700 220" preserveAspectRatio="none" role="img" aria-label="Gráfico de atividade operacional por hora">
-                            <defs>
-                                <linearGradient id="dashboardChartFill" x1="0" x2="0" y1="0" y2="1">
-                                    <stop offset="0" stop-color="#2563eb" stop-opacity=".18"/>
-                                    <stop offset="1" stop-color="#2563eb" stop-opacity="0"/>
-                                </linearGradient>
-                                <linearGradient id="dashboardChartFillJams" x1="0" x2="0" y1="0" y2="1">
-                                    <stop offset="0" stop-color="#ea580c" stop-opacity=".14"/>
-                                    <stop offset="1" stop-color="#ea580c" stop-opacity="0"/>
-                                </linearGradient>
-                            </defs>
-                            <path class="dashboard-chart-fill" data-chart-fill></path>
-                            <path class="dashboard-chart-fill dashboard-chart-fill--jams" data-chart-fill-jams></path>
-                            <path class="dashboard-chart-line" data-chart-line></path>
-                            <path class="dashboard-chart-line dashboard-chart-line--jams" data-chart-line-jams></path>
-                        </svg>
-                        <div class="dashboard-chart-x" aria-hidden="true">
-                            {% for point in hourly %}<span>{{ point.hour }}</span>{% else %}<span>—</span><span>—</span><span>—</span><span>—</span><span>—</span>{% endfor %}
-                        </div>
+                    <div>
+                        <span class="dashboard-panel-kicker">Indicadores</span>
+                        <h2>Atividade por hora</h2>
                     </div>
-                </div>
-                <div class="dashboard-chart-legend">
-                    <span><i class="legend-blue" aria-hidden="true"></i> Alertas — <strong>{{ stats.total_alerts|default(0) }}</strong></span>
-                    <span><i class="legend-orange" aria-hidden="true"></i> Jams — <strong>{{ stats.total_jams|default(0) }}</strong></span>
-                    <span>Total: <strong>{{ total_occurrences }}</strong></span>
+                    <span class="dashboard-panel-period">0h – 23h</span>
+                </header>
+                <div class="dashboard-chart-wrap">
+                    <canvas data-chart="hourly-activity"
+                            data-chart-data='{{ stats.charts.hourly_activity|json_encode|e('html_attr') }}'></canvas>
                 </div>
             </section>
 
+            <section class="dashboard-panel">
+                <header class="dashboard-panel-header">
+                    <div>
+                        <span class="dashboard-panel-kicker">Composição</span>
+                        <h2>Alertas por tipo</h2>
+                    </div>
+                </header>
+                <div class="dashboard-chart-wrap">
+                    <canvas data-chart="alerts-by-type"
+                            data-chart-data='{{ stats.charts.alerts_by_type|json_encode|e('html_attr') }}'></canvas>
+                </div>
+            </section>
+        </div>
+
+        {# ── Segunda linha de gráficos (barras) ─────────────────────── #}
+        <div class="dashboard-main-grid">
+            <section class="dashboard-panel">
+                <header class="dashboard-panel-header">
+                    <div>
+                        <span class="dashboard-panel-kicker">Top cidades</span>
+                        <h2>Concentração de alertas</h2>
+                    </div>
+                </header>
+                <div class="dashboard-chart-wrap dashboard-chart-wrap--tall">
+                    <canvas data-chart="alerts-by-city"
+                            data-chart-data='{{ stats.charts.alerts_by_city|json_encode|e('html_attr') }}'></canvas>
+                </div>
+            </section>
+
+            <section class="dashboard-panel">
+                <header class="dashboard-panel-header">
+                    <div>
+                        <span class="dashboard-panel-kicker">Congestionamentos</span>
+                        <h2>Distribuição por nível</h2>
+                    </div>
+                </header>
+                <div class="dashboard-chart-wrap dashboard-chart-wrap--tall">
+                    <canvas data-chart="jams-by-level"
+                            data-chart-data='{{ stats.charts.jams_by_level|json_encode|e('html_attr') }}'></canvas>
+                </div>
+            </section>
+
+            <section class="dashboard-panel">
+                <header class="dashboard-panel-header">
+                    <div>
+                        <span class="dashboard-panel-kicker">Clima</span>
+                        <h2>Tendência de temperatura</h2>
+                    </div>
+                </header>
+                <div class="dashboard-chart-wrap dashboard-chart-wrap--tall">
+                    <canvas data-chart="weather-trend"
+                            data-chart-data='{{ stats.charts.weather_trend|json_encode|e('html_attr') }}'></canvas>
+                </div>
+            </section>
+        </div>
+
+        {# ── Mapa ───────────────────────────────────────────────────── #}
+        <section class="dashboard-panel dashboard-map-panel">
+            <header class="dashboard-panel-header">
+                <div>
+                    <span class="dashboard-panel-kicker">Geolocalização</span>
+                    <h2>Mapa operacional</h2>
+                </div>
+                <div class="dashboard-map-legend" aria-label="Legenda do mapa">
+                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="alerts">⚠ Alertas</button>
+                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="jams">≋ Jams</button>
+                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="cameras">◎ Câmeras</button>
+                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="weather">☁ Clima</button>
+                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="stations">◎ CEMADEN</button>
+                </div>
+            </header>
+            <div class="dashboard-map"
+                 data-dashboard-map
+                 data-map-center='{{ stats.map.center|json_encode|e('html_attr') }}'
+                 data-map-alerts='{{ stats.map.alerts|json_encode|e('html_attr') }}'
+                 data-map-jams='{{ stats.map.jams|json_encode|e('html_attr') }}'
+                 data-map-cameras='{{ stats.map.cameras|json_encode|e('html_attr') }}'
+                 data-map-weather='{{ stats.map.weather|json_encode|e('html_attr') }}'
+                 data-map-stations='{{ stats.map.stations|json_encode|e('html_attr') }}'></div>
+        </section>
+
+        {# ── Listas de dados ────────────────────────────────────────── #}
+        <div class="dashboard-content-grid">
+            <section class="dashboard-panel data-section" data-section="alerts">
+                <header class="dashboard-panel-header">
+                    <div><span class="dashboard-panel-kicker">Tempo real</span><h2>Alertas recentes</h2></div>
+                    <span class="dashboard-panel-count {{ stats.recent.alerts|length > 0 ? 'is-orange' }}">{{ stats.recent.alerts|length }}</span>
+                </header>
+                <div class="dashboard-data-list" data-list="alerts">
+                    {% for alert in stats.recent.alerts %}
+                        <div class="dashboard-data-row"
+                             data-search-text="{{ (alert.type ~ ' ' ~ alert.subtype ~ ' ' ~ alert.city)|lower }}"
+                             data-date="{{ alert.pubDateTime ? alert.pubDateTime|date('Y-m-d') : '' }}">
+                            <span class="dashboard-row-icon row-orange" aria-hidden="true">⚠</span>
+                            <div>
+                                <strong>{{ alert.typeLabel }}</strong>
+                                <small>#{{ alert.id }} · {{ alert.subtype|default('—') }} · {{ alert.city|default('Local não informado') }}</small>
+                            </div>
+                            <time datetime="{{ alert.pubDateTime }}">{{ alert.pubDateTime ? alert.pubDateTime|date('d/m H:i') : '—' }}</time>
+                            <span class="dashboard-severity">Confiança {{ alert.confidence }}</span>
+                        </div>
+                    {% else %}
+                        <div class="dashboard-empty"><span aria-hidden="true">✓</span><strong>Nenhum alerta recente</strong><small>Ajuste os filtros ou verifique as fontes.</small></div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="dashboard-panel data-section" data-section="jams">
+                <header class="dashboard-panel-header">
+                    <div><span class="dashboard-panel-kicker">Trânsito</span><h2>Congestionamentos</h2></div>
+                    <span class="dashboard-panel-count {{ stats.recent.jams|length > 0 ? 'is-orange' }}">{{ stats.recent.jams|length }}</span>
+                </header>
+                <div class="dashboard-data-list" data-list="jams">
+                    {% for jam in stats.recent.jams %}
+                        <div class="dashboard-data-row"
+                             data-search-text="{{ (jam.street ~ ' ' ~ jam.city)|lower }}">
+                            <span class="dashboard-row-icon row-orange" aria-hidden="true">≋</span>
+                            <div>
+                                <strong>{{ jam.street|default('Via não informada') }}</strong>
+                                <small>
+                                    {{ jam.city|default('—') }}
+                                    {% if jam.speedKmh is not null %} · {{ jam.speedKmh|round(1) }} km/h{% endif %}
+                                    {% if jam.length %} · {{ (jam.length / 1000)|round(1) }} km{% endif %}
+                                </small>
+                            </div>
+                            <span class="dashboard-severity dashboard-jam-level-{{ jam.level }}">Nível {{ jam.level }}</span>
+                        </div>
+                    {% else %}
+                        <div class="dashboard-empty"><span aria-hidden="true">✓</span><strong>Nenhum congestionamento</strong><small>Não há ocorrências viárias no período.</small></div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="dashboard-panel data-section" data-section="routes">
+                <header class="dashboard-panel-header">
+                    <div><span class="dashboard-panel-kicker">Rotas TVT</span><h2>Maior atraso por rota</h2></div>
+                    <span class="dashboard-panel-count {{ stats.recent.routes|length > 0 ? 'is-orange' }}">{{ stats.recent.routes|length }}</span>
+                </header>
+                <div class="dashboard-data-list" data-list="routes">
+                    {% for route in stats.recent.routes %}
+                        <div class="dashboard-data-row"
+                             data-search-text="{{ (route.name ~ ' ' ~ route.from_name ~ ' ' ~ route.to_name ~ ' ' ~ route.waze_route_id)|lower }}">
+                            <span class="dashboard-row-icon {{ route.delay_minutes is not null and route.delay_minutes > 5 ? 'row-orange' : 'row-green' }}" aria-hidden="true">→</span>
+                            <div>
+                                <strong>{{ route.name }}</strong>
+                                <small>
+                                    {% if route.from_name and route.to_name %}{{ route.from_name }} → {{ route.to_name }} · {% endif %}
+                                    Atual {{ route.time|default('—') }}s · Histórico {{ route.historic_time|default('—') }}s
+                                </small>
+                            </div>
+                            <span class="dashboard-severity {{ route.delay_minutes is not null and route.delay_minutes <= 0 ? 'is-active' }}">
+                                {% if route.delay_minutes is not null %}
+                                    {% if route.delay_minutes > 0 %}+{{ route.delay_minutes }} min{% else %}No prazo{% endif %}
+                                {% else %}
+                                    Nível {{ route.jam_level|default('—') }}
+                                {% endif %}
+                            </span>
+                        </div>
+                    {% else %}
+                        <div class="dashboard-empty"><span aria-hidden="true">✓</span><strong>Nenhuma rota encontrada</strong><small>Sem snapshots vinculados às rotas.</small></div>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+
+        {# ── Rodapé: saúde + clima recente + fontes ─────────────────── #}
+        <div class="dashboard-bottom-grid">
             <section class="dashboard-panel">
                 <header class="dashboard-panel-header">
                     <div><span class="dashboard-panel-kicker">Status</span><h2>Saúde da operação</h2></div>
                     <span class="dashboard-health-badge"><i></i> Online</span>
                 </header>
                 <div class="dashboard-health-score">
-                    <div class="dashboard-health-ring" style="--health-score:{{ health }}" role="meter" aria-valuenow="{{ health }}" aria-valuemin="0" aria-valuemax="100" aria-label="Score de saúde">
+                    <div class="dashboard-health-ring" style="--health-score:{{ health }}"
+                         role="meter" aria-valuenow="{{ health }}" aria-valuemin="0" aria-valuemax="100">
                         <span>{{ health }}<small>%</small></span>
                     </div>
                     <div>
-                        <strong>{% if health >= 80 %}Operação estável{% elseif health >= 60 %}Atenção recomendada{% else %}Operação crítica{% endif %}</strong>
-                        <p>{% if health >= 80 %}Fontes de dados disponíveis e monitoradas.{% elseif health >= 60 %}Algumas rotas com atraso ou volume elevado.{% else %}Alto volume de alertas e congestionamentos ativos.{% endif %}</p>
+                        <strong>
+                            {% if health >= 80 %}Operação estável
+                            {% elseif health >= 60 %}Atenção recomendada
+                            {% else %}Operação crítica{% endif %}
+                        </strong>
+                        <p>
+                            {% if health >= 80 %}Fontes de dados disponíveis e monitoradas.
+                            {% elseif health >= 60 %}Algumas rotas com atraso ou volume elevado.
+                            {% else %}Alto volume de alertas e congestionamentos ativos.{% endif %}
+                        </p>
                     </div>
                 </div>
                 <div class="dashboard-health-list">
-                    <div><span><i class="health-green"></i> Waze Alerts</span><strong>{{ stats.total_alerts|default(0) }} registros</strong></div>
-                    <div><span><i class="health-{% if stats.total_jams|default(0) > 10 %}orange{% else %}blue{% endif %}"></i> Waze Jams</span><strong>{{ stats.total_jams|default(0) }} registros</strong></div>
-                    <div><span><i class="health-gray"></i> Rotas monitoradas</span><strong>{{ routes|length }} com snapshot</strong></div>
-                    <div><span><i class="health-gray"></i> Dados climáticos</span><strong>{{ stats.total_weather|default(0) }} observações</strong></div>
+                    <div><span><i class="health-green"></i> Alertas ativos</span><strong>{{ totals.alerts_active|default(0) }}</strong></div>
+                    <div><span><i class="health-{{ totals.jams_active|default(0) > 10 ? 'orange' : 'blue' }}"></i> Jams ativos</span><strong>{{ totals.jams_active|default(0) }}</strong></div>
+                    <div><span><i class="health-gray"></i> Rotas com snapshot</span><strong>{{ stats.recent.routes|length }}</strong></div>
+                    <div><span><i class="health-gray"></i> Observações de clima</span><strong>{{ totals.weather|default(0) }}</strong></div>
                 </div>
             </section>
-        </div>
 
-        {# ── Seções de dados ─────────────────────────────────────────────── #}
-        <div class="dashboard-content-grid">
-            <section class="dashboard-panel data-section" data-section="alerts">
-                <header class="dashboard-panel-header">
-                    <div><span class="dashboard-panel-kicker">Tempo real</span><h2>Alertas recentes</h2></div>
-                    <span class="dashboard-panel-count {% if alerts|length > 0 %}is-orange{% endif %}">{{ alerts|length }}</span>
-                </header>
-                <div class="dashboard-data-list" data-list="alerts">
-                    {% for alert in alerts %}
-                    <div class="dashboard-data-row"
-                         data-search-text="{{ (alert.type|default('') ~ ' ' ~ alert.subtype|default('') ~ ' ' ~ alert.city|default(''))|lower }}"
-                         data-date="{{ alert.pubDateTime ? alert.pubDateTime|date('Y-m-d') : '' }}">
-                        <span class="dashboard-row-icon row-orange" aria-hidden="true">⚠</span>
-                        <div>
-                            <strong>{{ alert.type|default('Alerta de trânsito') }}</strong>
-                            <small>#{{ alert.id }} · {{ alert.subtype|default('—') }} · {{ alert.city|default('Local não informado') }}</small>
-                        </div>
-                        <time datetime="{{ alert.pubDateTime ? alert.pubDateTime|date('c') : '' }}">{{ alert.pubDateTime ? alert.pubDateTime|date('d/m H:i') : '—' }}</time>
-                        <span class="dashboard-severity">Atenção</span>
-                    </div>
-                    {% else %}
-                    <div class="dashboard-empty"><span aria-hidden="true">✓</span><strong>Nenhum alerta recente</strong><small>A operação está sem novos alertas.</small></div>
-                    {% endfor %}
-                </div>
-                <div class="dashboard-pagination" data-pagination="alerts" role="navigation" aria-label="Páginas de alertas"></div>
-                <button type="button" class="dashboard-button is-link dashboard-expand" data-expand="alerts">Ver todos →</button>
-            </section>
-
-            <section class="dashboard-panel data-section" data-section="jams">
-                <header class="dashboard-panel-header">
-                    <div><span class="dashboard-panel-kicker">Trânsito</span><h2>Congestionamentos</h2></div>
-                    <span class="dashboard-panel-count {% if jams|length > 0 %}is-orange{% endif %}">{{ jams|length }}</span>
-                </header>
-                <div class="dashboard-data-list" data-list="jams">
-                    {% for jam in jams %}
-                    <div class="dashboard-data-row"
-                         data-search-text="{{ (jam.street|default('') ~ ' ' ~ jam.city|default(''))|lower }}"
-                         data-date="">
-                        <span class="dashboard-row-icon row-orange" aria-hidden="true">≋</span>
-                        <div>
-                            <strong>{{ jam.street|default('Via não informada') }}</strong>
-                            <small>{{ jam.city|default('—') }}{% if jam.speedKmh is defined and jam.speedKmh is not null %} · {{ jam.speedKmh|round(1) }} km/h{% endif %}{% if jam.length is defined and jam.length is not null %} · {{ (jam.length / 1000)|round(1) }} km{% endif %}</small>
-                        </div>
-                        <span class="dashboard-severity dashboard-jam-level-{{ jam.level|default(0) }}">Nível {{ jam.level|default(0) }}</span>
-                    </div>
-                    {% else %}
-                    <div class="dashboard-empty"><span aria-hidden="true">✓</span><strong>Nenhum congestionamento</strong><small>Não há ocorrências viárias recentes.</small></div>
-                    {% endfor %}
-                </div>
-                <div class="dashboard-pagination" data-pagination="jams" role="navigation" aria-label="Páginas de congestionamentos"></div>
-                <button type="button" class="dashboard-button is-link dashboard-expand" data-expand="jams">Ver todos →</button>
-            </section>
-
-            <section class="dashboard-panel data-section" data-section="routes">
-                <header class="dashboard-panel-header">
-                    <div><span class="dashboard-panel-kicker">Rotas monitoradas</span><h2>Maior atraso por rota</h2></div>
-                    <span class="dashboard-panel-count {% if routes|length > 0 %}is-orange{% endif %}">{{ routes|length }}</span>
-                </header>
-                <div class="dashboard-data-list" data-list="routes">
-                    {% for route in routes %}
-                    <div class="dashboard-data-row"
-                         data-search-text="{{ (route.name|default('') ~ ' ' ~ route.from_name|default('') ~ ' ' ~ route.to_name|default('') ~ ' ' ~ route.waze_route_id|default(''))|lower }}"
-                         data-date="">
-                        <span class="dashboard-row-icon {% if route.delay_minutes is not null and route.delay_minutes > 5 %}row-orange{% else %}row-green{% endif %}" aria-hidden="true">→</span>
-                        <div>
-                            <strong>{{ route.name|default('Rota monitorada') }}</strong>
-                            <small>{% if route.from_name is not null and route.to_name is not null %}{{ route.from_name }} → {{ route.to_name }} · {% endif %}Atual {{ route.time|default('—') }}s · Histórico {{ route.historic_time|default('—') }}s</small>
-                        </div>
-                        <span class="dashboard-severity {% if route.delay_minutes is not null and route.delay_minutes <= 0 %}is-active{% endif %}">
-                            {% if route.delay_minutes is not null %}{% if route.delay_minutes > 0 %}+{{ route.delay_minutes }} min{% else %}No prazo{% endif %}{% else %}Nível {{ route.jam_level|default('—') }}{% endif %}
-                        </span>
-                    </div>
-                    {% else %}
-                    <div class="dashboard-empty"><span aria-hidden="true">✓</span><strong>Nenhuma rota encontrada</strong><small>Não há snapshots vinculados às rotas.</small></div>
-                    {% endfor %}
-                </div>
-                <div class="dashboard-pagination" data-pagination="routes" role="navigation" aria-label="Páginas de rotas"></div>
-                <button type="button" class="dashboard-button is-link dashboard-expand" data-expand="routes">Ver todas →</button>
-            </section>
-        </div>
-
-        {# ── Rodapé ──────────────────────────────────────────────────────── #}
-        <div class="dashboard-bottom-grid">
             <section class="dashboard-panel">
                 <header class="dashboard-panel-header">
-                    <div><span class="dashboard-panel-kicker">Cobertura</span><h2>Cidades com mais alertas</h2></div>
-                    <span class="dashboard-panel-count is-green">{{ cities|length }}</span>
+                    <div><span class="dashboard-panel-kicker">Clima</span><h2>Leituras recentes</h2></div>
                 </header>
-                <div class="dashboard-city-grid">
-                    {% for city in cities %}<span><i aria-hidden="true"></i> {{ city.city }} <strong>({{ city.total }})</strong></span>
-                    {% else %}<span><i aria-hidden="true"></i> Dados geográficos ainda não disponíveis</span>{% endfor %}
+                <div class="dashboard-data-list" data-list="weather">
+                    {% for obs in stats.recent.weather %}
+                        <div class="dashboard-data-row">
+                            <span class="dashboard-row-icon row-green" aria-hidden="true">☁</span>
+                            <div>
+                                <strong>{{ obs.locationName|default('Estação') }}</strong>
+                                <small>{{ obs.city|default('—') }} · {{ obs.observedAt ? obs.observedAt|date('d/m H:i') : '' }}</small>
+                            </div>
+                            <span class="dashboard-severity">
+                                {% if obs.temperature is not null %}{{ obs.temperature|round(1) }}°C{% endif %}
+                                {% if obs.humidity is not null %} · {{ obs.humidity }}%{% endif %}
+                            </span>
+                        </div>
+                    {% else %}
+                        <div class="dashboard-empty"><span aria-hidden="true">✓</span><strong>Sem leituras climáticas</strong><small>Cadastre uma localização meteorológica.</small></div>
+                    {% endfor %}
                 </div>
             </section>
+
             <section class="dashboard-panel">
                 <header class="dashboard-panel-header">
                     <div><span class="dashboard-panel-kicker">Integrações</span><h2>Fontes de dados</h2></div>
                 </header>
                 <div class="dashboard-source-list">
-                    <div><span>Waze Partner Feed</span><strong class="dashboard-status {% if stats.total_alerts|default(0) > 0 %}is-active{% endif %}">{{ stats.total_alerts|default(0) > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
-                    <div><span>Waze Jams</span><strong class="dashboard-status {% if stats.total_jams|default(0) > 0 %}is-active{% endif %}">{{ stats.total_jams|default(0) > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
-                    <div><span>Estações meteorológicas</span><strong class="dashboard-status {% if stats.total_weather|default(0) > 0 %}is-active{% endif %}">{{ stats.total_weather|default(0) > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
-                    <div><span>Usuários cadastrados</span><strong>{{ stats.total_users|default(0) }}</strong></div>
+                    <div><span>Waze Alerts</span><strong class="dashboard-status {{ totals.alerts > 0 ? 'is-active' }}">{{ totals.alerts > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
+                    <div><span>Waze Jams</span><strong class="dashboard-status {{ totals.jams > 0 ? 'is-active' }}">{{ totals.jams > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
+                    <div><span>Clima (Open-Meteo)</span><strong class="dashboard-status {{ totals.weather > 0 ? 'is-active' }}">{{ totals.weather > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
+                    <div><span>CEMADEN</span><strong class="dashboard-status {{ totals.stations > 0 ? 'is-active' }}">{{ totals.stations > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
+                    <div><span>Câmeras parceiras</span><strong class="dashboard-status {{ totals.cameras > 0 ? 'is-active' }}">{{ totals.cameras > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
                 </div>
             </section>
         </div>
 
     </div>
 </div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script type="module" src="{{ asset('js/pages/dashboard.js') }}"></script>
 {% endblock %}

@@ -173,12 +173,15 @@ final class WazeFeedSynchronizer
         array $alerts,
         bool $dryRun,
     ): array {
-        $now = new \DateTimeImmutable();
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
 
         $created = 0;
         $updated = 0;
         $reactivated = 0;
         $currentUuids = [];
+
+        // Dedup dentro do MESMO lote — evita UniqueConstraintViolation.
+        $seen = [];
 
         foreach ($alerts as $data) {
             if (!is_array($data)) {
@@ -194,6 +197,12 @@ final class WazeFeedSynchronizer
             if ($uuid === '') {
                 continue;
             }
+
+            // Pula duplicados dentro deste lote.
+            if (isset($seen[$uuid])) {
+                continue;
+            }
+            $seen[$uuid] = true;
 
             $currentUuids[] = $uuid;
 
@@ -323,12 +332,15 @@ final class WazeFeedSynchronizer
         array $jams,
         bool $dryRun,
     ): array {
-        $now = new \DateTimeImmutable();
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
 
         $created = 0;
         $updated = 0;
         $reactivated = 0;
         $currentUuids = [];
+
+        // Dedup dentro do MESMO lote — evita UniqueConstraintViolation.
+        $seen = [];
 
         foreach ($jams as $data) {
             if (!is_array($data)) {
@@ -344,6 +356,12 @@ final class WazeFeedSynchronizer
             if ($uuid === '') {
                 continue;
             }
+
+            // Pula duplicados dentro deste lote.
+            if (isset($seen[$uuid])) {
+                continue;
+            }
+            $seen[$uuid] = true;
 
             $currentUuids[] = $uuid;
 

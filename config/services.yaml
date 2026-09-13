@@ -17,3 +17,6 @@ services:
         arguments:
             $projectDir: '%kernel.project_dir%'
             $enabled: '%partner_feeds_save_raw%'
+
+    App\EventListener\TimezoneListener:
+        tags: ['kernel.event_subscriber']

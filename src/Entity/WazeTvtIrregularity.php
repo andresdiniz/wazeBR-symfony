@@ -114,7 +114,7 @@ class WazeTvtIrregularity
 
     public function __construct()
     {
-        $now = new \DateTimeImmutable();
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
 
         $this->recordedAt = $now;
         $this->lastSeenAt = $now;

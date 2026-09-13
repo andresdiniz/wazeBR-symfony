@@ -97,7 +97,7 @@ class WeatherObservation
 
     public function __construct()
     {
-        $now = new \DateTimeImmutable();
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
         $this->observedAt = $now;
         $this->createdAt = $now;
     }

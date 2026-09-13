@@ -9,15 +9,14 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: WazeAlertRepository::class)]
-#[ORM\Table(name: 'waze_alerts', indexes: [
-    new ORM\Index(name: 'idx_waze_alert_uuid', columns: ['uuid']),
-    new ORM\Index(name: 'idx_waze_alert_partner_active', columns: ['partner_id', 'is_active']),
-    new ORM\Index(name: 'idx_waze_alert_city_type', columns: ['city', 'type']),
-    new ORM\Index(name: 'idx_waze_alert_pub_millis', columns: ['pub_millis']),
-    new ORM\Index(name: 'idx_waze_alert_collected_at', columns: ['collected_at']),
-    new ORM\Index(name: 'idx_waze_alert_last_seen_at', columns: ['last_seen_at']),
-    new ORM\Index(name: 'idx_waze_alert_location', columns: ['longitude', 'latitude']),
-])]
+#[ORM\Table(name: 'waze_alerts')]
+#[ORM\Index(name: 'idx_waze_alert_uuid', columns: ['uuid'])]
+#[ORM\Index(name: 'idx_waze_alert_partner_active', columns: ['partner_id', 'is_active'])]
+#[ORM\Index(name: 'idx_waze_alert_city_type', columns: ['city', 'type'])]
+#[ORM\Index(name: 'idx_waze_alert_pub_millis', columns: ['pub_millis'])]
+#[ORM\Index(name: 'idx_waze_alert_collected_at', columns: ['collected_at'])]
+#[ORM\Index(name: 'idx_waze_alert_last_seen_at', columns: ['last_seen_at'])]
+#[ORM\Index(name: 'idx_waze_alert_location', columns: ['longitude', 'latitude'])]
 #[ORM\UniqueConstraint(name: 'uniq_waze_alert_partner_uuid', columns: ['partner_id', 'uuid'])]
 class WazeAlert
 {
@@ -359,6 +358,13 @@ class WazeAlert
         return $this->deactivatedAt;
     }
 
+    public function setDeactivatedAt(?\DateTimeImmutable $deactivatedAt): static
+    {
+        $this->deactivatedAt = $deactivatedAt;
+
+        return $this;
+    }
+
     public function deactivate(\DateTimeImmutable $date): static
     {
         $this->isActive = false;
@@ -373,7 +379,7 @@ class WazeAlert
             return null;
         }
 
-        return (new \DateTimeImmutable())->setTimestamp((int) floor($this->pubMillis / 1000));
+        return (new \DateTimeImmutable('@' . intdiv($this->pubMillis, 1000)));
     }
 
     public function getTypeLabel(): string

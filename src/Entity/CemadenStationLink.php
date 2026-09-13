@@ -92,7 +92,7 @@ class CemadenStationLink
 
     public function __construct()
     {
-        $now = new \DateTimeImmutable();
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
         $this->createdAt = $now;
         $this->updatedAt = $now;
     }

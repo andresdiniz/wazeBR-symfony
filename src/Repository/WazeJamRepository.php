@@ -7,6 +7,7 @@ namespace App\Repository;
 use App\Entity\Partner;
 use App\Entity\WazeJam;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\Connection;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -14,95 +15,84 @@ use Doctrine\Persistence\ManagerRegistry;
  *
  * @method WazeJam|null find($id, $lockMode = null, $lockVersion = null)
  * @method WazeJam|null findOneBy(array $criteria, array $orderBy = null)
- * @method WazeJam[] findAll()
- * @method WazeJam[] findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
+ * @method WazeJam[]    findAll()
+ * @method WazeJam[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  */
 class WazeJamRepository extends ServiceEntityRepository
 {
+    private Connection $connection;
+
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, WazeJam::class);
+        $this->connection = $registry->getConnection();
     }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Sincronização
+    // ─────────────────────────────────────────────────────────────────────
 
     public function findOneByPartnerAndUuid(
         Partner $partner,
         string $uuid,
     ): ?WazeJam {
-        return $this->findOneBy([
-            'partner' => $partner,
-            'uuid' => $uuid,
-        ]);
-    }
-
-    /**
-     * @return WazeJam[]
-     */
-    public function findActiveByPartner(
-        Partner $partner,
-        int $limit = 1000,
-    ): array {
         return $this->createQueryBuilder('j')
             ->andWhere('j.partner = :partner')
-            ->andWhere('j.isActive = :isActive')
+            ->andWhere('j.uuid = :uuid')
             ->setParameter('partner', $partner)
-            ->setParameter('isActive', true)
-            ->orderBy('j.lastSeenAt', 'DESC')
-            ->setMaxResults($limit)
+            ->setParameter('uuid', $uuid)
+            ->setMaxResults(1)
             ->getQuery()
-            ->getResult();
+            ->getOneOrNullResult();
     }
 
     /**
-     * Desativa os jams ativos do partner que não apareceram no
-     * último JSON válido.
-     *
-     * Este método só deve ser chamado após:
-     * - HTTP 200;
-     * - JSON válido;
-     * - chave "jams" validada;
-     * - lista processada corretamente.
+     * Desativa jams do partner cujo uuid não aparece no feed atual.
+     * Usa DBAL nativo — mais rápido e sem surpresas com DQL UPDATE.
      *
      * @param string[] $currentUuids
      */
     public function deactivateMissingForPartner(
         Partner $partner,
         array $currentUuids,
-        \DateTimeImmutable $deactivatedAt,
+        \DateTimeImmutable $now,
     ): int {
         $currentUuids = array_values(array_unique(array_filter(
             $currentUuids,
-            static fn (mixed $uuid): bool =>
-                is_string($uuid) && trim($uuid) !== '',
+            static fn ($u) => is_string($u) && $u !== '',
         )));
 
-        /*
-         * Por segurança, uma lista vazia não desativa todos os registros.
-         * Isso evita desativação em caso de resposta parcial ou falha.
-         */
         if ($currentUuids === []) {
             return 0;
         }
 
-        return $this->createQueryBuilder('j')
-            ->update()
-            ->set('j.isActive', ':inactive')
-            ->set('j.deactivatedAt', ':deactivatedAt')
-            ->where('j.partner = :partner')
-            ->andWhere('j.isActive = :active')
-            ->andWhere('j.uuid NOT IN (:uuids)')
-            ->setParameter('partner', $partner)
-            ->setParameter('active', true)
-            ->setParameter('inactive', false)
-            ->setParameter('deactivatedAt', $deactivatedAt)
-            ->setParameter('uuids', $currentUuids)
-            ->getQuery()
-            ->execute();
+        $total = 0;
+
+        foreach (array_chunk($currentUuids, 500) as $chunk) {
+            $placeholders = implode(',', array_fill(0, count($chunk), '?'));
+
+            $total += (int) $this->connection->executeStatement(
+                sprintf(
+                    'UPDATE waze_jams
+                     SET is_active = 0, deactivated_at = ?
+                     WHERE partner_id = ?
+                       AND is_active = 1
+                       AND uuid NOT IN (%s)',
+                    $placeholders,
+                ),
+                array_merge(
+                    [$now->format('Y-m-d H:i:s'), $partner->getId()],
+                    $chunk,
+                ),
+            );
+        }
+
+        return $total;
     }
 
     /**
      * Desativa todos os jams ativos de um partner.
-     *
-     * Use somente para uma ação administrativa explícita.
+     * Uso administrativo explícito.
      */
     public function deactivateAllForPartner(
         Partner $partner,
@@ -122,13 +112,27 @@ class WazeJamRepository extends ServiceEntityRepository
             ->execute();
     }
 
-    /**
-     * @return WazeJam[]
-     */
-    public function findActiveByCity(
-        string $city,
-        int $limit = 100,
-    ): array {
+    // ─────────────────────────────────────────────────────────────────────
+    // Consultas de negócio
+    // ─────────────────────────────────────────────────────────────────────
+
+    /** @return WazeJam[] */
+    public function findActiveByPartner(Partner $partner, int $limit = 1000): array
+    {
+        return $this->createQueryBuilder('j')
+            ->andWhere('j.partner = :partner')
+            ->andWhere('j.isActive = :isActive')
+            ->setParameter('partner', $partner)
+            ->setParameter('isActive', true)
+            ->orderBy('j.lastSeenAt', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** @return WazeJam[] */
+    public function findActiveByCity(string $city, int $limit = 100): array
+    {
         return $this->createQueryBuilder('j')
             ->andWhere('j.city = :city')
             ->andWhere('j.isActive = :isActive')
@@ -142,9 +146,7 @@ class WazeJamRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    /**
-     * @return WazeJam[]
-     */
+    /** @return WazeJam[] */
     public function findActiveByPartnerAndCity(
         Partner $partner,
         string $city,
@@ -181,20 +183,13 @@ class WazeJamRepository extends ServiceEntityRepository
                 ->setParameter('partner', $partner);
         }
 
-        return $queryBuilder
-            ->getQuery()
-            ->getOneOrNullResult();
+        return $queryBuilder->getQuery()->getOneOrNullResult();
     }
 
-    /**
-     * @return WazeJam[]
-     */
-    public function findRecentJams(
-        int $hours = 6,
-        int $limit = 500,
-        bool $onlyActive = true,
-    ): array {
-        $since = new \DateTimeImmutable(sprintf('-%d hours', $hours));
+    /** @return WazeJam[] */
+    public function findRecentJams(int $hours = 6, int $limit = 500, bool $onlyActive = true): array
+    {
+        $since = new \DateTimeImmutable(sprintf('-%d hours', $hours), new \DateTimeZone('UTC'));
         $sinceMillis = $since->getTimestamp() * 1000;
 
         $queryBuilder = $this->createQueryBuilder('j')
@@ -214,16 +209,14 @@ class WazeJamRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    /**
-     * @return WazeJam[]
-     */
+    /** @return WazeJam[] */
     public function findRecentByPartner(
         Partner $partner,
         int $hours = 6,
         int $limit = 500,
         bool $onlyActive = true,
     ): array {
-        $since = new \DateTimeImmutable(sprintf('-%d hours', $hours));
+        $since = new \DateTimeImmutable(sprintf('-%d hours', $hours), new \DateTimeZone('UTC'));
         $sinceMillis = $since->getTimestamp() * 1000;
 
         $queryBuilder = $this->createQueryBuilder('j')
@@ -245,14 +238,9 @@ class WazeJamRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    /**
-     * @return WazeJam[]
-     */
-    public function findByLevel(
-        int $minimumLevel = 3,
-        int $limit = 500,
-        bool $onlyActive = true,
-    ): array {
+    /** @return WazeJam[] */
+    public function findByLevel(int $minimumLevel = 3, int $limit = 500, bool $onlyActive = true): array
+    {
         $queryBuilder = $this->createQueryBuilder('j')
             ->andWhere('j.level >= :minimumLevel')
             ->setParameter('minimumLevel', $minimumLevel);
@@ -271,9 +259,8 @@ class WazeJamRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    public function getJamStatsByCity(
-        bool $onlyActive = true,
-    ): array {
+    public function getJamStatsByCity(bool $onlyActive = true): array
+    {
         $queryBuilder = $this->createQueryBuilder('j')
             ->select(
                 'j.city AS city',
@@ -290,9 +277,7 @@ class WazeJamRepository extends ServiceEntityRepository
                 ->setParameter('isActive', true);
         }
 
-        return $queryBuilder
-            ->getQuery()
-            ->getResult();
+        return $queryBuilder->getQuery()->getResult();
     }
 
     public function countActiveByPartner(Partner $partner): int
@@ -309,17 +294,13 @@ class WazeJamRepository extends ServiceEntityRepository
 
     /**
      * @param string[] $uuids
-     *
      * @return string[]
      */
-    public function findExistingUuidsForPartner(
-        Partner $partner,
-        array $uuids,
-    ): array {
+    public function findExistingUuidsForPartner(Partner $partner, array $uuids): array
+    {
         $uuids = array_values(array_unique(array_filter(
             $uuids,
-            static fn (mixed $uuid): bool =>
-                is_string($uuid) && trim($uuid) !== '',
+            static fn (mixed $uuid): bool => is_string($uuid) && trim($uuid) !== '',
         )));
 
         if ($uuids === []) {
@@ -341,15 +322,10 @@ class WazeJamRepository extends ServiceEntityRepository
         );
     }
 
-    /**
-     * @return WazeJam[]
-     */
-    public function findRecentlyDeactivated(
-        Partner $partner,
-        int $hours = 24,
-        int $limit = 500,
-    ): array {
-        $since = new \DateTimeImmutable(sprintf('-%d hours', $hours));
+    /** @return WazeJam[] */
+    public function findRecentlyDeactivated(Partner $partner, int $hours = 24, int $limit = 500): array
+    {
+        $since = new \DateTimeImmutable(sprintf('-%d hours', $hours), new \DateTimeZone('UTC'));
 
         return $this->createQueryBuilder('j')
             ->andWhere('j.partner = :partner')
