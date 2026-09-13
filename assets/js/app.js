@@ -23,7 +23,26 @@ import '../css/components/menus.css';
 import '../css/components/accordions.css';
 import '../css/components/scrollbars.css';
 import '../css/components/empty-states.css';
-import { initHeader } from './layout/header.js';
 
-function init() { initHeader(document); }
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true }); else init();
+import './core/app-init.js';
+import './core/csrf.js';
+import './core/dom.js';
+import './core/http-client.js';
+import './core/modal.js';
+import './core/notifications.js';
+import './core/theme.js';
+
+import './layout/base-layout.js';
+import './layout/footer.js';
+import './layout/header.js';
+import './layout/sidebar.js';
+
+import './components/accordions.js';
+import './components/charts.js';
+import './components/expand-buttons.js';
+import './components/filters.js';
+import './components/map.js';
+import './components/menus.js';
+import './components/notifications.js';
+import './components/pagination.js';
+import './components/table.js';
