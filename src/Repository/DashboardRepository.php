@@ -39,16 +39,16 @@ final class DashboardRepository extends ServiceEntityRepository
 
         $latestSnapshots = [];
         foreach ($snapshots as $snapshot) {
-            $routeId = $this->value($snapshot, 'getRouteId');
-            if ($routeId !== null && $routeId !== '' && !isset($latestSnapshots[(string) $routeId])) {
-                $latestSnapshots[(string) $routeId] = $snapshot;
+            $wazeRouteId = $this->value($snapshot, 'getWazeRouteId');
+            if ($wazeRouteId !== null && $wazeRouteId !== '' && !isset($latestSnapshots[(string) $wazeRouteId])) {
+                $latestSnapshots[(string) $wazeRouteId] = $snapshot;
             }
         }
 
         $recentRoutes = [];
         foreach ($routes as $route) {
-            $routeId = $this->value($route, 'getId');
-            $snapshot = $routeId !== null ? ($latestSnapshots[(string) $routeId] ?? null) : null;
+            $wazeRouteId = $this->value($route, 'getRouteId');
+            $snapshot = $wazeRouteId !== null ? ($latestSnapshots[(string) $wazeRouteId] ?? null) : null;
             if ($snapshot === null) {
                 continue;
             }
@@ -58,9 +58,9 @@ final class DashboardRepository extends ServiceEntityRepository
             $delaySeconds = $time !== null && $historicTime !== null ? max(0, $historicTime - $time) : null;
 
             $recentRoutes[] = [
-                'id' => $routeId,
-                'route_id' => $routeId,
-                'waze_route_id' => $this->value($route, 'getRouteId'),
+                'id' => $this->value($route, 'getId'),
+                'route_id' => $this->value($snapshot, 'getRouteId'),
+                'waze_route_id' => $wazeRouteId,
                 'name' => $this->value($snapshot, 'getName') ?? $this->value($route, 'getName') ?? 'Rota monitorada',
                 'city' => $this->value($snapshot, 'getCity') ?? 'Local não informado',
                 'state' => $this->value($snapshot, 'getState'),
