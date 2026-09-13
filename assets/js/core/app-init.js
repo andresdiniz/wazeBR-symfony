@@ -1,4 +1,3 @@
-
 import './csrf.js';
 import './dom.js';
 import './http-client.js';
@@ -23,8 +22,9 @@ import { initTable } from '../components/table.js';
 
 let initialized = false;
 
-export function initApp(doc = document) {
+export function init(doc = globalThis.document) {
   if (initialized || !doc) return;
+
   initialized = true;
 
   console.log('🚀 Inicializando WazeBR App UI...');
@@ -48,10 +48,12 @@ export function initApp(doc = document) {
   doc.dispatchEvent(new CustomEvent('wazebr:ready'));
 }
 
-// Auto-start garantido para ES Modules
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => initApp(), { once: true });
-} else {
-  initApp();
-  console.log('🚀 WazeBR App UI já inicializado (DOMContentLoaded já disparado).')  ;
+function start() {
+  if (globalThis.document.readyState === 'loading') {
+    globalThis.document.addEventListener('DOMContentLoaded', () => init(), { once: true });
+  } else {
+    init();
+  }
 }
+
+start();
