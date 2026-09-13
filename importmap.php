@@ -6,7 +6,7 @@ return [
         'entrypoint' => true,
     ],
     'dashboard' => [
-        'path' => './assets/js/dashboard.js',
-        'entrypoint' => true,
+        'path' => './assets/js/pages/dashboard.js',
+        'entrypoint' => false,
     ],
 ];

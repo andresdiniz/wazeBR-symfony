@@ -1,4 +1,24 @@
 
+
+
+// Core é sempre carregado.
+import './core/app-init.js';
+import './core/csrf.js';
+import './core/dom.js';
+import './core/http-client.js';
+import './core/modal.js';
+import './core/notifications.js';
+import './core/theme.js';
+
+// Layouts globais; cada layout importa seus próprios componentes.
+import './layout/base-layout.js';
+import './layout/footer.js';
+import './layout/header.js';
+import './layout/sidebar.js';
+
+console.log('app.js carregado');
+
+
 import { initBaseLayout } from '../layout/base-layout.js';
 import { initHeader } from '../layout/header.js';
 import { initTables } from '../components/table.js';
