@@ -2,6 +2,11 @@
 
 {% block title %}Dashboard | WazeBR{% endblock %}
 
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('build/dashboard.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="dashboard-wrapper" data-dashboard>
     <header class="dashboard-header dashboard-reveal">
@@ -34,112 +39,56 @@
     </section>
 
     <div class="dashboard-grid">
-        <!-- Recent Alerts -->
-        <section class="dashboard-card">
-            <h2>Alertas Recentes</h2>
+        <section class="dashboard-card dashboard-reveal">
+            <div class="card-heading"><div><span class="card-kicker">Alertas</span><h2>Alertas recentes</h2></div></div>
             <div class="table-responsive">
                 <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Tipo</th>
-                            <th>Data</th>
-                        </tr>
-                    </thead>
+                    <thead><tr><th>ID</th><th>Tipo</th><th>Data</th></tr></thead>
                     <tbody>
-                        {% for alert in stats.recent_alerts %}
+                    {% for alert in stats.recent_alerts|default([]) %}
                         <tr>
                             <td>#{{ alert.id }}</td>
-                            <td><span class="badge badge-alert">{{ alert.type }}</span></td>
-                            <td>
-    {% if alert.pubDateTime %}
-        {{ alert.pubDateTime|date('d/m/Y H:i') }}
-    {% else %}
-        —
-    {% endif %}
-</td>
+                            <td><span class="badge badge-alert">{{ alert.type|default('Alerta') }}</span></td>
+                            <td>{% if alert.pubDateTime %}{{ alert.pubDateTime|date('d/m/Y H:i') }}{% else %}—{% endif %}</td>
                         </tr>
-                        {% else %}
-                        <tr><td colspan="3">Nenhum alerta encontrado</td></tr>
-                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="3" class="empty-state">Nenhum alerta encontrado.</td></tr>
+                    {% endfor %}
                     </tbody>
                 </table>
             </div>
         </section>
 
-        <!-- Recent Jams -->
-        <section class="dashboard-card">
-            <h2>Congestionamentos Recentes</h2>
+        <section class="dashboard-card dashboard-reveal">
+            <div class="card-heading"><div><span class="card-kicker">Trânsito</span><h2>Congestionamentos recentes</h2></div></div>
             <div class="table-responsive">
                 <table class="data-table">
-                    <thead>
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Local</th>
-                                <th>Velocidade</th>
-                                <th>Nível</th>
-                                <th>Data</th>
-                            </tr>
-                        </thead>
-                    </thead>
+                    <thead><tr><th>ID</th><th>Local</th><th>Velocidade</th><th>Nível</th><th>Data</th></tr></thead>
                     <tbody>
-                        {% for jam in stats.recent_jams %}
-                            <tr>
-                                <td>#{{ jam.id }}</td>
-
-                                <td>
-                                    {{ jam.street ?: 'Rua não informada' }}
-                                    {% if jam.city %}
-                                        <small class="text-muted">
-                                            — {{ jam.city }}
-                                        </small>
-                                    {% endif %}
-                                </td>
-
-                                <td>
-                                    {{ jam.speedKmh|default('0') }} km/h
-                                </td>
-
-                                <td>
-                                    {{ jam.levelLabel }}
-                                </td>
-
-                                <td>
-                                    {% if jam.pubDateTime %}
-                                        {{ jam.pubDateTime|date('d/m/Y H:i') }}
-                                    {% else %}
-                                        —
-                                    {% endif %}
-                                </td>
-                            </tr>
-                        {% else %}
-                            <tr>
-                                <td colspan="5">
-                                    Nenhum congestionamento encontrado
-                                </td>
-                            </tr>
-                        {% endfor %}
+                    {% for jam in stats.recent_jams|default([]) %}
+                        <tr>
+                            <td>#{{ jam.id }}</td>
+                            <td>{{ jam.street|default('Rua não informada') }}{% if jam.city %}<small class="text-muted"> — {{ jam.city }}</small>{% endif %}</td>
+                            <td>{{ jam.speedKmh|default(0) }} km/h</td>
+                            <td>{{ jam.levelLabel|default('—') }}</td>
+                            <td>{% if jam.pubDateTime %}{{ jam.pubDateTime|date('d/m/Y H:i') }}{% else %}—{% endif %}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="5" class="empty-state">Nenhum congestionamento encontrado.</td></tr>
+                    {% endfor %}
                     </tbody>
                 </table>
             </div>
-
         </section>
 
         <section class="dashboard-card dashboard-reveal">
             <div class="card-heading"><div><span class="card-kicker">Distribuição</span><h2>Alertas por tipo</h2></div></div>
             <div class="chart-wrap"><canvas data-dashboard-chart="alerts" data-chart-values='{{ stats.alerts_by_type|default({})|json_encode|e('html_attr') }}'></canvas></div>
         </section>
+
         <section class="dashboard-card dashboard-reveal">
             <div class="card-heading"><div><span class="card-kicker">Monitoramento</span><h2>Mapa operacional</h2></div></div>
             <div class="dashboard-map" data-dashboard-map data-points='{{ stats.map_points|default([])|json_encode|e('html_attr') }}'></div>
-
-        </section>
-        <section class="dashboard-card full-width dashboard-reveal">
-            <div class="card-heading"><div><span class="card-kicker">Últimos registros</span><h2>Alertas recentes</h2></div></div>
-            <div class="table-responsive"><table class="data-table"><thead><tr><th>Tipo</th><th>Local</th><th>Data</th></tr></thead><tbody>
-            {% for alert in stats.recent_alerts|default([]) %}<tr><td><span class="badge badge-alert">{{ alert.type|default('Alerta') }}</span></td><td>{{ alert.street|default(alert.location|default('—')) }}</td><td>{{ alert.createdAt|default(null) ? alert.createdAt|date('d/m/Y H:i') : '—' }}</td></tr>{% else %}<tr><td colspan="3" class="empty-state">Nenhum alerta encontrado.</td></tr>{% endfor %}
-            </tbody></table></div>
         </section>
     </div>
 </div>
@@ -147,6 +96,5 @@
 
 {% block javascripts %}
     {{ parent() }}
-    <script type="module" src="{{ asset('js/pages/dashboard.js') }}"></script>
+    <script type="module" src="{{ asset('js/dashboard.js') }}"></script>
 {% endblock %}
-
