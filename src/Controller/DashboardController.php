@@ -12,14 +12,12 @@ use Symfony\Component\Routing\Attribute\Route;
 final class DashboardController extends AbstractController
 {
     #[Route('/dashboard', name: 'dashboard', methods: ['GET'])]
-    public function index(DashboardRepository $dashboardRepo): Response
+    public function index(DashboardRepository $dashboardRepository): Response
     {
         $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
 
-        $stats = $dashboardRepo->getDashboardStats();
-
         return $this->render('dashboard/index.html.twig', [
-            'stats' => $stats,
+            'stats' => $dashboardRepository->getDashboardStats(),
         ]);
     }
 }
