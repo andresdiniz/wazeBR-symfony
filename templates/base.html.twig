@@ -9,14 +9,13 @@
         {% block stylesheets %}{% endblock %}
         {% block importmap %}{{ importmap('app') }}{% endblock %}
     </head>
-    <body class="{{ block('body_class')|default('') }}">
+    <body class="{% block body_class %}{% endblock %}">
         {% block body %}{% endblock %}
     </body>
 
-{% block javascripts %}
-    <script type="module">
-        import '@wazebr/app';
-        import { start } from '@wazebr/app';
-    </script>
-{% endblock %}
+    {% block javascripts %}
+        <script type="module">
+            import '@wazebr/app';
+        </script>
+    {% endblock %}
 </html>
