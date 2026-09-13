@@ -13,9 +13,10 @@
         {% block body %}{% endblock %}
     </body>
 
-    <script>
-        {% block javascripts %}
-            import { start } from '@wazebr/app';
-        {% endblock %}
+{% block javascripts %}
+    <script type="module">
+        import '@wazebr/app';
+        import { start } from '@wazebr/app';
     </script>
+{% endblock %}
 </html>
