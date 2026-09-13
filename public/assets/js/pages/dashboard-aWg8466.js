@@ -1,6 +1,5 @@
 import '../../css/pages/dashboard.css';
 import { initTheme } from '../app.js';
-import { initTheme } from '../app.js';
 
 function initDashboard(root = document) {
     const dashboard = root.querySelector('[data-dashboard]');
