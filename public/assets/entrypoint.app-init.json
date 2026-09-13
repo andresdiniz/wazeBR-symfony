@@ -10,6 +10,15 @@
     "\/assets\/js\/layout\/footer.js",
     "\/assets\/js\/layout\/header.js",
     "\/assets\/js\/layout\/sidebar.js",
+    "\/assets\/js\/components\/accordions.js",
+    "\/assets\/js\/components\/charts.js",
+    "\/assets\/js\/components\/expand-buttons.js",
+    "\/assets\/js\/components\/filters.js",
+    "\/assets\/js\/components\/map.js",
+    "\/assets\/js\/components\/menus.js",
+    "\/assets\/js\/components\/notifications.js",
+    "\/assets\/js\/components\/pagination.js",
+    "\/assets\/js\/components\/table.js",
     "\/assets\/css\/core\/reset.css",
     "\/assets\/css\/core\/variables.css",
     "\/assets\/css\/core\/utilities.css",
@@ -34,9 +43,5 @@
     "\/assets\/css\/components\/menus.css",
     "\/assets\/css\/components\/accordions.css",
     "\/assets\/css\/components\/scrollbars.css",
-    "\/assets\/css\/components\/empty-states.css",
-    "\/assets\/js\/components\/notifications.js",
-    "\/assets\/js\/core\/app-init.js",
-    "\/assets\/js\/components\/menus.js",
-    "\/assets\/js\/components\/accordions.js"
+    "\/assets\/css\/components\/empty-states.css"
 ]
