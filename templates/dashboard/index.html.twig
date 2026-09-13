@@ -2,13 +2,13 @@
 
 {% block title %}Dashboard{% endblock %}
 
-{% block body %}
+{% block content %}
     <div class="dashboard-page">
         <h1 class="dashboard-page-title">Dashboard</h1>
     </div>
 {% endblock %}
 
-{% block javascripts %}
+{% block importmap %}
     {{ parent() }}
     {{ importmap('dashboard') }}
 {% endblock %}

@@ -1,3 +1,7 @@
+// assets/js/core/app-init.js
+
+initApp();
+
 
 import './csrf.js';
 import './dom.js';

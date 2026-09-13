@@ -1,10 +1,9 @@
 import '../../css/pages/dashboard.css';
 import { initTheme } from '../app.js';
-import { initApp } from '../core/app-init.js';
+import { initTheme } from '../app.js';
 
 
-
-console.debug('Dashboard script loaded');
+console.log('Dashboard script loaded');
 
 function initDashboard(root = document) {
     const dashboard = root.querySelector('[data-dashboard]');
