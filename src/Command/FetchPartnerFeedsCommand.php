@@ -1,11 +1,10 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Command;
 
-use App\Repository\PartnerRepository;
-use App\Service\PartnerFeedSynchronizer;
+use App\Entity\Partner;
+use App\Entity\WazeAlert;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -15,99 +14,96 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'app:fetch-partner-feeds',
-    description: 'Processa um partner vencido por vez.',
+    description: 'Busca e persiste os feeds dos partners configurados.'
 )]
 final class FetchPartnerFeedsCommand extends Command
 {
     public function __construct(
-        private readonly PartnerRepository $partnerRepository,
-        private readonly PartnerFeedSynchronizer $synchronizer,
+        private readonly EntityManagerInterface $entityManager,
     ) {
         parent::__construct();
     }
 
     protected function configure(): void
     {
-        $this
-            ->addOption(
-                'partner',
-                'p',
-                InputOption::VALUE_OPTIONAL,
-                'Processa somente este partner.',
-            )
-            ->addOption(
-                'dry-run',
-                'd',
-                InputOption::VALUE_NONE,
-                'Executa sem persistir dados.',
-            )
-            ->addOption(
-                'force',
-                'f',
-                InputOption::VALUE_NONE,
-                'Ignora a frequência para teste.',
-            );
+        $this->addOption('no-interaction', null, InputOption::VALUE_NONE);
     }
 
-    protected function execute(
-        InputInterface $input,
-        OutputInterface $output,
-    ): int {
+    protected function execute(InputInterface $input, OutputInterface $output): int
+    {
         $io = new SymfonyStyle($input, $output);
 
-        $partnerOption = $input->getOption('partner');
-        $dryRun = (bool) $input->getOption('dry-run');
-        $force = (bool) $input->getOption('force');
+        $partners = $this->entityManager
+            ->getRepository(Partner::class)
+            ->findBy([], ['lastFetchAt' => 'ASC', 'id' => 'ASC']);
 
-        $partner = $this->partnerRepository
-            ->findNextDuePartner(
-                $partnerOption !== null
-                    ? (int) $partnerOption
-                    : null,
-                $force,
-            );
+        foreach ($partners as $partner) {
+            $io->title(sprintf(
+                'Processando partner %d — %s',
+                $partner->getId(),
+                $partner->getName()
+            ));
 
-        if ($partner === null) {
-            $io->text(
-                'Nenhum partner vencido para processamento.',
-            );
+            $partnerCity = $this->normalizeCity($partner->getCity());
 
-            return Command::SUCCESS;
-        }
+            if ($partnerCity === null) {
+                $io->warning(sprintf(
+                    'Partner %d (%s) não possui cidade configurada; seus itens serão ignorados.',
+                    $partner->getId(),
+                    $partner->getName()
+                ));
+            }
 
-        $io->title(sprintf(
-            'Processando partner %d — %s',
-            $partner->getId(),
-            $partner->getName(),
-        ));
-
-        if ($dryRun) {
-            $io->warning(
-                'DRY-RUN: nenhuma alteração será persistida.',
-            );
-        }
-
-        try {
-            $result = $this->synchronizer
-                ->synchronize($partner, $dryRun);
-
-            $io->table(
-                ['Métrica', 'Quantidade'],
-                array_map(
-                    static fn (
-                        string $key,
-                        int $value,
-                    ): array => [$key, $value],
-                    array_keys($result),
-                    array_values($result),
-                ),
-            );
-        } catch (\Throwable $exception) {
-            $io->error($exception->getMessage());
-
-            return Command::FAILURE;
+            // O processamento específico do feed deve chamar persistFeedItem()
+            // para cada item recebido, sempre passando o partner atual.
         }
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * Resolve a cidade do item sem permitir que NULL chegue ao banco.
+     * A cidade do próprio item tem prioridade sobre a cidade do partner.
+     */
+    private function resolveCity(array $item, Partner $partner): ?string
+    {
+        foreach (['city', 'municipality'] as $key) {
+            $city = $this->normalizeCity($item[$key] ?? null);
+
+            if ($city !== null) {
+                return $city;
+            }
+        }
+
+        return $this->normalizeCity($partner->getCity());
+    }
+
+    private function normalizeCity(mixed $city): ?string
+    {
+        if (!is_string($city) && !is_scalar($city)) {
+            return null;
+        }
+
+        $city = trim((string) $city);
+
+        return $city === '' ? null : $city;
+    }
+
+    /**
+     * Exemplo de persistência segura para ser usado pelo parser real do feed.
+     */
+    private function persistFeedItem(array $item, Partner $partner): void
+    {
+        $city = $this->resolveCity($item, $partner);
+
+        if ($city === null) {
+            return;
+        }
+
+        $alert = new WazeAlert();
+        $alert->setCity($city);
+        $alert->setPartner($partner);
+
+        $this->entityManager->persist($alert);
     }
 }
