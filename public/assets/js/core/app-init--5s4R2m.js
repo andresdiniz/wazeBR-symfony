@@ -1,5 +1,3 @@
-import '../app.js';
-
 import './csrf.js';
 import './dom.js';
 import './http-client.js';
@@ -22,11 +20,6 @@ import '../components/notifications.js';
 import '../components/pagination.js';
 import '../components/table.js';
 
-
-const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
-const isServer = typeof window === 'undefined' && typeof document === 'undefined';
-const isNode = typeof process !== 'undefined' && process.versions != null && process.versions.node != null;
-console.log('Environment:', isBrowser ? 'Browser' : isServer ? 'Server' : isNode ? 'Node.js' : 'Unknown');
 let initialized = false;
 
 export function initApp(document = globalThis.document) {
@@ -35,6 +28,7 @@ export function initApp(document = globalThis.document) {
 
   const init = () => {
     document.documentElement.classList.add('app-ready');
+
     document.dispatchEvent(new CustomEvent('wazebr:ready'));
   };
 

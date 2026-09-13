@@ -1,5 +1,3 @@
-import '../app.js';
-
 import './csrf.js';
 import './dom.js';
 import './http-client.js';
@@ -35,6 +33,7 @@ export function initApp(document = globalThis.document) {
 
   const init = () => {
     document.documentElement.classList.add('app-ready');
+
     document.dispatchEvent(new CustomEvent('wazebr:ready'));
   };
 

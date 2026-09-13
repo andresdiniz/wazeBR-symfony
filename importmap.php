@@ -9,4 +9,8 @@ return [
         'path' => './assets/js/pages/dashboard.js',
         'entrypoint' => false,
     ],
+    'app-init' => [
+        'path' => './assets/js/core/app-init.js',
+        'entrypoint' => true,
+    ],
 ];
