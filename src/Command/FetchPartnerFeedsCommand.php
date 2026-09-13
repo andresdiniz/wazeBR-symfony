@@ -4,6 +4,7 @@ namespace App\Command;
 
 use App\Entity\Partner;
 use App\Service\PartnerFeedSynchronizer;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -17,6 +18,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 final class FetchPartnerFeedsCommand extends Command
 {
     public function __construct(
+        private readonly EntityManagerInterface $entityManager,
         private readonly PartnerFeedSynchronizer $synchronizer,
     ) {
         parent::__construct();
@@ -96,12 +98,14 @@ final class FetchPartnerFeedsCommand extends Command
         return $totals['errors'] > 0 ? Command::FAILURE : Command::SUCCESS;
     }
 
-    /**
-     * Mantém a consulta dos partners isolada para permitir o reuso do repositório
-     * configurado pelo container da aplicação.
-     */
+    /** @return list<Partner> */
     private function getPartners(): array
     {
-        return [];
+        return $this->entityManager
+            ->getRepository(Partner::class)
+            ->findBy([], [
+                'lastFetchAt' => 'ASC',
+                'id' => 'ASC',
+            ]);
     }
 }
