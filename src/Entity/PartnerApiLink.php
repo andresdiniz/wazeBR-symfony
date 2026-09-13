@@ -14,8 +14,17 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Index(name: 'idx_partner_api_link_partner_type_active', columns: ['partner_id', 'type', 'active'])]
 class PartnerApiLink
 {
-    public const TYPE_ALERTS = 'alerts';
+    public const TYPE_ALERTS  = 'alerts';
+    public const TYPE_JAMS    = 'jams';
     public const TYPE_TRAFFIC = 'traffic';
+    public const TYPE_TVT     = 'tvt';
+
+    private const ALLOWED_TYPES = [
+        self::TYPE_ALERTS,
+        self::TYPE_JAMS,
+        self::TYPE_TRAFFIC,
+        self::TYPE_TVT,
+    ];
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -57,15 +66,24 @@ class PartnerApiLink
 
     public function setType(string $type): static
     {
-        if (!in_array($type, [self::TYPE_ALERTS, self::TYPE_TRAFFIC], true)) {
-            throw new \InvalidArgumentException('API link type must be alerts or traffic.');
+        $normalized = mb_strtolower(trim($type));
+
+        if (!in_array($normalized, self::ALLOWED_TYPES, true)) {
+            throw new \InvalidArgumentException(sprintf(
+                'Tipo de API link inválido: "%s". Permitidos: %s.',
+                $type,
+                implode(', ', self::ALLOWED_TYPES),
+            ));
         }
-        $this->type = $type;
+
+        $this->type = $normalized;
         return $this;
     }
 
-    public function isAlerts(): bool { return $this->type === self::TYPE_ALERTS; }
+    public function isAlerts(): bool  { return $this->type === self::TYPE_ALERTS; }
     public function isTraffic(): bool { return $this->type === self::TYPE_TRAFFIC; }
+    public function isJams(): bool    { return $this->type === self::TYPE_JAMS; }
+    public function isTvt(): bool     { return $this->type === self::TYPE_TVT; }
     public function getName(): ?string { return $this->name; }
     public function setName(string $name): static { $this->name = $name; return $this; }
     public function getUrl(): ?string { return $this->url; }

@@ -18,9 +18,8 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Lock\LockFactory;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
-use App\Repository\PartnerRepository;
-
 
 #[AsCommand(
     name: 'app:fetch-waze-feed',
@@ -34,7 +33,7 @@ final class FetchWazeFeedCommand extends Command
         private readonly WazeAlertRepository $alertRepository,
         private readonly WazeJamRepository $jamRepository,
         private readonly PartnerApiLinkRepository $apiLinkRepository,
-        private readonly PartnerRepository $partnerRepository,
+        private readonly LockFactory $lockFactory,
     ) {
         parent::__construct();
     }
@@ -78,7 +77,7 @@ final class FetchWazeFeedCommand extends Command
                 'force',
                 'f',
                 InputOption::VALUE_NONE,
-                'Ignora temporariamente a frequência configurada no partner.',
+                'Ignora temporariamente a frequência configurada no partner (uso manual).',
             );
     }
 
@@ -87,7 +86,7 @@ final class FetchWazeFeedCommand extends Command
         OutputInterface $output,
     ): int {
         $io = new SymfonyStyle($input, $output);
-
+        $this->resetStaleConnection();
         $partnerOption = $input->getOption('partner');
         $type = trim((string) $input->getOption('type'));
         $dryRun = (bool) $input->getOption('dry-run');
@@ -130,8 +129,7 @@ final class FetchWazeFeedCommand extends Command
                         $link->getType(),
                         $link->getName(),
                         $link->getUrl(),
-                        $partner?->getFetchFrequency() . ' '
-                            . ($partner?->getFetchFrequencyUnit() ?? ''),
+                        $partner?->getFetchFrequencyLabel() ?? '-',
                     ];
                 },
                 $apiLinks,
@@ -143,6 +141,7 @@ final class FetchWazeFeedCommand extends Command
         $totals = [
             'partnersProcessed' => 0,
             'partnersSkipped' => 0,
+            'partnersLocked' => 0,
             'partnersFailed' => 0,
             'alertsCreated' => 0,
             'alertsUpdated' => 0,
@@ -158,72 +157,92 @@ final class FetchWazeFeedCommand extends Command
         foreach ($linksByPartner as $links) {
             $partner = $links[0]->getPartner();
 
-            if ($partner === null) {
+            if ($partner === null || $partner->getId() === null) {
                 continue;
             }
 
-            if (!$force && !$this->shouldFetchPartner($partner)) {
+            $label = $partner->getName()
+                ?? ('ID ' . $partner->getId());
+
+            $lock = $this->lockFactory->createLock(
+                sprintf('waze:alerts:partner:%d', $partner->getId()),
+                ttl: 600.0,
+            );
+
+            if (!$lock->acquire()) {
                 $io->note(sprintf(
-                    'Partner "%s" ignorado: frequência ainda não vencida (%s).',
-                    $partner->getName() ?? ('ID ' . $partner->getId()),
-                    $this->getFrequencyLabel($partner),
+                    'Partner "%s" ignorado: outro processo já está sincronizando.',
+                    $label,
                 ));
 
-                $totals['partnersSkipped']++;
+                $totals['partnersLocked']++;
 
                 continue;
             }
 
-            $io->section(sprintf(
-                'Partner: %s',
-                $partner->getName() ?? ('ID ' . $partner->getId()),
-            ));
-
-            $partnerSuccess = true;
-
-            foreach ($links as $apiLink) {
-                try {
-                    $result = $this->fetchAndSyncApiLink(
-                        $io,
-                        $partner,
-                        $apiLink,
-                        $dryRun,
-                        $limit,
-                    );
-
-                    foreach ($result as $key => $value) {
-                        $totals[$key] += $value;
-                    }
-                } catch (\Throwable $exception) {
-                    $partnerSuccess = false;
-
-                    $io->error(sprintf(
-                        'Erro no link "%s": %s',
-                        $apiLink->getName(),
-                        $exception->getMessage(),
+            try {
+                if (!$force && !$partner->isFetchDue($partner->getLastFetchAt())) {
+                    $io->note(sprintf(
+                        'Partner "%s" ignorado: frequência ainda não vencida (%s).',
+                        $label,
+                        $partner->getFetchFrequencyLabel(),
                     ));
 
-                    if ($io->isVerbose()) {
-                        $io->writeln($exception->getTraceAsString());
+                    $totals['partnersSkipped']++;
+
+                    continue;
+                }
+
+                $io->section(sprintf('Partner: %s', $label));
+
+                $partnerSuccess = true;
+
+                foreach ($links as $apiLink) {
+                    try {
+                        $result = $this->fetchAndSyncApiLink(
+                            $io,
+                            $partner,
+                            $apiLink,
+                            $dryRun,
+                            $limit,
+                        );
+
+                        foreach ($result as $key => $value) {
+                            $totals[$key] += $value;
+                        }
+                    } catch (\Throwable $exception) {
+                        $partnerSuccess = false;
+
+                        $io->error(sprintf(
+                            'Erro no link "%s": %s',
+                            $apiLink->getName(),
+                            $exception->getMessage(),
+                        ));
+
+                        if ($io->isVerbose()) {
+                            $io->writeln($exception->getTraceAsString());
+                        }
                     }
                 }
+
+                if ($partnerSuccess) {
+                    if (!$dryRun) {
+                        $partner->setLastFetchAt(new \DateTimeImmutable());
+
+                        $this->entityManager->persist($partner);
+                        $this->entityManager->flush();
+                    }
+
+                    $totals['partnersProcessed']++;
+                } else {
+                    $totals['partnersFailed']++;
+                }
+            } finally {
+                $lock->release();
             }
 
-            /*
-             * Só registra a última execução quando todos os links
-             * do partner terminaram com sucesso.
-             */
-            if ($partnerSuccess) {
-                if (!$dryRun) {
-                    $partner->setLastFetchAt(new \DateTimeImmutable());
-
-                    $this->entityManager->persist($partner);
-                    $this->entityManager->flush();
-                }
-
-                $totals['partnersProcessed']++;
-            } else {
-                $totals['partnersFailed']++;
+            if ($input->getOption('one-partner')) {
+                break;
             }
         }
 
@@ -233,7 +252,8 @@ final class FetchWazeFeedCommand extends Command
             ['Métrica', 'Quantidade'],
             [
                 ['Partners processados', $totals['partnersProcessed']],
-                ['Partners ignorados', $totals['partnersSkipped']],
+                ['Partners ignorados (frequência)', $totals['partnersSkipped']],
+                ['Partners ignorados (lock)', $totals['partnersLocked']],
                 ['Partners com erro', $totals['partnersFailed']],
                 ['Alerts criados', $totals['alertsCreated']],
                 ['Alerts atualizados', $totals['alertsUpdated']],
@@ -395,13 +415,6 @@ final class FetchWazeFeedCommand extends Command
 
         $linkType = mb_strtoupper((string) $apiLink->getType());
 
-        /*
-         * O feed Alerts retorna:
-         * {
-         *     "alerts": [],
-         *     "jams": []
-         * }
-         */
         if ($linkType === 'ALERTS') {
             if (!array_key_exists('alerts', $data)) {
                 throw new \RuntimeException(
@@ -1096,81 +1109,14 @@ final class FetchWazeFeedCommand extends Command
         return $result;
     }
 
-    private function shouldFetchPartner(Partner $partner): bool
-    {
-        $lastFetchAt = $partner->getLastFetchAt();
+    private function resetStaleConnection(): void
+{
+    $connection = $this->entityManager->getConnection();
 
-        if ($lastFetchAt === null) {
-            return true;
-        }
-
-        $frequency = max(
-            1,
-            $partner->getFetchFrequency() ?? 5,
-        );
-
-        $unit = mb_strtolower(
-            (string) (
-                $partner->getFetchFrequencyUnit()
-                ?? 'minutes'
-            ),
-        );
-
-        $interval = match ($unit) {
-            'second',
-            'seconds',
-            'segundo',
-            'segundos' => $frequency,
-
-            'hour',
-            'hours',
-            'hora',
-            'horas' => $frequency * 3600,
-
-            default => $frequency * 60,
-        };
-
-        return (
-            time() - $lastFetchAt->getTimestamp()
-        ) >= $interval;
+    try {
+        $connection->executeQuery('SELECT 1');
+    } catch (\Throwable) {
+        $connection->close();
     }
-
-    private function getFrequencyLabel(?Partner $partner): string
-    {
-        if ($partner === null) {
-            return 'Não definida';
-        }
-
-        $frequency = $partner->getFetchFrequency() ?? 5;
-
-        $unit = mb_strtolower(
-            (string) (
-                $partner->getFetchFrequencyUnit()
-                ?? 'minutes'
-            ),
-        );
-
-        return match ($unit) {
-            'second',
-            'seconds',
-            'segundo',
-            'segundos' => sprintf(
-                '%d segundo(s)',
-                $frequency,
-            ),
-
-            'hour',
-            'hours',
-            'hora',
-            'horas' => sprintf(
-                '%d hora(s)',
-                $frequency,
-            ),
-
-            default => sprintf(
-                '%d minuto(s)',
-                $frequency,
-            ),
-        };
-    }
+}
 }

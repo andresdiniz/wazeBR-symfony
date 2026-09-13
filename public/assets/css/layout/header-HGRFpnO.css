@@ -1,0 +1,160 @@
+/* ── Screen reader only ──────────────────────────────────────────────────── */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ── Mobile toggle: hamburguer → X ───────────────────────────────────────── */
+.app-header__mobile-toggle span {
+    transition: transform .2s ease, opacity .2s ease, background .15s;
+}
+
+.app-header__mobile-toggle[aria-expanded="true"] span:nth-child(1) {
+    transform: translateY(6px) rotate(45deg);
+}
+.app-header__mobile-toggle[aria-expanded="true"] span:nth-child(2) {
+    opacity: 0;
+}
+.app-header__mobile-toggle[aria-expanded="true"] span:nth-child(3) {
+    transform: translateY(-6px) rotate(-45deg);
+}
+
+/* ── Navegação mobile aberta ─────────────────────────────────────────────── */
+@media (max-width: 1180px) {
+    .app-header__navigation.is-open {
+        display: flex;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        flex-direction: column;
+        gap: 4px;
+        padding: 12px var(--hd-px) 16px;
+        background: var(--hd-bg);
+        border-bottom: 1px solid var(--hd-border);
+        box-shadow: 0 12px 24px rgba(15, 23, 42, .08);
+        animation: hd-mobile-in .18s ease;
+    }
+
+    .app-header__navigation.is-open .app-header__nav-link {
+        padding: 11px 13px;
+        border-radius: 8px;
+        text-align: left;
+    }
+}
+
+@keyframes hd-mobile-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Dropdown: seções e cabeçalhos ───────────────────────────────────────── */
+.app-header__dropdown-section {
+    padding: 6px 6px 8px;
+    border-bottom: 1px solid var(--hd-border);
+}
+.app-header__dropdown-section:last-child { border-bottom: 0; }
+
+.app-header__dropdown-section-label {
+    padding: 4px 9px;
+    color: var(--hd-soft);
+    font-size: .55rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+/* ── Notificações: empty state + footer ──────────────────────────────────── */
+.app-header__notifications-empty {
+    display: grid;
+    gap: 4px;
+    padding: 26px 16px;
+    text-align: center;
+    color: var(--hd-muted);
+    font-size: .65rem;
+    line-height: 1.5;
+}
+.app-header__notifications-empty strong {
+    color: var(--hd-text);
+    font-size: .74rem;
+    font-weight: 700;
+}
+
+.app-header__notifications-footer {
+    padding: 10px 15px;
+    border-top: 1px solid var(--hd-border);
+    text-align: center;
+    background: rgba(37, 99, 235, .02);
+}
+.app-header__notifications-footer a {
+    color: var(--hd-primary);
+    font-size: .62rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+.app-header__notifications-footer a:hover { text-decoration: underline; }
+
+/* ── Notificação: tempo melhor formatado ─────────────────────────────────── */
+.app-header__notification-item time {
+    display: block;
+    margin-top: 2px;
+    color: var(--hd-soft);
+    font-size: .54rem;
+}
+
+/* ── User menu: cabeçalho com avatar ─────────────────────────────────────── */
+.app-header__user-menu-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 12px 10px;
+    border-bottom: 1px solid var(--hd-border);
+}
+
+.app-header__user-menu-head > div {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+.app-header__user-menu-head strong {
+    color: var(--hd-text);
+    font-size: .68rem;
+    font-weight: 700;
+    line-height: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.app-header__user-menu-head small {
+    color: var(--hd-soft);
+    font-size: .57rem;
+    line-height: 1;
+}
+
+.app-header__user-menu a[role="menuitem"] {
+    display: block;
+    padding: 9px 10px;
+    border-radius: 7px;
+    color: var(--hd-muted);
+    font-size: .65rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background .12s, color .12s;
+}
+
+/* ── Botão de fechar dropdown: foco visível ──────────────────────────────── */
+.app-header__dropdown button:focus-visible,
+.app-header__dropdown a:focus-visible {
+    outline: 2px solid var(--hd-primary);
+    outline-offset: 2px;
+    border-radius: 6px;
+}

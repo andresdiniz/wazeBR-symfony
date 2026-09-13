@@ -108,4 +108,14 @@ final class FetchPartnerFeedsCommand extends Command
                 'id' => 'ASC',
             ]);
     }
+    private function resetStaleConnection(): void
+{
+    $connection = $this->entityManager->getConnection();
+
+    try {
+        $connection->executeQuery('SELECT 1');
+    } catch (\Throwable) {
+        $connection->close();
+    }
+}
 }

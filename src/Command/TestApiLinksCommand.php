@@ -32,6 +32,7 @@ class TestApiLinksCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+        $this->resetStaleConnection();
         $arg1 = $input->getArgument('arg1');
 
         if ($arg1) {
@@ -46,4 +47,14 @@ class TestApiLinksCommand extends Command
 
         return Command::SUCCESS;
     }
+    private function resetStaleConnection(): void
+{
+    $connection = $this->entityManager->getConnection();
+
+    try {
+        $connection->executeQuery('SELECT 1');
+    } catch (\Throwable) {
+        $connection->close();
+    }
+}
 }

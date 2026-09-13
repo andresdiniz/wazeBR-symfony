@@ -1,23 +1,139 @@
-<footer class="app-footer footer" data-component="footer">
+<footer
+    class="app-footer footer"
+    data-component="footer"
+>
     <div class="footer-inner">
+
+        {# ========================================================
+           MARCA
+           ======================================================== #}
         <div class="footer-brand-block">
-            <a href="{{ path('dashboard') }}" class="footer-brand" aria-label="WazeBR - inicio">
-                <span class="footer-brand-mark" aria-hidden="true">W</span>
-                <span><strong>WazeBR</strong><small>Monitoramento inteligente</small></span>
+
+            <a
+                href="{{ path('dashboard') }}"
+                class="footer-brand"
+                aria-label="WazeBR - início"
+            >
+                <span
+                    class="footer-brand-mark"
+                    aria-hidden="true"
+                >
+                    W
+                </span>
+
+                <span class="footer-brand-content">
+                    <strong>WazeBR</strong>
+                    <small>Monitoramento inteligente</small>
+                </span>
             </a>
-            <p class="footer-description">Dados claros para decisoes melhores no transito.</p>
+
+            <p class="footer-description">
+                Dados claros para decisões melhores no trânsito.
+            </p>
+
         </div>
+
+
+        {# ========================================================
+           NAVEGAÇÃO
+           ======================================================== #}
         <div class="footer-nav-block">
-            <nav class="footer-nav">
+
+            <span class="footer-section-label">
+                Navegação
+            </span>
+
+            <nav
+                class="footer-nav"
+                aria-label="Navegação do rodapé"
+            >
                 <ul class="footer-nav-list">
-                    <li><a href="{{ path('dashboard') }}" class="footer-link">Inicio</a></li>
-                    <li><a href="#" class="footer-link">Sobre</a></li>
-                    <li><a href="#" class="footer-link">Contato</a></li>
+
+                    <li>
+                        <a
+                            href="{{ path('dashboard') }}"
+                            class="footer-link"
+                        >
+                            Início
+                        </a>
+                    </li>
+
+                    <li>
+                        <a
+                            href="#"
+                            class="footer-link"
+                        >
+                            Sobre
+                        </a>
+                    </li>
+
+                    <li>
+                        <a
+                            href="#"
+                            class="footer-link"
+                        >
+                            Contato
+                        </a>
+                    </li>
+
                 </ul>
             </nav>
+
         </div>
+
+
+        {# ========================================================
+           STATUS / META
+           ======================================================== #}
         <div class="footer-meta">
-            <p class="footer-copyright">&copy; {{ "now"|date("Y") }} WazeBR. Todos os direitos reservados.</p>
+
+            <div
+                class="footer-system-status"
+                aria-label="Sistema operacional"
+            >
+                <span
+                    class="footer-system-status-dot"
+                    aria-hidden="true"
+                ></span>
+
+                <span>
+                    Sistema operacional
+                </span>
+            </div>
+
+            <p class="footer-copyright">
+                &copy;
+                <span data-current-year>
+                    {{ "now"|date("Y") }}
+                </span>
+                WazeBR.
+                Todos os direitos reservados.
+            </p>
+
+            <span class="footer-version">
+                Centro operacional
+            </span>
+
+        </div>
+
+    </div>
+
+
+    {# ========================================================
+       BARRA INFERIOR
+       ======================================================== #}
+    <div class="footer-bottom">
+        <div class="footer-bottom-inner">
+
+            <span class="footer-bottom-line"></span>
+
+            <span class="footer-bottom-text">
+                Monitoramento de trânsito em tempo real
+            </span>
+
+            <span class="footer-bottom-line"></span>
+
         </div>
     </div>
+
 </footer>

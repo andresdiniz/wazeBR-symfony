@@ -1,72 +1,186 @@
 <!DOCTYPE html>
 <html lang="pt-BR" data-theme="system">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
-        <meta name="color-scheme" content="light dark">
-        <meta name="description" content="{% block meta_description %}Plataforma WazeBR{% endblock %}">
-        <meta name="robots" content="{% block meta_robots %}index, follow{% endblock %}">
 
-        {# Favicons e PWA #}
-        <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
-        <link rel="alternate icon" href="{{ asset('favicon.ico') }}">
-        <link rel="manifest" href="{{ asset('site.webmanifest') }}" ignore-path>
-        <meta name="theme-color" content="#33ccff" media="(prefers-color-scheme: light)">
-        <meta name="theme-color" content="#1e293b" media="(prefers-color-scheme: dark)">
+<head>
+    <meta charset="UTF-8">
 
-        <title>{% block title %}WazeBR{% endblock %}</title>
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
+    >
 
-        {# Script Inline Anti-FOUC (Previne a piscada no carregamento do tema) #}
-        <script>
-            (function() {
-                try {
-                    var t = localStorage.getItem('wazebr-theme') || 'system';
-                    if (['system', 'light', 'dark'].indexOf(t) < 0) t = 'system';
-                    document.documentElement.dataset.theme = t;
-                } catch(e) {}
-            })();
-        </script>
+    <meta
+        name="color-scheme"
+        content="light dark"
+    >
 
-        {% block stylesheets %}{% endblock %}
+    <meta
+        name="description"
+        content="{% block meta_description %}Plataforma WazeBR{% endblock %}"
+    >
 
-        {# depois — usa o nome que está registrado no importmap #}
-        {% block importmap %}
-            {{ importmap(['app', 'js-app-init']) }}
-        {% endblock %}
-    </head>
+    <meta
+        name="robots"
+        content="{% block meta_robots %}index, follow{% endblock %}"
+    >
 
-    <body class="{% block body_class %}bg-background text-foreground min-h-screen flex flex-col font-sans antialiased{% endblock %}">
 
-        {# Cabeçalho Global #}
-        {% block header %}
-            {# Insira aqui o seu <header> ou navbar global #}
-        {% endblock %}
+    {# ============================================================
+       FAVICON / PWA
+       ============================================================ #}
 
-        {# Flash Messages #}
-        {% block flash_messages %}
-            {% if app.flashes|length > 0 %}
-                <aside aria-label="Notificações" class="container mx-auto px-4 mt-4 space-y-2">
-                    {% for type, messages in app.flashes %}
-                        {% for message in messages %}
-                            <div class="p-4 rounded-lg shadow-sm border alert alert-{{ type }}" role="alert">
-                                {{ message }}
-                            </div>
-                        {% endfor %}
+    <link
+        rel="icon"
+        type="image/svg+xml"
+        href="{{ asset('favicon.svg') }}"
+    >
+
+    <link
+        rel="alternate icon"
+        href="{{ asset('favicon.ico') }}"
+    >
+
+    <link
+        rel="manifest"
+        href="{{ asset('site.webmanifest') }}"
+        ignore-path
+    >
+
+    <meta
+        name="theme-color"
+        content="#33ccff"
+        media="(prefers-color-scheme: light)"
+    >
+
+    <meta
+        name="theme-color"
+        content="#1e293b"
+        media="(prefers-color-scheme: dark)"
+    >
+
+
+    {# ============================================================
+       TITLE
+       ============================================================ #}
+
+    <title>
+        {% block title %}WazeBR{% endblock %}
+    </title>
+
+
+    {# ============================================================
+       ANTI-FOUC — TEMA
+       ============================================================ #}
+
+    <script>
+        (function () {
+            try {
+                var theme =
+                    localStorage.getItem('wazebr-theme') || 'system';
+
+                if (
+                    ['system', 'light', 'dark'].indexOf(theme) < 0
+                ) {
+                    theme = 'system';
+                }
+
+                document.documentElement.dataset.theme = theme;
+            } catch (e) {
+                document.documentElement.dataset.theme = 'system';
+            }
+        })();
+    </script>
+
+
+    {# ============================================================
+       STYLESHEETS
+       ============================================================ #}
+
+    {% block stylesheets %}
+    {% endblock %}
+
+
+    {# ============================================================
+       IMPORTMAP
+       ============================================================ #}
+
+    {% block importmap %}
+        {{ importmap(['app', 'js-app-init']) }}
+    {% endblock %}
+
+</head>
+
+
+<body
+    class="{% block body_class %}bg-background text-foreground min-h-screen flex flex-col font-sans antialiased{% endblock %}"
+>
+
+    {# ============================================================
+       HEADER GLOBAL
+       ============================================================ #}
+
+    {% block header %}
+    {% endblock %}
+
+
+    {# ============================================================
+       FLASH MESSAGES
+       ============================================================ #}
+
+    {% block flash_messages %}
+
+        {% if app.flashes|length > 0 %}
+
+            <aside
+                aria-label="Notificações"
+                class="container mx-auto px-4 mt-4 space-y-2"
+            >
+
+                {% for type, messages in app.flashes %}
+
+                    {% for message in messages %}
+
+                        <div
+                            class="p-4 rounded-lg shadow-sm border alert alert-{{ type }}"
+                            role="alert"
+                        >
+                            {{ message }}
+                        </div>
+
                     {% endfor %}
-                </aside>
-            {% endif %}
-        {% endblock %}
 
-        {# Conteúdo Principal #}
-        <main id="main-content" class="flex-grow {% block main_class %}{% endblock %}">
-            {% block body %}{% endblock %}
-        </main>
+                {% endfor %}
 
-        {# Rodapé Global #}
-        {% block footer %}
-            {# Insira aqui o seu <footer> global #}
-        {% endblock %}
+            </aside>
 
-        {% block javascripts %}{% endblock %}
-    </body>
+        {% endif %}
+
+    {% endblock %}
+
+
+    {# ============================================================
+       CONTEÚDO DA PÁGINA
+       ============================================================ #}
+
+    {% block body %}
+    {% endblock %}
+
+
+    {# ============================================================
+       FOOTER GLOBAL
+       ============================================================ #}
+
+    {% block footer %}
+    {% endblock %}
+
+
+    {# ============================================================
+       JAVASCRIPT
+       ============================================================ #}
+
+    {% block javascripts %}
+    {% endblock %}
+
+</body>
+
 </html>

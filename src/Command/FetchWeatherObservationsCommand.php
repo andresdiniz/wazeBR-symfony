@@ -30,6 +30,7 @@ final class FetchWeatherObservationsCommand extends AbstractCommand
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+        $this->resetStaleConnection();
 
         try {
             $this->observationFetcher->fetchAndStoreObservations();
@@ -40,4 +41,15 @@ final class FetchWeatherObservationsCommand extends AbstractCommand
             return Command::FAILURE;
         }
     }
+
+    private function resetStaleConnection(): void
+{
+    $connection = $this->entityManager->getConnection();
+
+    try {
+        $connection->executeQuery('SELECT 1');
+    } catch (\Throwable) {
+        $connection->close();
+    }
+}
 }

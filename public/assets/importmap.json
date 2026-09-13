@@ -1,34 +1,6 @@
 {
-    "dashboard": {
-        "path": "\/assets\/js\/pages\/dashboard-As5-HPR.js",
-        "type": "js"
-    },
-    "dashboard-css": {
-        "path": "\/assets\/css\/pages\/dashboard-MxgMXH1.css",
-        "type": "js"
-    },
-    "app": {
-        "path": "\/assets\/..\/assets\/js\/app-nTnnBqD.js",
-        "type": "js"
-    },
-    "\/assets\/css\/layout\/base-layout.css": {
-        "path": "\/assets\/css\/layout\/base-layout-FPfZVyn.css",
-        "type": "css"
-    },
-    "\/assets\/css\/layout\/header.css": {
-        "path": "\/assets\/css\/layout\/header-5i1s34R.css",
-        "type": "css"
-    },
-    "\/assets\/css\/layout\/sidebar.css": {
-        "path": "\/assets\/css\/layout\/sidebar-1nqpGPA.css",
-        "type": "css"
-    },
-    "\/assets\/css\/layout\/footer.css": {
-        "path": "\/assets\/css\/layout\/footer-UmyASUt.css",
-        "type": "css"
-    },
     "js-app-init": {
-        "path": "\/assets\/..\/assets\/js\/core\/app-init-uYDWdEU.js",
+        "path": "\/assets\/js\/core\/app-init-uYDWdEU.js",
         "type": "js"
     },
     "\/assets\/js\/core\/csrf.js": {
@@ -60,15 +32,15 @@
         "type": "js"
     },
     "\/assets\/js\/layout\/footer.js": {
-        "path": "\/assets\/js\/layout\/footer-qqt7YQ-.js",
+        "path": "\/assets\/js\/layout\/footer-qqkdF8Q.js",
         "type": "js"
     },
     "\/assets\/js\/layout\/header.js": {
-        "path": "\/assets\/js\/layout\/header-fPzLQJi.js",
+        "path": "\/assets\/js\/layout\/header-AyNkUnO.js",
         "type": "js"
     },
     "\/assets\/js\/layout\/sidebar.js": {
-        "path": "\/assets\/js\/layout\/sidebar-fpBtJhH.js",
+        "path": "\/assets\/js\/layout\/sidebar-q4uRzfC.js",
         "type": "js"
     },
     "\/assets\/js\/components\/accordions.js": {
@@ -108,6 +80,30 @@
         "type": "js"
     },
     "\/assets\/js\/pages\/dashboard.js": {
+        "path": "\/assets\/js\/pages\/dashboard-As5-HPR.js",
+        "type": "js"
+    },
+    "app": {
+        "path": "\/assets\/js\/app-nTnnBqD.js",
+        "type": "js"
+    },
+    "\/assets\/css\/layout\/base-layout.css": {
+        "path": "\/assets\/css\/layout\/base-layout-VAEbl7E.css",
+        "type": "css"
+    },
+    "\/assets\/css\/layout\/header.css": {
+        "path": "\/assets\/css\/layout\/header-O31uXsR.css",
+        "type": "css"
+    },
+    "\/assets\/css\/layout\/sidebar.css": {
+        "path": "\/assets\/css\/layout\/sidebar-EUEIxYv.css",
+        "type": "css"
+    },
+    "\/assets\/css\/layout\/footer.css": {
+        "path": "\/assets\/css\/layout\/footer-GqAxWOp.css",
+        "type": "css"
+    },
+    "dashboard": {
         "path": "\/assets\/js\/pages\/dashboard-As5-HPR.js",
         "type": "js"
     }

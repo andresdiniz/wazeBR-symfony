@@ -69,6 +69,7 @@ class FetchCemadenPluviometricCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+        $this->resetStaleConnection();
         $dryRun = (bool) $input->getOption('dry-run');
         $force = (bool) $input->getOption('force');
         $partnerId = $input->getOption('partner');
@@ -288,4 +289,15 @@ class FetchCemadenPluviometricCommand extends Command
             $station->getStationName() ?? $station->getCemadenStationId(),
         );
     }
+
+    private function resetStaleConnection(): void
+{
+    $connection = $this->entityManager->getConnection();
+
+    try {
+        $connection->executeQuery('SELECT 1');
+    } catch (\Throwable) {
+        $connection->close();
+    }
+}
 }

@@ -25,6 +25,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Lock\LockFactory;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 #[AsCommand(
@@ -45,6 +46,7 @@ final class FetchWazeTvtCommand extends Command
         private readonly EntityManagerInterface $entityManager,
         private readonly HttpClientInterface $httpClient,
         private readonly LoggerInterface $logger,
+        private readonly LockFactory $lockFactory,
     ) {
         parent::__construct();
     }
@@ -63,6 +65,12 @@ final class FetchWazeTvtCommand extends Command
                 null,
                 InputOption::VALUE_NONE,
                 'Executa sem persistir no banco.',
+            )
+            ->addOption(
+                'force',
+                'f',
+                InputOption::VALUE_NONE,
+                'Ignora temporariamente a frequência configurada no partner (uso manual).',
             );
     }
 
@@ -71,9 +79,10 @@ final class FetchWazeTvtCommand extends Command
         OutputInterface $output,
     ): int {
         $io = new SymfonyStyle($input, $output);
-
+        $this->resetStaleConnection();
         $partnerId = $input->getOption('partner');
         $dryRun = (bool) $input->getOption('dry-run');
+        $force = (bool) $input->getOption('force');
 
         $io->title('Coleta Waze TVT');
 
@@ -108,24 +117,36 @@ final class FetchWazeTvtCommand extends Command
             return Command::SUCCESS;
         }
 
-        $io->info(sprintf(
-            'Processando %d link(s) TVT.',
-            count($apiLinks),
-        ));
-
-        $errors = 0;
+        /*
+         * Agrupa os links por partner para que o lock e o filtro de
+         * frequência sejam aplicados uma vez por partner, e não por link.
+         */
+        $linksByPartner = [];
 
         foreach ($apiLinks as $apiLink) {
             $partner = $apiLink->getPartner();
 
-            if ($partner === null) {
-                $errors++;
+            if ($partner === null || $partner->getId() === null) {
+                continue;
+            }
 
-                $io->error(sprintf(
-                    'O link ID %s não possui partner.',
-                    (string) $apiLink->getId(),
-                ));
+            $linksByPartner[$partner->getId()][] = $apiLink;
+        }
 
+        $io->info(sprintf(
+            'Processando %d partner(s) com link TVT.',
+            count($linksByPartner),
+        ));
+
+        $errors = 0;
+        $processed = 0;
+        $skipped = 0;
+        $locked = 0;
+
+        foreach ($linksByPartner as $links) {
+            $partner = $links[0]->getPartner();
+
+            if ($partner === null || $partner->getId() === null) {
                 continue;
             }
 
@@ -135,61 +156,124 @@ final class FetchWazeTvtCommand extends Command
                 $partner->getName(),
             );
 
+            /*
+             * Lock exclusivo por partner. TTL de 10 min: se um processo
+             * morrer no meio, o lock expira sozinho.
+             */
+            $lock = $this->lockFactory->createLock(
+                sprintf('waze:tvt:partner:%d', $partner->getId()),
+                ttl: 600.0,
+            );
+
+            if (!$lock->acquire()) {
+                $io->note(sprintf(
+                    '%s ignorado: outro processo já está sincronizando.',
+                    $label,
+                ));
+
+                $locked++;
+
+                continue;
+            }
+
             try {
+                if (
+                    !$force
+                    && !$partner->isFetchDue($partner->getLastTvtFetchAt())
+                ) {
+                    $io->note(sprintf(
+                        '%s ignorado: frequência ainda não vencida (%s).',
+                        $label,
+                        $partner->getFetchFrequencyLabel(),
+                    ));
+
+                    $skipped++;
+
+                    continue;
+                }
+
                 $io->section($label);
 
-                $payload = $this->fetchTvtFeed(
-                    (string) $apiLink->getUrl(),
-                );
+                $partnerSuccess = true;
 
-                $result = $this->processFeed(
-                    $payload,
-                    $partner,
-                    $dryRun,
-                    $io,
-                );
+                foreach ($links as $apiLink) {
+                    try {
+                        $payload = $this->fetchTvtFeed(
+                            (string) $apiLink->getUrl(),
+                        );
 
-                $io->table(
-                    ['Métrica', 'Quantidade'],
-                    [
-                        ['Rotas novas', $result['routesCreated']],
-                        ['Rotas reativadas', $result['routesReactivated']],
-                        ['Rotas desativadas', $result['routesDeactivated']],
-                        ['Subrotas novas', $result['subRoutesCreated']],
-                        ['Subrotas reativadas', $result['subRoutesReactivated']],
-                        ['Subrotas desativadas', $result['subRoutesDeactivated']],
-                        ['Irregularidades novas', $result['irregularitiesCreated']],
-                        ['Irregularidades reativadas', $result['irregularitiesReactivated']],
-                        ['Irregularidades desativadas', $result['irregularitiesDeactivated']],
-                        ['Snapshots gravados', $result['snapshotsCreated']],
-                        ['Usuários em jam gravados', $result['usersOnJamCreated']],
-                    ],
-                );
-            } catch (\Throwable $exception) {
-                $errors++;
+                        $result = $this->processFeed(
+                            $payload,
+                            $partner,
+                            $dryRun,
+                            $io,
+                        );
 
-                $this->logger->error(
-                    '{label}: erro no feed TVT: {message}',
-                    [
-                        'label' => $label,
-                        'message' => $exception->getMessage(),
-                        'exception' => $exception,
-                    ],
-                );
+                        $io->table(
+                            ['Métrica', 'Quantidade'],
+                            [
+                                ['Rotas novas', $result['routesCreated']],
+                                ['Rotas reativadas', $result['routesReactivated']],
+                                ['Rotas desativadas', $result['routesDeactivated']],
+                                ['Subrotas novas', $result['subRoutesCreated']],
+                                ['Subrotas reativadas', $result['subRoutesReactivated']],
+                                ['Subrotas desativadas', $result['subRoutesDeactivated']],
+                                ['Irregularidades novas', $result['irregularitiesCreated']],
+                                ['Irregularidades reativadas', $result['irregularitiesReactivated']],
+                                ['Irregularidades desativadas', $result['irregularitiesDeactivated']],
+                                ['Snapshots gravados', $result['snapshotsCreated']],
+                                ['Usuários em jam gravados', $result['usersOnJamCreated']],
+                            ],
+                        );
+                    } catch (\Throwable $exception) {
+                        $partnerSuccess = false;
+                        $errors++;
 
-                $io->error(sprintf(
-                    '%s %s',
-                    $label,
-                    $exception->getMessage(),
-                ));
+                        $this->logger->error(
+                            '{label}: erro no feed TVT: {message}',
+                            [
+                                'label' => $label,
+                                'message' => $exception->getMessage(),
+                                'exception' => $exception,
+                            ],
+                        );
+
+                        $io->error(sprintf(
+                            '%s %s',
+                            $label,
+                            $exception->getMessage(),
+                        ));
+                    }
+                }
+
+                if ($partnerSuccess) {
+                    if (!$dryRun) {
+                        $partner->setLastTvtFetchAt(new \DateTimeImmutable());
+
+                        $this->entityManager->persist($partner);
+                        $this->entityManager->flush();
+                    }
+
+                    $processed++;
+                }
+            } finally {
+                $lock->release();
             }
         }
 
-        if ($errors > 0) {
-            $io->warning(
-                sprintf('%d link(s) apresentaram erro.', $errors),
-            );
+        $io->section('Resumo');
 
+        $io->table(
+            ['Métrica', 'Quantidade'],
+            [
+                ['Partners processados', $processed],
+                ['Partners ignorados (frequência)', $skipped],
+                ['Partners ignorados (lock)', $locked],
+                ['Erros', $errors],
+            ],
+        );
+
+        if ($errors > 0) {
             return Command::FAILURE;
         }
 
@@ -258,6 +342,19 @@ final class FetchWazeTvtCommand extends Command
                 null,
                 $recordedAt,
                 $dryRun,
+            );
+        }
+
+        /*
+         * Irregularidades no root não possuem rota associada; apenas
+         * registramos um aviso para não perder o dado silenciosamente.
+         */
+        $rootIrregularities = $payload['irregularities'] ?? null;
+
+        if (is_array($rootIrregularities) && $rootIrregularities !== []) {
+            $this->logger->warning(
+                '[TVT] Payload trouxe irregularidades no root; ignoradas por não terem rota associada.',
+                ['count' => count($rootIrregularities)],
             );
         }
 
@@ -333,9 +430,7 @@ final class FetchWazeTvtCommand extends Command
                     continue;
                 }
 
-                $wazeSubRouteId = trim(
-                    (string) ($subRouteData['id'] ?? ''),
-                );
+                $wazeSubRouteId = $this->computeSubRouteId($subRouteData);
 
                 if ($wazeSubRouteId === '') {
                     continue;
@@ -904,4 +999,53 @@ final class FetchWazeTvtCommand extends Command
 
         return $payload;
     }
+
+    /**
+     * Gera um identificador estável para subrotas que vêm sem "id" no payload.
+     *
+     * @param array<string, mixed> $subRouteData
+     */
+    private function computeSubRouteId(array $subRouteData): string
+    {
+        if (!empty($subRouteData['id'])) {
+            return trim((string) $subRouteData['id']);
+        }
+
+        $line = is_array($subRouteData['line'] ?? null)
+            ? $subRouteData['line']
+            : [];
+
+        $first = $line[0] ?? null;
+        $last  = $line !== [] ? $line[array_key_last($line)] : null;
+
+        $signature = [
+            'fromName'     => (string) ($subRouteData['fromName']     ?? ''),
+            'toName'       => (string) ($subRouteData['toName']       ?? ''),
+            'length'       => (int)    ($subRouteData['length']       ?? 0),
+            'historicTime' => (int)    ($subRouteData['historicTime'] ?? 0),
+            'first'        => $first,
+            'last'         => $last,
+        ];
+
+        $hash = hash(
+            'sha256',
+            json_encode(
+                $signature,
+                JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
+            ),
+        );
+
+        return 'gen_' . substr($hash, 0, 60);
+    }
+
+    private function resetStaleConnection(): void
+{
+    $connection = $this->entityManager->getConnection();
+
+    try {
+        $connection->executeQuery('SELECT 1');
+    } catch (\Throwable) {
+        $connection->close();
+    }
+}
 }

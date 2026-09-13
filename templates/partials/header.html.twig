@@ -1,19 +1,517 @@
-<header class="app-header" data-app-header>
-    <div class="app-header__inner">
-        <div class="app-header__left">
-            <button class="app-header__mobile-toggle" type="button" data-header-mobile-toggle aria-expanded="false" aria-controls="app-header-navigation" aria-label="Abrir navegação"><span></span><span></span><span></span></button>
-            <a class="app-header__brand" href="{{ path('dashboard') }}" aria-label="WazeBR - Dashboard"><span class="app-header__brand-mark">W</span><span class="app-header__brand-copy"><strong>WazeBR</strong><small>Centro operacional</small></span></a>
-            <span class="app-header__divider" aria-hidden="true"></span>
-            <div class="app-header__context"><span class="app-header__context-dot"></span><span>Operação</span><strong>Dashboard</strong></div>
-        </div>
-        <nav class="app-header__navigation" id="app-header-navigation" data-header-navigation aria-label="Navegação principal"><a href="{{ path('dashboard') }}" class="app-header__nav-link is-active">Visão geral</a>{% if is_granted('ROLE_ADMIN') %}<a href="#" class="app-header__nav-link">Administração</a>{% endif %}</nav>
-        <div class="app-header__right">
-            <form class="app-header__search" data-header-search action="{{ path('dashboard') }}" method="get" role="search"><span class="app-header__search-icon" aria-hidden="true">⌕</span><input type="search" name="q" placeholder="Buscar no painel" autocomplete="off" aria-label="Buscar no painel" data-header-search-input><kbd>⌘ K</kbd></form>
-            <div class="app-header__action-group">
-                <div class="app-header__action-wrap"><button type="button" class="app-header__icon-button" data-header-notifications-toggle aria-expanded="false" aria-controls="header-notifications" aria-label="Notificações"><span aria-hidden="true">♢</span><i class="app-header__notification-badge">3</i></button><div class="app-header__dropdown app-header__notifications" id="header-notifications" data-header-notifications hidden><div class="app-header__dropdown-head"><strong>Notificações</strong><button type="button" data-header-notifications-read>Marcar lidas</button></div><div class="app-header__notification-item is-unread"><span class="notification-dot is-orange"></span><div><strong>Monitoramento atualizado</strong><small>Novos registros disponíveis.</small><time>Agora</time></div></div><div class="app-header__notification-item is-unread"><span class="notification-dot is-blue"></span><div><strong>Rotas processadas</strong><small>Snapshots recentes importados.</small><time>Há 5 min</time></div></div><div class="app-header__notification-item"><span class="notification-dot is-green"></span><div><strong>Sistema online</strong><small>Serviços principais respondendo.</small><time>Hoje</time></div></div></div></div>
-                <label class="theme-control" for="theme-select"><span class="theme-control__icon" aria-hidden="true">◐</span><span class="sr-only">Tema da interface</span><select id="theme-select" class="theme-control__select" data-theme-select aria-label="Tema da interface"><option value="system">Sistema</option><option value="light">Claro</option><option value="dark">Escuro</option></select></label>
-                <div class="app-header__user-wrap"><button type="button" class="app-header__user-button" data-header-user-toggle aria-expanded="false" aria-controls="header-user-menu"><span class="app-header__avatar">{{ app.user ? (app.user.name|default(app.user.userIdentifier)|slice(0, 1)|upper) : 'W' }}</span><span class="app-header__user-copy"><strong>{{ app.user ? app.user.name|default('Operador') : 'Operador' }}</strong><small>{{ is_granted('ROLE_ADMIN') ? 'Administrador' : 'Operador' }}</small></span><span class="app-header__chevron">⌄</span></button><div class="app-header__dropdown app-header__user-menu" id="header-user-menu" data-header-user-menu hidden><a href="{{ path('dashboard') }}">Meu painel</a>{% if app.user %}<a href="{{ path('app_logout') }}">Sair da conta</a>{% endif %}</div></div>
-            </div>
-        </div>
-    </div>
-</header>
+{#
+    * partials/header.html.twig
+    * WazeBR — Header global
+    *
+    * Dependências JS:
+    *   data-app-header
+    *   data-header-mobile-toggle
+    *   data-header-navigation
+    *   data-header-search-input
+    *   data-header-notifications-toggle
+    *   data-header-notifications
+    *   data-header-notifications-read
+    *   data-header-user-toggle
+    *   data-header-user-menu
+    #}
+
+   {% set _route = app.request.attributes.get('_route') %}
+   {% set _user = app.user %}
+
+   {% set _user_name = _user
+       ? (_user.name|default(_user.userIdentifier)|default('Operador'))
+       : 'Visitante'
+   %}
+
+   {% set _user_role = _user
+       ? (
+           is_granted('ROLE_ADMIN')
+               ? 'Administrador'
+               : (
+                   is_granted('ROLE_PARTNER')
+                       ? 'Parceiro'
+                       : 'Operador'
+               )
+         )
+       : 'Não autenticado'
+   %}
+
+   {% set _user_initial = _user
+       ? _user_name|slice(0, 1)|upper
+       : 'W'
+   %}
+
+   {% set _notifications = header_notifications|default([
+       {
+           title: 'Monitoramento atualizado',
+           message: 'Novos registros disponíveis.',
+           time: 'Agora',
+           tone: 'orange',
+           unread: true
+       },
+       {
+           title: 'Rotas processadas',
+           message: 'Snapshots recentes importados.',
+           time: 'Há 5 min',
+           tone: 'blue',
+           unread: true
+       },
+       {
+           title: 'Sistema online',
+           message: 'Serviços principais respondendo.',
+           time: 'Hoje',
+           tone: 'green',
+           unread: false
+       }
+   ]) %}
+
+   {% set _unread_count = _notifications
+       |filter(n => n.unread|default(false))
+       |length
+   %}
+
+   <header
+       class="app-header"
+       data-app-header
+   >
+       <div class="app-header__inner">
+
+           {# ================================================================
+              ESQUERDA
+              ================================================================ #}
+
+           <div class="app-header__left">
+
+               <button
+                   type="button"
+                   class="app-header__mobile-toggle"
+                   data-header-mobile-toggle
+                   aria-expanded="false"
+                   aria-controls="app-header-navigation"
+                   aria-label="Abrir navegação"
+               >
+                   <span aria-hidden="true"></span>
+                   <span aria-hidden="true"></span>
+                   <span aria-hidden="true"></span>
+               </button>
+
+               <a
+                   class="app-header__brand"
+                   href="{{ path('dashboard') }}"
+                   aria-label="WazeBR — Dashboard"
+               >
+                   <span
+                       class="app-header__brand-mark"
+                       aria-hidden="true"
+                   >
+                       W
+                   </span>
+
+                   <span class="app-header__brand-copy">
+                       <strong>WazeBR</strong>
+                       <small>Centro operacional</small>
+                   </span>
+               </a>
+
+               <span
+                   class="app-header__divider"
+                   aria-hidden="true"
+               ></span>
+
+               <div class="app-header__context">
+                   <span
+                       class="app-header__context-dot"
+                       aria-hidden="true"
+                   ></span>
+
+                   <span>Operação</span>
+
+                   <strong>
+                       {{ _route == 'dashboard' ? 'Dashboard' : 'Painel' }}
+                   </strong>
+               </div>
+
+           </div>
+
+
+           {# ================================================================
+              NAVEGAÇÃO
+              ================================================================ #}
+
+           <nav
+               class="app-header__navigation"
+               id="app-header-navigation"
+               data-header-navigation
+               aria-label="Navegação principal"
+           >
+
+               <a
+                   href="{{ path('dashboard') }}"
+                   class="app-header__nav-link{{ _route == 'dashboard' ? ' is-active' : '' }}"
+                   {% if _route == 'dashboard' %}
+                       aria-current="page"
+                   {% endif %}
+               >
+                   <span
+                       class="app-header__nav-icon"
+                       aria-hidden="true"
+                   >⌂</span>
+
+                   <span>Visão geral</span>
+               </a>
+
+               {% if is_granted('ROLE_ADMIN') %}
+
+                   <a
+                       href="#"
+                       class="app-header__nav-link"
+                   >
+                       <span
+                           class="app-header__nav-icon"
+                           aria-hidden="true"
+                       >▦</span>
+
+                       <span>Administração</span>
+                   </a>
+
+               {% endif %}
+
+           </nav>
+
+
+           {# ================================================================
+              DIREITA
+              ================================================================ #}
+
+           <div class="app-header__right">
+
+               {# ------------------------------------------------------------
+                  Busca
+                  ------------------------------------------------------------ #}
+
+               <form
+                   class="app-header__search"
+                   data-header-search
+                   action="{{ path('dashboard') }}"
+                   method="get"
+                   role="search"
+               >
+                   <span
+                       class="app-header__search-icon"
+                       aria-hidden="true"
+                   >⌕</span>
+
+                   <input
+                       type="search"
+                       name="q"
+                       placeholder="Buscar no painel"
+                       autocomplete="off"
+                       spellcheck="false"
+                       aria-label="Buscar no painel"
+                       data-header-search-input
+                   >
+
+                   <kbd aria-hidden="true">
+                       <span class="app-header__search-kbd-command">⌘</span>
+                       <span class="app-header__search-kbd-control">Ctrl</span>
+                       <span>K</span>
+                   </kbd>
+               </form>
+
+
+               <div class="app-header__action-group">
+
+                   {# --------------------------------------------------------
+                      Notificações
+                      -------------------------------------------------------- #}
+
+                   <div class="app-header__action-wrap">
+
+                       <button
+                           type="button"
+                           class="app-header__icon-button"
+                           data-header-notifications-toggle
+                           aria-expanded="false"
+                           aria-haspopup="dialog"
+                           aria-controls="header-notifications"
+                           aria-label="Notificações{% if _unread_count %} ({{ _unread_count }} não lidas){% endif %}"
+                       >
+                           <span
+                               class="app-header__notification-icon"
+                               aria-hidden="true"
+                           >
+                               <svg
+                                   viewBox="0 0 24 24"
+                                   width="18"
+                                   height="18"
+                                   fill="none"
+                                   stroke="currentColor"
+                                   stroke-width="1.8"
+                                   stroke-linecap="round"
+                                   stroke-linejoin="round"
+                               >
+                                   <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/>
+                                   <path d="M10 21h4"/>
+                               </svg>
+                           </span>
+
+                           <i
+                               class="app-header__notification-badge"
+                               {% if not _unread_count %}
+                                   hidden
+                               {% endif %}
+                               aria-hidden="true"
+                           >
+                               {{ _unread_count }}
+                           </i>
+                       </button>
+
+
+                       <div
+                           class="app-header__dropdown app-header__notifications"
+                           id="header-notifications"
+                           data-header-notifications
+                           role="dialog"
+                           aria-label="Notificações"
+                           hidden
+                       >
+
+                           <div class="app-header__dropdown-head">
+
+                               <div>
+                                   <strong>Notificações</strong>
+
+                                   {% if _unread_count %}
+                                       <small>
+                                           {{ _unread_count }}
+                                           {{ _unread_count == 1
+                                               ? 'nova atualização'
+                                               : 'novas atualizações'
+                                           }}
+                                       </small>
+                                   {% endif %}
+                               </div>
+
+                               {% if _unread_count %}
+                                   <button
+                                       type="button"
+                                       data-header-notifications-read
+                                   >
+                                       Marcar lidas
+                                   </button>
+                               {% endif %}
+
+                           </div>
+
+
+                           {% if _notifications is empty %}
+
+                               <div class="app-header__notifications-empty">
+                                   <span
+                                       class="app-header__empty-icon"
+                                       aria-hidden="true"
+                                   >✓</span>
+
+                                   <strong>Tudo em ordem</strong>
+
+                                   <span>
+                                       Nenhuma notificação por aqui.
+                                   </span>
+                               </div>
+
+                           {% else %}
+
+                               <div class="app-header__notifications-list">
+
+                                   {% for notification in _notifications %}
+
+                                       <div
+                                           class="app-header__notification-item{{ notification.unread|default(false) ? ' is-unread' : '' }}"
+                                           data-notification-item
+                                       >
+                                           <span
+                                               class="notification-dot is-{{ notification.tone|default('blue') }}"
+                                               aria-hidden="true"
+                                           ></span>
+
+                                           <div class="app-header__notification-content">
+
+                                               <strong>
+                                                   {{ notification.title }}
+                                               </strong>
+
+                                               <small>
+                                                   {{ notification.message }}
+                                               </small>
+
+                                               <time>
+                                                   {{ notification.time }}
+                                               </time>
+
+                                           </div>
+
+                                       </div>
+
+                                   {% endfor %}
+
+                               </div>
+
+                           {% endif %}
+
+
+                           <div class="app-header__notifications-footer">
+
+                               <a href="#">
+                                   Ver todas as notificações
+                                   <span aria-hidden="true">→</span>
+                               </a>
+
+                           </div>
+
+                       </div>
+
+                   </div>
+
+
+                   {# --------------------------------------------------------
+                      Tema
+                      -------------------------------------------------------- #}
+
+                   <label
+                       class="theme-control"
+                       for="theme-select"
+                   >
+                       <span
+                           class="theme-control__icon"
+                           aria-hidden="true"
+                       >
+                           ◐
+                       </span>
+
+                       <span class="sr-only">
+                           Tema da interface
+                       </span>
+
+                       <select
+                           id="theme-select"
+                           class="theme-control__select"
+                           data-theme-select
+                           aria-label="Tema da interface"
+                       >
+                           <option value="system">Sistema</option>
+                           <option value="light">Claro</option>
+                           <option value="dark">Escuro</option>
+                       </select>
+                   </label>
+
+
+                   {# --------------------------------------------------------
+                      Usuário
+                      -------------------------------------------------------- #}
+
+                   <div class="app-header__user-wrap">
+
+                       <button
+                           type="button"
+                           class="app-header__user-button"
+                           data-header-user-toggle
+                           aria-expanded="false"
+                           aria-haspopup="menu"
+                           aria-controls="header-user-menu"
+                       >
+                           <span
+                               class="app-header__avatar"
+                               aria-hidden="true"
+                           >
+                               {{ _user_initial }}
+                           </span>
+
+                           <span class="app-header__user-copy">
+                               <strong>{{ _user_name }}</strong>
+                               <small>{{ _user_role }}</small>
+                           </span>
+
+                           <span
+                               class="app-header__chevron"
+                               aria-hidden="true"
+                           >⌄</span>
+                       </button>
+
+
+                       <div
+                           class="app-header__dropdown app-header__user-menu"
+                           id="header-user-menu"
+                           data-header-user-menu
+                           role="menu"
+                           aria-label="Menu do usuário"
+                           hidden
+                       >
+
+                           <div class="app-header__user-menu-head">
+
+                               <span
+                                   class="app-header__avatar app-header__avatar--large"
+                                   aria-hidden="true"
+                               >
+                                   {{ _user_initial }}
+                               </span>
+
+                               <div>
+                                   <strong>{{ _user_name }}</strong>
+                                   <small>{{ _user_role }}</small>
+                               </div>
+
+                           </div>
+
+
+                           <div class="app-header__dropdown-section">
+
+                               <span class="app-header__dropdown-section-label">
+                                   Conta
+                               </span>
+
+                               <a
+                                   href="{{ path('dashboard') }}"
+                                   role="menuitem"
+                               >
+                                   <span aria-hidden="true">▣</span>
+                                   Meu painel
+                               </a>
+
+                               <a
+                                   href="#"
+                                   role="menuitem"
+                               >
+                                   <span aria-hidden="true">⚙</span>
+                                   Preferências
+                               </a>
+
+                           </div>
+
+
+                           {% if _user %}
+
+                               <div class="app-header__dropdown-section">
+
+                                   <a
+                                       href="{{ path('app_logout') }}"
+                                       role="menuitem"
+                                       class="is-danger"
+                                   >
+                                       <span aria-hidden="true">↪</span>
+                                       Sair da conta
+                                   </a>
+
+                               </div>
+
+                           {% endif %}
+
+                       </div>
+
+                   </div>
+
+               </div>
+
+           </div>
+
+       </div>
+   </header>

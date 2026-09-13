@@ -48,6 +48,9 @@ class Partner
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $lastFetchAt = null;
 
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $lastTvtFetchAt = null;
+
     #[ORM\OneToMany(
         targetEntity: User::class,
         mappedBy: 'partner',
@@ -251,6 +254,19 @@ class Partner
 
         return $this;
     }
+
+    public function getLastTvtFetchAt(): ?\DateTimeImmutable
+{
+    return $this->lastTvtFetchAt;
+}
+
+public function setLastTvtFetchAt(
+    ?\DateTimeImmutable $lastTvtFetchAt,
+): static {
+    $this->lastTvtFetchAt = $lastTvtFetchAt;
+
+    return $this;
+}
 
     public function getUsers(): Collection
     {
@@ -531,4 +547,61 @@ class Partner
 
         return $this;
     }
+    /**
+ * Frequência em segundos, normalizando a unidade.
+ * Aceita: s/sec/second(s)/segundo(s), min/minute(s)/minuto(s), h/hour(s)/hora(s).
+ */
+public function getFetchIntervalSeconds(): int
+{
+    $frequency = max(1, $this->fetchFrequency ?? 5);
+
+    $unit = mb_strtolower(trim($this->fetchFrequencyUnit ?? 'min'));
+
+    return match ($unit) {
+        's', 'sec', 'secs', 'second', 'seconds',
+        'seg', 'segs', 'segundo', 'segundos' => $frequency,
+
+        'h', 'hr', 'hrs', 'hour', 'hours',
+        'hora', 'horas' => $frequency * 3600,
+
+        'm', 'min', 'mins', 'minute', 'minutes',
+        'minuto', 'minutos' => $frequency * 60,
+
+        default => $frequency * 60,
+    };
+}
+
+public function getFetchFrequencyLabel(): string
+{
+    $frequency = max(1, $this->fetchFrequency ?? 5);
+
+    $unit = mb_strtolower(trim($this->fetchFrequencyUnit ?? 'min'));
+
+    return match ($unit) {
+        's', 'sec', 'secs', 'second', 'seconds',
+        'seg', 'segs', 'segundo', 'segundos' => sprintf(
+            '%d segundo(s)',
+            $frequency,
+        ),
+
+        'h', 'hr', 'hrs', 'hour', 'hours',
+        'hora', 'horas' => sprintf('%d hora(s)', $frequency),
+
+        default => sprintf('%d minuto(s)', $frequency),
+    };
+}
+
+public function isFetchDue(
+    ?\DateTimeImmutable $reference,
+    ?\DateTimeImmutable $now = null,
+): bool {
+    if ($reference === null) {
+        return true;
+    }
+
+    $now ??= new \DateTimeImmutable();
+
+    return ($now->getTimestamp() - $reference->getTimestamp())
+        >= $this->getFetchIntervalSeconds();
+}
 }
