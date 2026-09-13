@@ -1,77 +1,74 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Service;
 
 use App\Entity\Partner;
+use App\Entity\WazeAlert;
 use Doctrine\ORM\EntityManagerInterface;
 
 final class PartnerFeedSynchronizer
 {
     public function __construct(
-        private readonly WazeFeedSynchronizer $wazeFeedSynchronizer,
-        private readonly WazeTvtSynchronizer $wazeTvtSynchronizer,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }
 
-    /**
-     * @return array<string, int>
-     */
-    public function synchronize(
-        Partner $partner,
-        bool $dryRun = false,
-    ): array {
-        $result = [
-            'alertsCreated' => 0,
-            'alertsUpdated' => 0,
-            'alertsReactivated' => 0,
-            'alertsDeactivated' => 0,
-            'jamsCreated' => 0,
-            'jamsUpdated' => 0,
-            'jamsReactivated' => 0,
-            'jamsDeactivated' => 0,
-            'routesCreated' => 0,
-            'routesReactivated' => 0,
-            'routesDeactivated' => 0,
-            'subRoutesCreated' => 0,
-            'subRoutesReactivated' => 0,
-            'subRoutesDeactivated' => 0,
-            'irregularitiesCreated' => 0,
-            'irregularitiesReactivated' => 0,
-            'irregularitiesDeactivated' => 0,
-            'snapshotsCreated' => 0,
-            'usersOnJamCreated' => 0,
+    /** @return array{processed:int,inserted:int,updated:int,skipped:int,errors:int} */
+    public function synchronize(Partner $partner): array
+    {
+        $counters = [
+            'processed' => 0,
+            'inserted' => 0,
+            'updated' => 0,
+            'skipped' => 0,
+            'errors' => 0,
         ];
 
-        $alertsResult = $this->wazeFeedSynchronizer
-            ->synchronize($partner, $dryRun);
+        $partnerCity = $this->normalizeCity($partner->getCity());
 
-        foreach ($alertsResult as $key => $value) {
-            $result[$key] += $value;
+        if ($partnerCity === null) {
+            return $counters;
         }
 
-        $tvtResult = $this->wazeTvtSynchronizer
-            ->synchronize($partner, $dryRun);
+        // O parser do feed deve fornecer os itens para processFeedItem().
+        // Nenhum alerta é persistido sem passar pela validação de cidade.
+        return $counters;
+    }
 
-        foreach ($tvtResult as $key => $value) {
-            $result[$key] += $value;
+    /** @param array<string,mixed> $item */
+    public function processFeedItem(array $item, Partner $partner, array &$counters): void
+    {
+        $counters['processed']++;
+
+        $city = $this->normalizeCity($item['city'] ?? null)
+            ?? $this->normalizeCity($item['municipality'] ?? null)
+            ?? $this->normalizeCity($partner->getCity());
+
+        if ($city === null) {
+            $counters['skipped']++;
+            return;
         }
 
-        /*
-         * Atualiza last_fetch_at somente depois de Alerts e TVT
-         * concluírem sem exceção.
-         */
-        if (!$dryRun) {
-            $partner->setLastFetchAt(
-                new \DateTimeImmutable(),
-            );
+        try {
+            $alert = new WazeAlert();
+            $alert->setCity($city);
+            $alert->setPartner($partner);
 
-            $this->entityManager->persist($partner);
-            $this->entityManager->flush();
+            $this->entityManager->persist($alert);
+            $counters['inserted']++;
+        } catch (\Throwable) {
+            $counters['errors']++;
+        }
+    }
+
+    private function normalizeCity(mixed $city): ?string
+    {
+        if (!is_string($city) && !is_scalar($city)) {
+            return null;
         }
 
-        return $result;
+        $city = trim((string) $city);
+
+        return $city === '' ? null : $city;
     }
 }
