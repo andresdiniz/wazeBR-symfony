@@ -23,8 +23,7 @@ import '../css/components/menus.css';
 import '../css/components/accordions.css';
 import '../css/components/scrollbars.css';
 import '../css/components/empty-states.css';
+import { initHeader } from './layout/header.js';
 
-import './layout/base-layout.js';
-import './layout/footer.js';
-import './layout/header.js';
-import './layout/sidebar.js';
+function init() { initHeader(document); }
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true }); else init();
