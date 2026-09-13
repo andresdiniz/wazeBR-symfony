@@ -1,43 +1,33 @@
-import { initBaseLayout } from './layout/base-layout.js';
-import { initHeader } from './layout/header.js';
-import { initSidebar } from './layout/sidebar.js';
-import { initFooter } from './layout/footer.js';
+import './css/core/reset.css';
+import './css/core/variables.css';
+import './css/core/utilities.css';
+import './css/core/theme.css';
+import './css/layout/base-layout.css';
+import './css/layout/header.css';
+import './css/layout/sidebar.css';
+import './css/layout/footer.css';
 
-import { initTables } from './components/table.js';
-import { initFilters } from './components/filters.js';
-import { initMap } from './components/map.js';
-import { initCharts } from './components/charts.js';
+const THEME_KEY = 'wazebr-theme';
+const THEMES = new Set(['system', 'light', 'dark']);
 
-import { initDashboard } from './pages/dashboard.js';
-import { initLogin } from './pages/login.js';
-import { initResetPassword } from './pages/reset-password.js';
-import { initAdminUsers } from './pages/admin-users.js';
-import { initCifs } from './pages/cifs.js';
-import { initLanding } from './pages/landing.js';
-
-function boot() {
-    const root = document;
-
-    initBaseLayout(root);
-    initHeader(root);
-    initSidebar(root);
-    initFooter(root);
-
-    initTables(root);
-    initFilters(root);
-    initMap(root);
-    initCharts(root);
-
-    initDashboard(root);
-    initLogin(root);
-    initResetPassword(root);
-    initAdminUsers(root);
-    initCifs(root);
-    initLanding(root);
+function applyTheme(theme) {
+    const value = THEMES.has(theme) ? theme : 'system';
+    document.documentElement.dataset.theme = value;
+    document.querySelectorAll('[data-theme-select]').forEach((select) => { select.value = value; });
 }
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot, { once: true });
-} else {
-    boot();
+function initTheme() {
+    const initial = localStorage.getItem(THEME_KEY) || document.documentElement.dataset.theme || 'system';
+    applyTheme(initial);
+    document.querySelectorAll('[data-theme-select]').forEach((select) => {
+        select.addEventListener('change', () => {
+            const value = THEMES.has(select.value) ? select.value : 'system';
+            localStorage.setItem(THEME_KEY, value);
+            applyTheme(value);
+        });
+    });
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    media.addEventListener?.('change', () => { if (document.documentElement.dataset.theme === 'system') applyTheme('system'); });
 }
+
+document.addEventListener('DOMContentLoaded', initTheme);

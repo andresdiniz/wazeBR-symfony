@@ -1,73 +1,21 @@
-<header class="app-header header" data-component="header">
-    <div class="header-main">
-        <button type="button" class="header-menu-button" data-action="toggle-sidebar" aria-controls="app-sidebar" aria-expanded="false" aria-label="Abrir menu lateral">
-            <span aria-hidden="true">☰</span>
-        </button>
-
-        <a href="{{ path('dashboard') }}" class="header-brand" aria-label="WazeBR - Dashboard">
-            <span class="header-brand-mark" aria-hidden="true">W</span>
-            <span class="header-brand-copy">
-                <strong>WazeBR</strong>
-                <small>Monitoramento inteligente</small>
-            </span>
+<header class="app-header" data-app-header>
+    <div class="app-header__inner">
+        <a class="app-header__brand" href="{{ path('dashboard') }}" aria-label="WazeBR - Dashboard">
+            <span class="app-header__brand-mark">W</span>
+            <span class="app-header__brand-copy"><strong>WazeBR</strong><small>Centro operacional</small></span>
         </a>
 
-        <div class="header-search" role="search">
-            <span class="header-search-icon" aria-hidden="true">⌕</span>
-            <input type="search" name="header_search" placeholder="Buscar no sistema..." aria-label="Buscar no sistema" data-header-search>
-            <kbd>⌘ K</kbd>
-        </div>
-    </div>
-
-    <div class="header-actions">
-        <div class="header-connection" title="Sistema conectado">
-            <span class="header-connection-dot" aria-hidden="true"></span>
-            <span>Online</span>
-        </div>
-
-        <div class="header-notifications" data-notifications-menu>
-            <button type="button" class="header-action-button" data-action="toggle-notifications" aria-label="Notificações" aria-controls="header-notifications-dropdown" aria-expanded="false">
-                <span aria-hidden="true">♢</span>
-                <span class="header-notification-badge">3</span>
-            </button>
-
-            <div id="header-notifications-dropdown" class="header-notifications-dropdown" data-notifications-dropdown role="dialog" aria-label="Notificações" hidden>
-                <div class="header-dropdown-heading">
-                    <strong>Notificações</strong>
-                    <button type="button" data-action="mark-notifications-read">Marcar como lidas</button>
-                </div>
-                <div class="header-notification-item is-unread">
-                    <span class="header-notification-icon">!</span>
-                    <span><strong>Alerta de trânsito</strong><small>Nova ocorrência registrada</small></span>
-                </div>
-                <div class="header-notification-item is-unread">
-                    <span class="header-notification-icon">≈</span>
-                    <span><strong>Congestionamento</strong><small>Nível elevado em uma rota</small></span>
-                </div>
-                <div class="header-notification-item is-unread">
-                    <span class="header-notification-icon">✓</span>
-                    <span><strong>Sistema online</strong><small>Monitoramento funcionando</small></span>
-                </div>
-                <div class="header-dropdown-empty" data-notifications-empty hidden>Nenhuma notificação nova.</div>
-            </div>
-        </div>
-
-        <div class="header-user" data-user-menu>
-            <button type="button" class="header-user-button" data-action="toggle-user-menu" aria-expanded="false" aria-controls="header-user-dropdown" aria-haspopup="menu">
-                <span class="header-avatar" aria-hidden="true">{{ app.user ? app.user.userIdentifier|first|upper : 'U' }}</span>
-                <span class="header-user-copy">
-                    <strong>{{ app.user ? app.user.userIdentifier : 'Usuário' }}</strong>
-                    <small>Administrador</small>
-                </span>
-                <span class="header-user-chevron" aria-hidden="true">⌄</span>
-            </button>
-
-            <div id="header-user-dropdown" class="header-user-menu" data-user-dropdown role="menu" hidden>
-                <a href="#perfil" role="menuitem">Meu perfil</a>
-                <a href="#configuracoes" role="menuitem">Configurações</a>
-                <div class="header-user-menu-divider"></div>
-                <a href="{{ path('app_logout') }}" role="menuitem">Sair</a>
-            </div>
+        <div class="app-header__actions">
+            <label class="theme-control" for="theme-select">
+                <span class="theme-control__icon" aria-hidden="true">◐</span>
+                <span class="sr-only">Tema da interface</span>
+                <select id="theme-select" class="theme-control__select" data-theme-select aria-label="Tema da interface">
+                    <option value="system">Sistema</option>
+                    <option value="light">Claro</option>
+                    <option value="dark">Escuro</option>
+                </select>
+            </label>
+            {% if app.user %}<span class="app-header__user">{{ app.user.name|default(app.user.userIdentifier) }}</span>{% endif %}
         </div>
     </div>
 </header>

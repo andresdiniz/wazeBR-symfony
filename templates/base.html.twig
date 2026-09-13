@@ -1,38 +1,15 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <title>
-        {% block title %}WazeBR{% endblock %}
-    </title>
-
-    {% block stylesheets %}
-        <link rel="stylesheet" href="{{ asset('css/core/variables.css') }}">
-        <link rel="stylesheet" href="{{ asset('css/core/reset.css') }}">
-        <link rel="stylesheet" href="{{ asset('css/core/utilities.css') }}">
-
-        <link rel="stylesheet" href="{{ asset('css/layout/base-layout.css') }}">
-        <link rel="stylesheet" href="{{ asset('css/layout/header.css') }}">
-        <link rel="stylesheet" href="{{ asset('css/layout/sidebar.css') }}">
-        <link rel="stylesheet" href="{{ asset('css/layout/footer.css') }}">
-
-        <link rel="stylesheet" href="{{ asset('css/components/buttons.css') }}">
-        <link rel="stylesheet" href="{{ asset('css/components/cards.css') }}">
-        <link rel="stylesheet" href="{{ asset('css/components/modals.css') }}">
-        <link rel="stylesheet" href="{{ asset('css/components/tables.css') }}">
-        <link rel="stylesheet" href="{{ asset('css/components/alerts.css') }}">
-    {% endblock %}
-
-    {% block page_stylesheets %}{% endblock %}
-</head>
-
-<body class="{% block body_class %}{% endblock %}">
-    {% block body %}{% endblock %}
-
-    {% block javascripts %}
-        {{ importmap('app') }}
-    {% endblock %}
-</body>
+<html lang="pt-BR" data-theme="system">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="color-scheme" content="light dark">
+        <title>{% block title %}WazeBR{% endblock %}</title>
+        <script>(function(){try{var t=localStorage.getItem('wazebr-theme')||'system';if(['system','light','dark'].indexOf(t)<0)t='system';document.documentElement.dataset.theme=t;}catch(e){}})();</script>
+        {% block stylesheets %}{% endblock %}
+        {% block importmap %}{{ importmap('app') }}{% endblock %}
+    </head>
+    <body class="{{ block('body_class')|default('') }}">
+        {% block body %}{% endblock %}
+    </body>
 </html>
