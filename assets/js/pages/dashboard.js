@@ -1,103 +1,86 @@
-function safeJson(value, fallback = []) {
-    try { return JSON.parse(value || ''); } catch { return fallback; }
-}
+function parseArray(value) { try { return JSON.parse(value || '[]'); } catch { return []; } }
 
 export function initDashboard(root = document) {
     const dashboard = root.querySelector('[data-dashboard]');
     if (!dashboard || dashboard.dataset.initialized === 'true') return;
     dashboard.dataset.initialized = 'true';
-    initReveal(dashboard);
-    initCounters(dashboard);
     initClock(dashboard);
-    initPeriods(dashboard);
+    initCounters(dashboard);
+    initFilters(dashboard);
     initRefresh(dashboard);
-    initLineChart(dashboard);
-    initMap(dashboard);
+    initPagination(dashboard);
+    initExpandButtons(dashboard);
+    initChart(dashboard);
 }
 
-function initReveal(dashboard) {
-    const elements = dashboard.querySelectorAll('.dashboard-reveal');
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) {
-        elements.forEach((element) => element.classList.add('is-visible'));
-        return;
-    }
-    const observer = new IntersectionObserver((entries, current) => {
-        entries.forEach((entry) => {
-            if (entry.isIntersecting) { entry.target.classList.add('is-visible'); current.unobserve(entry.target); }
-        });
-    }, { threshold: .08 });
-    elements.forEach((element, index) => { element.style.transitionDelay = `${Math.min(index * 45, 260)}ms`; observer.observe(element); });
+function initClock(dashboard) {
+    const clock = dashboard.querySelector('[data-dashboard-clock]');
+    if (!clock) return;
+    const update = () => { clock.textContent = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date()); };
+    update(); window.setInterval(update, 30000);
 }
 
 function initCounters(dashboard) {
     dashboard.querySelectorAll('[data-count-value]').forEach((element) => {
         const target = Number(element.dataset.countValue || 0);
         if (!Number.isFinite(target)) return;
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { element.textContent = String(target); return; }
         const start = performance.now();
-        const tick = (now) => {
-            const progress = Math.min((now - start) / 700, 1);
-            element.textContent = String(Math.round(target * (1 - Math.pow(1 - progress, 3))));
-            if (progress < 1) window.requestAnimationFrame(tick);
-        };
+        const tick = (now) => { const progress = Math.min((now - start) / 700, 1); element.textContent = String(Math.round(target * (1 - Math.pow(1 - progress, 3)))); if (progress < 1) window.requestAnimationFrame(tick); };
         window.requestAnimationFrame(tick);
     });
 }
 
-function initClock(dashboard) {
-    const clock = dashboard.querySelector('[data-dashboard-clock]');
-    if (!clock) return;
-    const update = () => { clock.textContent = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(new Date()); };
-    update(); window.setInterval(update, 30000);
-}
-
-function initPeriods(dashboard) {
-    dashboard.querySelectorAll('[data-dashboard-period]').forEach((button) => {
-        button.addEventListener('click', () => {
-            dashboard.querySelectorAll('[data-dashboard-period]').forEach((item) => item.classList.remove('is-active'));
-            button.classList.add('is-active');
-            dashboard.dataset.period = button.dataset.dashboardPeriod;
+function initFilters(dashboard) {
+    const fields = dashboard.querySelectorAll('[data-filter]');
+    const feedback = dashboard.querySelector('[data-filter-feedback]');
+    const apply = () => {
+        const query = (dashboard.querySelector('[data-filter="query"]')?.value || '').trim().toLowerCase();
+        const section = dashboard.querySelector('[data-filter="section"]')?.value || 'all';
+        let visible = 0;
+        dashboard.querySelectorAll('.data-section').forEach((panel) => {
+            const enabled = section === 'all' || panel.dataset.section === section;
+            panel.hidden = !enabled;
+            if (!enabled) return;
+            panel.querySelectorAll('.dashboard-data-row').forEach((row) => {
+                const matches = !query || (row.dataset.searchText || '').includes(query);
+                row.dataset.filtered = matches ? 'false' : 'true';
+                row.hidden = !matches;
+                if (matches) visible += 1;
+            });
         });
+        if (feedback) feedback.textContent = query || section !== 'all' ? `${visible} registro(s) encontrado(s).` : '';
+        resetPagination(dashboard);
+    };
+    fields.forEach((field) => field.addEventListener('input', apply));
+    dashboard.querySelectorAll('[data-action="apply-filters"]').forEach((button) => button.addEventListener('click', apply));
+    dashboard.querySelectorAll('[data-action="clear-filters"]').forEach((button) => button.addEventListener('click', () => { fields.forEach((field) => { if (field.tagName === 'SELECT') field.value = field.querySelector('option')?.value || 'all'; else field.value = ''; }); apply(); }));
+}
+
+function initRefresh(dashboard) { dashboard.querySelector('[data-action="refresh-dashboard"]')?.addEventListener('click', (event) => { const button = event.currentTarget; button.classList.add('is-loading'); button.setAttribute('aria-busy', 'true'); window.location.reload(); }); }
+
+function initPagination(dashboard) {
+    dashboard.querySelectorAll('[data-pagination]').forEach((pagination) => {
+        const section = pagination.dataset.pagination;
+        const list = dashboard.querySelector(`[data-list="${section}"]`);
+        if (!list) return;
+        const rows = [...list.querySelectorAll('.dashboard-data-row')];
+        const pageSize = 5;
+        let page = 1;
+        const render = () => {
+            const visibleRows = rows.filter((row) => row.dataset.filtered !== 'true');
+            const pages = Math.max(1, Math.ceil(visibleRows.length / pageSize));
+            page = Math.min(page, pages);
+            rows.forEach((row) => { row.hidden = row.dataset.filtered === 'true' || !visibleRows.slice((page - 1) * pageSize, page * pageSize).includes(row); });
+            pagination.innerHTML = pages <= 1 ? '' : Array.from({ length: pages }, (_, index) => `<button type="button" class="${index + 1 === page ? 'is-active' : ''}" data-page="${index + 1}">${index + 1}</button>`).join('');
+            pagination.querySelectorAll('[data-page]').forEach((button) => button.addEventListener('click', () => { page = Number(button.dataset.page); render(); }));
+        };
+        pagination._render = render; render();
     });
 }
 
-function initRefresh(dashboard) {
-    dashboard.querySelector('[data-action="refresh-dashboard"]')?.addEventListener('click', (event) => {
-        const button = event.currentTarget;
-        button.classList.add('is-loading');
-        button.setAttribute('aria-busy', 'true');
-        window.location.reload();
-    });
-}
+function resetPagination(dashboard) { dashboard.querySelectorAll('[data-pagination]').forEach((pagination) => { if (pagination._render) pagination._render(); }); }
+function initExpandButtons(dashboard) { dashboard.querySelectorAll('[data-expand]').forEach((button) => button.addEventListener('click', () => { const list = dashboard.querySelector(`[data-list="${button.dataset.expand}"]`); if (!list) return; list.querySelectorAll('.dashboard-data-row').forEach((row) => { row.hidden = false; }); button.textContent = button.dataset.expanded === 'true' ? 'Ver todos →' : 'Recolher ↑'; button.dataset.expanded = button.dataset.expanded === 'true' ? 'false' : 'true'; })); }
 
-function initLineChart(dashboard) {
-    const chart = dashboard.querySelector('[data-dashboard-line-chart]');
-    if (!chart) return;
-    const alerts = safeJson(dashboard.dataset.alerts, []);
-    const jams = safeJson(dashboard.dataset.jams, []);
-    const total = Math.max(alerts.length + jams.length, 1);
-    const line = chart.querySelector('[data-chart-line]');
-    const fill = chart.querySelector('[data-chart-fill]');
-    if (!line || !fill) return;
-    const points = [0, 1, 2, 3, 4, 5, 6, 7].map((index) => {
-        const variation = ((index * 17 + total * 13) % 35) - 17;
-        return Math.max(22, Math.min(195, 175 - (total * 4) - (index * 11) + variation));
-    });
-    const linePath = points.map((y, index) => `${index * 100},${y}`).join(' L');
-    line.setAttribute('d', `M${linePath}`);
-    fill.setAttribute('d', `M0,220 L${linePath} L700,220 Z`);
-}
-
-function initMap(dashboard) {
-    const element = dashboard.querySelector('[data-dashboard-map]');
-    if (!element || !window.L) return;
-    const map = window.L.map(element).setView([-19.92, -43.94], 7);
-    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(map);
-    const points = safeJson(element.dataset.points, []);
-    points.forEach((point) => {
-        if (point.lat === undefined || point.lng === undefined) return;
-        window.L.marker([point.lat, point.lng]).addTo(map).bindPopup(point.label || 'Ocorrência');
-    });
-}
+function initChart(dashboard) { const chart = dashboard.querySelector('[data-dashboard-line-chart]'); if (!chart) return; const total = Number('{{ (stats.total_alerts|default(0)) + (stats.total_jams|default(0)) }}') || 1; const points = [0,1,2,3,4,5,6,7].map((index) => Math.max(25, Math.min(195, 180 - total * 2 - index * 12 + ((index * 19) % 27)))); const path = points.map((y,index) => `${index * 100},${y}`).join(' L'); chart.querySelector('[data-chart-line]')?.setAttribute('d', `M${path}`); chart.querySelector('[data-chart-fill]')?.setAttribute('d', `M0,220 L${path} L700,220 Z`); }
 
 document.addEventListener('DOMContentLoaded', () => initDashboard());
