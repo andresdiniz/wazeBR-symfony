@@ -30,7 +30,6 @@ final class DashboardRepository extends ServiceEntityRepository
         $alertRepository = $em->getRepository(WazeAlert::class);
         $jamRepository = $em->getRepository(WazeJam::class);
         $weatherRepository = $em->getRepository(WeatherObservation::class);
-
         $recentAlerts = $alertRepository->findBy([], ['id' => 'DESC'], 8);
         $recentJams = $jamRepository->findBy([], ['id' => 'DESC'], 8);
         $recentWeather = $weatherRepository->findBy([], ['id' => 'DESC'], 5);
@@ -60,7 +59,7 @@ SELECT
     r.name AS route_name,
     r.from_name,
     r.to_name,
-    r.city AS route_city,
+    NULL AS route_city,
     r.is_active AS route_active,
     s.id AS snapshot_id,
     s.name AS snapshot_name,
@@ -94,12 +93,10 @@ SQL;
 
         $rows = $this->connection->executeQuery($sql)->fetchAllAssociative();
         $routes = [];
-
         foreach ($rows as $row) {
             $current = $this->nullableNumber($row['current_time_seconds']);
             $historic = $this->nullableNumber($row['historic_time_seconds']);
             $delaySeconds = $current !== null && $historic !== null ? max(0, $historic - $current) : null;
-
             $routes[] = [
                 'id' => (int) $row['route_id_internal'],
                 'route_id' => (int) $row['snapshot_route_id'],
@@ -107,7 +104,7 @@ SQL;
                 'name' => $row['snapshot_name'] ?: ($row['route_name'] ?: 'Rota monitorada'),
                 'from_name' => $row['from_name'],
                 'to_name' => $row['to_name'],
-                'city' => $row['snapshot_city'] ?: ($row['route_city'] ?: 'Local não informado'),
+                'city' => $row['snapshot_city'] ?: 'Local não informado',
                 'state' => $row['snapshot_state'],
                 'status' => $delaySeconds !== null && $delaySeconds > 0 ? 'Atrasada' : 'Normal',
                 'time' => $current,
@@ -120,7 +117,6 @@ SQL;
                 'snapshot_waze_route_id' => $row['snapshot_waze_route_id'],
             ];
         }
-
         return $routes;
     }
 
