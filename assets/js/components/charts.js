@@ -1,9 +1,7 @@
-import { qs } from '../core/dom.js';
+export function initCharts(document = globalThis.document) {
+  if (!document) return;
 
-export function getChartElement(root = document) {
-    return qs('[data-chart]', root);
-}
-
-export function initChartPlaceholder(root = document) {
-    return getChartElement(root);
+  document.querySelectorAll('[data-chart]').forEach((chart) => {
+    chart.dataset.wazebrInitialized = 'true';
+  });
 }

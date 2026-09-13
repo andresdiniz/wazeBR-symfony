@@ -1,9 +1,7 @@
-import { qs } from '../core/dom.js';
+export function initMap(document = globalThis.document) {
+  if (!document) return;
 
-export function getMapElement(root = document) {
-    return qs('[data-map]', root);
-}
-
-export function initMapPlaceholder(root = document) {
-    return getMapElement(root);
+  document.querySelectorAll('[data-map]').forEach((map) => {
+    map.dataset.wazebrInitialized = 'true';
+  });
 }

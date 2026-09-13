@@ -1,14 +1,14 @@
-export function initExpandButtons(root = document) {
-    root.querySelectorAll('[data-expand]').forEach((button) => {
-        if (button.dataset.initialized === 'true') return;
-        button.dataset.initialized = 'true';
-        button.addEventListener('click', () => {
-            const list = root.querySelector(`[data-list="${button.dataset.expand}"]`);
-            if (!list) return;
-            const expanded = button.dataset.expanded === 'true';
-            list.querySelectorAll('.dashboard-data-row').forEach((row) => { row.hidden = expanded; });
-            button.dataset.expanded = expanded ? 'false' : 'true';
-            button.textContent = expanded ? 'Ver todos os registros →' : 'Recolher lista ↑';
-        });
+export function initExpandButtons(document = globalThis.document) {
+  if (!document) return;
+
+  document.querySelectorAll('[data-expand-button]').forEach((button) => {
+    if (button.dataset.wazebrInitialized === 'true') return;
+    button.dataset.wazebrInitialized = 'true';
+
+    button.addEventListener('click', () => {
+      const selector = button.dataset.expandButton;
+      const target = document.querySelector(selector);
+      target?.classList.toggle('is-expanded');
     });
+  });
 }

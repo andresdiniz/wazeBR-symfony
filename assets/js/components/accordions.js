@@ -1,7 +1,8 @@
-export function initAccordions(root = document) {
-    root.querySelectorAll('[data-accordion]').forEach((accordion) => {
-        if (accordion.dataset.initialized === 'true') return;
-        accordion.dataset.initialized = 'true';
-        accordion.querySelector('[data-accordion-toggle]')?.addEventListener('click', () => { accordion.classList.toggle('is-open'); });
-    });
+export function initAccordions(document = globalThis.document) {
+  if (!document) return;
+
+  document.querySelectorAll('[data-accordion]').forEach((accordion) => {
+    if (accordion.dataset.wazebrInitialized === 'true') return;
+    accordion.dataset.wazebrInitialized = 'true';
+  });
 }

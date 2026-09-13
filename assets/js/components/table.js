@@ -1,7 +1,7 @@
-import { qsa } from '../core/dom.js';
+export function initTable(document = globalThis.document) {
+  if (!document) return;
 
-export function initTables(root = document) {
-    qsa('[data-table]', root).forEach((table) => {
-        table.dispatchEvent(new CustomEvent('table:ready', { bubbles: true }));
-    });
+  document.querySelectorAll('[data-table]').forEach((table) => {
+    table.dataset.wazebrInitialized = 'true';
+  });
 }
