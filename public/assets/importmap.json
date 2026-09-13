@@ -1,6 +1,6 @@
 {
     "app": {
-        "path": "\/assets\/js\/app-esKsNpD.js",
+        "path": "\/assets\/js\/app-wYtB4Ao.js",
         "type": "js"
     },
     "\/assets\/css\/core\/reset.css": {
@@ -103,6 +103,10 @@
         "path": "\/assets\/css\/components\/empty-states-8rBdaEX.css",
         "type": "css"
     },
+    "\/assets\/js\/layout\/header.js": {
+        "path": "\/assets\/js\/layout\/header-0H-6sJf.js",
+        "type": "js"
+    },
     "pages\/dashboard": {
         "path": "\/assets\/js\/pages\/dashboard-aRIJWaI.js",
         "type": "js"
@@ -112,7 +116,7 @@
         "type": "css"
     },
     "\/assets\/js\/app.js": {
-        "path": "\/assets\/js\/app-esKsNpD.js",
+        "path": "\/assets\/js\/app-wYtB4Ao.js",
         "type": "js"
     }
 }

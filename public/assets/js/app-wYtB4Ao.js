@@ -24,34 +24,7 @@ import '../css/components/accordions.css';
 import '../css/components/scrollbars.css';
 import '../css/components/empty-states.css';
 
-import './core/utils.js';
-import './core/theme.js';
-import './core/app-init.js';
-import './core/csrf.js';
-import './core/dom.js';
-import './core/http-client.js';
-import './core/modal.js';
-import './core/alerts.js';
-import './core/notifications.js';
-
-import './components/charts.js';
-import './components/filters.js';
-import './components/map.js';
-import './components/table.js';
-
-
 import './layout/header.js';
-import './layout/sidebar.js';
-import './layout/footer.js';
-import './components/filters.js';
-import './components/pagination.js';
-import './components/expand-buttons.js';
-import './components/notifications.js';
-import './components/accordions.js';
-import './components/scrollbars.js';
-import './components/empty-states.js';
-
-
 
 const THEME_KEY = 'wazebr-theme';
 const THEMES = new Set(['system', 'light', 'dark']);

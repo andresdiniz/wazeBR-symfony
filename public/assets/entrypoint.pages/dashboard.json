@@ -25,5 +25,6 @@
     "\/assets\/css\/components\/menus.css",
     "\/assets\/css\/components\/accordions.css",
     "\/assets\/css\/components\/scrollbars.css",
-    "\/assets\/css\/components\/empty-states.css"
+    "\/assets\/css\/components\/empty-states.css",
+    "\/assets\/js\/layout\/header.js"
 ]
