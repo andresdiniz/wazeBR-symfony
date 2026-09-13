@@ -1,14 +1,14 @@
-{% extends './layouts/dashboard.html.twig' %}
+{% extends 'layouts/dashboard.html.twig' %}
 
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-    <div class="dashboard-page">
+    <div class="dashboard-page" data-dashboard>
         <h1 class="dashboard-page-title">Dashboard</h1>
     </div>
 {% endblock %}
 
-{% block importmap %}
+{% block javascripts %}
     {{ parent() }}
     {{ importmap('dashboard') }}
 {% endblock %}

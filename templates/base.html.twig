@@ -6,21 +6,14 @@
         <meta name="color-scheme" content="light dark">
         <title>{% block title %}WazeBR{% endblock %}</title>
 
-        {# Script Inline para evitar Flash of Unstyled Content (FOUC) do tema #}
         <script>(function(){try{var t=localStorage.getItem('wazebr-theme')||'system';if(['system','light','dark'].indexOf(t)<0)t='system';document.documentElement.dataset.theme=t;}catch(e){}})();</script>
 
         {% block stylesheets %}{% endblock %}
-
-        {% block importmap %}
-        {# Carrega os scripts de inicialização global #}
-        {{ importmap(['app']) }}
-    {% endblock %}
+        {% block importmap %}{{ importmap('app-init') }}{% endblock %}
     </head>
     <body class="{% block body_class %}{% endblock %}">
         {% block body %}{% endblock %}
-
-        {% block javascripts %}
-
-        {% endblock %}
     </body>
+
+    {% block javascripts %}{% endblock %}
 </html>
