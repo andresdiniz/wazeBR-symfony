@@ -10,7 +10,7 @@ import '../css/layout/footer.css';
 const THEME_KEY = 'wazebr-theme';
 const THEMES = new Set(['system', 'light', 'dark']);
 
-function applyTheme(theme) {
+export function applyTheme(theme) {
     const value = THEMES.has(theme) ? theme : 'system';
     document.documentElement.dataset.theme = value;
     document.querySelectorAll('[data-theme-select]').forEach((select) => {
@@ -18,12 +18,13 @@ function applyTheme(theme) {
     });
 }
 
-function initTheme() {
+export function initTheme() {
     const stored = window.localStorage.getItem(THEME_KEY);
-    const initial = THEMES.has(stored) ? stored : document.documentElement.dataset.theme || 'system';
-    applyTheme(initial);
+    applyTheme(THEMES.has(stored) ? stored : 'system');
 
     document.querySelectorAll('[data-theme-select]').forEach((select) => {
+        if (select.dataset.themeBound === 'true') return;
+        select.dataset.themeBound = 'true';
         select.addEventListener('change', () => {
             const value = THEMES.has(select.value) ? select.value : 'system';
             window.localStorage.setItem(THEME_KEY, value);
@@ -33,9 +34,7 @@ function initTheme() {
 
     const media = window.matchMedia('(prefers-color-scheme: dark)');
     media.addEventListener?.('change', () => {
-        if (document.documentElement.dataset.theme === 'system') {
-            applyTheme('system');
-        }
+        if (document.documentElement.dataset.theme === 'system') applyTheme('system');
     });
 }
 
