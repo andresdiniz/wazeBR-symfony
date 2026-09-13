@@ -12,4 +12,10 @@
     <body class="{{ block('body_class')|default('') }}">
         {% block body %}{% endblock %}
     </body>
+
+    <script>
+        {% block javascripts %}
+            import { start } from '@wazebr/app';
+        {% endblock %}
+    </script>
 </html>

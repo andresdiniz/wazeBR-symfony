@@ -38,5 +38,3 @@ import './layout/base-layout.js';
 import './layout/footer.js';
 import './layout/header.js';
 import './layout/sidebar.js';
-
-console.log('app.js carregado');

@@ -1,3 +1,4 @@
+console.log('Initializing app...');
 
 import { initBaseLayout } from '../layout/base-layout.js';
 import { initHeader } from '../layout/header.js';
