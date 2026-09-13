@@ -2,18 +2,75 @@
 <html lang="pt-BR" data-theme="system">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
         <meta name="color-scheme" content="light dark">
+        <meta name="description" content="{% block meta_description %}Plataforma WazeBR{% endblock %}">
+        <meta name="robots" content="{% block meta_robots %}index, follow{% endblock %}">
+
+        {# Favicons e PWA #}
+        <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+        <link rel="alternate icon" href="{{ asset('favicon.ico') }}">
+        <link rel="manifest" href="{{ asset('site.webmanifest') }}" ignore-path>
+        <meta name="theme-color" content="#33ccff" media="(prefers-color-scheme: light)">
+        <meta name="theme-color" content="#1e293b" media="(prefers-color-scheme: dark)">
+
         <title>{% block title %}WazeBR{% endblock %}</title>
 
-        <script>(function(){try{var t=localStorage.getItem('wazebr-theme')||'system';if(['system','light','dark'].indexOf(t)<0)t='system';document.documentElement.dataset.theme=t;}catch(e){}})();</script>
+        {# Script Inline Anti-FOUC (Previne a piscada no carregamento do tema) #}
+        <script>
+            (function() {
+                try {
+                    var t = localStorage.getItem('wazebr-theme') || 'system';
+                    if (['system', 'light', 'dark'].indexOf(t) < 0) t = 'system';
+                    document.documentElement.dataset.theme = t;
+                } catch(e) {}
+            })();
+        </script>
 
         {% block stylesheets %}{% endblock %}
-        {% block importmap %}{{ importmap('app-init') }}{% endblock %}
-    </head>
-    <body class="{% block body_class %}{% endblock %}">
-        {% block body %}{% endblock %}
-    </body>
 
-    {% block javascripts %}{% endblock %}
+        {# depois — usa o nome que está registrado no importmap #}
+        {% block importmap %}
+            {{ importmap(['app', 'js-app-init']) }}
+        {% endblock %}
+    </head>
+
+    <body class="{% block body_class %}bg-background text-foreground min-h-screen flex flex-col font-sans antialiased{% endblock %}">
+        {# Link de Acessibilidade (Atalhos de Teclado/Screen Readers) #}
+        <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:shadow-lg">
+            Ir para o conteúdo principal
+        </a>
+
+        {# Cabeçalho Global #}
+        {% block header %}
+            {# Insira aqui o seu <header> ou navbar global #}
+        {% endblock %}
+
+        {# Flash Messages #}
+        {% block flash_messages %}
+            {% if app.flashes|length > 0 %}
+                <aside aria-label="Notificações" class="container mx-auto px-4 mt-4 space-y-2">
+                    {% for type, messages in app.flashes %}
+                        {% for message in messages %}
+                            <div class="p-4 rounded-lg shadow-sm border alert alert-{{ type }}" role="alert">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endfor %}
+                </aside>
+            {% endif %}
+        {% endblock %}
+
+        {# Conteúdo Principal #}
+        <main id="main-content" class="flex-grow {% block main_class %}{% endblock %}">
+            {% block body %}{% endblock %}
+        </main>
+
+        {# Rodapé Global #}
+        {% block footer %}
+            {# Insira aqui o seu <footer> global #}
+        {% endblock %}
+
+        {% block javascripts %}{% endblock %}
+    </body>
 </html>

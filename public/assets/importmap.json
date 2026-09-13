@@ -1,10 +1,14 @@
 {
     "dashboard": {
-        "path": "\/assets\/js\/pages\/dashboard-_2---Wk.js",
+        "path": "\/assets\/js\/pages\/dashboard-As5-HPR.js",
         "type": "js"
     },
-    "App": {
-        "path": "\/assets\/..\/assets\/js\/app-D9yjmeU.js",
+    "dashboard-css": {
+        "path": "\/assets\/css\/pages\/dashboard-MxgMXH1.css",
+        "type": "js"
+    },
+    "app": {
+        "path": "\/assets\/..\/assets\/js\/app-nTnnBqD.js",
         "type": "js"
     },
     "\/assets\/css\/layout\/base-layout.css": {
@@ -23,8 +27,8 @@
         "path": "\/assets\/css\/layout\/footer-UmyASUt.css",
         "type": "css"
     },
-    "App-init": {
-        "path": "\/assets\/..\/assets\/js\/core\/app-init-OjrsG1x.js",
+    "js-app-init": {
+        "path": "\/assets\/..\/assets\/js\/core\/app-init-uYDWdEU.js",
         "type": "js"
     },
     "\/assets\/js\/core\/csrf.js": {
@@ -60,7 +64,7 @@
         "type": "js"
     },
     "\/assets\/js\/layout\/header.js": {
-        "path": "\/assets\/js\/layout\/header-beB5JYR.js",
+        "path": "\/assets\/js\/layout\/header-Y3S1kG8.js",
         "type": "js"
     },
     "\/assets\/js\/layout\/sidebar.js": {
@@ -72,15 +76,15 @@
         "type": "js"
     },
     "\/assets\/js\/components\/charts.js": {
-        "path": "\/assets\/js\/components\/charts-cs1KrFt.js",
+        "path": "\/assets\/js\/components\/charts-srcvQnu.js",
         "type": "js"
     },
     "\/assets\/js\/components\/expand-buttons.js": {
-        "path": "\/assets\/js\/components\/expand-buttons-FOhs5SC.js",
+        "path": "\/assets\/js\/components\/expand-buttons-MbrThaU.js",
         "type": "js"
     },
     "\/assets\/js\/components\/filters.js": {
-        "path": "\/assets\/js\/components\/filters-NUQt52S.js",
+        "path": "\/assets\/js\/components\/filters-Nto1E_W.js",
         "type": "js"
     },
     "\/assets\/js\/components\/map.js": {
@@ -96,11 +100,15 @@
         "type": "js"
     },
     "\/assets\/js\/components\/pagination.js": {
-        "path": "\/assets\/js\/components\/pagination-NH888p5.js",
+        "path": "\/assets\/js\/components\/pagination-kCbyEaj.js",
         "type": "js"
     },
     "\/assets\/js\/components\/table.js": {
         "path": "\/assets\/js\/components\/table-E865E4j.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/dashboard.js": {
+        "path": "\/assets\/js\/pages\/dashboard-As5-HPR.js",
         "type": "js"
     }
 }
