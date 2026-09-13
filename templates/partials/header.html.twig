@@ -1,21 +1,45 @@
 <header class="app-header" data-app-header>
     <div class="app-header__inner">
-        <a class="app-header__brand" href="{{ path('dashboard') }}" aria-label="WazeBR - Dashboard">
-            <span class="app-header__brand-mark">W</span>
-            <span class="app-header__brand-copy"><strong>WazeBR</strong><small>Centro operacional</small></span>
-        </a>
+        <div class="app-header__left">
+            <button class="app-header__mobile-toggle" type="button" data-header-mobile-toggle aria-expanded="false" aria-controls="app-header-navigation" aria-label="Abrir navegação"><span></span><span></span><span></span></button>
+            <a class="app-header__brand" href="{{ path('dashboard') }}" aria-label="WazeBR - Dashboard">
+                <span class="app-header__brand-mark">W</span>
+                <span class="app-header__brand-copy"><strong>WazeBR</strong><small>Centro operacional</small></span>
+            </a>
+            <span class="app-header__divider" aria-hidden="true"></span>
+            <div class="app-header__context"><span class="app-header__context-dot"></span><span class="app-header__context-label">Operação</span><strong>Dashboard</strong></div>
+        </div>
 
-        <div class="app-header__actions">
-            <label class="theme-control" for="theme-select">
-                <span class="theme-control__icon" aria-hidden="true">◐</span>
-                <span class="sr-only">Tema da interface</span>
-                <select id="theme-select" class="theme-control__select" data-theme-select aria-label="Tema da interface">
-                    <option value="system">Sistema</option>
-                    <option value="light">Claro</option>
-                    <option value="dark">Escuro</option>
-                </select>
-            </label>
-            {% if app.user %}<span class="app-header__user">{{ app.user.name|default(app.user.userIdentifier) }}</span>{% endif %}
+        <nav class="app-header__navigation" id="app-header-navigation" data-header-navigation aria-label="Navegação principal">
+            <a href="{{ path('dashboard') }}" class="app-header__nav-link is-active">Visão geral</a>
+            {% if is_granted('ROLE_ADMIN') %}<a href="{{ path('admin') }}" class="app-header__nav-link">Administração</a>{% endif %}
+        </nav>
+
+        <div class="app-header__right">
+            <form class="app-header__search" data-header-search action="{{ path('dashboard') }}" method="get" role="search">
+                <span class="app-header__search-icon" aria-hidden="true">⌕</span>
+                <input type="search" name="q" placeholder="Buscar no painel" autocomplete="off" aria-label="Buscar no painel" data-header-search-input>
+                <kbd>⌘ K</kbd>
+            </form>
+            <div class="app-header__action-group">
+                <button type="button" class="app-header__icon-button" data-header-notifications-toggle aria-expanded="false" aria-controls="header-notifications" aria-label="Notificações"><span aria-hidden="true">♢</span><i class="app-header__notification-badge">3</i></button>
+                <div class="app-header__dropdown app-header__notifications" id="header-notifications" data-header-notifications hidden>
+                    <div class="app-header__dropdown-head"><strong>Notificações</strong><button type="button" data-header-notifications-read>Marcar lidas</button></div>
+                    <div class="app-header__notification-item is-unread"><span class="notification-dot is-orange"></span><div><strong>Monitoramento atualizado</strong><small>Novos registros disponíveis no dashboard.</small><time>Agora</time></div></div>
+                    <div class="app-header__notification-item is-unread"><span class="notification-dot is-blue"></span><div><strong>Rotas processadas</strong><small>Snapshots recentes foram importados.</small><time>Há 5 min</time></div></div>
+                    <div class="app-header__notification-item"><span class="notification-dot is-green"></span><div><strong>Sistema online</strong><small>Todos os serviços principais respondem.</small><time>Hoje</time></div></div>
+                </div>
+                <label class="theme-control" for="theme-select"><span class="theme-control__icon" aria-hidden="true">◐</span><span class="sr-only">Tema da interface</span><select id="theme-select" class="theme-control__select" data-theme-select aria-label="Tema da interface"><option value="system">Sistema</option><option value="light">Claro</option><option value="dark">Escuro</option></select></label>
+                <div class="app-header__user-wrap">
+                    <button type="button" class="app-header__user-button" data-header-user-toggle aria-expanded="false" aria-controls="header-user-menu">
+                        <span class="app-header__avatar">{{ app.user ? (app.user.name|default(app.user.userIdentifier)|slice(0, 1)|upper) : 'W' }}</span><span class="app-header__user-copy"><strong>{{ app.user ? app.user.name|default('Operador') : 'Operador' }}</strong><small>{{ is_granted('ROLE_ADMIN') ? 'Administrador' : 'Operador' }}</small></span><span class="app-header__chevron">⌄</span>
+                    </button>
+                    <div class="app-header__dropdown app-header__user-menu" id="header-user-menu" data-header-user-menu hidden>
+                        <a href="{{ path('dashboard') }}">Meu painel</a>
+                        {% if app.user %}<a href="{{ path('app_logout') }}">Sair da conta</a>{% endif %}
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </header>
