@@ -8,7 +8,6 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -22,11 +21,6 @@ final class FetchPartnerFeedsCommand extends Command
         private readonly EntityManagerInterface $entityManager,
     ) {
         parent::__construct();
-    }
-
-    protected function configure(): void
-    {
-        $this->addOption('no-interaction', null, InputOption::VALUE_NONE);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -53,18 +47,11 @@ final class FetchPartnerFeedsCommand extends Command
                     $partner->getName()
                 ));
             }
-
-            // O processamento específico do feed deve chamar persistFeedItem()
-            // para cada item recebido, sempre passando o partner atual.
         }
 
         return Command::SUCCESS;
     }
 
-    /**
-     * Resolve a cidade do item sem permitir que NULL chegue ao banco.
-     * A cidade do próprio item tem prioridade sobre a cidade do partner.
-     */
     private function resolveCity(array $item, Partner $partner): ?string
     {
         foreach (['city', 'municipality'] as $key) {
@@ -89,9 +76,6 @@ final class FetchPartnerFeedsCommand extends Command
         return $city === '' ? null : $city;
     }
 
-    /**
-     * Exemplo de persistência segura para ser usado pelo parser real do feed.
-     */
     private function persistFeedItem(array $item, Partner $partner): void
     {
         $city = $this->resolveCity($item, $partner);
