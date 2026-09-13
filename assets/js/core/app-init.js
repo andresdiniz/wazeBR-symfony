@@ -1,46 +1,42 @@
+import './csrf.js';
+import './dom.js';
+import './http-client.js';
+import './modal.js';
+import './notifications.js';
+import './theme.js';
 
+import '../layout/base-layout.js';
+import '../layout/header.js';
+import '../layout/sidebar.js';
+import '../layout/footer.js';
 
+import '../components/accordions.js';
+import '../components/charts.js';
+import '../components/expand-buttons.js';
+import '../components/filters.js';
+import '../components/map.js';
+import '../components/menus.js';
+import '../components/notifications.js';
+import '../components/pagination.js';
+import '../components/table.js';
 
-// Core é sempre carregado.
-import './core/app-init.js';
-import './core/csrf.js';
-import './core/dom.js';
-import './core/http-client.js';
-import './core/modal.js';
-import './core/notifications.js';
-import './core/theme.js';
+let initialized = false;
 
-// Layouts globais; cada layout importa seus próprios componentes.
-import './layout/base-layout.js';
-import './layout/footer.js';
-import './layout/header.js';
-import './layout/sidebar.js';
+export function initApp(document = globalThis.document) {
+  if (initialized || !document) return;
+  initialized = true;
 
-console.log('app.js carregado');
+  const init = () => {
+    document.documentElement.classList.add('app-ready');
 
+    document.dispatchEvent(new CustomEvent('wazebr:ready'));
+  };
 
-import { initBaseLayout } from '../layout/base-layout.js';
-import { initHeader } from '../layout/header.js';
-import { initTables } from '../components/table.js';
-import { initLogin } from '../pages/login.js';
-import { initResetPassword } from '../pages/reset-password.js';
-import { initDashboard } from '../pages/dashboard.js';
-import { initAdminUsers } from '../pages/admin-users.js';
-import { initCifs } from '../pages/cifs.js';
-
-export function initApp(root = document) {
-    initBaseLayout(root);
-    initHeader(root);
-    initTables(root);
-    initLogin(root);
-    initResetPassword(root);
-    initDashboard(root);
-    initAdminUsers(root);
-    initCifs(root);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, { once: true });
+  } else {
+    init();
+  }
 }
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => initApp());
-} else {
-    initApp();
-}
+initApp();
