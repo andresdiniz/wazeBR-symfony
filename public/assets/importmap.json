@@ -1,66 +1,50 @@
 {
     "app": {
-        "path": "\/assets\/js\/app-Wi2aOd_.js",
+        "path": "\/assets\/js\/app-hztu5xi.js",
         "type": "js"
     },
-    "\/assets\/js\/layout\/base-layout.js": {
-        "path": "\/assets\/js\/layout\/base-layout-K39iwjF.js",
+    "\/assets\/css\/core\/reset.css": {
+        "path": "\/assets\/css\/core\/reset-_S4S4g2.css",
+        "type": "css"
+    },
+    "\/assets\/css\/core\/variables.css": {
+        "path": "\/assets\/css\/core\/variables-gij6eQi.css",
+        "type": "css"
+    },
+    "\/assets\/css\/core\/utilities.css": {
+        "path": "\/assets\/css\/core\/utilities-hSZRVi_.css",
+        "type": "css"
+    },
+    "\/assets\/css\/core\/theme.css": {
+        "path": "\/assets\/css\/core\/theme-p190LAa.css",
+        "type": "css"
+    },
+    "\/assets\/css\/layout\/base-layout.css": {
+        "path": "\/assets\/css\/layout\/base-layout-FPfZVyn.css",
+        "type": "css"
+    },
+    "\/assets\/css\/layout\/header.css": {
+        "path": "\/assets\/css\/layout\/header-Haj3a1a.css",
+        "type": "css"
+    },
+    "\/assets\/css\/layout\/sidebar.css": {
+        "path": "\/assets\/css\/layout\/sidebar-1nqpGPA.css",
+        "type": "css"
+    },
+    "\/assets\/css\/layout\/footer.css": {
+        "path": "\/assets\/css\/layout\/footer-UmyASUt.css",
+        "type": "css"
+    },
+    "pages\/dashboard": {
+        "path": "\/assets\/js\/pages\/dashboard-aRIJWaI.js",
         "type": "js"
     },
-    "\/assets\/js\/core\/dom.js": {
-        "path": "\/assets\/js\/core\/dom-8DDsUoW.js",
-        "type": "js"
+    "\/assets\/css\/pages\/dashboard.css": {
+        "path": "\/assets\/css\/pages\/dashboard-MxgMXH1.css",
+        "type": "css"
     },
-    "\/assets\/js\/layout\/header.js": {
-        "path": "\/assets\/js\/layout\/header-0H-6sJf.js",
-        "type": "js"
-    },
-    "\/assets\/js\/layout\/sidebar.js": {
-        "path": "\/assets\/js\/layout\/sidebar-llsLrq1.js",
-        "type": "js"
-    },
-    "\/assets\/js\/layout\/footer.js": {
-        "path": "\/assets\/js\/layout\/footer-Yc7T6ix.js",
-        "type": "js"
-    },
-    "\/assets\/js\/components\/table.js": {
-        "path": "\/assets\/js\/components\/table-iYRhwjd.js",
-        "type": "js"
-    },
-    "\/assets\/js\/components\/filters.js": {
-        "path": "\/assets\/js\/components\/filters-F8DHynO.js",
-        "type": "js"
-    },
-    "\/assets\/js\/components\/map.js": {
-        "path": "\/assets\/js\/components\/map-irYs2QF.js",
-        "type": "js"
-    },
-    "\/assets\/js\/components\/charts.js": {
-        "path": "\/assets\/js\/components\/charts-2B3Uxw-.js",
-        "type": "js"
-    },
-    "\/assets\/js\/pages\/dashboard.js": {
-        "path": "\/assets\/js\/pages\/dashboard-zFw1Dwx.js",
-        "type": "js"
-    },
-    "\/assets\/js\/pages\/login.js": {
-        "path": "\/assets\/js\/pages\/login-GlRiS4p.js",
-        "type": "js"
-    },
-    "\/assets\/js\/pages\/reset-password.js": {
-        "path": "\/assets\/js\/pages\/reset-password-uuvLDvd.js",
-        "type": "js"
-    },
-    "\/assets\/js\/pages\/admin-users.js": {
-        "path": "\/assets\/js\/pages\/admin-users-gMfiOmi.js",
-        "type": "js"
-    },
-    "\/assets\/js\/pages\/cifs.js": {
-        "path": "\/assets\/js\/pages\/cifs-PksJA8O.js",
-        "type": "js"
-    },
-    "\/assets\/js\/pages\/landing.js": {
-        "path": "\/assets\/js\/pages\/landing-ZtuVgZk.js",
+    "\/assets\/js\/app.js": {
+        "path": "\/assets\/js\/app-hztu5xi.js",
         "type": "js"
     }
 }
