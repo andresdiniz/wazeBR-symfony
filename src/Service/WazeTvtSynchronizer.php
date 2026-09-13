@@ -2,10 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Command;
+namespace App\Service;
 
 use App\Entity\Partner;
-use App\Entity\PartnerApiLink;
 use App\Entity\WazeTvtIrregularity;
 use App\Entity\WazeTvtRoute;
 use App\Entity\WazeTvtRouteSnapshot;
@@ -18,184 +17,20 @@ use App\Repository\WazeTvtRouteSnapshotRepository;
 use App\Repository\WazeTvtSubRouteRepository;
 use App\Repository\WazeTvtUserOnJamRepository;
 use Doctrine\ORM\EntityManagerInterface;
-use Psr\Log\LoggerInterface;
-use Symfony\Component\Console\Attribute\AsCommand;
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-#[AsCommand(
-    name: 'app:fetch:waze:tvt',
-    description: 'Coleta e sincroniza dados de rotas TVT do Waze.',
-)]
-final class FetchWazeTvtCommand extends Command
+final class WazeTvtSynchronizer
 {
-    private const TYPE = 'TVT';
-
     public function __construct(
+        private readonly HttpClientInterface $httpClient,
+        private readonly EntityManagerInterface $entityManager,
         private readonly PartnerApiLinkRepository $apiLinkRepository,
         private readonly WazeTvtRouteRepository $routeRepository,
         private readonly WazeTvtSubRouteRepository $subRouteRepository,
         private readonly WazeTvtIrregularityRepository $irregularityRepository,
         private readonly WazeTvtRouteSnapshotRepository $snapshotRepository,
         private readonly WazeTvtUserOnJamRepository $userOnJamRepository,
-        private readonly EntityManagerInterface $entityManager,
-        private readonly HttpClientInterface $httpClient,
-        private readonly LoggerInterface $logger,
     ) {
-        parent::__construct();
-    }
-
-    protected function configure(): void
-    {
-        $this
-            ->addOption(
-                'partner',
-                null,
-                InputOption::VALUE_OPTIONAL,
-                'ID do partner.',
-            )
-            ->addOption(
-                'dry-run',
-                null,
-                InputOption::VALUE_NONE,
-                'Executa sem persistir no banco.',
-            );
-    }
-
-    protected function execute(
-        InputInterface $input,
-        OutputInterface $output,
-    ): int {
-        $io = new SymfonyStyle($input, $output);
-
-        $partnerId = $input->getOption('partner');
-        $dryRun = (bool) $input->getOption('dry-run');
-
-        $io->title('Coleta Waze TVT');
-
-        if ($dryRun) {
-            $io->warning(
-                'Modo DRY-RUN: nenhum dado será gravado, atualizado ou desativado.',
-            );
-        }
-
-        $apiLinks = $this->apiLinkRepository->findAllByType(self::TYPE);
-
-        if ($partnerId !== null) {
-            $apiLinks = array_values(array_filter(
-                $apiLinks,
-                static function (PartnerApiLink $apiLink) use ($partnerId): bool {
-                    $partner = $apiLink->getPartner();
-
-                    return $partner !== null
-                        && (string) $partner->getId() === (string) $partnerId;
-                },
-            ));
-        }
-
-        if ($apiLinks === []) {
-            $io->info(
-                sprintf(
-                    'Nenhum link ativo com type "%s" foi encontrado.',
-                    self::TYPE,
-                ),
-            );
-
-            return Command::SUCCESS;
-        }
-
-        $io->info(sprintf(
-            'Processando %d link(s) TVT.',
-            count($apiLinks),
-        ));
-
-        $errors = 0;
-
-        foreach ($apiLinks as $apiLink) {
-            $partner = $apiLink->getPartner();
-
-            if ($partner === null) {
-                $errors++;
-
-                $io->error(sprintf(
-                    'O link ID %s não possui partner.',
-                    (string) $apiLink->getId(),
-                ));
-
-                continue;
-            }
-
-            $label = sprintf(
-                '[Partner %d — %s]',
-                $partner->getId(),
-                $partner->getName(),
-            );
-
-            try {
-                $io->section($label);
-
-                $payload = $this->fetchTvtFeed(
-                    (string) $apiLink->getUrl(),
-                );
-
-                $result = $this->processFeed(
-                    $payload,
-                    $partner,
-                    $dryRun,
-                    $io,
-                );
-
-                $io->table(
-                    ['Métrica', 'Quantidade'],
-                    [
-                        ['Rotas novas', $result['routesCreated']],
-                        ['Rotas reativadas', $result['routesReactivated']],
-                        ['Rotas desativadas', $result['routesDeactivated']],
-                        ['Subrotas novas', $result['subRoutesCreated']],
-                        ['Subrotas reativadas', $result['subRoutesReactivated']],
-                        ['Subrotas desativadas', $result['subRoutesDeactivated']],
-                        ['Irregularidades novas', $result['irregularitiesCreated']],
-                        ['Irregularidades reativadas', $result['irregularitiesReactivated']],
-                        ['Irregularidades desativadas', $result['irregularitiesDeactivated']],
-                        ['Snapshots gravados', $result['snapshotsCreated']],
-                        ['Usuários em jam gravados', $result['usersOnJamCreated']],
-                    ],
-                );
-            } catch (\Throwable $exception) {
-                $errors++;
-
-                $this->logger->error(
-                    '{label}: erro no feed TVT: {message}',
-                    [
-                        'label' => $label,
-                        'message' => $exception->getMessage(),
-                        'exception' => $exception,
-                    ],
-                );
-
-                $io->error(sprintf(
-                    '%s %s',
-                    $label,
-                    $exception->getMessage(),
-                ));
-            }
-        }
-
-        if ($errors > 0) {
-            $io->warning(
-                sprintf('%d link(s) apresentaram erro.', $errors),
-            );
-
-            return Command::FAILURE;
-        }
-
-        $io->success('Coleta TVT concluída.');
-
-        return Command::SUCCESS;
     }
 
     /**
@@ -213,24 +48,109 @@ final class FetchWazeTvtCommand extends Command
      *     usersOnJamCreated: int
      * }
      */
-    private function processFeed(
+    public function synchronize(
+        Partner $partner,
+        bool $dryRun = false,
+    ): array {
+        $link = $this->apiLinkRepository
+            ->findOneBy([
+                'partner' => $partner,
+                'type' => 'TVT',
+                'active' => true,
+            ]);
+
+        if ($link === null) {
+            throw new \RuntimeException(
+                'Nenhum link TVT ativo foi encontrado para o partner.',
+            );
+        }
+
+        $payload = $this->requestJson(
+            (string) $link->getUrl(),
+        );
+
+        return $this->processPayload(
+            $payload,
+            $partner,
+            $dryRun,
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function requestJson(string $url): array
+    {
+        $response = $this->httpClient->request(
+            'GET',
+            $url,
+            [
+                'timeout' => 60,
+                'headers' => [
+                    'Accept' => 'application/json',
+                    'User-Agent' => 'WazeBR-Symfony/1.0',
+                ],
+            ],
+        );
+
+        if ($response->getStatusCode() !== 200) {
+            throw new \RuntimeException(sprintf(
+                'O feed TVT retornou HTTP %d.',
+                $response->getStatusCode(),
+            ));
+        }
+
+        try {
+            $payload = $response->toArray();
+        } catch (\Throwable $exception) {
+            throw new \RuntimeException(
+                'O feed TVT retornou JSON inválido.',
+                previous: $exception,
+            );
+        }
+
+        if (!is_array($payload)) {
+            throw new \RuntimeException(
+                'O payload TVT não é um objeto JSON válido.',
+            );
+        }
+
+        if (
+            !isset($payload['routes'])
+            || !is_array($payload['routes'])
+        ) {
+            throw new \RuntimeException(
+                'O payload TVT não possui a chave routes.',
+            );
+        }
+
+        return $payload;
+    }
+
+    /**
+     * @return array{
+     *     routesCreated: int,
+     *     routesReactivated: int,
+     *     routesDeactivated: int,
+     *     subRoutesCreated: int,
+     *     subRoutesReactivated: int,
+     *     subRoutesDeactivated: int,
+     *     irregularitiesCreated: int,
+     *     irregularitiesReactivated: int,
+     *     irregularitiesDeactivated: int,
+     *     snapshotsCreated: int,
+     *     usersOnJamCreated: int
+     * }
+     */
+    private function processPayload(
         array $payload,
         Partner $partner,
         bool $dryRun,
-        SymfonyStyle $io,
     ): array {
-        $recordedAt = new \DateTimeImmutable(
+        $now = new \DateTimeImmutable(
             'now',
             new \DateTimeZone('UTC'),
         );
-
-        $routesData = $payload['routes'] ?? [];
-
-        if (!is_array($routesData)) {
-            throw new \RuntimeException(
-                'O campo "routes" não é uma lista válida.',
-            );
-        }
 
         $result = [
             'routesCreated' => 0,
@@ -246,50 +166,51 @@ final class FetchWazeTvtCommand extends Command
             'usersOnJamCreated' => 0,
         ];
 
-        /*
-         * O JSON usa usersOnJams, no plural.
-         */
-        $usersOnJams = $payload['usersOnJams'] ?? null;
+        $routes = $payload['routes'];
 
-        if (is_array($usersOnJams)) {
-            $result['usersOnJamCreated'] += $this->persistUserOnJam(
-                $partner,
-                $usersOnJams,
-                null,
-                $recordedAt,
-                $dryRun,
-            );
+        /*
+         * O JSON real usa usersOnJams.
+         */
+        if (
+            isset($payload['usersOnJams'])
+            && is_array($payload['usersOnJams'])
+        ) {
+            $result['usersOnJamCreated'] +=
+                $this->persistUsersOnJam(
+                    $partner,
+                    $payload['usersOnJams'],
+                    null,
+                    $now,
+                    $dryRun,
+                );
         }
 
         $currentRouteIds = [];
 
-        foreach ($routesData as $routeData) {
+        foreach ($routes as $routeData) {
             if (!is_array($routeData)) {
                 continue;
             }
 
-            $wazeRouteId = trim(
+            $routeId = trim(
                 (string) ($routeData['id'] ?? ''),
             );
 
-            if ($wazeRouteId === '') {
-                $this->logger->warning(
-                    '[TVT] Rota sem id no payload; ignorada.',
-                );
-
+            if ($routeId === '') {
                 continue;
             }
 
-            $currentRouteIds[] = $wazeRouteId;
+            $currentRouteIds[] = $routeId;
 
             $routeResult = $this->upsertRoute(
                 $partner,
-                $wazeRouteId,
+                $routeId,
                 $routeData,
-                $recordedAt,
+                $now,
                 $dryRun,
             );
 
+            /** @var WazeTvtRoute $route */
             $route = $routeResult['entity'];
 
             $result['routesCreated'] += $routeResult['created'];
@@ -299,32 +220,30 @@ final class FetchWazeTvtCommand extends Command
                 $this->persistSnapshot(
                     $partner,
                     $route,
-                    $wazeRouteId,
+                    $routeId,
                     $routeData,
-                    $recordedAt,
+                    $now,
                     $dryRun,
                 )
             ) {
                 $result['snapshotsCreated']++;
             }
 
-            /*
-             * Caso uma rota também possua usersOnJams.
-             */
-            $routeUsersOnJams = $routeData['usersOnJams'] ?? null;
-
-            if (is_array($routeUsersOnJams)) {
-                $result['usersOnJamCreated'] += $this->persistUserOnJam(
-                    $partner,
-                    $routeUsersOnJams,
-                    $route,
-                    $recordedAt,
-                    $dryRun,
-                );
+            if (
+                isset($routeData['usersOnJams'])
+                && is_array($routeData['usersOnJams'])
+            ) {
+                $result['usersOnJamCreated'] +=
+                    $this->persistUsersOnJam(
+                        $partner,
+                        $routeData['usersOnJams'],
+                        $route,
+                        $now,
+                        $dryRun,
+                    );
             }
 
-            $currentSubRouteIds = [];
-            $currentRouteIrregularityHashes = [];
+            $subRouteIds = [];
 
             foreach (
                 ($routeData['subRoutes'] ?? []) as $subRouteData
@@ -333,53 +252,57 @@ final class FetchWazeTvtCommand extends Command
                     continue;
                 }
 
-                $wazeSubRouteId = trim(
+                $subRouteId = trim(
                     (string) ($subRouteData['id'] ?? ''),
                 );
 
-                if ($wazeSubRouteId === '') {
+                if ($subRouteId === '') {
                     continue;
                 }
 
-                $currentSubRouteIds[] = $wazeSubRouteId;
+                $subRouteIds[] = $subRouteId;
 
                 $subRouteResult = $this->upsertSubRoute(
                     $partner,
                     $route,
-                    $wazeRouteId,
-                    $wazeSubRouteId,
+                    $routeId,
+                    $subRouteId,
                     $subRouteData,
-                    $recordedAt,
+                    $now,
                     $dryRun,
                 );
 
+                /** @var WazeTvtSubRoute $subRoute */
                 $subRoute = $subRouteResult['entity'];
 
-                $result['subRoutesCreated'] += $subRouteResult['created'];
-                $result['subRoutesReactivated'] += $subRouteResult['reactivated'];
+                $result['subRoutesCreated'] +=
+                    $subRouteResult['created'];
 
-                $currentIrregularityHashes = [];
+                $result['subRoutesReactivated'] +=
+                    $subRouteResult['reactivated'];
+
+                $hashes = [];
 
                 foreach (
-                    ($subRouteData['irregularities'] ?? []) as $irregData
+                    ($subRouteData['irregularities'] ?? []) as $data
                 ) {
-                    if (!is_array($irregData)) {
+                    if (!is_array($data)) {
                         continue;
                     }
 
-                    $irregularityResult = $this->upsertIrregularity(
-                        $partner,
-                        $route,
-                        $subRoute,
-                        $wazeRouteId,
-                        $wazeSubRouteId,
-                        $irregData,
-                        $recordedAt,
-                        $dryRun,
-                    );
+                    $irregularityResult =
+                        $this->upsertIrregularity(
+                            $partner,
+                            $route,
+                            $subRoute,
+                            $routeId,
+                            $subRouteId,
+                            $data,
+                            $now,
+                            $dryRun,
+                        );
 
-                    $currentIrregularityHashes[] =
-                        $irregularityResult['hash'];
+                    $hashes[] = $irregularityResult['hash'];
 
                     $result['irregularitiesCreated'] +=
                         $irregularityResult['created'];
@@ -388,56 +311,52 @@ final class FetchWazeTvtCommand extends Command
                         $irregularityResult['reactivated'];
                 }
 
-                if (!$dryRun && $currentIrregularityHashes !== []) {
+                if (!$dryRun && $hashes !== []) {
                     $result['irregularitiesDeactivated'] +=
                         $this->irregularityRepository
                             ->deactivateMissingForScope(
                                 $partner,
                                 $route,
                                 $subRoute,
-                                array_values(
-                                    array_unique(
-                                        $currentIrregularityHashes,
-                                    ),
-                                ),
-                                $recordedAt,
+                                array_values(array_unique($hashes)),
+                                $now,
                             );
                 }
             }
 
-            if (!$dryRun && $currentSubRouteIds !== []) {
+            if (!$dryRun && $subRouteIds !== []) {
                 $result['subRoutesDeactivated'] +=
                     $this->subRouteRepository
                         ->deactivateMissingForRoute(
                             $partner,
                             $route,
-                            array_values(
-                                array_unique($currentSubRouteIds),
-                            ),
-                            $recordedAt,
+                            array_values(array_unique($subRouteIds)),
+                            $now,
                         );
             }
 
+            $routeHashes = [];
+
             foreach (
-                ($routeData['irregularities'] ?? []) as $irregData
+                ($routeData['irregularities'] ?? []) as $data
             ) {
-                if (!is_array($irregData)) {
+                if (!is_array($data)) {
                     continue;
                 }
 
-                $irregularityResult = $this->upsertIrregularity(
-                    $partner,
-                    $route,
-                    null,
-                    $wazeRouteId,
-                    null,
-                    $irregData,
-                    $recordedAt,
-                    $dryRun,
-                );
+                $irregularityResult =
+                    $this->upsertIrregularity(
+                        $partner,
+                        $route,
+                        null,
+                        $routeId,
+                        null,
+                        $data,
+                        $now,
+                        $dryRun,
+                    );
 
-                $currentRouteIrregularityHashes[] =
-                    $irregularityResult['hash'];
+                $routeHashes[] = $irregularityResult['hash'];
 
                 $result['irregularitiesCreated'] +=
                     $irregularityResult['created'];
@@ -446,45 +365,26 @@ final class FetchWazeTvtCommand extends Command
                     $irregularityResult['reactivated'];
             }
 
-            if (
-                !$dryRun
-                && $currentRouteIrregularityHashes !== []
-            ) {
+            if (!$dryRun && $routeHashes !== []) {
                 $result['irregularitiesDeactivated'] +=
                     $this->irregularityRepository
                         ->deactivateMissingForScope(
                             $partner,
                             $route,
                             null,
-                            array_values(
-                                array_unique(
-                                    $currentRouteIrregularityHashes,
-                                ),
-                            ),
-                            $recordedAt,
+                            array_values(array_unique($routeHashes)),
+                            $now,
                         );
             }
-
-            $io->writeln(sprintf(
-                'Rota %s — subRoutes: %d, irregularidades: %d',
-                $wazeRouteId,
-                count($routeData['subRoutes'] ?? []),
-                count($routeData['irregularities'] ?? []),
-            ));
         }
 
-        if (
-            !$dryRun
-            && $currentRouteIds !== []
-        ) {
+        if (!$dryRun && $currentRouteIds !== []) {
             $result['routesDeactivated'] =
                 $this->routeRepository
                     ->deactivateMissingForPartner(
                         $partner,
-                        array_values(
-                            array_unique($currentRouteIds),
-                        ),
-                        $recordedAt,
+                        array_values(array_unique($currentRouteIds)),
+                        $now,
                     );
         }
 
@@ -504,15 +404,15 @@ final class FetchWazeTvtCommand extends Command
      */
     private function upsertRoute(
         Partner $partner,
-        string $wazeRouteId,
+        string $routeId,
         array $data,
-        \DateTimeImmutable $recordedAt,
+        \DateTimeImmutable $now,
         bool $dryRun,
     ): array {
         $route = $this->routeRepository
             ->findOneByPartnerAndRouteId(
                 $partner,
-                $wazeRouteId,
+                $routeId,
             );
 
         $created = 0;
@@ -523,7 +423,7 @@ final class FetchWazeTvtCommand extends Command
 
             $route
                 ->setPartner($partner)
-                ->setRouteId($wazeRouteId);
+                ->setRouteId($routeId);
 
             $created++;
 
@@ -549,7 +449,7 @@ final class FetchWazeTvtCommand extends Command
                     : null,
             )
             ->setIsActive(true)
-            ->setLastSeenAt($recordedAt);
+            ->setLastSeenAt($now);
 
         return [
             'entity' => $route,
@@ -568,17 +468,17 @@ final class FetchWazeTvtCommand extends Command
     private function upsertSubRoute(
         Partner $partner,
         WazeTvtRoute $route,
-        string $wazeRouteId,
-        string $wazeSubRouteId,
+        string $routeId,
+        string $subRouteId,
         array $data,
-        \DateTimeImmutable $recordedAt,
+        \DateTimeImmutable $now,
         bool $dryRun,
     ): array {
         $subRoute = $this->subRouteRepository
             ->findOneByIdentity(
                 $partner,
                 $route,
-                $wazeSubRouteId,
+                $subRouteId,
             );
 
         $created = 0;
@@ -590,8 +490,8 @@ final class FetchWazeTvtCommand extends Command
             $subRoute
                 ->setPartner($partner)
                 ->setRoute($route)
-                ->setWazeRouteId($wazeRouteId)
-                ->setSubRouteId($wazeSubRouteId);
+                ->setWazeRouteId($routeId)
+                ->setSubRouteId($subRouteId);
 
             $created++;
 
@@ -642,7 +542,7 @@ final class FetchWazeTvtCommand extends Command
                     : null,
             )
             ->setIsActive(true)
-            ->setLastSeenAt($recordedAt);
+            ->setLastSeenAt($now);
 
         return [
             'entity' => $subRoute,
@@ -654,9 +554,9 @@ final class FetchWazeTvtCommand extends Command
     private function persistSnapshot(
         Partner $partner,
         WazeTvtRoute $route,
-        string $wazeRouteId,
+        string $routeId,
         array $data,
-        \DateTimeImmutable $recordedAt,
+        \DateTimeImmutable $now,
         bool $dryRun,
     ): bool {
         if ($dryRun) {
@@ -668,7 +568,7 @@ final class FetchWazeTvtCommand extends Command
         $snapshot
             ->setPartner($partner)
             ->setRoute($route)
-            ->setWazeRouteId($wazeRouteId)
+            ->setWazeRouteId($routeId)
             ->setName($data['name'] ?? null)
             ->setCity($data['city'] ?? null)
             ->setState($data['state'] ?? null)
@@ -688,18 +588,18 @@ final class FetchWazeTvtCommand extends Command
                     : null,
             )
             ->setPayload($data)
-            ->setRecordedAt($recordedAt);
+            ->setRecordedAt($now);
 
         $this->entityManager->persist($snapshot);
 
         return true;
     }
 
-    private function persistUserOnJam(
+    private function persistUsersOnJam(
         Partner $partner,
         array $data,
         ?WazeTvtRoute $route,
-        \DateTimeImmutable $recordedAt,
+        \DateTimeImmutable $now,
         bool $dryRun,
     ): int {
         if ($dryRun) {
@@ -730,7 +630,7 @@ final class FetchWazeTvtCommand extends Command
                     ),
             )
             ->setPayload($data)
-            ->setRecordedAt($recordedAt);
+            ->setRecordedAt($now);
 
         $this->entityManager->persist($entity);
 
@@ -748,10 +648,10 @@ final class FetchWazeTvtCommand extends Command
         Partner $partner,
         WazeTvtRoute $route,
         ?WazeTvtSubRoute $subRoute,
-        string $wazeRouteId,
-        ?string $wazeSubRouteId,
+        string $routeId,
+        ?string $subRouteId,
         array $data,
-        \DateTimeImmutable $recordedAt,
+        \DateTimeImmutable $now,
         bool $dryRun,
     ): array {
         $contentHash = $this->computeContentHash($data);
@@ -764,7 +664,7 @@ final class FetchWazeTvtCommand extends Command
             ];
         }
 
-        $existing = $this->irregularityRepository
+        $irregularity = $this->irregularityRepository
             ->findOneByContentHash(
                 $partner,
                 $route,
@@ -775,24 +675,25 @@ final class FetchWazeTvtCommand extends Command
         $created = 0;
         $reactivated = 0;
 
-        if ($existing === null) {
-            $existing = new WazeTvtIrregularity();
+        if ($irregularity === null) {
+            $irregularity = new WazeTvtIrregularity();
 
-            $existing
+            $irregularity
                 ->setPartner($partner)
                 ->setRoute($route)
                 ->setSubRoute($subRoute)
                 ->setContentHash($contentHash);
 
-            $this->entityManager->persist($existing);
+            $this->entityManager->persist($irregularity);
+
             $created++;
-        } elseif (!$existing->isActive()) {
+        } elseif (!$irregularity->isActive()) {
             $reactivated++;
         }
 
-        $existing
-            ->setWazeRouteId($wazeRouteId)
-            ->setWazeSubRouteId($wazeSubRouteId)
+        $irregularity
+            ->setWazeRouteId($routeId)
+            ->setWazeSubRouteId($subRouteId)
             ->setType($data['type'] ?? null)
             ->setSubtype($data['subtype'] ?? null)
             ->setSeverity($data['severity'] ?? null)
@@ -812,9 +713,9 @@ final class FetchWazeTvtCommand extends Command
             )
             ->setPayload($data)
             ->setIsActive(true)
-            ->setRecordedAt($recordedAt)
-            ->setLastSeenAt($recordedAt)
-            ->setUpdatedAt($recordedAt);
+            ->setRecordedAt($now)
+            ->setLastSeenAt($now)
+            ->setUpdatedAt($now);
 
         return [
             'hash' => $contentHash,
@@ -896,7 +797,10 @@ final class FetchWazeTvtCommand extends Command
             );
         }
 
-        if (!isset($payload['routes']) || !is_array($payload['routes'])) {
+        if (
+            !isset($payload['routes'])
+            || !is_array($payload['routes'])
+        ) {
             throw new \RuntimeException(
                 'O JSON TVT não possui a chave routes.',
             );

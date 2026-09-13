@@ -7,6 +7,7 @@ namespace App\Repository;
 use App\Entity\PartnerApiLink;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use App\Entity\Partner;
 
 class PartnerApiLinkRepository extends ServiceEntityRepository
 {
@@ -27,4 +28,18 @@ class PartnerApiLinkRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+    /**
+ * @return PartnerApiLink[]
+ */
+public function findActiveByPartner(Partner $partner): array
+{
+    return $this->createQueryBuilder('link')
+        ->andWhere('link.partner = :partner')
+        ->andWhere('link.active = :active')
+        ->setParameter('partner', $partner)
+        ->setParameter('active', true)
+        ->orderBy('link.id', 'ASC')
+        ->getQuery()
+        ->getResult();
+}
 }

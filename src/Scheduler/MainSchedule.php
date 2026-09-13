@@ -19,7 +19,9 @@ final class MainSchedule implements ScheduleProviderInterface
             ->add(
                 RecurringMessage::every(
                     '1 minute',
-                    new RunCommandMessage('app:fetch-waze-feed --no-interaction'),
+                    new RunCommandMessage(
+                        'app:fetch-partner-feeds --no-interaction',
+                    ),
                 ),
             );
     }

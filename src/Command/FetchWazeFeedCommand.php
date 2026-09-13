@@ -19,6 +19,8 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use App\Repository\PartnerRepository;
+
 
 #[AsCommand(
     name: 'app:fetch-waze-feed',
@@ -32,6 +34,7 @@ final class FetchWazeFeedCommand extends Command
         private readonly WazeAlertRepository $alertRepository,
         private readonly WazeJamRepository $jamRepository,
         private readonly PartnerApiLinkRepository $apiLinkRepository,
+        private readonly PartnerRepository $partnerRepository,
     ) {
         parent::__construct();
     }
@@ -64,6 +67,12 @@ final class FetchWazeFeedCommand extends Command
                 InputOption::VALUE_OPTIONAL,
                 'Limite de alerts e jams por resposta.',
                 '1000',
+            )
+            ->addOption(
+                'one-partner',
+                null,
+                InputOption::VALUE_NONE,
+                'Processa somente um partner vencido por execução.',
             )
             ->addOption(
                 'force',

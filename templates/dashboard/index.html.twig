@@ -61,7 +61,13 @@
                         <tr>
                             <td>#{{ alert.id }}</td>
                             <td><span class="badge badge-alert">{{ alert.type }}</span></td>
-                            <td>{{ alert.reportTime|date('d/m/Y H:i') }}</td>
+                            <td>
+    {% if alert.pubDateTime %}
+        {{ alert.pubDateTime|date('d/m/Y H:i') }}
+    {% else %}
+        —
+    {% endif %}
+</td>
                         </tr>
                         {% else %}
                         <tr><td colspan="3">Nenhum alerta encontrado</td></tr>
@@ -77,23 +83,52 @@
             <div class="table-responsive">
                 <table class="data-table">
                     <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Nós</th>
-                            <th>Velocidade</th>
-                            <th>Data</th>
-                        </tr>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Local</th>
+                                <th>Velocidade</th>
+                                <th>Nível</th>
+                                <th>Data</th>
+                            </tr>
+                        </thead>
                     </thead>
                     <tbody>
                         {% for jam in stats.recent_jams %}
-                        <tr>
-                            <td>#{{ jam.id }}</td>
-                            <td>{{ jam.line }}</td>
-                            <td>{{ jam.speed }} km/h</td>
-                            <td>{{ jam.reportTime|date('d/m/Y H:i') }}</td>
-                        </tr>
+                            <tr>
+                                <td>#{{ jam.id }}</td>
+
+                                <td>
+                                    {{ jam.street ?: 'Rua não informada' }}
+                                    {% if jam.city %}
+                                        <small class="text-muted">
+                                            — {{ jam.city }}
+                                        </small>
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    {{ jam.speedKmh|default('0') }} km/h
+                                </td>
+
+                                <td>
+                                    {{ jam.levelLabel }}
+                                </td>
+
+                                <td>
+                                    {% if jam.pubDateTime %}
+                                        {{ jam.pubDateTime|date('d/m/Y H:i') }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                            </tr>
                         {% else %}
-                        <tr><td colspan="4">Nenhum congestionamento encontrado</td></tr>
+                            <tr>
+                                <td colspan="5">
+                                    Nenhum congestionamento encontrado
+                                </td>
+                            </tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -136,5 +171,5 @@
 
 {% block javascripts %}
     {{ parent() }}
-    <script type="module" src="{{ asset('js/dashboard.js') }}"></script>
+    <script type="module" src="{{ asset('js/pages/dashboard.js') }}"></script>
 {% endblock %}
