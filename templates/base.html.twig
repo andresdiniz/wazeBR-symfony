@@ -7,10 +7,10 @@
         <title>{% block title %}WazeBR{% endblock %}</title>
         <script>(function(){try{var t=localStorage.getItem('wazebr-theme')||'system';if(['system','light','dark'].indexOf(t)<0)t='system';document.documentElement.dataset.theme=t;}catch(e){}})();</script>
         {% block stylesheets %}{% endblock %}
-        {% block importmap %}{{ importmap('app') }}
-        {% endblock %}
+        {% block importmap %}{{ importmap('app') }}{% endblock %}
     </head>
     <body class="{% block body_class %}{% endblock %}">
         {% block body %}{% endblock %}
     </body>
+    {% block javascripts %}{% endblock %}
 </html>
