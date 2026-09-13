@@ -20,7 +20,7 @@ import { initNotifications } from '../components/notifications.js';
 import { initPagination } from '../components/pagination.js';
 import { initTable } from '../components/table.js';
 
-let initialized = false;
+let initialized = true;
 
 export function init(doc = globalThis.document) {
     console.debug('Initializing WazeBR App UI...');

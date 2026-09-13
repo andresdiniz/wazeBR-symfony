@@ -1,14 +1,14 @@
 {
     "dashboard": {
-        "path": "\/assets\/js\/pages\/dashboard-IleUrkT.js",
+        "path": "\/assets\/js\/pages\/dashboard-4C-3v85.js",
         "type": "js"
     },
     "\/assets\/css\/pages\/dashboard.css": {
         "path": "\/assets\/css\/pages\/dashboard-MxgMXH1.css",
         "type": "css"
     },
-    "\/assets\/js\/app.js": {
-        "path": "\/assets\/js\/app-KSheUQ0.js",
+    "App": {
+        "path": "\/assets\/..\/assets\/js\/app-D9yjmeU.js",
         "type": "js"
     },
     "\/assets\/css\/layout\/base-layout.css": {
@@ -26,5 +26,85 @@
     "\/assets\/css\/layout\/footer.css": {
         "path": "\/assets\/css\/layout\/footer-UmyASUt.css",
         "type": "css"
+    },
+    "App-init": {
+        "path": "\/assets\/..\/assets\/js\/core\/app-init-OjrsG1x.js",
+        "type": "js"
+    },
+    "\/assets\/js\/core\/csrf.js": {
+        "path": "\/assets\/js\/core\/csrf-pccFzle.js",
+        "type": "js"
+    },
+    "\/assets\/js\/core\/dom.js": {
+        "path": "\/assets\/js\/core\/dom-8DDsUoW.js",
+        "type": "js"
+    },
+    "\/assets\/js\/core\/http-client.js": {
+        "path": "\/assets\/js\/core\/http-client-RQhmgQO.js",
+        "type": "js"
+    },
+    "\/assets\/js\/core\/modal.js": {
+        "path": "\/assets\/js\/core\/modal-rdjQPOm.js",
+        "type": "js"
+    },
+    "\/assets\/js\/core\/notifications.js": {
+        "path": "\/assets\/js\/core\/notifications-OIx-3qx.js",
+        "type": "js"
+    },
+    "\/assets\/js\/core\/theme.js": {
+        "path": "\/assets\/js\/core\/theme-FrVuTRQ.js",
+        "type": "js"
+    },
+    "\/assets\/js\/layout\/base-layout.js": {
+        "path": "\/assets\/js\/layout\/base-layout-UEb3CVS.js",
+        "type": "js"
+    },
+    "\/assets\/js\/layout\/footer.js": {
+        "path": "\/assets\/js\/layout\/footer-qqt7YQ-.js",
+        "type": "js"
+    },
+    "\/assets\/js\/layout\/header.js": {
+        "path": "\/assets\/js\/layout\/header-sBxDSj8.js",
+        "type": "js"
+    },
+    "\/assets\/js\/layout\/sidebar.js": {
+        "path": "\/assets\/js\/layout\/sidebar-fpBtJhH.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/accordions.js": {
+        "path": "\/assets\/js\/components\/accordions-TNwE1c3.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/charts.js": {
+        "path": "\/assets\/js\/components\/charts-cs1KrFt.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/expand-buttons.js": {
+        "path": "\/assets\/js\/components\/expand-buttons-FOhs5SC.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/filters.js": {
+        "path": "\/assets\/js\/components\/filters-NUQt52S.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/map.js": {
+        "path": "\/assets\/js\/components\/map-NQReF_k.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/menus.js": {
+        "path": "\/assets\/js\/components\/menus--bUnSvA.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/notifications.js": {
+        "path": "\/assets\/js\/components\/notifications-IoBE6IC.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/pagination.js": {
+        "path": "\/assets\/js\/components\/pagination-NH888p5.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/table.js": {
+        "path": "\/assets\/js\/components\/table-E865E4j.js",
+        "type": "js"
     }
 }

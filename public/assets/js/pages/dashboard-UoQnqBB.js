@@ -1,5 +1,8 @@
 import '../../css/pages/dashboard.css';
-import { App } from '/js/app-init.js';
+import { initTheme } from '../app.js';
+init();
+
+
 
 console.debug('Dashboard script loaded');
 

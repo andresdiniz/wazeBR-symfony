@@ -23,7 +23,6 @@ import { initTable } from '../components/table.js';
 let initialized = false;
 
 export function init(doc = globalThis.document) {
-    console.debug('Initializing WazeBR App UI...');
   if (initialized || !doc) return;
 
   initialized = true;
