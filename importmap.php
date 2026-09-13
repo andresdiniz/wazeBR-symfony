@@ -1,10 +1,6 @@
 <?php
 
 return [
-    'controllers' => [
-        'path' => './assets/controllers',
-        'enabled' => false,
-    ],
     'app' => [
         'path' => './assets/js/app.js',
         'entrypoint' => true,
