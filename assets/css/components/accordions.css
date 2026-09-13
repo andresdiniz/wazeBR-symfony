@@ -1,0 +1,1 @@
+details{border:1px solid var(--theme-border);border-radius:8px;background:var(--theme-surface);color:var(--theme-text)}details+details{margin-top:.5rem}summary{padding:.7rem .8rem;cursor:pointer;color:var(--theme-text);font-weight:700}details>div{padding:0 .8rem .8rem;color:var(--theme-text-muted)}

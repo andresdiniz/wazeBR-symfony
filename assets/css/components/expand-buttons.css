@@ -1,0 +1,1 @@
+.expand-button,.dashboard-expand{display:inline-flex;align-items:center;justify-content:center;gap:.35rem;border:0;background:transparent;color:var(--theme-primary);cursor:pointer;font-size:.75rem;font-weight:800}.expand-button:hover,.dashboard-expand:hover{text-decoration:underline}

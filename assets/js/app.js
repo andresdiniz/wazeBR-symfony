@@ -36,11 +36,7 @@ function applyTheme(theme) {
 function initTheme() {
     const stored = window.localStorage.getItem(THEME_KEY);
     applyTheme(THEMES.has(stored) ? stored : 'system');
-    document.querySelectorAll('[data-theme-select]').forEach((select) => {
-        if (select.dataset.themeBound === 'true') return;
-        select.dataset.themeBound = 'true';
-        select.addEventListener('change', () => { const value = THEMES.has(select.value) ? select.value : 'system'; window.localStorage.setItem(THEME_KEY, value); applyTheme(value); });
-    });
+    document.querySelectorAll('[data-theme-select]').forEach((select) => { if (select.dataset.themeBound === 'true') return; select.dataset.themeBound = 'true'; select.addEventListener('change', () => { const value = THEMES.has(select.value) ? select.value : 'system'; window.localStorage.setItem(THEME_KEY, value); applyTheme(value); }); });
 }
 
 function initHeader() {

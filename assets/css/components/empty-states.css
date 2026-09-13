@@ -1,0 +1,1 @@
+.empty-state,.dashboard-empty{display:grid;justify-items:center;gap:.45rem;padding:2rem 1rem;color:var(--theme-text-soft);text-align:center}.empty-state strong,.dashboard-empty strong{color:var(--theme-text-muted);font-size:.8rem}.empty-state small,.dashboard-empty small{font-size:.7rem}

@@ -1,0 +1,1 @@
+.avatar{display:grid;width:36px;height:36px;place-items:center;border-radius:50%;background:var(--theme-primary-soft);color:var(--theme-primary);font-weight:800}.avatar-sm{width:28px;height:28px;font-size:.7rem}.avatar-lg{width:48px;height:48px;font-size:1.1rem}
