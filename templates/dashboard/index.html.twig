@@ -1,140 +1,53 @@
-{% extends 'layouts/dashboard.html.twig' %}
+{% extends 'dashboard.html.twig' %}
 
-{% block title %}Dashboard - wazeBR{% endblock %}
-
-{% block page_stylesheets %}
-<link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
-{% endblock %}
+{% block title %}Dashboard | WazeBR{% endblock %}
 
 {% block content %}
-<div class="dashboard-wrapper">
-    <header class="dashboard-header">
-        <h1>Dashboard</h1>
-        <p class="dashboard-subtitle">Visão geral do monitoramento</p>
+<div class="dashboard-wrapper" data-dashboard>
+    <header class="dashboard-header dashboard-reveal">
+        <div>
+            <span class="dashboard-eyebrow">Centro operacional</span>
+            <h1>Visão geral da mobilidade</h1>
+            <p class="dashboard-subtitle">Acompanhe trânsito, alertas, clima e operação em um único painel.</p>
+        </div>
+        <div class="dashboard-actions">
+            <span class="dashboard-clock" data-dashboard-clock></span>
+            <button type="button" class="dashboard-refresh" data-action="refresh-dashboard">Atualizar</button>
+        </div>
     </header>
 
-    <!-- Stats Cards -->
-    <section class="stats-grid">
-        <div class="stat-card stat-alerts">
-            <div class="stat-icon">!</div>
-            <div class="stat-value">{{ stats.total_alerts }}</div>
-            <div class="stat-label">Alertas</div>
-        </div>
-        <div class="stat-card stat-jams">
-            <div class="stat-icon">≈</div>
-            <div class="stat-value">{{ stats.total_jams }}</div>
-            <div class="stat-label">Congestionamentos</div>
-        </div>
-        <div class="stat-card stat-weather">
-            <div class="stat-icon">⛅</div>
-            <div class="stat-value">{{ stats.total_weather }}</div>
-            <div class="stat-label">Observações Climáticas  </div>
-        </div>
-        <div class="stat-card stat-partners">
-            <div class="stat-icon">◉</div>
-            <div class="stat-value">{{ stats.total_partners }}</div>
-            <div class="stat-label">Parceiros</div>
-        </div>
-        <div class="stat-card stat-users">
-            <div class="stat-icon">☺</div>
-            <div class="stat-value">{{ stats.total_users }}</div>
-            <div class="stat-label">Usuários</div>
-        </div>
+    <section class="stats-grid" aria-label="Indicadores principais">
+        {% set cards = [
+            ['stat-alerts', '⚠️', 'Alertas', stats.total_alerts|default(0)],
+            ['stat-jams', '🚗', 'Congestionamentos', stats.total_jams|default(0)],
+            ['stat-weather', '☁️', 'Observações climáticas', stats.total_weather|default(0)],
+            ['stat-partners', '🤝', 'Parceiros', stats.total_partners|default(0)],
+            ['stat-users', '👥', 'Usuários', stats.total_users|default(0)]
+        ] %}
+        {% for card in cards %}
+            <article class="stat-card {{ card[0] }} dashboard-reveal">
+                <span class="stat-icon" aria-hidden="true">{{ card[1] }}</span>
+                <strong class="stat-value" data-count-value="{{ card[3] }}">{{ card[3] }}</strong>
+                <span class="stat-label">{{ card[2] }}</span>
+            </article>
+        {% endfor %}
     </section>
 
-    <!-- Recent Items Grid -->
     <div class="dashboard-grid">
-        <!-- Recent Alerts -->
-        <section class="dashboard-card">
-            <h2>Alertas Recentes</h2>
-            <div class="table-responsive">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Tipo</th>
-                            <th>Data</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for alert in stats.recent_alerts %}
-                        <tr>
-                            <td>#{{ alert.id }}</td>
-                            <td><span class="badge badge-alert">{{ alert.type }}</span></td>
-                            <td>{{ alert.reportTime|date('d/m/Y H:i') }}</td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="3">Nenhum alerta encontrado</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        <section class="dashboard-card dashboard-reveal">
+            <div class="card-heading"><div><span class="card-kicker">Distribuição</span><h2>Alertas por tipo</h2></div></div>
+            <div class="chart-wrap"><canvas data-dashboard-chart="alerts" data-chart-values='{{ stats.alerts_by_type|default({})|json_encode|e('html_attr') }}'></canvas></div>
         </section>
-
-        <!-- Recent Jams -->
-        <section class="dashboard-card">
-            <h2>Congestionamentos Recentes</h2>
-            <div class="table-responsive">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Nós</th>
-                            <th>Velocidade</th>
-                            <th>Data</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for jam in stats.recent_jams %}
-                        <tr>
-                            <td>#{{ jam.id }}</td>
-                            <td>{{ jam.line }}</td>
-                            <td>{{ jam.speed }} km/h</td>
-                            <td>{{ jam.reportTime|date('d/m/Y H:i') }}</td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="4">Nenhum congestionamento encontrado</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        <section class="dashboard-card dashboard-reveal">
+            <div class="card-heading"><div><span class="card-kicker">Monitoramento</span><h2>Mapa operacional</h2></div></div>
+            <div class="dashboard-map" data-dashboard-map data-points='{{ stats.map_points|default([])|json_encode|e('html_attr') }}'></div>
         </section>
-
-        <!-- Recent Weather -->
-        <section class="dashboard-card full-width">
-            <h2>Últimas Observações Climáticas</h2>
-            <div class="table-responsive">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Local</th>
-                            <th>Temperatura</th>
-                            <th>Umidade (%)</th>
-                            <th>Data</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for weather in stats.recent_weather %}
-                        <tr>
-                            <td>#{{ weather.id }}</td>
-                            <td>{{ weather.location }}</td>
-                            <td>{{ weather.airTemperature }}</td>
-                            <td>{{ weather.relativeHumidity }}</td>
-                            <td>{{ weather.date|date('d/m/Y H:i') }}</td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="5">Nenhuma observação climática encontrada</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        <section class="dashboard-card full-width dashboard-reveal">
+            <div class="card-heading"><div><span class="card-kicker">Últimos registros</span><h2>Alertas recentes</h2></div></div>
+            <div class="table-responsive"><table class="data-table"><thead><tr><th>Tipo</th><th>Local</th><th>Data</th></tr></thead><tbody>
+            {% for alert in stats.recent_alerts|default([]) %}<tr><td><span class="badge badge-alert">{{ alert.type|default('Alerta') }}</span></td><td>{{ alert.street|default(alert.location|default('—')) }}</td><td>{{ alert.createdAt|default(null) ? alert.createdAt|date('d/m/Y H:i') : '—' }}</td></tr>{% else %}<tr><td colspan="3" class="empty-state">Nenhum alerta encontrado.</td></tr>{% endfor %}
+            </tbody></table></div>
         </section>
     </div>
 </div>
-{% endblock %}
-
-{% block javascripts %}
-    {{ parent() }}
-    <script type="module" src="{{ asset('js/dashboard.js') }}"></script>
 {% endblock %}

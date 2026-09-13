@@ -4,50 +4,50 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\Partner;
+use App\Entity\User;
+use App\Entity\WazeAlert;
+use App\Entity\WazeJam;
+use App\Entity\WeatherObservation;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
-/**
- * Repository for dashboard statistics
- */
-class DashboardRepository extends ServiceEntityRepository
+final class DashboardRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
     {
-        parent::__construct($registry, \App\Entity\WazeAlert::class);
+        parent::__construct($registry, WazeAlert::class);
     }
 
+    /** @return array<string, mixed> */
     public function getDashboardStats(): array
     {
         $em = $this->getEntityManager();
-        
-        // Waze Alerts
-        $totalAlerts = $em->getRepository(\App\Entity\WazeAlert::class)->count([]);
-        $recentAlerts = $em->getRepository(\App\Entity\WazeAlert::class)->findBy([], ['id' => 'DESC'], 5);
-        
-        // Waze Jams
-        $totalJams = $em->getRepository(\App\Entity\WazeJam::class)->count([]);
-        $recentJams = $em->getRepository(\App\Entity\WazeJam::class)->findBy([], ['id' => 'DESC'], 5);
-        
-        // Weather
-        $totalWeather = $em->getRepository(\App\Entity\WeatherObservation::class)->count([]);
-        $recentWeather = $em->getRepository(\App\Entity\WeatherObservation::class)->findBy([], ['id' => 'DESC'], 3);
-        
-        // Partners
-        $totalPartners = $em->getRepository(\App\Entity\Partner::class)->count([]);
-        
-        // Users
-        $totalUsers = $em->getRepository(\App\Entity\User::class)->count([]);
-        
+        $alertRepository = $em->getRepository(WazeAlert::class);
+        $jamRepository = $em->getRepository(WazeJam::class);
+        $weatherRepository = $em->getRepository(WeatherObservation::class);
+
+        $recentAlerts = $alertRepository->findBy([], ['id' => 'DESC'], 8);
+        $recentJams = $jamRepository->findBy([], ['id' => 'DESC'], 8);
+        $recentWeather = $weatherRepository->findBy([], ['id' => 'DESC'], 5);
+
+        $alertsByType = [];
+        foreach ($recentAlerts as $alert) {
+            $type = method_exists($alert, 'getType') ? (string) ($alert->getType() ?? 'Outro') : 'Alerta';
+            $alertsByType[$type] = ($alertsByType[$type] ?? 0) + 1;
+        }
+
         return [
-            'total_alerts' => $totalAlerts,
-            'total_jams' => $totalJams,
-            'total_weather' => $totalWeather,
-            'total_partners' => $totalPartners,
-            'total_users' => $totalUsers,
+            'total_alerts' => $alertRepository->count([]),
+            'total_jams' => $jamRepository->count([]),
+            'total_weather' => $weatherRepository->count([]),
+            'total_partners' => $em->getRepository(Partner::class)->count([]),
+            'total_users' => $em->getRepository(User::class)->count([]),
             'recent_alerts' => $recentAlerts,
             'recent_jams' => $recentJams,
             'recent_weather' => $recentWeather,
+            'alerts_by_type' => $alertsByType,
+            'updated_at' => new \DateTimeImmutable(),
         ];
     }
 }
