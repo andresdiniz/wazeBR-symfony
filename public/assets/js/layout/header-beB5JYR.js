@@ -36,6 +36,7 @@ function initMobileMenu(header) {
 }
 
 function initNotifications(header) {
+    console.debug('Initializing header notifications...');
     const toggle = header.querySelector('[data-header-notifications-toggle]');
     const menu = header.querySelector('[data-header-notifications]');
 
