@@ -6,7 +6,7 @@
             <span class="app-header__divider" aria-hidden="true"></span>
             <div class="app-header__context"><span class="app-header__context-dot"></span><span>Operação</span><strong>Dashboard</strong></div>
         </div>
-        <nav class="app-header__navigation" id="app-header-navigation" data-header-navigation aria-label="Navegação principal"><a href="{{ path('dashboard') }}" class="app-header__nav-link is-active">Visão geral</a>{% if is_granted('ROLE_ADMIN') %}<a href="{{ path('admin') }}" class="app-header__nav-link">Administração</a>{% endif %}</nav>
+        <nav class="app-header__navigation" id="app-header-navigation" data-header-navigation aria-label="Navegação principal"><a href="{{ path('dashboard') }}" class="app-header__nav-link is-active">Visão geral</a>{% if is_granted('ROLE_ADMIN') %}<a href="#" class="app-header__nav-link">Administração</a>{% endif %}</nav>
         <div class="app-header__right">
             <form class="app-header__search" data-header-search action="{{ path('dashboard') }}" method="get" role="search"><span class="app-header__search-icon" aria-hidden="true">⌕</span><input type="search" name="q" placeholder="Buscar no painel" autocomplete="off" aria-label="Buscar no painel" data-header-search-input><kbd>⌘ K</kbd></form>
             <div class="app-header__action-group">
