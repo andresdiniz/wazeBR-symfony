@@ -25,7 +25,7 @@ security:
                 default_target_path: app_post_login_redirect
             logout:
                 path: app_logout
-                target: home
+                target: landing
             remember_me:
                 secret: '%kernel.secret%'
                 lifetime: 604800 # 1 week in seconds

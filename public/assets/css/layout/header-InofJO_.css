@@ -1,0 +1,595 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Header — WazeBR
+   Classes alinhadas ao header.html.twig: .header-*, não .app-header__*
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* ── Tokens locais (herdam do tema global se disponível) ─────────────────── */
+:root {
+    --header-h:          62px;
+    --header-bg:         var(--theme-surface,    #ffffff);
+    --header-border:     var(--theme-border,     #e8ecf0);
+    --header-text:       var(--theme-text,       #0f172a);
+    --header-muted:      var(--theme-text-muted, #64748b);
+    --header-soft:       var(--theme-text-soft,  #94a3b8);
+    --header-primary:    var(--theme-primary,    #2563eb);
+    --header-primary-bg: var(--theme-primary-soft, #eff6ff);
+    --header-shadow:     0 1px 0 var(--header-border), 0 4px 16px rgba(15,23,42,.05);
+    --header-radius:     10px;
+    --header-px:         clamp(14px, 2.5vw, 36px);
+}
+
+[data-theme="dark"] {
+    --header-bg:         #0f172a;
+    --header-border:     #1e293b;
+    --header-text:       #e2e8f0;
+    --header-muted:      #64748b;
+    --header-soft:       #475569;
+    --header-primary-bg: rgba(37,99,235,.12);
+    --header-shadow:     0 1px 0 #1e293b, 0 4px 16px rgba(0,0,0,.25);
+}
+
+/* ── Estrutura principal ─────────────────────────────────────────────────── */
+.app-header {
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    background: var(--header-bg);
+    border-bottom: 1px solid var(--header-border);
+    box-shadow: var(--header-shadow);
+    /* Isolamento de contexto para os dropdowns posicionados */
+    isolation: isolate;
+}
+
+.header-main,
+.header-actions {
+    display: flex;
+    align-items: center;
+}
+
+.app-header > .header-main,
+.app-header > .header-actions {
+    /* layout interno via grid no inner wrapper */
+}
+
+/* Inner wrapper único em vez de dois flex separados */
+.app-header {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    min-height: var(--header-h);
+    padding: 0 var(--header-px);
+    gap: 16px;
+}
+
+.header-main {
+    gap: 12px;
+    min-width: 0;
+}
+
+.header-actions {
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+/* ── Botão hamburguer (sidebar toggle) ───────────────────────────────────── */
+.header-menu-button {
+    display: none; /* visível só em mobile via media query */
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--header-border);
+    border-radius: 9px;
+    background: transparent;
+    color: var(--header-muted);
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background .15s, color .15s, border-color .15s;
+}
+
+.header-menu-button:hover {
+    background: var(--header-primary-bg);
+    border-color: var(--header-primary);
+    color: var(--header-primary);
+}
+
+/* ── Brand ───────────────────────────────────────────────────────────────── */
+.header-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    flex-shrink: 0;
+    color: inherit;
+    text-decoration: none;
+}
+
+.header-brand-mark {
+    display: grid;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    place-items: center;
+    border-radius: 10px;
+    /* Gradiente distinto — azul royal → índigo, sem o roxo comum */
+    background: linear-gradient(140deg, #1d4ed8 0%, #4f46e5 100%);
+    color: #fff;
+    font-size: .95rem;
+    font-weight: 900;
+    letter-spacing: -.02em;
+    /* Sombra sutil de cor */
+    box-shadow: 0 2px 8px rgba(79,70,229,.35);
+}
+
+.header-brand-copy {
+    display: grid;
+    gap: 1px;
+}
+
+.header-brand-copy strong {
+    color: var(--header-text);
+    font-size: .85rem;
+    font-weight: 800;
+    letter-spacing: -.03em;
+    line-height: 1;
+}
+
+.header-brand-copy small {
+    color: var(--header-soft);
+    font-size: .57rem;
+    font-weight: 500;
+    letter-spacing: .02em;
+    line-height: 1;
+}
+
+/* ── Separador vertical ──────────────────────────────────────────────────── */
+.header-divider {
+    width: 1px;
+    height: 24px;
+    flex-shrink: 0;
+    background: var(--header-border);
+}
+
+/* ── Search ──────────────────────────────────────────────────────────────── */
+.header-search {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--header-border);
+    border-radius: 9px;
+    background: var(--header-bg);
+    color: var(--header-muted);
+    width: clamp(160px, 18vw, 260px);
+    transition: border-color .15s, box-shadow .15s;
+}
+
+.header-search:focus-within {
+    border-color: var(--header-primary);
+    box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+    color: var(--header-text);
+}
+
+.header-search-icon {
+    font-size: .95rem;
+    flex-shrink: 0;
+    opacity: .6;
+}
+
+.header-search input {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--header-text);
+    font-size: .68rem;
+}
+
+.header-search input::placeholder {
+    color: var(--header-soft);
+}
+
+.header-search kbd {
+    flex-shrink: 0;
+    padding: 2px 5px;
+    border: 1px solid var(--header-border);
+    border-radius: 4px;
+    color: var(--header-soft);
+    font-family: inherit;
+    font-size: .5rem;
+    white-space: nowrap;
+    line-height: 1.6;
+}
+
+/* ── Status de conexão ───────────────────────────────────────────────────── */
+.header-connection {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 9px;
+    border: 1px solid rgba(34,197,94,.2);
+    border-radius: 20px;
+    background: rgba(34,197,94,.07);
+    color: #16a34a;
+    font-size: .6rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+    white-space: nowrap;
+}
+
+.header-connection-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 0 3px rgba(34,197,94,.2);
+    animation: header-pulse 2.4s ease infinite;
+}
+
+@keyframes header-pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 3px rgba(34,197,94,.2); }
+    50%       { opacity: .7; box-shadow: 0 0 0 5px rgba(34,197,94,.08); }
+}
+
+/* ── Botão de ação genérico (notificações, etc.) ─────────────────────────── */
+.header-action-button {
+    position: relative;
+    display: grid;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    border: 1px solid var(--header-border);
+    border-radius: 9px;
+    background: transparent;
+    color: var(--header-muted);
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background .15s, color .15s, border-color .15s;
+}
+
+.header-action-button:hover,
+.header-action-button[aria-expanded="true"] {
+    background: var(--header-primary-bg);
+    border-color: var(--header-primary);
+    color: var(--header-primary);
+}
+
+/* Badge de notificações */
+.header-notification-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    display: grid;
+    min-width: 16px;
+    height: 16px;
+    place-items: center;
+    padding: 0 3px;
+    border: 2px solid var(--header-bg);
+    border-radius: 8px;
+    background: #ef4444;
+    color: #fff;
+    font-size: .48rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+/* ── Dropdowns (base compartilhada) ──────────────────────────────────────── */
+.header-notifications,
+.header-user {
+    position: relative;
+}
+
+.header-notifications-dropdown,
+.header-user-menu {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    z-index: 300;
+    overflow: hidden;
+    border: 1px solid var(--header-border);
+    border-radius: 13px;
+    background: var(--header-bg);
+    box-shadow: 0 20px 40px rgba(15,23,42,.14), 0 4px 12px rgba(15,23,42,.08);
+    /* Animação de entrada */
+    transform-origin: top right;
+    animation: header-dropdown-in .18s ease forwards;
+}
+
+[data-theme="dark"] .header-notifications-dropdown,
+[data-theme="dark"] .header-user-menu {
+    box-shadow: 0 20px 40px rgba(0,0,0,.4), 0 4px 12px rgba(0,0,0,.2);
+}
+
+@keyframes header-dropdown-in {
+    from { opacity: 0; transform: scale(.96) translateY(-6px); }
+    to   { opacity: 1; transform: scale(1)   translateY(0); }
+}
+
+.header-notifications-dropdown[hidden],
+.header-user-menu[hidden] {
+    display: none !important;
+}
+
+/* ── Dropdown de notificações ────────────────────────────────────────────── */
+.header-notifications-dropdown {
+    width: 300px;
+}
+
+.header-dropdown-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 15px 11px;
+    border-bottom: 1px solid var(--header-border);
+}
+
+.header-dropdown-heading strong {
+    color: var(--header-text);
+    font-size: .72rem;
+    font-weight: 700;
+}
+
+.header-dropdown-heading button {
+    border: 0;
+    background: transparent;
+    color: var(--header-primary);
+    cursor: pointer;
+    font-size: .6rem;
+    font-weight: 700;
+    padding: 0;
+    transition: opacity .15s;
+}
+
+.header-dropdown-heading button:hover { opacity: .7; }
+
+.header-notification-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 11px 15px;
+    border-bottom: 1px solid var(--header-border);
+    transition: background .12s;
+    cursor: default;
+}
+
+.header-notification-item:last-child {
+    border-bottom: 0;
+}
+
+.header-notification-item:hover {
+    background: var(--header-primary-bg);
+}
+
+.header-notification-item.is-unread {
+    background: rgba(37,99,235,.03);
+}
+
+.header-notification-item.is-unread::before {
+    /* indicador azul na borda esquerda */
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--header-primary);
+}
+
+.header-notification-item {
+    position: relative;
+}
+
+.header-notification-icon {
+    display: grid;
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    place-items: center;
+    border-radius: 8px;
+    background: var(--header-primary-bg);
+    color: var(--header-primary);
+    font-size: .72rem;
+    font-weight: 700;
+}
+
+.header-notification-item span:last-child {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+.header-notification-item strong {
+    color: var(--header-text);
+    font-size: .63rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.header-notification-item small {
+    color: var(--header-muted);
+    font-size: .57rem;
+    line-height: 1.4;
+}
+
+.header-dropdown-empty {
+    padding: 18px 15px;
+    color: var(--header-soft);
+    font-size: .63rem;
+    text-align: center;
+}
+
+/* ── Dropdown do usuário ─────────────────────────────────────────────────── */
+.header-user-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px 4px 4px;
+    border: 1px solid var(--header-border);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--header-text);
+    cursor: pointer;
+    text-align: left;
+    transition: background .15s, border-color .15s;
+}
+
+.header-user-button:hover,
+.header-user-button[aria-expanded="true"] {
+    background: var(--header-primary-bg);
+    border-color: var(--header-primary);
+}
+
+.header-avatar {
+    display: grid;
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    place-items: center;
+    border-radius: 8px;
+    background: linear-gradient(140deg, #1d4ed8, #4f46e5);
+    color: #fff;
+    font-size: .65rem;
+    font-weight: 800;
+}
+
+.header-user-copy {
+    display: grid;
+    gap: 1px;
+}
+
+.header-user-copy strong {
+    color: var(--header-text);
+    font-size: .63rem;
+    font-weight: 700;
+    line-height: 1;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.header-user-copy small {
+    color: var(--header-soft);
+    font-size: .54rem;
+    line-height: 1;
+}
+
+.header-user-chevron {
+    color: var(--header-soft);
+    font-size: .65rem;
+    margin-left: 2px;
+    transition: transform .18s;
+}
+
+.header-user-button[aria-expanded="true"] .header-user-chevron {
+    transform: rotate(180deg);
+}
+
+.header-user-menu {
+    width: 192px;
+    padding: 6px;
+}
+
+.header-user-menu a {
+    display: block;
+    padding: 9px 10px;
+    border-radius: 7px;
+    color: var(--header-muted);
+    font-size: .65rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background .12s, color .12s;
+}
+
+.header-user-menu a:hover {
+    background: var(--header-primary-bg);
+    color: var(--header-primary);
+}
+
+.header-user-menu-divider {
+    height: 1px;
+    margin: 5px 4px;
+    background: var(--header-border);
+}
+
+/* Sair — destaque em vermelho */
+.header-user-menu a[href*="logout"]:hover {
+    background: rgba(239,68,68,.08);
+    color: #dc2626;
+}
+
+/* ── Mobile ──────────────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+    .app-header {
+        grid-template-columns: auto 1fr auto;
+    }
+
+    .header-search {
+        width: 180px;
+    }
+}
+
+@media (max-width: 768px) {
+    .app-header {
+        grid-template-columns: auto 1fr auto;
+        gap: 10px;
+        padding: 0 14px;
+        --header-h: 56px;
+        min-height: var(--header-h);
+    }
+
+    .header-menu-button {
+        display: flex;
+    }
+
+    .header-brand-copy {
+        display: none;
+    }
+
+    .header-search {
+        display: none;
+    }
+
+    .header-connection {
+        display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-user-copy {
+        display: none;
+    }
+
+    .header-user-button {
+        padding: 4px;
+    }
+
+    .header-user-chevron {
+        display: none;
+    }
+}
+
+/* ── Acessibilidade ──────────────────────────────────────────────────────── */
+.header-action-button:focus-visible,
+.header-user-button:focus-visible,
+.header-menu-button:focus-visible {
+    outline: 3px solid rgba(37,99,235,.4);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .header-connection-dot {
+        animation: none;
+    }
+
+    .header-notifications-dropdown,
+    .header-user-menu {
+        animation: none;
+    }
+
+    .header-user-chevron {
+        transition: none;
+    }
+}
