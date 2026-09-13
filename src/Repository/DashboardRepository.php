@@ -34,34 +34,46 @@ final class DashboardRepository extends ServiceEntityRepository
         $recentAlerts = $alertRepository->findBy([], ['id' => 'DESC'], 8);
         $recentJams = $jamRepository->findBy([], ['id' => 'DESC'], 8);
         $recentWeather = $weatherRepository->findBy([], ['id' => 'DESC'], 5);
-        $routes = $routeRepository->findBy([], ['id' => 'DESC'], 20);
-        $snapshots = $snapshotRepository->findBy([], ['id' => 'DESC'], 100);
+        $routes = $routeRepository->findBy([], ['id' => 'DESC'], 100);
+        $snapshots = $snapshotRepository->findBy([], ['recordedAt' => 'DESC', 'id' => 'DESC'], 500);
 
         $latestSnapshots = [];
         foreach ($snapshots as $snapshot) {
-            $routeKey = $this->routeKey($snapshot);
-            if ($routeKey !== null && !isset($latestSnapshots[$routeKey])) {
-                $latestSnapshots[$routeKey] = $snapshot;
+            $routeId = $this->scalarValue($snapshot, ['getRouteId', 'getWazeRouteId']);
+            if ($routeId !== null && $routeId !== '' && !isset($latestSnapshots[(string) $routeId])) {
+                $latestSnapshots[(string) $routeId] = $snapshot;
             }
         }
 
         $recentRoutes = [];
         foreach ($routes as $route) {
-            $routeKey = $this->routeKey($route);
-            $snapshot = $routeKey !== null ? ($latestSnapshots[$routeKey] ?? null) : null;
+            $routeId = $this->scalarValue($route, ['getId']);
+            $snapshot = $routeId !== null ? ($latestSnapshots[(string) $routeId] ?? null) : null;
+            if ($snapshot === null) {
+                continue;
+            }
+
+            $time = $this->numericValue($snapshot, ['getTime']);
+            $historicTime = $this->numericValue($snapshot, ['getHistoricTime']);
+            $delaySeconds = $time !== null && $historicTime !== null ? max(0, $historicTime - $time) : null;
+            $jamLevel = $this->scalarValue($snapshot, ['getJamLevel']);
+            $recordedAt = $this->firstValue($snapshot, ['getRecordedAt']);
+
             $recentRoutes[] = [
-                'id' => $this->value($route, ['getId']),
-                'name' => $this->firstValue($route, ['getName', 'getRouteName', 'getSlug', 'getCode']) ?? 'Rota monitorada',
-                'city' => $this->firstValue($route, ['getCity', 'getMunicipality', 'getRegion']),
-                'origin' => $this->firstValue($route, ['getOrigin', 'getStartAddress', 'getStart']),
-                'destination' => $this->firstValue($route, ['getDestination', 'getEndAddress', 'getEnd']),
-                'status' => $snapshot !== null ? 'Atualizada' : 'Sem snapshot',
-                'snapshot_at' => $snapshot !== null ? $this->firstValue($snapshot, ['getCreatedAt', 'getCapturedAt', 'getObservedAt', 'getDate']) : null,
-                'duration' => $snapshot !== null ? $this->firstValue($snapshot, ['getDurationSeconds', 'getDuration', 'getTravelTimeSeconds', 'getTravelTime']) : null,
-                'delay' => $snapshot !== null ? $this->firstValue($snapshot, ['getDelaySeconds', 'getDelay', 'getDelayMinutes']) : null,
-                'distance' => $snapshot !== null ? $this->firstValue($snapshot, ['getDistanceMeters', 'getDistanceKm', 'getDistance']) : null,
+                'id' => $routeId,
+                'name' => $this->firstValue($snapshot, ['getName']) ?? $this->firstValue($route, ['getName', 'getRouteName', 'getSlug', 'getCode']) ?? 'Rota monitorada',
+                'city' => $this->firstValue($snapshot, ['getCity']) ?? $this->firstValue($route, ['getCity', 'getMunicipality', 'getRegion']),
+                'status' => $delaySeconds !== null && $delaySeconds > 0 ? 'Atrasada' : 'Normal',
+                'time' => $time,
+                'historic_time' => $historicTime,
+                'delay_seconds' => $delaySeconds,
+                'delay_minutes' => $delaySeconds !== null ? round($delaySeconds / 60, 1) : null,
+                'jam_level' => $jamLevel,
+                'recorded_at' => $recordedAt,
             ];
         }
+
+        usort($recentRoutes, static fn (array $left, array $right): int => ($right['delay_seconds'] ?? -1) <=> ($left['delay_seconds'] ?? -1));
 
         $alertsByType = [];
         foreach ($recentAlerts as $alert) {
@@ -84,29 +96,14 @@ final class DashboardRepository extends ServiceEntityRepository
         ];
     }
 
-    private function routeKey(object $entity): ?string
+    private function scalarValue(object $entity, array $methods): mixed
     {
-        foreach (['getRouteId', 'getWazeTvtRoute', 'getRoute', 'getRouteKey', 'getId'] as $method) {
+        foreach ($methods as $method) {
             if (!method_exists($entity, $method)) {
                 continue;
             }
             $value = $entity->{$method}();
-            if (is_object($value) && method_exists($value, 'getId')) {
-                $value = $value->getId();
-            }
-            if ($value !== null && $value !== '') {
-                return (string) $value;
-            }
-        }
-
-        return null;
-    }
-
-    private function firstValue(object $entity, array $methods): mixed
-    {
-        foreach ($methods as $method) {
-            $value = $this->value($entity, [$method]);
-            if ($value !== null && $value !== '') {
+            if (is_scalar($value) || $value === null) {
                 return $value;
             }
         }
@@ -114,14 +111,21 @@ final class DashboardRepository extends ServiceEntityRepository
         return null;
     }
 
-    private function value(object $entity, array $methods): mixed
+    private function numericValue(object $entity, array $methods): ?float
+    {
+        $value = $this->scalarValue($entity, $methods);
+        return is_numeric($value) ? (float) $value : null;
+    }
+
+    private function firstValue(object $entity, array $methods): mixed
     {
         foreach ($methods as $method) {
-            if (method_exists($entity, $method)) {
-                $value = $entity->{$method}();
-                if (is_scalar($value) || $value instanceof \DateTimeInterface || $value === null) {
-                    return $value;
-                }
+            if (!method_exists($entity, $method)) {
+                continue;
+            }
+            $value = $entity->{$method}();
+            if ($value !== null && $value !== '') {
+                return $value;
             }
         }
 
