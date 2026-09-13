@@ -1,70 +1,203 @@
-export function initHeader(root = document) {
-    const header = root.querySelector('[data-component="header"]');
-    if (!header || header.dataset.initialized === 'true') {
-        return;
+/**
+ * header.js
+ * Controla os dois dropdowns do header (notificações e menu do usuário)
+ * e o botão de toggle do sidebar.
+ *
+ * Sem dependências externas — vanilla JS puro.
+ * Coloque este arquivo em assets/js/header.js e inclua no base.html.twig:
+ *   <script src="{{ asset('js/header.js') }}" defer></script>
+ */
+
+(function () {
+    'use strict';
+
+    // ── Referências ──────────────────────────────────────────────────────────
+
+    /** @type {HTMLElement|null} */
+    const header = document.querySelector('[data-component="header"]');
+    if (!header) return;
+
+    // Notificações
+    const notifBtn      = header.querySelector('[data-action="toggle-notifications"]');
+    const notifDropdown = header.querySelector('[data-notifications-dropdown]');
+
+    // Menu do usuário
+    const userBtn      = header.querySelector('[data-action="toggle-user-menu"]');
+    const userDropdown = header.querySelector('[data-user-dropdown]');
+
+    // Sidebar
+    const sidebarBtn = header.querySelector('[data-action="toggle-sidebar"]');
+
+    // Marcar como lidas
+    const markReadBtn = header.querySelector('[data-action="mark-notifications-read"]');
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    /**
+     * Abre um dropdown e atualiza aria-expanded no botão associado.
+     *
+     * @param {HTMLElement} dropdown
+     * @param {HTMLElement} triggerBtn
+     */
+    function openDropdown(dropdown, triggerBtn) {
+        dropdown.hidden = false;
+        triggerBtn.setAttribute('aria-expanded', 'true');
+
+        // Foca o primeiro item focável dentro do dropdown para acessibilidade
+        const firstFocusable = dropdown.querySelector('a, button, [tabindex]');
+        if (firstFocusable) {
+            firstFocusable.focus();
+        }
     }
 
-    header.dataset.initialized = 'true';
+    /**
+     * Fecha um dropdown e atualiza aria-expanded no botão associado.
+     *
+     * @param {HTMLElement} dropdown
+     * @param {HTMLElement} triggerBtn
+     * @param {boolean}     [returnFocus=false] — devolve foco ao botão após fechar
+     */
+    function closeDropdown(dropdown, triggerBtn, returnFocus = false) {
+        dropdown.hidden = true;
+        triggerBtn.setAttribute('aria-expanded', 'false');
+        if (returnFocus) triggerBtn.focus();
+    }
 
-    const userMenu = header.querySelector('[data-user-menu]');
-    const userButton = header.querySelector('[data-action="toggle-user-menu"]');
-    const userDropdown = header.querySelector('[data-user-dropdown]');
-    const notificationsMenu = header.querySelector('[data-notifications-menu]');
-    const notificationsButton = header.querySelector('[data-action="toggle-notifications"]');
-    const notificationsDropdown = header.querySelector('[data-notifications-dropdown]');
-    const markReadButton = header.querySelector('[data-action="mark-notifications-read"]');
-    const notificationsBadge = header.querySelector('.header-notification-badge');
-    const notificationsEmpty = header.querySelector('[data-notifications-empty]');
-    const search = header.querySelector('[data-header-search]');
+    /**
+     * Alterna (toggle) um dropdown.
+     * Ao abrir, fecha o outro se estiver aberto.
+     *
+     * @param {HTMLElement} dropdown
+     * @param {HTMLElement} triggerBtn
+     * @param {HTMLElement} otherDropdown
+     * @param {HTMLElement} otherBtn
+     */
+    function toggleDropdown(dropdown, triggerBtn, otherDropdown, otherBtn) {
+        const isOpen = !dropdown.hidden;
 
-    const setUserMenu = (open) => {
-        if (!userDropdown || !userButton) return;
-        userDropdown.hidden = !open;
-        userButton.setAttribute('aria-expanded', String(open));
-    };
+        // Fecha o outro dropdown primeiro
+        if (otherDropdown && !otherDropdown.hidden) {
+            closeDropdown(otherDropdown, otherBtn);
+        }
 
-    const setNotificationsMenu = (open) => {
-        if (!notificationsDropdown || !notificationsButton) return;
-        notificationsDropdown.hidden = !open;
-        notificationsButton.setAttribute('aria-expanded', String(open));
-    };
+        if (isOpen) {
+            closeDropdown(dropdown, triggerBtn);
+        } else {
+            openDropdown(dropdown, triggerBtn);
+        }
+    }
 
-    userButton?.addEventListener('click', (event) => {
-        event.stopPropagation();
-        const open = userDropdown?.hidden ?? true;
-        setNotificationsMenu(false);
-        setUserMenu(open);
-    });
+    // ── Event listeners ──────────────────────────────────────────────────────
 
-    notificationsButton?.addEventListener('click', (event) => {
-        event.stopPropagation();
-        const open = notificationsDropdown?.hidden ?? true;
-        setUserMenu(false);
-        setNotificationsMenu(open);
-    });
-
-    markReadButton?.addEventListener('click', () => {
-        header.querySelectorAll('.header-notification-item.is-unread').forEach((item) => {
-            item.classList.remove('is-unread');
+    // Botão de notificações
+    if (notifBtn && notifDropdown) {
+        notifBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            toggleDropdown(notifDropdown, notifBtn, userDropdown, userBtn);
         });
-        if (notificationsBadge) notificationsBadge.hidden = true;
-        if (notificationsEmpty) notificationsEmpty.hidden = false;
-    });
+    }
 
-    document.addEventListener('click', (event) => {
-        if (!userMenu?.contains(event.target)) setUserMenu(false);
-        if (!notificationsMenu?.contains(event.target)) setNotificationsMenu(false);
-    });
+    // Botão do menu do usuário
+    if (userBtn && userDropdown) {
+        userBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            toggleDropdown(userDropdown, userBtn, notifDropdown, notifBtn);
+        });
+    }
 
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') {
-            setUserMenu(false);
-            setNotificationsMenu(false);
+    // Marcar notificações como lidas
+    if (markReadBtn && notifDropdown) {
+        markReadBtn.addEventListener('click', function () {
+            notifDropdown.querySelectorAll('.is-unread').forEach(function (item) {
+                item.classList.remove('is-unread');
+            });
+
+            // Zera o badge
+            const badge = header.querySelector('.header-notification-badge');
+            if (badge) badge.hidden = true;
+
+            // Mostra mensagem de vazio
+            const emptyMsg = notifDropdown.querySelector('[data-notifications-empty]');
+            if (emptyMsg) emptyMsg.hidden = false;
+        });
+    }
+
+    // Toggle sidebar
+    if (sidebarBtn) {
+        sidebarBtn.addEventListener('click', function () {
+            const sidebarId = sidebarBtn.getAttribute('aria-controls');
+            const sidebar   = sidebarId ? document.getElementById(sidebarId) : null;
+
+            const isExpanded = sidebarBtn.getAttribute('aria-expanded') === 'true';
+            sidebarBtn.setAttribute('aria-expanded', String(!isExpanded));
+
+            if (sidebar) {
+                sidebar.classList.toggle('is-open', !isExpanded);
+            } else {
+                // Fallback: toggle numa classe no <body>
+                document.body.classList.toggle('sidebar-open', !isExpanded);
+            }
+        });
+    }
+
+    // ── Fechar ao clicar fora ────────────────────────────────────────────────
+
+    document.addEventListener('click', function (e) {
+        // Notificações
+        if (notifDropdown && !notifDropdown.hidden) {
+            const notifWrapper = header.querySelector('[data-notifications-menu]');
+            if (notifWrapper && !notifWrapper.contains(e.target)) {
+                closeDropdown(notifDropdown, notifBtn);
+            }
         }
 
-        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-            event.preventDefault();
-            search?.focus();
+        // Menu do usuário
+        if (userDropdown && !userDropdown.hidden) {
+            const userWrapper = header.querySelector('[data-user-menu]');
+            if (userWrapper && !userWrapper.contains(e.target)) {
+                closeDropdown(userDropdown, userBtn);
+            }
         }
     });
-}
+
+    // ── Fechar com Escape ────────────────────────────────────────────────────
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') return;
+
+        if (notifDropdown && !notifDropdown.hidden) {
+            closeDropdown(notifDropdown, notifBtn, true);
+        }
+
+        if (userDropdown && !userDropdown.hidden) {
+            closeDropdown(userDropdown, userBtn, true);
+        }
+    });
+
+    // ── Navegação por teclado dentro dos dropdowns (↑ ↓ Tab) ────────────────
+
+    [notifDropdown, userDropdown].forEach(function (dropdown) {
+        if (!dropdown) return;
+
+        dropdown.addEventListener('keydown', function (e) {
+            const focusable = Array.from(
+                dropdown.querySelectorAll('a, button, [tabindex]')
+            ).filter(function (el) { return !el.hidden && el.tabIndex !== -1; });
+
+            if (focusable.length === 0) return;
+
+            const idx = focusable.indexOf(document.activeElement);
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                focusable[(idx + 1) % focusable.length].focus();
+            }
+
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                focusable[(idx - 1 + focusable.length) % focusable.length].focus();
+            }
+        });
+    });
+
+})();
