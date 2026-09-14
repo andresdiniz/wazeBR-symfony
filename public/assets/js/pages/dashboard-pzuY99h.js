@@ -19,6 +19,12 @@ const COLORS = {
 const PALETTE = [COLORS.blue, COLORS.orange, COLORS.green, COLORS.purple, COLORS.red,
                  '#0891b2', '#7c2d12', '#4d7c0f', '#c026d3', '#0f766e'];
 
+// Estado do filtro de estação hidro (null = todas)
+const hydroState = {
+    selectedStation: null,   // number|null
+    raw: [],                 // lista bruta vinda do backend
+};
+
 // ─────────────────────────────────────────────────────────────────────────
 // Clock
 // ─────────────────────────────────────────────────────────────────────────
@@ -163,6 +169,169 @@ function mountChart(key, canvas, config) {
     destroyChart(key);
     const chart = new Chart(canvas.getContext('2d'), config);
     charts.set(key, chart);
+}
+
+/**
+ * Agrega pontos por bucket de tempo (média de nível, soma de chuva,
+ * média das cotas). Usado quando "Todas as estações" está selecionado.
+ */
+function aggregateHydro(points) {
+    const byTime = new Map();
+    for (const p of points) {
+        const key = p.time;
+        if (!byTime.has(key)) {
+            byTime.set(key, {
+                time: key,
+                levels: [], rains: [], atencao: [], alerta: [],
+            });
+        }
+        const b = byTime.get(key);
+        if (p.level        !== null && p.level        !== undefined) b.levels.push(Number(p.level));
+        if (p.rain         !== null && p.rain         !== undefined) b.rains.push(Number(p.rain));
+        if (p.cota_atencao !== null && p.cota_atencao !== undefined) b.atencao.push(Number(p.cota_atencao));
+        if (p.cota_alerta  !== null && p.cota_alerta  !== undefined) b.alerta.push(Number(p.cota_alerta));
+    }
+
+    const avg = (arr) => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null;
+    const sum = (arr) => arr.reduce((s, v) => s + v, 0);
+
+    return Array.from(byTime.values())
+        .sort((a, b) => a.time.localeCompare(b.time))
+        .map((b) => ({
+            time:         b.time,
+            level:        avg(b.levels),
+            rain:         sum(b.rains),
+            cota_atencao: avg(b.atencao),
+            cota_alerta:  avg(b.alerta),
+        }));
+}
+
+/** Aplica o filtro de estação escolhido e devolve a série pronta. */
+function getHydroSeries() {
+    const raw = hydroState.raw;
+    if (!raw || raw.length === 0) return [];
+
+    if (hydroState.selectedStation === null) {
+        return aggregateHydro(raw);
+    }
+
+    const filtered = raw.filter((p) => Number(p.station_id) === Number(hydroState.selectedStation));
+    return aggregateHydro(filtered);
+}
+
+function renderHydroCharts(root) {
+    const series = getHydroSeries();
+    const labels = series.map((p) => {
+        const t = (p.time || '');
+        return t.length >= 16 ? t.slice(11, 16) : t;
+    });
+
+    // ── Nível do rio
+    root.querySelectorAll('[data-chart="hydro-level-12h"]').forEach((canvas) => {
+        mountChart('hydroLevel12h', canvas, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Nível do rio (m)',
+                        data: series.map((p) => p.level),
+                        borderColor: COLORS.cyan,
+                        backgroundColor: 'rgba(8,145,178,.15)',
+                        fill: true,
+                        tension: 0.35,
+                        pointRadius: 2,
+                        borderWidth: 2,
+                    },
+                    {
+                        label: 'Cota de atenção',
+                        data: series.map((p) => p.cota_atencao),
+                        borderColor: COLORS.orange,
+                        borderDash: [6, 4],
+                        pointRadius: 0,
+                        borderWidth: 1.5,
+                        fill: false,
+                    },
+                    {
+                        label: 'Cota de alerta',
+                        data: series.map((p) => p.cota_alerta),
+                        borderColor: COLORS.red,
+                        borderDash: [6, 4],
+                        pointRadius: 0,
+                        borderWidth: 1.5,
+                        fill: false,
+                    },
+                ],
+            },
+            options: {
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8 } },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => {
+                                const v = ctx.parsed.y;
+                                if (v === null || v === undefined) return `${ctx.dataset.label}: —`;
+                                return `${ctx.dataset.label}: ${Number(v).toFixed(2)} m`;
+                            },
+                        },
+                    },
+                },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: {
+                        grid: { color: COLORS.grid },
+                        title: { display: true, text: 'Nível (m)' },
+                        beginAtZero: true,
+                    },
+                },
+            },
+        });
+    });
+
+    // ── Chuva
+    root.querySelectorAll('[data-chart="hydro-rain-12h"]').forEach((canvas) => {
+        mountChart('hydroRain12h', canvas, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Chuva (mm)',
+                        data: series.map((p) => p.rain),
+                        backgroundColor: 'rgba(37,99,235,.55)',
+                        borderColor: 'rgba(37,99,235,.85)',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                    },
+                ],
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => {
+                                const v = ctx.parsed.y;
+                                if (v === null || v === undefined) return 'Sem chuva';
+                                return `Chuva: ${Number(v).toFixed(1)} mm`;
+                            },
+                        },
+                    },
+                },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: {
+                        grid: { color: COLORS.grid },
+                        title: { display: true, text: 'Chuva (mm)' },
+                        beginAtZero: true,
+                    },
+                },
+            },
+        });
+    });
 }
 
 export function initDashboardCharts(root = document) {
@@ -359,7 +528,7 @@ export function initDashboardCharts(root = document) {
         });
     });
 
-    // 6) Hydro trend (48h) — nível do rio
+    // 6) Hydro trend (48h)
     root.querySelectorAll('[data-chart="hydro-trend"]').forEach((canvas) => {
         const points = parseData(canvas);
         const labels = points.map((p) => (p.time || '').slice(5, 16));
@@ -416,59 +585,69 @@ export function initDashboardCharts(root = document) {
         });
     });
 
-    // 7) Pluviometria — chuva por hora (pluviômetros + hidro)
-    root.querySelectorAll('[data-chart="pluvio-hourly"]').forEach((canvas) => {
-        const points = parseData(canvas);
-        const labels = points.map((p) => {
-            const t = (p.time || '');
-            return t.length >= 16 ? t.slice(11, 16) : t;
-        });
-        const rain = points.map((p) => Number(p.rain) || 0);
-        const wet  = points.map((p) => Number(p.wet_stations) || 0);
+    // 7) Hydro 12h — os dois gráficos (nível + chuva) alimentados pelo filtro
+    renderHydroCharts(root);
+}
 
-        mountChart('pluvioHourly', canvas, {
-            type: 'bar',
-            data: {
-                labels,
-                datasets: [
-                    {
-                        label: 'Chuva (mm)',
-                        data: rain,
-                        backgroundColor: rain.map((v) => v > 0
-                            ? 'rgba(37,99,235,.75)'
-                            : 'rgba(148,163,184,.35)'),
-                        borderColor: 'rgba(37,99,235,.95)',
-                        borderWidth: 1,
-                        borderRadius: 4,
-                    },
-                ],
-            },
-            options: {
-                maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: (ctx) => {
-                                const i = ctx.dataIndex;
-                                const v = ctx.parsed.y;
-                                if (!v) return 'Sem chuva';
-                                const wetStations = wet[i] || 0;
-                                return `Chuva: ${Number(v).toFixed(1)} mm · ${wetStations} ponto(s)`;
-                            },
-                        },
-                    },
-                },
-                scales: {
-                    x: { grid: { display: false } },
-                    y: {
-                        grid: { color: COLORS.grid },
-                        title: { display: true, text: 'Chuva (mm)' },
-                        beginAtZero: true,
-                    },
-                },
-            },
+// ─────────────────────────────────────────────────────────────────────────
+// Hydro station selector
+// ─────────────────────────────────────────────────────────────────────────
+
+function readHydroRaw(root) {
+    const panel = root.querySelector('[data-hydro-panel]');
+    if (!panel) return [];
+    try {
+        return JSON.parse(panel.dataset.hydroRaw || '[]');
+    } catch {
+        return [];
+    }
+}
+
+function updateHydroTitle(root, stationName) {
+    const el = root.querySelector('[data-hydro-chart-title]');
+    if (!el) return;
+    el.textContent = stationName
+        ? `Estação: ${stationName}`
+        : 'Nível do rio e chuva por hora';
+}
+
+export function initHydroStationSelector(root = document) {
+    const list = root.querySelector('[data-hydro-list]');
+    if (!list) return;
+
+    hydroState.raw = readHydroRaw(root);
+
+    list.querySelectorAll('[data-hydro-station]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const rawValue = btn.dataset.hydroStation;
+            const newStation = rawValue === '' ? null : Number(rawValue);
+
+            // Se clicou no já selecionado (e não é "Todas"), desmarca e volta pra "Todas"
+            const isSame = (newStation === null && hydroState.selectedStation === null)
+                || (newStation !== null && hydroState.selectedStation === newStation);
+
+            hydroState.selectedStation = (isSame && newStation !== null)
+                ? null
+                : newStation;
+
+            // Atualiza classes
+            list.querySelectorAll('[data-hydro-station]').forEach((b) => {
+                const bId = b.dataset.hydroStation;
+                const bStation = bId === '' ? null : Number(bId);
+                const active = (bStation === null && hydroState.selectedStation === null)
+                    || (bStation !== null && bStation === hydroState.selectedStation);
+                b.classList.toggle('is-selected', active);
+                b.setAttribute('aria-pressed', active ? 'true' : 'false');
+            });
+
+            // Atualiza título
+            const titleBtn = hydroState.selectedStation === null
+                ? null
+                : list.querySelector(`[data-hydro-station="${hydroState.selectedStation}"]`);
+            updateHydroTitle(root, titleBtn?.querySelector('strong')?.textContent || null);
+
+            // Re-renderiza os dois gráficos 12h
+            renderHydroCharts(root);
         });
     });
 }
@@ -571,31 +750,14 @@ export function initDashboardMap(root = document) {
         `).addTo(layerGroups.weather);
     });
 
-    // Estações de chuva: cor dinâmica pela intensidade 24h
     stations.forEach((s) => {
         if (!Number.isFinite(s.lat) || !Number.isFinite(s.lng)) return;
-
-        const rain1h  = Number(s.rain1h ?? 0);
-        const rain24h = Number(s.rain24h ?? 0);
-
-        const color = rain24h > 20 ? '#1d4ed8'
-                   : rain24h > 5  ? '#2563eb'
-                   : rain24h > 0  ? '#0891b2'
-                   : '#14b8a6';
-
         L.circleMarker([s.lat, s.lng], {
-            radius: rain24h > 0 ? 6 : 4,
-            color: '#0f766e',
-            weight: 1,
-            fillColor: color,
-            fillOpacity: 0.85,
+            radius: 4, color: '#0f766e', weight: 1, fillColor: '#14b8a6', fillOpacity: 0.8,
         }).bindPopup(`
             <strong>${escapeHtml(s.name || 'Estação CEMADEN')}</strong><br>
             ${escapeHtml(s.city || '')} ${s.state ? '/ ' + escapeHtml(s.state) : ''}<br>
-            <small>${escapeHtml(s.type || '')}</small><br>
-            <hr style="border:none;border-top:1px solid #e5e7eb;margin:4px 0">
-            <small>Chuva 1h: <strong>${rain1h.toFixed(1)} mm</strong></small><br>
-            <small>Chuva 24h: <strong>${rain24h.toFixed(1)} mm</strong></small>
+            <small>${escapeHtml(s.type || '')}</small>
         `).addTo(layerGroups.stations);
     });
 
@@ -641,7 +803,6 @@ export function attachDashboardLiveUpdates(root = document) {
                 { sel: '.kpi-green  .dashboard-kpi-value', val: data.kpis.weather },
                 { sel: '.kpi-purple .dashboard-kpi-value', val: data.kpis.cameras },
                 { sel: '.kpi-cyan   .dashboard-kpi-value', val: data.kpis.hydro_stations },
-                { sel: '.kpi-rain   .dashboard-kpi-value', val: data.kpis.pluvio_stations },
             ];
             cardSelectors.forEach(({ sel, val }) => {
                 if (val === undefined) return;
@@ -655,15 +816,6 @@ export function attachDashboardLiveUpdates(root = document) {
                 if (trend) {
                     trend.textContent = `${atRisk} em atenção`;
                     trend.classList.toggle('is-warning', atRisk > 0);
-                }
-            }
-
-            const rain24 = data.kpis.pluvio_rain_24h;
-            if (rain24 !== undefined) {
-                const trend = root.querySelector('.kpi-rain .dashboard-kpi-trend');
-                if (trend) {
-                    trend.textContent = `${Number(rain24).toFixed(1).replace('.', ',')} mm · 24h`;
-                    trend.classList.toggle('is-positive', rain24 > 0);
                 }
             }
         }
@@ -688,10 +840,13 @@ export function attachDashboardLiveUpdates(root = document) {
             }
         }
 
-        if (data.pluvio && data.pluvio.hourly) {
-            const canvas = root.querySelector('[data-chart="pluvio-hourly"]');
-            if (canvas) {
-                canvas.dataset.chartData = JSON.stringify(data.pluvio.hourly);
+        // Atualiza a base hidro dos gráficos 12h e reflete o filtro atual
+        if (data.hydro && data.hydro.combined) {
+            const panel = root.querySelector('[data-hydro-panel]');
+            if (panel) {
+                const json = JSON.stringify(data.hydro.combined);
+                panel.dataset.hydroRaw = json;
+                hydroState.raw = data.hydro.combined;
             }
         }
 
@@ -710,6 +865,7 @@ export function initDashboard(root = document) {
     initDashboardRefresh(root);
     initDashboardFilters(root);
     initDashboardCharts(root);
+    initHydroStationSelector(root);
     initDashboardMap(root);
     attachDashboardLiveUpdates(root);
 }

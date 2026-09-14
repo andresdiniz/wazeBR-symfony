@@ -18,35 +18,29 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
- * Coleta observações pluviométricas do CEMADEN para todas as CemadenStationLinks ativas.
+ * Coleta observações PLUVIOMÉTRICAS do CEMADEN (somente mm de chuva).
  *
- * Fluxo:
- *   1. Seleciona stations ativas cujo lastFetchedAt < (agora − minFetchInterval).
- *   2. Para cada station, monta a URL via getRequestUrl() respeitando hoursToFetch.
- *   3. Normaliza os arrays datas/horarios/acumulados da resposta.
- *   4. Persiste apenas observações ainda não existentes (idempotência por unique constraint).
- *   5. Atualiza lastFetchedAt na station.
+ * IMPORTANTE — separação de responsabilidades:
+ *   - Este comando cuida APENAS de pluviômetros automáticos
+ *     (endpoint: MapaInterativoWS/resources/horario/{id}/{hours}).
+ *     → Grava em `cemaden_pluviometric_observation` (só chuva, sem nível de rio).
  *
- * Uso:
- *   php bin/console app:fetch:cemaden:pluviometric
- *   php bin/console app:fetch:cemaden:pluviometric --partner=42
- *   php bin/console app:fetch:cemaden:pluviometric --min-interval=60    # minutos
- *   php bin/console app:fetch:cemaden:pluviometric --force              # ignora lastFetchedAt
- *   php bin/console app:fetch:cemaden:pluviometric --dry-run
+ *   - O comando `app:fetch:cemaden:hidro` cuida de estações hidrológicas
+ *     (endpoint: MedidaResource + AcumuladoResource, `est=`/`sen=`).
+ *     → Grava em `cemaden_hidro_observation` (nível + chuva do rio).
  *
- * Agendamento sugerido: a cada 60 minutos (dados CEMADEN são horários).
+ * Os dois NÃO se cruzam: cada um lê tabelas diferentes e grava em tabelas diferentes.
  */
 #[AsCommand(
     name: 'app:fetch:cemaden:pluviometric',
-    description: 'Coleta observações pluviométricas CEMADEN para stations ativas.',
+    description: 'Coleta observações pluviométricas CEMADEN (mm de chuva) para stations ativas.',
 )]
 class FetchCemadenPluviometricCommand extends Command
 {
-    /**
-     * Intervalo mínimo padrão entre coletas (em minutos).
-     * Pode ser sobrescrito via --min-interval.
-     */
-    private const DEFAULT_MIN_INTERVAL_MINUTES = 55;
+    private const DEFAULT_MIN_INTERVAL_MINUTES = 10;
+
+    private const TZ_SP  = 'America/Sao_Paulo';
+    private const TZ_UTC = 'UTC';
 
     public function __construct(
         private readonly CemadenStationLinkRepository $stationLinkRepository,
@@ -75,7 +69,7 @@ class FetchCemadenPluviometricCommand extends Command
         $partnerId = $input->getOption('partner');
         $minIntervalMinutes = (int) $input->getOption('min-interval');
 
-        $io->title('Coleta CEMADEN — Pluviométrica');
+        $io->title('Coleta CEMADEN — Pluviométrica (mm de chuva)');
 
         if ($dryRun) {
             $io->warning('Modo DRY-RUN — nenhum dado será persistido.');
@@ -86,7 +80,10 @@ class FetchCemadenPluviometricCommand extends Command
             $stations = $this->stationLinkRepository->findAllActive();
             $io->info('--force ativo: coletando todas as stations ativas (ignorando lastFetchedAt).');
         } else {
-            $threshold = new \DateTimeImmutable(sprintf('-%d minutes', $minIntervalMinutes));
+            $threshold = new \DateTimeImmutable(
+                sprintf('-%d minutes', $minIntervalMinutes),
+                new \DateTimeZone(self::TZ_UTC),
+            );
             $stations = $this->stationLinkRepository->findDueForCollection($threshold);
             $io->info(sprintf(
                 'Buscando stations com lastFetchedAt anterior a %s (intervalo: %d min).',
@@ -96,11 +93,10 @@ class FetchCemadenPluviometricCommand extends Command
         }
 
         if ($partnerId !== null) {
-            $stations = array_filter(
+            $stations = array_values(array_filter(
                 $stations,
                 static fn ($s) => (string) $s->getPartner()->getId() === (string) $partnerId,
-            );
-            $stations = array_values($stations);
+            ));
         }
 
         if (empty($stations)) {
@@ -111,32 +107,43 @@ class FetchCemadenPluviometricCommand extends Command
         $io->info(sprintf('Processando %d station(s).', count($stations)));
 
         // ── 2. Iterar e coletar ──────────────────────────────────────────────
-        $inserted = 0;
-        $skipped = 0;
+        $totalInserted = 0;
+        $totalSkipped = 0;
         $errors = 0;
 
         foreach ($stations as $station) {
             $label = $this->stationLabel($station);
+            $inserted = 0;
+            $skipped = 0;
 
             try {
                 $url = $station->getRequestUrl();
                 $rawData = $this->fetchJson($url);
 
-                // ── 2a. Normalizar estrutura CEMADEN ─────────────────────────
-                // A resposta pode ser um array de itens com campos:
-                // "referencia" (data), "horario" e "acumulado".
-                $observations = $this->normalizePayload($rawData, $station);
+                if ($rawData === []) {
+                    $io->writeln(sprintf('%s payload vazio — nada a persistir.', $label));
+                    continue;
+                }
 
-                $nowUtc = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+                // Metadados da estação (só preenche campos vazios)
+                if (!$dryRun) {
+                    $this->syncStationMetadata($station, $rawData);
+                }
+
+                // Normaliza o payload em registros por hora
+                $observations = $this->normalizePayload($rawData);
+
+                if ($observations === []) {
+                    $io->writeln(sprintf('%s sem observações válidas.', $label));
+                    continue;
+                }
+
+                $nowUtc = new \DateTimeImmutable('now', new \DateTimeZone(self::TZ_UTC));
 
                 foreach ($observations as $obs) {
-                    /** @var \DateTimeImmutable $observedAt */
                     $observedAt = $obs['observedAt'];
-                    $accumulated = $obs['accumulated'];
-                    $hourSlot = $obs['hourSlot'];
-                    $refDate = $obs['referenceDate'];
 
-                    // Idempotência: unique(station_link_id, observed_at)
+                    // Idempotência: unique (station_link_id, observed_at)
                     $existing = $this->em
                         ->getRepository(CemadenPluviometricObservation::class)
                         ->findOneBy([
@@ -152,9 +159,13 @@ class FetchCemadenPluviometricCommand extends Command
                     $entity = new CemadenPluviometricObservation();
                     $entity->setPartner($station->getPartner());
                     $entity->setCemadenStationLink($station);
-                    $entity->setReferenceDate($refDate);
-                    $entity->setHourSlot($hourSlot);
-                    $entity->setAccumulatedRainfall($accumulated);
+                    $entity->setReferenceDate($obs['referenceDate']);
+                    $entity->setHourSlot($obs['hourSlot']);
+                    $entity->setAccumulatedRainfall(
+                        $obs['accumulated'] !== null
+                            ? number_format($obs['accumulated'], 3, '.', '')
+                            : null,
+                    );
                     $entity->setObservedAt($observedAt);
                     $entity->setSourcePayload($rawData);
 
@@ -165,14 +176,16 @@ class FetchCemadenPluviometricCommand extends Command
                     ++$inserted;
                 }
 
-                // ── 2b. Atualizar lastFetchedAt da station ───────────────────
                 if (!$dryRun) {
                     $station->setLastFetchedAt($nowUtc);
                     $this->em->flush();
                 }
 
+                $totalInserted += $inserted;
+                $totalSkipped += $skipped;
+
                 $io->writeln(sprintf(
-                    '%s ✓ inseridos: %d, ignorados (já existentes): %d',
+                    '%s ✓ inseridos: %d, ignorados: %d',
                     $label,
                     $inserted,
                     $skipped,
@@ -190,8 +203,8 @@ class FetchCemadenPluviometricCommand extends Command
 
         $io->success(sprintf(
             'Concluído — Inseridos: %d | Ignorados: %d | Erros: %d',
-            $inserted,
-            $skipped,
+            $totalInserted,
+            $totalSkipped,
             $errors,
         ));
 
@@ -201,83 +214,221 @@ class FetchCemadenPluviometricCommand extends Command
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     /**
-     * Normaliza o payload bruto do CEMADEN em uma lista de registros estruturados.
+     * Sincroniza metadados da estação a partir do objeto "estacao" do payload.
+     * Só preenche campos que estão vazios (não sobrescreve edições manuais).
      *
-     * A API retorna arrays paralelos de datas, horários e acumulados, ou uma lista
-     * de objetos com esses campos. Este método suporta ambos os formatos.
-     *
-     * @param array<string, mixed>  $rawData
-     * @return list<array{observedAt: \DateTimeImmutable, referenceDate: \DateTimeImmutable, hourSlot: int, accumulated: ?float}>
+     * @param array<string,mixed> $rawData
      */
-    private function normalizePayload(array $rawData, CemadenStationLink $station): array
+    private function syncStationMetadata(CemadenStationLink $station, array $rawData): void
     {
-        $results = [];
-
-        // Formato 1 — lista de objetos: [{referencia, horario, acumulado}, ...]
-        if (isset($rawData[0]) && is_array($rawData[0])) {
-            foreach ($rawData as $item) {
-                $results[] = $this->buildRecord($item);
-            }
-            return $results;
+        $estacao = $rawData['estacao'] ?? null;
+        if (!is_array($estacao)) {
+            return;
         }
 
-        // Formato 2 — arrays paralelos: {datas: [...], horarios: [...], acumulados: [...]}
-        $datas = $rawData['datas'] ?? [];
-        $horarios = $rawData['horarios'] ?? [];
+        $changed = false;
+
+        if ($station->getStationName() === null && !empty($estacao['nome'])) {
+            $station->setStationName((string) $estacao['nome']);
+            $changed = true;
+        }
+
+        if ($station->getStationCode() === null && !empty($estacao['codEstacao'])) {
+            $station->setStationCode((string) $estacao['codEstacao']);
+            $changed = true;
+        }
+
+        if ($station->getLatitude() === null && isset($estacao['latitude'])) {
+            $station->setLatitude((string) $estacao['latitude']);
+            $changed = true;
+        }
+
+        if ($station->getLongitude() === null && isset($estacao['longitude'])) {
+            $station->setLongitude((string) $estacao['longitude']);
+            $changed = true;
+        }
+
+        if ($station->getStatus() === null && !empty($estacao['status'])) {
+            $station->setStatus((string) $estacao['status']);
+            $changed = true;
+        }
+
+        // Município
+        $municipio = $estacao['idMunicipio'] ?? null;
+        if (is_array($municipio)) {
+            if ($station->getCity() === null && !empty($municipio['cidade'])) {
+                $station->setCity((string) $municipio['cidade']);
+                $changed = true;
+            }
+            if ($station->getState() === null && !empty($municipio['uf'])) {
+                $station->setState((string) $municipio['uf']);
+                $changed = true;
+            }
+            if ($station->getMunicipalityId() === null && isset($municipio['idMunicipio'])) {
+                $station->setMunicipalityId((int) $municipio['idMunicipio']);
+                $changed = true;
+            }
+            if ($station->getIbgeCode() === null && isset($municipio['codibge'])) {
+                $station->setIbgeCode((string) $municipio['codibge']);
+                $changed = true;
+            }
+        }
+
+        // Rede
+        $rede = $estacao['idRede'] ?? null;
+        if (is_array($rede)) {
+            if ($station->getNetworkId() === null && isset($rede['idRede'])) {
+                $station->setNetworkId((int) $rede['idRede']);
+                $changed = true;
+            }
+            if ($station->getNetworkName() === null && !empty($rede['nome'])) {
+                $station->setNetworkName((string) $rede['nome']);
+                $changed = true;
+            }
+            if ($station->getNetworkAcronym() === null && !empty($rede['sigla'])) {
+                $station->setNetworkAcronym((string) $rede['sigla']);
+                $changed = true;
+            }
+        }
+
+        // Tipo (Pluviométrica)
+        $tipo = $estacao['idTipoestacao'] ?? null;
+        if (is_array($tipo) && $station->getStationType() === null && !empty($tipo['descricao'])) {
+            $station->setStationType((string) $tipo['descricao']);
+            $changed = true;
+        }
+
+        if ($changed) {
+            $station->setUpdatedAt(new \DateTimeImmutable('now', new \DateTimeZone(self::TZ_UTC)));
+        }
+    }
+
+    /**
+     * Normaliza o payload real do CEMADEN:
+     *
+     * {
+     *   "horarios": ["0h","1h",...,"23h"],
+     *   "estacao":  {...},
+     *   "datas":    ["13/09/2026", ...],
+     *   "acumulados": [ [v0,v1,...,v23], ... ]
+     * }
+     *
+     * `acumulados[i]` é um array de 24 valores (um por hora), correspondendo
+     * ao dia `datas[i]`. O índice do array É a hora (0..23).
+     *
+     * CEMADEN envia datas em horário local de Brasília; convertemos para UTC
+     * antes de persistir para manter o banco consistente com os outros dados.
+     *
+     * @param array<string,mixed> $rawData
+     * @return list<array{observedAt: \DateTimeImmutable, referenceDate: \DateTimeImmutable, hourSlot: int, accumulated: ?float}>
+     */
+    private function normalizePayload(array $rawData): array
+    {
+        $datas      = $rawData['datas']      ?? [];
         $acumulados = $rawData['acumulados'] ?? [];
 
-        foreach ($datas as $idx => $data) {
-            $results[] = $this->buildRecord([
-                'referencia' => $data,
-                'horario' => $horarios[$idx] ?? null,
-                'acumulado' => $acumulados[$idx] ?? null,
-            ]);
+        if (!is_array($datas) || $datas === []) {
+            return [];
+        }
+        if (!is_array($acumulados)) {
+            return [];
+        }
+
+        $results = [];
+
+        foreach ($datas as $dayIdx => $rawDate) {
+            $refDateSp = $this->parseDateSp((string) $rawDate);
+            if ($refDateSp === null) {
+                continue;
+            }
+
+            // acumulados[$dayIdx] = [v0, v1, ..., v23]
+            $dayValues = $acumulados[$dayIdx] ?? [];
+            if (!is_array($dayValues) || $dayValues === []) {
+                continue;
+            }
+
+            foreach ($dayValues as $hour => $rawValue) {
+                $hour = (int) $hour;
+                if ($hour < 0 || $hour > 23) {
+                    continue;
+                }
+
+                // Hora local (SP) → instante absoluto → UTC
+                $observedAtSp = $refDateSp->setTime($hour, 0);
+                $observedAtUtc = $observedAtSp->setTimezone(
+                    new \DateTimeZone(self::TZ_UTC),
+                );
+
+                // reference_date é DATE_IMMUTABLE — basta o dia.
+                // Mantemos o dia ORIGINAL em SP (sem aplicar conversão) para
+                // não "pular" para o dia seguinte quando a hora for tarde.
+                $referenceDate = $refDateSp->setTime(0, 0);
+
+                $accumulated = ($rawValue === null || $rawValue === '')
+                    ? null
+                    : (float) $rawValue;
+
+                $results[] = [
+                    'observedAt'    => $observedAtUtc,
+                    'referenceDate' => $referenceDate,
+                    'hourSlot'      => $hour,
+                    'accumulated'   => $accumulated,
+                ];
+            }
         }
 
         return $results;
     }
 
     /**
-     * Monta um registro normalizado a partir de um item bruto.
-     *
-     * @param array<string, mixed> $item
-     * @return array{observedAt: \DateTimeImmutable, referenceDate: \DateTimeImmutable, hourSlot: int, accumulated: ?float}
+     * Parse de data do CEMADEN ("13/09/2026", "2026-09-13", "13-09-2026").
+     * Ancorado em America/Sao_Paulo. A conversão final para UTC é feita
+     * em normalizePayload().
      */
-    private function buildRecord(array $item): array
+    private function parseDateSp(string $raw): ?\DateTimeImmutable
     {
-        // "referencia" pode ser "2025-01-15" ou "15/01/2025"
-        $rawDate = (string) ($item['referencia'] ?? $item['data'] ?? '');
-        $refDate = \DateTimeImmutable::createFromFormat('Y-m-d', $rawDate)
-            ?: \DateTimeImmutable::createFromFormat('d/m/Y', $rawDate)
-            ?: new \DateTimeImmutable($rawDate);
-        $refDate = \DateTimeImmutable::createFromInterface($refDate)->setTime(0, 0);
+        $raw = trim($raw);
+        if ($raw === '') {
+            return null;
+        }
 
-        // "horario" pode ser "16h" ou "16" ou "16:00"
-        $rawHour = (string) ($item['horario'] ?? '0');
-        $hourSlot = (int) preg_replace('/\D/', '', $rawHour);
+        $tzSp = new \DateTimeZone(self::TZ_SP);
 
-        $observedAt = $refDate->setTime($hourSlot, 0);
+        foreach (['d/m/Y', 'Y-m-d', 'd-m-Y'] as $format) {
+            $dt = \DateTimeImmutable::createFromFormat($format, $raw, $tzSp);
+            if ($dt !== false) {
+                return $dt->setTime(0, 0);
+            }
+        }
 
-        $rawAccumulated = $item['acumulado'] ?? null;
-        $accumulated = ($rawAccumulated !== null && $rawAccumulated !== '') ? (float) $rawAccumulated : null;
-
-        return [
-            'observedAt' => $observedAt,
-            'referenceDate' => $refDate,
-            'hourSlot' => $hourSlot,
-            'accumulated' => $accumulated,
-        ];
+        try {
+            return (new \DateTimeImmutable($raw, $tzSp))->setTime(0, 0);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**
-     * Realiza a requisição HTTP e retorna o JSON decodificado.
+     * Requisição HTTP + decodificação JSON.
      *
-     * @return array<string, mixed>
+     * @return array<string,mixed>
      */
     private function fetchJson(string $url): array
     {
         $response = $this->httpClient->request('GET', $url, ['timeout' => 15]);
-        return $response->toArray();
+
+        if ($response->getStatusCode() !== 200) {
+            throw new \RuntimeException(sprintf(
+                'CEMADEN respondeu HTTP %d para %s',
+                $response->getStatusCode(),
+                $url,
+            ));
+        }
+
+        $data = $response->toArray(false);
+
+        return is_array($data) ? $data : [];
     }
 
     private function stationLabel(CemadenStationLink $station): string
@@ -291,13 +442,13 @@ class FetchCemadenPluviometricCommand extends Command
     }
 
     private function resetStaleConnection(): void
-{
-    $connection = $this->entityManager->getConnection();
+    {
+        $connection = $this->em->getConnection();
 
-    try {
-        $connection->executeQuery('SELECT 1');
-    } catch (\Throwable) {
-        $connection->close();
+        try {
+            $connection->executeQuery('SELECT 1');
+        } catch (\Throwable) {
+            $connection->close();
+        }
     }
-}
 }

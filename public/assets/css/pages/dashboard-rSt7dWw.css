@@ -233,7 +233,6 @@
 .kpi-green::before  { background: var(--dash-green); }
 .kpi-purple::before { background: var(--dash-purple); }
 .kpi-cyan::before   { background: var(--dash-cyan); }
-.kpi-rain::before   { background: #1d4ed8; }
 
 .dashboard-kpi-top {
     display: flex;
@@ -256,7 +255,6 @@
 .kpi-green  .dashboard-kpi-icon { background: rgba(22, 163, 74, .10);  color: var(--dash-green); }
 .kpi-purple .dashboard-kpi-icon { background: rgba(124, 58, 237, .10); color: var(--dash-purple); }
 .kpi-cyan   .dashboard-kpi-icon { background: rgba(8, 145, 178, .10);  color: var(--dash-cyan); }
-.kpi-rain   .dashboard-kpi-icon { background: rgba(29, 78, 216, .10);  color: #1d4ed8; }
 
 .dashboard-kpi-trend {
     font-size: 11px;
@@ -572,7 +570,7 @@
     color: var(--dash-green);
 }
 
-/* ── Hydro panel (rios) ───────────────────────────────────────────── */
+/* ── Hydro panel ──────────────────────────────────────────────────── */
 
 .dashboard-hydro-panel { padding-bottom: 18px; }
 
@@ -625,119 +623,57 @@
     min-width: 0;
 }
 
-.dashboard-hydro-chart--full {
-    height: 340px;
-    width: 100%;
-}
-
-/* ── Pluviometria ─────────────────────────────────────────────────── */
-
-.dashboard-pluvio-panel { padding-bottom: 18px; }
-
-.dashboard-pluvio-list {
+.dashboard-hydro-list {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    max-height: 320px;
+    max-height: 280px;
     overflow-y: auto;
     padding-right: 4px;
 }
 
-.dashboard-pluvio-list-head {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: var(--dash-surface);
-    padding: 4px 4px 8px;
-    font-size: 12px;
-    color: var(--dash-muted);
-    border-bottom: 1px dashed var(--dash-line);
-    margin-bottom: 4px;
-}
-
-.pluvio-row {
-    position: relative;
-    padding: 8px 100px 8px 10px;
+.hydro-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
     border: 1px solid var(--dash-line);
+    border-left-width: 4px;
     border-radius: 10px;
     background: var(--dash-surface);
     font-size: 13px;
 }
 
-.pluvio-row--auto  { border-left: 4px solid #1d4ed8; }
-.pluvio-row--hydro { border-left: 4px solid #0891b2; }
+.hydro-row.risk-normal    { border-left-color: #16a34a; }
+.hydro-row.risk-attention { border-left-color: #ea580c; background: rgba(234, 88, 12, .04); }
+.hydro-row.risk-alert     { border-left-color: #dc2626; background: rgba(220, 38, 38, .05); }
+.hydro-row.risk-overflow  { border-left-color: #7f1d1d; background: rgba(127, 29, 29, .08); }
+.hydro-row.risk-unknown   { border-left-color: #94a3b8; opacity: .7; }
 
-.pluvio-row-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 8px;
-    margin-bottom: 4px;
-}
+.hydro-row-head strong { font-size: 13px; font-weight: 600; display: block; }
+.hydro-row-head small  { display: block; color: var(--dash-muted); font-size: 11px; margin-top: 2px; }
 
-.pluvio-row-head strong {
-    font-size: 13px;
-    font-weight: 600;
-    display: block;
-}
+.hydro-row-value { text-align: right; }
+.hydro-row-value strong { font-size: 15px; font-weight: 800; color: var(--dash-text); }
+.hydro-row-value small  { display: block; font-size: 10px; color: var(--dash-muted); margin-top: 2px; }
 
-.pluvio-row-head small {
-    color: var(--dash-muted);
-    font-size: 11px;
-}
-
-.pluvio-source-badge {
-    display: inline-block;
-    font-size: 9px;
-    font-weight: 700;
-    text-transform: uppercase;
-    padding: 1px 6px;
-    border-radius: 999px;
-    margin-left: 6px;
-    vertical-align: middle;
-    letter-spacing: .04em;
-}
-
-.pluvio-source-badge--auto  { background: rgba(29, 78, 216, .12); color: #1d4ed8; }
-.pluvio-source-badge--hydro { background: rgba(8, 145, 178, .12); color: #0891b2; }
-
-.pluvio-row-bar {
-    height: 4px;
+.hydro-risk-badge {
+    font-size: 10px;
+    font-weight: 800;
+    padding: 4px 8px;
     border-radius: 999px;
     background: var(--dash-soft);
-    overflow: hidden;
-    position: relative;
-}
-
-.pluvio-row-bar::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    width: calc(var(--pct, 0) * 1%);
-    background: linear-gradient(90deg, #0891b2, #2563eb);
-    border-radius: 999px;
-    transition: width .35s ease;
-}
-
-.pluvio-row-value {
-    position: absolute;
-    right: 12px;
-    top: 8px;
-    text-align: right;
-}
-
-.pluvio-row-value strong {
-    font-size: 14px;
-    font-weight: 800;
-    color: var(--dash-text);
-}
-
-.pluvio-row-value small {
-    display: block;
-    font-size: 10px;
     color: var(--dash-muted);
-    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    white-space: nowrap;
 }
+
+.risk-normal    .hydro-risk-badge { background: rgba(22, 163, 74, .12); color: #16a34a; }
+.risk-attention .hydro-risk-badge { background: rgba(234, 88, 12, .12); color: #ea580c; }
+.risk-alert     .hydro-risk-badge { background: rgba(220, 38, 38, .12); color: #dc2626; }
+.risk-overflow  .hydro-risk-badge { background: rgba(127, 29, 29, .15); color: #7f1d1d; }
 
 /* ── Responsive ───────────────────────────────────────────────────── */
 
@@ -751,8 +687,7 @@
 @media (max-width: 900px) {
     .dashboard-hydro-strip { grid-template-columns: repeat(2, 1fr); }
     .dashboard-hydro-grid  { grid-template-columns: 1fr; }
-    .dashboard-pluvio-list { max-height: 380px; }
-    .pluvio-row { padding-right: 90px; }
+    .dashboard-hydro-list  { max-height: 320px; }
 }
 
 @media (max-width: 768px) {
@@ -765,4 +700,68 @@
     .dashboard-page-header h1 { font-size: 22px; }
     .dashboard-map { height: 340px; }
     .dashboard-filter-field--grow { grid-column: span 1; }
+}
+
+/* ── Hydro combined (12h) — dois gráficos lado a lado ────────────── */
+
+.dashboard-hydro-combined {
+    margin-bottom: 16px;
+    padding: 14px 16px;
+    border: 1px solid var(--dash-line);
+    border-radius: 12px;
+    background: var(--dash-surface);
+}
+
+.dashboard-hydro-combined-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.dashboard-hydro-combined-head h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.dashboard-hydro-combined-legend {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 12px;
+    color: var(--dash-muted);
+}
+
+.dashboard-hydro-combined-legend i {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+.dashboard-hydro-combined-legend .lg-level { background: #0891b2; }
+.dashboard-hydro-combined-legend .lg-rain  { background: rgba(37,99,235,.55); }
+
+.dashboard-hydro-combined-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.dashboard-hydro-combined-chart {
+    position: relative;
+    height: 240px;
+    min-width: 0;
+}
+
+@media (max-width: 900px) {
+    .dashboard-hydro-combined-grid {
+        grid-template-columns: 1fr;
+    }
+    .dashboard-hydro-combined-chart { height: 220px; }
 }

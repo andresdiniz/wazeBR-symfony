@@ -17,38 +17,16 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-/**
- * Coleta observações hidrológicas (nível de rios) do CEMADEN para todas as
- * CemadenHidroStationLinks ativas.
- *
- * Fluxo:
- *   1. Seleciona stations hidro ativas cujo lastFetchedAt < (agora − minFetchInterval).
- *   2. Para cada station, monta a URL via getRequestUrl() respeitando recordsToFetch.
- *   3. Para cada item retornado, persiste uma CemadenHidroObservation (append-only).
- *   4. Unique constraint (station_link_id, observed_at) garante idempotência.
- *   5. Atualiza lastFetchedAt da station após coleta bem-sucedida.
- *   6. Sincroniza metadados opcionais (stationCode, stationName, city, state)
- *      a partir do primeiro item da resposta se ainda não preenchidos.
- *
- * Uso:
- *   php bin/console app:fetch:cemaden:hidro
- *   php bin/console app:fetch:cemaden:hidro --partner=42
- *   php bin/console app:fetch:cemaden:hidro --min-interval=60    # minutos
- *   php bin/console app:fetch:cemaden:hidro --force
- *   php bin/console app:fetch:cemaden:hidro --dry-run
- *
- * Agendamento sugerido: a cada 60 minutos.
- */
 #[AsCommand(
     name: 'app:fetch:cemaden:hidro',
-    description: 'Coleta observações hidrológicas CEMADEN (nível de rios) para stations ativas.',
+    description: 'Coleta observações hidrológicas CEMADEN (nível do rio + chuva) para stations ativas.',
 )]
 class FetchCemadenHidroCommand extends Command
 {
-    /**
-     * Intervalo mínimo padrão entre coletas (em minutos).
-     */
     private const DEFAULT_MIN_INTERVAL_MINUTES = 55;
+
+    private const TZ_SP  = 'America/Sao_Paulo';
+    private const TZ_UTC = 'UTC';
 
     public function __construct(
         private readonly CemadenHidroStationLinkRepository $stationLinkRepository,
@@ -72,23 +50,26 @@ class FetchCemadenHidroCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
         $this->resetStaleConnection();
+
         $dryRun = (bool) $input->getOption('dry-run');
         $force = (bool) $input->getOption('force');
         $partnerId = $input->getOption('partner');
         $minIntervalMinutes = (int) $input->getOption('min-interval');
 
-        $io->title('Coleta CEMADEN — Hidrológica (Nível de Rios)');
+        $io->title('Coleta CEMADEN — Hidrológica (Nível do Rio + Chuva)');
 
         if ($dryRun) {
             $io->warning('Modo DRY-RUN — nenhum dado será persistido.');
         }
 
-        // ── 1. Selecionar stations elegíveis ─────────────────────────────────
         if ($force) {
             $stations = $this->stationLinkRepository->findAllActive();
             $io->info('--force ativo: coletando todas as stations hidro ativas.');
         } else {
-            $threshold = new \DateTimeImmutable(sprintf('-%d minutes', $minIntervalMinutes));
+            $threshold = new \DateTimeImmutable(
+                sprintf('-%d minutes', $minIntervalMinutes),
+                new \DateTimeZone(self::TZ_UTC),
+            );
             $stations = $this->stationLinkRepository->findDueForCollection($threshold);
             $io->info(sprintf(
                 'Buscando stations com lastFetchedAt anterior a %s (intervalo: %d min).',
@@ -98,11 +79,10 @@ class FetchCemadenHidroCommand extends Command
         }
 
         if ($partnerId !== null) {
-            $stations = array_filter(
+            $stations = array_values(array_filter(
                 $stations,
                 static fn ($s) => (string) $s->getPartner()->getId() === (string) $partnerId,
-            );
-            $stations = array_values($stations);
+            ));
         }
 
         if (empty($stations)) {
@@ -110,92 +90,38 @@ class FetchCemadenHidroCommand extends Command
             return Command::SUCCESS;
         }
 
-        $io->info(sprintf('Processando %d station(s) hidrológica(s).', count($stations)));
+        $io->info(sprintf('Processando %d station(s).', count($stations)));
 
-        // ── 2. Iterar e coletar ──────────────────────────────────────────────
-        $totalInserted = 0;
-        $totalSkipped = 0;
+        $totalLevels = 0;
+        $totalRain = 0;
         $errors = 0;
 
         foreach ($stations as $station) {
             $label = $this->stationLabel($station);
-            $inserted = 0;
-            $skipped = 0;
 
             try {
-                $url = $station->getRequestUrl();
-                $rawItems = $this->fetchJson($url);
+                $nowUtc = new \DateTimeImmutable('now', new \DateTimeZone(self::TZ_UTC));
 
-                if (empty($rawItems)) {
-                    $io->writeln(sprintf('%s resposta vazia — nenhuma observação gerada.', $label));
-                    continue;
-                }
+                // ── 1. Nível do rio (MedidaResource) ──────────────────────
+                $levelItems = $this->fetchJson($station->getMedidaRequestUrl());
+                $levels = $this->persistLevels($station, $levelItems, $dryRun, $label);
+                $totalLevels += $levels;
 
-                // ── 2a. Sincronizar metadados da station a partir da resposta ─
-                $this->syncStationMetadata($station, $rawItems[0], $dryRun);
+                // ── 2. Chuva acumulada (AcumuladoResource) ────────────────
+                $rainItems = $this->fetchJson($station->getRequestUrl());
+                $rain = $this->persistRain($station, $rainItems, $dryRun, $label);
+                $totalRain += $rain;
 
-                $nowUtc = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
-
-                // ── 2b. Persistir cada item ──────────────────────────────────
-                foreach ($rawItems as $item) {
-                    // Mapeamento CEMADEN: codigo, estacao, cidade, uf, valor, offset, datahora
-                    $observedAt = $this->parseDateTime($item['datahora'] ?? null);
-
-                    if ($observedAt === null) {
-                        $this->logger->warning('{loc}: item sem datahora válida — ignorado.', [
-                            'loc' => $label,
-                            'item' => $item,
-                        ]);
-                        ++$skipped;
-                        continue;
-                    }
-
-                    // Idempotência: unique(station_link_id, observed_at)
-                    $existing = $this->em
-                        ->getRepository(CemadenHidroObservation::class)
-                        ->findOneBy([
-                            'cemadenHidroStationLink' => $station,
-                            'observedAt' => $observedAt,
-                        ]);
-
-                    if ($existing !== null) {
-                        ++$skipped;
-                        continue;
-                    }
-
-                    $entity = new CemadenHidroObservation();
-                    $entity->setPartner($station->getPartner());
-                    $entity->setCemadenHidroStationLink($station);
-                    $entity->setStationCode($item['codigo'] ?? null);
-                    $entity->setStationName($item['estacao'] ?? null);
-                    $entity->setCity($item['cidade'] ?? null);
-                    $entity->setState($item['uf'] ?? null);
-                    $entity->setRiverLevel(isset($item['valor']) && $item['valor'] !== '' ? (float) $item['valor'] : null);
-                    $entity->setOffset(isset($item['offset']) && $item['offset'] !== '' ? (float) $item['offset'] : null);
-                    $entity->setObservedAt($observedAt);
-                    $entity->setSourcePayload($item);
-
-                    if (!$dryRun) {
-                        $this->em->persist($entity);
-                    }
-
-                    ++$inserted;
-                }
-
-                // ── 2c. Flush + atualizar lastFetchedAt ──────────────────────
                 if (!$dryRun) {
                     $station->setLastFetchedAt($nowUtc);
                     $this->em->flush();
                 }
 
-                $totalInserted += $inserted;
-                $totalSkipped += $skipped;
-
                 $io->writeln(sprintf(
-                    '%s ✓ inseridos: %d, ignorados: %d',
+                    '%s ✓ níveis: %d, chuva: %d',
                     $label,
-                    $inserted,
-                    $skipped,
+                    $levels,
+                    $rain,
                 ));
             } catch (\Throwable $e) {
                 ++$errors;
@@ -209,58 +135,131 @@ class FetchCemadenHidroCommand extends Command
         }
 
         $io->success(sprintf(
-            'Concluído — Inseridos: %d | Ignorados: %d | Erros: %d',
-            $totalInserted,
-            $totalSkipped,
+            'Concluído — Níveis: %d | Chuva: %d | Erros: %d',
+            $totalLevels,
+            $totalRain,
             $errors,
         ));
 
         return $errors > 0 ? Command::FAILURE : Command::SUCCESS;
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
-    /**
-     * Sincroniza metadados opcionais da station (stationCode, stationName, city, state)
-     * a partir do primeiro item da resposta, caso ainda não estejam preenchidos.
-     *
-     * @param array<string, mixed> $firstItem
-     */
-    private function syncStationMetadata(
+    private function persistLevels(
         CemadenHidroStationLink $station,
-        array $firstItem,
+        array $items,
         bool $dryRun,
-    ): void {
-        $changed = false;
+        string $label,
+    ): int {
+        $inserted = 0;
 
-        if ($station->getStationCode() === null && isset($firstItem['codigo'])) {
-            $station->setStationCode((string) $firstItem['codigo']);
-            $changed = true;
+        foreach ($items as $item) {
+            $observedAt = $this->parseDateTime($item['datahora'] ?? null);
+            if ($observedAt === null) {
+                $this->logger->warning('{loc}: item de nível sem datahora — ignorado.', [
+                    'loc' => $label,
+                    'item' => $item,
+                ]);
+                continue;
+            }
+
+            $existing = $this->em
+                ->getRepository(CemadenHidroObservation::class)
+                ->findOneBy([
+                    'cemadenHidroStationLink' => $station,
+                    'observedAt' => $observedAt,
+                    'observationType' => CemadenHidroObservation::TYPE_LEVEL,
+                ]);
+
+            if ($existing !== null) {
+                continue;
+            }
+
+            $valor = isset($item['valor']) && $item['valor'] !== '' ? (float) $item['valor'] : null;
+            $offset = isset($item['offset']) && $item['offset'] !== '' ? (float) $item['offset'] : null;
+
+            $waterLevel = ($valor !== null && $offset !== null)
+                ? round($offset - $valor, 3)
+                : null;
+
+            $entity = new CemadenHidroObservation();
+            $entity->setObservationType(CemadenHidroObservation::TYPE_LEVEL);
+            $entity->setPartner($station->getPartner());
+            $entity->setCemadenHidroStationLink($station);
+            $entity->setStationCode($item['codigo'] ?? null);
+            $entity->setStationName($item['estacao'] ?? null);
+            $entity->setCity($item['cidade'] ?? null);
+            $entity->setState($item['uf'] ?? null);
+            $entity->setRawValue($valor);
+            $entity->setOffset($offset);
+            $entity->setWaterLevel($waterLevel);
+            $entity->setCotaAtencao(isset($item['cota_atencao']) && $item['cota_atencao'] !== '' ? (float) $item['cota_atencao'] : null);
+            $entity->setCotaAlerta(isset($item['cota_alerta']) && $item['cota_alerta'] !== '' ? (float) $item['cota_alerta'] : null);
+            $entity->setCotaTransbordamento(isset($item['cota_transbordamento']) && $item['cota_transbordamento'] !== '' ? (float) $item['cota_transbordamento'] : null);
+            $entity->setObservedAt($observedAt);
+            $entity->setSourcePayload($item);
+
+            if (!$dryRun) {
+                $this->em->persist($entity);
+            }
+            ++$inserted;
         }
 
-        if ($station->getStationName() === null && isset($firstItem['estacao'])) {
-            $station->setStationName((string) $firstItem['estacao']);
-            $changed = true;
+        return $inserted;
+    }
+
+    private function persistRain(
+        CemadenHidroStationLink $station,
+        array $items,
+        bool $dryRun,
+        string $label,
+    ): int {
+        $inserted = 0;
+
+        foreach ($items as $item) {
+            $observedAt = $this->parseDateTime($item['datahora'] ?? null);
+            if ($observedAt === null) {
+                continue;
+            }
+
+            $existing = $this->em
+                ->getRepository(CemadenHidroObservation::class)
+                ->findOneBy([
+                    'cemadenHidroStationLink' => $station,
+                    'observedAt' => $observedAt,
+                    'observationType' => CemadenHidroObservation::TYPE_RAIN,
+                ]);
+
+            if ($existing !== null) {
+                continue;
+            }
+
+            $rainValue = isset($item['valor']) && $item['valor'] !== '' ? (float) $item['valor'] : null;
+
+            $entity = new CemadenHidroObservation();
+            $entity->setObservationType(CemadenHidroObservation::TYPE_RAIN);
+            $entity->setPartner($station->getPartner());
+            $entity->setCemadenHidroStationLink($station);
+            $entity->setStationCode($item['codigo'] ?? null);
+            $entity->setStationName($item['estacao'] ?? null);
+            $entity->setCity($item['cidade'] ?? null);
+            $entity->setState($item['uf'] ?? null);
+            $entity->setRain($rainValue);
+            $entity->setObservedAt($observedAt);
+            $entity->setSourcePayload($item);
+
+            if (!$dryRun) {
+                $this->em->persist($entity);
+            }
+            ++$inserted;
         }
 
-        if ($station->getCity() === null && isset($firstItem['cidade'])) {
-            $station->setCity((string) $firstItem['cidade']);
-            $changed = true;
-        }
-
-        if ($station->getState() === null && isset($firstItem['uf'])) {
-            $station->setState((string) $firstItem['uf']);
-            $changed = true;
-        }
-
-        // O flush da station acontece junto ao flush das observations
-        // (no mesmo ciclo do EntityManager), então não é necessário
-        // um flush separado aqui — a flag $changed serve apenas de documentação.
+        return $inserted;
     }
 
     /**
-     * Faz parse de string "datahora" retornada pelo CEMADEN.
-     * Formatos esperados: "2025-01-15 16:00:00" ou "2025-01-15T16:00:00".
+     * CEMADEN envia "datahora" em horário LOCAL de Brasília (sem offset).
+     * Ancoramos em America/Sao_Paulo e convertemos para UTC antes de devolver,
+     * para que o objeto gravado no banco seja consistente com o resto do sistema.
      */
     private function parseDateTime(?string $value): ?\DateTimeImmutable
     {
@@ -268,31 +267,37 @@ class FetchCemadenHidroCommand extends Command
             return null;
         }
 
+        $tzSp  = new \DateTimeZone(self::TZ_SP);
+        $tzUtc = new \DateTimeZone(self::TZ_UTC);
+
+        $dt = null;
+
         foreach (['Y-m-d H:i:s', 'Y-m-d\TH:i:s', 'Y-m-d H:i', 'Y-m-d'] as $format) {
-            $dt = \DateTimeImmutable::createFromFormat($format, $value);
-            if ($dt !== false) {
-                return $dt;
+            $parsed = \DateTimeImmutable::createFromFormat($format, $value, $tzSp);
+            if ($parsed !== false) {
+                $dt = $parsed;
+                break;
             }
         }
 
-        try {
-            return new \DateTimeImmutable($value);
-        } catch (\Throwable) {
-            return null;
+        if ($dt === null) {
+            try {
+                $dt = new \DateTimeImmutable($value, $tzSp);
+            } catch (\Throwable) {
+                return null;
+            }
         }
+
+        // ⚠ Converte para UTC — o banco SEMPRE armazena UTC naive.
+        return $dt->setTimezone($tzUtc);
     }
 
-    /**
-     * Realiza a requisição HTTP e retorna o JSON decodificado como lista.
-     *
-     * @return list<array<string, mixed>>
-     */
+    /** @return list<array<string, mixed>> */
     private function fetchJson(string $url): array
     {
         $response = $this->httpClient->request('GET', $url, ['timeout' => 15]);
         $data = $response->toArray();
 
-        // A API pode retornar o array diretamente ou dentro de uma chave "data"
         if (isset($data['data']) && is_array($data['data'])) {
             return array_values($data['data']);
         }
@@ -309,14 +314,15 @@ class FetchCemadenHidroCommand extends Command
             $station->getStationName() ?? $station->getCemadenTransactionId(),
         );
     }
-    private function resetStaleConnection(): void
-{
-    $connection = $this->entityManager->getConnection();
 
-    try {
-        $connection->executeQuery('SELECT 1');
-    } catch (\Throwable) {
-        $connection->close();
+    private function resetStaleConnection(): void
+    {
+        $connection = $this->em->getConnection();
+
+        try {
+            $connection->executeQuery('SELECT 1');
+        } catch (\Throwable) {
+            $connection->close();
+        }
     }
-}
 }

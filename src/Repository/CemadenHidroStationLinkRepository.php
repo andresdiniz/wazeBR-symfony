@@ -57,9 +57,6 @@ class CemadenHidroStationLinkRepository extends ServiceEntityRepository
      * Retorna stations ativas cujo lastFetchedAt é anterior ao threshold informado
      * (ou nunca foram coletadas).
      *
-     * Exemplo: $threshold = new \DateTimeImmutable('-1 hour')
-     *   → coleta apenas quem não foi buscado na última hora.
-     *
      * @return CemadenHidroStationLink[]
      */
     public function findDueForCollection(\DateTimeImmutable $threshold): array

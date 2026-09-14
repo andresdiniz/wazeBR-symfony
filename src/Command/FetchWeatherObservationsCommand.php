@@ -6,7 +6,6 @@ namespace App\Command;
 
 use App\Service\WeatherObservationFetcher;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Bundle\FrameworkBundle\Command\AbstractCommand;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -15,10 +14,9 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'app:weather:fetch-observations',
-    description: 'Fetches weather observations from INMET API',
-    hidden: false,
+    description: 'Busca observações climáticas atuais (Open-Meteo) para todas as WeatherLocations ativas.',
 )]
-final class FetchWeatherObservationsCommand extends AbstractCommand
+final class FetchWeatherObservationsCommand extends Command
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
@@ -32,24 +30,45 @@ final class FetchWeatherObservationsCommand extends AbstractCommand
         $io = new SymfonyStyle($input, $output);
         $this->resetStaleConnection();
 
+        $io->title('Coleta de clima');
+
         try {
-            $this->observationFetcher->fetchAndStoreObservations();
-            $io->success('Weather observations fetched and stored successfully.');
-            return Command::SUCCESS;
-        } catch (\Exception $e) {
-            $io->error('Failed to fetch weather observations: ' . $e->getMessage());
+            $result = $this->observationFetcher->fetchAndStoreObservations();
+        } catch (\Throwable $e) {
+            $io->error('Falha ao buscar observações: ' . $e->getMessage());
+
             return Command::FAILURE;
         }
+
+        $io->table(
+            ['Métrica', 'Valor'],
+            [
+                ['Locations processadas', $result['total']],
+                ['Observações inseridas', $result['inserted']],
+                ['Ignoradas (duplicadas)', $result['skipped']],
+                ['Falhas',                 $result['failed']],
+            ],
+        );
+
+        if ($result['failed'] > 0) {
+            $io->warning('Algumas locations falharam. Confira o log.');
+
+            return Command::FAILURE;
+        }
+
+        $io->success('Coleta concluída.');
+
+        return Command::SUCCESS;
     }
 
     private function resetStaleConnection(): void
-{
-    $connection = $this->entityManager->getConnection();
+    {
+        $connection = $this->entityManager->getConnection();
 
-    try {
-        $connection->executeQuery('SELECT 1');
-    } catch (\Throwable) {
-        $connection->close();
+        try {
+            $connection->executeQuery('SELECT 1');
+        } catch (\Throwable) {
+            $connection->close();
+        }
     }
-}
 }

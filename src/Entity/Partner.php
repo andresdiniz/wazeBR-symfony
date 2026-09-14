@@ -13,6 +13,8 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'partner')]
 class Partner
 {
+    private const TZ_UTC = 'UTC';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -115,17 +117,16 @@ class Partner
 
     public function __construct()
     {
-        $this->users = new ArrayCollection();
-        $this->wazeAlerts = new ArrayCollection();
-        $this->wazeJams = new ArrayCollection();
-        $this->weatherLocations = new ArrayCollection();
-        $this->apiLinks = new ArrayCollection();
-
-        $this->wazeTvtRoutes = new ArrayCollection();
-        $this->wazeTvtSubRoutes = new ArrayCollection();
+        $this->users                 = new ArrayCollection();
+        $this->wazeAlerts            = new ArrayCollection();
+        $this->wazeJams              = new ArrayCollection();
+        $this->weatherLocations      = new ArrayCollection();
+        $this->apiLinks              = new ArrayCollection();
+        $this->wazeTvtRoutes         = new ArrayCollection();
+        $this->wazeTvtSubRoutes      = new ArrayCollection();
         $this->wazeTvtIrregularities = new ArrayCollection();
         $this->wazeTvtRouteSnapshots = new ArrayCollection();
-        $this->wazeTvtUsersOnJam = new ArrayCollection();
+        $this->wazeTvtUsersOnJam     = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -256,17 +257,17 @@ class Partner
     }
 
     public function getLastTvtFetchAt(): ?\DateTimeImmutable
-{
-    return $this->lastTvtFetchAt;
-}
+    {
+        return $this->lastTvtFetchAt;
+    }
 
-public function setLastTvtFetchAt(
-    ?\DateTimeImmutable $lastTvtFetchAt,
-): static {
-    $this->lastTvtFetchAt = $lastTvtFetchAt;
+    public function setLastTvtFetchAt(
+        ?\DateTimeImmutable $lastTvtFetchAt,
+    ): static {
+        $this->lastTvtFetchAt = $lastTvtFetchAt;
 
-    return $this;
-}
+        return $this;
+    }
 
     public function getUsers(): Collection
     {
@@ -547,61 +548,69 @@ public function setLastTvtFetchAt(
 
         return $this;
     }
+
     /**
- * Frequência em segundos, normalizando a unidade.
- * Aceita: s/sec/second(s)/segundo(s), min/minute(s)/minuto(s), h/hour(s)/hora(s).
- */
-public function getFetchIntervalSeconds(): int
-{
-    $frequency = max(1, $this->fetchFrequency ?? 5);
+     * Frequência em segundos, normalizando a unidade.
+     * Aceita: s/sec/second(s)/segundo(s), min/minute(s)/minuto(s), h/hour(s)/hora(s).
+     */
+    public function getFetchIntervalSeconds(): int
+    {
+        $frequency = max(1, $this->fetchFrequency ?? 5);
 
-    $unit = mb_strtolower(trim($this->fetchFrequencyUnit ?? 'min'));
+        $unit = mb_strtolower(trim($this->fetchFrequencyUnit ?? 'min'));
 
-    return match ($unit) {
-        's', 'sec', 'secs', 'second', 'seconds',
-        'seg', 'segs', 'segundo', 'segundos' => $frequency,
+        return match ($unit) {
+            's', 'sec', 'secs', 'second', 'seconds',
+            'seg', 'segs', 'segundo', 'segundos' => $frequency,
 
-        'h', 'hr', 'hrs', 'hour', 'hours',
-        'hora', 'horas' => $frequency * 3600,
+            'h', 'hr', 'hrs', 'hour', 'hours',
+            'hora', 'horas' => $frequency * 3600,
 
-        'm', 'min', 'mins', 'minute', 'minutes',
-        'minuto', 'minutos' => $frequency * 60,
+            'm', 'min', 'mins', 'minute', 'minutes',
+            'minuto', 'minutos' => $frequency * 60,
 
-        default => $frequency * 60,
-    };
-}
-
-public function getFetchFrequencyLabel(): string
-{
-    $frequency = max(1, $this->fetchFrequency ?? 5);
-
-    $unit = mb_strtolower(trim($this->fetchFrequencyUnit ?? 'min'));
-
-    return match ($unit) {
-        's', 'sec', 'secs', 'second', 'seconds',
-        'seg', 'segs', 'segundo', 'segundos' => sprintf(
-            '%d segundo(s)',
-            $frequency,
-        ),
-
-        'h', 'hr', 'hrs', 'hour', 'hours',
-        'hora', 'horas' => sprintf('%d hora(s)', $frequency),
-
-        default => sprintf('%d minuto(s)', $frequency),
-    };
-}
-
-public function isFetchDue(
-    ?\DateTimeImmutable $reference,
-    ?\DateTimeImmutable $now = null,
-): bool {
-    if ($reference === null) {
-        return true;
+            default => $frequency * 60,
+        };
     }
 
-    $now ??= new \DateTimeImmutable();
+    public function getFetchFrequencyLabel(): string
+    {
+        $frequency = max(1, $this->fetchFrequency ?? 5);
 
-    return ($now->getTimestamp() - $reference->getTimestamp())
-        >= $this->getFetchIntervalSeconds();
-}
+        $unit = mb_strtolower(trim($this->fetchFrequencyUnit ?? 'min'));
+
+        return match ($unit) {
+            's', 'sec', 'secs', 'second', 'seconds',
+            'seg', 'segs', 'segundo', 'segundos' => sprintf(
+                '%d segundo(s)',
+                $frequency,
+            ),
+
+            'h', 'hr', 'hrs', 'hour', 'hours',
+            'hora', 'horas' => sprintf('%d hora(s)', $frequency),
+
+            default => sprintf('%d minuto(s)', $frequency),
+        };
+    }
+
+    /**
+     * Determina se a próxima coleta está vencida.
+     *
+     * Sempre compara timestamps absolutos (independentes de fuso), mas
+     * ancoramos o "agora" em UTC explicitamente para não depender do
+     * date.timezone do PHP (Hostinger = Europe/Berlin).
+     */
+    public function isFetchDue(
+        ?\DateTimeImmutable $reference,
+        ?\DateTimeImmutable $now = null,
+    ): bool {
+        if ($reference === null) {
+            return true;
+        }
+
+        $now ??= new \DateTimeImmutable('now', new \DateTimeZone(self::TZ_UTC));
+
+        return ($now->getTimestamp() - $reference->getTimestamp())
+            >= $this->getFetchIntervalSeconds();
+    }
 }

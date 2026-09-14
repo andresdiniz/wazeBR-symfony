@@ -13,6 +13,10 @@
 {% set totals = stats.totals|default({}) %}
 {% set kpis   = stats.kpis|default({}) %}
 {% set health = kpis.health_score|default(100) %}
+{% set hydro  = stats.hydro|default({}) %}
+{% set hydroStats  = hydro.stats|default({}) %}
+{% set pluvio      = stats.pluvio|default({}) %}
+{% set pluvioStats = pluvio.stats|default({}) %}
 
 <div class="dashboard-page"
      data-dashboard
@@ -27,7 +31,7 @@
                 <span class="dashboard-eyebrow"><i></i> Centro operacional</span>
                 <h1>Visão geral da mobilidade</h1>
                 <p>
-                    Trânsito, alertas, rotas, clima e câmeras em um só lugar.
+                    Trânsito, alertas, rotas, clima, rios, chuvas e câmeras em um só lugar.
                     {% if partner %} — <strong>{{ partner.name }}</strong>{% endif %}
                 </p>
             </div>
@@ -72,6 +76,8 @@
                         <option value="jams"    {{ filters.type == 'jams'    ? 'selected' }}>Congestionamentos</option>
                         <option value="weather" {{ filters.type == 'weather' ? 'selected' }}>Clima</option>
                         <option value="routes"  {{ filters.type == 'routes'  ? 'selected' }}>Rotas</option>
+                        <option value="hydro"   {{ filters.type == 'hydro'   ? 'selected' }}>Hidrologia</option>
+                        <option value="pluvio"  {{ filters.type == 'pluvio'  ? 'selected' }}>Pluviometria</option>
                     </select>
                 </label>
 
@@ -86,7 +92,7 @@
                     <span>Cidade</span>
                     <input type="text" name="city" data-filter="city"
                            value="{{ filters.city }}"
-                           placeholder="Ex.: São Paulo" autocomplete="off">
+                           placeholder="Ex.: Conselheiro Lafaiete" autocomplete="off">
                 </label>
 
                 <div class="dashboard-filter-actions">
@@ -127,7 +133,7 @@
                 </div>
                 <strong class="dashboard-kpi-value" data-count-value="{{ kpis.weather|default(0) }}">{{ kpis.weather|default(0) }}</strong>
                 <span class="dashboard-kpi-label">Observações climáticas</span>
-                <div class="dashboard-kpi-footer"><span>{{ kpis.stations|default(0) }} estações CEMADEN</span><span aria-hidden="true">→</span></div>
+                <div class="dashboard-kpi-footer"><span>Open-Meteo</span><span aria-hidden="true">→</span></div>
             </article>
 
             <article class="dashboard-kpi-card kpi-purple">
@@ -139,9 +145,36 @@
                 <span class="dashboard-kpi-label">Câmeras parceiras</span>
                 <div class="dashboard-kpi-footer"><span>{{ kpis.partners|default(0) }} parceiros · {{ kpis.users|default(0) }} usuários</span><span aria-hidden="true">→</span></div>
             </article>
+
+            <article class="dashboard-kpi-card kpi-cyan">
+                <div class="dashboard-kpi-top">
+                    <span class="dashboard-kpi-icon" aria-hidden="true">≈</span>
+                    <span class="dashboard-kpi-trend {{ kpis.hydro_at_risk|default(0) > 0 ? 'is-warning' }}">
+                        {{ kpis.hydro_at_risk|default(0) }} em atenção
+                    </span>
+                </div>
+                <strong class="dashboard-kpi-value" data-count-value="{{ kpis.hydro_stations|default(0) }}">{{ kpis.hydro_stations|default(0) }}</strong>
+                <span class="dashboard-kpi-label">Rios monitorados</span>
+                <div class="dashboard-kpi-footer"><span>CEMADEN Hidro</span><span aria-hidden="true">→</span></div>
+            </article>
+
+            <article class="dashboard-kpi-card kpi-rain">
+                <div class="dashboard-kpi-top">
+                    <span class="dashboard-kpi-icon" aria-hidden="true">☔</span>
+                    <span class="dashboard-kpi-trend {{ kpis.pluvio_rain_24h|default(0) > 0 ? 'is-positive' }}">
+                        {{ kpis.pluvio_rain_24h|default(0)|number_format(1, ',', '.') }} mm · 24h
+                    </span>
+                </div>
+                <strong class="dashboard-kpi-value" data-count-value="{{ kpis.pluvio_stations|default(0) }}">{{ kpis.pluvio_stations|default(0) }}</strong>
+                <span class="dashboard-kpi-label">Pontos de chuva</span>
+                <div class="dashboard-kpi-footer">
+                    <span>Pico {{ kpis.pluvio_peak_24h|default(0)|number_format(1, ',', '.') }} mm/h</span>
+                    <span aria-hidden="true">→</span>
+                </div>
+            </article>
         </section>
 
-        {# ── Linha: gráficos (linha + doughnut) ─────────────────────── #}
+        {# ── Linha 1: gráficos ──────────────────────────────────────── #}
         <div class="dashboard-main-grid">
             <section class="dashboard-panel">
                 <header class="dashboard-panel-header">
@@ -171,7 +204,7 @@
             </section>
         </div>
 
-        {# ── Segunda linha de gráficos (barras) ─────────────────────── #}
+        {# ── Linha 2: gráficos ──────────────────────────────────────── #}
         <div class="dashboard-main-grid">
             <section class="dashboard-panel">
                 <header class="dashboard-panel-header">
@@ -213,6 +246,128 @@
             </section>
         </div>
 
+        {# ── Monitoramento hidrológico (só nível do rio) ───────────── #}
+        <section class="dashboard-panel dashboard-hydro-panel">
+            <header class="dashboard-panel-header">
+                <div>
+                    <span class="dashboard-panel-kicker">Recursos hídricos</span>
+                    <h2>Nível dos rios</h2>
+                </div>
+                <span class="dashboard-panel-period">
+                    {% if hydroStats.last_fetch %}
+                        Última coleta {{ hydroStats.last_fetch|date('d/m H:i') }}
+                    {% else %}
+                        Sem coletas ainda
+                    {% endif %}
+                </span>
+            </header>
+
+            <div class="dashboard-hydro-strip">
+                <div class="hydro-stat">
+                    <span class="hydro-stat-label">Estações</span>
+                    <strong>{{ hydroStats.stations|default(0) }}</strong>
+                </div>
+                <div class="hydro-stat {{ (hydroStats.risk.overflow|default(0) + hydroStats.risk.alert|default(0)) > 0 ? 'is-danger' }}">
+                    <span class="hydro-stat-label">Alerta / transbordo</span>
+                    <strong>{{ hydroStats.risk.overflow|default(0) + hydroStats.risk.alert|default(0) }}</strong>
+                </div>
+                <div class="hydro-stat {{ hydroStats.risk.attention|default(0) > 0 ? 'is-warning' }}">
+                    <span class="hydro-stat-label">Em atenção</span>
+                    <strong>{{ hydroStats.risk.attention|default(0) }}</strong>
+                </div>
+                <div class="hydro-stat is-normal">
+                    <span class="hydro-stat-label">Normal</span>
+                    <strong>{{ hydroStats.risk.normal|default(0) }}</strong>
+                </div>
+            </div>
+
+            <div class="dashboard-hydro-chart dashboard-hydro-chart--full">
+                <canvas data-chart="hydro-trend"
+                        data-chart-data='{{ hydro.trend|default([])|json_encode|e('html_attr') }}'></canvas>
+            </div>
+        </section>
+
+        {# ── Pluviometria (pluviômetros + chuva das estações hidro) ── #}
+        <section class="dashboard-panel dashboard-pluvio-panel">
+            <header class="dashboard-panel-header">
+                <div>
+                    <span class="dashboard-panel-kicker">Precipitação</span>
+                    <h2>Chuva por hora e por estação</h2>
+                </div>
+                <span class="dashboard-panel-period">
+                    {% if pluvioStats.last_reading %}
+                        Última leitura {{ pluvioStats.last_reading|date('d/m H:i') }}
+                    {% else %}
+                        Sem leituras
+                    {% endif %}
+                </span>
+            </header>
+
+            <div class="dashboard-hydro-strip">
+                <div class="hydro-stat">
+                    <span class="hydro-stat-label">Pontos de medição</span>
+                    <strong>{{ pluvioStats.stations|default(0) }}</strong>
+                </div>
+                <div class="hydro-stat {{ pluvioStats.rain_1h|default(0) > 0 ? 'is-warning' }}">
+                    <span class="hydro-stat-label">Última hora</span>
+                    <strong>{{ pluvioStats.rain_1h|default(0)|number_format(1, ',', '.') }}<small style="font-size:11px;font-weight:600;color:var(--dash-muted);margin-left:4px">mm</small></strong>
+                </div>
+                <div class="hydro-stat {{ pluvioStats.rain_24h|default(0) > 0 ? 'is-normal' : '' }}">
+                    <span class="hydro-stat-label">Últimas 24h</span>
+                    <strong>{{ pluvioStats.rain_24h|default(0)|number_format(1, ',', '.') }}<small style="font-size:11px;font-weight:600;color:var(--dash-muted);margin-left:4px">mm</small></strong>
+                </div>
+                <div class="hydro-stat">
+                    <span class="hydro-stat-label">Pico / 24h</span>
+                    <strong>{{ pluvioStats.peak_24h|default(0)|number_format(1, ',', '.') }}<small style="font-size:11px;font-weight:600;color:var(--dash-muted);margin-left:4px">mm/h</small></strong>
+                </div>
+            </div>
+
+            <div class="dashboard-hydro-grid">
+                <div class="dashboard-hydro-chart">
+                    <canvas data-chart="pluvio-hourly"
+                            data-chart-data='{{ pluvio.hourly|default([])|json_encode|e('html_attr') }}'></canvas>
+                </div>
+
+                <div class="dashboard-pluvio-list">
+                    <div class="dashboard-pluvio-list-head">
+                        <strong>Chuva por estação · 24h</strong>
+                    </div>
+                    {% for s in pluvio.stations|default([]) %}
+                        {% set pct = pluvioStats.peak_24h > 0
+                            ? min(100, (s.rain24h / pluvioStats.peak_24h) * 100)
+                            : 0 %}
+                        <div class="pluvio-row pluvio-row--{{ s.source }}">
+                            <div class="pluvio-row-head">
+                                <strong>
+                                    {{ s.stationName }}
+                                    {% if s.source == 'hydro' %}
+                                        <span class="pluvio-source-badge pluvio-source-badge--hydro">Hidro</span>
+                                    {% else %}
+                                        <span class="pluvio-source-badge pluvio-source-badge--auto">Auto</span>
+                                    {% endif %}
+                                </strong>
+                                <small>
+                                    {{ s.city|default('—') }}{% if s.state %}/{{ s.state }}{% endif %}
+                                    {% if s.lastReading %} · {{ s.lastReading|date('d/m H:i') }}{% endif %}
+                                </small>
+                            </div>
+                            <div class="pluvio-row-bar" style="--pct:{{ pct }}"></div>
+                            <div class="pluvio-row-value">
+                                <strong>{{ s.rain24h|number_format(1, ',', '.') }} mm</strong>
+                                <small>pico {{ s.peak24h|number_format(1, ',', '.') }} mm/h</small>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="dashboard-empty">
+                            <span aria-hidden="true">✓</span>
+                            <strong>Sem leituras de chuva</strong>
+                            <small>Cadastre um pluviômetro ou estação hidro com dados de chuva.</small>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
         {# ── Mapa ───────────────────────────────────────────────────── #}
         <section class="dashboard-panel dashboard-map-panel">
             <header class="dashboard-panel-header">
@@ -225,7 +380,7 @@
                     <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="jams">≋ Jams</button>
                     <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="cameras">◎ Câmeras</button>
                     <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="weather">☁ Clima</button>
-                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="stations">◎ CEMADEN</button>
+                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="stations">☔ Chuva</button>
                 </div>
             </header>
             <div class="dashboard-map"
@@ -322,7 +477,7 @@
             </section>
         </div>
 
-        {# ── Rodapé: saúde + clima recente + fontes ─────────────────── #}
+        {# ── Rodapé ─────────────────────────────────────────────────── #}
         <div class="dashboard-bottom-grid">
             <section class="dashboard-panel">
                 <header class="dashboard-panel-header">
@@ -343,7 +498,7 @@
                         <p>
                             {% if health >= 80 %}Fontes de dados disponíveis e monitoradas.
                             {% elseif health >= 60 %}Algumas rotas com atraso ou volume elevado.
-                            {% else %}Alto volume de alertas e congestionamentos ativos.{% endif %}
+                            {% else %}Alto volume de alertas, congestionamentos ou rios em alerta.{% endif %}
                         </p>
                     </div>
                 </div>
@@ -351,7 +506,7 @@
                     <div><span><i class="health-green"></i> Alertas ativos</span><strong>{{ totals.alerts_active|default(0) }}</strong></div>
                     <div><span><i class="health-{{ totals.jams_active|default(0) > 10 ? 'orange' : 'blue' }}"></i> Jams ativos</span><strong>{{ totals.jams_active|default(0) }}</strong></div>
                     <div><span><i class="health-gray"></i> Rotas com snapshot</span><strong>{{ stats.recent.routes|length }}</strong></div>
-                    <div><span><i class="health-gray"></i> Observações de clima</span><strong>{{ totals.weather|default(0) }}</strong></div>
+                    <div><span><i class="health-{{ hydroStats.at_risk|default(0) > 0 ? 'orange' : 'gray' }}"></i> Rios em atenção</span><strong>{{ hydroStats.at_risk|default(0) }}</strong></div>
                 </div>
             </section>
 
@@ -386,7 +541,8 @@
                     <div><span>Waze Alerts</span><strong class="dashboard-status {{ totals.alerts > 0 ? 'is-active' }}">{{ totals.alerts > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
                     <div><span>Waze Jams</span><strong class="dashboard-status {{ totals.jams > 0 ? 'is-active' }}">{{ totals.jams > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
                     <div><span>Clima (Open-Meteo)</span><strong class="dashboard-status {{ totals.weather > 0 ? 'is-active' }}">{{ totals.weather > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
-                    <div><span>CEMADEN</span><strong class="dashboard-status {{ totals.stations > 0 ? 'is-active' }}">{{ totals.stations > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
+                    <div><span>CEMADEN Hidro</span><strong class="dashboard-status {{ kpis.hydro_stations|default(0) > 0 ? 'is-active' }}">{{ kpis.hydro_stations|default(0) > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
+                    <div><span>CEMADEN Chuva</span><strong class="dashboard-status {{ kpis.pluvio_stations|default(0) > 0 ? 'is-active' }}">{{ kpis.pluvio_stations|default(0) > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
                     <div><span>Câmeras parceiras</span><strong class="dashboard-status {{ totals.cameras > 0 ? 'is-active' }}">{{ totals.cameras > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
                 </div>
             </section>

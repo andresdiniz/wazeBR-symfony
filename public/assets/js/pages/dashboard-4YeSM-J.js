@@ -172,7 +172,7 @@ export function initDashboardCharts(root = document) {
     Chart.defaults.font.family = "Inter, system-ui, -apple-system, 'Segoe UI', sans-serif";
     Chart.defaults.font.size = 12;
 
-    // 1) Hourly activity
+    // 1) Hourly activity — alertas vs jams
     root.querySelectorAll('[data-chart="hourly-activity"]').forEach((canvas) => {
         const points = parseData(canvas);
         const labels = points.map((p) => p.hour);
@@ -217,7 +217,7 @@ export function initDashboardCharts(root = document) {
         });
     });
 
-    // 2) Alerts by type
+    // 2) Alerts by type — doughnut
     root.querySelectorAll('[data-chart="alerts-by-type"]').forEach((canvas) => {
         const points = parseData(canvas);
         const labels = points.map((p) => p.label);
@@ -243,7 +243,7 @@ export function initDashboardCharts(root = document) {
         });
     });
 
-    // 3) Alerts by city
+    // 3) Alerts by city — horizontal bar
     root.querySelectorAll('[data-chart="alerts-by-city"]').forEach((canvas) => {
         const points = parseData(canvas);
         const labels = points.map((p) => p.label);
@@ -272,7 +272,7 @@ export function initDashboardCharts(root = document) {
         });
     });
 
-    // 4) Jams by level
+    // 4) Jams by level — vertical bar
     root.querySelectorAll('[data-chart="jams-by-level"]').forEach((canvas) => {
         const points = parseData(canvas);
         const labels = points.map((p) => p.label);
@@ -300,7 +300,7 @@ export function initDashboardCharts(root = document) {
         });
     });
 
-    // 5) Weather trend
+    // 5) Weather trend — multi-axis line
     root.querySelectorAll('[data-chart="weather-trend"]').forEach((canvas) => {
         const points = parseData(canvas);
         const labels = points.map((p) => (p.time || '').slice(11, 16));
@@ -359,10 +359,10 @@ export function initDashboardCharts(root = document) {
         });
     });
 
-    // 6) Hydro trend (48h) — nível do rio
+    // 6) Hydro trend — nível do rio + cotas
     root.querySelectorAll('[data-chart="hydro-trend"]').forEach((canvas) => {
         const points = parseData(canvas);
-        const labels = points.map((p) => (p.time || '').slice(5, 16));
+        const labels = points.map((p) => (p.time || '').slice(5, 16)); // "MM-DD HH:00"
         const levels = points.map((p) => p.avg_level);
         const atencao = points.map((p) => p.cota_atencao);
         const alerta  = points.map((p) => p.cota_alerta);
@@ -416,30 +416,70 @@ export function initDashboardCharts(root = document) {
         });
     });
 
-    // 7) Pluviometria — chuva por hora (pluviômetros + hidro)
-    root.querySelectorAll('[data-chart="pluvio-hourly"]').forEach((canvas) => {
+    // 7) Hydro combined — rio + chuva (últimas 12h)
+    root.querySelectorAll('[data-chart="hydro-combined"]').forEach((canvas) => {
         const points = parseData(canvas);
         const labels = points.map((p) => {
             const t = (p.time || '');
-            return t.length >= 16 ? t.slice(11, 16) : t;
+            return t.length >= 16 ? t.slice(11, 16) : t; // "HH:MM"
         });
-        const rain = points.map((p) => Number(p.rain) || 0);
-        const wet  = points.map((p) => Number(p.wet_stations) || 0);
+        const levels = points.map((p) => p.level);
+        const rain   = points.map((p) => p.rain ?? 0);
+        const atencao = points.map((p) => p.cota_atencao);
+        const alerta  = points.map((p) => p.cota_alerta);
 
-        mountChart('pluvioHourly', canvas, {
+        mountChart('hydroCombined', canvas, {
             type: 'bar',
             data: {
                 labels,
                 datasets: [
                     {
+                        type: 'bar',
                         label: 'Chuva (mm)',
                         data: rain,
-                        backgroundColor: rain.map((v) => v > 0
-                            ? 'rgba(37,99,235,.75)'
-                            : 'rgba(148,163,184,.35)'),
-                        borderColor: 'rgba(37,99,235,.95)',
+                        backgroundColor: 'rgba(37,99,235,.35)',
+                        borderColor: 'rgba(37,99,235,.85)',
                         borderWidth: 1,
                         borderRadius: 4,
+                        yAxisID: 'yRain',
+                        order: 3,
+                    },
+                    {
+                        type: 'line',
+                        label: 'Nível do rio (m)',
+                        data: levels,
+                        borderColor: COLORS.cyan,
+                        backgroundColor: 'rgba(8,145,178,.10)',
+                        fill: true,
+                        tension: 0.35,
+                        pointRadius: 2,
+                        borderWidth: 2,
+                        yAxisID: 'yLevel',
+                        order: 1,
+                    },
+                    {
+                        type: 'line',
+                        label: 'Cota de atenção',
+                        data: atencao,
+                        borderColor: COLORS.orange,
+                        borderDash: [6, 4],
+                        pointRadius: 0,
+                        borderWidth: 1.2,
+                        fill: false,
+                        yAxisID: 'yLevel',
+                        order: 2,
+                    },
+                    {
+                        type: 'line',
+                        label: 'Cota de alerta',
+                        data: alerta,
+                        borderColor: COLORS.red,
+                        borderDash: [6, 4],
+                        pointRadius: 0,
+                        borderWidth: 1.2,
+                        fill: false,
+                        yAxisID: 'yLevel',
+                        order: 2,
                     },
                 ],
             },
@@ -447,25 +487,32 @@ export function initDashboardCharts(root = document) {
                 maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
-                    legend: { display: false },
+                    legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8 } },
                     tooltip: {
                         callbacks: {
                             label: (ctx) => {
-                                const i = ctx.dataIndex;
                                 const v = ctx.parsed.y;
-                                if (!v) return 'Sem chuva';
-                                const wetStations = wet[i] || 0;
-                                return `Chuva: ${Number(v).toFixed(1)} mm · ${wetStations} ponto(s)`;
+                                if (v === null || v === undefined) return `${ctx.dataset.label}: —`;
+                                if (ctx.dataset.label.includes('Chuva'))   return `Chuva: ${Number(v).toFixed(1)} mm`;
+                                return `${ctx.dataset.label}: ${Number(v).toFixed(2)} m`;
                             },
                         },
                     },
                 },
                 scales: {
                     x: { grid: { display: false } },
-                    y: {
+                    yLevel: {
+                        position: 'left',
                         grid: { color: COLORS.grid },
+                        title: { display: true, text: 'Nível (m)' },
+                        beginAtZero: true,
+                    },
+                    yRain: {
+                        position: 'right',
+                        grid: { display: false },
                         title: { display: true, text: 'Chuva (mm)' },
                         beginAtZero: true,
+                        ticks: { precision: 1 },
                     },
                 },
             },
@@ -525,6 +572,7 @@ export function initDashboardMap(root = document) {
     layerGroups.weather  = L.layerGroup().addTo(leafletMap);
     layerGroups.stations = L.layerGroup().addTo(leafletMap);
 
+    // Alerts
     alerts.forEach((a) => {
         if (!Number.isFinite(a.lat) || !Number.isFinite(a.lng)) return;
         const color = alertColor(a.type);
@@ -538,6 +586,7 @@ export function initDashboardMap(root = document) {
         `).addTo(layerGroups.alerts);
     });
 
+    // Jams (polylines)
     jams.forEach((j) => {
         if (!Array.isArray(j.path) || j.path.length < 2) return;
         const color = jamColor(Number(j.level) || 0);
@@ -550,6 +599,7 @@ export function initDashboardMap(root = document) {
             .addTo(layerGroups.jams);
     });
 
+    // Cameras
     cameras.forEach((c) => {
         if (!Number.isFinite(c.lat) || !Number.isFinite(c.lng)) return;
         L.circleMarker([c.lat, c.lng], {
@@ -561,6 +611,7 @@ export function initDashboardMap(root = document) {
         `).addTo(layerGroups.cameras);
     });
 
+    // Weather locations
     weather.forEach((w) => {
         if (!Number.isFinite(w.lat) || !Number.isFinite(w.lng)) return;
         L.circleMarker([w.lat, w.lng], {
@@ -571,34 +622,19 @@ export function initDashboardMap(root = document) {
         `).addTo(layerGroups.weather);
     });
 
-    // Estações de chuva: cor dinâmica pela intensidade 24h
+    // CEMADEN stations
     stations.forEach((s) => {
         if (!Number.isFinite(s.lat) || !Number.isFinite(s.lng)) return;
-
-        const rain1h  = Number(s.rain1h ?? 0);
-        const rain24h = Number(s.rain24h ?? 0);
-
-        const color = rain24h > 20 ? '#1d4ed8'
-                   : rain24h > 5  ? '#2563eb'
-                   : rain24h > 0  ? '#0891b2'
-                   : '#14b8a6';
-
         L.circleMarker([s.lat, s.lng], {
-            radius: rain24h > 0 ? 6 : 4,
-            color: '#0f766e',
-            weight: 1,
-            fillColor: color,
-            fillOpacity: 0.85,
+            radius: 4, color: '#0f766e', weight: 1, fillColor: '#14b8a6', fillOpacity: 0.8,
         }).bindPopup(`
             <strong>${escapeHtml(s.name || 'Estação CEMADEN')}</strong><br>
             ${escapeHtml(s.city || '')} ${s.state ? '/ ' + escapeHtml(s.state) : ''}<br>
-            <small>${escapeHtml(s.type || '')}</small><br>
-            <hr style="border:none;border-top:1px solid #e5e7eb;margin:4px 0">
-            <small>Chuva 1h: <strong>${rain1h.toFixed(1)} mm</strong></small><br>
-            <small>Chuva 24h: <strong>${rain24h.toFixed(1)} mm</strong></small>
+            <small>${escapeHtml(s.type || '')}</small>
         `).addTo(layerGroups.stations);
     });
 
+    // Layer toggles
     root.querySelectorAll('[data-layer-toggle]').forEach((btn) => {
         btn.addEventListener('click', () => {
             const key = btn.dataset.layerToggle;
@@ -611,8 +647,10 @@ export function initDashboardMap(root = document) {
         });
     });
 
+    // Resize handling
     window.addEventListener('resize', () => leafletMap && leafletMap.invalidateSize());
 
+    // Expose globally for debugging
     window.dashboardMap = leafletMap;
 }
 
@@ -634,6 +672,7 @@ export function attachDashboardLiveUpdates(root = document) {
         const data = e.detail;
         if (!data) return;
 
+        // Contadores KPI
         if (data.kpis) {
             const cardSelectors = [
                 { sel: '.kpi-blue   .dashboard-kpi-value', val: data.kpis.alerts },
@@ -641,7 +680,6 @@ export function attachDashboardLiveUpdates(root = document) {
                 { sel: '.kpi-green  .dashboard-kpi-value', val: data.kpis.weather },
                 { sel: '.kpi-purple .dashboard-kpi-value', val: data.kpis.cameras },
                 { sel: '.kpi-cyan   .dashboard-kpi-value', val: data.kpis.hydro_stations },
-                { sel: '.kpi-rain   .dashboard-kpi-value', val: data.kpis.pluvio_stations },
             ];
             cardSelectors.forEach(({ sel, val }) => {
                 if (val === undefined) return;
@@ -649,6 +687,7 @@ export function attachDashboardLiveUpdates(root = document) {
                 if (el) el.textContent = String(val);
             });
 
+            // Trend "em atenção" do KPI cyan
             const atRisk = data.kpis.hydro_at_risk;
             if (atRisk !== undefined) {
                 const trend = root.querySelector('.kpi-cyan .dashboard-kpi-trend');
@@ -657,17 +696,9 @@ export function attachDashboardLiveUpdates(root = document) {
                     trend.classList.toggle('is-warning', atRisk > 0);
                 }
             }
-
-            const rain24 = data.kpis.pluvio_rain_24h;
-            if (rain24 !== undefined) {
-                const trend = root.querySelector('.kpi-rain .dashboard-kpi-trend');
-                if (trend) {
-                    trend.textContent = `${Number(rain24).toFixed(1).replace('.', ',')} mm · 24h`;
-                    trend.classList.toggle('is-positive', rain24 > 0);
-                }
-            }
         }
 
+        // Charts
         if (data.charts) {
             const refresh = (key, selector) => {
                 const canvas = root.querySelector(selector);
@@ -681,6 +712,7 @@ export function attachDashboardLiveUpdates(root = document) {
             refresh('weather_trend',   '[data-chart="weather-trend"]');
         }
 
+        // Hydro trend
         if (data.hydro && data.hydro.trend) {
             const canvas = root.querySelector('[data-chart="hydro-trend"]');
             if (canvas) {
@@ -688,10 +720,11 @@ export function attachDashboardLiveUpdates(root = document) {
             }
         }
 
-        if (data.pluvio && data.pluvio.hourly) {
-            const canvas = root.querySelector('[data-chart="pluvio-hourly"]');
+        // Hydro combined (12h)
+        if (data.hydro && data.hydro.combined) {
+            const canvas = root.querySelector('[data-chart="hydro-combined"]');
             if (canvas) {
-                canvas.dataset.chartData = JSON.stringify(data.pluvio.hourly);
+                canvas.dataset.chartData = JSON.stringify(data.hydro.combined);
             }
         }
 
