@@ -18,6 +18,14 @@ monolog:
             level: debug
             channels: ['mailer']
 
+        # Canal dedicado ao scheduler
+        scheduler:
+            type: rotating_file
+            path: '%kernel.logs_dir%/scheduler.log'
+            level: info
+            channels: ['scheduler']
+            max_files: 30
+
 when@dev:
     monolog:
         handlers:

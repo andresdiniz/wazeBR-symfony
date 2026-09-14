@@ -20,3 +20,14 @@ services:
 
     App\EventListener\TimezoneListener:
         tags: ['kernel.event_subscriber']
+
+    App\Messenger\SchedulerTimerMiddleware:
+        arguments:
+            $schedulerLogger: '@monolog.logger.scheduler'
+        tags:
+            - { name: messenger.middleware, priority: 1000 }
+            
+    App\EventSubscriber\SchedulerWorkerLoggerSubscriber:
+        arguments:
+            $schedulerLogger: '@monolog.logger.scheduler'
+        tags: ['kernel.event_subscriber']

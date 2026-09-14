@@ -1,0 +1,42 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\EventSubscriber;
+
+use Psr\Log\LoggerInterface;
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\Messenger\Event\WorkerStartedEvent;
+use Symfony\Component\Messenger\Event\WorkerStoppedEvent;
+
+final class SchedulerWorkerLoggerSubscriber implements EventSubscriberInterface
+{
+    public function __construct(
+        private readonly LoggerInterface $schedulerLogger,
+    ) {
+    }
+
+    public static function getSubscribedEvents(): array
+    {
+        return [
+            WorkerStartedEvent::class => ['onStarted', 100],
+            WorkerStoppedEvent::class => ['onStopped', 100],
+        ];
+    }
+
+    public function onStarted(WorkerStartedEvent $event): void
+    {
+        $this->schedulerLogger->info('══ Worker iniciado (transport: {t}) ══', [
+            't'  => $event->getReceiverName(),
+            'at' => (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format(DATE_ATOM),
+        ]);
+    }
+
+    public function onStopped(WorkerStoppedEvent $event): void
+    {
+        $this->schedulerLogger->info('══ Worker encerrado (transport: {t}) ══', [
+            't'  => $event->getReceiverName(),
+            'at' => (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format(DATE_ATOM),
+        ]);
+    }
+}
