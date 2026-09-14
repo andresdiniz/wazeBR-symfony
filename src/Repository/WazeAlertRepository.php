@@ -26,6 +26,25 @@ final class WazeAlertRepository extends ServiceEntityRepository
         return $this->findBy([], ['collectedAt' => 'DESC'], $limit);
     }
 
+    /**
+     * Busca um alerta por ID respeitando o escopo do usuário.
+     * Se $partner for null, retorna qualquer alerta (admin global).
+     */
+    public function findOneScoped(int $id, ?Partner $partner): ?WazeAlert
+    {
+        $qb = $this->createQueryBuilder('a')
+            ->andWhere('a.id = :id')
+            ->setParameter('id', $id)
+            ->setMaxResults(1);
+
+        if ($partner !== null) {
+            $qb->andWhere('a.partner = :partner')
+               ->setParameter('partner', $partner);
+        }
+
+        return $qb->getQuery()->getOneOrNullResult();
+    }
+
     // ─────────────────────────────────────────────────────────────────────
     // Sincronização — usados pelo FetchWazeFeedCommand / WazeFeedSynchronizer
     // ─────────────────────────────────────────────────────────────────────
@@ -282,6 +301,7 @@ final class WazeAlertRepository extends ServiceEntityRepository
                     ROUND(a.latitude,  $precision) AS lat,
                     ROUND(a.longitude, $precision) AS lng,
                     COUNT(*)                        AS total,
+                    MAX(a.id)                       AS example_id,
                     MAX(a.type)                     AS top_type,
                     MIN(a.collected_at)             AS first_seen,
                     MAX(a.collected_at)             AS last_seen
@@ -294,12 +314,13 @@ final class WazeAlertRepository extends ServiceEntityRepository
         $rows = $this->connection->executeQuery($sql, $params)->fetchAllAssociative();
 
         return array_map(fn ($r) => [
-            'lat'       => (float) $r['lat'],
-            'lng'       => (float) $r['lng'],
-            'total'     => (int) $r['total'],
-            'type'      => $r['top_type'],
-            'firstSeen' => $this->toIso($r['first_seen']),
-            'lastSeen'  => $this->toIso($r['last_seen']),
+            'lat'        => (float) $r['lat'],
+            'lng'        => (float) $r['lng'],
+            'total'      => (int) $r['total'],
+            'exampleId'  => (int) $r['example_id'],   // ← NOVO
+            'type'       => $r['top_type'],
+            'firstSeen'  => $this->toIso($r['first_seen']),
+            'lastSeen'   => $this->toIso($r['last_seen']),
         ], $rows);
     }
 

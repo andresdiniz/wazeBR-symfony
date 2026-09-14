@@ -5,6 +5,7 @@
  * - Filtros com fetch + fallback para navegação.
  * - Charts (Chart.js): tipo, hora, dia, cidade, subtipo.
  * - Tabela com busca local e "carregar mais".
+ * - Popups com link para a página de detalhes (/alerts/{id}).
  *
  * Timezone: todo DATETIME vem do servidor em ISO 8601 UTC (+00:00) e
  * pub_millis em epoch ms (UTC). Renderizamos SEMPRE em America/Sao_Paulo.
@@ -39,6 +40,18 @@ const PALETTE = [
 ];
 
 const POLL_INTERVAL = 45_000;
+
+// Template da URL da página de detalhes.
+// Vem do atributo data-show-url-template do container principal,
+// com fallback para o caminho relativo padrão.
+const SHOW_URL_TEMPLATE = (() => {
+    const el = document.querySelector('[data-alerts-page]');
+    return el?.dataset?.showUrlTemplate || '/alerts/__ID__';
+})();
+
+function buildShowUrl(alertId) {
+    return SHOW_URL_TEMPLATE.replace('__ID__', String(alertId));
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Timezone / formatters
@@ -376,6 +389,7 @@ function renderLiveMarkers() {
         const m = L.circleMarker([a.lat, a.lng], {
             radius: 6, color, weight: 1, fillColor: color, fillOpacity: 0.85,
         });
+
         m.bindPopup(`
             <div class="alerts-popup">
                 <strong style="color:${color}">${escapeHtml(a.type || 'Alerta')}</strong>
@@ -386,8 +400,11 @@ function renderLiveMarkers() {
                 <small>Confiança: ${a.confidence}%</small><br>
                 <small>Coletado: ${fmtSp(a.when)}</small><br>
                 <small>Publicado: ${fmtFromMs(a.pubMillis)}</small>
+                <hr>
+                <a class="alerts-popup-link" href="${buildShowUrl(a.id)}">Ver detalhes →</a>
             </div>
         `);
+
         return m;
     });
 
@@ -422,8 +439,10 @@ function renderHistoryClusters() {
                 <small>Tipo predominante: ${escapeHtml(c.type || '—')}</small><br>
                 <small>Primeiro: ${fmtSp(c.firstSeen)}</small><br>
                 <small>Último: ${fmtSp(c.lastSeen)}</small>
+                ${c.exampleId ? `<hr><a class="alerts-popup-link" href="${buildShowUrl(c.exampleId)}">Ver exemplo →</a>` : ''}
             </div>
         `);
+
         mapState.historyLayer.addLayer(circle);
     });
 }
@@ -483,7 +502,6 @@ async function fetchLive(root) {
     setText(root, '[data-kpi="total"]', stats.total ?? '—');
     setText(root, '[data-kpi="top_type"]', stats.top_type ?? '—');
     setText(root, '[data-kpi="recent"]', `${stats.recent ?? 0} na última hora`);
-    // Em vez de fatiar string UTC, formatamos via Intl (SP).
     setText(root, '[data-kpi="last_seen"]', stats.last_seen ? fmtSp(stats.last_seen) : '—');
 
     // Map
@@ -611,13 +629,14 @@ function initTable(root) {
 function rowHtml(a) {
     const search = escapeHtml([a.type, a.subtype, a.city, a.street, a.uuid].join(' ').toLowerCase());
     const typeLc = escapeHtml((a.type || '').toLowerCase());
-    // Formatação em SP, sempre.
     const when   = fmtSp(a.when);
     const state  = a.isActive ? 'Ativo' : 'Encerrado';
     const stateClass = a.isActive ? 'is-active' : 'is-off';
+    const showUrl = buildShowUrl(a.id);
+
     return `
         <tr data-search-text="${search}">
-            <td>${a.id}</td>
+            <td><a class="alerts-row-link" href="${showUrl}">${a.id}</a></td>
             <td><span class="alerts-badge type-${typeLc}">${escapeHtml(a.type || '—')}</span></td>
             <td>${escapeHtml(a.subtype || '—')}</td>
             <td>${escapeHtml(a.city || '—')}</td>

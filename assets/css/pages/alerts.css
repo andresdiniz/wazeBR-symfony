@@ -437,3 +437,21 @@
     .alerts-field--grow { grid-column: span 1; }
     .alerts-header-tools { width: 100%; }
 }
+/* ID clicável na tabela */
+.alerts-row-link {
+    color: var(--theme-primary, #2563eb);
+    font-weight: 700;
+    text-decoration: none;
+}
+.alerts-row-link:hover { text-decoration: underline; }
+
+/* Link "Ver detalhes" nos popups do Leaflet */
+.alerts-popup-link {
+    display: inline-block;
+    margin-top: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #2563eb;
+    text-decoration: none;
+}
+.alerts-popup-link:hover { text-decoration: underline; }

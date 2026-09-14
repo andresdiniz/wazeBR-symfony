@@ -1,68 +1,218 @@
 {% extends 'layouts/dashboard.html.twig' %}
 
-{% block title %}Detalhes do Alerta{% endblock %}
+{% block title %}{{ alert.typeLabel }} · Alerta #{{ alert.id }} | WazeBR{% endblock %}
 
 {% block stylesheets %}
-    <link rel="stylesheet" href="{{ asset('css/alerts.css') }}">
+    {{ parent() }}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <link rel="stylesheet" href="{{ asset('css/pages/alerts-show.css') }}">
 {% endblock %}
 
-{% block body %}
-<div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col-12">
-            <h1 class="h3 mb-3">Detalhes do Alerta</h1>
-            <a href="{{ path('alert_index') }}" class="btn btn-sm btn-secondary mb-3">Voltar</a>
-        </div>
-    </div>
+{% block content %}
+    {% set alertJson = {
+        'id':         alert.id,
+        'type':       alert.type,
+        'subtype':    alert.subtype,
+        'city':       alert.city,
+        'street':     alert.street,
+        'lat':        alert.latitude,
+        'lng':        alert.longitude,
+        'confidence': alert.confidence,
+        'when':       alert.collectedAt ? alert.collectedAt|date('c') : null,
+        'pubMillis':  alert.pubMillis,
+    } %}
 
-    <div class="card">
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <h5>Tipo</h5>
-                    <p>{{ alert.type }}</p>
-                    
-                    <h5>Subtipo</h5>
-                    <p>{{ alert.subtype }}</p>
-                    
-                    <h5>Rua</h5>
-                    <p>{{ alert.street }}</p>
-                    
-                    <h5>Cidade</h5>
-                    <p>{{ alert.city }}</p>
+    <div class="alert-show-page"
+         data-alert-show
+         data-alert='{{ alertJson|json_encode|e('html_attr') }}'>
+
+        <div class="alert-show-container">
+
+            <nav class="alert-show-breadcrumb" aria-label="Navegação">
+                <a href="{{ path('alert_index') }}" class="alert-show-back">
+                    <span aria-hidden="true">←</span> Voltar para alertas
+                </a>
+            </nav>
+
+            <header class="alert-show-header">
+                <div>
+                    <div class="alert-show-header-top">
+                        <span class="alert-show-badge alert-show-badge--{{ alert.type|lower }}">
+                            {{ alert.typeLabel }}
+                        </span>
+                        <span class="alert-show-status alert-show-status--{{ alert.isActive ? 'active' : 'inactive' }}">
+                            {{ alert.isActive ? 'Ativo' : 'Encerrado' }}
+                        </span>
+                        <span class="alert-show-id">#{{ alert.id }}</span>
+                    </div>
+                    <h1>{{ alert.subtypeLabel|default(alert.subtype|default('Alerta Waze')) }}</h1>
+                    <p class="alert-show-subtitle">
+                        {{ alert.street|default('Rua não informada') }}
+                        {% if alert.city %} · {{ alert.city }}{% endif %}
+                        {% if alert.country %} · {{ alert.country }}{% endif %}
+                    </p>
                 </div>
-                <div class="col-md-6">
-                    <h5>Estado</h5>
-                    <p>{{ alert.state }}</p>
-                    
-                    <h5>Pa&iacute;s</h5>
-                    <p>{{ alert.country }}</p>
-                    
-                    <h5>Magr&uave;</h5>
-                    <p>{{ alert.magr }}</p>
-                    
-                    <h5>&Uacute;ltima Vez</h5>
-                    <p>{{ alert.lastSeenAt|date('d/m/Y H:i:s') }}</p>
+                <div class="alert-show-header-actions">
+                    {% if alert.latitude and alert.longitude %}
+                        <a class="alert-show-button is-primary"
+                           target="_blank" rel="noopener"
+                           href="https://www.waze.com/pt-BR/live-map/?lat={{ alert.latitude }}&lng={{ alert.longitude }}&zoom=17">
+                            ↗ Ver no Waze
+                        </a>
+                        <a class="alert-show-button"
+                           target="_blank" rel="noopener"
+                           href="https://www.openstreetmap.org/?mlat={{ alert.latitude }}&mlon={{ alert.longitude }}#map=17/{{ alert.latitude }}/{{ alert.longitude }}">
+                            ↗ OpenStreetMap
+                        </a>
+                    {% endif %}
                 </div>
-            </div>
-            
-            <div class="row mt-4">
-                <div class="col-md-6">
-                    <h5>Latitude</h5>
-                    <p>{{ alert.latitude }}</p>
-                    
-                    <h5>Longitude</h5>
-                    <p>{{ alert.longitude }}</p>
-                </div>
-                <div class="col-md-6">
-                    <h5>Reliabilidade</h5>
-                    <p>{{ alert.reliability }}</p>
-                    
-                    <h5>Confian&ccedil;a</h5>
-                    <p>{{ alert.confidence }}</p>
-                </div>
+            </header>
+
+            <div class="alert-show-grid">
+
+                {# Mapa #}
+                <section class="alert-show-panel alert-show-map-panel">
+                    <header class="alert-show-panel-header">
+                        <div>
+                            <span class="alert-show-kicker">Localização</span>
+                            <h2>Onde foi registrado</h2>
+                        </div>
+                        <span class="alert-show-coords">
+                            {{ alert.latitude|default('—') }}, {{ alert.longitude|default('—') }}
+                        </span>
+                    </header>
+                    <div class="alert-show-map" data-alert-show-map></div>
+                </section>
+
+                {# Detalhes técnicos #}
+                <aside class="alert-show-panel alert-show-details">
+                    <header class="alert-show-panel-header">
+                        <div>
+                            <span class="alert-show-kicker">Dados</span>
+                            <h2>Detalhes do alerta</h2>
+                        </div>
+                    </header>
+
+                    <dl class="alert-show-list">
+                        <div><dt>Tipo</dt>        <dd>{{ alert.type|default('—') }}</dd></div>
+                        <div><dt>Subtipo</dt>     <dd>{{ alert.subtype|default('—') }}</dd></div>
+                        <div><dt>Confiança</dt>   <dd>{{ alert.confidence }}</dd></div>
+                        <div><dt>Confiabilidade</dt><dd>{{ alert.reliability }}</dd></div>
+                        <div><dt>Rating do report</dt><dd>{{ alert.reportRating }}</dd></div>
+                        <div><dt>Thumbs up</dt>   <dd>{{ alert.nThumbsUp }}</dd></div>
+                        <div><dt>Road type</dt>   <dd>{{ alert.roadType }}</dd></div>
+                        <div><dt>Magvar</dt>      <dd>{{ alert.magvar }}°</dd></div>
+                        <div><dt>Reportado por município</dt><dd>{{ alert.reportByMunicipalityUser ? 'Sim' : 'Não' }}</dd></div>
+                        <div><dt>País</dt>        <dd>{{ alert.country|default('—') }}</dd></div>
+                    </dl>
+                </aside>
+
+                {# Timeline #}
+                <section class="alert-show-panel">
+                    <header class="alert-show-panel-header">
+                        <div>
+                            <span class="alert-show-kicker">Linha do tempo</span>
+                            <h2>Quando aconteceu</h2>
+                        </div>
+                    </header>
+
+                    <dl class="alert-show-list">
+                        <div>
+                            <dt>Publicado pela Waze</dt>
+                            <dd>
+                                {% if alert.pubDateTime %}
+                                    {{ alert.pubDateTime|date('d/m/Y H:i:s') }}
+                                    <small>{{ alert.pubMillis }} ms (epoch)</small>
+                                {% else %}—{% endif %}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>Coletado em (Horario de São Paulo)</dt>
+                            <dd>
+                                {% if alert.collectedAt %}
+                                    {{ alert.collectedAt|date('d/m/Y H:i:s') }}
+                                    <small>{{ alert.collectedAt|date('c', 'America/Sao_Paulo') }}</small>
+                                {% else %}—{% endif %}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>Última vez visto (Horario de São Paulo)</dt>
+                            <dd>
+                                {% if alert.lastSeenAt %}
+                                    {{ alert.lastSeenAt|date('d/m/Y H:i:s') }}
+                                {% else %}—{% endif %}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>Desativado em (Horario de São Paulo)</dt>
+                            <dd>
+                                {% if alert.deactivatedAt %}
+                                    {{ alert.deactivatedAt|date('d/m/Y H:i:s') }}
+                                {% else %}—{% endif %}
+                            </dd>
+                        </div>
+                    </dl>
+                </section>
+
+                {# Endereço #}
+                <section class="alert-show-panel">
+                    <header class="alert-show-panel-header">
+                        <div>
+                            <span class="alert-show-kicker">Endereço</span>
+                            <h2>Local textual</h2>
+                        </div>
+                    </header>
+
+                    <dl class="alert-show-list">
+                        <div><dt>Rua</dt>      <dd>{{ alert.street|default('—') }}</dd></div>
+                        <div><dt>Cidade</dt>   <dd>{{ alert.city|default('—') }}</dd></div>
+                        <div><dt>Latitude</dt> <dd>{{ alert.latitude|default('—') }}</dd></div>
+                        <div><dt>Longitude</dt><dd>{{ alert.longitude|default('—') }}</dd></div>
+                    </dl>
+                </section>
+
+                {# IDs #}
+                <section class="alert-show-panel">
+                    <header class="alert-show-panel-header">
+                        <div>
+                            <span class="alert-show-kicker">Identificadores</span>
+                            <h2>Chaves internas</h2>
+                        </div>
+                    </header>
+
+                    <dl class="alert-show-list">
+                        <div>
+                            <dt>UUID</dt>
+                            <dd class="alert-show-mono">{{ alert.uuid|default('—') }}</dd>
+                        </div>
+                        <div>
+                            <dt>Partner</dt>
+                            <dd>{{ alert.partner ? alert.partner.name : '—' }}</dd>
+                        </div>
+                    </dl>
+                </section>
+
+                {% if alert.reportDescription %}
+                    <section class="alert-show-panel alert-show-panel--wide">
+                        <header class="alert-show-panel-header">
+                            <div>
+                                <span class="alert-show-kicker">Descrição</span>
+                                <h2>Report enviado pela Waze</h2>
+                            </div>
+                        </header>
+                        <p class="alert-show-description">{{ alert.reportDescription }}</p>
+                    </section>
+                {% endif %}
+
             </div>
         </div>
     </div>
-</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script type="module" src="{{ asset('js/pages/alerts-show.js') }}"></script>
 {% endblock %}

@@ -22,6 +22,7 @@
      data-endpoint-history="{{ path('alert_api_history') }}"
      data-endpoint-list="{{ path('alert_api_list') }}"
      data-endpoint-export="{{ path('alert_export') }}"
+     data-show-url-template="/alerts/__ID__"
      data-current-filters='{{ filters|json_encode|e('html_attr') }}'
      data-initial-stats='{{ stats|json_encode|e('html_attr') }}'>
 
@@ -74,7 +75,7 @@
             <article class="alerts-kpi-card kpi-orange">
                 <span class="kpi-icon" aria-hidden="true">⏱</span>
                 <strong class="kpi-value kpi-value--sm" data-kpi="last_seen">
-                    {{ lastSeen ? lastSeen|date('d/m H:i') : '—' }}
+                    {{ lastSeen ? lastSeen|date('d/m H:i', 'America/Sao_Paulo') : '—' }}
                 </strong>
                 <span class="kpi-label">Último alerta recebido</span>
                 <small class="kpi-foot">{{ active > 0 ? 'Monitorando ativamente' : 'Sem alertas ativos' }}</small>
@@ -226,7 +227,7 @@
             </aside>
         </div>
 
-        {# ── Segundo grid: séries + cidades + subtipos ──────────── #}
+        {# ── Segundo grid: séries + cidades ─────────────────────── #}
         <div class="alerts-main-grid">
             <section class="alerts-panel">
                 <header class="alerts-panel-head">
@@ -295,7 +296,9 @@
                     <tbody data-table-body>
                         {% for a in recent %}
                             <tr data-search-text="{{ (a.type ~ ' ' ~ a.subtype ~ ' ' ~ a.city ~ ' ' ~ a.street ~ ' ' ~ a.uuid)|lower }}">
-                                <td>{{ a.id }}</td>
+                                <td>
+                                    <a class="alerts-row-link" href="{{ path('alert_show', { id: a.id }) }}">{{ a.id }}</a>
+                                </td>
                                 <td><span class="alerts-badge type-{{ a.type|lower }}">{{ a.type }}</span></td>
                                 <td>{{ a.subtype|default('—') }}</td>
                                 <td>{{ a.city|default('—') }}</td>
@@ -313,7 +316,7 @@
                                 </td>
                                 <td>
                                     <time datetime="{{ a.when }}">
-                                        {{ a.when ? a.when|date('d/m H:i') : '—' }}
+                                        {{ a.when ? a.when|date('d/m H:i', 'America/Sao_Paulo') : '—' }}
                                     </time>
                                 </td>
                             </tr>

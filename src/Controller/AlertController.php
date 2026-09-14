@@ -47,6 +47,36 @@ final class AlertController extends AbstractController
         ]);
     }
 
+    /**
+     * Página de detalhes de um alerta (show).
+     *
+     * Respeita o escopo do usuário:
+     *   - ROLE_ADMIN global → vê qualquer alerta
+     *   - demais            → só alertas do próprio partner
+     */
+    #[Route(
+        '/alerts/{id}',
+        name: 'alert_show',
+        requirements: ['id' => '\d+'],
+        methods: ['GET'],
+    )]
+    public function show(int $id, WazeAlertRepository $repository): Response
+    {
+        $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
+
+        $partner = $this->resolvePartnerScope();
+        $alert   = $repository->findOneScoped($id, $partner);
+
+        if ($alert === null) {
+            throw $this->createNotFoundException('Alerta não encontrado.');
+        }
+
+        return $this->render('alert/show.html.twig', [
+            'alert'   => $alert,
+            'partner' => $partner,
+        ]);
+    }
+
     /** Live map — polling a cada ~45s. */
     #[Route('/alerts/api/live', name: 'alert_api_live', methods: ['GET'])]
     public function apiLive(Request $request, WazeAlertRepository $repository): JsonResponse
@@ -127,7 +157,6 @@ final class AlertController extends AbstractController
 
         $response = new StreamedResponse(function () use ($rows) {
             $out = fopen('php://output', 'w');
-            // BOM p/ Excel abrir com UTF-8 correto
             fwrite($out, "\xEF\xBB\xBF");
             fputcsv($out, [
                 'ID','UUID','Tipo','Subtipo','Cidade','Rua','Confiança','Confiabilidade',
@@ -148,8 +177,8 @@ final class AlertController extends AbstractController
                     $r['lat'],
                     $r['lng'],
                     $r['pub_millis'],
-                    $r['collected_at']    ?? '',   // ISO UTC (do exportRows)
-                    $r['collected_at_sp'] ?? '',   // "13/09/2026 15:30:00" em SP
+                    $r['collected_at']    ?? '',
+                    $r['collected_at_sp'] ?? '',
                 ], ';');
             }
             fclose($out);
