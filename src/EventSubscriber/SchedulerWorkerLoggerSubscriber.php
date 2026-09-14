@@ -27,7 +27,7 @@ final class SchedulerWorkerLoggerSubscriber implements EventSubscriberInterface
     public function onStarted(WorkerStartedEvent $event): void
     {
         $this->schedulerLogger->info('══ Worker iniciado (transport: {t}) ══', [
-            't'  => $event->getReceiverName(),
+            't'  => $this->getTransportNames($event),
             'at' => (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format(DATE_ATOM),
         ]);
     }
@@ -35,8 +35,21 @@ final class SchedulerWorkerLoggerSubscriber implements EventSubscriberInterface
     public function onStopped(WorkerStoppedEvent $event): void
     {
         $this->schedulerLogger->info('══ Worker encerrado (transport: {t}) ══', [
-            't'  => $event->getReceiverName(),
+            't'  => $this->getTransportNames($event),
             'at' => (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format(DATE_ATOM),
         ]);
+    }
+
+    /**
+     * Extrai os nomes dos transports do worker do evento.
+     *
+     * WorkerStartedEvent e WorkerStoppedEvent só expõem getWorker();
+     * o nome do receiver está em getWorker()->getMetadata()->getTransportNames().
+     */
+    private function getTransportNames(object $event): string
+    {
+        $names = $event->getWorker()->getMetadata()->getTransportNames();
+
+        return $names === [] ? 'unknown' : implode(',', $names);
     }
 }

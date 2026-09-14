@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Scheduler;
 
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Console\Messenger\RunCommandMessage;
 use Symfony\Component\Scheduler\Attribute\AsSchedule;
 use Symfony\Component\Scheduler\RecurringMessage;
@@ -13,23 +14,25 @@ use Symfony\Component\Scheduler\ScheduleProviderInterface;
 #[AsSchedule('default')]
 final class MainSchedule implements ScheduleProviderInterface
 {
+    public function __construct(
+        private readonly CacheItemPoolInterface $cache,
+    ) {
+    }
+
     public function getSchedule(): Schedule
     {
         return (new Schedule())
-            // ── Waze Alerts + Jams ─────────────────────────────────────────
-            // Frequência real é controlada pelo próprio comando, que respeita
-            // o partner.fetchFrequency. O scheduler só garante que ele roda.
+            ->stateful($this->cache)   // ← adicionar isso
             ->add(
                 RecurringMessage::every(
-                    '1 minute',
+                    '2 minute',
                     new RunCommandMessage('app:fetch-waze-feed --no-interaction'),
                 ),
             )
-
             // ── Waze TVT (rotas) ───────────────────────────────────────────
             ->add(
                 RecurringMessage::every(
-                    '1 minute',
+                    '2 minute',
                     new RunCommandMessage('app:fetch:waze:tvt --no-interaction'),
                 ),
             )

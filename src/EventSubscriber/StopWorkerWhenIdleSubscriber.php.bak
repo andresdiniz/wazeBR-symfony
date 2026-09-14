@@ -1,0 +1,35 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\EventSubscriber;
+
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\Messenger\Event\WorkerRunningEvent;
+
+final class StopWorkerWhenIdleSubscriber implements EventSubscriberInterface
+{
+    private int $idleCycles = 0;
+    private const MAX_IDLE_CYCLES = 50; // ~15s de tolerância
+
+    public function onWorkerRunning(WorkerRunningEvent $event): void
+    {
+        if (!$event->isWorkerIdle()) {
+            $this->idleCycles = 0;
+            return;
+        }
+
+        $this->idleCycles++;
+
+        if ($this->idleCycles >= self::MAX_IDLE_CYCLES) {
+            $event->getWorker()->stop();
+        }
+    }
+
+    public static function getSubscribedEvents(): array
+    {
+        return [
+            WorkerRunningEvent::class => 'onWorkerRunning',
+        ];
+    }
+}
