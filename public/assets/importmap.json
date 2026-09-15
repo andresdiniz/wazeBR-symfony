@@ -36,7 +36,7 @@
         "type": "js"
     },
     "\/assets\/js\/layout\/header.js": {
-        "path": "\/assets\/js\/layout\/header-AyNkUnO.js",
+        "path": "\/assets\/js\/layout\/header-WwrrDUj.js",
         "type": "js"
     },
     "\/assets\/js\/layout\/sidebar.js": {
@@ -44,7 +44,7 @@
         "type": "js"
     },
     "\/assets\/js\/components\/accordions.js": {
-        "path": "\/assets\/js\/components\/accordions-TNwE1c3.js",
+        "path": "\/assets\/js\/components\/accordions-aZSBcZX.js",
         "type": "js"
     },
     "\/assets\/js\/components\/charts.js": {
@@ -64,7 +64,7 @@
         "type": "js"
     },
     "\/assets\/js\/components\/menus.js": {
-        "path": "\/assets\/js\/components\/menus--bUnSvA.js",
+        "path": "\/assets\/js\/components\/menus-mIPfJOG.js",
         "type": "js"
     },
     "\/assets\/js\/components\/notifications.js": {
@@ -72,7 +72,7 @@
         "type": "js"
     },
     "\/assets\/js\/components\/pagination.js": {
-        "path": "\/assets\/js\/components\/pagination-kCbyEaj.js",
+        "path": "\/assets\/js\/components\/pagination-9oCo03U.js",
         "type": "js"
     },
     "\/assets\/js\/components\/table.js": {
@@ -80,31 +80,43 @@
         "type": "js"
     },
     "\/assets\/js\/pages\/dashboard.js": {
-        "path": "\/assets\/js\/pages\/dashboard-gY5ARYe.js",
+        "path": "\/assets\/js\/pages\/dashboard-OF68HzB.js",
         "type": "js"
     },
     "app": {
-        "path": "\/assets\/js\/app-nTnnBqD.js",
+        "path": "\/assets\/js\/app-vbXl6QA.js",
         "type": "js"
     },
-    "\/assets\/css\/layout\/base-layout.css": {
-        "path": "\/assets\/css\/layout\/base-layout-VAEbl7E.css",
-        "type": "css"
+    "\/assets\/js\/components\/buttons.js": {
+        "path": "\/assets\/js\/components\/buttons-KGjY30d.js",
+        "type": "js"
     },
-    "\/assets\/css\/layout\/header.css": {
-        "path": "\/assets\/css\/layout\/header-O31uXsR.css",
-        "type": "css"
+    "\/assets\/js\/components\/forms.js": {
+        "path": "\/assets\/js\/components\/forms-Ykuonst.js",
+        "type": "js"
     },
-    "\/assets\/css\/layout\/sidebar.css": {
-        "path": "\/assets\/css\/layout\/sidebar-EUEIxYv.css",
-        "type": "css"
+    "\/assets\/js\/components\/alerts.js": {
+        "path": "\/assets\/js\/components\/alerts-E6detBf.js",
+        "type": "js"
     },
-    "\/assets\/css\/layout\/footer.css": {
-        "path": "\/assets\/css\/layout\/footer-GqAxWOp.css",
-        "type": "css"
+    "\/assets\/js\/components\/modals.js": {
+        "path": "\/assets\/js\/components\/modals-FQ2mX-D.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/routes.js": {
+        "path": "\/assets\/js\/pages\/routes-O9ciLHJ.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/route-show.js": {
+        "path": "\/assets\/js\/pages\/route-show-otyczKt.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/route-compare.js": {
+        "path": "\/assets\/js\/pages\/route-compare-MzAeCtD.js",
+        "type": "js"
     },
     "dashboard": {
-        "path": "\/assets\/js\/pages\/dashboard-gY5ARYe.js",
+        "path": "\/assets\/js\/pages\/dashboard-OF68HzB.js",
         "type": "js"
     }
 }

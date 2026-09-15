@@ -4,10 +4,10 @@
 
 {% block stylesheets %}
     {{ parent() }}
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" ...>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard.css') }}">
 {% endblock %}
+
 
 {% block content %}
 {% set totals = stats.totals|default({}) %}
@@ -15,8 +15,19 @@
 {% set health = kpis.health_score|default(100) %}
 {% set hydro  = stats.hydro|default({}) %}
 {% set hydroStats  = hydro.stats|default({}) %}
+{% set hydroList   = hydro.stations_list|default([]) %}
 {% set pluvio      = stats.pluvio|default({}) %}
 {% set pluvioStats = pluvio.stats|default({}) %}
+{% set fetch       = stats.fetch_status|default({}) %}
+
+{% macro riskClass(risk) %}
+{%- if risk == 'overflow' -%}hydro-station-btn--overflow
+{%- elseif risk == 'alert' -%}hydro-station-btn--alert
+{%- elseif risk == 'attention' -%}hydro-station-btn--attention
+{%- elseif risk == 'normal' -%}hydro-station-btn--normal
+{%- else -%}hydro-station-btn--unknown
+{%- endif -%}
+{% endmacro %}
 
 <div class="dashboard-page"
      data-dashboard
@@ -95,6 +106,13 @@
                            placeholder="Ex.: Conselheiro Lafaiete" autocomplete="off">
                 </label>
 
+                <label class="dashboard-filter-field dashboard-filter-field--grow">
+                    <span>Excluir vias (regex, uma por linha)</span>
+                    <textarea name="exclude_streets" data-filter="exclude_streets"
+                              rows="2"
+                              placeholder="Ex.: ^BR-|^MG-|anel viário">{{ filters.exclude_streets }}</textarea>
+                </label>
+
                 <div class="dashboard-filter-actions">
                     <button type="submit" class="dashboard-button is-primary" data-action="apply-filters">Aplicar</button>
                     <button type="button" class="dashboard-button" data-action="clear-filters">Limpar</button>
@@ -109,7 +127,7 @@
             <article class="dashboard-kpi-card kpi-blue">
                 <div class="dashboard-kpi-top">
                     <span class="dashboard-kpi-icon" aria-hidden="true">⚠</span>
-                    <span class="dashboard-kpi-trend">{{ totals.alerts_active|default(0) }} ativos</span>
+                    <span class="dashboard-kpi-trend" data-kpi-trend="alerts_active">{{ totals.alerts_active|default(0) }} ativos</span>
                 </div>
                 <strong class="dashboard-kpi-value" data-count-value="{{ kpis.alerts|default(0) }}">{{ kpis.alerts|default(0) }}</strong>
                 <span class="dashboard-kpi-label">Alertas registrados</span>
@@ -119,11 +137,26 @@
             <article class="dashboard-kpi-card kpi-orange">
                 <div class="dashboard-kpi-top">
                     <span class="dashboard-kpi-icon" aria-hidden="true">≋</span>
-                    <span class="dashboard-kpi-trend {{ totals.jams_active|default(0) > 10 ? 'is-warning' }}">{{ totals.jams_active|default(0) }} ativos</span>
+                    <span class="dashboard-kpi-trend {{ totals.jams_active|default(0) > 10 ? 'is-warning' }}"
+                          data-kpi-trend="jams_active">{{ totals.jams_active|default(0) }} ativos</span>
                 </div>
                 <strong class="dashboard-kpi-value" data-count-value="{{ kpis.jams|default(0) }}">{{ kpis.jams|default(0) }}</strong>
                 <span class="dashboard-kpi-label">Congestionamentos</span>
                 <div class="dashboard-kpi-footer"><span>Atraso médio {{ totals.jams_avg_delay|default(0)|round(0) }}s</span><span aria-hidden="true">→</span></div>
+            </article>
+
+            <article class="dashboard-kpi-card kpi-gold">
+                <div class="dashboard-kpi-top">
+                    <span class="dashboard-kpi-icon" aria-hidden="true">⇉</span>
+                    <span class="dashboard-kpi-trend {{ kpis.routes_delayed|default(0) > 0 ? 'is-warning' }}"
+                          data-kpi-trend="routes_delayed">{{ kpis.routes_delayed|default(0) }} atrasadas</span>
+                </div>
+                <strong class="dashboard-kpi-value" data-count-value="{{ kpis.routes_total|default(0) }}">{{ kpis.routes_total|default(0) }}</strong>
+                <span class="dashboard-kpi-label">Rotas TVT monitoradas</span>
+                <div class="dashboard-kpi-footer">
+                    <span>{{ kpis.routes_severe|default(0) }} críticas/altas</span>
+                    <span aria-hidden="true">→</span>
+                </div>
             </article>
 
             <article class="dashboard-kpi-card kpi-green">
@@ -149,9 +182,8 @@
             <article class="dashboard-kpi-card kpi-cyan">
                 <div class="dashboard-kpi-top">
                     <span class="dashboard-kpi-icon" aria-hidden="true">≈</span>
-                    <span class="dashboard-kpi-trend {{ kpis.hydro_at_risk|default(0) > 0 ? 'is-warning' }}">
-                        {{ kpis.hydro_at_risk|default(0) }} em atenção
-                    </span>
+                    <span class="dashboard-kpi-trend {{ kpis.hydro_at_risk|default(0) > 0 ? 'is-warning' }}"
+                          data-kpi-trend="hydro_at_risk">{{ kpis.hydro_at_risk|default(0) }} em atenção</span>
                 </div>
                 <strong class="dashboard-kpi-value" data-count-value="{{ kpis.hydro_stations|default(0) }}">{{ kpis.hydro_stations|default(0) }}</strong>
                 <span class="dashboard-kpi-label">Rios monitorados</span>
@@ -161,9 +193,8 @@
             <article class="dashboard-kpi-card kpi-rain">
                 <div class="dashboard-kpi-top">
                     <span class="dashboard-kpi-icon" aria-hidden="true">☔</span>
-                    <span class="dashboard-kpi-trend {{ kpis.pluvio_rain_24h|default(0) > 0 ? 'is-positive' }}">
-                        {{ kpis.pluvio_rain_24h|default(0)|number_format(1, ',', '.') }} mm · 24h
-                    </span>
+                    <span class="dashboard-kpi-trend {{ kpis.pluvio_rain_24h|default(0) > 0 ? 'is-positive' }}"
+                          data-kpi-trend="pluvio_rain_24h">{{ kpis.pluvio_rain_24h|default(0)|number_format(1, ',', '.') }} mm · 24h</span>
                 </div>
                 <strong class="dashboard-kpi-value" data-count-value="{{ kpis.pluvio_stations|default(0) }}">{{ kpis.pluvio_stations|default(0) }}</strong>
                 <span class="dashboard-kpi-label">Pontos de chuva</span>
@@ -174,7 +205,7 @@
             </article>
         </section>
 
-        {# ── Linha 1: gráficos ──────────────────────────────────────── #}
+        {# ── Linha 1: atividade + tipos ────────────────────────────── #}
         <div class="dashboard-main-grid">
             <section class="dashboard-panel">
                 <header class="dashboard-panel-header">
@@ -204,18 +235,18 @@
             </section>
         </div>
 
-        {# ── Linha 2: gráficos ──────────────────────────────────────── #}
+        {# ── Linha 2: top ruas + jams + clima ──────────────────────── #}
         <div class="dashboard-main-grid">
             <section class="dashboard-panel">
                 <header class="dashboard-panel-header">
                     <div>
-                        <span class="dashboard-panel-kicker">Top cidades</span>
+                        <span class="dashboard-panel-kicker">Top ruas</span>
                         <h2>Concentração de alertas</h2>
                     </div>
                 </header>
                 <div class="dashboard-chart-wrap dashboard-chart-wrap--tall">
-                    <canvas data-chart="alerts-by-city"
-                            data-chart-data='{{ stats.charts.alerts_by_city|json_encode|e('html_attr') }}'></canvas>
+                    <canvas data-chart="alerts-by-street"
+                            data-chart-data='{{ stats.charts.alerts_by_street|json_encode|e('html_attr') }}'></canvas>
                 </div>
             </section>
 
@@ -236,7 +267,7 @@
                 <header class="dashboard-panel-header">
                     <div>
                         <span class="dashboard-panel-kicker">Clima</span>
-                        <h2>Tendência de temperatura</h2>
+                        <h2>Tendência meteorológica</h2>
                     </div>
                 </header>
                 <div class="dashboard-chart-wrap dashboard-chart-wrap--tall">
@@ -246,8 +277,11 @@
             </section>
         </div>
 
-        {# ── Monitoramento hidrológico (só nível do rio) ───────────── #}
-        <section class="dashboard-panel dashboard-hydro-panel">
+        {# ── Monitoramento hidrológico ────────────────────────────── #}
+        <section class="dashboard-panel dashboard-hydro-panel"
+                 data-hydro-panel
+                 data-hydro-trend-all='{{ hydro.trend|default([])|json_encode|e('html_attr') }}'
+                 data-hydro-trend-by-station='{{ hydro.trend_by_station|default({})|json_encode|e('html_attr') }}'>
             <header class="dashboard-panel-header">
                 <div>
                     <span class="dashboard-panel-kicker">Recursos hídricos</span>
@@ -265,30 +299,67 @@
             <div class="dashboard-hydro-strip">
                 <div class="hydro-stat">
                     <span class="hydro-stat-label">Estações</span>
-                    <strong>{{ hydroStats.stations|default(0) }}</strong>
+                    <strong data-hydro-stat="stations">{{ hydroStats.stations|default(0) }}</strong>
                 </div>
                 <div class="hydro-stat {{ (hydroStats.risk.overflow|default(0) + hydroStats.risk.alert|default(0)) > 0 ? 'is-danger' }}">
                     <span class="hydro-stat-label">Alerta / transbordo</span>
-                    <strong>{{ hydroStats.risk.overflow|default(0) + hydroStats.risk.alert|default(0) }}</strong>
+                    <strong data-hydro-stat="alert">{{ hydroStats.risk.overflow|default(0) + hydroStats.risk.alert|default(0) }}</strong>
                 </div>
                 <div class="hydro-stat {{ hydroStats.risk.attention|default(0) > 0 ? 'is-warning' }}">
                     <span class="hydro-stat-label">Em atenção</span>
-                    <strong>{{ hydroStats.risk.attention|default(0) }}</strong>
+                    <strong data-hydro-stat="attention">{{ hydroStats.risk.attention|default(0) }}</strong>
                 </div>
                 <div class="hydro-stat is-normal">
                     <span class="hydro-stat-label">Normal</span>
-                    <strong>{{ hydroStats.risk.normal|default(0) }}</strong>
+                    <strong data-hydro-stat="normal">{{ hydroStats.risk.normal|default(0) }}</strong>
                 </div>
             </div>
 
-            <div class="dashboard-hydro-chart dashboard-hydro-chart--full">
-                <canvas data-chart="hydro-trend"
-                        data-chart-data='{{ hydro.trend|default([])|json_encode|e('html_attr') }}'></canvas>
+            <div class="dashboard-hydro-layout" data-hydro-layout>
+                <div class="dashboard-hydro-chart dashboard-hydro-chart--full">
+                    <canvas data-chart="hydro-trend"
+                            data-chart-data='{{ hydro.trend|default([])|json_encode|e('html_attr') }}'></canvas>
+                </div>
+
+                {% if hydroList|length > 1 %}
+                    <aside class="dashboard-station-picker" data-hydro-picker>
+                        <div class="dashboard-station-picker-head">
+                            <strong>Rios monitorados</strong>
+                            <small>{{ hydroList|length }} estações</small>
+                        </div>
+                        <button type="button"
+                                class="hydro-station-btn is-active hydro-station-btn--all"
+                                data-hydro-select="all">
+                            <span class="hydro-station-btn-name">Todas as estações</span>
+                            <small>Média agregada</small>
+                        </button>
+                        {% for st in hydroList %}
+                            <button type="button"
+                                    class="hydro-station-btn {{ _self.riskClass(st.risk) }}"
+                                    data-hydro-select="{{ st.id }}"
+                                    data-station-level="{{ st.level is not null ? st.level : '' }}"
+                                    data-station-risk="{{ st.risk }}">
+                                <span class="hydro-station-btn-name">{{ st.name }}</span>
+                                <small>{{ st.city|default('—') }}{% if st.state %}/{{ st.state }}{% endif %}</small>
+                                <span class="hydro-station-btn-level">
+                                    {% if st.level is not null %}
+                                        {{ st.level|number_format(2, ',', '.') }} m
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </span>
+                            </button>
+                        {% endfor %}
+                    </aside>
+                {% endif %}
             </div>
         </section>
 
-        {# ── Pluviometria (pluviômetros + chuva das estações hidro) ── #}
-        <section class="dashboard-panel dashboard-pluvio-panel">
+        {# ── Pluviometria ─────────────────────────────────────────── #}
+        <section class="dashboard-panel dashboard-pluvio-panel"
+                 data-pluvio-panel
+                 data-pluvio-hourly-all='{{ pluvio.hourly|default([])|json_encode|e('html_attr') }}'
+                 data-pluvio-hourly-by-station='{{ pluvio.hourly_by_station|default({})|json_encode|e('html_attr') }}'>
             <header class="dashboard-panel-header">
                 <div>
                     <span class="dashboard-panel-kicker">Precipitação</span>
@@ -306,57 +377,62 @@
             <div class="dashboard-hydro-strip">
                 <div class="hydro-stat">
                     <span class="hydro-stat-label">Pontos de medição</span>
-                    <strong>{{ pluvioStats.stations|default(0) }}</strong>
+                    <strong data-pluvio-stat="stations">{{ pluvioStats.stations|default(0) }}</strong>
                 </div>
                 <div class="hydro-stat {{ pluvioStats.rain_1h|default(0) > 0 ? 'is-warning' }}">
                     <span class="hydro-stat-label">Última hora</span>
-                    <strong>{{ pluvioStats.rain_1h|default(0)|number_format(1, ',', '.') }}<small style="font-size:11px;font-weight:600;color:var(--dash-muted);margin-left:4px">mm</small></strong>
+                    <strong data-pluvio-stat="rain_1h">{{ pluvioStats.rain_1h|default(0)|number_format(1, ',', '.') }}<small style="font-size:11px;font-weight:600;color:var(--dash-muted);margin-left:4px">mm</small></strong>
                 </div>
                 <div class="hydro-stat {{ pluvioStats.rain_24h|default(0) > 0 ? 'is-normal' : '' }}">
                     <span class="hydro-stat-label">Últimas 24h</span>
-                    <strong>{{ pluvioStats.rain_24h|default(0)|number_format(1, ',', '.') }}<small style="font-size:11px;font-weight:600;color:var(--dash-muted);margin-left:4px">mm</small></strong>
+                    <strong data-pluvio-stat="rain_24h">{{ pluvioStats.rain_24h|default(0)|number_format(1, ',', '.') }}<small style="font-size:11px;font-weight:600;color:var(--dash-muted);margin-left:4px">mm</small></strong>
                 </div>
                 <div class="hydro-stat">
                     <span class="hydro-stat-label">Pico / 24h</span>
-                    <strong>{{ pluvioStats.peak_24h|default(0)|number_format(1, ',', '.') }}<small style="font-size:11px;font-weight:600;color:var(--dash-muted);margin-left:4px">mm/h</small></strong>
+                    <strong data-pluvio-stat="peak_24h">{{ pluvioStats.peak_24h|default(0)|number_format(1, ',', '.') }}<small style="font-size:11px;font-weight:600;color:var(--dash-muted);margin-left:4px">mm/h</small></strong>
                 </div>
             </div>
 
-            <div class="dashboard-hydro-grid">
+            <div class="dashboard-hydro-layout">
                 <div class="dashboard-hydro-chart">
                     <canvas data-chart="pluvio-hourly"
                             data-chart-data='{{ pluvio.hourly|default([])|json_encode|e('html_attr') }}'></canvas>
                 </div>
 
-                <div class="dashboard-pluvio-list">
-                    <div class="dashboard-pluvio-list-head">
+                <aside class="dashboard-station-picker" data-pluvio-picker>
+                    <div class="dashboard-station-picker-head">
                         <strong>Chuva por estação · 24h</strong>
+                        <small>{{ pluvio.stations|default([])|length }} pontos</small>
                     </div>
+                    <button type="button"
+                            class="hydro-station-btn is-active hydro-station-btn--all"
+                            data-pluvio-select="all">
+                        <span class="hydro-station-btn-name">Todas as estações</span>
+                        <small>Média agregada</small>
+                    </button>
                     {% for s in pluvio.stations|default([]) %}
                         {% set pct = pluvioStats.peak_24h > 0
                             ? min(100, (s.rain24h / pluvioStats.peak_24h) * 100)
                             : 0 %}
-                        <div class="pluvio-row pluvio-row--{{ s.source }}">
-                            <div class="pluvio-row-head">
-                                <strong>
-                                    {{ s.stationName }}
-                                    {% if s.source == 'hydro' %}
-                                        <span class="pluvio-source-badge pluvio-source-badge--hydro">Hidro</span>
-                                    {% else %}
-                                        <span class="pluvio-source-badge pluvio-source-badge--auto">Auto</span>
-                                    {% endif %}
-                                </strong>
-                                <small>
-                                    {{ s.city|default('—') }}{% if s.state %}/{{ s.state }}{% endif %}
-                                    {% if s.lastReading %} · {{ s.lastReading|date('d/m H:i') }}{% endif %}
-                                </small>
-                            </div>
-                            <div class="pluvio-row-bar" style="--pct:{{ pct }}"></div>
-                            <div class="pluvio-row-value">
-                                <strong>{{ s.rain24h|number_format(1, ',', '.') }} mm</strong>
-                                <small>pico {{ s.peak24h|number_format(1, ',', '.') }} mm/h</small>
-                            </div>
-                        </div>
+                        <button type="button"
+                                class="hydro-station-btn pluvio-station-btn pluvio-station-btn--{{ s.source }}"
+                                data-pluvio-select="{{ s.stationId }}"
+                                data-pluvio-rain24h="{{ s.rain24h }}"
+                                style="--pct:{{ pct }}">
+                            <span class="hydro-station-btn-name">
+                                {{ s.stationName }}
+                                <span class="pluvio-source-badge pluvio-source-badge--{{ s.source }}">
+                                    {{ s.source == 'hydro' ? 'Hidro' : 'Auto' }}
+                                </span>
+                            </span>
+                            <small>
+                                {{ s.city|default('—') }}{% if s.state %}/{{ s.state }}{% endif %}
+                                {% if s.lastReading %} · {{ s.lastReading|date('d/m H:i') }}{% endif %}
+                            </small>
+                            <span class="hydro-station-btn-level">
+                                {{ s.rain24h|number_format(1, ',', '.') }} mm
+                            </span>
+                        </button>
                     {% else %}
                         <div class="dashboard-empty">
                             <span aria-hidden="true">✓</span>
@@ -364,7 +440,7 @@
                             <small>Cadastre um pluviômetro ou estação hidro com dados de chuva.</small>
                         </div>
                     {% endfor %}
-                </div>
+                </aside>
             </div>
         </section>
 
@@ -398,17 +474,16 @@
             <section class="dashboard-panel data-section" data-section="alerts">
                 <header class="dashboard-panel-header">
                     <div><span class="dashboard-panel-kicker">Tempo real</span><h2>Alertas recentes</h2></div>
-                    <span class="dashboard-panel-count {{ stats.recent.alerts|length > 0 ? 'is-orange' }}">{{ stats.recent.alerts|length }}</span>
+                    <span class="dashboard-panel-count {{ stats.recent.alerts|length > 0 ? 'is-orange' }}"
+                          data-count="recent-alerts">{{ stats.recent.alerts|length }}</span>
                 </header>
                 <div class="dashboard-data-list" data-list="alerts">
                     {% for alert in stats.recent.alerts %}
-                        <div class="dashboard-data-row"
-                             data-search-text="{{ (alert.type ~ ' ' ~ alert.subtype ~ ' ' ~ alert.city)|lower }}"
-                             data-date="{{ alert.pubDateTime ? alert.pubDateTime|date('Y-m-d') : '' }}">
+                        <div class="dashboard-data-row">
                             <span class="dashboard-row-icon row-orange" aria-hidden="true">⚠</span>
                             <div>
                                 <strong>{{ alert.typeLabel }}</strong>
-                                <small>#{{ alert.id }} · {{ alert.subtype|default('—') }} · {{ alert.city|default('Local não informado') }}</small>
+                                <small>#{{ alert.id }} · {{ alert.subtype|default('—') }} · {{ alert.city|default('Local não informado') }}{% if alert.street %} · {{ alert.street }}{% endif %}</small>
                             </div>
                             <time datetime="{{ alert.pubDateTime }}">{{ alert.pubDateTime ? alert.pubDateTime|date('d/m H:i') : '—' }}</time>
                             <span class="dashboard-severity">Confiança {{ alert.confidence }}</span>
@@ -422,12 +497,12 @@
             <section class="dashboard-panel data-section" data-section="jams">
                 <header class="dashboard-panel-header">
                     <div><span class="dashboard-panel-kicker">Trânsito</span><h2>Congestionamentos</h2></div>
-                    <span class="dashboard-panel-count {{ stats.recent.jams|length > 0 ? 'is-orange' }}">{{ stats.recent.jams|length }}</span>
+                    <span class="dashboard-panel-count {{ stats.recent.jams|length > 0 ? 'is-orange' }}"
+                          data-count="recent-jams">{{ stats.recent.jams|length }}</span>
                 </header>
                 <div class="dashboard-data-list" data-list="jams">
                     {% for jam in stats.recent.jams %}
-                        <div class="dashboard-data-row"
-                             data-search-text="{{ (jam.street ~ ' ' ~ jam.city)|lower }}">
+                        <div class="dashboard-data-row">
                             <span class="dashboard-row-icon row-orange" aria-hidden="true">≋</span>
                             <div>
                                 <strong>{{ jam.street|default('Via não informada') }}</strong>
@@ -448,25 +523,28 @@
             <section class="dashboard-panel data-section" data-section="routes">
                 <header class="dashboard-panel-header">
                     <div><span class="dashboard-panel-kicker">Rotas TVT</span><h2>Maior atraso por rota</h2></div>
-                    <span class="dashboard-panel-count {{ stats.recent.routes|length > 0 ? 'is-orange' }}">{{ stats.recent.routes|length }}</span>
+                    <span class="dashboard-panel-count {{ stats.recent.routes|length > 0 ? 'is-orange' }}"
+                          data-count="recent-routes">{{ stats.recent.routes|length }}</span>
                 </header>
                 <div class="dashboard-data-list" data-list="routes">
                     {% for route in stats.recent.routes %}
-                        <div class="dashboard-data-row"
-                             data-search-text="{{ (route.name ~ ' ' ~ route.from_name ~ ' ' ~ route.to_name ~ ' ' ~ route.waze_route_id)|lower }}">
-                            <span class="dashboard-row-icon {{ route.delay_minutes is not null and route.delay_minutes > 5 ? 'row-orange' : 'row-green' }}" aria-hidden="true">→</span>
+                        <div class="dashboard-data-row">
+                            <span class="dashboard-row-icon {{ route.delay_level.level in ['severe','heavy'] ? 'row-orange' : (route.delay_level.level == 'none' ? 'row-green' : 'row-blue') }}" aria-hidden="true">→</span>
                             <div>
                                 <strong>{{ route.name }}</strong>
                                 <small>
                                     {% if route.from_name and route.to_name %}{{ route.from_name }} → {{ route.to_name }} · {% endif %}
-                                    Atual {{ route.time|default('—') }}s · Histórico {{ route.historic_time|default('—') }}s
+                                    Atual {{ route.time|default('—') }}s · Hist. {{ route.historic_time|default('—') }}s
                                 </small>
                             </div>
-                            <span class="dashboard-severity {{ route.delay_minutes is not null and route.delay_minutes <= 0 ? 'is-active' }}">
-                                {% if route.delay_minutes is not null %}
-                                    {% if route.delay_minutes > 0 %}+{{ route.delay_minutes }} min{% else %}No prazo{% endif %}
+                            <span class="dashboard-severity delay-badge delay-badge--{{ route.delay_level.level }}">
+                                {% if route.delay_seconds is not null and route.delay_seconds > 0 %}
+                                    +{{ route.delay_seconds }}s
+                                    <small>({{ (route.delay_ratio * 100)|round(0) }}%)</small>
+                                {% elseif route.jam_level is not null %}
+                                    Nível {{ route.jam_level }}
                                 {% else %}
-                                    Nível {{ route.jam_level|default('—') }}
+                                    No prazo
                                 {% endif %}
                             </span>
                         </div>
@@ -512,6 +590,42 @@
 
             <section class="dashboard-panel">
                 <header class="dashboard-panel-header">
+                    <div><span class="dashboard-panel-kicker">Coletas</span><h2>Última execução por fonte</h2></div>
+                </header>
+                <div class="dashboard-fetch-list" data-fetch-list>
+                    <div>
+                        <span>Waze Alerts</span>
+                        <strong data-fetch="waze_alerts">{{ fetch.waze_alerts ? fetch.waze_alerts|date('d/m/Y H:i') : '—' }}</strong>
+                    </div>
+                    <div>
+                        <span>Waze Jams</span>
+                        <strong data-fetch="waze_jams">{{ fetch.waze_jams ? fetch.waze_jams|date('d/m/Y H:i') : '—' }}</strong>
+                    </div>
+                    <div>
+                        <span>Waze TVT (rotas)</span>
+                        <strong data-fetch="waze_tvt">{{ fetch.waze_tvt ? fetch.waze_tvt|date('d/m/Y H:i') : '—' }}</strong>
+                    </div>
+                    <div>
+                        <span>Clima (Open-Meteo)</span>
+                        <strong data-fetch="weather">{{ fetch.weather ? fetch.weather|date('d/m/Y H:i') : '—' }}</strong>
+                    </div>
+                    <div>
+                        <span>CEMADEN Hidro</span>
+                        <strong data-fetch="cemaden_hydro">{{ fetch.cemaden_hydro ? fetch.cemaden_hydro|date('d/m/Y H:i') : '—' }}</strong>
+                    </div>
+                    <div>
+                        <span>CEMADEN Chuva</span>
+                        <strong data-fetch="cemaden_pluvio">{{ fetch.cemaden_pluvio ? fetch.cemaden_pluvio|date('d/m/Y H:i') : '—' }}</strong>
+                    </div>
+                    <div>
+                        <span>Câmeras parceiras</span>
+                        <strong data-fetch="cameras">{{ fetch.cameras ? fetch.cameras|date('d/m/Y H:i') : '—' }}</strong>
+                    </div>
+                </div>
+            </section>
+
+            <section class="dashboard-panel">
+                <header class="dashboard-panel-header">
                     <div><span class="dashboard-panel-kicker">Clima</span><h2>Leituras recentes</h2></div>
                 </header>
                 <div class="dashboard-data-list" data-list="weather">
@@ -532,21 +646,21 @@
                     {% endfor %}
                 </div>
             </section>
-
-            <section class="dashboard-panel">
-                <header class="dashboard-panel-header">
-                    <div><span class="dashboard-panel-kicker">Integrações</span><h2>Fontes de dados</h2></div>
-                </header>
-                <div class="dashboard-source-list">
-                    <div><span>Waze Alerts</span><strong class="dashboard-status {{ totals.alerts > 0 ? 'is-active' }}">{{ totals.alerts > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
-                    <div><span>Waze Jams</span><strong class="dashboard-status {{ totals.jams > 0 ? 'is-active' }}">{{ totals.jams > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
-                    <div><span>Clima (Open-Meteo)</span><strong class="dashboard-status {{ totals.weather > 0 ? 'is-active' }}">{{ totals.weather > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
-                    <div><span>CEMADEN Hidro</span><strong class="dashboard-status {{ kpis.hydro_stations|default(0) > 0 ? 'is-active' }}">{{ kpis.hydro_stations|default(0) > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
-                    <div><span>CEMADEN Chuva</span><strong class="dashboard-status {{ kpis.pluvio_stations|default(0) > 0 ? 'is-active' }}">{{ kpis.pluvio_stations|default(0) > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
-                    <div><span>Câmeras parceiras</span><strong class="dashboard-status {{ totals.cameras > 0 ? 'is-active' }}">{{ totals.cameras > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
-                </div>
-            </section>
         </div>
+
+        <section class="dashboard-panel">
+            <header class="dashboard-panel-header">
+                <div><span class="dashboard-panel-kicker">Integrações</span><h2>Fontes de dados</h2></div>
+            </header>
+            <div class="dashboard-source-list">
+                <div><span>Waze Alerts</span><strong class="dashboard-status {{ totals.alerts > 0 ? 'is-active' }}">{{ totals.alerts > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
+                <div><span>Waze Jams</span><strong class="dashboard-status {{ totals.jams > 0 ? 'is-active' }}">{{ totals.jams > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
+                <div><span>Clima (Open-Meteo)</span><strong class="dashboard-status {{ totals.weather > 0 ? 'is-active' }}">{{ totals.weather > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
+                <div><span>CEMADEN Hidro</span><strong class="dashboard-status {{ kpis.hydro_stations|default(0) > 0 ? 'is-active' }}">{{ kpis.hydro_stations|default(0) > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
+                <div><span>CEMADEN Chuva</span><strong class="dashboard-status {{ kpis.pluvio_stations|default(0) > 0 ? 'is-active' }}">{{ kpis.pluvio_stations|default(0) > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
+                <div><span>Câmeras parceiras</span><strong class="dashboard-status {{ totals.cameras > 0 ? 'is-active' }}">{{ totals.cameras > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
+            </div>
+        </section>
 
     </div>
 </div>
@@ -557,5 +671,5 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <script type="module" src="{{ asset('js/pages/dashboard.js') }}"></script>
+    {# sem <script type="module"> aqui — o app.js carrega o dashboard.js sozinho #}
 {% endblock %}

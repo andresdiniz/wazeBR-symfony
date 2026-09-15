@@ -33,9 +33,6 @@ final class DashboardController extends AbstractController
         ]);
     }
 
-    /**
-     * Endpoint JSON para refresh parcial sem recarregar a página.
-     */
     #[Route('/dashboard/api/data', name: 'dashboard_api_data', methods: ['GET'])]
     public function apiData(Request $request, DashboardRepository $repository): JsonResponse
     {
@@ -50,12 +47,10 @@ final class DashboardController extends AbstractController
             'ok'           => true,
             'generated_at' => (new \DateTimeImmutable())->format(DATE_ATOM),
             'filters'      => $filters,
-            'data'         => $stats,
+            'data'         => $this->normalizeDatesForJson($stats),  // ← aqui
         ]);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Helpers
     // ─────────────────────────────────────────────────────────────────────
 
     private function resolvePartnerScope(): ?\App\Entity\Partner
@@ -66,7 +61,6 @@ final class DashboardController extends AbstractController
             return null;
         }
 
-        // ROLE_ADMIN global (sem partner) → enxerga tudo
         if ($user->isGlobalAdmin()) {
             return null;
         }
@@ -74,14 +68,38 @@ final class DashboardController extends AbstractController
         return $user->getPartner();
     }
 
-    /** @return array{period:string,type:string,query:string,city:?string} */
+    /** @return array{period:string,type:string,query:string,city:?string,exclude_streets:string} */
     private function extractFilters(Request $request): array
     {
         return [
-            'period' => (string) $request->query->get('period', 'all'),
-            'type'   => (string) $request->query->get('type', 'all'),
-            'query'  => trim((string) $request->query->get('query', '')),
-            'city'   => $request->query->get('city') ?: null,
+            'period'          => (string) $request->query->get('period', 'all'),
+            'type'            => (string) $request->query->get('type', 'all'),
+            'query'           => trim((string) $request->query->get('query', '')),
+            'city'            => $request->query->get('city') ?: null,
+            'exclude_streets' => trim((string) $request->query->get('exclude_streets', '')),
         ];
     }
+    /**
+ * Converte recursivamente \DateTimeInterface em string ISO 8601.
+ *
+ * Necessário porque o json_encode do PHP serializa \DateTimeImmutable
+ * como objeto ({"date":"...","timezone_type":3,...}), o que quebra
+ * `new Date()` no JS (Invalid Date).
+ */
+private function normalizeDatesForJson(mixed $value): mixed
+{
+    if ($value instanceof \DateTimeInterface) {
+        return $value->format(DATE_ATOM);
+    }
+
+    if (is_array($value)) {
+        $out = [];
+        foreach ($value as $k => $v) {
+            $out[$k] = $this->normalizeDatesForJson($v);
+        }
+        return $out;
+    }
+
+    return $value;
+}
 }

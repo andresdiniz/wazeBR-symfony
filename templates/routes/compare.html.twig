@@ -1,0 +1,484 @@
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}Comparar rotas | WazeBR{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <link rel="stylesheet" href="{{ asset('css/pages/route-compare.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="rc-page" data-route-compare>
+
+    <div class="rc-container">
+
+        <nav class="rc-breadcrumb" aria-label="Navegação">
+            <a href="{{ path('routes_index') }}">Rotas</a>
+            <span aria-hidden="true">/</span>
+            <span aria-current="page">Comparar</span>
+        </nav>
+
+        {# ── Cabeçalho + picker ─────────────────────────────────── #}
+        <header class="rc-header">
+            <div class="rc-header__top">
+                <div>
+                    <span class="rc-eyebrow"><i></i> Análise comparativa</span>
+                    <h1>Comparar rotas</h1>
+                    <p>Veja qual das duas rotas performa melhor em cada horário.</p>
+                </div>
+            </div>
+
+            <form method="get" action="{{ path('routes_compare') }}"
+                  class="rc-picker" data-rc-form>
+
+                <div class="rc-picker__field">
+                    <span class="rc-picker__label rc-picker__label--a">Rota A</span>
+                    <select name="a" data-rc-select-a>
+                        <option value="">— Selecione —</option>
+                        {% for r in routes %}
+                            <option value="{{ r.id }}" {{ aId == r.id ? 'selected' }}>
+                                {{ r.name }}{% if r.from and r.to %} · {{ r.from }} → {{ r.to }}{% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="rc-picker__vs" aria-hidden="true">VS</div>
+
+                <div class="rc-picker__field">
+                    <span class="rc-picker__label rc-picker__label--b">Rota B</span>
+                    <select name="b" data-rc-select-b>
+                        <option value="">— Selecione —</option>
+                        {% for r in routes %}
+                            <option value="{{ r.id }}" {{ bId == r.id ? 'selected' }}>
+                                {{ r.name }}{% if r.from and r.to %} · {{ r.from }} → {{ r.to }}{% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="rc-picker__actions">
+                    <button type="button" class="rc-icon-btn" data-rc-swap
+                            title="Inverter A e B" aria-label="Inverter A e B">
+                        ⇄
+                    </button>
+                    <button type="submit" class="rc-button rc-button--primary">
+                        Comparar
+                    </button>
+                </div>
+            </form>
+        </header>
+
+        {% if compare is null %}
+            <section class="rc-empty">
+                <span aria-hidden="true">⇄</span>
+                <strong>Selecione duas rotas para começar</strong>
+                <small>Escolha uma rota em cada campo acima e clique em Comparar.</small>
+            </section>
+        {% else %}
+
+            {% set a = compare.a %}
+            {% set b = compare.b %}
+            {% set st = compare.stats %}
+            {% set pointsA = st.pointsA|default(0) %}
+            {% set pointsB = st.pointsB|default(0) %}
+
+            {# ── Veredito ──────────────────────────────────────── #}
+            <section class="rc-verdict rc-verdict--{{ pointsA > pointsB ? 'a' : (pointsB > pointsA ? 'b' : 'tie') }}">
+                <div class="rc-verdict__icon" aria-hidden="true">
+                    {% if pointsA > pointsB %}◀
+                    {% elseif pointsB > pointsA %}▶
+                    {% else %}≡{% endif %}
+                </div>
+                <div class="rc-verdict__text">
+                    {% if pointsA > pointsB %}
+                        <strong>{{ a.name }} vence</strong>
+                        <span>{{ pointsA }} de {{ pointsA + pointsB }} métricas comparadas</span>
+                    {% elseif pointsB > pointsA %}
+                        <strong>{{ b.name }} vence</strong>
+                        <span>{{ pointsB }} de {{ pointsA + pointsB }} métricas comparadas</span>
+                    {% else %}
+                        <strong>Empate técnico</strong>
+                        <span>Cada rota vence em {{ pointsA }} métrica{{ pointsA != 1 ? 's' : '' }}</span>
+                    {% endif %}
+                </div>
+                <div class="rc-verdict__score">
+                    <span class="rc-verdict__score-a">{{ pointsA }}</span>
+                    <span class="rc-verdict__score-sep">×</span>
+                    <span class="rc-verdict__score-b">{{ pointsB }}</span>
+                </div>
+            </section>
+
+            {# ── Banner VS ─────────────────────────────────────── #}
+            <section class="rc-vs">
+
+                <article class="rc-vs__card rc-vs__card--a">
+                    <header class="rc-vs__head">
+                        <span class="rc-vs__badge-label">Rota A</span>
+                        {% if st.winnerNow == 'a' %}
+                            <span class="rc-vs__status rc-vs__status--win">Melhor agora</span>
+                        {% elseif st.winnerNow == 'b' %}
+                            <span class="rc-vs__status rc-vs__status--lose">Pior agora</span>
+                        {% elseif st.winnerNow == 'tie' %}
+                            <span class="rc-vs__status rc-vs__status--tie">Empate</span>
+                        {% endif %}
+                    </header>
+                    <h2 class="rc-vs__name">{{ a.name }}</h2>
+                    <p class="rc-vs__path">
+                        {% if a.from and a.to %}{{ a.from }} → {{ a.to }}{% else %}Sem descrição{% endif %}
+                        {% if a.lengthMeters %} · {{ (a.lengthMeters / 1000)|number_format(1, ',', '.') }} km{% endif %}
+                    </p>
+                    <div class="rc-vs__spacer"></div>
+                    <div class="rc-vs__current">
+                        <span class="rc-vs__current-label">Agora</span>
+                        <div class="rc-vs__current-row">
+                            {% if a.current and a.current.delaySeconds is not null %}
+                                <strong class="rc-vs__current-value">+{{ a.current.delaySeconds }}<small>s</small></strong>
+                                {% if a.current.delayRatio is not null %}
+                                    <span class="rc-vs__current-ratio">{{ (a.current.delayRatio * 100)|round(0) }}%</span>
+                                {% endif %}
+                            {% else %}
+                                <strong class="rc-vs__current-value">—</strong>
+                            {% endif %}
+                        </div>
+                        <small class="rc-vs__current-hint">sobre o tempo histórico</small>
+                    </div>
+                </article>
+
+                <div class="rc-vs__center">
+                    <div class="rc-vs__center-title">VS</div>
+                    {% if st.winner7d %}
+                        <div class="rc-vs__center-winner">
+                            melhor em 7d
+                            <strong>{{ st.winner7d == 'a' ? 'A' : 'B' }}</strong>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <article class="rc-vs__card rc-vs__card--b">
+                    <header class="rc-vs__head">
+                        <span class="rc-vs__badge-label">Rota B</span>
+                        {% if st.winnerNow == 'b' %}
+                            <span class="rc-vs__status rc-vs__status--win">Melhor agora</span>
+                        {% elseif st.winnerNow == 'a' %}
+                            <span class="rc-vs__status rc-vs__status--lose">Pior agora</span>
+                        {% elseif st.winnerNow == 'tie' %}
+                            <span class="rc-vs__status rc-vs__status--tie">Empate</span>
+                        {% endif %}
+                    </header>
+                    <h2 class="rc-vs__name">{{ b.name }}</h2>
+                    <p class="rc-vs__path">
+                        {% if b.from and b.to %}{{ b.from }} → {{ b.to }}{% else %}Sem descrição{% endif %}
+                        {% if b.lengthMeters %} · {{ (b.lengthMeters / 1000)|number_format(1, ',', '.') }} km{% endif %}
+                    </p>
+                    <div class="rc-vs__spacer"></div>
+                    <div class="rc-vs__current">
+                        <span class="rc-vs__current-label">Agora</span>
+                        <div class="rc-vs__current-row">
+                            {% if b.current and b.current.delaySeconds is not null %}
+                                <strong class="rc-vs__current-value">+{{ b.current.delaySeconds }}<small>s</small></strong>
+                                {% if b.current.delayRatio is not null %}
+                                    <span class="rc-vs__current-ratio">{{ (b.current.delayRatio * 100)|round(0) }}%</span>
+                                {% endif %}
+                            {% else %}
+                                <strong class="rc-vs__current-value">—</strong>
+                            {% endif %}
+                        </div>
+                        <small class="rc-vs__current-hint">sobre o tempo histórico</small>
+                    </div>
+                </article>
+
+            </section>
+
+            {# ── Tabela comparativa ────────────────────────────── #}
+            <section class="rc-compare">
+
+                <header class="rc-compare__head">
+                    <span class="rc-compare__col-label">Métrica</span>
+                    <span class="rc-compare__col-name rc-compare__col-name--a">{{ a.name }}</span>
+                    <span class="rc-compare__col-name rc-compare__col-name--b">{{ b.name }}</span>
+                </header>
+
+                {% set rows = [
+                    { label: 'Atraso atual',       a: a.current ? a.current.delaySeconds : null, b: b.current ? b.current.delaySeconds : null, fmt: 'sec' },
+                    { label: 'Média 24h',          a: a.stats.avgDelay24h, b: b.stats.avgDelay24h, fmt: 'sec' },
+                    { label: 'Média 7 dias',       a: a.stats.avgDelay7d,  b: b.stats.avgDelay7d,  fmt: 'sec' },
+                    { label: '% vs histórico 7d',  a: a.stats.avgRatio7d,  b: b.stats.avgRatio7d,  fmt: 'pct' }
+                ] %}
+
+                {% for r in rows %}
+                    {% set aVal = r.a %}
+                    {% set bVal = r.b %}
+                    {% set aWin = aVal is not null and (bVal is null or aVal < bVal) %}
+                    {% set bWin = bVal is not null and (aVal is null or bVal < aVal) %}
+                    {% set tie  = aVal is not null and bVal is not null and aVal == bVal %}
+                    {% set aCls = tie ? 'is-tie' : (aWin ? 'is-win' : (bWin ? 'is-lose' : '')) %}
+                    {% set bCls = tie ? 'is-tie' : (bWin ? 'is-win' : (aWin ? 'is-lose' : '')) %}
+
+                    <div class="rc-compare__row">
+                        <span class="rc-compare__col-label">{{ r.label }}</span>
+                        <span class="rc-compare__col-val {{ aCls }}">
+                            {% if aVal is null %}—
+                            {% elseif r.fmt == 'sec' %}+{{ aVal|round(0) }}s
+                            {% elseif r.fmt == 'pct' %}{{ (aVal * 100)|round(0) }}%
+                            {% else %}{{ aVal }}{% endif %}
+                            {% if not tie and aWin %}<i class="rc-flag" aria-hidden="true">▲</i>{% endif %}
+                        </span>
+                        <span class="rc-compare__col-val {{ bCls }}">
+                            {% if bVal is null %}—
+                            {% elseif r.fmt == 'sec' %}+{{ bVal|round(0) }}s
+                            {% elseif r.fmt == 'pct' %}{{ (bVal * 100)|round(0) }}%
+                            {% else %}{{ bVal }}{% endif %}
+                            {% if not tie and bWin %}<i class="rc-flag" aria-hidden="true">▲</i>{% endif %}
+                        </span>
+                    </div>
+                {% endfor %}
+
+                {# Pior hora #}
+                {% set aW = a.stats.worstHour %}
+                {% set bW = b.stats.worstHour %}
+                {% set aWin = aW and (not bW or aW.avgRatio < bW.avgRatio) %}
+                {% set bWin = bW and (not aW or bW.avgRatio < aW.avgRatio) %}
+                <div class="rc-compare__row">
+                    <span class="rc-compare__col-label">Pior hora · 30d</span>
+                    <span class="rc-compare__col-val {{ aWin ? 'is-win' : (bWin ? 'is-lose' : '') }}">
+                        {% if aW %}{{ '%02d'|format(aW.hour) }}h · {{ (aW.avgRatio * 100)|round(0) }}%
+                        {% else %}—{% endif %}
+                    </span>
+                    <span class="rc-compare__col-val {{ bWin ? 'is-win' : (aWin ? 'is-lose' : '') }}">
+                        {% if bW %}{{ '%02d'|format(bW.hour) }}h · {{ (bW.avgRatio * 100)|round(0) }}%
+                        {% else %}—{% endif %}
+                    </span>
+                </div>
+
+                {# Pior dia #}
+                {% set aD = a.stats.worstDow %}
+                {% set bD = b.stats.worstDow %}
+                {% set aWin = aD and (not bD or aD.avgRatio < bD.avgRatio) %}
+                {% set bWin = bD and (not aD or bD.avgRatio < aD.avgRatio) %}
+                <div class="rc-compare__row">
+                    <span class="rc-compare__col-label">Pior dia · 30d</span>
+                    <span class="rc-compare__col-val {{ aWin ? 'is-win' : (bWin ? 'is-lose' : '') }}">
+                        {% if aD %}{{ ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'][aD.dow] }} · {{ (aD.avgRatio * 100)|round(0) }}%
+                        {% else %}—{% endif %}
+                    </span>
+                    <span class="rc-compare__col-val {{ bWin ? 'is-win' : (aWin ? 'is-lose' : '') }}">
+                        {% if bD %}{{ ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'][bD.dow] }} · {{ (bD.avgRatio * 100)|round(0) }}%
+                        {% else %}—{% endif %}
+                    </span>
+                </div>
+
+            </section>
+
+            {# ── Mapa ──────────────────────────────────────────── #}
+            <section class="rc-panel">
+                <header class="rc-panel__header">
+                    <div>
+                        <span class="rc-panel__kicker">Traçados sobrepostos</span>
+                        <h2>Mapa comparativo</h2>
+                    </div>
+                    <div class="rc-panel__legend">
+                        <span><i class="rc-dot rc-dot--a"></i>{{ a.name }}</span>
+                        <span><i class="rc-dot rc-dot--b"></i>{{ b.name }}</span>
+                    </div>
+                </header>
+                <div class="rc-map"
+                     data-rc-map
+                     data-rc-a='{{ a.geometry|json_encode|e('html_attr') }}'
+                     data-rc-b='{{ b.geometry|json_encode|e('html_attr') }}'>
+                    <div class="rc-map__fallback" data-rc-map-fallback hidden>
+                        <strong>Sem traçado geográfico</strong>
+                        <small>Uma ou ambas as rotas não têm geometria cadastrada.</small>
+                    </div>
+                </div>
+            </section>
+
+            {# ── Heatmap diferencial ──────────────────────────── #}
+            <section class="rc-panel">
+                <header class="rc-panel__header">
+                    <div>
+                        <span class="rc-panel__kicker">Onde cada uma ganha</span>
+                        <h2>Mapa diferencial · dia da semana × hora</h2>
+                    </div>
+                    <div class="rc-heat-legend">
+                        <span><i class="rc-heat-chip rc-heat-chip--a"></i>A melhor</span>
+                        <span><i class="rc-heat-chip rc-heat-chip--tie"></i>Empate</span>
+                        <span><i class="rc-heat-chip rc-heat-chip--b"></i>B melhor</span>
+                    </div>
+                </header>
+                <div class="rc-heatmap-scroll">
+                    <div class="rc-heatmap" data-rc-heatmap
+                         data-rc-heatmap-data='{{ compare.heatmapDiff|json_encode|e('html_attr') }}'></div>
+                </div>
+                <p class="rc-panel__hint">
+                    Cada célula compara a média das duas rotas naquele slot nos últimos 30 dias.
+                    Verde = A mais rápida; vermelho = B mais rápida.
+                </p>
+            </section>
+
+            {# ── Timeline ──────────────────────────────────────── #}
+            <section class="rc-panel">
+                <header class="rc-panel__header">
+                    <div>
+                        <span class="rc-panel__kicker">Últimos 7 dias</span>
+                        <h2>Evolução comparada</h2>
+                    </div>
+                    <div class="rc-panel__legend">
+                        <span><i class="rc-dot rc-dot--a"></i>{{ a.name }}</span>
+                        <span><i class="rc-dot rc-dot--b"></i>{{ b.name }}</span>
+                    </div>
+                </header>
+                <div class="rc-chart-wrap rc-chart-wrap--tall">
+                    <canvas data-chart="rc-timeline"
+                            data-chart-data='{{ compare.timeline|json_encode|e('html_attr') }}'></canvas>
+                </div>
+            </section>
+
+            {# ── Por hora / por dia ────────────────────────────── #}
+            <div class="rc-two-col">
+                <section class="rc-panel">
+                    <header class="rc-panel__header">
+                        <div>
+                            <span class="rc-panel__kicker">Últimos 30 dias</span>
+                            <h2>Por hora do dia</h2>
+                        </div>
+                        <div class="rc-panel__legend">
+                            <span><i class="rc-dot rc-dot--a"></i>A</span>
+                            <span><i class="rc-dot rc-dot--b"></i>B</span>
+                        </div>
+                    </header>
+                    <div class="rc-chart-wrap">
+                        <canvas data-chart="rc-by-hour"
+                                data-chart-data='{{ compare.byHour|json_encode|e('html_attr') }}'></canvas>
+                    </div>
+                </section>
+
+                <section class="rc-panel">
+                    <header class="rc-panel__header">
+                        <div>
+                            <span class="rc-panel__kicker">Últimos 30 dias</span>
+                            <h2>Por dia da semana</h2>
+                        </div>
+                        <div class="rc-panel__legend">
+                            <span><i class="rc-dot rc-dot--a"></i>A</span>
+                            <span><i class="rc-dot rc-dot--b"></i>B</span>
+                        </div>
+                    </header>
+                    <div class="rc-chart-wrap">
+                        <canvas data-chart="rc-by-dow"
+                                data-chart-data='{{ compare.byDow|json_encode|e('html_attr') }}'></canvas>
+                    </div>
+                </section>
+            </div>
+
+            {# ── Trechos comuns ────────────────────────────────── #}
+            <section class="rc-panel">
+                <header class="rc-panel__header">
+                    <div>
+                        <span class="rc-panel__kicker">Interseção entre as duas</span>
+                        <h2>Trechos compartilhados</h2>
+                    </div>
+                    <span class="rc-panel__count">{{ compare.commonSubRoutes|length }}</span>
+                </header>
+
+                {% if compare.commonSubRoutes is empty %}
+                    <div class="rc-empty rc-empty--inline">
+                        <strong>Sem trechos coincidentes</strong>
+                        <small>As duas rotas não compartilham nenhum ponto identificável.</small>
+                    </div>
+                {% else %}
+                    <div class="rc-common">
+                        {% for c in compare.commonSubRoutes %}
+                            <div class="rc-common__item">
+                                <div class="rc-common__head">
+                                    <strong>{{ c.a.name ?: 'Trecho' }}</strong>
+                                    <span class="rc-common__match">{{ c.matched }}</span>
+                                </div>
+                                <div class="rc-common__grid">
+                                    <div class="rc-common__side rc-common__side--a">
+                                        <span class="rc-common__side-label">A</span>
+                                        <span class="rc-common__path">{{ c.a.from ?: '—' }} → {{ c.a.to ?: '—' }}</span>
+                                        {% set r = c.a.delayRatio %}
+                                        <span class="rc-common__val {{ r and r >= 0.22 ? 'is-bad' : (r and r >= 0.10 ? 'is-warn' : 'is-ok') }}">
+                                            {{ r is not null ? (r * 100)|round(0) ~ '%' : '—' }}
+                                        </span>
+                                    </div>
+                                    <div class="rc-common__side rc-common__side--b">
+                                        <span class="rc-common__side-label">B</span>
+                                        <span class="rc-common__path">{{ c.b.from ?: '—' }} → {{ c.b.to ?: '—' }}</span>
+                                        {% set r = c.b.delayRatio %}
+                                        <span class="rc-common__val {{ r and r >= 0.22 ? 'is-bad' : (r and r >= 0.10 ? 'is-warn' : 'is-ok') }}">
+                                            {{ r is not null ? (r * 100)|round(0) ~ '%' : '—' }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </section>
+
+            {# ── Alertas cruzados ──────────────────────────────── #}
+            <section class="rc-panel">
+                <header class="rc-panel__header">
+                    <div>
+                        <span class="rc-panel__kicker">Últimos 7 dias · ≤ 60 m do traçado</span>
+                        <h2>Alertas Waze cruzados</h2>
+                    </div>
+                </header>
+
+                <div class="rc-alerts-grid">
+
+                    <div class="rc-alerts-col rc-alerts-col--shared">
+                        <h3><span class="rc-alerts-col__dot"></span>Em ambas · {{ compare.alerts.shared|length }}</h3>
+                        {% for al in compare.alerts.shared %}
+                            <div class="rc-alert">
+                                <strong>{{ al.typeLabel }}</strong>
+                                <small>{{ al.street ?: '—' }} · A {{ al.distanceA }}m / B {{ al.distanceB }}m</small>
+                            </div>
+                        {% else %}
+                            <div class="rc-empty rc-empty--small">Nenhum</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="rc-alerts-col rc-alerts-col--a">
+                        <h3><span class="rc-alerts-col__dot"></span>Só em {{ a.name }} · {{ compare.alerts.onlyA|length }}</h3>
+                        {% for al in compare.alerts.onlyA %}
+                            <div class="rc-alert">
+                                <strong>{{ al.typeLabel }}</strong>
+                                <small>{{ al.street ?: '—' }} · {{ al.distanceA }}m</small>
+                            </div>
+                        {% else %}
+                            <div class="rc-empty rc-empty--small">Nenhum</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="rc-alerts-col rc-alerts-col--b">
+                        <h3><span class="rc-alerts-col__dot"></span>Só em {{ b.name }} · {{ compare.alerts.onlyB|length }}</h3>
+                        {% for al in compare.alerts.onlyB %}
+                            <div class="rc-alert">
+                                <strong>{{ al.typeLabel }}</strong>
+                                <small>{{ al.street ?: '—' }} · {{ al.distanceB }}m</small>
+                            </div>
+                        {% else %}
+                            <div class="rc-empty rc-empty--small">Nenhum</div>
+                        {% endfor %}
+                    </div>
+
+                </div>
+            </section>
+
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+{% endblock %}

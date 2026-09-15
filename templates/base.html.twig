@@ -97,6 +97,7 @@
        ============================================================ #}
 
     {% block stylesheets %}
+       <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     {% endblock %}
 
 
@@ -105,7 +106,7 @@
        ============================================================ #}
 
     {% block importmap %}
-        {{ importmap(['app', 'js-app-init']) }}
+        {{ importmap(['app']) }}
     {% endblock %}
 
 </head>

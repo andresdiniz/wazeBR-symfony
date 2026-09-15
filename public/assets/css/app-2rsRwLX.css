@@ -1,0 +1,25 @@
+/* assets/css/app.css — bundle global */
+
+@import "layout/base-layout-VAEbl7E.css";
+@import "layout/header-O31uXsR.css";
+@import "layout/sidebar-EUEIxYv.css";
+@import "layout/footer-GqAxWOp.css";
+
+@import "components/typography-2WxBJd7.css";
+@import "components/animations-GHMRWoG.css";
+@import "components/scrollbars-ktp1oVN.css";
+@import "components/buttons-IqobaQX.css";
+@import "components/cards-uQA1m9s.css";
+@import "components/forms-tBq0gZi.css";
+@import "components/filters-PG7sBVK.css";
+@import "components/tables-_RoRovr.css";
+@import "components/charts-DWzcHsv.css";
+@import "components/accordions-x28MYlb.css";
+@import "components/alerts-_XODWN4.css";
+@import "components/notifications-A2aarQz.css";
+@import "components/avatars-Xe9-IYJ.css";
+@import "components/menus-W-AlO-K.css";
+@import "components/modals-TO1m-AP.css";
+@import "components/pagination-gam37sE.css";
+@import "components/empty-states-YB9IIZ8.css";
+@import "components/expand-buttons-I9fW0L0.css";

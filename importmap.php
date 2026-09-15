@@ -3,11 +3,11 @@
 return [
     'js-app-init' => [
         'path' => './assets/js/core/app-init.js',
-        'entrypoint' => true,
+        'entrypoint' => false,
     ],
     'app' => [
         'path' => './assets/js/app.js',
-        'entrypoint' => false,
+        'entrypoint' => true,
     ],
     'dashboard' => [
         'path' => './assets/js/pages/dashboard.js',

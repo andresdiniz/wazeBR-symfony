@@ -1,0 +1,220 @@
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}Rotas | WazeBR{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <link rel="stylesheet" href="{{ asset('css/pages/routes.css') }}">
+{% endblock %}
+
+{% block content %}
+{% set total = stats.total|default(0) %}
+{% set delayed = stats.delayed|default(0) %}
+{% set severe = stats.severe|default(0) %}
+{% set heavy = stats.heavy|default(0) %}
+{% set avgDelay = stats.avgDelaySeconds|default(0) %}
+{% set avgPct = stats.avgDelayPercent|default(0) %}
+
+<div class="routes-page" data-routes-page>
+
+    <div class="routes-container">
+
+        {# ── Cabeçalho ──────────────────────────────────────────── #}
+        <header class="routes-page-header">
+            <div>
+                <span class="routes-eyebrow"><i></i> Monitoramento de rotas</span>
+                <h1>Rotas Monitoradas</h1>
+                <p>
+                    Atraso por rota, congestionamento por trecho e irregularidades.
+                    {% if partner %} — <strong>{{ partner.name }}</strong>{% endif %}
+                </p>
+            </div>
+            <div class="routes-header-tools">
+                <a href="{{ path('routes_compare') }}" class="routes-button">
+                    ⇄ Comparar rotas
+                </a>
+                <span class="routes-last-update">
+                    <i></i> Atualizado em
+                    <time data-routes-clock>{{ "now"|date('d/m H:i') }}</time>
+                </span>
+                <button type="button" class="routes-button" data-action="refresh-routes">
+                    <span>↻</span> Atualizar
+                </button>
+            </div>
+        </header>
+
+        {# ── KPIs ──────────────────────────────────────────────── #}
+        <section class="routes-stats-grid" aria-label="Indicadores de rotas">
+            <article class="routes-stat">
+                <span class="routes-stat-icon">⇉</span>
+                <strong class="routes-stat-value" data-stat="total">{{ total }}</strong>
+                <span class="routes-stat-label">Rotas monitoradas</span>
+            </article>
+            <article class="routes-stat routes-stat--warning">
+                <span class="routes-stat-icon">⏱</span>
+                <strong class="routes-stat-value" data-stat="delayed">{{ delayed }}</strong>
+                <span class="routes-stat-label">Com atraso</span>
+            </article>
+            <article class="routes-stat routes-stat--danger">
+                <span class="routes-stat-icon">⚠</span>
+                <strong class="routes-stat-value" data-stat="severe">{{ severe }}</strong>
+                <span class="routes-stat-label">Críticas</span>
+                <small data-stat="heavy-label">{{ heavy }} alto{{ heavy != 1 ? 's' : '' }}</small>
+            </article>
+            <article class="routes-stat routes-stat--info">
+                <span class="routes-stat-icon">Σ</span>
+                <strong class="routes-stat-value" data-stat="avg-delay">
+                    {{ avgDelay }}<small>s</small>
+                </strong>
+                <span class="routes-stat-label">Atraso médio</span>
+                <small>{{ (avgPct * 100)|round(0) }}% acima do histórico</small>
+            </article>
+        </section>
+
+        {# ── Filtros ──────────────────────────────────────────── #}
+        <section class="routes-filter-panel" aria-label="Filtros de rotas">
+            <form class="routes-filter-form" data-routes-filter-form>
+                <label class="routes-filter-field routes-filter-field--grow">
+                    <span>Buscar</span>
+                    <input type="search" name="q" data-routes-search
+                           value="{{ filters.query }}"
+                           placeholder="Nome, origem, destino ou cidade..."
+                           autocomplete="off">
+                </label>
+
+                <label class="routes-filter-field">
+                    <span>Nível de atraso</span>
+                    <select name="level" data-routes-level>
+                        <option value="all"      {{ filters.level == 'all'      ? 'selected' }}>Todos</option>
+                        <option value="severe"   {{ filters.level == 'severe'   ? 'selected' }}>Crítico</option>
+                        <option value="heavy"    {{ filters.level == 'heavy'    ? 'selected' }}>Alto</option>
+                        <option value="moderate" {{ filters.level == 'moderate' ? 'selected' }}>Moderado</option>
+                        <option value="light"    {{ filters.level == 'light'    ? 'selected' }}>Leve</option>
+                        <option value="none"     {{ filters.level == 'none'     ? 'selected' }}>No prazo</option>
+                    </select>
+                </label>
+
+                <div class="routes-filter-actions">
+                    <button type="button" class="routes-button routes-button--link" data-routes-clear>
+                        Limpar
+                    </button>
+                </div>
+            </form>
+
+            <p class="routes-filter-feedback" data-routes-feedback aria-live="polite"></p>
+        </section>
+
+        {# ── Layout principal ─────────────────────────────────── #}
+        <div class="routes-layout">
+
+            {# ── Lista ──────────────────────────────────────────── #}
+            <section class="routes-panel routes-list-panel">
+                <header class="routes-panel-header">
+                    <div>
+                        <span class="routes-panel-kicker">Ordenadas por atraso</span>
+                        <h2>Rotas</h2>
+                    </div>
+                    <span class="routes-panel-count" data-routes-count>
+                        {{ routes|length }} rota{{ routes|length != 1 ? 's' : '' }}
+                    </span>
+                </header>
+
+                <div class="routes-list" data-routes-list>
+                    {% for route in routes %}
+                        {% set lvl = route.delayLevel %}
+                        <a href="{{ path('routes_show', { id: route.id }) }}"
+                            class="routes-list-detail"
+                            data-route-detail
+                            aria-label="Ver detalhes de {{ route.name }}">
+                                Detalhes →
+                        </a>
+                        <button type="button"
+                                class="routes-list-item routes-list-item--{{ lvl }}"
+                                data-route-id="{{ route.id }}"
+                                data-route-name="{{ route.name }}"
+                                data-route-level="{{ lvl }}"
+                                data-route-delay="{{ route.delaySeconds|default(0) }}"
+                                data-route-search="{{ (route.name ~ ' ' ~ (route.from|default('')) ~ ' ' ~ (route.to|default('')) ~ ' ' ~ (route.city|default(''))) |lower }}">
+                            <span class="routes-list-marker routes-list-marker--{{ lvl }}"></span>
+
+                            <span class="routes-list-body">
+                                <strong class="routes-list-name">{{ route.name }}</strong>
+                                <small class="routes-list-path">
+                                    {% if route.from and route.to %}
+                                        {{ route.from }} → {{ route.to }}
+                                    {% elseif route.city %}
+                                        {{ route.city }}
+                                    {% else %}
+                                        Sem trajeto detalhado
+                                    {% endif %}
+                                </small>
+                                {% if route.irregularityCount > 0 %}
+                                    <span class="routes-list-flag">
+                                        ⚠ {{ route.irregularityCount }}
+                                        irregularidade{{ route.irregularityCount != 1 ? 's' : '' }}
+                                    </span>
+                                {% endif %}
+                            </span>
+
+                            <span class="routes-list-delay">
+                                {% if route.delaySeconds is not null and route.delaySeconds > 0 %}
+                                    <strong>{{ (route.delayRatio * 100)|round(0) }}%</strong>
+                                    <small>+{{ route.delaySeconds }}s</small>
+                                {% elseif route.jamLevel is not null %}
+                                    <strong>N{{ route.jamLevel }}</strong>
+                                    <small>jam</small>
+                                {% else %}
+                                    <strong>—</strong>
+                                    <small>no prazo</small>
+                                {% endif %}
+                            </span>
+                        </button>
+                    {% else %}
+                        <div class="routes-empty">
+                            <span aria-hidden="true">✓</span>
+                            <strong>Nenhuma rota encontrada</strong>
+                            <small>Ajuste os filtros ou verifique as fontes.</small>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            {# ── Mapa ──────────────────────────────────────────── #}
+            <section class="routes-panel routes-map-panel">
+                <header class="routes-panel-header">
+                    <div>
+                        <span class="routes-panel-kicker">Geolocalização</span>
+                        <h2>Mapa de congestionamento</h2>
+                    </div>
+                    <div class="routes-map-legend" aria-label="Legenda">
+                        <span class="routes-legend-item"><i class="routes-legend-dot routes-legend-dot--none"></i>No prazo</span>
+                        <span class="routes-legend-item"><i class="routes-legend-dot routes-legend-dot--light"></i>Leve</span>
+                        <span class="routes-legend-item"><i class="routes-legend-dot routes-legend-dot--moderate"></i>Moderado</span>
+                        <span class="routes-legend-item"><i class="routes-legend-dot routes-legend-dot--heavy"></i>Alto</span>
+                        <span class="routes-legend-item"><i class="routes-legend-dot routes-legend-dot--severe"></i>Crítico</span>
+                    </div>
+                </header>
+
+                <div class="routes-map"
+                     data-routes-map
+                     data-routes-map-center='{{ map.center|json_encode|e('html_attr') }}'></div>
+            </section>
+        </div>
+
+    </div>
+
+    {# Payload JSON pro JS — escapado pra não quebrar com </script> #}
+    <script type="application/json" data-routes-payload>
+        {{ map|json_encode(constant('JSON_HEX_TAG') b-or constant('JSON_HEX_AMP') b-or constant('JSON_HEX_APOS') b-or constant('JSON_HEX_QUOT'))|raw }}
+    </script>
+
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+{% endblock %}

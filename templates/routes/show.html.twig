@@ -1,0 +1,364 @@
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}{{ route.name }} | Rotas | WazeBR{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/pages/route-show.css') }}">
+{% endblock %}
+
+{% block content %}
+{% set cur = current|default({}) %}
+{% set nearbyAlerts = nearbyAlerts|default([]) %}
+
+{% set HEALTH_LEVEL = stats.health >= 80 ? 'good' : (stats.health >= 55 ? 'warn' : 'bad') %}
+{% set TOTAL_OCC = (irregularities|length) + (nearbyAlerts|length) %}
+
+<div class="rs-page" data-route-show>
+
+    <div class="rs-container">
+
+        {# ── Breadcrumb + header ─────────────────────────────────── #}
+        <nav class="rs-breadcrumb" aria-label="Navegação">
+            <a href="{{ path('routes_index') }}">Rotas</a>
+            <span aria-hidden="true">/</span>
+            <span aria-current="page">{{ route.name }}</span>
+        </nav>
+
+        <header class="rs-header">
+            <div class="rs-header__main">
+                <span class="rs-eyebrow"><i></i> Análise de rota</span>
+                <h1>{{ route.name }}</h1>
+                <p class="rs-header__path">
+                    {% if route.from and route.to %}
+                        {{ route.from }} → {{ route.to }}
+                    {% elseif route.from %}
+                        {{ route.from }}
+                    {% elseif route.to %}
+                        {{ route.to }}
+                    {% else %}
+                        Sem descrição de trajeto
+                    {% endif %}
+                    {% if route.lengthMeters %}
+                        · {{ (route.lengthMeters / 1000)|number_format(1, ',', '.') }} km
+                    {% endif %}
+                    {% if cur.city %}
+                        · {{ cur.city }}{% if cur.state %}/{{ cur.state }}{% endif %}
+                    {% endif %}
+                </p>
+            </div>
+
+            <div class="rs-header__aside">
+                <div class="rs-health rs-health--{{ HEALTH_LEVEL }}">
+                    <span class="rs-health__value">{{ stats.health }}<small>%</small></span>
+                    <span class="rs-health__label">
+                        {% if stats.health >= 80 %}Estável
+                        {% elseif stats.health >= 55 %}Atenção
+                        {% else %}Crítica{% endif %}
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        {# ── Cards de KPI ─────────────────────────────────────────── #}
+        <section class="rs-kpis" aria-label="Indicadores">
+            <article class="rs-kpi">
+                <span class="rs-kpi__label">Atraso atual</span>
+                {% if cur.delaySeconds is not null %}
+                    <strong class="rs-kpi__value rs-kpi__value--{{ cur.delayRatio is not null and cur.delayRatio >= 0.4 ? 'bad' : (cur.delayRatio is not null and cur.delayRatio >= 0.15 ? 'warn' : 'good') }}">
+                        +{{ cur.delaySeconds }}<small>s</small>
+                    </strong>
+                    <span class="rs-kpi__hint">
+                        {% if cur.delayRatio is not null %}
+                            {{ (cur.delayRatio * 100)|round(0) }}% acima do histórico
+                        {% endif %}
+                    </span>
+                {% else %}
+                    <strong class="rs-kpi__value">—</strong>
+                    <span class="rs-kpi__hint">Sem leitura recente</span>
+                {% endif %}
+            </article>
+
+            <article class="rs-kpi">
+                <span class="rs-kpi__label">Média 24h</span>
+                {% if stats.avgDelay24h is not null %}
+                    <strong class="rs-kpi__value">+{{ stats.avgDelay24h|round(0) }}<small>s</small></strong>
+                    <span class="rs-kpi__hint">
+                        {{ ((stats.avgRatio24h ?? 0) * 100)|round(0) }}% acima do histórico
+                    </span>
+                {% else %}
+                    <strong class="rs-kpi__value">—</strong>
+                    <span class="rs-kpi__hint">Sem dados nas últimas 24h</span>
+                {% endif %}
+            </article>
+
+            <article class="rs-kpi">
+                <span class="rs-kpi__label">Média 7 dias</span>
+                {% if stats.avgDelay7d is not null %}
+                    <strong class="rs-kpi__value">+{{ stats.avgDelay7d|round(0) }}<small>s</small></strong>
+                    <span class="rs-kpi__hint">
+                        {{ ((stats.avgRatio7d ?? 0) * 100)|round(0) }}% acima do histórico
+                    </span>
+                {% else %}
+                    <strong class="rs-kpi__value">—</strong>
+                    <span class="rs-kpi__hint">Sem dados nos últimos 7 dias</span>
+                {% endif %}
+            </article>
+
+            <article class="rs-kpi">
+                <span class="rs-kpi__label">Pior hora do dia</span>
+                {% if stats.worstHour %}
+                    <strong class="rs-kpi__value">
+                        {{ '%02d'|format(stats.worstHour.hour) }}<small>h</small>
+                    </strong>
+                    <span class="rs-kpi__hint">
+                        {{ (stats.worstHour.avgRatio * 100)|round(0) }}% · +{{ stats.worstHour.avgDelay|round(0) }}s
+                    </span>
+                {% else %}
+                    <strong class="rs-kpi__value">—</strong>
+                    <span class="rs-kpi__hint">Amostra insuficiente</span>
+                {% endif %}
+            </article>
+
+            <article class="rs-kpi">
+                <span class="rs-kpi__label">Pior dia</span>
+                {% if stats.worstDow %}
+                    <strong class="rs-kpi__value">
+                        {{ ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'][stats.worstDow.dow] }}
+                    </strong>
+                    <span class="rs-kpi__hint">
+                        {{ (stats.worstDow.avgRatio * 100)|round(0) }}% · +{{ stats.worstDow.avgDelay|round(0) }}s
+                    </span>
+                {% else %}
+                    <strong class="rs-kpi__value">—</strong>
+                    <span class="rs-kpi__hint">Amostra insuficiente</span>
+                {% endif %}
+            </article>
+
+            <article class="rs-kpi">
+                <span class="rs-kpi__label">Amostras</span>
+                <strong class="rs-kpi__value">{{ stats.sampleCount30d }}</strong>
+                <span class="rs-kpi__hint">Últimos 30 dias</span>
+            </article>
+        </section>
+
+        {# ── Heatmap ──────────────────────────────────────────────── #}
+        <section class="rs-panel rs-heatmap-panel">
+            <header class="rs-panel__header">
+                <div>
+                    <span class="rs-panel__kicker">Padrão semanal</span>
+                    <h2>Mapa de calor · dia da semana × hora</h2>
+                </div>
+                <div class="rs-legend">
+                    <span class="rs-legend__label">Sem atraso</span>
+                    <span class="rs-legend__gradient"></span>
+                    <span class="rs-legend__label">Muito atraso</span>
+                </div>
+            </header>
+
+            <div class="rs-heatmap-scroll">
+                <div class="rs-heatmap" data-heatmap
+                     data-heatmap-data='{{ heatmap|json_encode|e('html_attr') }}'></div>
+            </div>
+
+            <p class="rs-panel__hint">
+                Cada célula representa a média das leituras naquela hora/dia nos últimos 30 dias.
+                Células vazias não têm amostras suficientes.
+            </p>
+        </section>
+
+        {# ── Timeline ─────────────────────────────────────────────── #}
+        <section class="rs-panel">
+            <header class="rs-panel__header">
+                <div>
+                    <span class="rs-panel__kicker">Últimos 7 dias</span>
+                    <h2>Evolução do atraso</h2>
+                </div>
+                <div class="rs-panel__legend">
+                    <span><i class="rs-dot rs-dot--blue"></i>Atraso (s)</span>
+                    <span><i class="rs-dot rs-dot--red"></i>% vs histórico</span>
+                </div>
+            </header>
+            <div class="rs-chart-wrap rs-chart-wrap--tall">
+                <canvas data-chart="route-timeline"
+                        data-chart-data='{{ timeline|json_encode|e('html_attr') }}'></canvas>
+            </div>
+        </section>
+
+        {# ── Grid: por hora + por dia ─────────────────────────────── #}
+        <div class="rs-two-col">
+
+            <section class="rs-panel">
+                <header class="rs-panel__header">
+                    <div>
+                        <span class="rs-panel__kicker">Últimos 30 dias</span>
+                        <h2>Média por hora do dia</h2>
+                    </div>
+                </header>
+                <div class="rs-chart-wrap">
+                    <canvas data-chart="route-by-hour"
+                            data-chart-data='{{ byHour|json_encode|e('html_attr') }}'></canvas>
+                </div>
+            </section>
+
+            <section class="rs-panel">
+                <header class="rs-panel__header">
+                    <div>
+                        <span class="rs-panel__kicker">Últimos 30 dias</span>
+                        <h2>Média por dia da semana</h2>
+                    </div>
+                </header>
+                <div class="rs-chart-wrap">
+                    <canvas data-chart="route-by-dow"
+                            data-chart-data='{{ byDow|json_encode|e('html_attr') }}'></canvas>
+                </div>
+            </section>
+
+        </div>
+
+        {# ── Grid: jam + sub-rotas ────────────────────────────────── #}
+        <div class="rs-two-col">
+
+            <section class="rs-panel">
+                <header class="rs-panel__header">
+                    <div>
+                        <span class="rs-panel__kicker">Últimos 30 dias</span>
+                        <h2>Distribuição de congestionamento</h2>
+                    </div>
+                </header>
+                <div class="rs-chart-wrap">
+                    <canvas data-chart="route-jam-dist"
+                            data-chart-data='{{ jamDistribution|json_encode|e('html_attr') }}'></canvas>
+                </div>
+            </section>
+
+            <section class="rs-panel">
+                <header class="rs-panel__header">
+                    <div>
+                        <span class="rs-panel__kicker">Estado atual</span>
+                        <h2>Trechos mais problemáticos</h2>
+                    </div>
+                </header>
+
+                <div class="rs-subroutes">
+                    {% for sub in topSubRoutes %}
+                        {% set lvl = (sub.delayRatio is not null and sub.delayRatio >= 0.4) ? 'severe'
+                            : ((sub.delayRatio is not null and sub.delayRatio >= 0.22) ? 'heavy'
+                            : ((sub.delayRatio is not null and sub.delayRatio >= 0.10) ? 'moderate'
+                            : ((sub.delayRatio is not null and sub.delayRatio > 0) ? 'light' : 'none'))) %}
+                        <div class="rs-subroute rs-subroute--{{ lvl }}">
+                            <div class="rs-subroute__head">
+                                <strong>{{ sub.name }}</strong>
+                                <span class="rs-subroute__badge rs-subroute__badge--{{ lvl }}">
+                                    {% if sub.delayRatio is not null %}
+                                        {{ (sub.delayRatio * 100)|round(0) }}%
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </span>
+                            </div>
+                            {% if sub.from and sub.to %}
+                                <small class="rs-subroute__path">{{ sub.from }} → {{ sub.to }}</small>
+                            {% endif %}
+                            <div class="rs-subroute__bar">
+                                <span style="width: {{ min(100, ((sub.delayRatio ?? 0) * 100)) }}%"></span>
+                            </div>
+                            <div class="rs-subroute__meta">
+                                <span>+{{ sub.delaySeconds ?? 0 }}s</span>
+                                {% if sub.jamLevel is not null %}<span>Jam nível {{ sub.jamLevel }}</span>{% endif %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="rs-empty">
+                            <strong>Sem sub-rotas cadastradas</strong>
+                            <small>Esta rota não tem trechos detalhados.</small>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+        </div>
+
+        {# ── Ocorrências: irregularidades TVT + alertas Waze próximos ── #}
+        <section class="rs-panel">
+            <header class="rs-panel__header">
+                <div>
+                    <span class="rs-panel__kicker">Últimos 7 dias · até 60 m do traçado</span>
+                    <h2>Ocorrências na rota</h2>
+                </div>
+                <div class="rs-panel__legend">
+                    <span><i class="rs-dot rs-dot--purple"></i>Irregularidades ({{ irregularities|length }})</span>
+                    <span><i class="rs-dot rs-dot--waze"></i>Waze Alertas ({{ nearbyAlerts|length }})</span>
+                </div>
+            </header>
+
+            {% if TOTAL_OCC == 0 %}
+                <div class="rs-empty">
+                    <span aria-hidden="true">✓</span>
+                    <strong>Nenhuma ocorrência recente</strong>
+                    <small>Nada foi registrado nesta rota nos últimos 7 dias.</small>
+                </div>
+            {% else %}
+                <div class="rs-occurrences">
+
+                    {# ── Alertas Waze próximos ── #}
+                    {% for a in nearbyAlerts %}
+                        {% set t = a.type|upper %}
+                        <div class="rs-occ rs-occ--waze">
+                            <span class="rs-occ__icon" aria-hidden="true">
+                                {% if t == 'ACCIDENT' %}✕
+                                {% elseif t == 'HAZARD' %}▲
+                                {% elseif t == 'WEATHERHAZARD' %}☂
+                                {% elseif t == 'ROAD_CLOSED' %}⊘
+                                {% elseif t == 'POLICE' %}◉
+                                {% elseif t == 'JAM' %}≋
+                                {% else %}⚠{% endif %}
+                            </span>
+                            <div class="rs-occ__body">
+                                <strong>{{ a.typeLabel|default(a.type) }}</strong>
+                                {% if a.subtype %}<em>{{ a.subtype }}</em>{% endif %}
+                                <small>
+                                    {% if a.street %}{{ a.street }}{% endif %}
+                                    {% if a.city %}{% if a.street %} · {% endif %}{{ a.city }}{% endif %}
+                                    <span class="rs-occ__dist">{{ a.distanceMeters }} m do traçado</span>
+                                </small>
+                            </div>
+                            <div class="rs-occ__meta">
+                                <time>{{ a.pubDateTime ? a.pubDateTime|date('d/m H:i') : '—' }}</time>
+                                <span class="rs-occ__badge rs-occ__badge--waze">Waze</span>
+                            </div>
+                        </div>
+                    {% endfor %}
+
+                    {# ── Irregularidades TVT ── #}
+                    {% for irr in irregularities %}
+                        <div class="rs-occ rs-occ--tvt">
+                            <span class="rs-occ__icon" aria-hidden="true">⚠</span>
+                            <div class="rs-occ__body">
+                                <strong>{{ irr.type|default('Irregularidade') }}</strong>
+                                {% if irr.subtype %}<em>{{ irr.subtype }}</em>{% endif %}
+                                <small>
+                                    {% if irr.street %}{{ irr.street }}{% endif %}
+                                    {% if irr.city %}{% if irr.street %} · {% endif %}{{ irr.city }}{% endif %}
+                                    {% if irr.severity %}{% if irr.street or irr.city %} · {% endif %}{{ irr.severity }}{% endif %}
+                                </small>
+                            </div>
+                            <div class="rs-occ__meta">
+                                <time>{{ irr.reportedAt ? irr.reportedAt|date('d/m H:i') : '—' }}</time>
+                                <span class="rs-occ__badge rs-occ__badge--tvt">TVT</span>
+                            </div>
+                        </div>
+                    {% endfor %}
+
+                </div>
+            {% endif %}
+        </section>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}

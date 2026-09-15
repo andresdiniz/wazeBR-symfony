@@ -34,6 +34,7 @@ final class DashboardRepository extends ServiceEntityRepository
                 'hourly_activity'  => $this->getHourlyActivity($partner, $filters),
                 'alerts_by_type'   => $this->getAlertsByType($partner, $filters),
                 'alerts_by_city'   => $this->getAlertsByCity($partner, $filters),
+                'alerts_by_street' => $this->getAlertsByStreet($partner, $filters),
                 'jams_by_level'    => $this->getJamsByLevel($partner, $filters),
                 'weather_trend'    => $this->getWeatherTrend($partner, $filters),
                 'jams_by_hour'     => $this->getJamsByHour($partner, $filters),
@@ -53,15 +54,19 @@ final class DashboardRepository extends ServiceEntityRepository
                 'weather' => $this->getRecentWeather($partner, 5),
             ],
             'hydro'    => [
-                'stats'  => $this->getHydroStats($partner),
-                'trend'  => $this->getHydroTrend($partner, 48),
-                'recent' => $this->getRecentHydro($partner, 20),
+                'stats'             => $this->getHydroStats($partner),
+                'trend'             => $this->getHydroTrend($partner, 48),
+                'trend_by_station'  => $this->getHydroTrendByStation($partner, 48),
+                'stations_list'     => $this->getHydroStationsList($partner),
+                'recent'            => $this->getRecentHydro($partner, 20),
             ],
             'pluvio'   => [
-                'stats'    => $this->getPluvioStats($partner),
-                'hourly'   => $this->getPluvioHourly($partner, 48),
-                'stations' => $this->getPluvioByStation($partner, 24),
+                'stats'             => $this->getPluvioStats($partner),
+                'hourly'            => $this->getPluvioHourly($partner, 48),
+                'hourly_by_station' => $this->getPluvioHourlyByStation($partner, 48),
+                'stations'          => $this->getPluvioByStation($partner, 24),
             ],
+            'fetch_status' => $this->getPartnerFetchStatus($partner),
             'health_score' => $this->computeHealthScore($partner, $filters),
             'updated_at'   => new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
             'filters'      => $filters,
@@ -81,34 +86,53 @@ final class DashboardRepository extends ServiceEntityRepository
             'type'   => in_array($filters['type'] ?? 'all', ['all','alerts','jams','weather','routes','hydro','pluvio'], true)
                 ? (string) $filters['type'] : 'all',
             'query'  => trim((string) ($filters['query'] ?? '')),
-            'city'   => $filters['city'] ? trim((string) $filters['city']) : null,
+            'city'   => isset($filters['city']) && $filters['city'] !== '' ? trim((string) $filters['city']) : null,
+            'exclude_streets' => trim((string) ($filters['exclude_streets'] ?? '')),
         ];
     }
 
     private function resolveDateFrom(string $period): ?\DateTimeImmutable
-    {
-        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
-        return match ($period) {
-            'today' => $now->setTime(0, 0),
-            'week'  => $now->modify('-7 days'),
-            'month' => $now->modify('-30 days'),
-            'year'  => $now->modify('-365 days'),
-            default => null,
-        };
-    }
+{
+    if ($period === 'all') return null;
 
-    /** @return array{0:string,1:array<string,mixed>,2:array<string,int>} */
+    // Períodos são calculados no fuso do usuário (Brasil).
+    // Sem isso, "Hoje" começaria às 21h do dia anterior (meia-noite UTC).
+    $tzLocal = new \DateTimeZone('America/Sao_Paulo');
+    $tzUtc   = new \DateTimeZone('UTC');
+
+    $now = new \DateTimeImmutable('now', $tzLocal);
+
+    $from = match ($period) {
+        'today' => $now->setTime(0, 0),
+        'week'  => $now->modify('-7 days'),
+        'month' => $now->modify('-30 days'),
+        'year'  => $now->modify('-365 days'),
+        default => null,
+    };
+
+    return $from?->setTimezone($tzUtc);
+}
+
+    /**
+     * Constrói WHERE + params para as queries do dashboard.
+     *
+     * @param string[] $queryColumns colunas usadas no LIKE do `query`
+     * @return array{0:string,1:array<string,mixed>,2:array<string,int>}
+     */
     private function buildWhere(
         ?Partner $partner,
         array $filters,
         string $dateColumn,
         string $partnerColumn = 'partner_id',
-        string $cityColumn = 'city'
+        string $cityColumn = 'city',
+        bool $applyStreetExclude = false,
+        array $queryColumns = ['type', 'subtype', 'city', 'street'],
     ): array {
         $filters = [
-            'period' => $filters['period'] ?? 'all',
-            'query'  => $filters['query']  ?? '',
-            'city'   => $filters['city']   ?? null,
+            'period'          => $filters['period'] ?? 'all',
+            'query'           => $filters['query']  ?? '',
+            'city'            => $filters['city']   ?? null,
+            'exclude_streets' => $filters['exclude_streets'] ?? '',
         ];
 
         $where  = ['1=1'];
@@ -132,12 +156,38 @@ final class DashboardRepository extends ServiceEntityRepository
             $params['city'] = $filters['city'];
         }
 
-        if (!empty($filters['query'])) {
-            $where[]     = "(t.type LIKE :q OR t.subtype LIKE :q OR t.city LIKE :q OR t.street LIKE :q)";
+        if (!empty($filters['query']) && $queryColumns !== []) {
+            $parts = [];
+            foreach ($queryColumns as $col) {
+                $parts[] = "t.$col LIKE :q";
+            }
+            $where[]     = '(' . implode(' OR ', $parts) . ')';
             $params['q'] = '%' . $filters['query'] . '%';
         }
 
+        if ($applyStreetExclude && !empty($filters['exclude_streets'])) {
+            $patterns = $this->parseExcludePatterns($filters['exclude_streets']);
+            if ($patterns !== []) {
+                $where[]              = "(t.street IS NULL OR t.street = '' OR t.street NOT REGEXP :exclude_re)";
+                $params['exclude_re'] = implode('|', $patterns);
+            }
+        }
+
         return [implode(' AND ', $where), $params, $types];
+    }
+
+    /** @return list<string> */
+    private function parseExcludePatterns(string $input): array
+    {
+        $lines = preg_split('/\r\n|\r|\n/', $input) ?: [];
+        $out = [];
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '') continue;
+            // segurança: limita tamanho de cada padrão e a quantidade
+            $out[] = mb_substr($line, 0, 200);
+        }
+        return array_slice($out, 0, 30);
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -147,11 +197,11 @@ final class DashboardRepository extends ServiceEntityRepository
     /** @param array<string,mixed> $filters */
     private function getTotals(?Partner $partner, array $filters): array
     {
-        [$wAlerts, $pAlerts]     = $this->buildWhere($partner, $filters, 'collected_at');
-        [$wJams,   $pJams]       = $this->buildWhere($partner, $filters, 'collected_at');
-        [$wWeather,$pWeather]    = $this->buildWhere($partner, $filters, 'observed_at', 'partner_id', '');
-        [$wCams,   $pCams]       = $this->buildWhere($partner, [], 'created_at');
-        [$wStations, $pStations] = $this->buildWhere($partner, [], 'created_at');
+        [$wAlerts, $pAlerts]     = $this->buildWhere($partner, $filters, 'collected_at', 'partner_id', 'city', true);
+        [$wJams,   $pJams]       = $this->buildWhere($partner, $filters, 'collected_at', 'partner_id', 'city', true, ['street', 'city']);
+        [$wWeather,$pWeather]    = $this->buildWhere($partner, $filters, 'observed_at', 'partner_id', '', false, []);
+        [$wCams,   $pCams]       = $this->buildWhere($partner, [], 'created_at', 'partner_id', '', false, []);
+        [$wStations, $pStations] = $this->buildWhere($partner, [], 'created_at', 'partner_id', '', false, []);
 
         $alerts  = $this->connection->executeQuery(
             "SELECT COUNT(*) AS total, SUM(CASE WHEN t.is_active = 1 THEN 1 ELSE 0 END) AS active
@@ -206,6 +256,7 @@ final class DashboardRepository extends ServiceEntityRepository
         $totals = $this->getTotals($partner, $filters);
         $hydro  = $this->getHydroStats($partner);
         $pluvio = $this->getPluvioStats($partner);
+        $routes = $this->getRoutesSummary($partner);
 
         return [
             'alerts'          => $totals['alerts'],
@@ -223,8 +274,28 @@ final class DashboardRepository extends ServiceEntityRepository
             'pluvio_rain_24h' => $pluvio['rain_24h'],
             'pluvio_rain_1h'  => $pluvio['rain_1h'],
             'pluvio_peak_24h' => $pluvio['peak_24h'],
+            'routes_total'    => $routes['total'],
+            'routes_delayed'  => $routes['delayed'],
+            'routes_severe'   => $routes['severe'],
             'health_score'    => $this->computeHealthScore($partner, $filters),
         ];
+    }
+
+    private function getRoutesSummary(?Partner $partner): array
+    {
+        $routes = $this->getRoutesWithLatestSnapshots($partner, 200);
+
+        $total = count($routes);
+        $delayed = 0;
+        $severe = 0;
+
+        foreach ($routes as $r) {
+            if (($r['delay_seconds'] ?? 0) > 0) $delayed++;
+            $lvl = $r['delay_level']['level'] ?? 'none';
+            if ($lvl === 'severe' || $lvl === 'heavy') $severe++;
+        }
+
+        return ['total' => $total, 'delayed' => $delayed, 'severe' => $severe];
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -295,6 +366,66 @@ final class DashboardRepository extends ServiceEntityRepository
         ];
     }
 
+    /** Lista de estações hidro com nível atual e cotas (para o seletor). */
+    private function getHydroStationsList(?Partner $partner): array
+    {
+        $params = [];
+        $where  = ['h.active = 1'];
+        if ($partner !== null) {
+            $where[]              = 'h.partner_id = :partner_id';
+            $params['partner_id'] = $partner->getId();
+        }
+        $w = implode(' AND ', $where);
+
+        $sql = "SELECT
+                    h.id, h.station_name, h.city, h.state,
+                    o.water_level, o.cota_atencao, o.cota_alerta, o.cota_transbordamento,
+                    o.observed_at
+                FROM cemaden_hidro_station_link h
+                LEFT JOIN cemaden_hidro_observation o
+                    ON o.cemaden_hidro_station_link_id = h.id
+                    AND o.observation_type = 'level'
+                    AND o.id = (
+                        SELECT o2.id FROM cemaden_hidro_observation o2
+                        WHERE o2.cemaden_hidro_station_link_id = h.id
+                          AND o2.observation_type = 'level'
+                        ORDER BY o2.observed_at DESC, o2.id DESC
+                        LIMIT 1
+                    )
+                WHERE $w
+                ORDER BY o.water_level DESC";
+
+        $rows = $this->connection->executeQuery($sql, $params)->fetchAllAssociative();
+
+        return array_map(function ($r) {
+            $level = $r['water_level'] !== null ? (float) $r['water_level'] : null;
+            $trans = $r['cota_transbordamento'] !== null ? (float) $r['cota_transbordamento'] : null;
+            $alert = $r['cota_alerta'] !== null ? (float) $r['cota_alerta'] : null;
+            $attn  = $r['cota_atencao'] !== null ? (float) $r['cota_atencao'] : null;
+
+            $risk = 'unknown';
+            if ($level !== null) {
+                if ($trans !== null && $level >= $trans) $risk = 'overflow';
+                elseif ($alert !== null && $level >= $alert) $risk = 'alert';
+                elseif ($attn !== null && $level >= $attn) $risk = 'attention';
+                else $risk = 'normal';
+            }
+
+            return [
+                'id'                  => (int) $r['id'],
+                'name'                => $r['station_name'] ?? 'Estação',
+                'city'                => $r['city'],
+                'state'               => $r['state'],
+                'level'               => $level,
+                'cotaAtencao'         => $attn,
+                'cotaAlerta'          => $alert,
+                'cotaTransbordamento' => $trans,
+                'risk'                => $risk,
+                'observedAt'          => $this->toUtc($r['observed_at']),
+            ];
+        }, $rows);
+    }
+
     /** @return list<array<string,mixed>> */
     private function getHydroTrend(?Partner $partner, int $hours = 48): array
     {
@@ -340,6 +471,57 @@ final class DashboardRepository extends ServiceEntityRepository
             'cota_alerta'   => $r['avg_cota_alerta']  !== null ? round((float) $r['avg_cota_alerta'], 3)  : null,
             'cota_transb'   => $r['avg_cota_transb']  !== null ? round((float) $r['avg_cota_transb'], 3)  : null,
         ], $rows);
+    }
+
+    /**
+     * Trend por estação — retorna mapa [stationId => list<point>].
+     */
+    private function getHydroTrendByStation(?Partner $partner, int $hours = 48): array
+    {
+        $params = [
+            'since' => (new \DateTimeImmutable("-{$hours} hours", new \DateTimeZone('UTC')))
+                ->format('Y-m-d H:i:s'),
+        ];
+
+        $where = [
+            "o.observation_type = 'level'",
+            'o.water_level IS NOT NULL',
+            'o.observed_at >= :since',
+        ];
+
+        if ($partner !== null) {
+            $where[]              = 'o.partner_id = :partner_id';
+            $params['partner_id'] = $partner->getId();
+        }
+        $w = implode(' AND ', $where);
+
+        $sql = "SELECT
+                    o.cemaden_hidro_station_link_id AS station_id,
+                    DATE_FORMAT(DATE_ADD(o.observed_at, INTERVAL -3 HOUR), '%Y-%m-%d %H:00:00') AS bucket,
+                    AVG(o.water_level)          AS avg_level,
+                    AVG(o.cota_atencao)         AS avg_cota_atencao,
+                    AVG(o.cota_alerta)          AS avg_cota_alerta,
+                    AVG(o.cota_transbordamento) AS avg_cota_transb
+                FROM cemaden_hidro_observation o
+                WHERE $w
+                GROUP BY station_id, bucket
+                ORDER BY station_id ASC, bucket ASC";
+
+        $rows = $this->connection->executeQuery($sql, $params)->fetchAllAssociative();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $sid = (int) $r['station_id'];
+            $out[$sid][] = [
+                'time'         => (string) $r['bucket'],
+                'avg_level'    => $r['avg_level'] !== null ? round((float) $r['avg_level'], 3) : null,
+                'cota_atencao' => $r['avg_cota_atencao'] !== null ? round((float) $r['avg_cota_atencao'], 3) : null,
+                'cota_alerta'  => $r['avg_cota_alerta']  !== null ? round((float) $r['avg_cota_alerta'], 3)  : null,
+                'cota_transb'  => $r['avg_cota_transb']  !== null ? round((float) $r['avg_cota_transb'], 3)  : null,
+            ];
+        }
+
+        return $out;
     }
 
     /** @return list<array<string,mixed>> */
@@ -412,14 +594,9 @@ final class DashboardRepository extends ServiceEntityRepository
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // Pluviométrico (CEMADEN — chuva: pluviômetros + chuva das estações hidro)
+    // Pluviométrico
     // ─────────────────────────────────────────────────────────────────────
 
-    /**
-     * Consolida chuva das duas fontes:
-     *  - cemaden_pluviometric_observation (pluviômetros automáticos)
-     *  - cemaden_hidro_observation (observation_type='rain')
-     */
     private function getPluvioStats(?Partner $partner): array
     {
         $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
@@ -427,7 +604,6 @@ final class DashboardRepository extends ServiceEntityRepository
         $since24h = $now->modify('-24 hours')->format('Y-m-d H:i:s');
         $since7d  = $now->modify('-7 days')->format('Y-m-d H:i:s');
 
-        // ── Pluviômetros automáticos ──
         $pParams = ['since_1h' => $since1h, 'since_24h' => $since24h, 'since_7d' => $since7d];
         $pWhere  = ['s.active = 1'];
         if ($partner !== null) {
@@ -452,7 +628,6 @@ final class DashboardRepository extends ServiceEntityRepository
             $pParams
         )->fetchAssociative() ?: [];
 
-        // ── Estações hidro (chuva do rio) ──
         $hParams = ['since_1h' => $since1h, 'since_24h' => $since24h, 'since_7d' => $since7d];
         $hWhere  = ['h.active = 1'];
         if ($partner !== null) {
@@ -478,9 +653,6 @@ final class DashboardRepository extends ServiceEntityRepository
             $hParams
         )->fetchAssociative() ?: [];
 
-        // Pega a maior (mais recente) das duas fontes como string UTC,
-        // depois converte para DateTimeImmutable UTC — assim o |date do Twig
-        // aplica corretamente o timezone de exibição (America/Sao_Paulo).
         $lastReadingRaw = null;
         if (!empty($pluvio['last_reading'])) {
             $lastReadingRaw = (string) $pluvio['last_reading'];
@@ -500,11 +672,7 @@ final class DashboardRepository extends ServiceEntityRepository
         ];
     }
 
-    /**
-     * Série horária de chuva unindo pluviômetros + chuva das estações hidro.
-     *
-     * @return list<array{time:string,rain:float,wet_stations:int}>
-     */
+    /** @return list<array{time:string,rain:float,wet_stations:int}> */
     private function getPluvioHourly(?Partner $partner, int $hours = 48): array
     {
         $since  = (new \DateTimeImmutable("-{$hours} hours", new \DateTimeZone('UTC')))->format('Y-m-d H:i:s');
@@ -520,10 +688,7 @@ final class DashboardRepository extends ServiceEntityRepository
         $wh = implode(' AND ', $hWhere);
 
         $sql = "
-            SELECT
-                bucket,
-                SUM(rain) AS rain,
-                SUM(wet)  AS wet_stations
+            SELECT bucket, SUM(rain) AS rain, SUM(wet) AS wet_stations
             FROM (
                 SELECT
                     DATE_FORMAT(DATE_ADD(o.observed_at, INTERVAL -3 HOUR), '%Y-%m-%d %H:00:00') AS bucket,
@@ -554,17 +719,64 @@ final class DashboardRepository extends ServiceEntityRepository
     }
 
     /**
-     * Ranking de estações por chuva 24h — pluviômetros + estações hidro.
-     *
-     * @return list<array<string,mixed>>
+     * Série horária de chuva por estação: [stationId => list<point>].
      */
+    private function getPluvioHourlyByStation(?Partner $partner, int $hours = 48): array
+    {
+        $since  = (new \DateTimeImmutable("-{$hours} hours", new \DateTimeZone('UTC')))->format('Y-m-d H:i:s');
+        $params = ['since_p' => $since, 'since_h' => $since];
+        $pWhere = ['o.observed_at >= :since_p'];
+        $hWhere = ['o.observed_at >= :since_h', "o.observation_type = 'rain'"];
+        if ($partner !== null) {
+            $pWhere[]              = 'o.partner_id = :partner_id';
+            $hWhere[]              = 'o.partner_id = :partner_id';
+            $params['partner_id']  = $partner->getId();
+        }
+        $wp = implode(' AND ', $pWhere);
+        $wh = implode(' AND ', $hWhere);
+
+        $sql = "
+            SELECT station_id, bucket, SUM(rain) AS rain, SUM(wet) AS wet FROM (
+                SELECT
+                    CONCAT('pluvio-', o.cemaden_station_link_id) AS station_id,
+                    DATE_FORMAT(DATE_ADD(o.observed_at, INTERVAL -3 HOUR), '%Y-%m-%d %H:00:00') AS bucket,
+                    o.accumulated_rainfall AS rain,
+                    CASE WHEN o.accumulated_rainfall > 0 THEN 1 ELSE 0 END AS wet
+                FROM cemaden_pluviometric_observation o
+                WHERE $wp
+                UNION ALL
+                SELECT
+                    CONCAT('hydro-', o.cemaden_hidro_station_link_id) AS station_id,
+                    DATE_FORMAT(DATE_ADD(o.observed_at, INTERVAL -3 HOUR), '%Y-%m-%d %H:00:00') AS bucket,
+                    o.rain AS rain,
+                    CASE WHEN o.rain > 0 THEN 1 ELSE 0 END AS wet
+                FROM cemaden_hidro_observation o
+                WHERE $wh AND o.rain IS NOT NULL
+            ) AS u
+            GROUP BY station_id, bucket
+            ORDER BY station_id, bucket ASC
+        ";
+
+        $rows = $this->connection->executeQuery($sql, $params)->fetchAllAssociative();
+        $out = [];
+        foreach ($rows as $r) {
+            $sid = (string) $r['station_id'];
+            $out[$sid][] = [
+                'time'         => (string) $r['bucket'],
+                'rain'         => round((float) $r['rain'], 2),
+                'wet_stations' => (int) $r['wet'],
+            ];
+        }
+        return $out;
+    }
+
+    /** @return list<array<string,mixed>> */
     private function getPluvioByStation(?Partner $partner, int $hours = 24): array
     {
         $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
         $since1h  = $now->modify('-1 hour')->format('Y-m-d H:i:s');
         $sinceNh  = $now->modify("-{$hours} hours")->format('Y-m-d H:i:s');
 
-        // ── Pluviômetros automáticos ──
         $pParams = ['since_1h' => $since1h, 'since_24h' => $sinceNh];
         $pWhere  = ['s.active = 1'];
         if ($partner !== null) {
@@ -594,7 +806,6 @@ final class DashboardRepository extends ServiceEntityRepository
             $pParams
         )->fetchAllAssociative();
 
-        // ── Estações hidro (chuva do rio) ──
         $hParams = ['since_1h' => $since1h, 'since_24h' => $sinceNh];
         $hWhere  = ['h.active = 1'];
         if ($partner !== null) {
@@ -666,8 +877,8 @@ final class DashboardRepository extends ServiceEntityRepository
 
     private function getHourlyActivity(?Partner $partner, array $filters): array
     {
-        [$wAlerts, $pAlerts] = $this->buildWhere($partner, $filters, 'collected_at');
-        [$wJams,   $pJams]   = $this->buildWhere($partner, $filters, 'collected_at');
+        [$wAlerts, $pAlerts] = $this->buildWhere($partner, $filters, 'collected_at', 'partner_id', 'city', true);
+        [$wJams,   $pJams]   = $this->buildWhere($partner, $filters, 'collected_at', 'partner_id', 'city', true, ['street', 'city']);
 
         $alerts = $this->connection->executeQuery(
             "SELECT HOUR(DATE_ADD(t.collected_at, INTERVAL -3 HOUR)) AS h, COUNT(*) AS total
@@ -696,7 +907,7 @@ final class DashboardRepository extends ServiceEntityRepository
 
     private function getAlertsByType(?Partner $partner, array $filters): array
     {
-        [$w, $p] = $this->buildWhere($partner, $filters, 'collected_at');
+        [$w, $p] = $this->buildWhere($partner, $filters, 'collected_at', 'partner_id', 'city', true);
         $rows = $this->connection->executeQuery(
             "SELECT t.type AS label, COUNT(*) AS total FROM waze_alerts t WHERE $w GROUP BY t.type ORDER BY total DESC LIMIT 10",
             $p
@@ -710,7 +921,7 @@ final class DashboardRepository extends ServiceEntityRepository
 
     private function getAlertsByCity(?Partner $partner, array $filters): array
     {
-        [$w, $p] = $this->buildWhere($partner, $filters, 'collected_at');
+        [$w, $p] = $this->buildWhere($partner, $filters, 'collected_at', 'partner_id', 'city', true);
         $rows = $this->connection->executeQuery(
             "SELECT COALESCE(t.city, 'Não informado') AS label, COUNT(*) AS total
              FROM waze_alerts t WHERE $w AND t.city IS NOT NULL AND t.city <> ''
@@ -724,9 +935,25 @@ final class DashboardRepository extends ServiceEntityRepository
         ], $rows);
     }
 
+    private function getAlertsByStreet(?Partner $partner, array $filters): array
+    {
+        [$w, $p] = $this->buildWhere($partner, $filters, 'collected_at', 'partner_id', 'city', true);
+        $rows = $this->connection->executeQuery(
+            "SELECT COALESCE(t.street, 'Não informado') AS label, COUNT(*) AS total
+             FROM waze_alerts t WHERE $w AND t.street IS NOT NULL AND t.street <> ''
+             GROUP BY t.street ORDER BY total DESC LIMIT 12",
+            $p
+        )->fetchAllAssociative();
+
+        return array_map(static fn ($r) => [
+            'label' => (string) $r['label'],
+            'total' => (int) $r['total'],
+        ], $rows);
+    }
+
     private function getJamsByLevel(?Partner $partner, array $filters): array
     {
-        [$w, $p] = $this->buildWhere($partner, $filters, 'collected_at');
+        [$w, $p] = $this->buildWhere($partner, $filters, 'collected_at', 'partner_id', 'city', true, ['street', 'city']);
         $rows = $this->connection->executeQuery(
             "SELECT t.level AS label, COUNT(*) AS total FROM waze_jams t WHERE $w GROUP BY t.level ORDER BY t.level",
             $p
@@ -742,7 +969,7 @@ final class DashboardRepository extends ServiceEntityRepository
 
     private function getJamsByHour(?Partner $partner, array $filters): array
     {
-        [$w, $p] = $this->buildWhere($partner, $filters, 'collected_at');
+        [$w, $p] = $this->buildWhere($partner, $filters, 'collected_at', 'partner_id', 'city', true, ['street', 'city']);
 
         $rows = $this->connection->executeQuery(
             "SELECT HOUR(DATE_ADD(t.collected_at, INTERVAL -3 HOUR)) AS h, COUNT(*) AS total
@@ -766,7 +993,7 @@ final class DashboardRepository extends ServiceEntityRepository
             $where[]              = 't.partner_id = :partner_id';
             $params['partner_id'] = $partner->getId();
         }
-        $dateFrom = $this->resolveDateFrom((string) $filters['period']);
+        $dateFrom = $this->resolveDateFrom((string) ($filters['period'] ?? 'all'));
         if ($dateFrom !== null) {
             $where[]             = 't.observed_at >= :date_from';
             $params['date_from'] = $dateFrom->format('Y-m-d H:i:s');
@@ -824,7 +1051,7 @@ final class DashboardRepository extends ServiceEntityRepository
 
     private function getMapAlerts(?Partner $partner, array $filters): array
     {
-        [$w, $p] = $this->buildWhere($partner, $filters, 'collected_at');
+        [$w, $p] = $this->buildWhere($partner, $filters, 'collected_at', 'partner_id', 'city', true);
         $rows = $this->connection->executeQuery(
             "SELECT t.id, t.uuid, t.type, t.subtype, t.city, t.street,
                     CAST(t.latitude AS DECIMAL(10,7)) AS latitude,
@@ -852,7 +1079,7 @@ final class DashboardRepository extends ServiceEntityRepository
 
     private function getMapJams(?Partner $partner, array $filters): array
     {
-        [$w, $p] = $this->buildWhere($partner, $filters, 'collected_at');
+        [$w, $p] = $this->buildWhere($partner, $filters, 'collected_at', 'partner_id', 'city', true, ['street', 'city']);
         $rows = $this->connection->executeQuery(
             "SELECT t.id, t.uuid, t.level, t.street, t.city, t.line, t.delay, t.length, t.speed_kmh
              FROM waze_jams t
@@ -1020,26 +1247,7 @@ final class DashboardRepository extends ServiceEntityRepository
 
     private function getRecentAlerts(?Partner $partner, array $filters, int $limit = 8): array
     {
-        $where  = ['t.is_active = 1'];
-        $params = [];
-        if ($partner !== null) {
-            $where[]              = 't.partner_id = :partner_id';
-            $params['partner_id'] = $partner->getId();
-        }
-        $dateFrom = $this->resolveDateFrom((string) $filters['period']);
-        if ($dateFrom !== null) {
-            $where[]             = 't.collected_at >= :date_from';
-            $params['date_from'] = $dateFrom->format('Y-m-d H:i:s');
-        }
-        if (!empty($filters['query'])) {
-            $where[]     = '(t.type LIKE :q OR t.subtype LIKE :q OR t.city LIKE :q OR t.street LIKE :q)';
-            $params['q'] = '%' . $filters['query'] . '%';
-        }
-        if (!empty($filters['city'])) {
-            $where[]        = 't.city = :city';
-            $params['city'] = $filters['city'];
-        }
-        $w = implode(' AND ', $where);
+        [$w, $p] = $this->buildWhere($partner, $filters, 'collected_at', 'partner_id', 'city', true);
 
         $rows = $this->connection->executeQuery(
             "SELECT t.id, t.uuid, t.type, t.subtype, t.city, t.street,
@@ -1047,10 +1255,10 @@ final class DashboardRepository extends ServiceEntityRepository
                     CAST(t.latitude AS DECIMAL(10,7)) AS latitude,
                     CAST(t.longitude AS DECIMAL(10,7)) AS longitude
              FROM waze_alerts t
-             WHERE $w
+             WHERE $w AND t.is_active = 1
              ORDER BY t.collected_at DESC
              LIMIT " . (int) $limit,
-            $params
+            $p
         )->fetchAllAssociative();
 
         return array_map(function ($r) {
@@ -1078,34 +1286,15 @@ final class DashboardRepository extends ServiceEntityRepository
 
     private function getRecentJams(?Partner $partner, array $filters, int $limit = 8): array
     {
-        $where  = ['t.is_active = 1'];
-        $params = [];
-        if ($partner !== null) {
-            $where[]              = 't.partner_id = :partner_id';
-            $params['partner_id'] = $partner->getId();
-        }
-        $dateFrom = $this->resolveDateFrom((string) $filters['period']);
-        if ($dateFrom !== null) {
-            $where[]             = 't.collected_at >= :date_from';
-            $params['date_from'] = $dateFrom->format('Y-m-d H:i:s');
-        }
-        if (!empty($filters['query'])) {
-            $where[]     = '(t.street LIKE :q OR t.city LIKE :q)';
-            $params['q'] = '%' . $filters['query'] . '%';
-        }
-        if (!empty($filters['city'])) {
-            $where[]        = 't.city = :city';
-            $params['city'] = $filters['city'];
-        }
-        $w = implode(' AND ', $where);
+        [$w, $p] = $this->buildWhere($partner, $filters, 'collected_at', 'partner_id', 'city', true, ['street', 'city']);
 
         $rows = $this->connection->executeQuery(
             "SELECT t.id, t.uuid, t.street, t.city, t.level, t.delay, t.length, t.speed_kmh, t.collected_at
              FROM waze_jams t
-             WHERE $w
+             WHERE $w AND t.is_active = 1
              ORDER BY t.collected_at DESC
              LIMIT " . (int) $limit,
-            $params
+            $p
         )->fetchAllAssociative();
 
         return array_map(static fn ($r) => [
@@ -1196,7 +1385,7 @@ WHERE r.is_active = 1 {$partnerFilter}
 ORDER BY
     CASE
         WHEN s.time IS NOT NULL AND s.historic_time IS NOT NULL
-        THEN (s.historic_time - s.time)
+        THEN (s.time - s.historic_time)
         ELSE -1
     END DESC,
     s.recorded_at DESC
@@ -1208,7 +1397,13 @@ SQL;
         foreach ($rows as $row) {
             $current  = $this->nullableNumber($row['current_time_seconds']);
             $historic = $this->nullableNumber($row['historic_time_seconds']);
-            $delay    = $current !== null && $historic !== null ? max(0, $historic - $current) : null;
+
+            // CORREÇÃO: delay = current - historic (antes estava invertido)
+            $delay = ($current !== null && $historic !== null)
+                ? max(0, (int) round($current - $historic))
+                : null;
+
+            $delayLevel = $this->computeRouteDelayLevel($delay, $historic);
 
             $routes[] = [
                 'id'                    => (int) $row['route_id_internal'],
@@ -1224,6 +1419,11 @@ SQL;
                 'historic_time'         => $historic,
                 'delay_seconds'         => $delay,
                 'delay_minutes'         => $delay !== null ? round($delay / 60, 1) : null,
+                'delay_ratio'           => $delayLevel['ratio'],
+                'delay_level'           => [
+                    'level' => $delayLevel['level'],
+                    'label' => $delayLevel['label'],
+                ],
                 'jam_level'             => $row['jam_level'],
                 'recorded_at'           => $row['recorded_at'],
                 'snapshot_id'           => (int) $row['snapshot_id'],
@@ -1231,6 +1431,110 @@ SQL;
             ];
         }
         return $routes;
+    }
+
+    /**
+     * Nível de atraso considerando o tempo histórico da rota.
+     * Rotas curtas (poucos segundos) toleram menos atraso absoluto.
+     */
+    private function computeRouteDelayLevel(?int $delaySeconds, ?float $historicSeconds): array
+    {
+        if ($delaySeconds === null || $delaySeconds <= 0) {
+            return ['level' => 'none', 'label' => 'No prazo', 'ratio' => 0.0];
+        }
+
+        $historic = $historicSeconds !== null && $historicSeconds > 0 ? $historicSeconds : 60.0;
+        $ratio    = $delaySeconds / $historic;
+
+        // referência absoluta: se a rota é curta (<30s), 15s já é significativo
+        $ref = min($historic, 30.0);
+        $absRatio = $delaySeconds / $ref;
+
+        // ponderação: 70% peso no relativo, 30% no absoluto
+        $score = ($ratio * 0.7) + ($absRatio * 0.3);
+
+        if ($score >= 0.60) return ['level' => 'severe',   'label' => 'Crítico',   'ratio' => $ratio];
+        if ($score >= 0.30) return ['level' => 'heavy',    'label' => 'Alto',      'ratio' => $ratio];
+        if ($score >= 0.12) return ['level' => 'moderate', 'label' => 'Moderado',  'ratio' => $ratio];
+        return                    ['level' => 'light',    'label' => 'Leve',      'ratio' => $ratio];
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Fetch status (última coleta por fonte)
+    // ─────────────────────────────────────────────────────────────────────
+
+    private function getPartnerFetchStatus(?Partner $partner): array
+    {
+        $params = [];
+        $pFilter = '';
+        if ($partner !== null) {
+            $pFilter = ' WHERE partner_id = :pid';
+            $params['pid'] = $partner->getId();
+        }
+
+        $status = [
+            'waze_alerts'    => null,
+            'waze_jams'      => null,
+            'waze_tvt'       => null,
+            'weather'        => null,
+            'cemaden_hydro'  => null,
+            'cemaden_pluvio' => null,
+            'cameras'        => null,
+        ];
+
+        // Partner.fetchAt cobre alerts + jams (mesma coleta) e TVT separado
+        if ($partner !== null) {
+            $status['waze_alerts'] = $partner->getLastFetchAt();
+            $status['waze_jams']   = $partner->getLastFetchAt();
+            $status['waze_tvt']    = $partner->getLastTvtFetchAt();
+        } else {
+            // admin global: usar MAX histórico
+            $row = $this->connection->executeQuery(
+                "SELECT MAX(last_fetch_at) FROM partner WHERE last_fetch_at IS NOT NULL"
+            )->fetchOne();
+            $status['waze_alerts'] = $this->toUtc($row);
+            $status['waze_jams']   = $this->toUtc($row);
+
+            $rowTvt = $this->connection->executeQuery(
+                "SELECT MAX(last_tvt_fetch_at) FROM partner WHERE last_tvt_fetch_at IS NOT NULL"
+            )->fetchOne();
+            $status['waze_tvt'] = $this->toUtc($rowTvt);
+        }
+
+        $wFilter = $partner !== null ? 'WHERE partner_id = :pid' : '';
+
+        // weather
+        $status['weather'] = $this->toUtc($this->connection->executeQuery(
+            "SELECT MAX(observed_at) FROM weather_observation $wFilter",
+            $params
+        )->fetchOne());
+
+        // cemaden hydro
+        $hFilter = $partner !== null
+            ? 'WHERE partner_id = :pid AND active = 1'
+            : 'WHERE active = 1';
+        $status['cemaden_hydro'] = $this->toUtc($this->connection->executeQuery(
+            "SELECT MAX(last_fetched_at) FROM cemaden_hidro_station_link $hFilter",
+            $params
+        )->fetchOne());
+
+        // cemaden pluvio
+        $pFilter2 = $partner !== null
+            ? 'WHERE partner_id = :pid AND active = 1'
+            : 'WHERE active = 1';
+        $status['cemaden_pluvio'] = $this->toUtc($this->connection->executeQuery(
+            "SELECT MAX(last_fetched_at) FROM cemaden_station_link $pFilter2",
+            $params
+        )->fetchOne());
+
+        // cameras
+        $cFilter = $partner !== null ? 'WHERE partner_id = :pid' : '';
+        $status['cameras'] = $this->toUtc($this->connection->executeQuery(
+            "SELECT MAX(created_at) FROM partner_camera_link $cFilter",
+            $params
+        )->fetchOne());
+
+        return $status;
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -1261,7 +1565,7 @@ SQL;
 
     private function countHighLevelJams(?Partner $partner, array $filters): int
     {
-        [$w, $p] = $this->buildWhere($partner, $filters, 'collected_at');
+        [$w, $p] = $this->buildWhere($partner, $filters, 'collected_at', 'partner_id', 'city', true, ['street', 'city']);
         return (int) $this->connection->executeQuery(
             "SELECT COUNT(*) FROM waze_jams t WHERE $w AND t.is_active = 1 AND t.level >= 3",
             $p
@@ -1277,14 +1581,12 @@ SQL;
         return $v === null || $v === '' ? null : (float) $v;
     }
 
-    /**
-     * Converte uma string DATETIME do MySQL (naive UTC) em DateTimeImmutable UTC.
-     * Assim o filtro |date do Twig e o Intl do JS aplicam o offset corretamente.
-     */
-    private function toUtc(\Stringable|string|null $value): ?\DateTimeImmutable
+    private function toUtc(\Stringable|string|\DateTimeInterface|null $value): ?\DateTimeImmutable
     {
-        if ($value === null || $value === '') {
-            return null;
+        if ($value === null || $value === '') return null;
+        if ($value instanceof \DateTimeImmutable) return $value;
+        if ($value instanceof \DateTimeInterface) {
+            return \DateTimeImmutable::createFromInterface($value);
         }
         try {
             return new \DateTimeImmutable((string) $value, new \DateTimeZone('UTC'));
