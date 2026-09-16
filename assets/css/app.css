@@ -31,3 +31,5 @@
 @import './pages/weather-index.css';
 @import './pages/weather-show.css';
 @import './pages/weather-analysis.css';
+/* TV */
+@import './pages/tv.css';

@@ -180,6 +180,33 @@
                 {% endif %}
             </a>
 
+            {# TV / Wallboard — abre em nova aba para ficar em segundo monitor #}
+            <a
+                href="{{ path('tv_index') }}"
+                class="sidebar-link sidebar-link--tv{% if current_route starts with 'tv_' %} is-active{% endif %}"
+                data-sidebar-link
+                target="_blank"
+                rel="noopener"
+                title="TV Operacional — abre em nova aba"
+                {% if current_route starts with 'tv_' %}aria-current="page"{% endif %}
+            >
+                <span class="sidebar-link-icon sidebar-link-icon--tv" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                        <rect x="2.5" y="4.5" width="19" height="13" rx="2"/>
+                        <circle cx="17.5" cy="8.5" r="1.3" class="tv-live-dot"/>
+                        <path d="M9 21h6M12 17.5V21"/>
+                    </svg>
+                </span>
+
+                <span class="sidebar-link-label">
+                    TV Operacional
+                </span>
+
+                {% if current_route starts with 'tv_' %}
+                    <span class="sidebar-active-indicator" aria-hidden="true"></span>
+                {% endif %}
+            </a>
+
 
              {# Usuários #}
              {% if is_granted('ROLE_ADMIN') %}

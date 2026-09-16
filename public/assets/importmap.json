@@ -84,7 +84,7 @@
         "type": "js"
     },
     "app": {
-        "path": "\/assets\/js\/app-gdNTxlh.js",
+        "path": "\/assets\/js\/app-X1NILwH.js",
         "type": "js"
     },
     "\/assets\/js\/components\/buttons.js": {
@@ -133,6 +133,10 @@
     },
     "\/assets\/js\/pages\/weather-analysis.js": {
         "path": "\/assets\/js\/pages\/weather-analysis-lK2FKHY.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/tv.js": {
+        "path": "\/assets\/js\/pages\/tv-IrwvSci.js",
         "type": "js"
     },
     "dashboard": {

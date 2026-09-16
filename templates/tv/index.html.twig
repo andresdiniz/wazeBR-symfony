@@ -1,0 +1,294 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Operação ao vivo | WazeBR{% endblock %}
+
+{% block stylesheets %}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <link rel="stylesheet" href="{{ asset('css/pages/tv.css') }}">
+{% endblock %}
+
+{% block body_class %}tv-body{% endblock %}
+
+{% block body %}
+<div class="tv-wallboard"
+     data-tv-wallboard
+     data-api-endpoint="{{ path('tv_api_data') }}"
+     data-partner="{{ partner ? partner.name : 'Global' }}">
+
+    {# Overlay de reconexão #}
+    <div class="tv-overlay" data-tv-overlay hidden>
+        <div class="tv-overlay__box">
+            <span class="tv-overlay__icon">⟳</span>
+            <strong>Reconectando…</strong>
+            <small data-tv-overlay-msg>Não foi possível atualizar os dados</small>
+        </div>
+    </div>
+
+    {# ── Topo ─────────────────────────────────────────────────────── #}
+    <header class="tv-top" data-tv-top>
+        <div class="tv-top__clock">
+            <time class="tv-clock" data-tv-clock>--:--:--</time>
+            <span class="tv-date" data-tv-date>--/--/----</span>
+        </div>
+
+        <div class="tv-top__status" data-tv-status>
+            <span class="tv-status__dot" data-tv-status-dot></span>
+            <span class="tv-status__label" data-tv-status-label>Carregando…</span>
+            <span class="tv-status__reason" data-tv-status-reason></span>
+        </div>
+
+        <div class="tv-top__meta">
+            <div class="tv-meta__item">
+                <span class="tv-meta__label">Atualizado</span>
+                <span class="tv-meta__value" data-tv-updated>—</span>
+            </div>
+            <div class="tv-meta__item">
+                <span class="tv-meta__label">Alertas</span>
+                <span class="tv-meta__value" data-tv-counter="alerts">0</span>
+            </div>
+            <div class="tv-meta__item">
+                <span class="tv-meta__label">Jams</span>
+                <span class="tv-meta__value" data-tv-counter="jams">0</span>
+            </div>
+            <div class="tv-meta__item">
+                <span class="tv-meta__label">Rios</span>
+                <span class="tv-meta__value" data-tv-counter="hydro">0</span>
+            </div>
+
+            <div class="tv-top__actions">
+                <button type="button"
+                        class="tv-icon-btn"
+                        data-tv-sound
+                        aria-label="Ativar alerta sonoro"
+                        title="Ativar alerta sonoro">
+                    <span data-tv-sound-icon>🔇</span>
+                </button>
+                <button type="button"
+                        class="tv-icon-btn"
+                        data-tv-fullscreen
+                        aria-label="Tela cheia"
+                        title="Tela cheia">
+                    <span>⛶</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    {# ── Corpo em 3 colunas ──────────────────────────────────────── #}
+    <main class="tv-body">
+
+        {# ── Coluna esquerda — alertas + jams ──────────────────── #}
+        <aside class="tv-col tv-col--left">
+
+            <section class="tv-card tv-card--alerts">
+                <header class="tv-card__head">
+                    <span class="tv-card__icon">⚠</span>
+                    <span class="tv-card__title">Alertas ativos</span>
+                </header>
+                <div class="tv-card__big">
+                    <strong data-tv-total="alerts">0</strong>
+                    <span class="tv-card__big-sub">total agora</span>
+                </div>
+                <div class="tv-card__hint" data-tv-alerts-hint>—</div>
+
+                <ul class="tv-kv">
+                    <li>
+                        <span>Acidentes</span>
+                        <strong data-tv-type="ACCIDENT">0</strong>
+                    </li>
+                    <li>
+                        <span>Vias fechadas</span>
+                        <strong data-tv-type="ROAD_CLOSED">0</strong>
+                    </li>
+                    <li>
+                        <span>Alagamentos</span>
+                        <strong data-tv-type="HAZARD_WEATHER_FLOOD">0</strong>
+                    </li>
+                    <li>
+                        <span>Perigo climático</span>
+                        <strong data-tv-type="WEATHERHAZARD">0</strong>
+                    </li>
+                </ul>
+            </section>
+
+            <section class="tv-card tv-card--jams">
+                <header class="tv-card__head">
+                    <span class="tv-card__icon">≋</span>
+                    <span class="tv-card__title">Congestionamentos</span>
+                </header>
+                <div class="tv-card__big">
+                    <strong data-tv-total="jams">0</strong>
+                    <span class="tv-card__big-sub" data-tv-jam-sub>ativos</span>
+                </div>
+                <div class="tv-card__hint" data-tv-jams-hint>—</div>
+
+                <ul class="tv-kv">
+                    <li>
+                        <span>Nível 3+</span>
+                        <strong data-tv-jams="level3">0</strong>
+                    </li>
+                    <li>
+                        <span>Nível 4+</span>
+                        <strong data-tv-jams="level4">0</strong>
+                    </li>
+                    <li>
+                        <span>Atraso médio</span>
+                        <strong data-tv-jams="avgDelay">—</strong>
+                    </li>
+                </ul>
+            </section>
+
+            <section class="tv-card tv-card--top-alerts">
+                <header class="tv-card__head">
+                    <span class="tv-card__icon">⟳</span>
+                    <span class="tv-card__title">Últimos críticos</span>
+                </header>
+                <ul class="tv-list" data-tv-top-alerts>
+                    <li class="tv-empty-row">Sem ocorrências recentes</li>
+                </ul>
+            </section>
+
+        </aside>
+
+        {# ── Centro — mapa + feed ──────────────────────────────── #}
+        <section class="tv-col tv-col--center">
+
+            <div class="tv-map-wrap">
+                <div class="tv-map" data-tv-map aria-label="Mapa operacional"></div>
+                <div class="tv-map__badge" data-tv-map-badge hidden>
+                    <span class="tv-map__badge-dot"></span>
+                    <span data-tv-map-badge-text>Zona quente</span>
+                </div>
+            </div>
+
+            <div class="tv-feed">
+                <header class="tv-feed__head">
+                    <span class="tv-feed__title">Últimos eventos</span>
+                    <span class="tv-feed__updated" data-tv-feed-updated>—</span>
+                </header>
+                <ul class="tv-feed__list" data-tv-feed>
+                    <li class="tv-empty-row">Sem eventos recentes</li>
+                </ul>
+            </div>
+
+        </section>
+
+        {# ── Coluna direita — hydro + chuva + clima ────────────── #}
+        <aside class="tv-col tv-col--right">
+
+            <section class="tv-card tv-card--hydro">
+                <header class="tv-card__head">
+                    <span class="tv-card__icon">🌊</span>
+                    <span class="tv-card__title">Rios</span>
+                    <span class="tv-card__badge" data-tv-hydro-badge>0</span>
+                </header>
+                <div class="tv-hydro" data-tv-hydro>
+                    <div class="tv-empty-row">Sem estações cadastradas</div>
+                </div>
+            </section>
+
+            <section class="tv-card tv-card--rain">
+                <header class="tv-card__head">
+                    <span class="tv-card__icon">🌧</span>
+                    <span class="tv-card__title">Chuva</span>
+                </header>
+                <div class="tv-rain">
+                    <div class="tv-rain__main">
+                        <strong data-tv-rain="lastHour">0,0</strong>
+                        <span class="tv-rain__unit">mm · 1h</span>
+                    </div>
+                    <div class="tv-rain__grid">
+                        <div>
+                            <span>24h</span>
+                            <strong data-tv-rain="last24h">0,0</strong>
+                        </div>
+                        <div>
+                            <span>Pico</span>
+                            <strong data-tv-rain="peak24h">0,0</strong>
+                        </div>
+                    </div>
+                    <div class="tv-rain__top" data-tv-rain-top>—</div>
+                </div>
+            </section>
+
+            <section class="tv-card tv-card--weather">
+                <header class="tv-card__head">
+                    <span class="tv-card__icon">☀</span>
+                    <span class="tv-card__title">Clima agora</span>
+                </header>
+                <div class="tv-weather">
+                    <div class="tv-weather__main">
+                        <strong data-tv-weather="temperature">—</strong>
+                        <span class="tv-weather__unit">°C</span>
+                    </div>
+                    <div class="tv-weather__meta">
+                        <div>
+                            <span>Umidade</span>
+                            <strong data-tv-weather="humidity">—</strong>
+                        </div>
+                        <div>
+                            <span>Vento</span>
+                            <strong data-tv-weather="wind">—</strong>
+                        </div>
+                    </div>
+                    <div class="tv-weather__station" data-tv-weather-station>—</div>
+                </div>
+            </section>
+
+        </aside>
+
+    </main>
+
+    {# ── Rodapé 1 — números do dia ──────────────────────────────── #}
+    <footer class="tv-bottom" data-tv-bottom>
+        <div class="tv-today">
+            <div class="tv-today__item">
+                <span>Alertas hoje</span>
+                <strong data-tv-today="alerts">0</strong>
+            </div>
+            <div class="tv-today__item">
+                <span>Acidentes</span>
+                <strong data-tv-today="accidents">0</strong>
+            </div>
+            <div class="tv-today__item">
+                <span>Vias fechadas</span>
+                <strong data-tv-today="roadClosed">0</strong>
+            </div>
+            <div class="tv-today__item">
+                <span>Alagamentos</span>
+                <strong data-tv-today="floods">0</strong>
+            </div>
+            <div class="tv-today__item">
+                <span>Jams hoje</span>
+                <strong data-tv-today="jams">0</strong>
+            </div>
+            <div class="tv-today__item tv-today__item--trend">
+                <span>vs. ontem</span>
+                <strong data-tv-today="trend">—</strong>
+            </div>
+        </div>
+
+        <div class="tv-fresh">
+            <span class="tv-fresh__item"><i data-tv-fresh="alerts"></i>Alerts</span>
+            <span class="tv-fresh__item"><i data-tv-fresh="jams"></i>Jams</span>
+            <span class="tv-fresh__item"><i data-tv-fresh="weather"></i>Clima</span>
+            <span class="tv-fresh__item"><i data-tv-fresh="hydro"></i>Rios</span>
+            <span class="tv-fresh__item"><i data-tv-fresh="pluvio"></i>Chuva</span>
+        </div>
+    </footer>
+
+    {# ── Rodapé 2 — ticker ─────────────────────────────────────── #}
+    <div class="tv-ticker" data-tv-ticker>
+        <div class="tv-ticker__track" data-tv-ticker-track>
+            <span>Carregando…</span>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+{% endblock %}
