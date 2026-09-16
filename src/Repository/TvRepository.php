@@ -9,22 +9,6 @@ use Doctrine\DBAL\Connection;
 
 /**
  * Agregação para a tela de TV / wallboard (/tv).
- *
- * ─── Regras ──────────────────────────────────────────────────────────
- *
- *   - Uma chamada por ciclo (30s) devolve TUDO o que a tela precisa
- *   - Alertas "críticos" para TV: ACCIDENT, ROAD_CLOSED,
- *     HAZARD_WEATHER_FLOOD, WEATHERHAZARD. Buracos/obras/polícia NÃO
- *     entram (ruído visual para leitura a 3m)
- *   - Só alertas das últimas 2h no mapa (não poluir)
- *   - Jams nível 4+ no mapa (linha grossa)
- *
- * ─── Status geral ────────────────────────────────────────────────────
- *
- *   normal      → nada crítico
- *   attention   → rio em atenção OU ≥1 alerta crítico em 1h
- *   critical    → rio em alerta/transbordo OU ≥3 alertas críticos em 1h
- *                 OU chuva > 20 mm/h na rede
  */
 final class TvRepository
 {
@@ -54,6 +38,7 @@ final class TvRepository
         $weather  = $this->loadWeather($partner);
         $today    = $this->loadToday($partner);
         $fetch    = $this->loadFetchStatus($partner);
+        $cameras  = $this->loadCameras($partner);
 
         $status = $this->computeStatus($alerts, $hydro, $rain);
 
@@ -68,12 +53,11 @@ final class TvRepository
             'weather'     => $weather,
             'today'       => $today,
             'fetch'       => $fetch,
+            'cameras'     => $cameras,
             'generatedAt' => (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format(DATE_ATOM),
         ];
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Status geral
     // ─────────────────────────────────────────────────────────────────────
 
     private function computeStatus(array $alerts, array $hydro, array $rain): array
@@ -81,7 +65,6 @@ final class TvRepository
         $level   = 'normal';
         $reasons = [];
 
-        // Rios primeiro — é o mais grave
         if ($hydro['risk']['overflow'] > 0) {
             $level     = 'critical';
             $reasons[] = $hydro['risk']['overflow'] . ' rio(s) em transbordamento';
@@ -93,7 +76,6 @@ final class TvRepository
             $reasons[] = $hydro['risk']['attention'] . ' rio(s) em atenção';
         }
 
-        // Alertas críticos na última hora
         $critLast1h = $alerts['last1h']['critical'] ?? 0;
         if ($critLast1h >= 3) {
             $level     = 'critical';
@@ -103,7 +85,6 @@ final class TvRepository
             $reasons[] = "{$critLast1h} alerta(s) crítico(s) na última hora";
         }
 
-        // Chuva forte
         if (($rain['lastHour'] ?? 0) > 20) {
             $level     = 'critical';
             $reasons[] = 'Chuva forte: ' . number_format($rain['lastHour'], 1, ',', '.') . ' mm/h';
@@ -124,8 +105,6 @@ final class TvRepository
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // Alertas
-    // ─────────────────────────────────────────────────────────────────────
 
     private function loadAlerts(?Partner $partner): array
     {
@@ -136,7 +115,6 @@ final class TvRepository
             $params['pid'] = $partner->getId();
         }
 
-        // Totais
         $totals = $this->connection->executeQuery(
             "SELECT
                 COUNT(*) AS total,
@@ -147,7 +125,6 @@ final class TvRepository
             $params
         )->fetchAssociative() ?: [];
 
-        // Quebra por tipo crítico
         $byTypeRows = $this->connection->executeQuery(
             "SELECT type, COUNT(*) AS total
              FROM waze_alerts
@@ -165,8 +142,8 @@ final class TvRepository
             }
         }
 
-        // Alertas críticos na última hora
         $critTypes = implode(',', array_map(static fn ($t) => "'" . $t . "'", self::CRITICAL_ALERT_TYPES));
+
         $critLast1h = (int) $this->connection->executeQuery(
             "SELECT COUNT(*) FROM waze_alerts
              WHERE is_active = 1
@@ -185,7 +162,6 @@ final class TvRepository
             $params
         )->fetchOne();
 
-        // Top 5 mais recentes (só tipos críticos)
         $recent = $this->connection->executeQuery(
             "SELECT id, type, subtype, city, street, confidence,
                     CAST(latitude AS DECIMAL(10,7)) AS lat,
@@ -210,7 +186,7 @@ final class TvRepository
             'street'     => $r['street'],
             'lat'        => (float) $r['lat'],
             'lng'        => (float) $r['lng'],
-            'when'       => $r['collected_at'],
+            'when'       => $this->toIso($r['collected_at']),   // ← fix timezone
         ], $recent);
 
         return [
@@ -228,8 +204,6 @@ final class TvRepository
         ];
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Jams
     // ─────────────────────────────────────────────────────────────────────
 
     private function loadJams(?Partner $partner): array
@@ -274,7 +248,7 @@ final class TvRepository
             'delay'      => (int) $r['delay'],
             'length'     => (int) $r['length'],
             'speed'      => $r['speed_kmh'] !== null ? (float) $r['speed_kmh'] : null,
-            'when'       => $r['collected_at'],
+            'when'       => $this->toIso($r['collected_at']),   // ← fix timezone
         ], $top);
 
         return [
@@ -286,8 +260,6 @@ final class TvRepository
         ];
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Feed (alerts + jams mesclados)
     // ─────────────────────────────────────────────────────────────────────
 
     private function buildFeed(array $alerts, array $jams): array
@@ -302,8 +274,6 @@ final class TvRepository
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // Mapa — alerts das últimas 2h + jams nível 4+
-    // ─────────────────────────────────────────────────────────────────────
 
     private function loadMap(?Partner $partner): array
     {
@@ -314,7 +284,6 @@ final class TvRepository
             $params['pid'] = $partner->getId();
         }
 
-        // Alertas das últimas 2h
         $alerts = $this->connection->executeQuery(
             "SELECT id, type, subtype, street, city,
                     CAST(latitude  AS DECIMAL(10,7)) AS lat,
@@ -331,7 +300,6 @@ final class TvRepository
             $params
         )->fetchAllAssociative();
 
-        // Jams nível 4+
         $jams = $this->connection->executeQuery(
             "SELECT id, level, street, city, line, delay, length
              FROM waze_jams
@@ -384,7 +352,6 @@ final class TvRepository
             'lng'    => (float) $a['lng'],
         ], $alerts);
 
-        // Hot zone: média dos alertas recentes (fallback pro centro padrão)
         $center = $this->computeHotZone($alertsOut);
 
         return [
@@ -400,7 +367,6 @@ final class TvRepository
             return ['lat' => -20.6607, 'lng' => -43.7856, 'zoom' => 12, 'hasData' => false];
         }
 
-        // Média dos últimos 30 alertas (mais recentes) — janela do "hot zone"
         $slice = array_slice($alerts, 0, 30);
         $n = count($slice);
         $sumLat = 0.0; $sumLng = 0.0;
@@ -409,7 +375,6 @@ final class TvRepository
             $sumLng += $a['lng'];
         }
 
-        // Zoom adaptativo: se muitos alertas, aproxima mais
         $zoom = 12;
         if ($n >= 20) $zoom = 13;
         if ($n >= 40) $zoom = 14;
@@ -422,8 +387,6 @@ final class TvRepository
         ];
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Hydro
     // ─────────────────────────────────────────────────────────────────────
 
     private function loadHydro(?Partner $partner): array
@@ -473,7 +436,6 @@ final class TvRepository
             }
             $risk[$riskLevel]++;
 
-            // Progresso 0-100 até a cota de transbordo (visual)
             $progress = null;
             if ($level !== null && $trans !== null && $trans > 0) {
                 $progress = max(0, min(100, ($level / $trans) * 100));
@@ -490,11 +452,10 @@ final class TvRepository
                 'transbordo'=> $trans,
                 'risk'      => $riskLevel,
                 'progress'  => $progress,
-                'observedAt'=> $r['observed_at'],
+                'observedAt'=> $this->toIso($r['observed_at']),   // ← fix timezone
             ];
         }
 
-        // Ordena por risco (mais grave primeiro)
         $order = ['overflow' => 0, 'alert' => 1, 'attention' => 2, 'normal' => 3, 'unknown' => 4];
         usort($stations, static fn ($a, $b) => $order[$a['risk']] <=> $order[$b['risk']]);
 
@@ -506,16 +467,9 @@ final class TvRepository
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // Chuva
-    // ─────────────────────────────────────────────────────────────────────
 
-    /**
-     * Chuva agregada — pluviômetros + chuva das estações hidro.
-     * Soma 1h, 24h e pico do dia.
-     */
     private function loadRain(?Partner $partner): array
     {
-        // ── Pluviômetros automáticos ─────────────────────────────
         $pParams = [];
         $pWhere  = ['s.active = 1'];
         if ($partner !== null) {
@@ -537,7 +491,6 @@ final class TvRepository
             $pParams
         )->fetchAssociative() ?: [];
 
-        // ── Estações hidro (chuva do rio) ────────────────────────
         $hParams = [];
         $hWhere  = ['h.active = 1'];
         if ($partner !== null) {
@@ -564,7 +517,6 @@ final class TvRepository
         $rain24h = (float) ($pluvio['rain_24h'] ?? 0) + (float) ($hydroRain['rain_24h'] ?? 0);
         $peak24h = max((float) ($pluvio['peak_24h'] ?? 0), (float) ($hydroRain['peak_24h'] ?? 0));
 
-        // ── Estação que mais choveu nas últimas 24h ──────────────
         $topParams = [];
         $topWhere  = ['s.active = 1'];
         if ($partner !== null) {
@@ -600,8 +552,6 @@ final class TvRepository
         ];
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Clima agora — pega a última observação de qualquer estação do parceiro
     // ─────────────────────────────────────────────────────────────────────
 
     private function loadWeather(?Partner $partner): ?array
@@ -641,12 +591,10 @@ final class TvRepository
             'stationName'   => $row['station_name'],
             'city'          => $row['city'],
             'state'         => $row['state'],
-            'observedAt'    => $row['observed_at'],
+            'observedAt'    => $this->toIso($row['observed_at']),   // ← fix timezone
         ];
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Hoje + última hora (números do rodapé)
     // ─────────────────────────────────────────────────────────────────────
 
     private function loadToday(?Partner $partner): array
@@ -658,9 +606,6 @@ final class TvRepository
             $params['pid'] = $partner->getId();
         }
 
-        $critTypes = implode(',', array_map(static fn ($t) => "'" . $t . "'", self::CRITICAL_ALERT_TYPES));
-
-        // Alertas hoje (desde 03:00 UTC = 00:00 BRT)
         $alertsToday = $this->connection->executeQuery(
             "SELECT
                 COUNT(*) AS total,
@@ -674,7 +619,6 @@ final class TvRepository
             $params
         )->fetchAssociative() ?: [];
 
-        // Últimos 30 dias (para comparação de tendência)
         $alertsYesterday = $this->connection->executeQuery(
             "SELECT COUNT(*) FROM waze_alerts
              WHERE collected_at >= DATE_SUB(DATE(UTC_TIMESTAMP()), INTERVAL 1 DAY) + INTERVAL 3 HOUR
@@ -709,8 +653,6 @@ final class TvRepository
         ];
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Frescor das fontes
     // ─────────────────────────────────────────────────────────────────────
 
     private function loadFetchStatus(?Partner $partner): array
@@ -774,7 +716,58 @@ final class TvRepository
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // Utils
+
+    /**
+     * Câmeras ativas do parceiro para o carrossel da TV.
+     *
+     * ⚠️ Devolve a URL do PROXY (/tv/camera/{id}/hls?file=...), não a
+     * URL bruta da câmera. Motivo: as câmeras são HLS sem CORS, então
+     * o hls.js não consegue fazer XHR direto. O proxy repassa manifestos
+     * e segmentos via same-origin.
+     *
+     * O `file` já vem com o path relativo correto pra câmera. Ex.:
+     * para a URL http://200.144.30.103:8084/hls/cam_23/stream5564.ts
+     * o proxy recebe ?file=hls/cam_23/stream5564.ts.
+     *
+     * @return list<array{id:int,name:string,city:?string,state:?string,url:string,urlType:string}>
+     */
+    private function loadCameras(?Partner $partner): array
+    {
+        $pf = '';
+        $params = [];
+        if ($partner !== null) {
+            $pf = ' AND partner_id = :pid';
+            $params['pid'] = $partner->getId();
+        }
+
+        $rows = $this->connection->executeQuery(
+            "SELECT id, name, city, state, url, url_type
+             FROM partner_camera_link
+             WHERE is_active = 1
+               AND url IS NOT NULL
+               AND url <> ''
+               {$pf}
+             ORDER BY id ASC
+             LIMIT 30",
+            $params
+        )->fetchAllAssociative();
+
+        return array_map(static function ($r) {
+            $rawUrl = (string) $r['url'];
+            $path   = parse_url($rawUrl, PHP_URL_PATH);
+            $path   = is_string($path) ? ltrim($path, '/') : '';
+
+            return [
+                'id'      => (int) $r['id'],
+                'name'    => $r['name'] ?: 'Câmera #'.$r['id'],
+                'city'    => $r['city'],
+                'state'   => $r['state'],
+                'url'     => '/tv/camera/' . (int) $r['id'] . '/hls?file=' . rawurlencode($path),
+                'urlType' => 'hls',
+            ];
+        }, $rows);
+    }
+
     // ─────────────────────────────────────────────────────────────────────
 
     private function toIso(mixed $value): ?string

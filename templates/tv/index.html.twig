@@ -14,9 +14,9 @@
 <div class="tv-wallboard"
      data-tv-wallboard
      data-api-endpoint="{{ path('tv_api_data') }}"
-     data-partner="{{ partner ? partner.name : 'Global' }}">
+     data-partner="{{ partner ? partner.name : 'Global' }}"
+     data-timezone="{{ app_timezone|default('America/Sao_Paulo') }}">
 
-    {# Overlay de reconexão #}
     <div class="tv-overlay" data-tv-overlay hidden>
         <div class="tv-overlay__box">
             <span class="tv-overlay__icon">⟳</span>
@@ -78,7 +78,7 @@
     {# ── Corpo em 3 colunas ──────────────────────────────────────── #}
     <main class="tv-body">
 
-        {# ── Coluna esquerda — alertas + jams ──────────────────── #}
+        {# ── Coluna esquerda ──────────────────────────────────────── #}
         <aside class="tv-col tv-col--left">
 
             <section class="tv-card tv-card--alerts">
@@ -93,22 +93,10 @@
                 <div class="tv-card__hint" data-tv-alerts-hint>—</div>
 
                 <ul class="tv-kv">
-                    <li>
-                        <span>Acidentes</span>
-                        <strong data-tv-type="ACCIDENT">0</strong>
-                    </li>
-                    <li>
-                        <span>Vias fechadas</span>
-                        <strong data-tv-type="ROAD_CLOSED">0</strong>
-                    </li>
-                    <li>
-                        <span>Alagamentos</span>
-                        <strong data-tv-type="HAZARD_WEATHER_FLOOD">0</strong>
-                    </li>
-                    <li>
-                        <span>Perigo climático</span>
-                        <strong data-tv-type="WEATHERHAZARD">0</strong>
-                    </li>
+                    <li><span>Acidentes</span><strong data-tv-type="ACCIDENT">0</strong></li>
+                    <li><span>Vias fechadas</span><strong data-tv-type="ROAD_CLOSED">0</strong></li>
+                    <li><span>Alagamentos</span><strong data-tv-type="HAZARD_WEATHER_FLOOD">0</strong></li>
+                    <li><span>Perigo climático</span><strong data-tv-type="WEATHERHAZARD">0</strong></li>
                 </ul>
             </section>
 
@@ -124,18 +112,9 @@
                 <div class="tv-card__hint" data-tv-jams-hint>—</div>
 
                 <ul class="tv-kv">
-                    <li>
-                        <span>Nível 3+</span>
-                        <strong data-tv-jams="level3">0</strong>
-                    </li>
-                    <li>
-                        <span>Nível 4+</span>
-                        <strong data-tv-jams="level4">0</strong>
-                    </li>
-                    <li>
-                        <span>Atraso médio</span>
-                        <strong data-tv-jams="avgDelay">—</strong>
-                    </li>
+                    <li><span>Nível 3+</span><strong data-tv-jams="level3">0</strong></li>
+                    <li><span>Nível 4+</span><strong data-tv-jams="level4">0</strong></li>
+                    <li><span>Atraso médio</span><strong data-tv-jams="avgDelay">—</strong></li>
                 </ul>
             </section>
 
@@ -151,7 +130,7 @@
 
         </aside>
 
-        {# ── Centro — mapa + feed ──────────────────────────────── #}
+        {# ── Centro — mapa + câmeras + feed ──────────────────────── #}
         <section class="tv-col tv-col--center">
 
             <div class="tv-map-wrap">
@@ -159,6 +138,15 @@
                 <div class="tv-map__badge" data-tv-map-badge hidden>
                     <span class="tv-map__badge-dot"></span>
                     <span data-tv-map-badge-text>Zona quente</span>
+                </div>
+            </div>
+
+            {# Carrossel de câmeras — aparece só se tiver câmera cadastrada #}
+            <div class="tv-cams" data-tv-cams hidden>
+                <div class="tv-cams__grid" data-tv-cams-grid></div>
+                <div class="tv-cams__badge" data-tv-cams-badge hidden>
+                    <span class="tv-cams__badge-dot"></span>
+                    <span data-tv-cams-badge-text>0 câmeras</span>
                 </div>
             </div>
 
@@ -174,7 +162,7 @@
 
         </section>
 
-        {# ── Coluna direita — hydro + chuva + clima ────────────── #}
+        {# ── Coluna direita ──────────────────────────────────────── #}
         <aside class="tv-col tv-col--right">
 
             <section class="tv-card tv-card--hydro">
@@ -199,14 +187,8 @@
                         <span class="tv-rain__unit">mm · 1h</span>
                     </div>
                     <div class="tv-rain__grid">
-                        <div>
-                            <span>24h</span>
-                            <strong data-tv-rain="last24h">0,0</strong>
-                        </div>
-                        <div>
-                            <span>Pico</span>
-                            <strong data-tv-rain="peak24h">0,0</strong>
-                        </div>
+                        <div><span>24h</span><strong data-tv-rain="last24h">0,0</strong></div>
+                        <div><span>Pico</span><strong data-tv-rain="peak24h">0,0</strong></div>
                     </div>
                     <div class="tv-rain__top" data-tv-rain-top>—</div>
                 </div>
@@ -223,14 +205,8 @@
                         <span class="tv-weather__unit">°C</span>
                     </div>
                     <div class="tv-weather__meta">
-                        <div>
-                            <span>Umidade</span>
-                            <strong data-tv-weather="humidity">—</strong>
-                        </div>
-                        <div>
-                            <span>Vento</span>
-                            <strong data-tv-weather="wind">—</strong>
-                        </div>
+                        <div><span>Umidade</span><strong data-tv-weather="humidity">—</strong></div>
+                        <div><span>Vento</span><strong data-tv-weather="wind">—</strong></div>
                     </div>
                     <div class="tv-weather__station" data-tv-weather-station>—</div>
                 </div>
@@ -240,33 +216,15 @@
 
     </main>
 
-    {# ── Rodapé 1 — números do dia ──────────────────────────────── #}
+    {# ── Rodapé 1 ─────────────────────────────────────────────────── #}
     <footer class="tv-bottom" data-tv-bottom>
         <div class="tv-today">
-            <div class="tv-today__item">
-                <span>Alertas hoje</span>
-                <strong data-tv-today="alerts">0</strong>
-            </div>
-            <div class="tv-today__item">
-                <span>Acidentes</span>
-                <strong data-tv-today="accidents">0</strong>
-            </div>
-            <div class="tv-today__item">
-                <span>Vias fechadas</span>
-                <strong data-tv-today="roadClosed">0</strong>
-            </div>
-            <div class="tv-today__item">
-                <span>Alagamentos</span>
-                <strong data-tv-today="floods">0</strong>
-            </div>
-            <div class="tv-today__item">
-                <span>Jams hoje</span>
-                <strong data-tv-today="jams">0</strong>
-            </div>
-            <div class="tv-today__item tv-today__item--trend">
-                <span>vs. ontem</span>
-                <strong data-tv-today="trend">—</strong>
-            </div>
+            <div class="tv-today__item"><span>Alertas hoje</span><strong data-tv-today="alerts">0</strong></div>
+            <div class="tv-today__item"><span>Acidentes</span><strong data-tv-today="accidents">0</strong></div>
+            <div class="tv-today__item"><span>Vias fechadas</span><strong data-tv-today="roadClosed">0</strong></div>
+            <div class="tv-today__item"><span>Alagamentos</span><strong data-tv-today="floods">0</strong></div>
+            <div class="tv-today__item"><span>Jams hoje</span><strong data-tv-today="jams">0</strong></div>
+            <div class="tv-today__item tv-today__item--trend"><span>vs. ontem</span><strong data-tv-today="trend">—</strong></div>
         </div>
 
         <div class="tv-fresh">
@@ -278,7 +236,7 @@
         </div>
     </footer>
 
-    {# ── Rodapé 2 — ticker ─────────────────────────────────────── #}
+    {# ── Rodapé 2 — ticker ───────────────────────────────────────── #}
     <div class="tv-ticker" data-tv-ticker>
         <div class="tv-ticker__track" data-tv-ticker-track>
             <span>Carregando…</span>
@@ -289,6 +247,7 @@
 {% endblock %}
 
 {% block javascripts %}
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 {% endblock %}

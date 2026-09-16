@@ -24,6 +24,7 @@
         <a class="landing-nav-link" href="#recursos">Recursos</a>
         <a class="landing-nav-link" href="#como-funciona">Como funciona</a>
         <a class="landing-nav-link" href="#solucoes">Soluções</a>
+        <a class="landing-nav-link" href="#depoimentos">Depoimentos</a>
     </nav>
 
     <div class="landing-header-actions">
@@ -37,8 +38,12 @@
 </header>
 
 <main>
+    <!-- HERO -->
     <section class="landing-hero">
-        <div class="hero-orb hero-orb-1"></div><div class="hero-orb hero-orb-2"></div><div class="hero-orb hero-orb-3"></div>
+        <div class="hero-orb hero-orb-1"></div>
+        <div class="hero-orb hero-orb-2"></div>
+        <div class="hero-orb hero-orb-3"></div>
+
         <div class="landing-hero-content" data-reveal>
             <span class="landing-eyebrow"><span class="eyebrow-dot"></span> Mobilidade inteligente</span>
             <h1>Decisões melhores para o trânsito da sua cidade com <span class="hero-gradient-text">dados em tempo real.</span></h1>
@@ -47,57 +52,299 @@
                 <a class="landing-btn landing-btn-primary landing-btn-lg" href="#contato">Solicitar demonstração <i class="fa-solid fa-arrow-right"></i></a>
                 <a class="landing-btn landing-btn-ghost landing-btn-lg" href="#recursos"><i class="fa-solid fa-circle-play"></i> Conhecer recursos</a>
             </div>
-            <div class="landing-trust"><div class="landing-avatars"><span>SP</span><span>RJ</span><span>MG</span><span>+</span></div><p>Feito para gestores públicos, operações e empresas de mobilidade.</p></div>
+            <div class="landing-trust">
+                <div class="landing-avatars"><span>SP</span><span>RJ</span><span>MG</span><span>+</span></div>
+                <p>Feito para gestores públicos, operações e empresas de mobilidade.</p>
+            </div>
         </div>
 
         <div class="landing-hero-visual" data-reveal data-reveal-delay="120">
             <div class="hero-card-glow"></div>
-            <div class="lfc lfc-alert"><span class="lfc-icon lfc-icon-red"><i class="fa-solid fa-triangle-exclamation"></i></span><span class="lfc-body"><strong>Alerta detectado</strong><small>Av. Central · agora</small></span></div>
-            <div class="landing-dashboard-card">
-                <div class="ldc-header"><div class="ldc-header-left"><span class="ldc-live-dot"></span><span class="ldc-title">Painel operacional</span></div><span class="ldc-updated">ao vivo</span></div>
-                <div class="ldc-map"><div class="ldc-map-grid"></div><div class="ldc-road road-a"></div><div class="ldc-road road-b"></div><div class="ldc-pin ldc-pin-red">!</div><div class="ldc-pin ldc-pin-amber">2</div><div class="ldc-pin ldc-pin-green">✓</div></div>
-                <div class="ldc-stats"><div class="ldc-stat"><strong>2.847</strong><span>Veículos</span></div><div class="ldc-stat"><strong>94%</strong><span>Fluidez</span></div><div class="ldc-stat"><strong>12</strong><span>Alertas</span></div></div>
+            <div class="lfc lfc-alert">
+                <span class="lfc-icon lfc-icon-red"><i class="fa-solid fa-triangle-exclamation"></i></span>
+                <span class="lfc-body"><strong>Alerta detectado</strong><small>Av. Central · agora</small></span>
             </div>
-            <div class="lfc lfc-status"><span class="lfc-icon lfc-icon-green"><i class="fa-solid fa-chart-line"></i></span><span class="lfc-body"><strong>Fluxo normal</strong><small>+12% de fluidez</small></span></div>
+            <div class="landing-dashboard-card">
+                <div class="ldc-header">
+                    <div class="ldc-header-left"><span class="ldc-live-dot"></span><span class="ldc-title">Painel operacional</span></div>
+                    <span class="ldc-updated">ao vivo</span>
+                </div>
+                <div class="ldc-map">
+                    <div class="ldc-map-grid"></div>
+                    <div class="ldc-road road-a"></div>
+                    <div class="ldc-road road-b"></div>
+                    <div class="ldc-pin ldc-pin-red">!</div>
+                    <div class="ldc-pin ldc-pin-amber">2</div>
+                    <div class="ldc-pin ldc-pin-green">✓</div>
+                </div>
+                <div class="ldc-stats">
+                    <div class="ldc-stat"><strong>2.847</strong><span>Veículos</span></div>
+                    <div class="ldc-stat"><strong>94%</strong><span>Fluidez</span></div>
+                    <div class="ldc-stat"><strong>12</strong><span>Alertas</span></div>
+                </div>
+            </div>
+            <div class="lfc lfc-status">
+                <span class="lfc-icon lfc-icon-green"><i class="fa-solid fa-chart-line"></i></span>
+                <span class="lfc-body"><strong>Fluxo normal</strong><small>+12% de fluidez</small></span>
+            </div>
         </div>
     </section>
 
+    <!-- LOGOS / PARCEIROS -->
+    <div class="landing-partners">
+        <div class="partners-inner">
+            <span class="partners-label">Integrações e dados</span>
+            <div class="partners-logos">
+                <span class="partner-item"><i class="fa-solid fa-map-location-dot"></i> Waze</span>
+                <span class="partner-item"><i class="fa-solid fa-cloud-rain"></i> CEMADEN</span>
+                <span class="partner-item"><i class="fa-solid fa-traffic-light"></i> CET</span>
+                <span class="partner-item"><i class="fa-solid fa-satellite"></i> INPE</span>
+                <span class="partner-item"><i class="fa-brands fa-google"></i> Google Maps</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MÉTRICAS -->
     <section class="landing-metrics" aria-label="Indicadores">
         <div class="metrics-inner">
-            <div class="metric-item"><span class="metric-icon metric-icon-blue"><i class="fa-solid fa-city"></i></span><div><strong data-count="150">0</strong><span>Cidades atendidas</span></div></div>
+            <div class="metric-item" data-reveal>
+                <span class="metric-icon metric-icon-blue"><i class="fa-solid fa-city"></i></span>
+                <div>
+                    <strong data-count="150">0</strong>
+                    <span>Cidades atendidas</span>
+                </div>
+            </div>
             <span class="metric-divider"></span>
-            <div class="metric-item"><span class="metric-icon metric-icon-purple"><i class="fa-solid fa-car"></i></span><div><strong data-count="50000">0</strong><span>Veículos monitorados</span></div></div>
+            <div class="metric-item" data-reveal data-reveal-delay="80">
+                <span class="metric-icon metric-icon-purple"><i class="fa-solid fa-car"></i></span>
+                <div>
+                    <strong data-count="50000">0</strong>
+                    <span>Veículos monitorados</span>
+                </div>
+            </div>
             <span class="metric-divider"></span>
-            <div class="metric-item"><span class="metric-icon metric-icon-green"><i class="fa-solid fa-bolt"></i></span><div><strong data-count="99">0</strong><span>% de disponibilidade</span></div></div>
-        </div>
-    </section>
-
-    <section class="landing-features" id="recursos">
-        <div class="section-heading" data-reveal><span class="landing-eyebrow"><span class="eyebrow-dot"></span> Recursos</span><h2>Visibilidade completa para agir no momento certo.</h2><p>Dados organizados, alertas relevantes e integrações que tornam a gestão de mobilidade mais simples.</p></div>
-        <div class="features-grid">
-            <article class="feature-card" data-reveal><div class="feature-card-top"><span class="feature-icon feature-icon-blue"><i class="fa-solid fa-satellite-dish"></i></span><span class="feature-badge feature-badge-blue">Ao vivo</span></div><h3>Monitoramento em tempo real</h3><p>Acompanhe ocorrências, lentidão e condições das vias em uma única visão.</p></article>
-            <article class="feature-card feature-card-highlight" data-reveal><div class="feature-card-top"><span class="feature-icon feature-icon-orange"><i class="fa-solid fa-map-location-dot"></i></span><span class="feature-badge feature-badge-orange">Mapa</span></div><h3>Mapas operacionais</h3><p>Visualize camadas, áreas críticas e eventos georreferenciados com clareza.</p></article>
-            <article class="feature-card" data-reveal><div class="feature-card-top"><span class="feature-icon feature-icon-green"><i class="fa-solid fa-bell"></i></span><span class="feature-badge feature-badge-green">Alertas</span></div><h3>Alertas inteligentes</h3><p>Configure notificações para incidentes e condições que exigem ação imediata.</p></article>
-        </div>
-    </section>
-
-    <section class="landing-process" id="como-funciona">
-        <div class="process-inner"><div class="process-heading" data-reveal><span class="landing-eyebrow landing-eyebrow-light"><span class="eyebrow-dot"></span> Como funciona</span><h2>Da informação à decisão em poucos passos.</h2></div>
-            <div class="process-steps">
-                <article class="process-step" data-reveal><span class="step-number">01</span><span class="step-connector"></span><div class="step-body"><span class="step-icon"><i class="fa-solid fa-plug"></i></span><h3>Conecte as fontes</h3><p>Integre Waze, CEMADEN e os dados relevantes para sua operação.</p></div></article>
-                <article class="process-step" data-reveal><span class="step-number">02</span><span class="step-connector"></span><div class="step-body"><span class="step-icon"><i class="fa-solid fa-sliders"></i></span><h3>Configure alertas</h3><p>Defina regiões e regras que representam prioridades para a equipe.</p></div></article>
-                <article class="process-step" data-reveal><span class="step-number">03</span><div class="step-body"><span class="step-icon"><i class="fa-solid fa-chart-column"></i></span><h3>Acompanhe resultados</h3><p>Use dados e relatórios para aperfeiçoar decisões continuamente.</p></div></article>
+            <div class="metric-item" data-reveal data-reveal-delay="160">
+                <span class="metric-icon metric-icon-green"><i class="fa-solid fa-bolt"></i></span>
+                <div>
+                    <strong data-count="99">0</strong>
+                    <span>% de disponibilidade</span>
+                </div>
             </div>
         </div>
     </section>
 
-    <section class="landing-features" id="solucoes">
-        <div class="section-heading" data-reveal><span class="landing-eyebrow"><span class="eyebrow-dot"></span> Soluções</span><h2>Para cidades, operações e empresas.</h2><p>Uma base de dados flexível para contextos diferentes de mobilidade urbana.</p></div>
+    <!-- RECURSOS -->
+    <section class="landing-features" id="recursos">
+        <div class="section-heading" data-reveal>
+            <span class="landing-eyebrow"><span class="eyebrow-dot"></span> Recursos</span>
+            <h2>Visibilidade completa para agir no momento certo.</h2>
+            <p>Dados organizados, alertas relevantes e integrações que tornam a gestão de mobilidade mais simples.</p>
+        </div>
         <div class="features-grid">
-            <article class="feature-card" data-reveal><span class="feature-icon feature-icon-blue"><i class="fa-solid fa-building-columns"></i></span><h3>Prefeituras</h3><p>Centralize a visualização de eventos e apoie decisões da mobilidade urbana.</p></article>
-            <article class="feature-card" data-reveal><span class="feature-icon feature-icon-orange"><i class="fa-solid fa-truck-fast"></i></span><h3>Logística</h3><p>Encontre oportunidades para melhorar rotas, horários e resposta a incidentes.</p></article>
-            <article class="feature-card" data-reveal><span class="feature-icon feature-icon-green"><i class="fa-solid fa-code"></i></span><h3>Desenvolvedores</h3><p>Integre informações de mobilidade aos seus produtos e sistemas internos.</p></article>
+            <article class="feature-card" data-reveal data-reveal-delay="0">
+                <div class="feature-card-top">
+                    <span class="feature-icon feature-icon-blue"><i class="fa-solid fa-satellite-dish"></i></span>
+                    <span class="feature-badge feature-badge-blue">Ao vivo</span>
+                </div>
+                <h3>Monitoramento em tempo real</h3>
+                <p>Acompanhe ocorrências, lentidão e condições das vias em uma única visão atualizada continuamente.</p>
+                <ul class="feature-list">
+                    <li><i class="fa-solid fa-check"></i> Feed de eventos ao vivo</li>
+                    <li><i class="fa-solid fa-check"></i> Heatmap de congestionamentos</li>
+                    <li><i class="fa-solid fa-check"></i> Histórico por período</li>
+                </ul>
+            </article>
+            <article class="feature-card feature-card-highlight" data-reveal data-reveal-delay="80">
+                <div class="feature-card-top">
+                    <span class="feature-icon feature-icon-orange"><i class="fa-solid fa-map-location-dot"></i></span>
+                    <span class="feature-badge feature-badge-orange">Mapa</span>
+                </div>
+                <h3>Mapas operacionais</h3>
+                <p>Visualize camadas, áreas críticas e eventos georreferenciados com clareza total para sua equipe.</p>
+                <ul class="feature-list">
+                    <li><i class="fa-solid fa-check"></i> Camadas configuráveis</li>
+                    <li><i class="fa-solid fa-check"></i> Polígonos de interesse</li>
+                    <li><i class="fa-solid fa-check"></i> Exportação de dados</li>
+                </ul>
+            </article>
+            <article class="feature-card" data-reveal data-reveal-delay="160">
+                <div class="feature-card-top">
+                    <span class="feature-icon feature-icon-green"><i class="fa-solid fa-bell"></i></span>
+                    <span class="feature-badge feature-badge-green">Alertas</span>
+                </div>
+                <h3>Alertas inteligentes</h3>
+                <p>Configure notificações para incidentes e condições que exigem ação imediata da sua operação.</p>
+                <ul class="feature-list">
+                    <li><i class="fa-solid fa-check"></i> Regras personalizáveis</li>
+                    <li><i class="fa-solid fa-check"></i> Notificação multicanal</li>
+                    <li><i class="fa-solid fa-check"></i> Escalação automática</li>
+                </ul>
+            </article>
         </div>
     </section>
 
-    <section class="landing-cta" id="contato"><div class="cta-inner"><div class="cta-glow"></div><div class="cta-content"><span class="landing-eyebrow landing-eyebrow-light">Comece agora</span><h2>Quer uma visão mais inteligente da mobilidade?</h2><p>Converse com a equipe wazeBR e descubra a melhor configuração para sua operação.</p></div><a class="landing-btn landing-btn-white landing-btn-lg" href="mailto:contato@wazebr.com.br">Falar com especialista <i cla
+    <!-- COMO FUNCIONA -->
+    <section class="landing-process" id="como-funciona">
+        <div class="process-inner">
+            <div class="process-heading" data-reveal>
+                <span class="landing-eyebrow landing-eyebrow-light"><span class="eyebrow-dot"></span> Como funciona</span>
+                <h2>Da informação à decisão em poucos passos.</h2>
+                <p>Uma plataforma pensada para quem precisa agir rápido com base em dados confiáveis.</p>
+            </div>
+            <div class="process-steps">
+                <article class="process-step" data-reveal data-reveal-delay="0">
+                    <span class="step-number">01</span>
+                    <span class="step-connector"></span>
+                    <div class="step-body">
+                        <span class="step-icon"><i class="fa-solid fa-plug"></i></span>
+                        <h3>Conecte as fontes</h3>
+                        <p>Integre Waze, CEMADEN e os dados relevantes para sua operação em minutos, sem código.</p>
+                    </div>
+                </article>
+                <article class="process-step" data-reveal data-reveal-delay="120">
+                    <span class="step-number">02</span>
+                    <span class="step-connector"></span>
+                    <div class="step-body">
+                        <span class="step-icon"><i class="fa-solid fa-sliders"></i></span>
+                        <h3>Configure alertas</h3>
+                        <p>Defina regiões, horários e regras que representam as prioridades reais da sua equipe.</p>
+                    </div>
+                </article>
+                <article class="process-step" data-reveal data-reveal-delay="240">
+                    <span class="step-number">03</span>
+                    <div class="step-body">
+                        <span class="step-icon"><i class="fa-solid fa-chart-column"></i></span>
+                        <h3>Acompanhe resultados</h3>
+                        <p>Use dados, relatórios e tendências para aperfeiçoar decisões de mobilidade continuamente.</p>
+                    </div>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <!-- SOLUÇÕES -->
+    <section class="landing-features" id="solucoes">
+        <div class="section-heading" data-reveal>
+            <span class="landing-eyebrow"><span class="eyebrow-dot"></span> Soluções</span>
+            <h2>Para cidades, operações e empresas.</h2>
+            <p>Uma base de dados flexível para contextos diferentes de mobilidade urbana.</p>
+        </div>
+        <div class="features-grid">
+            <article class="feature-card feature-card-solution" data-reveal data-reveal-delay="0">
+                <div class="solution-card-header solution-blue">
+                    <span class="feature-icon feature-icon-blue"><i class="fa-solid fa-building-columns"></i></span>
+                </div>
+                <h3>Prefeituras</h3>
+                <p>Centralize a visualização de eventos e apoie decisões da secretaria de mobilidade urbana com dados precisos.</p>
+                <a class="feature-link" href="#contato">Saiba mais <i class="fa-solid fa-arrow-right"></i></a>
+            </article>
+            <article class="feature-card feature-card-solution" data-reveal data-reveal-delay="80">
+                <div class="solution-card-header solution-orange">
+                    <span class="feature-icon feature-icon-orange"><i class="fa-solid fa-truck-fast"></i></span>
+                </div>
+                <h3>Logística</h3>
+                <p>Encontre oportunidades para melhorar rotas, horários e a resposta a incidentes que impactam sua frota.</p>
+                <a class="feature-link" href="#contato">Saiba mais <i class="fa-solid fa-arrow-right"></i></a>
+            </article>
+            <article class="feature-card feature-card-solution" data-reveal data-reveal-delay="160">
+                <div class="solution-card-header solution-green">
+                    <span class="feature-icon feature-icon-green"><i class="fa-solid fa-code"></i></span>
+                </div>
+                <h3>Desenvolvedores</h3>
+                <p>Integre informações de mobilidade aos seus produtos e sistemas internos via API documentada.</p>
+                <a class="feature-link" href="#contato">Saiba mais <i class="fa-solid fa-arrow-right"></i></a>
+            </article>
+        </div>
+    </section>
+
+    <!-- DEPOIMENTOS -->
+    <section class="landing-testimonials" id="depoimentos">
+        <div class="testimonials-inner">
+            <div class="section-heading" data-reveal>
+                <span class="landing-eyebrow"><span class="eyebrow-dot"></span> Depoimentos</span>
+                <h2>Quem usa, confia.</h2>
+                <p>Gestores e equipes que já transformaram sua operação com o wazeBR.</p>
+            </div>
+            <div class="testimonials-grid">
+                <blockquote class="testimonial-card" data-reveal data-reveal-delay="0">
+                    <div class="testimonial-stars">
+                        <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+                    </div>
+                    <p>"A plataforma mudou como nossa equipe responde a incidentes. O tempo de ação caiu pela metade após a implantação."</p>
+                    <footer>
+                        <div class="testimonial-avatar">RC</div>
+                        <div class="testimonial-author">
+                            <strong>Roberto C.</strong>
+                            <span>Gestor de Mobilidade · São Paulo</span>
+                        </div>
+                    </footer>
+                </blockquote>
+                <blockquote class="testimonial-card" data-reveal data-reveal-delay="100">
+                    <div class="testimonial-stars">
+                        <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+                    </div>
+                    <p>"Integração com o Waze funcionou de imediato. Hoje temos visibilidade de toda a malha urbana em um painel só."</p>
+                    <footer>
+                        <div class="testimonial-avatar">FM</div>
+                        <div class="testimonial-author">
+                            <strong>Fernanda M.</strong>
+                            <span>Diretora de Operações · Belo Horizonte</span>
+                        </div>
+                    </footer>
+                </blockquote>
+                <blockquote class="testimonial-card" data-reveal data-reveal-delay="200">
+                    <div class="testimonial-stars">
+                        <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+                    </div>
+                    <p>"Os alertas configuráveis economizaram horas de monitoramento manual. Nossa frota ganhou muito em eficiência."</p>
+                    <footer>
+                        <div class="testimonial-avatar">TL</div>
+                        <div class="testimonial-author">
+                            <strong>Thiago L.</strong>
+                            <span>Coordenador de Logística · Rio de Janeiro</span>
+                        </div>
+                    </footer>
+                </blockquote>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="landing-cta" id="contato">
+        <div class="cta-inner">
+            <div class="cta-glow"></div>
+            <div class="cta-content" data-reveal>
+                <span class="landing-eyebrow landing-eyebrow-light"><span class="eyebrow-dot"></span> Comece agora</span>
+                <h2>Quer uma visão mais inteligente da mobilidade?</h2>
+                <p>Converse com a equipe wazeBR e descubra a melhor configuração para sua operação.</p>
+                <div class="cta-actions">
+                    <a class="landing-btn landing-btn-white landing-btn-lg" href="mailto:contato@wazebr.com.br">Falar com especialista <i class="fa-solid fa-arrow-right"></i></a>
+                    <a class="landing-btn landing-btn-ghost-white landing-btn-lg" href="{{ path('app_login') }}">Já tenho conta <i class="fa-solid fa-sign-in-alt"></i></a>
+                </div>
+            </div>
+            <div class="cta-visual" data-reveal data-reveal-delay="140">
+                <div class="cta-stat-card"><i class="fa-solid fa-clock"></i><strong>Resposta em 24h</strong><span>da nossa equipe</span></div>
+                <div class="cta-stat-card"><i class="fa-solid fa-shield-halved"></i><strong>Sem contrato longo</strong><span>comece quando quiser</span></div>
+                <div class="cta-stat-card"><i class="fa-solid fa-headset"></i><strong>Suporte dedicado</strong><span>em português</span></div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer class="landing-footer">
+    <div class="footer-brand">
+        <a href="{{ path('app_landing') }}" class="landing-brand" aria-label="wazeBR - início">
+            <span class="landing-brand-mark landing-brand-mark-sm"><i class="fa-solid fa-road"></i></span>
+            <span class="landing-brand-name"><strong>waze</strong><em>BR</em></span>
+        </a>
+        <p class="landing-footer-copy">© {{ "now"|date("Y") }} wazeBR · Monitoramento inteligente de tráfego.</p>
+    </div>
+    <div class="footer-links">
+        <a class="landing-footer-link" href="#recursos">Recursos</a>
+        <a class="landing-footer-link" href="#como-funciona">Como funciona</a>
+        <a class="landing-footer-link" href="#solucoes">Soluções</a>
+        <a class="landing-footer-link" href="mailto:contato@wazebr.com.br">Contato</a>
+    </div>
+</footer>
+</body>
+</html>

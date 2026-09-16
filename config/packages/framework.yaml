@@ -25,6 +25,9 @@ framework:
 
     scheduler: true
 
+    http_cache:
+        enabled: true   # ← se estiver true, é mais uma camada de cache
+
 when@test:
     framework:
         test: true

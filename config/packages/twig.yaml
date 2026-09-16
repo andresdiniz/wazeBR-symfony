@@ -1,16 +1,18 @@
 twig:
     file_name_pattern: '*.html.twig'
     default_path: '%kernel.project_dir%/templates'
+
     date:
         # Todas as datas do banco (createdAt, collectedAt, pubDate, etc.) são
-        # armazenadas/hidratadas em UTC (timezone padrão do PHP no servidor,
-        # que não define date.timezone). Sem isso, o filtro |date() exibia
-        # tudo 3h à frente do horário de Brasília (e virava o dia perto da
-        # meia-noite). Isso NÃO altera como as datas são armazenadas ou
-        # comparadas no backend — só a exibição no template.
-        timezone: America/Sao_Paulo
+        # armazenadas/hidratadas em UTC. O filtro |date() converte para o
+        # fuso configurado em APP_TIMEZONE para exibição.
+        timezone: '%env(APP_TIMEZONE)%'
 
     globals:
+        # Exposição do fuso para o JS via atributo data-*. O JS usa para
+        # formatar datas que vêm do endpoint JSON (ex: /tv/api/data).
+        app_timezone: '%env(APP_TIMEZONE)%'
+
         # ... teus globals existentes ...
         analytics_enabled:      '%env(bool:ANALYTICS_ENABLED)%'
         analytics_provider:     '%env(ANALYTICS_PROVIDER)%'

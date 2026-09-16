@@ -7,13 +7,13 @@ const ERROR_THRESHOLD  = 3;
 const SOUND_COOLDOWN   = 120_000;
 
 // Câmeras
-const CAM_ROTATION_MS  = 12_000;
+const CAM_ROTATION_MS  = 12_000;   // ~12s (dentro do "10 a 15s" pedido)
 const CAM_FADE_MS      = 300;
 const CAM_MAX_SLOTS    = 4;
 
 const state = {
     endpoint: null,
-    timezone: 'America/Sao_Paulo',
+    timezone: 'America/Sao_Paulo',   // sobrescrito por data-timezone
     failures: 0,
     lastGeneratedAt: null,
     map: null,
@@ -45,6 +45,13 @@ function escapeHtml(str) {
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#039;');
+}
+
+function escapeAttr(s) {
+    return String(s ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('"', '&quot;')
+        .replaceAll('<', '&lt;');
 }
 
 function fmtNum(n, digits = 0) {
@@ -528,9 +535,7 @@ function renderCameras(list) {
         state.cameras.timer = null;
     }
 
-    // Lista vazia: destrói recursos e esconde a faixa
     if (safeList.length === 0) {
-        state.cameras.slotEls.forEach(destroySlot);
         wrap.hidden = true;
         grid.innerHTML = '';
         state.cameras.slotEls = [];
@@ -538,7 +543,6 @@ function renderCameras(list) {
         return;
     }
 
-    // Reconstrói slots
     const slots = Math.min(safeList.length, CAM_MAX_SLOTS);
     state.cameras.slots = slots;
 
@@ -550,6 +554,7 @@ function renderCameras(list) {
         const slot = document.createElement('div');
         slot.className = 'tv-cam';
         slot.innerHTML = `
+            <img alt="" loading="eager" decoding="async">
             <div class="tv-cam__overlay">
                 <span class="tv-cam__name" data-cam-name>—</span>
                 <span class="tv-cam__city" data-cam-city></span>
@@ -568,10 +573,10 @@ function renderCameras(list) {
 
     paintCamSlots(0);
 
-    // Rotação só se há mais câmeras que slots
+    // Só rotaciona se tem mais câmeras do que slots visíveis
     if (safeList.length > slots) {
         state.cameras.timer = setInterval(() => {
-            if (document.hidden) return;
+            if (document.hidden) return;   // pausa quando a aba está oculta
             state.cameras.offset = (state.cameras.offset + slots) % state.cameras.list.length;
             paintCamSlots(state.cameras.offset);
         }, CAM_ROTATION_MS);
@@ -588,167 +593,53 @@ function paintCamSlots(offset) {
     }
 }
 
-/**
- * Atualiza o conteúdo de um slot.
- * Mesma câmera já carregada → não recria (evita recarregar HLS a cada ciclo).
- */
 function updateCamSlot(slotEl, camera) {
     if (!slotEl || !camera) return;
 
-    // Já tem essa URL rodando? Não faz nada.
-    if (slotEl.dataset.currentUrl === camera.url) return;
-
-    // Diferente: destrói o que estava antes
-    destroySlot(slotEl);
-
-    slotEl.dataset.currentUrl = camera.url;
-
     const nameEl = slotEl.querySelector('[data-cam-name]');
     const cityEl = slotEl.querySelector('[data-cam-city]');
+
     if (nameEl) nameEl.textContent = camera.name || 'Câmera';
     if (cityEl) cityEl.textContent = [camera.city, camera.state].filter(Boolean).join('/') || '';
 
     const type = String(camera.urlType || '').toLowerCase();
+    const isEmbed = type.includes('embed')
+                 || type.includes('iframe')
+                 || type.includes('youtube')
+                 || type.includes('player');
 
-    if (type === 'hls' && typeof Hls !== 'undefined' && Hls.isSupported()) {
-        mountHls(slotEl, camera);
+    if (isEmbed) {
+        const existing = slotEl.querySelector('iframe');
+        if (existing && existing.dataset.src === camera.url) return;
+
+        slotEl.classList.remove('is-loading', 'is-error');
+        slotEl.innerHTML = `
+            <iframe
+                src="${escapeAttr(camera.url)}"
+                data-src="${escapeAttr(camera.url)}"
+                sandbox="allow-scripts allow-same-origin"
+                loading="lazy"
+                referrerpolicy="no-referrer"
+                allow="autoplay; encrypted-media"></iframe>
+            <div class="tv-cam__overlay">
+                <span class="tv-cam__name">${escapeHtml(camera.name || 'Câmera')}</span>
+                <span class="tv-cam__city">${escapeHtml([camera.city, camera.state].filter(Boolean).join('/'))}</span>
+            </div>
+        `;
         return;
     }
 
-    if (type === 'iframe' || type === 'embed') {
-        mountIframe(slotEl, camera);
-        return;
+    let img = slotEl.querySelector('img');
+    if (!img) {
+        img = document.createElement('img');
+        img.alt = '';
+        slotEl.insertBefore(img, slotEl.firstChild);
     }
 
-    // Padrão: imagem (snapshot, mjpeg, other)
-    mountImage(slotEl, camera);
-}
-
-/**
- * Limpa o slot e destrói HLS ativo.
- * Sem isso, o vídeo antigo continua baixando em background e
- * consome CPU/banda da TV.
- */
-function destroySlot(slotEl) {
-    if (!slotEl) return;
-
-    const video = slotEl.querySelector('video');
-    if (video) {
-        if (video._hls) {
-            try { video._hls.destroy(); } catch {}
-            video._hls = null;
-        }
-        try { video.pause(); } catch {}
-        video.removeAttribute('src');
-        try { video.load(); } catch {}
-        video.remove();
-    }
-
-    slotEl.querySelectorAll('img, iframe').forEach((el) => el.remove());
-
-    slotEl.classList.remove('is-loading', 'is-streaming', 'is-error');
-    delete slotEl.dataset.currentUrl;
-}
-
-// ── HLS ────────────────────────────────────────────────────────────────
-
-function mountHls(slotEl, camera) {
+    slotEl.classList.remove('is-error');
     slotEl.classList.add('is-loading');
-
-    const video = document.createElement('video');
-    video.muted = true;
-    video.autoplay = true;
-    video.playsInline = true;
-    video.setAttribute('playsinline', '');
-    video.setAttribute('webkit-playsinline', '');
-    video.preload = 'auto';
-
-    const overlay = slotEl.querySelector('.tv-cam__overlay');
-    if (overlay) slotEl.insertBefore(video, overlay);
-    else slotEl.appendChild(video);
-
-    const hls = new Hls({
-        enableWorker: false,
-        lowLatencyMode: false,
-        liveSyncDurationCount: 2,
-        manifestLoadingTimeOut: 8000,
-        manifestLoadingMaxRetry: 2,
-        fragLoadingMaxRetry: 3,
-        capLevelToPlayerSize: true,
-        startLevel: -1,
-    });
-
-    hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        slotEl.classList.add('is-streaming');
-        video.play().catch(() => { /* autoplay bloqueado: ok, segue mudo */ });
-    });
-
-    // Primeiro frame disponível → tira spinner, mostra vídeo
-    const onReady = () => {
-        slotEl.classList.remove('is-loading');
-        slotEl.classList.add('is-streaming');
-        video.classList.add('is-ready');
-    };
-    video.addEventListener('canplay', onReady, { once: true });
-
-    // Timeout defensivo: 10s sem ready = erro
-    const failTimer = setTimeout(() => {
-        if (video.classList.contains('is-ready')) return;
-        slotEl.classList.remove('is-loading', 'is-streaming');
-        slotEl.classList.add('is-error');
-        try { hls.destroy(); } catch {}
-    }, 10_000);
-    video.addEventListener('canplay', () => clearTimeout(failTimer), { once: true });
-
-    hls.on(Hls.Events.ERROR, (_evt, data) => {
-        if (!data || !data.fatal) return;
-        console.warn('[TV] HLS fatal:', data.type, data.details, camera.url);
-        clearTimeout(failTimer);
-        slotEl.classList.remove('is-loading', 'is-streaming');
-        slotEl.classList.add('is-error');
-        try { hls.destroy(); } catch {}
-    });
-
-    video._hls = hls;
-    hls.loadSource(camera.url);
-    hls.attachMedia(video);
-}
-
-// ── Iframe ─────────────────────────────────────────────────────────────
-
-function mountIframe(slotEl, camera) {
-    slotEl.classList.remove('is-loading', 'is-streaming', 'is-error');
-
-    const iframe = document.createElement('iframe');
-    iframe.src = camera.url;
-    iframe.dataset.src = camera.url;
-    iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
-    iframe.setAttribute('loading', 'lazy');
-    iframe.setAttribute('referrerpolicy', 'no-referrer');
-    iframe.setAttribute('allow', 'autoplay; encrypted-media');
-
-    const overlay = slotEl.querySelector('.tv-cam__overlay');
-    if (overlay) slotEl.insertBefore(iframe, overlay);
-    else slotEl.appendChild(iframe);
-}
-
-// ── Imagem (snapshot / mjpeg) ──────────────────────────────────────────
-
-function mountImage(slotEl, camera) {
-    slotEl.classList.remove('is-error', 'is-streaming');
-    slotEl.classList.add('is-loading');
-
-    const img = document.createElement('img');
-    img.alt = '';
-    img.loading = 'eager';
-    img.decoding = 'async';
     img.style.opacity = '0';
 
-    const overlay = slotEl.querySelector('.tv-cam__overlay');
-    if (overlay) slotEl.insertBefore(img, overlay);
-    else slotEl.appendChild(img);
-
-    // Pequeno delay pra dar tempo do fade-out do slot anterior
     setTimeout(() => {
         const bust = '_tv=' + Date.now();
         img.src = camera.url + (camera.url.includes('?') ? '&' : '?') + bust;
@@ -943,6 +834,7 @@ export function initTvWallboard(root = document) {
         return;
     }
 
+    // Timezone configurável via .env → twig global → data-timezone
     state.timezone = page.dataset.timezone || 'America/Sao_Paulo';
 
     initClock();
