@@ -4,17 +4,26 @@
 
 {% block stylesheets %}
     {{ parent() }}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
     <link rel="stylesheet" href="{{ asset('css/pages/route-show.css') }}">
 {% endblock %}
 
 {% block content %}
 {% set cur = current|default({}) %}
 {% set nearbyAlerts = nearbyAlerts|default([]) %}
+{% set routePolyline = routePolyline|default([]) %}
+{% set subRoutesPolyline = subRoutesPolyline|default({}) %}
 
 {% set HEALTH_LEVEL = stats.health >= 80 ? 'good' : (stats.health >= 55 ? 'warn' : 'bad') %}
 {% set TOTAL_OCC = (irregularities|length) + (nearbyAlerts|length) %}
 
-<div class="rs-page" data-route-show>
+<div class="rs-page"
+     data-route-show
+     data-route-polyline='{{ routePolyline|json_encode|e('html_attr') }}'
+     data-nearby-alerts='{{ nearbyAlerts|json_encode|e('html_attr') }}'
+     data-irregularities='{{ irregularities|json_encode|e('html_attr') }}'
+     data-subroutes-polyline='{{ subRoutesPolyline|json_encode|e('html_attr') }}'>
 
     <div class="rs-container">
 
@@ -142,11 +151,35 @@
             </article>
         </section>
 
+        {# ── Mapa principal ───────────────────────────────────────── #}
+        <section class="rs-panel rs-map-panel">
+            <header class="rs-panel__header">
+                <div>
+                    <span class="rs-panel__kicker">Traçado e ocorrências</span>
+                    <h2>Mapa da rota</h2>
+                </div>
+                <div class="rs-panel__legend rs-panel__legend--map">
+                    <span><i class="rs-legend-line"></i>Traçado</span>
+                    <span><i class="rs-legend-line rs-legend-line--sub"></i>Trecho</span>
+                    <span><i class="rs-legend-dot rs-legend-dot--alert"></i>Alertas Waze</span>
+                    <span><i class="rs-legend-dot rs-legend-dot--irr"></i>Irregularidades TVT</span>
+                </div>
+            </header>
+            <div class="rs-map"
+                 data-rs-map
+                 aria-label="Mapa da rota com alertas e irregularidades">
+                <div class="rs-map__fallback" data-rs-map-fallback hidden>
+                    <strong>Sem traçado geográfico</strong>
+                    <small>Esta rota não possui geometria cadastrada.</small>
+                </div>
+            </div>
+        </section>
+
         {# ── Heatmap ──────────────────────────────────────────────── #}
         <section class="rs-panel rs-heatmap-panel">
             <header class="rs-panel__header">
                 <div>
-                    <span class="rs-panel__kicker">Padrão semanal</span>
+                    <span class="rs-panel__kicker">Padrão semanal · baseado em % vs histórico</span>
                     <h2>Mapa de calor · dia da semana × hora</h2>
                 </div>
                 <div class="rs-legend">
@@ -162,12 +195,13 @@
             </div>
 
             <p class="rs-panel__hint">
-                Cada célula representa a média das leituras naquela hora/dia nos últimos 30 dias.
+                Cada célula mostra a <strong>razão</strong> entre tempo atual e histórico naquela hora/dia.
+                Uma rota de 180s com +2s de atraso fica verde (1.1%); uma rota de 20s com +2s fica amarela (10%).
                 Células vazias não têm amostras suficientes.
             </p>
         </section>
 
-        {# ── Timeline ─────────────────────────────────────────────── #}
+        {# ── Timeline com alertas sobrepostos ─────────────────────── #}
         <section class="rs-panel">
             <header class="rs-panel__header">
                 <div>
@@ -177,12 +211,17 @@
                 <div class="rs-panel__legend">
                     <span><i class="rs-dot rs-dot--blue"></i>Atraso (s)</span>
                     <span><i class="rs-dot rs-dot--red"></i>% vs histórico</span>
+                    <span><i class="rs-dot rs-dot--alert"></i>Alertas</span>
                 </div>
             </header>
             <div class="rs-chart-wrap rs-chart-wrap--tall">
                 <canvas data-chart="route-timeline"
                         data-chart-data='{{ timeline|json_encode|e('html_attr') }}'></canvas>
             </div>
+            <p class="rs-panel__hint">
+                As linhas verticais tracejadas marcam os horários com alertas Waze registrados perto do traçado.
+                Cruze visualmente com os picos de atraso.
+            </p>
         </section>
 
         {# ── Grid: por hora + por dia ─────────────────────────────── #}
@@ -235,9 +274,10 @@
             <section class="rs-panel">
                 <header class="rs-panel__header">
                     <div>
-                        <span class="rs-panel__kicker">Estado atual</span>
+                        <span class="rs-panel__kicker">Estado atual · ordenados por % vs histórico</span>
                         <h2>Trechos mais problemáticos</h2>
                     </div>
+                    <span class="rs-panel__count">{{ topSubRoutes|length }}</span>
                 </header>
 
                 <div class="rs-subroutes">
@@ -246,26 +286,56 @@
                             : ((sub.delayRatio is not null and sub.delayRatio >= 0.22) ? 'heavy'
                             : ((sub.delayRatio is not null and sub.delayRatio >= 0.10) ? 'moderate'
                             : ((sub.delayRatio is not null and sub.delayRatio > 0) ? 'light' : 'none'))) %}
-                        <div class="rs-subroute rs-subroute--{{ lvl }}">
-                            <div class="rs-subroute__head">
-                                <strong>{{ sub.name }}</strong>
-                                <span class="rs-subroute__badge rs-subroute__badge--{{ lvl }}">
-                                    {% if sub.delayRatio is not null %}
-                                        {{ (sub.delayRatio * 100)|round(0) }}%
-                                    {% else %}
-                                        —
+
+                        <div class="rs-subroute rs-subroute--{{ lvl }}"
+                             data-subroute-id="{{ sub.id }}">
+
+                            {# ── Coluna esquerda: conteúdo ── #}
+                            <div class="rs-subroute__content">
+                                <div class="rs-subroute__head">
+                                    <strong class="rs-subroute__name">{{ sub.name }}</strong>
+                                    <span class="rs-subroute__badge rs-subroute__badge--{{ lvl }}">
+                                        {{ sub.delayRatio is not null ? (sub.delayRatio * 100)|round(0) ~ '%' : '—' }}
+                                    </span>
+                                </div>
+
+                                {% if sub.from and sub.to and sub.name != (sub.from ~ ' → ' ~ sub.to) %}
+                                    <small class="rs-subroute__path">
+                                        {{ sub.from }} → {{ sub.to }}
+                                    </small>
+                                {% endif %}
+
+                                <div class="rs-subroute__bar">
+                                    <span style="width: {{ min(100, ((sub.delayRatio ?? 0) * 100)) }}%"></span>
+                                </div>
+
+                                <div class="rs-subroute__meta">
+                                    <span class="rs-subroute__meta-item">
+                                        <em>+{{ sub.delaySeconds ?? 0 }}s</em>
+                                    </span>
+                                    {% if sub.historicTime is not null %}
+                                        <span class="rs-subroute__meta-item">
+                                            <em>{{ sub.historicTime|round(0) }}s normais</em>
+                                        </span>
                                     {% endif %}
-                                </span>
+                                    {% if sub.jamLevel is not null and sub.jamLevel > 0 %}
+                                        <span class="rs-subroute__meta-item rs-subroute__meta-item--jam">
+                                            Jam nível {{ sub.jamLevel }}
+                                        </span>
+                                    {% endif %}
+                                    {% if sub.lengthMeters %}
+                                        <span class="rs-subroute__meta-item">
+                                            {{ (sub.lengthMeters / 1000)|number_format(2, ',', '.') }} km
+                                        </span>
+                                    {% endif %}
+                                </div>
                             </div>
-                            {% if sub.from and sub.to %}
-                                <small class="rs-subroute__path">{{ sub.from }} → {{ sub.to }}</small>
-                            {% endif %}
-                            <div class="rs-subroute__bar">
-                                <span style="width: {{ min(100, ((sub.delayRatio ?? 0) * 100)) }}%"></span>
-                            </div>
-                            <div class="rs-subroute__meta">
-                                <span>+{{ sub.delaySeconds ?? 0 }}s</span>
-                                {% if sub.jamLevel is not null %}<span>Jam nível {{ sub.jamLevel }}</span>{% endif %}
+
+                            {# ── Coluna direita: mini-mapa ── #}
+                            <div class="rs-subroute__map-wrap">
+                                <div class="rs-subroute__map"
+                                     data-subroute-map
+                                     data-subroute-id="{{ sub.id }}"></div>
                             </div>
                         </div>
                     {% else %}
@@ -361,4 +431,6 @@
 {% block javascripts %}
     {{ parent() }}
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 {% endblock %}

@@ -1,0 +1,67 @@
+{#
+    partials/consent-banner.html.twig
+    ─────────────────────────────────────────────────────────────────────
+    Banner de consentimento LGPD/GDPR.
+
+    Só aparece se:
+      - analytics_consent_mode for 'opt-in' ou 'opt-out'
+      - o usuário ainda não decidiu (checado via JS)
+
+    A lógica de mostrar/esconder vive em:
+      assets/js/layout/consent.js
+
+    Este partial apenas renderiza a estrutura HTML.
+    A visibilidade inicial é controlada pelo atributo `hidden`,
+    e o JS decide se remove ou não.
+
+    Uso no final do <body> do layout base:
+
+      <body>
+          ...
+          {% include 'partials/consent-banner.html.twig' %}
+      </body>
+
+    Não renderiza nada se consent_mode = 'off'.
+#}
+
+{% set consent_mode = analytics_consent_mode|default('off') %}
+
+{% if consent_mode != 'off' %}
+
+    <div class="consent-banner"
+         data-consent-banner
+         role="dialog"
+         aria-labelledby="consent-title"
+         aria-describedby="consent-desc"
+         hidden>
+
+        <div class="consent-banner__inner">
+
+            <div class="consent-banner__content">
+                <h2 id="consent-title" class="consent-banner__title">
+                    Cookies e privacidade
+                </h2>
+                <p id="consent-desc" class="consent-banner__text">
+                    Usamos cookies e tecnologias similares para entender como o painel
+                    é utilizado e melhorar a experiência. Nenhum dado pessoal é
+                    compartilhado. Você pode aceitar ou recusar a qualquer momento.
+                </p>
+            </div>
+
+            <div class="consent-banner__actions">
+                <button type="button"
+                        class="consent-banner__button consent-banner__button--ghost"
+                        data-consent-deny>
+                    Recusar
+                </button>
+                <button type="button"
+                        class="consent-banner__button consent-banner__button--primary"
+                        data-consent-grant>
+                    Aceitar
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+{% endif %}

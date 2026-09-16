@@ -21,20 +21,48 @@ class ResetPasswordRequestRepository extends ServiceEntityRepository implements 
         parent::__construct($registry, ResetPasswordRequest::class);
     }
 
-    public function createResetPasswordRequest(object $user, \DateTimeInterface $expiresAt, string $selector, string $hashedToken): ResetPasswordRequestInterface
-    {
+    public function createResetPasswordRequest(
+        object $user,
+        \DateTimeInterface $expiresAt,
+        string $selector,
+        string $hashedToken,
+    ): ResetPasswordRequestInterface {
         return new ResetPasswordRequest($user, $expiresAt, $selector, $hashedToken);
     }
 
+    /**
+     * Retorna o valor único que identifica o usuário para o bundle.
+     * DEVE ser o valor real — não uma string literal como 'id'.
+     */
     public function getUserIdentifier(object $user): string
     {
-        return 'id';
+        /** @var User $user */
+        return (string) $user->getId();
     }
 
     public function persistResetPasswordRequest(ResetPasswordRequestInterface $resetPasswordRequest): void
     {
         $this->getEntityManager()->persist($resetPasswordRequest);
         $this->getEntityManager()->flush();
+    }
+
+    public function findResetPasswordRequest(string $selector): ?ResetPasswordRequestInterface
+    {
+        return $this->findOneBy(['selector' => $selector]);
+    }
+
+    public function getMostRecentNonExpiredRequestDate(object $user): ?\DateTimeInterface
+    {
+        $result = $this->createQueryBuilder('rpr')
+            ->select('rpr.expiresAt')
+            ->where('rpr.user = :user')
+            ->setParameter('user', $user)
+            ->orderBy('rpr.expiresAt', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        return $result['expiresAt'] ?? null;
     }
 
     public function findAllNonExpiredRequestsForUser(object $user): array
@@ -56,35 +84,11 @@ class ResetPasswordRequestRepository extends ServiceEntityRepository implements 
 
     public function removeExpiredResetPasswordRequests(): int
     {
-        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
-        $qb = $this->createQueryBuilder('rpr')
+        return $this->createQueryBuilder('rpr')
             ->delete()
             ->where('rpr.expiresAt < :now')
-            ->setParameter('now', $now);
-
-        return $qb->getQuery()->execute();
-    }
-
-    public function findResetPasswordRequest(string $selector): ?ResetPasswordRequestInterface
-    {
-        return $this->findOneBy(['selector' => $selector]);
-    }
-
-    public function getMostRecentNonExpiredRequestDate(object $user): ?\DateTimeInterface
-    {
-        $qb = $this->createQueryBuilder('rpr')
-            ->select('rpr.expiresAt')
-            ->where('rpr.user = :user')
-            ->setParameter('user', $user)
-            ->orderBy('rpr.expiresAt', 'DESC')
-            ->setMaxResults(1);
-
-        $result = $qb->getQuery()->getOneOrNullResult();
-
-        if ($result) {
-            return $result['expiresAt'];
-        }
-
-        return null;
+            ->setParameter('now', new \DateTimeImmutable('now', new \DateTimeZone('UTC')))
+            ->getQuery()
+            ->execute();
     }
 }

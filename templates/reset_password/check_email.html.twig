@@ -1,11 +1,104 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Email Sent{% endblock %}
+{% block title %}E-mail enviado — WazeBR{% endblock %}
+
+{% block stylesheets %}
+    <link rel="stylesheet" href="{{ asset('css/auth.css') }}">
+{% endblock %}
 
 {% block body %}
-<div class="auth-container">
-    <h1>Check your email</h1>
-    <p>We've sent a reset link to your email (placeholder).</p>
-    <a href="{{ path('app_login') }}">Back to login</a>
+<div class="auth-page">
+
+    {# ── Lado esquerdo — mensagem ─────────────────────────────── #}
+    <div class="auth-left">
+        <div class="auth-container">
+
+            <a href="{{ path('app_landing') }}" class="auth-brand">
+                <div class="auth-brand-mark">
+                    <i class="bi bi-signpost-2-fill"></i>
+                </div>
+                <span class="auth-brand-name">Waze<em>BR</em></span>
+            </a>
+
+            <div class="auth-icon-header">
+                <div class="auth-icon-circle auth-icon-circle-green">
+                    <i class="bi bi-envelope-check-fill"></i>
+                </div>
+                <div class="auth-heading">
+                    <h1>Verifique seu e-mail</h1>
+                    <p>Se esse endereço estiver cadastrado, você receberá um link em instantes.</p>
+                </div>
+            </div>
+
+            <div class="auth-info-box">
+                <div class="auth-info-box-icon">
+                    <i class="bi bi-clock"></i>
+                </div>
+                <div>
+                    <strong>Link válido por {{ resetToken.expirationMessageKey|trans(resetToken.expirationMessageData, 'ResetPasswordBundle') }}</strong>
+                    <p>Depois disso será necessário solicitar novamente.</p>
+                </div>
+            </div>
+
+            <div class="auth-info-box" style="margin-top:.75rem">
+                <div class="auth-info-box-icon">
+                    <i class="bi bi-info-circle"></i>
+                </div>
+                <div>
+                    <strong>Não encontrou o e-mail?</strong>
+                    <p>Verifique a pasta de Spam ou Lixo Eletrônico.</p>
+                </div>
+            </div>
+
+            <div class="auth-footer-link" style="margin-top:1.5rem">
+                <a href="{{ path('app_reset_password_request') }}">
+                    <i class="bi bi-arrow-repeat"></i>
+                    Solicitar novamente
+                </a>
+            </div>
+
+            <div class="auth-footer-link">
+                <a href="{{ path('auth_login') }}">
+                    <i class="bi bi-arrow-left"></i>
+                    Voltar ao login
+                </a>
+            </div>
+
+        </div>
+    </div>
+
+    {# ── Lado direito — visual ────────────────────────────────── #}
+    <div class="auth-right">
+        <div class="auth-visual">
+
+            <div class="auth-right-orb auth-right-orb-1" aria-hidden="true"></div>
+            <div class="auth-right-orb auth-right-orb-2" aria-hidden="true"></div>
+
+            <div class="auth-visual-content">
+                <div class="auth-visual-logo">
+                    <i class="bi bi-envelope-paper-fill"></i>
+                </div>
+                <h2>E-mail a caminho</h2>
+                <p>Enviamos as instruções para o endereço cadastrado. O processo é rápido e seguro.</p>
+
+                <div class="auth-visual-tips">
+                    <div class="auth-tip">
+                        <i class="bi bi-check-circle-fill"></i>
+                        Link de uso único
+                    </div>
+                    <div class="auth-tip">
+                        <i class="bi bi-check-circle-fill"></i>
+                        Expira automaticamente
+                    </div>
+                    <div class="auth-tip">
+                        <i class="bi bi-check-circle-fill"></i>
+                        Tráfego criptografado
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
 </div>
 {% endblock %}

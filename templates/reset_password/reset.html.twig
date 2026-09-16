@@ -17,7 +17,7 @@
     <div class="auth-left">
         <div class="auth-container">
 
-            <a href="{{ path('home') }}" class="auth-brand">
+            <a href="{{ path('app_landing') }}" class="auth-brand">
                 <div class="auth-brand-mark">
                     <i class="bi bi-signpost-2-fill"></i>
                 </div>
@@ -30,7 +30,7 @@
                 </div>
                 <div class="auth-heading">
                     <h1>Crie uma nova senha</h1>
-                    <p>Sua nova senha deve ser diferente da anterior e ter ao menos 6 caracteres.</p>
+                    <p>Sua nova senha deve ter ao menos 6 caracteres e ser diferente da anterior.</p>
                 </div>
             </div>
 
@@ -43,29 +43,17 @@
                 {% endfor %}
             {% endfor %}
 
-            <form method="post" class="auth-form" novalidate>
+            {{ form_start(resetForm, {attr: {class: 'auth-form', novalidate: 'novalidate'}}) }}
 
                 <div class="auth-field">
-                    <label for="new_password">
-                        <i class="bi bi-lock"></i>
-                        Nova senha
-                    </label>
+                    {{ form_label(resetForm.plainPassword.first) }}
                     <div class="auth-input-wrap">
-                        <input
-                            type="password"
-                            id="new_password"
-                            name="password"
-                            class="auth-input"
-                            autocomplete="new-password"
-                            placeholder="Mínimo 6 caracteres"
-                            minlength="6"
-                            required
-                            autofocus
-                        >
+                        {{ form_widget(resetForm.plainPassword.first) }}
                         <button type="button" class="auth-toggle-pw" data-target="new_password" aria-label="Mostrar senha">
                             <i class="bi bi-eye"></i>
                         </button>
                     </div>
+                    {{ form_errors(resetForm.plainPassword.first) }}
                     <span class="auth-field-help">
                         <i class="bi bi-info-circle"></i>
                         Use letras, números e símbolos para mais segurança
@@ -73,26 +61,17 @@
                 </div>
 
                 <div class="auth-field">
-                    <label for="confirm_password">
-                        <i class="bi bi-lock-fill"></i>
-                        Confirmar nova senha
-                    </label>
+                    {{ form_label(resetForm.plainPassword.second) }}
                     <div class="auth-input-wrap">
-                        <input
-                            type="password"
-                            id="confirm_password"
-                            name="confirm_password"
-                            class="auth-input"
-                            autocomplete="new-password"
-                            placeholder="Repita a nova senha"
-                            minlength="6"
-                            required
-                        >
+                        {{ form_widget(resetForm.plainPassword.second) }}
                         <button type="button" class="auth-toggle-pw" data-target="confirm_password" aria-label="Mostrar senha">
                             <i class="bi bi-eye"></i>
                         </button>
                     </div>
+                    {{ form_errors(resetForm.plainPassword.second) }}
                 </div>
+
+                {{ form_errors(resetForm.plainPassword) }}
 
                 {# Barra de força da senha #}
                 <div class="auth-strength" id="passwordStrength" aria-live="polite">
@@ -117,12 +96,12 @@
                     </div>
                 </div>
 
-                <button type="submit" class="auth-btn auth-btn-primary" id="resetSubmit">
+                <button type="submit" class="auth-btn auth-btn-primary">
                     <span>Alterar senha</span>
                     <i class="bi bi-check-lg"></i>
                 </button>
 
-            </form>
+            {{ form_end(resetForm) }}
 
             <div class="auth-footer-link">
                 <a href="{{ path('auth_login') }}">

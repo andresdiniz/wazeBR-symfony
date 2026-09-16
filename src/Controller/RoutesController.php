@@ -67,18 +67,20 @@ final class RoutesController extends AbstractController
         }
 
         return $this->render('routes/show.html.twig', [
-            'route'  => $detail['route'],
-            'current'=> $detail['current'],
-            'stats'  => $detail['stats'],
-            'heatmap'=> $detail['heatmap'],
-            'timeline'        => $detail['timeline'],
-            'byHour'          => $detail['byHour'],
-            'byDow'           => $detail['byDow'],
-            'jamDistribution' => $detail['jamDistribution'],
-            'topSubRoutes'    => $detail['topSubRoutes'],
-            'irregularities'  => $detail['irregularities'],
-            'nearbyAlerts'    => $detail['nearbyAlerts'] ?? [],  // ← novo
-            'partner'         => $partner,
+            'route'             => $detail['route'],
+            'current'           => $detail['current'],
+            'stats'             => $detail['stats'],
+            'heatmap'           => $detail['heatmap'],
+            'timeline'          => $detail['timeline'],
+            'byHour'            => $detail['byHour'],
+            'byDow'             => $detail['byDow'],
+            'jamDistribution'   => $detail['jamDistribution'],
+            'topSubRoutes'      => $detail['topSubRoutes'],
+            'irregularities'    => $detail['irregularities'],
+            'nearbyAlerts'      => $detail['nearbyAlerts']     ?? [],
+            'routePolyline'     => $detail['routePolyline']    ?? [],
+            'subRoutesPolyline' => $detail['subRoutesPolyline']?? [],
+            'partner'           => $partner,
         ]);
     }
 

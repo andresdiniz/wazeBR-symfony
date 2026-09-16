@@ -1,0 +1,167 @@
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}Clima | WazeBR{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/pages/weather-index.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="wx-page" data-weather-index>
+
+    <div class="wx-container">
+
+        <nav class="wx-breadcrumb" aria-label="Navegação">
+            <span aria-current="page">Clima</span>
+        </nav>
+
+        <header class="wx-header">
+            <div>
+                <span class="wx-eyebrow"><i></i> Monitoramento climático</span>
+                <h1>Clima</h1>
+                <p>
+                    Estações meteorológicas monitoradas em tempo real.
+                    {% if partner %} — <strong>{{ partner.name }}</strong>{% endif %}
+                </p>
+            </div>
+            <div class="wx-header__actions">
+                <a href="{{ path('weather_analysis') }}" class="wx-button wx-button--primary">
+                    ⚗ Análise de correlação
+                </a>
+            </div>
+        </header>
+
+        {# ── KPIs ─────────────────────────────────────────────────── #}
+        <section class="wx-kpis" aria-label="Indicadores">
+            <article class="wx-kpi">
+                <span class="wx-kpi__label">Estações</span>
+                <strong class="wx-kpi__value">{{ kpis.stations ?? 0 }}</strong>
+                <span class="wx-kpi__hint">Monitoradas</span>
+            </article>
+
+            <article class="wx-kpi">
+                <span class="wx-kpi__label">Temp. média</span>
+                <strong class="wx-kpi__value">
+                    {{ kpis.avgTemperature is not null ? kpis.avgTemperature|number_format(1, ',', '.') : '—' }}<small>°C</small>
+                </strong>
+                <span class="wx-kpi__hint">Agora</span>
+            </article>
+
+            <article class="wx-kpi">
+                <span class="wx-kpi__label">Umidade média</span>
+                <strong class="wx-kpi__value">
+                    {{ kpis.avgHumidity is not null ? kpis.avgHumidity : '—' }}<small>%</small>
+                </strong>
+                <span class="wx-kpi__hint">Agora</span>
+            </article>
+
+            <article class="wx-kpi {{ (kpis.totalRain24h ?? 0) > 0 ? 'wx-kpi--rain' }}">
+                <span class="wx-kpi__label">Chuva 24h</span>
+                <strong class="wx-kpi__value">
+                    {{ (kpis.totalRain24h ?? 0)|number_format(1, ',', '.') }}<small>mm</small>
+                </strong>
+                <span class="wx-kpi__hint">Somatório das estações</span>
+            </article>
+
+            {% if kpis.hotter %}
+                <article class="wx-kpi wx-kpi--hot">
+                    <span class="wx-kpi__label">Mais quente</span>
+                    <strong class="wx-kpi__value">{{ kpis.hotter.value|number_format(1, ',', '.') }}<small>°C</small></strong>
+                    <span class="wx-kpi__hint">{{ kpis.hotter.name }}</span>
+                </article>
+            {% endif %}
+
+            {% if kpis.colder %}
+                <article class="wx-kpi wx-kpi--cold">
+                    <span class="wx-kpi__label">Mais frio</span>
+                    <strong class="wx-kpi__value">{{ kpis.colder.value|number_format(1, ',', '.') }}<small>°C</small></strong>
+                    <span class="wx-kpi__hint">{{ kpis.colder.name }}</span>
+                </article>
+            {% endif %}
+        </section>
+
+        {# ── Estações ─────────────────────────────────────────────── #}
+        <section class="wx-stations">
+            <header class="wx-stations__header">
+                <h2>Estações</h2>
+                <span class="wx-stations__count">{{ stations|length }}</span>
+            </header>
+
+            {% if stations is empty %}
+                <div class="wx-empty">
+                    <span aria-hidden="true">☁</span>
+                    <strong>Nenhuma estação cadastrada</strong>
+                    <small>Cadastre uma localização meteorológica para começar.</small>
+                </div>
+            {% else %}
+                <div class="wx-grid">
+                    {% for s in stations %}
+                        {% set tempClass = s.temperature is null ? 'neutral'
+                            : (s.temperature >= 30 ? 'hot'
+                            : (s.temperature >= 22 ? 'warm'
+                            : (s.temperature >= 15 ? 'mild' : 'cold'))) %}
+
+                        <a href="{{ path('weather_show', { id: s.id }) }}"
+                           class="wx-card wx-card--{{ tempClass }}">
+
+                            <header class="wx-card__head">
+                                <div class="wx-card__title">
+                                    <strong>{{ s.name }}</strong>
+                                    {% if s.city %}
+                                        <small>{{ s.city }}{% if s.state %}/{{ s.state }}{% endif %}</small>
+                                    {% endif %}
+                                </div>
+                                <span class="wx-card__icon" aria-hidden="true">
+                                    {% set wc = s.weatherCode ?? 0 %}
+                                    {% if wc == 0 %}☀
+                                    {% elseif wc in [1,2,3] %}⛅
+                                    {% elseif wc in [45,48] %}🌫
+                                    {% elseif wc in [51,53,55,56,57,61,63,65,66,67,80,81,82] %}🌧
+                                    {% elseif wc in [71,73,75,77,85,86] %}❄
+                                    {% elseif wc in [95,96,99] %}⛈
+                                    {% else %}☁{% endif %}
+                                </span>
+                            </header>
+
+                            <div class="wx-card__main">
+                                <strong class="wx-card__temp">
+                                    {{ s.temperature is not null ? s.temperature|number_format(1, ',', '.') : '—' }}<small>°C</small>
+                                </strong>
+                                {% if s.apparentTemp is not null %}
+                                    <span class="wx-card__apparent">
+                                        Sensação {{ s.apparentTemp|number_format(0) }}°C
+                                    </span>
+                                {% endif %}
+                            </div>
+
+                            <dl class="wx-card__stats">
+                                <div>
+                                    <dt>Umidade</dt>
+                                    <dd>{{ s.humidity is not null ? s.humidity ~ '%' : '—' }}</dd>
+                                </div>
+                                <div>
+                                    <dt>Vento</dt>
+                                    <dd>{{ s.windSpeed is not null ? s.windSpeed|number_format(1, ',', '.') ~ ' km/h' : '—' }}</dd>
+                                </div>
+                                <div>
+                                    <dt>Chuva 24h</dt>
+                                    <dd class="{{ s.rain24h > 0 ? 'is-rain' }}">{{ s.rain24h|number_format(1, ',', '.') }} mm</dd>
+                                </div>
+                            </dl>
+
+                            <footer class="wx-card__foot">
+                                <span>{{ s.provider|default('open-meteo') }}</span>
+                                <time>
+                                    {{ s.observedAt ? s.observedAt|date('d/m H:i') : 'Sem leitura' }}
+                                </time>
+                            </footer>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </section>
+
+    </div>
+</div>
+{% endblock %}

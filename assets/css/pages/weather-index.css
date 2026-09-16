@@ -1,0 +1,260 @@
+/* ============================================================
+   pages/weather-index.css — Página /weather
+   ============================================================ */
+
+.wx-page {
+    --wx-bg:      var(--theme-bg, #f5f7fb);
+    --wx-surface: var(--theme-surface, #ffffff);
+    --wx-text:    var(--theme-text, #0f172a);
+    --wx-muted:   var(--theme-text-muted, #64748b);
+    --wx-line:    var(--theme-border, #e5e7eb);
+    --wx-soft:    var(--theme-surface-muted, #f8fafc);
+    --wx-primary: var(--theme-primary, #2563eb);
+
+    --wx-cold:   #3b82f6;
+    --wx-mild:   #22c55e;
+    --wx-warm:   #f59e0b;
+    --wx-hot:    #ea580c;
+    --wx-rain:   #0891b2;
+
+    min-height: 100%;
+    background: var(--wx-bg);
+    color: var(--wx-text);
+    padding: 24px 0 48px;
+    overflow-x: hidden;
+}
+
+.wx-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* ── Breadcrumb ─────────────────────────────────────────── */
+.wx-breadcrumb {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--wx-muted);
+}
+.wx-breadcrumb a { color: var(--wx-primary); text-decoration: none; font-weight: 600; }
+.wx-breadcrumb a:hover { text-decoration: underline; }
+.wx-breadcrumb span[aria-current] { color: var(--wx-text); font-weight: 600; }
+
+/* ── Header ─────────────────────────────────────────────── */
+.wx-header {
+    display: flex; justify-content: space-between;
+    align-items: flex-start; gap: 24px; flex-wrap: wrap;
+}
+.wx-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 600; color: var(--wx-primary);
+    text-transform: uppercase; letter-spacing: .05em;
+    margin-bottom: 6px;
+}
+.wx-eyebrow i {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--wx-primary);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, .15);
+}
+.wx-header h1 {
+    font-size: 26px; line-height: 1.2; margin: 0 0 6px; font-weight: 700;
+}
+.wx-header p {
+    margin: 0; color: var(--wx-muted); font-size: 13px; max-width: 720px;
+}
+.wx-header__actions { display: flex; gap: 8px; }
+
+/* ── Botões ─────────────────────────────────────────────── */
+.wx-button {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 16px;
+    border: 1px solid var(--wx-line);
+    border-radius: 10px;
+    background: var(--wx-surface);
+    color: var(--wx-text);
+    font: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer; text-decoration: none;
+    transition: all .15s ease;
+}
+.wx-button:hover { border-color: var(--wx-primary); color: var(--wx-primary); }
+.wx-button--primary {
+    background: var(--wx-primary); color: #fff; border-color: var(--wx-primary);
+}
+.wx-button--primary:hover { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
+
+/* ── KPIs ───────────────────────────────────────────────── */
+.wx-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+}
+.wx-kpi {
+    padding: 16px;
+    background: var(--wx-surface);
+    border: 1px solid var(--wx-line);
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, .04);
+    display: flex; flex-direction: column; gap: 4px;
+    position: relative; overflow: hidden;
+}
+.wx-kpi::before {
+    content: ""; position: absolute;
+    top: 0; left: 0; right: 0; height: 3px;
+    background: var(--wx-primary);
+}
+.wx-kpi--hot::before  { background: var(--wx-hot); }
+.wx-kpi--cold::before { background: var(--wx-cold); }
+.wx-kpi--rain::before { background: var(--wx-rain); }
+
+.wx-kpi__label {
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .05em;
+    color: var(--wx-muted);
+}
+.wx-kpi__value {
+    font-size: 24px; font-weight: 800; line-height: 1;
+    letter-spacing: -.02em;
+}
+.wx-kpi__value small {
+    font-size: 12px; font-weight: 700;
+    margin-left: 2px; color: var(--wx-muted);
+}
+.wx-kpi__hint { font-size: 11px; color: var(--wx-muted); }
+
+/* ── Estações ───────────────────────────────────────────── */
+.wx-stations {
+    display: flex; flex-direction: column; gap: 14px;
+}
+.wx-stations__header {
+    display: flex; justify-content: space-between; align-items: center;
+}
+.wx-stations__header h2 { margin: 0; font-size: 18px; }
+.wx-stations__count {
+    font-size: 12px; color: var(--wx-muted);
+    padding: 3px 10px; border-radius: 999px;
+    background: var(--wx-soft); font-weight: 600;
+}
+
+.wx-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+}
+
+.wx-card {
+    display: flex; flex-direction: column; gap: 12px;
+    padding: 16px;
+    background: var(--wx-surface);
+    border: 1px solid var(--wx-line);
+    border-radius: 14px;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, .04);
+    text-decoration: none;
+    color: inherit;
+    transition: all .15s ease;
+    position: relative; overflow: hidden;
+}
+.wx-card::before {
+    content: ""; position: absolute;
+    top: 0; left: 0; right: 0; height: 4px;
+    background: var(--wx-mild);
+}
+.wx-card--cold::before { background: var(--wx-cold); }
+.wx-card--mild::before { background: var(--wx-mild); }
+.wx-card--warm::before { background: var(--wx-warm); }
+.wx-card--hot::before  { background: var(--wx-hot); }
+.wx-card--neutral::before { background: var(--wx-muted); }
+
+.wx-card:hover {
+    border-color: var(--wx-primary);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
+}
+
+.wx-card__head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 10px;
+}
+.wx-card__title { min-width: 0; }
+.wx-card__title strong {
+    display: block;
+    font-size: 14px; font-weight: 700;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.wx-card__title small {
+    display: block;
+    font-size: 11px; color: var(--wx-muted);
+    margin-top: 2px;
+}
+.wx-card__icon {
+    font-size: 24px;
+    line-height: 1;
+    flex: 0 0 auto;
+}
+
+.wx-card__main {
+    display: flex; align-items: baseline; gap: 8px;
+}
+.wx-card__temp {
+    font-size: 30px; font-weight: 800;
+    line-height: 1; letter-spacing: -.02em;
+    color: var(--wx-text);
+}
+.wx-card__temp small {
+    font-size: 14px; font-weight: 700;
+    margin-left: 2px; color: var(--wx-muted);
+}
+.wx-card__apparent {
+    font-size: 11px; color: var(--wx-muted);
+    font-weight: 600;
+}
+
+.wx-card__stats {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px; margin: 0; padding: 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--wx-line);
+}
+.wx-card__stats > div { min-width: 0; }
+.wx-card__stats dt {
+    font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .04em;
+    color: var(--wx-muted);
+    margin-bottom: 2px;
+}
+.wx-card__stats dd {
+    font-size: 13px; font-weight: 700; margin: 0;
+    color: var(--wx-text);
+}
+.wx-card__stats dd.is-rain { color: var(--wx-rain); }
+
+.wx-card__foot {
+    display: flex; justify-content: space-between;
+    font-size: 10px; color: var(--wx-muted);
+    padding-top: 8px; border-top: 1px dashed var(--wx-line);
+    text-transform: uppercase; letter-spacing: .04em;
+    font-weight: 600;
+}
+
+/* ── Empty state ────────────────────────────────────────── */
+.wx-empty {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 6px; text-align: center;
+    padding: 48px 24px;
+    color: var(--wx-muted);
+    background: var(--wx-surface);
+    border: 1px dashed var(--wx-line);
+    border-radius: 14px;
+}
+.wx-empty span { font-size: 32px; color: var(--wx-primary); }
+.wx-empty strong { font-size: 15px; color: var(--wx-text); }
+.wx-empty small { font-size: 12px; }
+
+/* ── Responsivo ─────────────────────────────────────────── */
+@media (max-width: 640px) {
+    .wx-container { padding: 0 14px; }
+    .wx-header h1 { font-size: 22px; }
+    .wx-kpis { grid-template-columns: repeat(2, 1fr); }
+    .wx-kpi__value { font-size: 20px; }
+}

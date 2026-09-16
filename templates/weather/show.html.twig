@@ -1,0 +1,235 @@
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}{{ location.name }} | Clima | WazeBR{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/pages/weather-show.css') }}">
+{% endblock %}
+
+{% block content %}
+{% set cur = current|default({}) %}
+
+<div class="wx-page" data-weather-show>
+
+    <div class="wx-container">
+
+        <nav class="wx-breadcrumb" aria-label="Navegação">
+            <a href="{{ path('weather_index') }}">Clima</a>
+            <span aria-hidden="true">/</span>
+            <span aria-current="page">{{ location.name }}</span>
+        </nav>
+
+        <header class="wx-header">
+            <div>
+                <span class="wx-eyebrow"><i></i> Estação meteorológica</span>
+                <h1>{{ location.name }}</h1>
+                <p>
+                    {{ location.city ? location.city ~ (location.state ? '/' ~ location.state) : 'Sem localização' }}
+                    · {{ location.provider }}
+                </p>
+            </div>
+            <div class="wx-header__aside">
+                <a href="{{ path('weather_analysis', { station: location.id }) }}"
+                   class="wx-button wx-button--primary">
+                    ⚗ Analisar correlação
+                </a>
+            </div>
+        </header>
+
+        {# ── KPIs ─────────────────────────────────────────────────── #}
+        <section class="wx-kpis" aria-label="Indicadores">
+            <article class="wx-kpi">
+                <span class="wx-kpi__label">Temperatura</span>
+                <strong class="wx-kpi__value">
+                    {{ cur.temperature is not null ? cur.temperature|number_format(1, ',', '.') : '—' }}<small>°C</small>
+                </strong>
+                {% if cur.apparentTemp is not null %}
+                    <span class="wx-kpi__hint">Sensação {{ cur.apparentTemp|number_format(0) }}°C</span>
+                {% endif %}
+            </article>
+
+            <article class="wx-kpi">
+                <span class="wx-kpi__label">Umidade</span>
+                <strong class="wx-kpi__value">
+                    {{ cur.humidity is not null ? cur.humidity : '—' }}<small>%</small>
+                </strong>
+                <span class="wx-kpi__hint">Relativa</span>
+            </article>
+
+            <article class="wx-kpi">
+                <span class="wx-kpi__label">Vento</span>
+                <strong class="wx-kpi__value">
+                    {{ cur.windSpeed is not null ? cur.windSpeed|number_format(1, ',', '.') : '—' }}<small>km/h</small>
+                </strong>
+                {% if cur.windGusts is not null %}
+                    <span class="wx-kpi__hint">Rajada {{ cur.windGusts|number_format(1, ',', '.') }} km/h</span>
+                {% endif %}
+            </article>
+
+            <article class="wx-kpi">
+                <span class="wx-kpi__label">Pressão</span>
+                <strong class="wx-kpi__value">
+                    {{ cur.pressure is not null ? cur.pressure|number_format(0) : '—' }}<small>hPa</small>
+                </strong>
+                <span class="wx-kpi__hint">Superfície</span>
+            </article>
+
+            <article class="wx-kpi {{ stats.maxTemp7d is not null and stats.maxTemp7d > 30 ? 'wx-kpi--hot' }}">
+                <span class="wx-kpi__label">Máxima 7d</span>
+                <strong class="wx-kpi__value">{{ stats.maxTemp7d is not null ? stats.maxTemp7d|number_format(1, ',', '.') : '—' }}<small>°C</small></strong>
+                <span class="wx-kpi__hint">Pico</span>
+            </article>
+
+            <article class="wx-kpi {{ stats.minTemp7d is not null and stats.minTemp7d < 10 ? 'wx-kpi--cold' }}">
+                <span class="wx-kpi__label">Mínima 7d</span>
+                <strong class="wx-kpi__value">{{ stats.minTemp7d is not null ? stats.minTemp7d|number_format(1, ',', '.') : '—' }}<small>°C</small></strong>
+                <span class="wx-kpi__hint">Vale</span>
+            </article>
+
+            <article class="wx-kpi {{ stats.totalRain7d > 0 ? 'wx-kpi--rain' }}">
+                <span class="wx-kpi__label">Chuva 7d</span>
+                <strong class="wx-kpi__value">{{ stats.totalRain7d|number_format(1, ',', '.') }}<small>mm</small></strong>
+                <span class="wx-kpi__hint">Acumulado</span>
+            </article>
+
+            <article class="wx-kpi">
+                <span class="wx-kpi__label">Chuva 30d</span>
+                <strong class="wx-kpi__value">{{ stats.totalRain30d|number_format(1, ',', '.') }}<small>mm</small></strong>
+                <span class="wx-kpi__hint">Acumulado</span>
+            </article>
+        </section>
+
+        {# ── Timeline ─────────────────────────────────────────────── #}
+        <section class="wx-panel">
+            <header class="wx-panel__header">
+                <div>
+                    <span class="wx-panel__kicker">Últimos 7 dias</span>
+                    <h2>Temperatura e umidade</h2>
+                </div>
+                <div class="wx-panel__legend">
+                    <span><i class="wx-dot wx-dot--temp"></i>Temperatura</span>
+                    <span><i class="wx-dot wx-dot--hum"></i>Umidade</span>
+                </div>
+            </header>
+            <div class="wx-chart-wrap wx-chart-wrap--tall">
+                <canvas data-chart="wx-timeline"
+                        data-chart-data='{{ timeline|json_encode|e('html_attr') }}'></canvas>
+            </div>
+        </section>
+
+        {# ── Heatmap ──────────────────────────────────────────────── #}
+        <section class="wx-panel">
+            <header class="wx-panel__header">
+                <div>
+                    <span class="wx-panel__kicker">Padrão semanal · últimos 30 dias</span>
+                    <h2>Mapa de calor · dia × hora</h2>
+                </div>
+                <div class="wx-legend">
+                    <span class="wx-legend__label">Frio</span>
+                    <span class="wx-legend__gradient"></span>
+                    <span class="wx-legend__label">Quente</span>
+                </div>
+            </header>
+
+            <div class="wx-heatmap-scroll">
+                <div class="wx-heatmap" data-wx-heatmap
+                     data-heatmap-data='{{ heatmap|json_encode|e('html_attr') }}'></div>
+            </div>
+
+            <p class="wx-panel__hint">
+                Cada célula mostra a temperatura média naquela hora/dia.
+                Células listradas não têm amostras suficientes.
+            </p>
+        </section>
+
+        {# ── Grid: por hora + por dia ─────────────────────────────── #}
+        <div class="wx-two-col">
+            <section class="wx-panel">
+                <header class="wx-panel__header">
+                    <div>
+                        <span class="wx-panel__kicker">Últimos 30 dias</span>
+                        <h2>Temperatura por hora</h2>
+                    </div>
+                </header>
+                <div class="wx-chart-wrap">
+                    <canvas data-chart="wx-by-hour"
+                            data-chart-data='{{ byHour|json_encode|e('html_attr') }}'></canvas>
+                </div>
+            </section>
+
+            <section class="wx-panel">
+                <header class="wx-panel__header">
+                    <div>
+                        <span class="wx-panel__kicker">Últimos 30 dias</span>
+                        <h2>Temperatura por dia</h2>
+                    </div>
+                </header>
+                <div class="wx-chart-wrap">
+                    <canvas data-chart="wx-by-dow"
+                            data-chart-data='{{ byDow|json_encode|e('html_attr') }}'></canvas>
+                </div>
+            </section>
+        </div>
+
+        {# ── Chuva ────────────────────────────────────────────────── #}
+        <section class="wx-panel">
+            <header class="wx-panel__header">
+                <div>
+                    <span class="wx-panel__kicker">Últimas 48 horas</span>
+                    <h2>Chuva por hora</h2>
+                </div>
+            </header>
+            <div class="wx-chart-wrap">
+                <canvas data-chart="wx-rain"
+                        data-chart-data='{{ rainHourly|json_encode|e('html_attr') }}'></canvas>
+            </div>
+        </section>
+
+        {# ── Últimas leituras ─────────────────────────────────────── #}
+        <section class="wx-panel">
+            <header class="wx-panel__header">
+                <div>
+                    <span class="wx-panel__kicker">Últimas 20 leituras</span>
+                    <h2>Histórico recente</h2>
+                </div>
+            </header>
+
+            {% if recent is empty %}
+                <div class="wx-empty">
+                    <span aria-hidden="true">☁</span>
+                    <strong>Sem leituras ainda</strong>
+                    <small>As leituras aparecem após a próxima coleta.</small>
+                </div>
+            {% else %}
+                <div class="wx-readings">
+                    <div class="wx-readings__head">
+                        <span>Horário</span>
+                        <span>Temp</span>
+                        <span>Umidade</span>
+                        <span>Chuva</span>
+                        <span>Vento</span>
+                    </div>
+                    {% for r in recent %}
+                        <div class="wx-readings__row">
+                            <span>{{ r.observedAt ? r.observedAt|date('d/m H:i') : '—' }}</span>
+                            <span>{{ r.temperature is not null ? r.temperature|number_format(1, ',', '.') ~ '°C' : '—' }}</span>
+                            <span>{{ r.humidity is not null ? r.humidity ~ '%' : '—' }}</span>
+                            <span class="{{ (r.rain ?? r.precipitation ?? 0) > 0 ? 'is-rain' }}">
+                                {{ ((r.rain ?? r.precipitation ?? 0))|number_format(1, ',', '.') }} mm
+                            </span>
+                            <span>{{ r.windSpeed is not null ? r.windSpeed|number_format(1, ',', '.') ~ ' km/h' : '—' }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </section>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}

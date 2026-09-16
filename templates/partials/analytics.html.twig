@@ -1,0 +1,154 @@
+{#
+    partials/analytics.html.twig
+    ─────────────────────────────────────────────────────────────────────
+    Tag de analytics. Deve ser incluída no <head> do layout base.
+
+    Filosofia:
+
+      1. Nada aqui roda em dev nem em staging. Só produção.
+      2. Admin logado NÃO conta como usuário final (configurável).
+      3. DNT / GPC são respeitados SERVER-SIDE (via header HTTP).
+      4. Todo comportamento (eventos, virtual pageviews) vive em
+         assets/js/layout/analytics.js. Este partial só:
+            - decide SE tracking está habilitado
+            - passa a config via JSON inline
+            - injeta o snippet do GTM (que precisa estar no <head>)
+
+    Variáveis esperadas (globals do Twig):
+
+      analytics_enabled:      bool
+      analytics_provider:     'gtm'|'plausible'|'umami'|'ga4'|'none'
+      analytics_id:           string
+      analytics_host:         string?  (Umami self-hosted)
+      analytics_sample_rate:  int
+      analytics_track_admin:  bool
+      analytics_consent_mode: 'off'|'opt-in'|'opt-out'
+
+    Uso no layout base:
+
+      <head>
+          ...
+          {% include 'partials/analytics.html.twig' %}
+      </head>
+
+    NÃO COLOCAR AQUI:
+      - Regras de negócio ("trackear só quando X")
+      - Nomes de eventos (esses vão no JS)
+      - IDs hard-coded (use parameters.yaml / env vars)
+#}
+
+
+{# ─────────────────────────────────────────────────────────────────────
+   1. MASTER GUARD — desliga em dev / test
+   ───────────────────────────────────────────────────────────────────── #}
+{% set analytics_enabled = analytics_enabled|default(false) %}
+
+{% if app.environment != 'prod' %}
+    {% set analytics_enabled = false %}
+{% endif %}
+
+
+{# ─────────────────────────────────────────────────────────────────────
+   2. GUARD DE USUÁRIO — admin logado não polui a métrica
+   ───────────────────────────────────────────────────────────────────── #}
+{% set analytics_track_admin = analytics_track_admin|default(false) %}
+
+{% if is_granted('ROLE_ADMIN') and not analytics_track_admin %}
+    {% set analytics_enabled = false %}
+{% endif %}
+
+
+{# ─────────────────────────────────────────────────────────────────────
+   3. GUARD DE PRIVACIDADE — DNT / GPC via header HTTP
+   ───────────────────────────────────────────────────────────────────── #}
+{% set _dnt = app.request.headers.get('dnt') == '1' %}
+{% set _gpc = app.request.headers.get('sec-gpc') == '1' %}
+
+{% if _dnt or _gpc %}
+    {% set analytics_enabled = false %}
+{% endif %}
+
+
+{# ─────────────────────────────────────────────────────────────────────
+   4. RENDER — só se tudo passou
+   ───────────────────────────────────────────────────────────────────── #}
+{% if analytics_enabled %}
+
+    {% set provider     = analytics_provider|default('none') %}
+    {% set provider_id  = analytics_id|default('') %}
+    {% set sample_rate  = analytics_sample_rate|default(100) %}
+    {% set consent_mode = analytics_consent_mode|default('off') %}
+
+    {# ── 4.1 Preconnect ─────────────────────────────────────────────────
+       Só faz diferença no PRIMEIRO hit. Depois o DNS/TLS já está quente.
+       Custa 1 linha de HTML, vale ~20-50ms no TTI do primeiro pageview. #}
+    {% if provider == 'gtm' %}
+        <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin>
+    {% elseif provider == 'ga4' %}
+        <link rel="preconnect" href="https://www.google-analytics.com" crossorigin>
+    {% elseif provider == 'plausible' %}
+        <link rel="preconnect" href="https://plausible.io" crossorigin>
+    {% elseif provider == 'umami' and analytics_host|default('') %}
+        <link rel="preconnect" href="{{ analytics_host }}" crossorigin>
+    {% endif %}
+
+
+    {# ── 4.2 Config JSON ────────────────────────────────────────────────
+       Colocamos tudo aqui, e NÃO inline no JS, porque:
+         - o módulo JS fica genérico (reusável entre projetos)
+         - este HTML pode ser cacheado; o JSON pode mudar sem rebuild
+         - um `<script type="application/json">` NÃO executa código,
+           então não precisa de nonce na CSP
+
+       ⚠️ NUNCA passe PII aqui (email, nome, CPF).
+       Só IDs, enums e códigos. #}
+    <script type="application/json" data-analytics-config>
+    {
+        "provider":    {{ provider|json_encode|raw }},
+        "id":          {{ provider_id|json_encode|raw }},
+        "host":        {{ (analytics_host|default(''))|json_encode|raw }},
+        "sampleRate":  {{ sample_rate|json_encode|raw }},
+        "consent":     {{ consent_mode|json_encode|raw }},
+        "environment": {{ app.environment|json_encode|raw }},
+        "partner": {
+            "id":   {{ (app.user and app.user.partner) ? app.user.partner.id : 'null' }},
+            "code": {{ (app.user and app.user.partner) ? app.user.partner.code|json_encode|raw : 'null' }}
+        },
+        "user": {
+            "role": {{ (is_granted('ROLE_ADMIN')
+                ? 'admin'
+                : (is_granted('ROLE_PARTNER_ADMIN')
+                    ? 'partner_admin'
+                    : (is_granted('ROLE_OPERATOR')
+                        ? 'operator'
+                        : (is_granted('ROLE_VIEWER') ? 'viewer' : 'anonymous'))))|json_encode|raw }}
+        }
+    }
+    </script>
+
+
+    {# ── 4.3 Snippet do GTM ─────────────────────────────────────────────
+       Só GTM precisa estar no <head>. Os outros providers são carregados
+       pelo módulo JS depois, o que dá chance de aplicar sample rate e
+       consent ANTES do script sair. #}
+    {% if provider == 'gtm' and provider_id %}
+        <script>
+            (function(w,d,s,l,i){
+                w[l]=w[l]||[];
+                w[l].push({'gtm.start': new Date().getTime(), event:'gtm.js'});
+                var f=d.getElementsByTagName(s)[0],
+                    j=d.createElement(s),
+                    dl=l!='dataLayer' ? '&l='+l : '';
+                j.async=true;
+                j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
+                f.parentNode.insertBefore(j,f);
+            })(window,document,'script','dataLayer','{{ provider_id|e('js') }}');
+        </script>
+
+        <noscript>
+            <iframe src="https://www.googletagmanager.com/ns.html?id={{ provider_id|e('url') }}"
+                    height="0" width="0" style="display:none;visibility:hidden"></iframe>
+        </noscript>
+    {% endif %}
+
+{% endif %}

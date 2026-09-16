@@ -23,3 +23,11 @@
 @import './components/pagination.css';
 @import './components/empty-states.css';
 @import './components/expand-buttons.css';
+
+/* Analytics */
+@import './components/analytics.css';
+
+/* Weather */
+@import './pages/weather-index.css';
+@import './pages/weather-show.css';
+@import './pages/weather-analysis.css';

@@ -1,0 +1,203 @@
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}Análise climática | WazeBR{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/pages/weather-analysis.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="wx-page" data-weather-analysis>
+
+    <div class="wx-container">
+
+        <nav class="wx-breadcrumb" aria-label="Navegação">
+            <a href="{{ path('weather_index') }}">Clima</a>
+            <span aria-hidden="true">/</span>
+            <span aria-current="page">Análise</span>
+        </nav>
+
+        <header class="wx-header">
+            <div>
+                <span class="wx-eyebrow"><i></i> Análise estatística</span>
+                <h1>Impacto climático nas rotas</h1>
+                <p>
+                    Correlaciona variáveis meteorológicas com métricas de trânsito.
+                    Cada ponto é uma hora agregada.
+                </p>
+            </div>
+        </header>
+
+        {# ── Picker ───────────────────────────────────────────────── #}
+        <form class="wx-picker" method="get" action="{{ path('weather_analysis') }}" data-wx-form>
+
+            <label class="wx-picker__field">
+                <span>Estação</span>
+                <select name="station" data-wx-station>
+                    {% for s in stations %}
+                        <option value="{{ s.id }}" {{ params.locationId == s.id ? 'selected' }}>
+                            {{ s.name }}{% if s.city %} · {{ s.city }}{% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <label class="wx-picker__field">
+                <span>Variável</span>
+                <select name="variable" data-wx-variable>
+                    <option value="temperature"       {{ params.variable == 'temperature'       ? 'selected' }}>Temperatura</option>
+                    <option value="precipitation"     {{ params.variable == 'precipitation'     ? 'selected' }}>Chuva</option>
+                    <option value="relative_humidity" {{ params.variable == 'relative_humidity' ? 'selected' }}>Umidade</option>
+                    <option value="wind_speed"        {{ params.variable == 'wind_speed'        ? 'selected' }}>Vento</option>
+                </select>
+            </label>
+
+            <label class="wx-picker__field">
+                <span>Métrica</span>
+                <select name="metric" data-wx-metric>
+                    <option value="route_delay" {{ params.metric == 'route_delay' ? 'selected' }}>Atraso médio das rotas (%)</option>
+                    <option value="alert_count" {{ params.metric == 'alert_count' ? 'selected' }}>Alertas Waze (por hora)</option>
+                    <option value="jam_count"   {{ params.metric == 'jam_count'   ? 'selected' }}>Congestionamentos (por hora)</option>
+                </select>
+            </label>
+
+            <label class="wx-picker__field">
+                <span>Janela</span>
+                <select name="days" data-wx-days>
+                    <option value="7"  {{ params.days == 7  ? 'selected' }}>7 dias</option>
+                    <option value="30" {{ params.days == 30 ? 'selected' }}>30 dias</option>
+                    <option value="90" {{ params.days == 90 ? 'selected' }}>90 dias</option>
+                </select>
+            </label>
+
+            <button type="submit" class="wx-button wx-button--primary">Analisar</button>
+        </form>
+
+        {% if analysis is null or analysis.points is empty %}
+
+            <section class="wx-empty">
+                <span aria-hidden="true">⚗</span>
+                <strong>Sem dados suficientes</strong>
+                <small>Escolha uma estação com observações registradas no período.</small>
+            </section>
+
+        {% else %}
+
+            {% set corr = analysis.correlation %}
+            {% set corrClass = corr is null ? 'neutral'
+                : ((corr|abs) >= 0.6 ? 'strong'
+                : ((corr|abs) >= 0.4 ? 'moderate'
+                : ((corr|abs) >= 0.2 ? 'weak' : 'none'))) %}
+
+            {# ── Veredito ──────────────────────────────────────────── #}
+            <section class="wx-verdict wx-verdict--{{ corrClass }}">
+                <div class="wx-verdict__icon" aria-hidden="true">
+                    {% if corr is null %}≈
+                    {% elseif corr > 0 %}↗
+                    {% elseif corr < 0 %}↘
+                    {% else %}—{% endif %}
+                </div>
+                <div class="wx-verdict__body">
+                    <strong>
+                        {% if corr is null %}
+                            Sem correlação calculável
+                        {% elseif corr > 0 %}
+                            {{ analysis.variable|replace({'_': ' '})|capitalize }} <em>aumenta</em>
+                            {{ analysis.metric|replace({'_': ' '}) }}
+                        {% elseif corr < 0 %}
+                            {{ analysis.variable|replace({'_': ' '})|capitalize }} <em>reduz</em>
+                            {{ analysis.metric|replace({'_': ' '}) }}
+                        {% else %}
+                            Sem relação aparente
+                        {% endif %}
+                    </strong>
+                    <span>
+                        {% if corr is not null %}
+                            Correlação de Pearson r = <strong>{{ corr }}</strong>
+                            {% if corrClass == 'strong' %}· relação forte
+                            {% elseif corrClass == 'moderate' %}· relação moderada
+                            {% elseif corrClass == 'weak' %}· relação fraca
+                            {% else %}· relação desprezível{% endif %}
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="wx-verdict__meta">
+                    <span>{{ analysis.samples }} horas analisadas</span>
+                    <span>Últimos {{ analysis.days }} dias</span>
+                    <span>{{ analysis.location.name }}</span>
+                </div>
+            </section>
+
+            {# ── Scatter ──────────────────────────────────────────── #}
+            <section class="wx-panel">
+                <header class="wx-panel__header">
+                    <div>
+                        <span class="wx-panel__kicker">Dispersão</span>
+                        <h2>{{ analysis.variable|replace({'_': ' '})|capitalize }} × {{ analysis.metric|replace({'_': ' '}) }}</h2>
+                    </div>
+                </header>
+                <div class="wx-chart-wrap wx-chart-wrap--tall">
+                    <canvas data-chart="wx-scatter"
+                            data-chart-data='{{ analysis.points|json_encode|e('html_attr') }}'></canvas>
+                </div>
+                <p class="wx-panel__hint">
+                    Cada ponto representa uma hora. Quanto mais próxima a nuvem de pontos
+                    forma uma linha, mais forte é a correlação.
+                </p>
+            </section>
+
+            {# ── Binned ───────────────────────────────────────────── #}
+            <section class="wx-panel">
+                <header class="wx-panel__header">
+                    <div>
+                        <span class="wx-panel__kicker">Agrupado por faixa</span>
+                        <h2>Média da métrica por faixa da variável</h2>
+                    </div>
+                </header>
+                <div class="wx-chart-wrap">
+                    <canvas data-chart="wx-bins"
+                            data-chart-data='{{ analysis.bins|json_encode|e('html_attr') }}'></canvas>
+                </div>
+                <p class="wx-panel__hint">
+                    As horas foram agrupadas em 5 faixas com a mesma quantidade de amostras.
+                    Mostra como a métrica muda conforme a variável aumenta.
+                </p>
+            </section>
+
+            {# ── Tabela ───────────────────────────────────────────── #}
+            <section class="wx-panel">
+                <header class="wx-panel__header">
+                    <div>
+                        <span class="wx-panel__kicker">Detalhe</span>
+                        <h2>Faixas calculadas</h2>
+                    </div>
+                    <span class="wx-panel__count">{{ analysis.bins|length }} faixas</span>
+                </header>
+
+                <div class="wx-table">
+                    <div class="wx-table__head">
+                        <span>Faixa</span>
+                        <span>Métrica média</span>
+                        <span>Amostras</span>
+                    </div>
+                    {% for b in analysis.bins %}
+                        <div class="wx-table__row">
+                            <span>{{ b.label }}</span>
+                            <span class="wx-table__value">{{ b.avgY|number_format(2, ',', '.') }}</span>
+                            <span>{{ b.count }} h</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}

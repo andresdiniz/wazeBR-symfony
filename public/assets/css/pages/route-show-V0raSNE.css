@@ -190,6 +190,7 @@
 .rs-dot--waze   { background: var(--rs-primary); }
 .rs-dot--alert  { background: var(--rs-orange); }
 
+/* ── Linhas de legenda (mapa) ───────────────────────────── */
 .rs-legend-line {
     display: inline-block; width: 18px; height: 3px;
     background: var(--rs-primary);
@@ -226,6 +227,7 @@
 .rs-map__fallback strong { font-size: 14px; color: var(--rs-text); }
 .rs-map__fallback small { font-size: 12px; }
 
+/* Popups Leaflet */
 .leaflet-popup-content-wrapper { border-radius: 10px; }
 .rs-popup { font: inherit; font-size: 12px; line-height: 1.4; min-width: 180px; }
 .rs-popup strong { display: block; font-size: 13px; margin-bottom: 3px; color: #0f172a; }
@@ -292,30 +294,27 @@
     transform: none; box-shadow: none; outline: none;
 }
 
-/* ── Sub-rotas ─────────────────────────────────────────── */
+/* ── Sub-rotas (com mini-mapa) ──────────────────────────── */
 .rs-subroutes {
     display: flex; flex-direction: column; gap: 10px;
-    max-height: 680px;
+    max-height: 620px;
     overflow-y: auto;
     padding-right: 4px;
 }
 
 .rs-subroute {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 200px;
-    gap: 14px;
+    grid-template-columns: minmax(0, 1fr) 160px;
+    gap: 12px;
     padding: 12px;
     border: 1px solid var(--rs-line);
     border-left-width: 4px;
     border-radius: 10px;
     background: var(--rs-surface);
     min-width: 0;
-    transition: background .15s, border-color .15s, box-shadow .15s;
+    transition: background .15s, border-color .15s;
 }
-.rs-subroute:hover {
-    background: var(--rs-soft);
-    box-shadow: 0 4px 12px rgba(15, 23, 42, .06);
-}
+.rs-subroute:hover { background: var(--rs-soft); }
 
 .rs-subroute--severe   { border-left-color: var(--rs-red);    background: rgba(220,38,38,.03); }
 .rs-subroute--heavy    { border-left-color: var(--rs-orange); background: rgba(234,88,12,.03); }
@@ -397,7 +396,7 @@
     color: var(--rs-orange);
 }
 
-/* ── Mini-mapa do trecho ──────────────────────────────── */
+/* Mini-mapa do trecho */
 .rs-subroute__map-wrap {
     min-width: 0;
     display: flex;
@@ -406,32 +405,18 @@
 .rs-subroute__map {
     width: 100%;
     height: 100%;
-    min-height: 130px;
+    min-height: 96px;
     border-radius: 8px;
     border: 1px solid var(--rs-line);
     background: #eef2f7;
     overflow: hidden;
     position: relative;
-    box-shadow: inset 0 1px 3px rgba(15, 23, 42, .05);
 }
-.rs-subroute__map.is-empty {
-    background: repeating-linear-gradient(45deg,
-        #f1f5f9, #f1f5f9 4px, #e2e8f0 4px, #e2e8f0 8px);
-}
-.rs-subroute__map.is-empty::after {
-    content: "Sem geometria";
-    position: absolute;
-    inset: 0;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 11px; font-weight: 600;
-    color: var(--rs-muted);
-    pointer-events: none;
-}
-/* Sem controles nem atribuição do Leaflet no mini-mapa */
+/* Leaflet dentro do mini-mapa: sem controles, sem atribuição */
 .rs-subroute__map .leaflet-control-container { display: none; }
 .rs-subroute__map .leaflet-container { background: #eef2f7; }
 
-/* ── Ocorrências (Waze + TVT) ─────────────────────────── */
+/* ── Ocorrências (Waze + TVT) ──────────────────────────── */
 .rs-occurrences {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
@@ -527,7 +512,7 @@
         grid-template-columns: minmax(0, 1fr);
     }
     .rs-subroute__map {
-        min-height: 160px;
+        min-height: 140px;
     }
 }
 

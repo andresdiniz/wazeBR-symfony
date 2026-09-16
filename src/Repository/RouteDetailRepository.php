@@ -5,27 +5,28 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Partner;
-use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 
 /**
  * Agregação para a página de detalhe de uma rota TVT.
  *
- * Séries temporais sobre waze_tvt_route_snapshot (o "histórico" da rota).
- * Como o snapshot é o par (time, historic_time) gravado a cada coleta,
- * dá pra montar:
- *   - evolução temporal (timeline)
- *   - heatmap dia-da-semana × hora
- *   - histograma por hora do dia
- *   - histograma por dia da semana
- *   - distribuição de jam_level
+ * ─── Critério de criticidade (heatmap, sub-rotas, KPIs) ──────────────
+ *
+ * O cálculo de "quão ruim está" é baseado em RATIO, não em delay absoluto:
+ *
+ *     ratio = (time - historic_time) / historic_time
+ *
+ * Exemplos:
+ *   - 180s normal, +2s atual  → ratio = 1.1%   → verde
+ *   -  20s normal, +2s atual  → ratio = 10%    → amarelo
+ *   - 180s normal, +90s atual → ratio = 50%    → vermelho
+ *
+ * Um delay absoluto pequeno numa rota longa é tolerável; o mesmo delay
+ * numa rota curta é grave. Por isso ratio domina.
  */
 final class RouteDetailRepository
 {
-    /** Janela analítica principal (heatmap, por hora/dia). */
     private const WINDOW_DAYS   = 30;
-
-    /** Janela do timeline. */
     private const TIMELINE_DAYS = 7;
 
     public function __construct(private readonly Connection $connection)
@@ -43,8 +44,11 @@ final class RouteDetailRepository
      *   byDow:list<array>,
      *   jamDistribution:list<array>,
      *   topSubRoutes:list<array>,
-     *   irregularities:list<array>
-     * }
+     *   irregularities:list<array>,
+     *   nearbyAlerts:list<array>,
+     *   routePolyline:list<array>,
+     *   subRoutesPolyline:list<array>
+     * }|null
      */
     public function getRouteDetail(?Partner $partner, int $routeId): ?array
     {
@@ -61,19 +65,26 @@ final class RouteDetailRepository
         $jamDistribution  = $this->loadJamDistribution($partner, $routeId, self::WINDOW_DAYS);
         $topSubRoutes     = $this->loadTopSubRoutes($partner, $routeId);
         $irregularities   = $this->loadRecentIrregularities($partner, $routeId);
+        $nearbyAlerts     = $this->loadNearbyAlerts($partner, $routeId, 7, 60.0);
+        $routePolyline    = $this->loadRoutePolyline($partner, $routeId);
+
+        // Sub-rotas com polyline própria (pra mini-mapas)
+        $subRoutesPolyline = $this->loadSubRoutesPolyline($partner, $routeId);
 
         return [
-            'route'           => $route,
-            'current'         => $current,
-            'stats'           => $this->computeStats($timeline, $heatmap, $byHour, $byDow, $current),
-            'heatmap'         => $heatmap,
-            'timeline'        => $timeline,
-            'byHour'          => $byHour,
-            'byDow'           => $byDow,
-            'jamDistribution' => $jamDistribution,
-            'topSubRoutes'    => $topSubRoutes,
-            'irregularities'  => $irregularities,
-            'nearbyAlerts'    => $this->loadNearbyAlerts($partner, $routeId, 7, 60.0),  // ← novo
+            'route'             => $route,
+            'current'           => $current,
+            'stats'             => $this->computeStats($timeline, $heatmap, $byHour, $byDow, $current),
+            'heatmap'           => $heatmap,
+            'timeline'          => $timeline,
+            'byHour'            => $byHour,
+            'byDow'             => $byDow,
+            'jamDistribution'   => $jamDistribution,
+            'topSubRoutes'      => $topSubRoutes,
+            'irregularities'    => $irregularities,
+            'nearbyAlerts'      => $nearbyAlerts,
+            'routePolyline'     => $routePolyline,
+            'subRoutesPolyline' => $subRoutesPolyline,
         ];
     }
 
@@ -199,8 +210,8 @@ final class RouteDetailRepository
     }
 
     /**
-     * Heatmap: [ {dow, hour, avgRatio, avgDelay, count, avgJam} ]
-     * dow: 0=segunda ... 6=domingo (WEEKDAY()).
+     * Heatmap: ratio puro (time - historic) / historic por (dow, hour).
+     * É a métrica que responde à pergunta "quão ruim comparado ao normal".
      *
      * @return list<array{dow:int,hour:int,avgRatio:?float,avgDelay:?float,count:int,avgJam:?float}>
      */
@@ -275,14 +286,12 @@ final class RouteDetailRepository
                 GROUP BY hour
                 ORDER BY hour";
 
-        $rows = $this->connection->executeQuery($sql, $params)->fetchAllKeyValue();
-
-        // Preenche todas as 24 horas (mesmo as sem dados)
-        $byHour = [];
         $map = [];
         foreach ($this->connection->executeQuery($sql, $params)->fetchAllAssociative() as $r) {
             $map[(int) $r['hour']] = $r;
         }
+
+        $byHour = [];
         for ($h = 0; $h < 24; $h++) {
             $r = $map[$h] ?? null;
             $byHour[] = [
@@ -366,7 +375,6 @@ final class RouteDetailRepository
 
         $rows = $this->connection->executeQuery($sql, $params)->fetchAllAssociative();
 
-        // Preenche 0..5
         $map = [];
         foreach ($rows as $r) $map[(int) $r['jam_level']] = (int) $r['total'];
 
@@ -377,7 +385,14 @@ final class RouteDetailRepository
         return $out;
     }
 
-    /** @return list<array<string,mixed>> */
+    /**
+     * Sub-rotas ordenadas por ratio desc (mais problemáticas primeiro).
+     *
+     * O `name` do banco pode vir nulo — quando isso acontece, monta
+     * `from → to` a partir dos nomes de vias, que são mais úteis que "Trecho".
+     *
+     * @return list<array<string,mixed>>
+     */
     private function loadTopSubRoutes(?Partner $partner, int $routeId): array
     {
         $params = ['id' => $routeId];
@@ -416,9 +431,26 @@ final class RouteDetailRepository
                 ? $delay / $historic
                 : null;
 
+            // ── Nome de exibição ─────────────────────────────────
+            // Prefere name do banco; se vazio, monta com from/to.
+            $displayName = trim((string) ($r['name'] ?? ''));
+            if ($displayName === '' || mb_strtolower($displayName) === 'trecho') {
+                $from = trim((string) ($r['from_name'] ?? ''));
+                $to   = trim((string) ($r['to_name'] ?? ''));
+                if ($from !== '' && $to !== '') {
+                    $displayName = $from . ' → ' . $to;
+                } elseif ($from !== '') {
+                    $displayName = $from;
+                } elseif ($to !== '') {
+                    $displayName = $to;
+                } else {
+                    $displayName = 'Trecho sem nome';
+                }
+            }
+
             return [
                 'id'           => (int) $r['id'],
-                'name'         => $r['name'] ?: 'Trecho',
+                'name'         => $displayName,
                 'from'         => $r['from_name'],
                 'to'           => $r['to_name'],
                 'time'         => $time,
@@ -431,6 +463,40 @@ final class RouteDetailRepository
         }, $rows);
     }
 
+    /**
+     * Polyline das sub-rotas ativas — usada pelos mini-mapas.
+     * Retorna `[ { id, line } ]` pra cruzar com `topSubRoutes`.
+     *
+     * @return array<int, list<array{0:float,1:float}>>
+     */
+    private function loadSubRoutesPolyline(?Partner $partner, int $routeId): array
+    {
+        $params = ['id' => $routeId];
+        $partnerFilter = '';
+        if ($partner !== null) {
+            $partnerFilter        = ' AND partner_id = :pid';
+            $params['pid']        = $partner->getId();
+        }
+
+        $rows = $this->connection->executeQuery(
+            "SELECT id, line FROM waze_tvt_sub_route
+             WHERE route_id = :id
+               AND is_active = 1
+               AND line IS NOT NULL
+               {$partnerFilter}",
+            $params
+        )->fetchAllAssociative();
+
+        $out = [];
+        foreach ($rows as $row) {
+            $line = $this->normalizeLine($row['line']);
+            if ($line !== []) {
+                $out[(int) $row['id']] = $line;
+            }
+        }
+        return $out;
+    }
+
     /** @return list<array<string,mixed>> */
     private function loadRecentIrregularities(?Partner $partner, int $routeId): array
     {
@@ -441,7 +507,7 @@ final class RouteDetailRepository
             $params['pid']        = $partner->getId();
         }
 
-        $sql = "SELECT id, type, subtype, severity, description, street, city, reported_time
+        $sql = "SELECT id, type, subtype, severity, description, street, city, latitude, longitude, reported_time
                 FROM waze_tvt_irregularity
                 WHERE route_id = :id
                   AND is_active = 1
@@ -459,6 +525,8 @@ final class RouteDetailRepository
             'description' => $r['description'],
             'street'      => $r['street'],
             'city'        => $r['city'],
+            'lat'         => $r['latitude']  !== null ? (float) $r['latitude']  : null,
+            'lng'         => $r['longitude'] !== null ? (float) $r['longitude'] : null,
             'reportedAt'  => $r['reported_time'],
         ], $rows);
     }
@@ -474,7 +542,6 @@ final class RouteDetailRepository
         $avgRatio7d  = null;
         $avgDelay7d  = null;
 
-        // Média dos últimos 7 dias a partir do timeline
         if ($timeline !== []) {
             $sumR = 0.0; $sumD = 0.0; $n = 0;
             foreach ($timeline as $p) {
@@ -486,7 +553,6 @@ final class RouteDetailRepository
                 $avgDelay7d = $sumD / $n;
             }
 
-            // Últimas 24h
             $cutoff = time() - 86400;
             $sumR = 0.0; $sumD = 0.0; $n = 0;
             foreach ($timeline as $p) {
@@ -501,7 +567,6 @@ final class RouteDetailRepository
             }
         }
 
-        // Pior hora (por ratio)
         $worstHour = null;
         foreach ($byHour as $p) {
             if ($p['avgRatio'] === null || $p['count'] < 2) continue;
@@ -510,7 +575,6 @@ final class RouteDetailRepository
             }
         }
 
-        // Pior dia
         $worstDow = null;
         foreach ($byDow as $p) {
             if ($p['avgRatio'] === null || $p['count'] < 2) continue;
@@ -519,7 +583,6 @@ final class RouteDetailRepository
             }
         }
 
-        // Melhor dia
         $bestDow = null;
         foreach ($byDow as $p) {
             if ($p['avgRatio'] === null || $p['count'] < 2) continue;
@@ -528,7 +591,7 @@ final class RouteDetailRepository
             }
         }
 
-        // Health score: 100 - penalidades (0-100)
+        // Health score — baseado em RATIO, não em delay absoluto
         $health = 100;
         if ($avgRatio7d !== null) {
             $health -= min(70, (int) round($avgRatio7d * 100));
@@ -553,15 +616,10 @@ final class RouteDetailRepository
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // Cross-reference espacial: alerts próximos ao traçado
+    // Cross-reference espacial: alertas próximos ao traçado
     // ─────────────────────────────────────────────────────────────────────
 
-    /**
-     * Retorna alertas do Waze (waze_alerts) cujo ponto cai a ≤ $bufferMeters
-     * do traçado da rota (geometry + sub-rotas), nos últimos $days dias.
-     *
-     * @return list<array<string,mixed>>
-     */
+    /** @return list<array<string,mixed>> */
     public function loadNearbyAlerts(
         ?Partner $partner,
         int $routeId,
@@ -573,7 +631,6 @@ final class RouteDetailRepository
             return [];
         }
 
-        // ── 1. BBox do traçado (com padding ~200m) ───────────────────
         $minLat = $maxLat = $polyline[0][0];
         $minLng = $maxLng = $polyline[0][1];
         foreach ($polyline as $p) {
@@ -582,11 +639,10 @@ final class RouteDetailRepository
             if ($p[1] < $minLng) $minLng = $p[1];
             if ($p[1] > $maxLng) $maxLng = $p[1];
         }
-        $pad = 0.002; // ~200m
+        $pad = 0.002;
         $minLat -= $pad; $maxLat += $pad;
         $minLng -= $pad; $maxLng += $pad;
 
-        // ── 2. Query em waze_alerts dentro do bbox ───────────────────
         $since = (new \DateTimeImmutable("-{$days} days", new \DateTimeZone('UTC')))
             ->format('Y-m-d H:i:s');
 
@@ -619,7 +675,6 @@ final class RouteDetailRepository
 
         $rows = $this->connection->executeQuery($sql, $params)->fetchAllAssociative();
 
-        // ── 3. Filtra por distância real ao traçado ──────────────────
         $out = [];
         foreach ($rows as $r) {
             $lat = (float) $r['lat'];
@@ -651,8 +706,7 @@ final class RouteDetailRepository
     }
 
     /**
-     * Monta a polyline [lat,lng] da rota: geometry + todas as linhas
-     * de sub-rotas ativas.
+     * Polyline [lat,lng] da rota: geometry principal + linhas das sub-rotas.
      *
      * @return list<array{0:float,1:float}>
      */
@@ -665,7 +719,6 @@ final class RouteDetailRepository
             $params['pid']        = $partner->getId();
         }
 
-        // Geometry principal
         $geom = $this->connection->executeQuery(
             "SELECT geometry FROM waze_tvt_route WHERE id = :id {$partnerFilter}",
             $params
@@ -673,7 +726,6 @@ final class RouteDetailRepository
 
         $polyline = $this->normalizeLine($geom);
 
-        // Sub-rotas (linhas detalhadas, cobrem quase toda a extensão)
         $subRows = $this->connection->executeQuery(
             "SELECT line FROM waze_tvt_sub_route
              WHERE route_id = :id
@@ -693,11 +745,6 @@ final class RouteDetailRepository
         return $polyline;
     }
 
-    /**
-     * Menor distância (metros) de um ponto a qualquer segmento da polyline.
-     *
-     * Projeção equiretangular local (válida pra distâncias < 100 km).
-     */
     private function distanceToPolyline(float $lat, float $lng, array $polyline): float
     {
         $n = count($polyline);
@@ -722,7 +769,6 @@ final class RouteDetailRepository
         return $min;
     }
 
-    /** Distância em metros de P a segmento A→B (projeção equiretangular). */
     private function pointToSegmentDistance(
         float $lat, float $lng,
         float $latA, float $lngA,
@@ -751,11 +797,10 @@ final class RouteDetailRepository
         $ddx = $px - $cx;
         $ddy = $py - $cy;
 
-        // 1 grau de latitude ≈ 111.320 m
         return sqrt($ddx * $ddx + $ddy * $ddy) * 111320.0;
     }
 
-    /** Normaliza geometry/line pra [[lat,lng], ...] (mesmo formato do RoutesRepository). */
+    /** @return list<array{0:float,1:float}> */
     private function normalizeLine(mixed $raw): array
     {
         if ($raw === null || $raw === '') return [];

@@ -100,20 +100,6 @@ const COMPONENTS = {
         init: () => import('./layout/analytics.js'),
     },
 
-    // ─── Página: Clima ──────────────────────────────────────────────
-    weatherIndex: {
-        match: '[data-weather-index]',
-        init: () => import('./pages/weather-index.js'),
-    },
-    weatherShow: {
-        match: '[data-weather-show]',
-        init: () => import('./pages/weather-show.js'),
-    },
-    weatherAnalysis: {
-        match: '[data-weather-analysis]',
-        init: () => import('./pages/weather-analysis.js'),
-    },
-
 };
 
 // ── Infra ──────────────────────────────────────────────────────────────

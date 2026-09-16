@@ -10,6 +10,16 @@ twig:
         # comparadas no backend — só a exibição no template.
         timezone: America/Sao_Paulo
 
+    globals:
+        # ... teus globals existentes ...
+        analytics_enabled:      '%env(bool:ANALYTICS_ENABLED)%'
+        analytics_provider:     '%env(ANALYTICS_PROVIDER)%'
+        analytics_id:           '%env(ANALYTICS_ID)%'
+        analytics_host:         '%env(ANALYTICS_HOST)%'
+        analytics_sample_rate:  '%env(int:ANALYTICS_SAMPLE_RATE)%'
+        analytics_track_admin:  '%env(bool:ANALYTICS_TRACK_ADMIN)%'
+        analytics_consent_mode: '%env(ANALYTICS_CONSENT_MODE)%'
+
 when@test:
     twig:
         strict_variables: true

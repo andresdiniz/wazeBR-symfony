@@ -84,7 +84,7 @@
         "type": "js"
     },
     "app": {
-        "path": "\/assets\/js\/app-vbXl6QA.js",
+        "path": "\/assets\/js\/app-gdNTxlh.js",
         "type": "js"
     },
     "\/assets\/js\/components\/buttons.js": {
@@ -108,11 +108,31 @@
         "type": "js"
     },
     "\/assets\/js\/pages\/route-show.js": {
-        "path": "\/assets\/js\/pages\/route-show-otyczKt.js",
+        "path": "\/assets\/js\/pages\/route-show-FJoewtD.js",
         "type": "js"
     },
     "\/assets\/js\/pages\/route-compare.js": {
         "path": "\/assets\/js\/pages\/route-compare-MzAeCtD.js",
+        "type": "js"
+    },
+    "\/assets\/js\/layout\/consent.js": {
+        "path": "\/assets\/js\/layout\/consent-QKVRuPA.js",
+        "type": "js"
+    },
+    "\/assets\/js\/layout\/analytics.js": {
+        "path": "\/assets\/js\/layout\/analytics-w0-038O.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/weather-index.js": {
+        "path": "\/assets\/js\/pages\/weather-index-ruwsir8.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/weather-show.js": {
+        "path": "\/assets\/js\/pages\/weather-show-drgndgA.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/weather-analysis.js": {
+        "path": "\/assets\/js\/pages\/weather-analysis-lK2FKHY.js",
         "type": "js"
     },
     "dashboard": {

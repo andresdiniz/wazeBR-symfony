@@ -2,13 +2,14 @@
  * pages/route-show.js — Página /routes/{id}
  *
  * - Mapa principal (Leaflet) com traçado + sub-rotas + alertas + irregularidades
- * - Mini-mapas por trecho problemático (com tiles light e pinos de início/fim)
+ * - Mini-mapas por trecho problemático
  * - Heatmap dia×hora (CSS grid puro, baseado em % vs histórico)
  * - Gráficos Chart.js: timeline com linhas de alertas, por hora, por dia, jam
  *
  * ─── Sobre o heatmap ─────────────────────────────────────────────
  * A cor de cada célula depende de `avgRatio = (time - historic) / historic`.
  * Rota de 180s com +2s → 1.1% → verde. Rota de 20s com +2s → 10% → amarelo.
+ * É a métrica que responde "quão ruim comparado ao normal".
  */
 
 const COLORS = {
@@ -20,12 +21,18 @@ const COLORS = {
     purple: '#7c3aed',
     grid:   'rgba(148, 163, 184, .25)',
     text:   '#475569',
+    bg:     '#eef2f7',
 };
 
 const DOW_LABELS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 
 const JAM_LABELS = [
-    'Sem congestionamento', 'Baixo', 'Moderado', 'Alto', 'Muito alto', 'Parado',
+    'Sem congestionamento',
+    'Baixo',
+    'Moderado',
+    'Alto',
+    'Muito alto',
+    'Parado',
 ];
 
 const JAM_COLORS = [
@@ -44,6 +51,9 @@ function safeJson(str, fallback) {
 
 /**
  * Aceita tanto `document` quanto o próprio nó com `[data-route-show]`.
+ * Se `root` já é o nó, retorna ele mesmo. Senão, procura dentro.
+ * Isso evita o bug "root.querySelector('[data-route-show]') === null"
+ * quando o elemento é passado como root em vez do document.
  */
 function resolvePage(root) {
     if (!root) return null;
@@ -89,6 +99,19 @@ function alertColor(type) {
     }
 }
 
+function alertIcon(type) {
+    switch (String(type || '').toUpperCase()) {
+        case 'ACCIDENT':        return '✕';
+        case 'JAM':             return '≋';
+        case 'ROAD_CLOSED':     return '⊘';
+        case 'POLICE':          return '◉';
+        case 'WEATHERHAZARD':   return '☂';
+        case 'HAZARD':          return '▲';
+        case 'CONSTRUCTION':    return '⚒';
+        default:                return '⚠';
+    }
+}
+
 function escapeHtml(str) {
     return String(str ?? '')
         .replaceAll('&', '&amp;')
@@ -96,35 +119,6 @@ function escapeHtml(str) {
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#039;');
-}
-
-/**
- * Bbox de uma polyline, com padding (~50m por padrão).
- */
-function computeBBox(line, padding = 0.0005) {
-    if (!Array.isArray(line) || line.length === 0) return null;
-
-    let minLat = line[0][0], maxLat = line[0][0];
-    let minLng = line[0][1], maxLng = line[0][1];
-
-    for (const [lat, lng] of line) {
-        if (lat < minLat) minLat = lat;
-        if (lat > maxLat) maxLat = lat;
-        if (lng < minLng) minLng = lng;
-        if (lng > maxLng) maxLng = lng;
-    }
-
-    return {
-        minLat: minLat - padding,
-        maxLat: maxLat + padding,
-        minLng: minLng - padding,
-        maxLng: maxLng + padding,
-    };
-}
-
-function pointInBBox(lat, lng, bbox) {
-    return lat >= bbox.minLat && lat <= bbox.maxLat
-        && lng >= bbox.minLng && lng <= bbox.maxLng;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -141,7 +135,9 @@ function renderHeatmap(root) {
     const data = safeJson(container.dataset.heatmapData, []) || [];
 
     const lookup = new Map();
-    data.forEach((c) => lookup.set(`${c.dow}:${c.hour}`, c));
+    data.forEach((c) => {
+        lookup.set(`${c.dow}:${c.hour}`, c);
+    });
 
     const html = [];
 
@@ -188,11 +184,17 @@ function initMainMap(root, attempt = 0) {
     if (!page) return;
 
     const container = page.querySelector('[data-rs-map]');
-    if (!container || mainMap) return;
+    if (!container) return;
+    if (mainMap) return;
 
+    // Guard: Leaflet pode não estar pronto ainda
     if (typeof L === 'undefined') {
-        if (attempt < 20) setTimeout(() => initMainMap(root, attempt + 1), 100);
-        else { console.warn('[WazeBR route-show] Leaflet não carregou'); showMapFallback(container); }
+        if (attempt < 20) {
+            setTimeout(() => initMainMap(root, attempt + 1), 100);
+        } else {
+            console.warn('[WazeBR route-show] Leaflet não carregou a tempo');
+            showMapFallback(container);
+        }
         return;
     }
 
@@ -219,58 +221,80 @@ function initMainMap(root, attempt = 0) {
             attribution: '&copy; OpenStreetMap',
         }).addTo(mainMap);
 
-        // 1. Rota completa (cinza, contexto)
+        // 1. Traçado base da rota (cinza, grosso) — dá contexto
         if (routePolyline.length > 1) {
             L.polyline(routePolyline, {
                 color: '#94a3b8',
-                weight: 7, opacity: 0.55,
-                lineCap: 'round', lineJoin: 'round',
+                weight: 7,
+                opacity: 0.55,
+                lineCap: 'round',
+                lineJoin: 'round',
             }).addTo(mainMap);
         }
 
-        // 2. Sub-rotas
+        // 2. Sub-rotas coloridas (por cima)
         Object.values(subPolylines).forEach((line) => {
             if (!Array.isArray(line) || line.length < 2) return;
+
             L.polyline(line, {
-                color: COLORS.blue, weight: 4, opacity: 0.7,
-                lineCap: 'round', lineJoin: 'round',
+                color: COLORS.blue,
+                weight: 4,
+                opacity: 0.7,
+                lineCap: 'round',
+                lineJoin: 'round',
             }).addTo(mainMap);
         });
 
         // 3. Alertas Waze
         alerts.forEach((a) => {
             if (!Number.isFinite(a.lat) || !Number.isFinite(a.lng)) return;
+
+            const color = alertColor(a.type);
+
             L.circleMarker([a.lat, a.lng], {
-                radius: 9, color: '#ffffff', weight: 2,
-                fillColor: alertColor(a.type), fillOpacity: 0.95,
-            }).bindPopup(`
-                <div class="rs-popup">
-                    <strong>${escapeHtml(a.typeLabel || a.type || 'Alerta')}</strong>
-                    ${a.subtype ? `<small>${escapeHtml(a.subtype)}</small>` : ''}
-                    ${a.street ? `<div class="rs-popup__row"><span>Via</span><span>${escapeHtml(a.street)}</span></div>` : ''}
-                    ${a.city ? `<div class="rs-popup__row"><span>Cidade</span><span>${escapeHtml(a.city)}</span></div>` : ''}
-                    <div class="rs-popup__row"><span>Distância</span><span>${a.distanceMeters} m</span></div>
-                    ${a.pubDateTime ? `<div class="rs-popup__row"><span>Quando</span><span>${new Date(a.pubDateTime).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span></div>` : ''}
-                </div>
-            `).addTo(mainMap);
+                radius: 9,
+                color: '#ffffff',
+                weight: 2,
+                fillColor: color,
+                fillOpacity: 0.95,
+            })
+                .bindPopup(`
+                    <div class="rs-popup">
+                        <strong>${escapeHtml(a.typeLabel || a.type || 'Alerta')}</strong>
+                        ${a.subtype ? `<small>${escapeHtml(a.subtype)}</small>` : ''}
+                        ${a.street ? `<div class="rs-popup__row"><span>Via</span><span>${escapeHtml(a.street)}</span></div>` : ''}
+                        ${a.city ? `<div class="rs-popup__row"><span>Cidade</span><span>${escapeHtml(a.city)}</span></div>` : ''}
+                        <div class="rs-popup__row"><span>Distância</span><span>${a.distanceMeters} m</span></div>
+                        ${a.pubDateTime ? `<div class="rs-popup__row"><span>Quando</span><span>${new Date(a.pubDateTime).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span></div>` : ''}
+                    </div>
+                `)
+                .addTo(mainMap);
         });
 
-        // 4. Irregularidades
+        // 4. Irregularidades TVT
         irregularities.forEach((irr) => {
             if (!Number.isFinite(irr.lat) || !Number.isFinite(irr.lng)) return;
+
             L.circleMarker([irr.lat, irr.lng], {
-                radius: 8, color: '#ffffff', weight: 2,
-                fillColor: COLORS.purple, fillOpacity: 0.9,
-            }).bindPopup(`
-                <div class="rs-popup">
-                    <strong>${escapeHtml(irr.type || 'Irregularidade')}</strong>
-                    ${irr.subtype ? `<small>${escapeHtml(irr.subtype)}</small>` : ''}
-                    ${irr.street ? `<div class="rs-popup__row"><span>Via</span><span>${escapeHtml(irr.street)}</span></div>` : ''}
-                    ${irr.severity ? `<div class="rs-popup__row"><span>Severidade</span><span>${escapeHtml(irr.severity)}</span></div>` : ''}
-                </div>
-            `).addTo(mainMap);
+                radius: 8,
+                color: '#ffffff',
+                weight: 2,
+                fillColor: COLORS.purple,
+                fillOpacity: 0.9,
+            })
+                .bindPopup(`
+                    <div class="rs-popup">
+                        <strong>${escapeHtml(irr.type || 'Irregularidade')}</strong>
+                        ${irr.subtype ? `<small>${escapeHtml(irr.subtype)}</small>` : ''}
+                        ${irr.street ? `<div class="rs-popup__row"><span>Via</span><span>${escapeHtml(irr.street)}</span></div>` : ''}
+                        ${irr.city ? `<div class="rs-popup__row"><span>Cidade</span><span>${escapeHtml(irr.city)}</span></div>` : ''}
+                        ${irr.severity ? `<div class="rs-popup__row"><span>Severidade</span><span>${escapeHtml(irr.severity)}</span></div>` : ''}
+                    </div>
+                `)
+                .addTo(mainMap);
         });
 
+        // Fit bounds em tudo
         const allPoints = [
             ...routePolyline,
             ...alerts.map((a) => [a.lat, a.lng]).filter((p) => p[0] && p[1]),
@@ -278,11 +302,14 @@ function initMainMap(root, attempt = 0) {
         ];
 
         if (allPoints.length > 0) {
-            try { mainMap.fitBounds(allPoints, { padding: [30, 30], maxZoom: 16 }); } catch {}
+            try {
+                mainMap.fitBounds(allPoints, { padding: [30, 30], maxZoom: 16 });
+            } catch { /* ignora */ }
         }
 
         setTimeout(() => mainMap && mainMap.invalidateSize(), 100);
         setTimeout(() => mainMap && mainMap.invalidateSize(), 400);
+
         window.addEventListener('resize', () => mainMap && mainMap.invalidateSize());
 
         window.routeShowMap = mainMap;
@@ -299,11 +326,6 @@ function showMapFallback(container) {
 
 // ─────────────────────────────────────────────────────────────────────────
 // Mini-mapas das sub-rotas
-//
-// Melhorias vs versão anterior:
-//   - Tiles light (CartoDB Positron) dão contexto de rua
-//   - Marcadores de início (verde) e fim (vermelho)
-//   - Alertas Waze dentro do bbox do trecho aparecem como pontinhos
 // ─────────────────────────────────────────────────────────────────────────
 
 const miniMaps = [];
@@ -313,13 +335,14 @@ function initSubRouteMaps(root, attempt = 0) {
     if (!page) return;
 
     if (typeof L === 'undefined') {
-        if (attempt < 20) setTimeout(() => initSubRouteMaps(root, attempt + 1), 100);
+        if (attempt < 20) {
+            setTimeout(() => initSubRouteMaps(root, attempt + 1), 100);
+        }
         return;
     }
 
     const routePolyline = safeJson(page.dataset.routePolyline, []) || [];
     const subPolylines  = safeJson(page.dataset.subroutesPolyline, {}) || {};
-    const alerts        = safeJson(page.dataset.nearbyAlerts, []) || [];
 
     page.querySelectorAll('[data-subroute-map]').forEach((container) => {
         if (container.dataset.miniMapInit === '1') return;
@@ -328,7 +351,7 @@ function initSubRouteMaps(root, attempt = 0) {
         const subId = Number(container.dataset.subrouteId);
         const subLine = subPolylines[subId] || subPolylines[String(subId)];
         if (!Array.isArray(subLine) || subLine.length < 2) {
-            container.classList.add('is-empty');
+            container.style.background = '#f1f5f9';
             return;
         }
 
@@ -345,79 +368,35 @@ function initSubRouteMaps(root, attempt = 0) {
                 preferCanvas: true,
             });
 
-            // Tiles light — CartoDB Positron: ruas sutis, sem poluição
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                maxZoom: 19,
-                subdomains: 'abcd',
-            }).addTo(m);
-
-            // 1. Rota completa (cinza, contexto) — por baixo
+            // Rota completa em cinza claro (contexto)
             if (routePolyline.length > 1) {
                 L.polyline(routePolyline, {
-                    color: '#64748b',
+                    color: '#cbd5e1',
                     weight: 3,
-                    opacity: 0.5,
+                    opacity: 0.8,
                     lineCap: 'round',
                     lineJoin: 'round',
                 }).addTo(m);
             }
 
-            // 2. Alertas dentro do bbox do trecho — por baixo das linhas
-            const bbox = computeBBox(subLine, 0.0008);
-            if (bbox) {
-                alerts.forEach((a) => {
-                    if (!Number.isFinite(a.lat) || !Number.isFinite(a.lng)) return;
-                    if (!pointInBBox(a.lat, a.lng, bbox)) return;
-
-                    L.circleMarker([a.lat, a.lng], {
-                        radius: 4,
-                        color: '#ffffff',
-                        weight: 1.5,
-                        fillColor: alertColor(a.type),
-                        fillOpacity: 0.95,
-                    }).addTo(m);
-                });
-            }
-
-            // 3. Sub-rota — destaque
+            // Sub-rota em azul (destaque)
             L.polyline(subLine, {
                 color: COLORS.blue,
                 weight: 5,
-                opacity: 1,
+                opacity: 0.95,
                 lineCap: 'round',
                 lineJoin: 'round',
             }).addTo(m);
 
-            // 4. Pontos de início (verde) e fim (vermelho)
-            const start = subLine[0];
-            const end   = subLine[subLine.length - 1];
-
-            L.circleMarker(start, {
-                radius: 4.5,
-                color: '#ffffff',
-                weight: 2,
-                fillColor: '#16a34a',
-                fillOpacity: 1,
-            }).addTo(m);
-
-            L.circleMarker(end, {
-                radius: 4.5,
-                color: '#ffffff',
-                weight: 2,
-                fillColor: '#dc2626',
-                fillOpacity: 1,
-            }).addTo(m);
-
-            // Fit com padding
             try {
-                m.fitBounds(subLine, { padding: [16, 16], maxZoom: 16 });
-            } catch {}
+                m.fitBounds(subLine, { padding: [10, 10], maxZoom: 16 });
+            } catch { /* ignora */ }
 
             miniMaps.push(m);
-            setTimeout(() => m.invalidateSize(), 80);
+            setTimeout(() => m.invalidateSize(), 50);
         } catch (err) {
             console.warn('[WazeBR route-show] mini-mapa falhou', subId, err);
-            container.classList.add('is-empty');
+            container.style.background = '#f1f5f9';
         }
     });
 }
@@ -494,6 +473,7 @@ function alertIndices(alerts, labels) {
 function initCharts(root) {
     const page = resolvePage(root);
     if (!page) return;
+
     if (typeof Chart === 'undefined') return;
 
     Chart.defaults.color = COLORS.text;
@@ -521,14 +501,16 @@ function initCharts(root) {
                 labels,
                 datasets: [
                     {
-                        label: 'Atraso (s)', data: delay,
+                        label: 'Atraso (s)',
+                        data: delay,
                         borderColor: COLORS.blue,
                         backgroundColor: 'rgba(37,99,235,.10)',
                         fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2,
                         yAxisID: 'y',
                     },
                     {
-                        label: '% vs histórico', data: ratio,
+                        label: '% vs histórico',
+                        data: ratio,
                         borderColor: COLORS.red,
                         backgroundColor: 'rgba(220,38,38,.08)',
                         fill: false, tension: 0.35, pointRadius: 0, borderWidth: 2,
@@ -581,12 +563,16 @@ function initCharts(root) {
             data: {
                 labels,
                 datasets: [{
-                    label: 'Atraso médio (s)', data: delays,
-                    backgroundColor: bgColors, borderRadius: 4,
+                    label: 'Atraso médio (s)',
+                    data: delays,
+                    backgroundColor: bgColors,
+                    borderRadius: 4,
                 }],
             },
             options: {
-                responsive: true, maintainAspectRatio: false, resizeDelay: 120,
+                responsive: true,
+                maintainAspectRatio: false,
+                resizeDelay: 120,
                 plugins: {
                     legend: { display: false },
                     tooltip: {
@@ -629,12 +615,16 @@ function initCharts(root) {
             data: {
                 labels,
                 datasets: [{
-                    label: 'Atraso médio (s)', data: delays,
-                    backgroundColor: bgColors, borderRadius: 4,
+                    label: 'Atraso médio (s)',
+                    data: delays,
+                    backgroundColor: bgColors,
+                    borderRadius: 4,
                 }],
             },
             options: {
-                responsive: true, maintainAspectRatio: false, resizeDelay: 120,
+                responsive: true,
+                maintainAspectRatio: false,
+                resizeDelay: 120,
                 plugins: {
                     legend: { display: false },
                     tooltip: {
@@ -671,10 +661,16 @@ function initCharts(root) {
             type: 'doughnut',
             data: {
                 labels,
-                datasets: [{ data, backgroundColor: bg, borderWidth: 0 }],
+                datasets: [{
+                    data,
+                    backgroundColor: bg,
+                    borderWidth: 0,
+                }],
             },
             options: {
-                responsive: true, maintainAspectRatio: false, resizeDelay: 120,
+                responsive: true,
+                maintainAspectRatio: false,
+                resizeDelay: 120,
                 cutout: '62%',
                 plugins: {
                     legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 8 } },

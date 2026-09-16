@@ -1,0 +1,152 @@
+/* ============================================================
+   components/analytics.css
+   Banner de consentimento LGPD.
+   ============================================================ */
+
+.consent-banner {
+    --cb-bg:      var(--theme-surface, #ffffff);
+    --cb-text:    var(--theme-text, #0f172a);
+    --cb-muted:   var(--theme-text-muted, #64748b);
+    --cb-line:    var(--theme-border, #e5e7eb);
+    --cb-primary: var(--theme-primary, #2563eb);
+
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    z-index: 9999;
+
+    background: var(--cb-bg);
+    color: var(--cb-text);
+    border: 1px solid var(--cb-line);
+    border-radius: 14px;
+    box-shadow:
+        0 20px 40px rgba(15, 23, 42, .15),
+        0 4px 12px rgba(15, 23, 42, .08);
+
+    padding: 16px 20px;
+
+    animation: consent-banner-in .25s ease both;
+}
+
+.consent-banner[hidden] {
+    display: none;
+}
+
+.consent-banner__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.consent-banner__content {
+    min-width: 0;
+    flex: 1;
+}
+
+.consent-banner__title {
+    margin: 0 0 4px;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--cb-text);
+    line-height: 1.2;
+}
+
+.consent-banner__text {
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--cb-muted);
+    max-width: 720px;
+}
+
+.consent-banner__actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.consent-banner__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 8px 18px;
+    border-radius: 10px;
+    border: 1px solid var(--cb-line);
+    background: var(--cb-bg);
+    color: var(--cb-text);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s ease;
+    white-space: nowrap;
+}
+
+.consent-banner__button:hover {
+    border-color: var(--cb-primary);
+    color: var(--cb-primary);
+}
+
+.consent-banner__button--primary {
+    background: var(--cb-primary);
+    color: #fff;
+    border-color: var(--cb-primary);
+}
+
+.consent-banner__button--primary:hover {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+    color: #fff;
+}
+
+.consent-banner__button--ghost {
+    background: transparent;
+}
+
+/* ── Animação de entrada ─────────────────────────────────── */
+@keyframes consent-banner-in {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ── Responsivo ──────────────────────────────────────────── */
+@media (max-width: 720px) {
+    .consent-banner {
+        left: 8px;
+        right: 8px;
+        bottom: 8px;
+        padding: 14px 16px;
+    }
+
+    .consent-banner__inner {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 14px;
+    }
+
+    .consent-banner__actions {
+        justify-content: stretch;
+    }
+
+    .consent-banner__button {
+        flex: 1;
+    }
+}
+
+/* ── Reduced motion ──────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .consent-banner {
+        animation: none;
+    }
+}
