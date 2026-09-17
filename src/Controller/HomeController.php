@@ -10,9 +10,18 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class HomeController extends AbstractController
 {
-    #[Route('/', name: 'app_landing', methods: ['GET'])]
-    public function landing(): Response
-    {
-        return $this->render('landing.html.twig');
-    }
+    // src/Controller/HomeController.php
+#[Route('/', name: 'app_landing')]
+public function landing(): Response
+{
+    $response = $this->render('landing.html.twig');
+
+    // Browser guarda 3660s, CDN/proxy 5min. Depois disso, revalida.
+    $response->setPublic();
+    $response->setMaxAge(3660);
+    $response->setSharedMaxAge(6000);
+    $response->headers->addCacheControlDirective('must-revalidate');
+
+    return $response;
+}
 }

@@ -6,6 +6,7 @@ namespace App\Twig;
 
 use App\Repository\WazeAlertRepository;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Twig\Extension\AbstractExtension;
 use Twig\Extension\GlobalsInterface;
 
@@ -16,39 +17,71 @@ use Twig\Extension\GlobalsInterface;
  *   title, message, time, tone (orange|blue|green), unread (bool)
  *
  * Se não houver dados, retorna [] e o header cai no fallback do Twig.
+ *
+ * IMPORTANTE (shared hosting):
+ *   NÃO consulta o banco em rotas públicas (landing, login, etc.)
+ *   nem quando não há usuário logado. Cada request dessas rotas
+ *   abriria uma conexão MySQL desnecessária — em Hostinger isso
+ *   estoura o `max_connections_per_hour` rapidamente.
  */
 final class HeaderNotificationsExtension extends AbstractExtension implements GlobalsInterface
 {
+    /**
+     * Rotas que NÃO devem disparar consulta ao banco.
+     * Ajuste conforme necessário.
+     */
+    private const PUBLIC_ROUTES = [
+        'app_landing',
+        'app_login',
+        'app_register',
+        'app_logout',
+        'app_forgot_password_request',
+        'app_reset_password',
+    ];
+
     public function __construct(
         private readonly WazeAlertRepository $alertRepository,
         private readonly Security $security,
+        private readonly RequestStack $requestStack,
     ) {
     }
 
     public function getGlobals(): array
     {
+        $request = $this->requestStack->getCurrentRequest();
+        $route   = $request?->attributes->get('_route');
+
+        // Sem request (ex.: CLI), sem consulta.
+        if ($route === null) {
+            return ['header_notifications' => []];
+        }
+
+        // Rotas públicas: nunca consulta o banco.
+        if (in_array($route, self::PUBLIC_ROUTES, true)) {
+            return ['header_notifications' => []];
+        }
+
+        // Sem usuário logado: nem tenta.
+        if ($this->security->getUser() === null) {
+            return ['header_notifications' => []];
+        }
+
         return [
             'header_notifications' => $this->buildNotifications(),
         ];
     }
 
+    /**
+     * @return list<array{
+     *     title: string,
+     *     message: string,
+     *     time: string,
+     *     tone: string,
+     *     unread: bool
+     * }>
+     */
     private function buildNotifications(): array
     {
-        $user = $this->security->getUser();
-
-        if ($user === null) {
-            return [];
-        }
-
-        /*
-         * Aqui você pode montar as notificações a partir de qualquer fonte:
-         *   - últimas ocorrências do partner
-         *   - alertas ativos recentes
-         *   - dados de um NotificationService
-         *
-         * Neste exemplo, usamos os 3 alertas ativos mais recentes.
-         * Troque pela sua regra de negócio.
-         */
         $alerts = $this->alertRepository->findBy(
             ['isActive' => true],
             ['lastSeenAt' => 'DESC'],

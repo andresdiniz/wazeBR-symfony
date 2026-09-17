@@ -25,8 +25,11 @@ doctrine:
 
 when@test:
     doctrine:
-        dbal:
-            dbname_suffix: '_test%env(default::TEST_TOKEN)%'
+        url: '%env(resolve:DATABASE_URL)%'
+        driver: pdo_mysql
+        options:
+            !php/const PDO::ATTR_PERSISTENT: true
+            !php/const PDO::ATTR_EMULATE_PREPARES: false
 
 when@prod:
     doctrine:
