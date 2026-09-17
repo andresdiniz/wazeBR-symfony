@@ -94,4 +94,28 @@ class PartnerApiLink
     public function setCreatedAt(\DateTimeInterface $createdAt): static { $this->createdAt = $createdAt; return $this; }
     public function getUpdatedAt(): ?\DateTimeInterface { return $this->updatedAt; }
     public function setUpdatedAt(?\DateTimeInterface $updatedAt): static { $this->updatedAt = $updatedAt; return $this; }
+
+    #[ORM\Column(type: 'boolean', options: ['default' => true])]
+    private bool $isActive = true;
+
+    public function setIsActive(bool $isActive): static
+    {
+        $this->isActive = $isActive;
+
+        return $this;
+    }
+
+    public function activate(): static
+    {
+        $this->isActive = true;
+
+        return $this;
+    }
+
+    public function deactivate(): static
+    {
+        $this->isActive = false;
+
+        return $this;
+    }
 }

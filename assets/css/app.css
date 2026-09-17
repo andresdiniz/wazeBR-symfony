@@ -33,3 +33,6 @@
 @import './pages/weather-analysis.css';
 /* TV */
 @import './pages/tv.css';
+
+/* Admin */
+@import './pages/admin.css';

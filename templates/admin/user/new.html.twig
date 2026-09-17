@@ -1,0 +1,156 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}Novo usuário — Administração{% endblock %}
+
+{% block content %}
+<div class="admin-page" data-admin-user>
+
+    <header class="admin-page__header">
+        <div>
+            <h1 class="admin-page__title">Novo usuário</h1>
+            <p class="admin-page__subtitle">
+                Papéis <code>ROLE_PARTNER_ADMIN</code> e
+                <code>ROLE_OPERATOR</code> exigem um parceiro.
+            </p>
+        </div>
+
+        <a
+            href="{{ path('admin_user_index') }}"
+            class="btn btn-ghost"
+        >
+            ← Voltar
+        </a>
+    </header>
+
+    <form
+        method="post"
+        class="admin-form"
+        action="{{ path('admin_user_new') }}"
+        data-roles-requiring-partner="{{ rolesRequirePartner|join(',') }}"
+        novalidate
+    >
+        <input
+            type="hidden"
+            name="_token"
+            value="{{ csrf_token('admin_user_new') }}"
+        >
+
+        <div class="admin-card">
+            <div class="admin-form__grid">
+
+                <div class="form-group">
+                    <label for="user-name">Nome</label>
+                    <input
+                        id="user-name"
+                        class="form-control"
+                        type="text"
+                        name="name"
+                        maxlength="255"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="user-email">E-mail *</label>
+                    <input
+                        id="user-email"
+                        class="form-control"
+                        type="email"
+                        name="email"
+                        required
+                        maxlength="180"
+                        autocomplete="off"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="user-phone">Telefone</label>
+                    <input
+                        id="user-phone"
+                        class="form-control"
+                        type="text"
+                        name="phone"
+                        maxlength="50"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="user-password">Senha *</label>
+                    <input
+                        id="user-password"
+                        class="form-control"
+                        type="password"
+                        name="password"
+                        required
+                        minlength="8"
+                        autocomplete="new-password"
+                    >
+                    <small class="form-hint">Mínimo 8 caracteres.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="user-role">Papel *</label>
+                    <select
+                        id="user-role"
+                        class="form-select"
+                        name="role"
+                        required
+                        data-role-select
+                    >
+                        {% for role in availableRoles %}
+                            <option value="{{ role }}">
+                                {% if role == constant('App\\Entity\\User::ROLE_ADMIN') %}
+                                    Administrador global
+                                {% elseif role == constant('App\\Entity\\User::ROLE_PARTNER_ADMIN') %}
+                                    Administrador do parceiro
+                                {% elseif role == constant('App\\Entity\\User::ROLE_OPERATOR') %}
+                                    Operador
+                                {% elseif role == constant('App\\Entity\\User::ROLE_VIEWER') %}
+                                    Visualizador
+                                {% else %}
+                                    {{ role }}
+                                {% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div
+                    class="form-group"
+                    data-partner-field
+                    hidden
+                >
+                    <label for="user-partner">Parceiro *</label>
+                    <select
+                        id="user-partner"
+                        class="form-select"
+                        name="partnerId"
+                        data-partner-select
+                    >
+                        <option value="">Selecione…</option>
+                        {% for partner in partners %}
+                            <option value="{{ partner.id }}">
+                                {{ partner.name }} ({{ partner.code }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="admin-form__actions">
+            <a
+                href="{{ path('admin_user_index') }}"
+                class="btn btn-ghost"
+            >
+                Cancelar
+            </a>
+
+            <button type="submit" class="btn btn-primary">
+                Criar usuário
+            </button>
+        </div>
+    </form>
+
+</div>
+{% endblock %}

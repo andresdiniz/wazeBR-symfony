@@ -1,0 +1,29 @@
+{% extends 'base.html.twig' %}
+
+{% block body_class %}
+    app-body dashboard-layout
+{% endblock %}
+
+{% block body %}
+    <div class="app-shell" data-layout="dashboard">
+
+        {% include 'partials/header.html.twig' %}
+
+        <div class="app-layout">
+
+            {% include 'partials/sidebar.html.twig' %}
+
+            <main
+                id="main-content"
+                class="app-content"
+                data-main-content
+            >
+                {% block content %}{% endblock %}
+            </main>
+
+        </div>
+
+        {% include 'partials/footer.html.twig' %}
+
+    </div>
+{% endblock %}

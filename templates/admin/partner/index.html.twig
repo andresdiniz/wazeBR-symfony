@@ -1,0 +1,303 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}Parceiros — Administração{% endblock %}
+
+{% block content %}
+<div class="admin-page" data-admin-partner>
+
+    <header class="admin-page__header">
+        <div class="admin-page__heading">
+            <h1 class="admin-page__title">Parceiros</h1>
+            <p class="admin-page__subtitle">
+                Gerencie parceiros, feeds e estado operacional.
+            </p>
+        </div>
+
+        <a
+            href="{{ path('admin_partner_new') }}"
+            class="admin-btn admin-btn--primary"
+        >
+            <span aria-hidden="true">+</span>
+            Novo parceiro
+        </a>
+    </header>
+
+    {% if partners is empty %}
+
+        <div class="admin-empty">
+            <span class="admin-empty__icon" aria-hidden="true">📡</span>
+            <h2 class="admin-empty__title">Nenhum parceiro ainda</h2>
+            <p class="admin-empty__text">
+                Crie o primeiro parceiro para começar a receber feeds.
+            </p>
+
+            <a
+                href="{{ path('admin_partner_new') }}"
+                class="admin-btn admin-btn--primary"
+            >
+                Criar o primeiro parceiro
+            </a>
+        </div>
+
+    {% else %}
+
+        <div class="admin-card admin-card--table">
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Parceiro</th>
+                            <th>Local</th>
+                            <th>Feed</th>
+                            <th>Coleta</th>
+                            <th class="admin-table__num">Usuários</th>
+                            <th class="admin-table__actions-col" aria-label="Ações"></th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for partner in partners %}
+                            {% set userCount = partner.users|length %}
+
+                            <tr class="{{ partner.isActive ? '' : 'is-inactive' }}">
+
+                                {# ── Status + toggle ──────────────────── #}
+                                <td>
+                                    <form
+                                        method="post"
+                                        action="{{ path('admin_partner_toggle', { id: partner.id }) }}"
+                                        class="admin-toggle-form"
+                                        data-toggle-form
+                                        data-partner-name="{{ partner.name }}"
+                                        data-partner-active="{{ partner.isActive ? '1' : '0' }}"
+                                    >
+                                        <input
+                                            type="hidden"
+                                            name="_token"
+                                            value="{{ csrf_token('admin_partner_toggle_' ~ partner.id) }}"
+                                        >
+
+                                        <button
+                                            type="submit"
+                                            class="admin-status-badge {{ partner.isActive ? 'is-active' : 'is-inactive' }}"
+                                            title="{{ partner.isActive
+                                                ? 'Clique para desativar (suspende usuários e links)'
+                                                : 'Clique para ativar' }}"
+                                            data-toggle-btn
+                                        >
+                                            <span class="admin-status-dot" aria-hidden="true"></span>
+                                            <span class="admin-status-text">
+                                                {{ partner.isActive ? 'Ativo' : 'Inativo' }}
+                                            </span>
+                                        </button>
+                                    </form>
+                                </td>
+
+                                {# ── Nome + código ────────────────────── #}
+                                <td>
+                                    <a
+                                        href="{{ path('admin_partner_edit', { id: partner.id }) }}"
+                                        class="admin-partner-name"
+                                    >
+                                        {{ partner.name }}
+                                    </a>
+                                    <code class="admin-code">{{ partner.code }}</code>
+                                </td>
+
+                                {# ── Local ────────────────────────────── #}
+                                <td class="admin-cell-muted">
+                                    {% if partner.city or partner.state %}
+                                        {{ partner.city ?: '—' }}
+                                        {% if partner.state %}/{{ partner.state }}{% endif %}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+
+                                {# ── Feed ─────────────────────────────── #}
+                                <td>
+                                    {% if partner.feedUrl %}
+                                        <div class="admin-feed-link">
+                                            <code title="{{ partner.feedUrl }}">
+                                                {{ partner.feedUrl }}
+                                            </code>
+
+                                            <button
+                                                type="button"
+                                                class="admin-copy"
+                                                data-copy-feed="{{ partner.feedUrl }}"
+                                                aria-label="Copiar URL do feed de {{ partner.name }}"
+                                            >
+                                                Copiar
+                                            </button>
+                                        </div>
+                                    {% else %}
+                                        <span class="admin-cell-muted">—</span>
+                                    {% endif %}
+                                </td>
+
+                                {# ── Coleta ───────────────────────────── #}
+                                <td class="admin-cell-muted">
+                                    {{ partner.fetchFrequencyLabel }}
+                                </td>
+
+                                {# ── Usuários ─────────────────────────── #}
+                                <td class="admin-table__num">
+                                    {% if userCount > 0 %}
+                                        <span class="admin-badge">{{ userCount }}</span>
+                                    {% else %}
+                                        <span class="admin-cell-muted">0</span>
+                                    {% endif %}
+                                </td>
+
+                                {# ── Ações ────────────────────────────── #}
+                                <td class="admin-table__actions">
+                                    <div class="admin-actions">
+
+                                        {% if partner.feedUrl %}
+                                            <a
+                                                href="{{ partner.feedUrl }}"
+                                                target="_blank"
+                                                rel="noopener"
+                                                class="admin-action"
+                                                title="Abrir feed"
+                                            >
+                                                Ver
+                                            </a>
+                                        {% endif %}
+
+                                        <a
+                                            href="{{ path('admin_partner_edit', { id: partner.id }) }}"
+                                            class="admin-action"
+                                            title="Editar"
+                                        >
+                                            Editar
+                                        </a>
+
+                                        <button
+                                            type="button"
+                                            class="admin-action admin-action--danger"
+                                            data-partner-delete
+                                            data-partner-name="{{ partner.name }}"
+                                            data-partner-code="{{ partner.code }}"
+                                            data-partner-feed="{{ partner.feedUrl ?: '' }}"
+                                            data-delete-url="{{ path('admin_partner_delete', { id: partner.id }) }}"
+                                            data-delete-token="{{ csrf_token('admin_partner_delete_' ~ partner.id) }}"
+                                            title="Excluir parceiro"
+                                        >
+                                            Excluir
+                                        </button>
+
+                                    </div>
+                                </td>
+
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    {% endif %}
+
+</div>
+
+
+{# ════════════════════════════════════════════════════════════════
+   MODAL DE EXCLUSÃO
+   ════════════════════════════════════════════════════════════════ #}
+<div
+    class="admin-modal"
+    data-modal="partner-delete"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="partner-delete-title"
+    hidden
+>
+    <div class="admin-modal__backdrop" data-modal-close></div>
+
+    <div class="admin-modal__dialog" role="document">
+
+        <header class="admin-modal__header">
+            <div class="admin-modal__header-icon admin-modal__header-icon--danger" aria-hidden="true">
+                ⚠
+            </div>
+
+            <div>
+                <h2 id="partner-delete-title" class="admin-modal__title">
+                    Excluir parceiro
+                </h2>
+                <p class="admin-modal__subtitle">
+                    Esta ação é permanente e não pode ser desfeita.
+                </p>
+            </div>
+
+            <button
+                type="button"
+                class="admin-modal__close"
+                data-modal-close
+                aria-label="Fechar"
+            >
+                ×
+            </button>
+        </header>
+
+        <div class="admin-modal__body">
+            <p class="admin-modal__paragraph">
+                Você está prestes a excluir
+                <strong data-delete-partner-name>—</strong>
+                (<code data-delete-partner-code>—</code>).
+            </p>
+
+            <ul class="admin-modal__list">
+                <li>Usuários vinculados</li>
+                <li>Alertas e congestionamentos</li>
+                <li>Locais de clima</li>
+                <li>Rotas, sub-rotas, snapshots e irregularidades (TVT)</li>
+                <li>Links de coleta</li>
+            </ul>
+
+            <p class="admin-modal__paragraph admin-modal__paragraph--muted">
+                O feed.json só será removido se você marcar a opção abaixo.
+            </p>
+
+            <label class="admin-modal__checkbox">
+                <input
+                    type="checkbox"
+                    data-delete-feed
+                    checked
+                >
+                <span>
+                    Apagar também a pasta <code>/feed/{código}/</code>
+                    e o arquivo <code>feed.json</code>
+                </span>
+            </label>
+        </div>
+
+        <footer class="admin-modal__footer">
+            <button
+                type="button"
+                class="admin-btn admin-btn--ghost"
+                data-modal-close
+            >
+                Cancelar
+            </button>
+
+            <form method="post" data-delete-form class="admin-modal__form">
+                <input type="hidden" name="_token" value="">
+                <input type="hidden" name="deleteFeed" value="0" data-delete-flag>
+
+                <button
+                    type="submit"
+                    class="admin-btn admin-btn--danger"
+                    data-delete-submit
+                >
+                    Excluir definitivamente
+                </button>
+            </form>
+        </footer>
+
+    </div>
+</div>
+{% endblock %}

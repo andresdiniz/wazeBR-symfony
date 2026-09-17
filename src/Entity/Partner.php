@@ -23,7 +23,14 @@ class Partner
     #[ORM\Column(length: 255)]
     private ?string $name = null;
 
-    #[ORM\Column(length: 50, unique: true)]
+    /**
+     * Código do parceiro — vira nome da pasta em public/feed/.
+     *
+     * Nullable para não quebrar registros legados criados antes do campo
+     * existir. O AdminPartnerController garante que, a partir da primeira
+     * edição, o code nunca mais fica vazio.
+     */
+    #[ORM\Column(length: 50, unique: true, nullable: true)]
     private ?string $code = null;
 
     #[ORM\Column(length: 255, nullable: true)]
@@ -52,6 +59,12 @@ class Partner
 
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $lastTvtFetchAt = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $feedUrl = null;
+
+    #[ORM\Column(type: 'boolean', options: ['default' => true])]
+    private bool $isActive = true;
 
     #[ORM\OneToMany(
         targetEntity: User::class,
@@ -129,6 +142,10 @@ class Partner
         $this->wazeTvtUsersOnJam     = new ArrayCollection();
     }
 
+    // ─────────────────────────────────────────────────────────────────
+    // IDENTIFICAÇÃO
+    // ─────────────────────────────────────────────────────────────────
+
     public function getId(): ?int
     {
         return $this->id;
@@ -182,6 +199,10 @@ class Partner
         return $this;
     }
 
+    // ─────────────────────────────────────────────────────────────────
+    // CREDENCIAIS
+    // ─────────────────────────────────────────────────────────────────
+
     public function getApiKey(): ?string
     {
         return $this->apiKey;
@@ -217,6 +238,10 @@ class Partner
 
         return $this;
     }
+
+    // ─────────────────────────────────────────────────────────────────
+    // COLETA
+    // ─────────────────────────────────────────────────────────────────
 
     public function getFetchFrequency(): ?int
     {
@@ -269,6 +294,56 @@ class Partner
         return $this;
     }
 
+    // ─────────────────────────────────────────────────────────────────
+    // FEED
+    // ─────────────────────────────────────────────────────────────────
+
+    public function getFeedUrl(): ?string
+    {
+        return $this->feedUrl;
+    }
+
+    public function setFeedUrl(?string $feedUrl): static
+    {
+        $this->feedUrl = $feedUrl;
+
+        return $this;
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // STATUS
+    // ─────────────────────────────────────────────────────────────────
+
+    public function isActive(): bool
+    {
+        return $this->isActive;
+    }
+
+    public function setIsActive(bool $isActive): static
+    {
+        $this->isActive = $isActive;
+
+        return $this;
+    }
+
+    public function activate(): static
+    {
+        $this->isActive = true;
+
+        return $this;
+    }
+
+    public function deactivate(): static
+    {
+        $this->isActive = false;
+
+        return $this;
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // COLLECTION — USERS
+    // ─────────────────────────────────────────────────────────────────
+
     public function getUsers(): Collection
     {
         return $this->users;
@@ -294,6 +369,10 @@ class Partner
 
         return $this;
     }
+
+    // ─────────────────────────────────────────────────────────────────
+    // COLLECTION — WAZE ALERTS
+    // ─────────────────────────────────────────────────────────────────
 
     public function getWazeAlerts(): Collection
     {
@@ -321,6 +400,10 @@ class Partner
         return $this;
     }
 
+    // ─────────────────────────────────────────────────────────────────
+    // COLLECTION — WAZE JAMS
+    // ─────────────────────────────────────────────────────────────────
+
     public function getWazeJams(): Collection
     {
         return $this->wazeJams;
@@ -346,6 +429,10 @@ class Partner
 
         return $this;
     }
+
+    // ─────────────────────────────────────────────────────────────────
+    // COLLECTION — WEATHER LOCATIONS
+    // ─────────────────────────────────────────────────────────────────
 
     public function getWeatherLocations(): Collection
     {
@@ -375,14 +462,17 @@ class Partner
         return $this;
     }
 
+    // ─────────────────────────────────────────────────────────────────
+    // COLLECTION — API LINKS
+    // ─────────────────────────────────────────────────────────────────
+
     public function getApiLinks(): Collection
     {
         return $this->apiLinks;
     }
 
-    public function addApiLink(
-        PartnerApiLink $apiLink,
-    ): static {
+    public function addApiLink(PartnerApiLink $apiLink): static
+    {
         if (!$this->apiLinks->contains($apiLink)) {
             $this->apiLinks->add($apiLink);
             $apiLink->setPartner($this);
@@ -391,9 +481,8 @@ class Partner
         return $this;
     }
 
-    public function removeApiLink(
-        PartnerApiLink $apiLink,
-    ): static {
+    public function removeApiLink(PartnerApiLink $apiLink): static
+    {
         if ($this->apiLinks->removeElement($apiLink)) {
             if ($apiLink->getPartner() === $this) {
                 $apiLink->setPartner(null);
@@ -403,14 +492,17 @@ class Partner
         return $this;
     }
 
+    // ─────────────────────────────────────────────────────────────────
+    // COLLECTION — TVT ROUTES
+    // ─────────────────────────────────────────────────────────────────
+
     public function getWazeTvtRoutes(): Collection
     {
         return $this->wazeTvtRoutes;
     }
 
-    public function addWazeTvtRoute(
-        WazeTvtRoute $route,
-    ): static {
+    public function addWazeTvtRoute(WazeTvtRoute $route): static
+    {
         if (!$this->wazeTvtRoutes->contains($route)) {
             $this->wazeTvtRoutes->add($route);
             $route->setPartner($this);
@@ -419,9 +511,8 @@ class Partner
         return $this;
     }
 
-    public function removeWazeTvtRoute(
-        WazeTvtRoute $route,
-    ): static {
+    public function removeWazeTvtRoute(WazeTvtRoute $route): static
+    {
         if ($this->wazeTvtRoutes->removeElement($route)) {
             if ($route->getPartner() === $this) {
                 $route->setPartner(null);
@@ -431,14 +522,17 @@ class Partner
         return $this;
     }
 
+    // ─────────────────────────────────────────────────────────────────
+    // COLLECTION — TVT SUB ROUTES
+    // ─────────────────────────────────────────────────────────────────
+
     public function getWazeTvtSubRoutes(): Collection
     {
         return $this->wazeTvtSubRoutes;
     }
 
-    public function addWazeTvtSubRoute(
-        WazeTvtSubRoute $subRoute,
-    ): static {
+    public function addWazeTvtSubRoute(WazeTvtSubRoute $subRoute): static
+    {
         if (!$this->wazeTvtSubRoutes->contains($subRoute)) {
             $this->wazeTvtSubRoutes->add($subRoute);
             $subRoute->setPartner($this);
@@ -447,9 +541,8 @@ class Partner
         return $this;
     }
 
-    public function removeWazeTvtSubRoute(
-        WazeTvtSubRoute $subRoute,
-    ): static {
+    public function removeWazeTvtSubRoute(WazeTvtSubRoute $subRoute): static
+    {
         if ($this->wazeTvtSubRoutes->removeElement($subRoute)) {
             if ($subRoute->getPartner() === $this) {
                 $subRoute->setPartner(null);
@@ -458,6 +551,10 @@ class Partner
 
         return $this;
     }
+
+    // ─────────────────────────────────────────────────────────────────
+    // COLLECTION — TVT IRREGULARITIES
+    // ─────────────────────────────────────────────────────────────────
 
     public function getWazeTvtIrregularities(): Collection
     {
@@ -487,6 +584,10 @@ class Partner
         return $this;
     }
 
+    // ─────────────────────────────────────────────────────────────────
+    // COLLECTION — TVT ROUTE SNAPSHOTS
+    // ─────────────────────────────────────────────────────────────────
+
     public function getWazeTvtRouteSnapshots(): Collection
     {
         return $this->wazeTvtRouteSnapshots;
@@ -506,10 +607,7 @@ class Partner
     public function removeWazeTvtRouteSnapshot(
         WazeTvtRouteSnapshot $snapshot,
     ): static {
-        if (
-            $this->wazeTvtRouteSnapshots
-                ->removeElement($snapshot)
-        ) {
+        if ($this->wazeTvtRouteSnapshots->removeElement($snapshot)) {
             if ($snapshot->getPartner() === $this) {
                 $snapshot->setPartner(null);
             }
@@ -518,14 +616,17 @@ class Partner
         return $this;
     }
 
+    // ─────────────────────────────────────────────────────────────────
+    // COLLECTION — TVT USERS ON JAM
+    // ─────────────────────────────────────────────────────────────────
+
     public function getWazeTvtUsersOnJam(): Collection
     {
         return $this->wazeTvtUsersOnJam;
     }
 
-    public function addWazeTvtUserOnJam(
-        WazeTvtUserOnJam $userOnJam,
-    ): static {
+    public function addWazeTvtUserOnJam(WazeTvtUserOnJam $userOnJam): static
+    {
         if (!$this->wazeTvtUsersOnJam->contains($userOnJam)) {
             $this->wazeTvtUsersOnJam->add($userOnJam);
             $userOnJam->setPartner($this);
@@ -534,13 +635,9 @@ class Partner
         return $this;
     }
 
-    public function removeWazeTvtUserOnJam(
-        WazeTvtUserOnJam $userOnJam,
-    ): static {
-        if (
-            $this->wazeTvtUsersOnJam
-                ->removeElement($userOnJam)
-        ) {
+    public function removeWazeTvtUserOnJam(WazeTvtUserOnJam $userOnJam): static
+    {
+        if ($this->wazeTvtUsersOnJam->removeElement($userOnJam)) {
             if ($userOnJam->getPartner() === $this) {
                 $userOnJam->setPartner(null);
             }
@@ -548,6 +645,10 @@ class Partner
 
         return $this;
     }
+
+    // ─────────────────────────────────────────────────────────────────
+    // HELPERS DE TEMPO / FREQUÊNCIA
+    // ─────────────────────────────────────────────────────────────────
 
     /**
      * Frequência em segundos, normalizando a unidade.
@@ -598,7 +699,7 @@ class Partner
      *
      * Sempre compara timestamps absolutos (independentes de fuso), mas
      * ancoramos o "agora" em UTC explicitamente para não depender do
-     * date.timezone do PHP (Hostinger = Europe/Berlin).
+     * date.timezone do PHP.
      */
     public function isFetchDue(
         ?\DateTimeImmutable $reference,

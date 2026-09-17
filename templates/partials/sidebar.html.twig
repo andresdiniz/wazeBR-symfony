@@ -2,162 +2,162 @@
     SIDEBAR — WazeBR Centro Operacional
     ============================================================ #}
 
- {% set current_route = app.request.attributes.get('_route') %}
- {% set sidebar_collapsed = app.request.cookies.get('wazebr_sidebar_collapsed') == '1' %}
+{% set current_route = app.request.attributes.get('_route') %}
+{% set sidebar_collapsed = app.request.cookies.get('wazebr_sidebar_collapsed') == '1' %}
 
- <aside
-     id="app-sidebar"
-     class="app-sidebar sidebar{% if sidebar_collapsed %} is-collapsed{% endif %}"
-     data-component="sidebar"
-     data-sidebar
-     aria-label="Navegação principal"
- >
-     <div class="sidebar-inner">
+<aside
+    id="app-sidebar"
+    class="app-sidebar sidebar{% if sidebar_collapsed %} is-collapsed{% endif %}"
+    data-component="sidebar"
+    data-sidebar
+    aria-label="Navegação principal"
+>
+    <div class="sidebar-inner">
 
-         {# --------------------------------------------------------
-            CABEÇALHO
-            -------------------------------------------------------- #}
-         <div class="sidebar-heading">
+        {# --------------------------------------------------------
+           CABEÇALHO
+           -------------------------------------------------------- #}
+        <div class="sidebar-heading">
 
-             <div class="sidebar-heading-content">
-                 <span class="sidebar-heading-icon" aria-hidden="true">
-                     <span></span>
-                 </span>
+            <div class="sidebar-heading-content">
+                <span class="sidebar-heading-icon" aria-hidden="true">
+                    <span></span>
+                </span>
 
-                 <span class="sidebar-heading-label">
-                     Menu principal
-                 </span>
-             </div>
+                <span class="sidebar-heading-label">
+                    Menu principal
+                </span>
+            </div>
 
-             <button
-                 type="button"
-                 class="sidebar-collapse-button"
-                 data-action="toggle-sidebar-collapse"
-                 data-sidebar-collapse
-                 aria-label="Recolher menu lateral"
-                 aria-expanded="{{ sidebar_collapsed ? 'false' : 'true' }}"
-                 aria-controls="app-sidebar"
-             >
-                 <span
-                     class="sidebar-collapse-icon"
-                     aria-hidden="true"
-                 >‹</span>
-             </button>
-         </div>
-
-
-         {# --------------------------------------------------------
-            NAVEGAÇÃO
-            -------------------------------------------------------- #}
-         <nav
-             class="sidebar-nav"
-             data-sidebar-navigation
-             aria-label="Menu principal"
-         >
-
-             {# Dashboard #}
-             <a
-                 href="{{ path('dashboard') }}"
-                 class="sidebar-link{% if current_route == 'dashboard' %} is-active{% endif %}"
-                 data-sidebar-link
-                 title="Dashboard"
-                 {% if current_route == 'dashboard' %}aria-current="page"{% endif %}
-             >
-                 <span class="sidebar-link-icon" aria-hidden="true">
-                     <svg viewBox="0 0 24 24" focusable="false">
-                         <path d="M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-16v5h6V4h-6Z"/>
-                     </svg>
-                 </span>
-
-                 <span class="sidebar-link-label">
-                     Dashboard
-                 </span>
-
-                 {% if current_route == 'dashboard' %}
-                     <span class="sidebar-active-indicator" aria-hidden="true"></span>
-                 {% endif %}
-             </a>
+            <button
+                type="button"
+                class="sidebar-collapse-button"
+                data-action="toggle-sidebar-collapse"
+                data-sidebar-collapse
+                aria-label="Recolher menu lateral"
+                aria-expanded="{{ sidebar_collapsed ? 'false' : 'true' }}"
+                aria-controls="app-sidebar"
+            >
+                <span
+                    class="sidebar-collapse-icon"
+                    aria-hidden="true"
+                >‹</span>
+            </button>
+        </div>
 
 
-             {# Alertas #}
-             <a
-                 href="{{ path('alert_index') }}"
-                 class="sidebar-link{% if current_route starts with 'app_alerts' %} is-active{% endif %}"
-                 data-sidebar-link
-                 title="Alertas"
-                 {% if current_route starts with 'app_alerts' %}aria-current="page"{% endif %}
-             >
-                 <span class="sidebar-link-icon sidebar-link-icon--alert" aria-hidden="true">
-                     <svg viewBox="0 0 24 24" focusable="false">
-                         <path d="M12 3a7 7 0 0 0-7 7v4l-2 3h18l-2-3v-4a7 7 0 0 0-7-7Zm0 18a3 3 0 0 0 2.83-2H9.17A3 3 0 0 0 12 21Z"/>
-                     </svg>
-                 </span>
+        {# --------------------------------------------------------
+           NAVEGAÇÃO
+           -------------------------------------------------------- #}
+        <nav
+            class="sidebar-nav"
+            data-sidebar-navigation
+            aria-label="Menu principal"
+        >
 
-                 <span class="sidebar-link-label">
-                     Alertas
-                 </span>
+            {# Dashboard #}
+            <a
+                href="{{ path('dashboard') }}"
+                class="sidebar-link{% if current_route == 'dashboard' %} is-active{% endif %}"
+                data-sidebar-link
+                title="Dashboard"
+                {% if current_route == 'dashboard' %}aria-current="page"{% endif %}
+            >
+                <span class="sidebar-link-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                        <path d="M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-16v5h6V4h-6Z"/>
+                    </svg>
+                </span>
 
-                 {# Opcional: contador vindo do backend #}
-                 {% if sidebar_alert_count is defined and sidebar_alert_count > 0 %}
-                     <span class="sidebar-link-badge">
-                         {{ sidebar_alert_count > 99 ? '99+' : sidebar_alert_count }}
-                     </span>
-                 {% endif %}
+                <span class="sidebar-link-label">
+                    Dashboard
+                </span>
 
-                 {% if current_route starts with 'app_alerts' %}
-                     <span class="sidebar-active-indicator" aria-hidden="true"></span>
-                 {% endif %}
-             </a>
-
-
-             {# Congestionamentos #}
-             <a
-                 href="{{ path('jam_index') }}"
-                 class="sidebar-link{% if current_route starts with 'app_jams' %} is-active{% endif %}"
-                 data-sidebar-link
-                 title="Congestionamentos"
-                 {% if current_route starts with 'app_jams' %}aria-current="page"{% endif %}
-             >
-                 <span class="sidebar-link-icon" aria-hidden="true">
-                     <svg viewBox="0 0 24 24" focusable="false">
-                         <path d="M5 7h14M3 12h18M5 17h14"/>
-                     </svg>
-                 </span>
-
-                 <span class="sidebar-link-label">
-                     Congestionamentos
-                 </span>
-
-                 {% if current_route starts with 'app_jams' %}
-                     <span class="sidebar-active-indicator" aria-hidden="true"></span>
-                 {% endif %}
-             </a>
+                {% if current_route == 'dashboard' %}
+                    <span class="sidebar-active-indicator" aria-hidden="true"></span>
+                {% endif %}
+            </a>
 
 
-             {# Rotas #}
-             <a
-                 href="{{ path('routes_index') }}"
-                 class="sidebar-link{% if current_route starts with 'app_routes' %} is-active{% endif %}"
-                 data-sidebar-link
-                 title="Rotas"
-                 {% if current_route starts with 'app_routes' %}aria-current="page"{% endif %}
-             >
-                 <span class="sidebar-link-icon" aria-hidden="true">
-                     <svg viewBox="0 0 24 24" focusable="false">
-                         <path d="M6 5c4 0 4 3 8 3s4-3 4-3M6 19c4 0 4-3 8-3s4 3 4 3M6 5v14"/>
-                     </svg>
-                 </span>
+            {# Alertas #}
+            <a
+                href="{{ path('alert_index') }}"
+                class="sidebar-link{% if current_route starts with 'app_alerts' %} is-active{% endif %}"
+                data-sidebar-link
+                title="Alertas"
+                {% if current_route starts with 'app_alerts' %}aria-current="page"{% endif %}
+            >
+                <span class="sidebar-link-icon sidebar-link-icon--alert" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                        <path d="M12 3a7 7 0 0 0-7 7v4l-2 3h18l-2-3v-4a7 7 0 0 0-7-7Zm0 18a3 3 0 0 0 2.83-2H9.17A3 3 0 0 0 12 21Z"/>
+                    </svg>
+                </span>
 
-                 <span class="sidebar-link-label">
-                     Rotas
-                 </span>
+                <span class="sidebar-link-label">
+                    Alertas
+                </span>
 
-                 {% if current_route starts with 'app_routes' %}
-                     <span class="sidebar-active-indicator" aria-hidden="true"></span>
-                 {% endif %}
-             </a>
+                {% if sidebar_alert_count is defined and sidebar_alert_count > 0 %}
+                    <span class="sidebar-link-badge">
+                        {{ sidebar_alert_count > 99 ? '99+' : sidebar_alert_count }}
+                    </span>
+                {% endif %}
 
-             {# Clima #}
+                {% if current_route starts with 'app_alerts' %}
+                    <span class="sidebar-active-indicator" aria-hidden="true"></span>
+                {% endif %}
+            </a>
+
+
+            {# Congestionamentos #}
+            <a
+                href="{{ path('jam_index') }}"
+                class="sidebar-link{% if current_route starts with 'app_jams' %} is-active{% endif %}"
+                data-sidebar-link
+                title="Congestionamentos"
+                {% if current_route starts with 'app_jams' %}aria-current="page"{% endif %}
+            >
+                <span class="sidebar-link-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                        <path d="M5 7h14M3 12h18M5 17h14"/>
+                    </svg>
+                </span>
+
+                <span class="sidebar-link-label">
+                    Congestionamentos
+                </span>
+
+                {% if current_route starts with 'app_jams' %}
+                    <span class="sidebar-active-indicator" aria-hidden="true"></span>
+                {% endif %}
+            </a>
+
+
+            {# Rotas #}
+            <a
+                href="{{ path('routes_index') }}"
+                class="sidebar-link{% if current_route starts with 'app_routes' %} is-active{% endif %}"
+                data-sidebar-link
+                title="Rotas"
+                {% if current_route starts with 'app_routes' %}aria-current="page"{% endif %}
+            >
+                <span class="sidebar-link-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                        <path d="M6 5c4 0 4 3 8 3s4-3 4-3M6 19c4 0 4-3 8-3s4 3 4 3M6 5v14"/>
+                    </svg>
+                </span>
+
+                <span class="sidebar-link-label">
+                    Rotas
+                </span>
+
+                {% if current_route starts with 'app_routes' %}
+                    <span class="sidebar-active-indicator" aria-hidden="true"></span>
+                {% endif %}
+            </a>
+
+
+            {# Clima #}
             <a
                 href="{{ path('weather_index') }}"
                 class="sidebar-link{% if current_route starts with 'weather_' %} is-active{% endif %}"
@@ -180,7 +180,8 @@
                 {% endif %}
             </a>
 
-            {# TV / Wallboard — abre em nova aba para ficar em segundo monitor #}
+
+            {# TV / Wallboard #}
             <a
                 href="{{ path('tv_index') }}"
                 class="sidebar-link sidebar-link--tv{% if current_route starts with 'tv_' %} is-active{% endif %}"
@@ -207,76 +208,109 @@
                 {% endif %}
             </a>
 
-
-             {# Usuários #}
-             {% if is_granted('ROLE_ADMIN') %}
-                 <a
-                     href="{{ path('admin_user_index') }}"
-                     class="sidebar-link{% if current_route starts with 'app_admin' %} is-active{% endif %}"
-                     data-sidebar-link
-                     title="Usuários"
-                     {% if current_route starts with 'app_admin' %}aria-current="page"{% endif %}
-                 >
-                     <span class="sidebar-link-icon" aria-hidden="true">
-                         <svg viewBox="0 0 24 24" focusable="false">
-                             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm9-3v6M21 11h-6"/>
-                         </svg>
-                     </span>
-
-                     <span class="sidebar-link-label">
-                         Usuários
-                     </span>
-
-                     {% if current_route starts with 'app_admin' %}
-                         <span class="sidebar-active-indicator" aria-hidden="true"></span>
-                     {% endif %}
-                 </a>
-             {% endif %}
-
-         </nav>
+        </nav>
 
 
-         {# --------------------------------------------------------
-            SEPARADOR
-            -------------------------------------------------------- #}
-         <div class="sidebar-section-divider" aria-hidden="true">
-             <span></span>
-             <span class="sidebar-section-divider-label">Sistema</span>
-         </div>
+        {# --------------------------------------------------------
+           ÁREA ADMINISTRATIVA (somente ROLE_ADMIN)
+           -------------------------------------------------------- #}
+        {% if is_granted('ROLE_ADMIN') %}
+
+            <div class="sidebar-section-divider" aria-hidden="true">
+                <span></span>
+                <span class="sidebar-section-divider-label">
+                    Administração
+                </span>
+            </div>
+
+            <nav
+                class="sidebar-nav sidebar-nav--admin"
+                aria-label="Menu administrativo"
+            >
+
+                {# Parceiros #}
+                <a
+                    href="{{ path('admin_partner_index') }}"
+                    class="sidebar-link{% if current_route starts with 'admin_partner' %} is-active{% endif %}"
+                    data-sidebar-link
+                    title="Parceiros"
+                    {% if current_route starts with 'admin_partner' %}aria-current="page"{% endif %}
+                >
+                    <span class="sidebar-link-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false">
+                            <path d="M3 20V9l9-6 9 6v11a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z"/>
+                        </svg>
+                    </span>
+
+                    <span class="sidebar-link-label">
+                        Parceiros
+                    </span>
+
+                    {% if current_route starts with 'admin_partner' %}
+                        <span class="sidebar-active-indicator" aria-hidden="true"></span>
+                    {% endif %}
+                </a>
+
+                {# Usuários #}
+                <a
+                    href="{{ path('admin_user_index') }}"
+                    class="sidebar-link{% if current_route starts with 'admin_user' %} is-active{% endif %}"
+                    data-sidebar-link
+                    title="Usuários"
+                    {% if current_route starts with 'admin_user' %}aria-current="page"{% endif %}
+                >
+                    <span class="sidebar-link-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm9-3v6M21 11h-6"/>
+                        </svg>
+                    </span>
+
+                    <span class="sidebar-link-label">
+                        Usuários
+                    </span>
+
+                    {% if current_route starts with 'admin_user' %}
+                        <span class="sidebar-active-indicator" aria-hidden="true"></span>
+                    {% endif %}
+                </a>
+
+            </nav>
+
+        {% endif %}
 
 
-         {# --------------------------------------------------------
-            ÁREA INFERIOR
-            -------------------------------------------------------- #}
-         <div class="sidebar-spacer"></div>
+        {# --------------------------------------------------------
+           ÁREA INFERIOR
+           -------------------------------------------------------- #}
+        <div class="sidebar-spacer"></div>
 
 
-         {# --------------------------------------------------------
-            STATUS
-            -------------------------------------------------------- #}
-         <div
-             class="sidebar-status"
-             data-sidebar-status
-             aria-label="Status do sistema"
-         >
-             <span
-                 class="sidebar-status-indicator"
-                 aria-hidden="true"
-             ></span>
+        {# --------------------------------------------------------
+           STATUS
+           -------------------------------------------------------- #}
+        <div
+            class="sidebar-status"
+            data-sidebar-status
+            aria-label="Status do sistema"
+        >
+            <span
+                class="sidebar-status-indicator"
+                aria-hidden="true"
+            ></span>
 
-             <div class="sidebar-status-content">
-                 <strong>Sistema online</strong>
-                 <span>Monitoramento ativo</span>
-             </div>
-         </div>
+            <div class="sidebar-status-content">
+                <strong>Sistema online</strong>
+                <span>Monitoramento ativo</span>
+            </div>
+        </div>
 
-     </div>
- </aside>
+    </div>
+</aside>
 
 
- {# Overlay para dispositivos móveis #}
- <div
-     class="sidebar-overlay"
-     data-sidebar-overlay
-     hidden
- ></div>
+{# Overlay para dispositivos móveis #}
+<div
+    class="sidebar-overlay"
+    data-sidebar-overlay
+    hidden
+></div>

@@ -263,13 +263,23 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
+    #[ORM\Column(type: 'boolean', options: ['default' => true])]
+    private bool $isActive = true;
+
     public function isActive(): bool
     {
-        return true;
+        return $this->isActive;
     }
 
     public function setActive(bool $active): static
     {
+        if ($this->isActive === $active) {
+            return $this;
+        }
+
+        $this->isActive  = $active;
+        $this->updatedAt = new \DateTimeImmutable();
+
         return $this;
     }
 
@@ -375,4 +385,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->plainPassword = $plainPassword;
         return $this;
     }
+
+
 }

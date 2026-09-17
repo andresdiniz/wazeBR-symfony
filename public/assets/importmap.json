@@ -84,7 +84,7 @@
         "type": "js"
     },
     "app": {
-        "path": "\/assets\/js\/app-X1NILwH.js",
+        "path": "\/assets\/js\/app-ajJZCLy.js",
         "type": "js"
     },
     "\/assets\/js\/components\/buttons.js": {
@@ -136,7 +136,15 @@
         "type": "js"
     },
     "\/assets\/js\/pages\/tv.js": {
-        "path": "\/assets\/js\/pages\/tv-7aKyk8m.js",
+        "path": "\/assets\/js\/pages\/tv-5Kt-mw_.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/admin-partner.js": {
+        "path": "\/assets\/js\/pages\/admin-partner-2LpX9e5.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/admin-user.js": {
+        "path": "\/assets\/js\/pages\/admin-user-ohRBqaR.js",
         "type": "js"
     },
     "dashboard": {

@@ -1,0 +1,246 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}Editar {{ partner.name }} — Administração{% endblock %}
+
+{% block content %}
+<div class="admin-page" data-admin-partner>
+
+    <header class="admin-page__header">
+        <div class="admin-page__heading">
+            <div class="admin-breadcrumb">
+                <a href="{{ path('admin_partner_index') }}">Parceiros</a>
+                <span aria-hidden="true">/</span>
+                <span>{{ partner.name }}</span>
+            </div>
+
+            <h1 class="admin-page__title">Editar parceiro</h1>
+            <p class="admin-page__subtitle">
+                Alterar o <strong>código</strong> renomeia a pasta do feed
+                em <code>/public/feed/</code>.
+            </p>
+        </div>
+
+        <a
+            href="{{ path('admin_partner_index') }}"
+            class="admin-btn admin-btn--ghost"
+        >
+            ← Voltar
+        </a>
+    </header>
+
+    {# ═════════════════════════════════════════════════════════════
+       STATUS (fora do form principal — POST isolado)
+       ═════════════════════════════════════════════════════════════ #}
+    <section class="admin-card admin-card--status">
+        <div class="admin-status-row">
+
+            <div class="admin-status-info">
+                <span class="admin-status-badge {{ partner.isActive ? 'is-active' : 'is-inactive' }}">
+                    <span class="admin-status-dot" aria-hidden="true"></span>
+                    {{ partner.isActive ? 'Ativo' : 'Inativo' }}
+                </span>
+
+                <div>
+                    <strong>Status operacional</strong>
+                    <p class="admin-status-hint">
+                        {{ partner.isActive
+                            ? 'Desativar suspende este parceiro, seus usuários e links de coleta.'
+                            : 'Reativar reativa este parceiro, seus usuários e links de coleta.' }}
+                    </p>
+                </div>
+            </div>
+
+            <form
+                method="post"
+                action="{{ path('admin_partner_toggle', { id: partner.id }) }}"
+                class="admin-toggle-form"
+                data-toggle-form
+                data-partner-name="{{ partner.name }}"
+                data-partner-active="{{ partner.isActive ? '1' : '0' }}"
+            >
+                <input
+                    type="hidden"
+                    name="_token"
+                    value="{{ csrf_token('admin_partner_toggle_' ~ partner.id) }}"
+                >
+
+                <button
+                    type="submit"
+                    class="admin-btn {{ partner.isActive ? 'admin-btn--warn' : 'admin-btn--success' }}"
+                    data-toggle-btn
+                >
+                    {{ partner.isActive ? 'Desativar parceiro' : 'Ativar parceiro' }}
+                </button>
+            </form>
+
+        </div>
+    </section>
+
+    {# ═════════════════════════════════════════════════════════════
+       FORM PRINCIPAL
+       ═════════════════════════════════════════════════════════════ #}
+    <form
+        method="post"
+        class="admin-form"
+        action="{{ path('admin_partner_edit', { id: partner.id }) }}"
+        novalidate
+        data-partner-edit-form
+        data-original-code="{{ partner.code }}"
+    >
+        <input
+            type="hidden"
+            name="_token"
+            value="{{ csrf_token('admin_partner_edit_' ~ partner.id) }}"
+        >
+
+        {# ── Card 1: Identificação ──────────────────────────────── #}
+        <section class="admin-card">
+            <h2 class="admin-card__title">Identificação</h2>
+
+            <div class="admin-form__grid">
+
+                <div class="form-group">
+                    <label for="partner-name">Nome</label>
+                    <input
+                        id="partner-name"
+                        class="form-control"
+                        type="text"
+                        name="name"
+                        required
+                        maxlength="255"
+                        value="{{ partner.name }}"
+                        autocomplete="off"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="partner-code">Código</label>
+                    <input
+                        id="partner-code"
+                        class="form-control"
+                        type="text"
+                        name="code"
+                        required
+                        maxlength="50"
+                        pattern="[A-Za-z0-9_-]+"
+                        value="{{ partner.code }}"
+                        autocomplete="off"
+                        spellcheck="false"
+                        data-code-input
+                    >
+                    <small class="form-hint">
+                        Letras, números, hífen ou underscore.
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="partner-city">Cidade</label>
+                    <input
+                        id="partner-city"
+                        class="form-control"
+                        type="text"
+                        name="city"
+                        maxlength="255"
+                        value="{{ partner.city }}"
+                    >
+                </div>
+
+                <div class="form-group form-group--short">
+                    <label for="partner-state">UF</label>
+                    <input
+                        id="partner-state"
+                        class="form-control"
+                        type="text"
+                        name="state"
+                        maxlength="2"
+                        value="{{ partner.state }}"
+                        data-uppercase
+                    >
+                </div>
+
+            </div>
+        </section>
+
+        {# ── Card 2: Coleta ─────────────────────────────────────── #}
+        <section class="admin-card">
+            <h2 class="admin-card__title">Coleta</h2>
+
+            <div class="admin-form__grid">
+
+                <div class="form-group">
+                    <label for="partner-frequency">Frequência</label>
+                    <input
+                        id="partner-frequency"
+                        class="form-control"
+                        type="number"
+                        name="fetchFrequency"
+                        min="1"
+                        value="{{ partner.fetchFrequency }}"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="partner-unit">Unidade</label>
+                    <select
+                        id="partner-unit"
+                        class="form-select"
+                        name="fetchFrequencyUnit"
+                    >
+                        <option value="minutes" {{ partner.fetchFrequencyUnit == 'minutes' ? 'selected' }}>Minutos</option>
+                        <option value="seconds" {{ partner.fetchFrequencyUnit == 'seconds' ? 'selected' }}>Segundos</option>
+                        <option value="hours"   {{ partner.fetchFrequencyUnit == 'hours'   ? 'selected' }}>Horas</option>
+                    </select>
+                </div>
+
+            </div>
+        </section>
+
+        {# ── Card 3: Feed ───────────────────────────────────────── #}
+        <section class="admin-card">
+            <h2 class="admin-card__title">Feed público</h2>
+
+            <div
+                class="admin-form__preview"
+                data-feed-preview
+                data-original-code="{{ partner.code }}"
+                data-original-url="{{ partner.feedUrl }}"
+            >
+                <span class="admin-form__preview-label">
+                    URL atual:
+                </span>
+
+                <code data-feed-preview-url>
+                    {{ partner.feedUrl ?: '—' }}
+                </code>
+
+                <span
+                    class="admin-form__preview-warning"
+                    data-feed-preview-warning
+                    hidden
+                >
+                    ⚠ O código mudou — a pasta será renomeada ao salvar.
+                </span>
+            </div>
+        </section>
+
+        {# ── Ações ──────────────────────────────────────────────── #}
+        <div class="admin-form__actions">
+            <a
+                href="{{ path('admin_partner_index') }}"
+                class="admin-btn admin-btn--ghost"
+            >
+                Cancelar
+            </a>
+
+            <button
+                type="submit"
+                class="admin-btn admin-btn--primary"
+                data-submit-btn
+            >
+                Salvar alterações
+            </button>
+        </div>
+    </form>
+
+</div>
+{% endblock %}
