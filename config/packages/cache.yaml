@@ -5,3 +5,8 @@ framework:
             tv.cache:
                 adapter: cache.adapter.filesystem
                 default_lifetime: 60
+
+services:
+    # Faz o autowire do TagAwareCacheInterface resolver para o pool tv.cache
+    Symfony\Contracts\Cache\TagAwareCacheInterface:
+        alias: tv.cache

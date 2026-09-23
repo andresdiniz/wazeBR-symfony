@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service;
 
 use App\Entity\Partner;
 use App\Entity\PartnerApiLink;
 use App\Entity\WazeAlert;
+use App\Service\Tv\TvNotifier;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -13,6 +16,7 @@ final class PartnerFeedSynchronizer
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly HttpClientInterface $httpClient,
+        private readonly TvNotifier $tvNotifier,
     ) {
     }
 
@@ -51,6 +55,11 @@ final class PartnerFeedSynchronizer
         }
 
         $this->entityManager->flush();
+
+        // ▼ Notifica a TV somente se houve escrita real
+        if ($counters['inserted'] > 0 || $counters['updated'] > 0) {
+            $this->tvNotifier->notify($partner);
+        }
 
         return $counters;
     }

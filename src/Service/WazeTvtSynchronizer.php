@@ -16,6 +16,7 @@ use App\Repository\WazeTvtRouteRepository;
 use App\Repository\WazeTvtRouteSnapshotRepository;
 use App\Repository\WazeTvtSubRouteRepository;
 use App\Repository\WazeTvtUserOnJamRepository;
+use App\Service\Tv\TvNotifier;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -30,6 +31,7 @@ final class WazeTvtSynchronizer
         private readonly WazeTvtIrregularityRepository $irregularityRepository,
         private readonly WazeTvtRouteSnapshotRepository $snapshotRepository,
         private readonly WazeTvtUserOnJamRepository $userOnJamRepository,
+        private readonly TvNotifier $tvNotifier,
     ) {
     }
 
@@ -69,11 +71,32 @@ final class WazeTvtSynchronizer
             (string) $link->getUrl(),
         );
 
-        return $this->processPayload(
+        $result = $this->processPayload(
             $payload,
             $partner,
             $dryRun,
         );
+
+        // ▼ Notifica a TV se houve mudança relevante
+        if (!$dryRun) {
+            $hasChanges = (
+                $result['routesCreated'] > 0
+                || $result['routesReactivated'] > 0
+                || $result['routesDeactivated'] > 0
+                || $result['subRoutesCreated'] > 0
+                || $result['subRoutesReactivated'] > 0
+                || $result['snapshotsCreated'] > 0
+                || $result['irregularitiesCreated'] > 0
+                || $result['irregularitiesReactivated'] > 0
+                || $result['irregularitiesDeactivated'] > 0
+            );
+
+            if ($hasChanges) {
+                $this->tvNotifier->notify($partner);
+            }
+        }
+
+        return $result;
     }
 
     /**
@@ -168,9 +191,6 @@ final class WazeTvtSynchronizer
 
         $routes = $payload['routes'];
 
-        /*
-         * O JSON real usa usersOnJams.
-         */
         if (
             isset($payload['usersOnJams'])
             && is_array($payload['usersOnJams'])

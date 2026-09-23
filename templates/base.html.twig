@@ -24,7 +24,24 @@
         content="{% block meta_robots %}index, follow{% endblock %}"
     >
 
+    <script>
+        (function () {
+          try {
+            var stored = localStorage.getItem('wazebr-theme') || 'system';
+            var root = document.documentElement;
 
+            if (stored === 'light' || stored === 'dark') {
+              root.setAttribute('data-theme', stored);
+            } else {
+              // 'system' → atributo ausente; o CSS resolve via media query
+              root.dataset.themeResolved = window.matchMedia &&
+                window.matchMedia('(prefers-color-scheme: dark)').matches
+                  ? 'dark'
+                  : 'light';
+            }
+          } catch (e) { /* noop */ }
+        })();
+      </script>
     {# ============================================================
        FAVICON / PWA
        ============================================================ #}

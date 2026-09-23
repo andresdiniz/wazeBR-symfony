@@ -33,6 +33,8 @@ final class FetchWeatherObservationsCommand extends Command
         $io->title('Coleta de clima');
 
         try {
+            // O WeatherObservationFetcher já notifica as TVs dos
+            // partners afetados ao final de fetchAndStoreObservations().
             $result = $this->observationFetcher->fetchAndStoreObservations();
         } catch (\Throwable $e) {
             $io->error('Falha ao buscar observações: ' . $e->getMessage());

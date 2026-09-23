@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\Partner;
-use App\Entity\PartnerApiLink;
 use App\Entity\WazeAlert;
 use App\Entity\WazeJam;
 use App\Repository\PartnerApiLinkRepository;
 use App\Repository\WazeAlertRepository;
 use App\Repository\WazeJamRepository;
+use App\Service\Tv\TvNotifier;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -22,6 +22,7 @@ final class WazeFeedSynchronizer
         private readonly PartnerApiLinkRepository $apiLinkRepository,
         private readonly WazeAlertRepository $alertRepository,
         private readonly WazeJamRepository $jamRepository,
+        private readonly TvNotifier $tvNotifier,
     ) {
     }
 
@@ -105,6 +106,22 @@ final class WazeFeedSynchronizer
 
         if (!$dryRun) {
             $this->entityManager->flush();
+
+            // ▼ Notifica a TV somente se houve mudança real
+            $hasChanges = (
+                $result['alertsCreated'] > 0
+                || $result['alertsUpdated'] > 0
+                || $result['alertsReactivated'] > 0
+                || $result['alertsDeactivated'] > 0
+                || $result['jamsCreated'] > 0
+                || $result['jamsUpdated'] > 0
+                || $result['jamsReactivated'] > 0
+                || $result['jamsDeactivated'] > 0
+            );
+
+            if ($hasChanges) {
+                $this->tvNotifier->notify($partner);
+            }
         }
 
         return $result;
@@ -180,7 +197,6 @@ final class WazeFeedSynchronizer
         $reactivated = 0;
         $currentUuids = [];
 
-        // Dedup dentro do MESMO lote — evita UniqueConstraintViolation.
         $seen = [];
 
         foreach ($alerts as $data) {
@@ -198,7 +214,6 @@ final class WazeFeedSynchronizer
                 continue;
             }
 
-            // Pula duplicados dentro deste lote.
             if (isset($seen[$uuid])) {
                 continue;
             }
@@ -339,7 +354,6 @@ final class WazeFeedSynchronizer
         $reactivated = 0;
         $currentUuids = [];
 
-        // Dedup dentro do MESMO lote — evita UniqueConstraintViolation.
         $seen = [];
 
         foreach ($jams as $data) {
@@ -357,7 +371,6 @@ final class WazeFeedSynchronizer
                 continue;
             }
 
-            // Pula duplicados dentro deste lote.
             if (isset($seen[$uuid])) {
                 continue;
             }

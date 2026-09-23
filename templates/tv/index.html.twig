@@ -90,7 +90,18 @@
                     <strong data-tv-total="alerts">0</strong>
                     <span class="tv-card__big-sub">total agora</span>
                 </div>
+
                 <div class="tv-card__hint" data-tv-alerts-hint>—</div>
+                <div class="tv-card__sub" data-tv-last-critical hidden>
+                    <span class="tv-card__sub-dot"></span>
+                    <span data-tv-last-critical-text>—</span>
+                </div>
+
+                {# Sparkline 6h — barras verticais #}
+                <div class="tv-spark" data-tv-spark hidden>
+                    <div class="tv-spark__bars" data-tv-spark-bars></div>
+                    <div class="tv-spark__label">últimas 6h</div>
+                </div>
 
                 <ul class="tv-kv">
                     <li><span>Acidentes</span><strong data-tv-type="ACCIDENT">0</strong></li>
@@ -115,6 +126,16 @@
                     <li><span>Nível 3+</span><strong data-tv-jams="level3">0</strong></li>
                     <li><span>Nível 4+</span><strong data-tv-jams="level4">0</strong></li>
                     <li><span>Atraso médio</span><strong data-tv-jams="avgDelay">—</strong></li>
+                </ul>
+            </section>
+
+            <section class="tv-card tv-card--top-streets" data-tv-top-streets-card hidden>
+                <header class="tv-card__head">
+                    <span class="tv-card__icon">📍</span>
+                    <span class="tv-card__title">Top vias · 2h</span>
+                </header>
+                <ul class="tv-streets" data-tv-top-streets>
+                    <li class="tv-empty-row">Sem dados</li>
                 </ul>
             </section>
 
@@ -174,6 +195,20 @@
                 <div class="tv-hydro" data-tv-hydro>
                     <div class="tv-empty-row">Sem estações cadastradas</div>
                 </div>
+                <div class="tv-hydro__pages" data-tv-hydro-pages hidden></div>
+            </section>
+
+            {# ── Rotas mais lentas vs. histórico ─────────────────── #}
+            <section class="tv-card tv-card--routes" data-tv-routes-card hidden>
+                <header class="tv-card__head">
+                    <span class="tv-card__icon">🚦</span>
+                    <span class="tv-card__title">Rotas mais lentas</span>
+                    <span class="tv-card__badge" data-tv-routes-badge>0</span>
+                </header>
+                <ul class="tv-routes" data-tv-routes>
+                    <li class="tv-empty-row">Sem dados de rotas</li>
+                </ul>
+                <div class="tv-routes__note" data-tv-routes-note hidden>vs. média 30 dias</div>
             </section>
 
             <section class="tv-card tv-card--rain">
@@ -233,6 +268,7 @@
             <span class="tv-fresh__item"><i data-tv-fresh="weather"></i>Clima</span>
             <span class="tv-fresh__item"><i data-tv-fresh="hydro"></i>Rios</span>
             <span class="tv-fresh__item"><i data-tv-fresh="pluvio"></i>Chuva</span>
+            <span class="tv-fresh__item"><i data-tv-fresh="tvt"></i>Rotas</span>
         </div>
     </footer>
 

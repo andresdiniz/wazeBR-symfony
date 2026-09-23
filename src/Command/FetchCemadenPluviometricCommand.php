@@ -6,7 +6,9 @@ namespace App\Command;
 
 use App\Entity\CemadenPluviometricObservation;
 use App\Entity\CemadenStationLink;
+use App\Entity\Partner;
 use App\Repository\CemadenStationLinkRepository;
+use App\Service\Tv\TvNotifier;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -17,20 +19,6 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-/**
- * Coleta observações PLUVIOMÉTRICAS do CEMADEN (somente mm de chuva).
- *
- * IMPORTANTE — separação de responsabilidades:
- *   - Este comando cuida APENAS de pluviômetros automáticos
- *     (endpoint: MapaInterativoWS/resources/horario/{id}/{hours}).
- *     → Grava em `cemaden_pluviometric_observation` (só chuva, sem nível de rio).
- *
- *   - O comando `app:fetch:cemaden:hidro` cuida de estações hidrológicas
- *     (endpoint: MedidaResource + AcumuladoResource, `est=`/`sen=`).
- *     → Grava em `cemaden_hidro_observation` (nível + chuva do rio).
- *
- * Os dois NÃO se cruzam: cada um lê tabelas diferentes e grava em tabelas diferentes.
- */
 #[AsCommand(
     name: 'app:fetch:cemaden:pluviometric',
     description: 'Coleta observações pluviométricas CEMADEN (mm de chuva) para stations ativas.',
@@ -47,6 +35,7 @@ class FetchCemadenPluviometricCommand extends Command
         private readonly EntityManagerInterface $em,
         private readonly HttpClientInterface $httpClient,
         private readonly LoggerInterface $logger,
+        private readonly TvNotifier $tvNotifier,
     ) {
         parent::__construct();
     }
@@ -75,7 +64,6 @@ class FetchCemadenPluviometricCommand extends Command
             $io->warning('Modo DRY-RUN — nenhum dado será persistido.');
         }
 
-        // ── 1. Selecionar stations elegíveis ─────────────────────────────────
         if ($force) {
             $stations = $this->stationLinkRepository->findAllActive();
             $io->info('--force ativo: coletando todas as stations ativas (ignorando lastFetchedAt).');
@@ -106,10 +94,12 @@ class FetchCemadenPluviometricCommand extends Command
 
         $io->info(sprintf('Processando %d station(s).', count($stations)));
 
-        // ── 2. Iterar e coletar ──────────────────────────────────────────────
         $totalInserted = 0;
         $totalSkipped = 0;
         $errors = 0;
+
+        /** @var array<int, Partner> $touchedPartners */
+        $touchedPartners = [];
 
         foreach ($stations as $station) {
             $label = $this->stationLabel($station);
@@ -125,12 +115,10 @@ class FetchCemadenPluviometricCommand extends Command
                     continue;
                 }
 
-                // Metadados da estação (só preenche campos vazios)
                 if (!$dryRun) {
                     $this->syncStationMetadata($station, $rawData);
                 }
 
-                // Normaliza o payload em registros por hora
                 $observations = $this->normalizePayload($rawData);
 
                 if ($observations === []) {
@@ -143,7 +131,6 @@ class FetchCemadenPluviometricCommand extends Command
                 foreach ($observations as $obs) {
                     $observedAt = $obs['observedAt'];
 
-                    // Idempotência: unique (station_link_id, observed_at)
                     $existing = $this->em
                         ->getRepository(CemadenPluviometricObservation::class)
                         ->findOneBy([
@@ -179,6 +166,13 @@ class FetchCemadenPluviometricCommand extends Command
                 if (!$dryRun) {
                     $station->setLastFetchedAt($nowUtc);
                     $this->em->flush();
+
+                    if ($inserted > 0) {
+                        $partner = $station->getPartner();
+                        if ($partner instanceof Partner && $partner->getId() !== null) {
+                            $touchedPartners[$partner->getId()] = $partner;
+                        }
+                    }
                 }
 
                 $totalInserted += $inserted;
@@ -201,6 +195,11 @@ class FetchCemadenPluviometricCommand extends Command
             }
         }
 
+        // ▼ Notifica as TVs dos partners afetados
+        if (!$dryRun && $touchedPartners !== []) {
+            $this->tvNotifier->notifyMany(array_values($touchedPartners));
+        }
+
         $io->success(sprintf(
             'Concluído — Inseridos: %d | Ignorados: %d | Erros: %d',
             $totalInserted,
@@ -211,14 +210,6 @@ class FetchCemadenPluviometricCommand extends Command
         return $errors > 0 ? Command::FAILURE : Command::SUCCESS;
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
-    /**
-     * Sincroniza metadados da estação a partir do objeto "estacao" do payload.
-     * Só preenche campos que estão vazios (não sobrescreve edições manuais).
-     *
-     * @param array<string,mixed> $rawData
-     */
     private function syncStationMetadata(CemadenStationLink $station, array $rawData): void
     {
         $estacao = $rawData['estacao'] ?? null;
@@ -253,7 +244,6 @@ class FetchCemadenPluviometricCommand extends Command
             $changed = true;
         }
 
-        // Município
         $municipio = $estacao['idMunicipio'] ?? null;
         if (is_array($municipio)) {
             if ($station->getCity() === null && !empty($municipio['cidade'])) {
@@ -274,7 +264,6 @@ class FetchCemadenPluviometricCommand extends Command
             }
         }
 
-        // Rede
         $rede = $estacao['idRede'] ?? null;
         if (is_array($rede)) {
             if ($station->getNetworkId() === null && isset($rede['idRede'])) {
@@ -291,7 +280,6 @@ class FetchCemadenPluviometricCommand extends Command
             }
         }
 
-        // Tipo (Pluviométrica)
         $tipo = $estacao['idTipoestacao'] ?? null;
         if (is_array($tipo) && $station->getStationType() === null && !empty($tipo['descricao'])) {
             $station->setStationType((string) $tipo['descricao']);
@@ -304,21 +292,6 @@ class FetchCemadenPluviometricCommand extends Command
     }
 
     /**
-     * Normaliza o payload real do CEMADEN:
-     *
-     * {
-     *   "horarios": ["0h","1h",...,"23h"],
-     *   "estacao":  {...},
-     *   "datas":    ["13/09/2026", ...],
-     *   "acumulados": [ [v0,v1,...,v23], ... ]
-     * }
-     *
-     * `acumulados[i]` é um array de 24 valores (um por hora), correspondendo
-     * ao dia `datas[i]`. O índice do array É a hora (0..23).
-     *
-     * CEMADEN envia datas em horário local de Brasília; convertemos para UTC
-     * antes de persistir para manter o banco consistente com os outros dados.
-     *
      * @param array<string,mixed> $rawData
      * @return list<array{observedAt: \DateTimeImmutable, referenceDate: \DateTimeImmutable, hourSlot: int, accumulated: ?float}>
      */
@@ -342,7 +315,6 @@ class FetchCemadenPluviometricCommand extends Command
                 continue;
             }
 
-            // acumulados[$dayIdx] = [v0, v1, ..., v23]
             $dayValues = $acumulados[$dayIdx] ?? [];
             if (!is_array($dayValues) || $dayValues === []) {
                 continue;
@@ -354,15 +326,11 @@ class FetchCemadenPluviometricCommand extends Command
                     continue;
                 }
 
-                // Hora local (SP) → instante absoluto → UTC
                 $observedAtSp = $refDateSp->setTime($hour, 0);
                 $observedAtUtc = $observedAtSp->setTimezone(
                     new \DateTimeZone(self::TZ_UTC),
                 );
 
-                // reference_date é DATE_IMMUTABLE — basta o dia.
-                // Mantemos o dia ORIGINAL em SP (sem aplicar conversão) para
-                // não "pular" para o dia seguinte quando a hora for tarde.
                 $referenceDate = $refDateSp->setTime(0, 0);
 
                 $accumulated = ($rawValue === null || $rawValue === '')
@@ -381,11 +349,6 @@ class FetchCemadenPluviometricCommand extends Command
         return $results;
     }
 
-    /**
-     * Parse de data do CEMADEN ("13/09/2026", "2026-09-13", "13-09-2026").
-     * Ancorado em America/Sao_Paulo. A conversão final para UTC é feita
-     * em normalizePayload().
-     */
     private function parseDateSp(string $raw): ?\DateTimeImmutable
     {
         $raw = trim($raw);
@@ -409,11 +372,7 @@ class FetchCemadenPluviometricCommand extends Command
         }
     }
 
-    /**
-     * Requisição HTTP + decodificação JSON.
-     *
-     * @return array<string,mixed>
-     */
+    /** @return array<string,mixed> */
     private function fetchJson(string $url): array
     {
         $response = $this->httpClient->request('GET', $url, ['timeout' => 15]);

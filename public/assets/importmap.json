@@ -36,7 +36,7 @@
         "type": "js"
     },
     "\/assets\/js\/layout\/header.js": {
-        "path": "\/assets\/js\/layout\/header-WwrrDUj.js",
+        "path": "\/assets\/js\/layout\/header-F-IJo6I.js",
         "type": "js"
     },
     "\/assets\/js\/layout\/sidebar.js": {
@@ -84,7 +84,7 @@
         "type": "js"
     },
     "app": {
-        "path": "\/assets\/js\/app-ajJZCLy.js",
+        "path": "\/assets\/js\/app-d2hKpj9.js",
         "type": "js"
     },
     "\/assets\/js\/components\/buttons.js": {
@@ -136,7 +136,7 @@
         "type": "js"
     },
     "\/assets\/js\/pages\/tv.js": {
-        "path": "\/assets\/js\/pages\/tv-DMlBEhs.js",
+        "path": "\/assets\/js\/pages\/tv-XydJRQX.js",
         "type": "js"
     },
     "\/assets\/js\/pages\/admin-partner.js": {
@@ -145,6 +145,14 @@
     },
     "\/assets\/js\/pages\/admin-user.js": {
         "path": "\/assets\/js\/pages\/admin-user-ohRBqaR.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/jam.js": {
+        "path": "\/assets\/js\/pages\/jam-8L9Tl-2.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/jam-show.js": {
+        "path": "\/assets\/js\/pages\/jam-show-13npYzZ.js",
         "type": "js"
     },
     "dashboard": {

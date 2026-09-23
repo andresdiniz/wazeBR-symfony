@@ -1,0 +1,188 @@
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}{{ jam.street|default('Jam') }} — Detalhes | WazeBR{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <link rel="stylesheet" href="{{ asset('css/pages/jam-show.css') }}">
+{% endblock %}
+
+{% block content %}
+{% set level = jam.level|default(0) %}
+{% set isBlocked = jam.isBlocked|default(false) %}
+{% set isStale   = jam.isStale|default(false) %}
+{% set alertCount = nearby_alerts|length %}
+
+<div class="jam-show-page"
+     data-jam-show
+     data-jam='{{ jam|json_encode|e('html_attr') }}'
+     data-nearby-alerts='{{ nearby_alerts|json_encode|e('html_attr') }}'>
+
+    <div class="jam-show-container">
+
+        {# ── Breadcrumb ──────────────────────────────────────── #}
+        <nav class="jam-show-breadcrumb" aria-label="Trilha">
+            <a href="{{ path('jam_index') }}">← Jams</a>
+            <span>/</span>
+            <span aria-current="page">#{{ jam.id }}</span>
+        </nav>
+
+        {# ── Header ──────────────────────────────────────────── #}
+        <header class="jam-show-header">
+            <div>
+                <span class="jam-show-panel__kicker">Detalhes do congestionamento</span>
+                <h1>{{ jam.street|default('Via não informada') }}</h1>
+                <div class="jam-show-header__path">
+                    {% if jam.city %}<strong>{{ jam.city }}</strong>{% endif %}
+                    {% if jam.country %}· {{ jam.country }}{% endif %}
+                    {% if jam.lengthKm %}· {{ jam.lengthKm }} km{% endif %}
+                </div>
+                <div class="jam-show-badges">
+                    <span class="jam-show-badge jam-show-badge--level-{{ level }}">
+                        Nível {{ level }} · {{ jam.levelLabel|default('—') }}
+                    </span>
+                    {% if isBlocked and isStale %}
+                        <span class="jam-show-badge jam-show-badge--stale">⚠ Interdição antiga</span>
+                    {% elseif isBlocked %}
+                        <span class="jam-show-badge jam-show-badge--blocked">🚫 Interdição ativa</span>
+                    {% endif %}
+                    {% if alertCount > 0 %}
+                        <span class="jam-show-badge jam-show-badge--level-3">
+                            🔔 {{ alertCount }} alerta{{ alertCount > 1 ? 's' : '' }} próximo{{ alertCount > 1 ? 's' : '' }}
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="jam-show-actions">
+                <a class="jam-button" href="{{ path('jam_index') }}">← Voltar</a>
+            </div>
+        </header>
+
+        {# ── KPIs ────────────────────────────────────────────── #}
+        <section class="jam-show-kpis">
+            <article class="jam-show-kpi jam-show-kpi--warning">
+                <span class="jam-show-kpi__label">Atraso</span>
+                <span class="jam-show-kpi__value">
+                    {{ jam.delayMin is not null ? jam.delayMin : '—' }}<small>min</small>
+                </span>
+                <span class="jam-show-kpi__hint">{{ jam.delay }}s no total</span>
+            </article>
+
+            <article class="jam-show-kpi">
+                <span class="jam-show-kpi__label">Velocidade</span>
+                <span class="jam-show-kpi__value">{{ jam.speed|number_format(0) }}<small>km/h</small></span>
+                <span class="jam-show-kpi__hint">Média no trecho</span>
+            </article>
+
+            <article class="jam-show-kpi">
+                <span class="jam-show-kpi__label">Extensão</span>
+                <span class="jam-show-kpi__value">{{ jam.lengthKm }}<small>km</small></span>
+                <span class="jam-show-kpi__hint">{{ jam.points }} pontos</span>
+            </article>
+
+            <article class="jam-show-kpi jam-show-kpi--accent">
+                <span class="jam-show-kpi__label">Alertas próximos</span>
+                <span class="jam-show-kpi__value">{{ alertCount }}</span>
+                <span class="jam-show-kpi__hint">± 30 min · 300 m</span>
+            </article>
+        </section>
+
+        {# ── Mapa + impacto ─────────────────────────────────── #}
+        <div class="jam-show-grid">
+            <section class="jam-show-panel jam-show-panel--map">
+                <header class="jam-show-panel__header">
+                    <div>
+                        <span class="jam-show-panel__kicker">Geolocalização</span>
+                        <h2>Traçado e alertas no entorno</h2>
+                    </div>
+                    <span class="jam-show-panel__count">{{ alertCount }} pinos</span>
+                </header>
+                <div class="jam-show-map" data-jam-show-map></div>
+            </section>
+
+            <section class="jam-show-panel">
+                <header class="jam-show-panel__header">
+                    <div>
+                        <span class="jam-show-panel__kicker">Impacto</span>
+                        <h2>Alertas que podem explicar</h2>
+                    </div>
+                    <span class="jam-show-panel__count">{{ alertCount }}</span>
+                </header>
+
+                {% if nearby_alerts is empty %}
+                    <div class="jam-show-empty">
+                        <span>✓</span>
+                        <strong>Nenhum alerta próximo</strong>
+                        <small>Não há ocorrências Waze no entorno imediato.</small>
+                    </div>
+                {% else %}
+                    <div class="jam-show-alerts">
+                        {% for a in nearby_alerts %}
+                            <div class="jam-show-alert">
+                                <span class="jam-show-alert__icon">
+                                    {{ a.type == 'ACCIDENT' ? '⚠' : a.type == 'ROAD_CLOSED' ? '⊘' : '▲' }}
+                                </span>
+                                <div class="jam-show-alert__body">
+                                    <strong>{{ a.typeLabel|default(a.type) }}</strong>
+                                    <em>{{ a.subtype|default('—') }}{% if a.street %} · {{ a.street }}{% endif %}</em>
+                                    <small>
+                                        {{ a.city|default('—') }}
+                                        {% if a.confidence %}· Confiança {{ a.confidence }}%{% endif %}
+                                    </small>
+                                </div>
+                                <div class="jam-show-alert__meta">
+                                    <span class="jam-show-alert__dist">{{ a.distanceMeters }} m</span>
+                                    <span class="jam-show-alert__time jam-show-alert__time--{{ a.timeOffsetMinutes < 0 ? 'before' : 'after' }}">
+                                        {{ a.timeOffsetMinutes > 0 ? '+' : '' }}{{ a.timeOffsetMinutes }} min
+                                    </span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </section>
+        </div>
+
+        {# ── Detalhes + tipos ───────────────────────────────── #}
+        <div class="jam-show-grid">
+            <section class="jam-show-panel">
+                <header class="jam-show-panel__header">
+                    <div>
+                        <span class="jam-show-panel__kicker">Composição</span>
+                        <h2>Distribuição por tipo de alerta</h2>
+                    </div>
+                </header>
+                <div class="jam-show-types" data-jam-show-types></div>
+            </section>
+
+            <section class="jam-show-panel">
+                <header class="jam-show-panel__header">
+                    <div>
+                        <span class="jam-show-panel__kicker">Metadados</span>
+                        <h2>Informações do registro</h2>
+                    </div>
+                </header>
+                <dl class="jam-show-info">
+                    <div><dt>ID</dt><dd>#{{ jam.id }}</dd></div>
+                    {% if jam.uuid %}<div><dt>UUID</dt><dd><small style="font-family:monospace">{{ jam.uuid }}</small></dd></div>{% endif %}
+                    <div><dt>Coletado em</dt><dd>{{ jam.when|date('d/m/Y H:i') }}</dd></div>
+                    {% if jam.lastSeen %}<div><dt>Visto por último</dt><dd>{{ jam.lastSeen|date('d/m/Y H:i') }}</dd></div>{% endif %}
+                    <div><dt>País</dt><dd>{{ jam.country|default('—') }}</dd></div>
+                    <div><dt>Pontos da polyline</dt><dd>{{ jam.points }}</dd></div>
+                </dl>
+            </section>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script type="module" src="{{ asset('js/pages/jam-show.js') }}"></script>
+{% endblock %}

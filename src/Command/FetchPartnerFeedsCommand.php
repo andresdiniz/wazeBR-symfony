@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Command;
 
 use App\Entity\Partner;
@@ -43,6 +45,8 @@ final class FetchPartnerFeedsCommand extends Command
             ));
 
             try {
+                // O PartnerFeedSynchronizer já notifica a TV do partner
+                // ao final do synchronize(), se houve escrita.
                 $result = $this->synchronizer->synchronize($partner);
             } catch (\Throwable $exception) {
                 $totals['errors']++;
@@ -108,14 +112,4 @@ final class FetchPartnerFeedsCommand extends Command
                 'id' => 'ASC',
             ]);
     }
-    private function resetStaleConnection(): void
-{
-    $connection = $this->entityManager->getConnection();
-
-    try {
-        $connection->executeQuery('SELECT 1');
-    } catch (\Throwable) {
-        $connection->close();
-    }
-}
 }

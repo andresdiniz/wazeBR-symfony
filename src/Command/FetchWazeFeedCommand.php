@@ -11,6 +11,7 @@ use App\Entity\WazeJam;
 use App\Repository\PartnerApiLinkRepository;
 use App\Repository\WazeAlertRepository;
 use App\Repository\WazeJamRepository;
+use App\Service\Tv\TvNotifier;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -36,6 +37,7 @@ final class FetchWazeFeedCommand extends Command
         private readonly PartnerApiLinkRepository $apiLinkRepository,
         private readonly LockFactory $lockFactory,
         private readonly LoggerInterface $logger,
+        private readonly TvNotifier $tvNotifier,
     ) {
         parent::__construct();
     }
@@ -198,6 +200,16 @@ final class FetchWazeFeedCommand extends Command
                 $io->section(sprintf('Partner: %s', $label));
 
                 $partnerSuccess = true;
+                $partnerDelta = [
+                    'alertsCreated' => 0,
+                    'alertsUpdated' => 0,
+                    'alertsReactivated' => 0,
+                    'alertsDeactivated' => 0,
+                    'jamsCreated' => 0,
+                    'jamsUpdated' => 0,
+                    'jamsReactivated' => 0,
+                    'jamsDeactivated' => 0,
+                ];
 
                 foreach ($links as $apiLink) {
                     try {
@@ -211,6 +223,9 @@ final class FetchWazeFeedCommand extends Command
 
                         foreach ($result as $key => $value) {
                             $totals[$key] += $value;
+                            if (array_key_exists($key, $partnerDelta)) {
+                                $partnerDelta[$key] += $value;
+                            }
                         }
                     } catch (\Throwable $exception) {
                         $partnerSuccess = false;
@@ -245,6 +260,22 @@ final class FetchWazeFeedCommand extends Command
 
                         $this->entityManager->persist($partner);
                         $this->entityManager->flush();
+
+                        // ▼ Notifica a TV se houve mudança real
+                        $hasChanges = (
+                            $partnerDelta['alertsCreated'] > 0
+                            || $partnerDelta['alertsUpdated'] > 0
+                            || $partnerDelta['alertsReactivated'] > 0
+                            || $partnerDelta['alertsDeactivated'] > 0
+                            || $partnerDelta['jamsCreated'] > 0
+                            || $partnerDelta['jamsUpdated'] > 0
+                            || $partnerDelta['jamsReactivated'] > 0
+                            || $partnerDelta['jamsDeactivated'] > 0
+                        );
+
+                        if ($hasChanges) {
+                            $this->tvNotifier->notify($partner);
+                        }
                     }
 
                     $totals['partnersProcessed']++;
@@ -533,8 +564,6 @@ final class FetchWazeFeedCommand extends Command
         $skipped = 0;
         $currentUuids = [];
 
-        // Dedup dentro do MESMO lote — evita UniqueConstraintViolation
-        // quando o feed do Waze repete o mesmo uuid no mesmo payload.
         $seenInBatch = [];
 
         $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
@@ -576,7 +605,6 @@ final class FetchWazeFeedCommand extends Command
                 continue;
             }
 
-            // Pula duplicados dentro deste lote.
             if (isset($seenInBatch[$uuid])) {
                 $skipped++;
                 $progressBar->advance();
@@ -663,8 +691,6 @@ final class FetchWazeFeedCommand extends Command
         $skipped = 0;
         $currentUuids = [];
 
-        // Dedup dentro do MESMO lote — evita UniqueConstraintViolation
-        // quando o feed do Waze repete o mesmo uuid no mesmo payload.
         $seenInBatch = [];
 
         $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));

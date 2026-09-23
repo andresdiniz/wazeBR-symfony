@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Entity\Partner;
 use App\Entity\WeatherLocation;
 use App\Entity\WeatherObservation;
 use App\Repository\WeatherLocationRepository;
 use App\Repository\WeatherObservationRepository;
+use App\Service\Tv\TvNotifier;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -17,14 +19,11 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  *
  * Providers suportados:
  *   - open-meteo (default, sem API key)
- *
- * Adicionar outro provider: crie um método fetchFromX() e um case no match().
  */
 final class WeatherObservationFetcher
 {
     private const OPEN_METEO_URL = 'https://api.open-meteo.com/v1/forecast';
 
-    /** Campos do "current" que pedimos ao Open-Meteo. */
     private const OPEN_METEO_CURRENT_FIELDS = [
         'temperature_2m',
         'relative_humidity_2m',
@@ -48,6 +47,7 @@ final class WeatherObservationFetcher
         private readonly WeatherLocationRepository $locationRepository,
         private readonly WeatherObservationRepository $observationRepository,
         private readonly LoggerInterface $logger,
+        private readonly TvNotifier $tvNotifier,
     ) {
     }
 
@@ -65,6 +65,9 @@ final class WeatherObservationFetcher
         $skipped = 0;
         $failed = 0;
 
+        /** @var array<int, Partner> $touchedPartners */
+        $touchedPartners = [];
+
         foreach ($locations as $location) {
             try {
                 $result = $this->fetchForLocation($location);
@@ -76,6 +79,11 @@ final class WeatherObservationFetcher
 
                 if ($result === true) {
                     $inserted++;
+
+                    $partner = $location->getPartner();
+                    if ($partner instanceof Partner && $partner->getId() !== null) {
+                        $touchedPartners[$partner->getId()] = $partner;
+                    }
                 } else {
                     $skipped++;
                 }
@@ -94,6 +102,11 @@ final class WeatherObservationFetcher
         }
 
         $this->em->flush();
+
+        // ▼ Notifica as TVs dos partners afetados, uma vez por partner
+        if ($touchedPartners !== []) {
+            $this->tvNotifier->notifyMany(array_values($touchedPartners));
+        }
 
         return [
             'total'    => $total,
@@ -128,8 +141,6 @@ final class WeatherObservationFetcher
     }
 
     /**
-     * Chama o Open-Meteo com os campos que temos na entidade.
-     *
      * @return array{observedAt:\DateTimeImmutable,payload:array<string,mixed>}|null
      */
     private function fetchFromOpenMeteo(WeatherLocation $location): ?array
@@ -176,7 +187,6 @@ final class WeatherObservationFetcher
             return null;
         }
 
-        // "2026-09-13T22:30" → DateTimeImmutable em UTC
         $observedAt = new \DateTimeImmutable(
             (string) $current['time'],
             new \DateTimeZone('UTC'),

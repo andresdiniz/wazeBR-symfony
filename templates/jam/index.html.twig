@@ -1,38 +1,324 @@
-{% extends 'base.html.twig' %}
+{% extends 'layouts/dashboard.html.twig' %}
 
-{% block title %}Congestionamentos{% endblock %}
+{% block title %}Congestionamentos | WazeBR{% endblock %}
 
-{% block page_stylesheets %}
-<style>
-    .jams-list { list-style: none; padding: 0; margin: 0; }
-    .jam-item { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
-    .jam-item h3 { margin: 0 0 8px 0; font-size: 1rem; }
-    .jam-meta { font-size: 0.85rem; color: #666; }
-</style>
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <link rel="stylesheet" href="{{ asset('css/pages/jam.css') }}">
 {% endblock %}
 
-{% block body_class %}dashboard-page{% endblock %}
+{% block content %}
+{% set total         = stats.total|default(0) %}
+{% set blockedActive = stats.blockedActive|default(0) %}
+{% set blockedStale  = stats.blockedStale|default(0) %}
+{% set level4plus    = (stats.byLevel[4]|default(0)) + (stats.byLevel[5]|default(0)) %}
 
-{% block body %}
-<div class="dashboard-layout">
-    {% include 'partials/sidebar.html.twig' %}
-    <main class="dashboard-content">
-        {% include 'partials/topbar.html.twig' %}
-        <div class="dashboard-content-inner">
-            <h1>Congestionamentos</h1>
-            {% if jams is empty %}
-                <p>Nenhum congestionamento encontrado.</p>
-            {% else %}
-                <ul class="jams-list">
-                    {% for jam in jams %}
-                        <li class="jam-item">
-                            <h3>Jam #{{ jam.id }} - Level {{ jam.level }}</h3>
-                            <p class="jam-meta">{{ jam.reportTime|date('d/m/Y H:i') }}</p>
-                        </li>
-                    {% endfor %}
-                </ul>
-            {% endif %}
+<div class="jam-page"
+     data-jam-page
+     data-api-endpoint="{{ path('jam_api_data') }}"
+     data-export-endpoint="{{ path('jam_export') }}"
+     data-timezone="{{ app_timezone|default('America/Sao_Paulo') }}"
+     data-current-filters='{{ filters|json_encode|e('html_attr') }}'>
+
+    <div class="jam-container">
+
+        {# ── Header ──────────────────────────────────────────────── #}
+        <header class="jam-header">
+            <div>
+                <span class="jam-eyebrow"><i></i> Central de congestionamentos</span>
+                <h1>Jams Waze{% if partner %} — {{ partner.name }}{% endif %}</h1>
+                <p>
+                    Monitoramento de lentidão em tempo real, com separação entre
+                    <strong>interdições ativas</strong>, <strong>interdições antigas</strong> e
+                    congestionamentos comuns. Filtros, mapa e exportação.
+                </p>
+            </div>
+            <div class="jam-header-tools">
+                <span class="jam-live-badge" data-jam-live-badge>
+                    <i></i> Ao vivo · <span data-jam-live-clock>--:--</span>
+                </span>
+                <button type="button" class="jam-button" data-action="refresh">
+                    <span>↻</span> Atualizar
+                </button>
+                <a class="jam-button is-primary" data-jam-export
+                   href="{{ path('jam_export', filters|filter(v => v is not empty)) }}">
+                    ⇩ Exportar CSV
+                </a>
+            </div>
+        </header>
+
+        {# ── KPIs ────────────────────────────────────────────────── #}
+        <section class="jam-kpi-grid">
+            <article class="jam-kpi-card kpi-blue">
+                <span class="kpi-icon" aria-hidden="true">≋</span>
+                <strong class="kpi-value" data-jam-kpi="total">{{ total }}</strong>
+                <span class="kpi-label">Congestionamentos ativos</span>
+                <small class="kpi-foot" data-jam-kpi="level4plus">{{ level4plus }} em nível 4+</small>
+            </article>
+
+            <article class="jam-kpi-card kpi-red">
+                <span class="kpi-icon" aria-hidden="true">🚫</span>
+                <strong class="kpi-value" data-jam-kpi="blockedActive">{{ blockedActive }}</strong>
+                <span class="kpi-label">Interdições ativas</span>
+                <small class="kpi-foot">Vias bloqueadas agora</small>
+            </article>
+
+            <article class="jam-kpi-card kpi-orange">
+                <span class="kpi-icon" aria-hidden="true">⚠</span>
+                <strong class="kpi-value" data-jam-kpi="blockedStale">{{ blockedStale }}</strong>
+                <span class="kpi-label">Interdições antigas</span>
+                <small class="kpi-foot">Sem atualização há mais de 15 min</small>
+            </article>
+
+            <article class="jam-kpi-card kpi-green">
+                <span class="kpi-icon" aria-hidden="true">⏱</span>
+                <strong class="kpi-value kpi-value--sm" data-jam-kpi="avgDelay">
+                    {{ stats.avgDelay|default(0) }}s
+                </strong>
+                <span class="kpi-label">Atraso médio</span>
+                <small class="kpi-foot" data-jam-kpi="maxDelay">
+                    Máximo {{ stats.maxDelay|default(0) }}s
+                </small>
+            </article>
+        </section>
+
+        {# ── Filtros ─────────────────────────────────────────────── #}
+        <section class="jam-filter-panel">
+            <header class="jam-filter-head">
+                <div>
+                    <span class="jam-kicker">Filtros</span>
+                    <h2>Refinar consulta</h2>
+                </div>
+                <button type="button" class="jam-button is-link" data-action="clear-filters">Limpar</button>
+            </header>
+
+            <form class="jam-filter-form" data-jam-filter-form>
+                <label class="jam-field">
+                    <span>Nível mínimo</span>
+                    <select name="level_min" data-jam-filter="level_min">
+                        <option value="0" {{ filters.level_min == 0 ? 'selected' }}>Todos</option>
+                        <option value="1" {{ filters.level_min == 1 ? 'selected' }}>≥ 1 Baixo</option>
+                        <option value="2" {{ filters.level_min == 2 ? 'selected' }}>≥ 2 Moderado</option>
+                        <option value="3" {{ filters.level_min == 3 ? 'selected' }}>≥ 3 Alto</option>
+                        <option value="4" {{ filters.level_min == 4 ? 'selected' }}>≥ 4 Muito alto</option>
+                        <option value="5" {{ filters.level_min == 5 ? 'selected' }}>5 Parado</option>
+                    </select>
+                </label>
+
+                <label class="jam-field">
+                    <span>Cidade</span>
+                    <select name="city" data-jam-filter="city">
+                        <option value="">Todas</option>
+                        {% for city, n in filter_options.cities %}
+                            <option value="{{ city }}" {{ filters.city == city ? 'selected' }}>
+                                {{ city }} ({{ n }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label class="jam-field jam-field--grow">
+                    <span>Rua</span>
+                    <input type="search" name="street" data-jam-filter="street"
+                           value="{{ filters.street }}"
+                           placeholder="Buscar por rua..." autocomplete="off">
+                </label>
+
+                <label class="jam-field">
+                    <span>Janela</span>
+                    <select name="window_hours" data-jam-filter="window_hours">
+                        <option value="1"  {{ filters.window_hours == 1  ? 'selected' }}>1h</option>
+                        <option value="2"  {{ filters.window_hours == 2  ? 'selected' }}>2h</option>
+                        <option value="6"  {{ filters.window_hours == 6  ? 'selected' }}>6h</option>
+                        <option value="12" {{ filters.window_hours == 12 ? 'selected' }}>12h</option>
+                        <option value="24" {{ filters.window_hours == 24 ? 'selected' }}>24h</option>
+                    </select>
+                </label>
+
+                <label class="jam-toggle">
+                    <input type="checkbox" name="only_blocked" value="1"
+                           data-jam-filter="only_blocked"
+                           {{ filters.only_blocked ? 'checked' }}>
+                    <span>🚫 Apenas interdições</span>
+                </label>
+
+                <label class="jam-toggle">
+                    <input type="checkbox" name="hide_stale" value="1"
+                           data-jam-filter="hide_stale"
+                           {{ filters.hide_stale ? 'checked' }}>
+                    <span>Ocultar antigas</span>
+                </label>
+
+                <div class="jam-filter-actions">
+                    <button type="submit" class="jam-button is-primary" data-action="apply">Aplicar</button>
+                    <button type="button" class="jam-button" data-action="clear-filters">Limpar</button>
+                </div>
+            </form>
+        </section>
+
+        {# ── Mapa + distribuição ─────────────────────────────────── #}
+        <div class="jam-main-grid">
+            <section class="jam-panel jam-panel--map">
+                <header class="jam-panel-head">
+                    <div>
+                        <span class="jam-kicker">Geolocalização</span>
+                        <h2>Mapa de congestionamentos</h2>
+                    </div>
+                </header>
+
+                <div class="jam-map" data-jam-map aria-label="Mapa de congestionamentos"></div>
+
+                <div class="jam-map-legend">
+                    <span><i class="lg-green"></i>1-2</span>
+                    <span><i class="lg-orange"></i>3</span>
+                    <span><i class="lg-red"></i>4</span>
+                    <span><i class="lg-dark"></i>🚫 Interdição</span>
+                    <span><i class="lg-stale"></i>⚠ Antiga</span>
+                    <span class="lg-hint" data-jam-map-hint>—</span>
+                </div>
+            </section>
+
+            <aside class="jam-side">
+                <section class="jam-panel">
+                    <header class="jam-panel-head">
+                        <div>
+                            <span class="jam-kicker">Composição</span>
+                            <h2>Distribuição por nível</h2>
+                        </div>
+                    </header>
+                    <div class="jam-levels" data-jam-levels></div>
+                </section>
+
+                <section class="jam-panel">
+                    <header class="jam-panel-head">
+                        <div>
+                            <span class="jam-kicker">Temporal</span>
+                            <h2>Volume por hora</h2>
+                        </div>
+                        <span class="jam-card-hint" data-jam-hourly-window>—</span>
+                    </header>
+                    <div class="jam-hourly" data-jam-hourly></div>
+                </section>
+            </aside>
         </div>
-    </main>
+
+        {# ── Interdições ativas ──────────────────────────────────── #}
+        <section class="jam-panel jam-panel--blocked" data-jam-blocked-active-panel>
+            <header class="jam-panel-head">
+                <div>
+                    <span class="jam-kicker jam-kicker--alert">Atenção imediata</span>
+                    <h2>🚫 Interdições ativas</h2>
+                </div>
+                <span class="jam-count-badge is-red" data-jam-count="blocked-active">0</span>
+            </header>
+
+            <div class="jam-table-wrap">
+                <table class="jam-table jam-table--blocked">
+                    <thead>
+                        <tr>
+                            <th>Nível</th>
+                            <th>Rua / Cidade</th>
+                            <th class="is-num">Atraso</th>
+                            <th class="is-num">Vel.</th>
+                            <th class="is-num">Ext.</th>
+                            <th>Visto</th>
+                        </tr>
+                    </thead>
+                    <tbody data-jam-table-blocked-active>
+                        <tr><td colspan="6" class="jam-empty">Nenhuma interdição ativa no momento.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        {# ── Interdições antigas ────────────────────────────────── #}
+        <section class="jam-panel jam-panel--stale" data-jam-blocked-stale-panel>
+            <header class="jam-panel-head">
+                <div>
+                    <span class="jam-kicker jam-kicker--warn">Verificar / limpar</span>
+                    <h2>⚠ Interdições antigas</h2>
+                </div>
+                <span class="jam-count-badge is-orange" data-jam-count="blocked-stale">0</span>
+            </header>
+
+            <div class="jam-table-wrap">
+                <table class="jam-table jam-table--stale">
+                    <thead>
+                        <tr>
+                            <th>Nível</th>
+                            <th>Rua / Cidade</th>
+                            <th class="is-num">Atraso</th>
+                            <th class="is-num">Vel.</th>
+                            <th class="is-num">Ext.</th>
+                            <th>Visto</th>
+                        </tr>
+                    </thead>
+                    <tbody data-jam-table-blocked-stale>
+                        <tr><td colspan="6" class="jam-empty">Sem interdições antigas.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        {# ── Demais congestionamentos + rankings ────────────────── #}
+        <div class="jam-main-grid">
+            <section class="jam-panel jam-panel--table">
+                <header class="jam-panel-head">
+                    <div>
+                        <span class="jam-kicker">Registros</span>
+                        <h2>Demais congestionamentos</h2>
+                    </div>
+                    <span class="jam-count-badge" data-jam-count="top-jams">0</span>
+                </header>
+                <div class="jam-table-wrap">
+                    <table class="jam-table">
+                        <thead>
+                            <tr>
+                                <th>Nível</th>
+                                <th>Rua / Cidade</th>
+                                <th class="is-num">Atraso</th>
+                                <th class="is-num">Vel.</th>
+                                <th class="is-num">Ext.</th>
+                                <th>Quando</th>
+                            </tr>
+                        </thead>
+                        <tbody data-jam-table>
+                            <tr><td colspan="6" class="jam-empty">Sem dados</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <aside class="jam-side">
+                <section class="jam-panel">
+                    <header class="jam-panel-head">
+                        <div><span class="jam-kicker">Top</span><h2>Ruas mais afetadas</h2></div>
+                    </header>
+                    <ul class="jam-rank" data-jam-rank-streets>
+                        <li class="jam-empty">Sem dados</li>
+                    </ul>
+                </section>
+
+                <section class="jam-panel">
+                    <header class="jam-panel-head">
+                        <div><span class="jam-kicker">Top</span><h2>Cidades</h2></div>
+                    </header>
+                    <ul class="jam-rank" data-jam-rank-cities>
+                        <li class="jam-empty">Sem dados</li>
+                    </ul>
+                </section>
+            </aside>
+        </div>
+
+    </div>
 </div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script type="module" src="{{ asset('js/pages/jam.js') }}"></script>
 {% endblock %}

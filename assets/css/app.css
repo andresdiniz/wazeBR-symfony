@@ -1,5 +1,8 @@
 /* assets/css/app.css — bundle global */
 
+/* ── Tema (DEVE vir primeiro) ──────────────────────────── */
+@import './theme.css';
+
 @import './layout/base-layout.css';
 @import './layout/header.css';
 @import './layout/sidebar.css';
@@ -24,15 +27,16 @@
 @import './components/empty-states.css';
 @import './components/expand-buttons.css';
 
-/* Analytics */
 @import './components/analytics.css';
 
-/* Weather */
+/* Páginas */
 @import './pages/weather-index.css';
 @import './pages/weather-show.css';
 @import './pages/weather-analysis.css';
-/* TV */
 @import './pages/tv.css';
-
-/* Admin */
 @import './pages/admin.css';
+@import './pages/jam.css';
+@import './pages/jam-show.css';
+/* Dashboard, alerts, routes, route-compare, route-show etc.
+   devem ser importados pelo entrypoint da respectiva página
+   (ou adicione aqui se você já centraliza tudo em app.css). */

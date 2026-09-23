@@ -6,7 +6,9 @@ namespace App\Command;
 
 use App\Entity\CemadenHidroObservation;
 use App\Entity\CemadenHidroStationLink;
+use App\Entity\Partner;
 use App\Repository\CemadenHidroStationLinkRepository;
+use App\Service\Tv\TvNotifier;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -33,6 +35,7 @@ class FetchCemadenHidroCommand extends Command
         private readonly EntityManagerInterface $em,
         private readonly HttpClientInterface $httpClient,
         private readonly LoggerInterface $logger,
+        private readonly TvNotifier $tvNotifier,
     ) {
         parent::__construct();
     }
@@ -96,18 +99,19 @@ class FetchCemadenHidroCommand extends Command
         $totalRain = 0;
         $errors = 0;
 
+        /** @var array<int, Partner> $touchedPartners */
+        $touchedPartners = [];
+
         foreach ($stations as $station) {
             $label = $this->stationLabel($station);
 
             try {
                 $nowUtc = new \DateTimeImmutable('now', new \DateTimeZone(self::TZ_UTC));
 
-                // ── 1. Nível do rio (MedidaResource) ──────────────────────
                 $levelItems = $this->fetchJson($station->getMedidaRequestUrl());
                 $levels = $this->persistLevels($station, $levelItems, $dryRun, $label);
                 $totalLevels += $levels;
 
-                // ── 2. Chuva acumulada (AcumuladoResource) ────────────────
                 $rainItems = $this->fetchJson($station->getRequestUrl());
                 $rain = $this->persistRain($station, $rainItems, $dryRun, $label);
                 $totalRain += $rain;
@@ -115,6 +119,13 @@ class FetchCemadenHidroCommand extends Command
                 if (!$dryRun) {
                     $station->setLastFetchedAt($nowUtc);
                     $this->em->flush();
+
+                    if ($levels > 0 || $rain > 0) {
+                        $partner = $station->getPartner();
+                        if ($partner instanceof Partner && $partner->getId() !== null) {
+                            $touchedPartners[$partner->getId()] = $partner;
+                        }
+                    }
                 }
 
                 $io->writeln(sprintf(
@@ -132,6 +143,11 @@ class FetchCemadenHidroCommand extends Command
                 ]);
                 $io->error(sprintf('%s %s', $label, $e->getMessage()));
             }
+        }
+
+        // ▼ Notifica as TVs dos partners afetados
+        if (!$dryRun && $touchedPartners !== []) {
+            $this->tvNotifier->notifyMany(array_values($touchedPartners));
         }
 
         $io->success(sprintf(
@@ -256,11 +272,6 @@ class FetchCemadenHidroCommand extends Command
         return $inserted;
     }
 
-    /**
-     * CEMADEN envia "datahora" em horário LOCAL de Brasília (sem offset).
-     * Ancoramos em America/Sao_Paulo e convertemos para UTC antes de devolver,
-     * para que o objeto gravado no banco seja consistente com o resto do sistema.
-     */
     private function parseDateTime(?string $value): ?\DateTimeImmutable
     {
         if ($value === null || $value === '') {
@@ -288,7 +299,6 @@ class FetchCemadenHidroCommand extends Command
             }
         }
 
-        // ⚠ Converte para UTC — o banco SEMPRE armazena UTC naive.
         return $dt->setTimezone($tzUtc);
     }
 
