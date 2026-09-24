@@ -15,11 +15,11 @@ use Symfony\Component\Routing\Attribute\Route;
 /**
  * Endpoint publico que o Waze consome (feed outbound CIFS).
  *
- * Rotas:
- *   GET /feeds/waze/{partnerUuid}.json
- *   GET /feeds/waze/{partnerUuid}.xml
+ * Rotas (mesmo padrao do identificador {code} ja usado em partner_feed_json):
+ *   GET /feeds/waze/{code}.json
+ *   GET /feeds/waze/{code}.xml
  *
- * Sem login: o identificador e o UUID publico do parceiro.
+ * Sem login: o identificador publico do parceiro e a coluna `code`.
  * Para camada extra de seguranca, gere um token por parceiro e valide
  * via query string (?token=...).
  */
@@ -32,10 +32,10 @@ final class CifsFeedController extends AbstractController
     ) {
     }
 
-    #[Route('/waze/{partnerUuid}.json', name: 'json', methods: ['GET'])]
-    public function jsonFeed(string $partnerUuid): JsonResponse
+    #[Route('/waze/{code}.json', name: 'json', methods: ['GET'])]
+    public function jsonFeed(string $code): JsonResponse
     {
-        $partner = $this->findActivePartner($partnerUuid);
+        $partner = $this->findActivePartner($code);
         if (!$partner) {
             return $this->json(
                 ['error' => 'Parceiro nao encontrado ou inativo'],
@@ -50,10 +50,10 @@ final class CifsFeedController extends AbstractController
         return $response;
     }
 
-    #[Route('/waze/{partnerUuid}.xml', name: 'xml', methods: ['GET'])]
-    public function xmlFeed(string $partnerUuid): Response
+    #[Route('/waze/{code}.xml', name: 'xml', methods: ['GET'])]
+    public function xmlFeed(string $code): Response
     {
-        $partner = $this->findActivePartner($partnerUuid);
+        $partner = $this->findActivePartner($code);
         if (!$partner) {
             return new Response(
                 '<error>Parceiro nao encontrado ou inativo</error>',
@@ -69,9 +69,9 @@ final class CifsFeedController extends AbstractController
         return $response;
     }
 
-    private function findActivePartner(string $partnerUuid): ?Partner
+    private function findActivePartner(string $code): ?Partner
     {
-        $partner = $this->partnerRepository->findOneBy(['uuid' => $partnerUuid]);
+        $partner = $this->partnerRepository->findOneBy(['code' => $code]);
         if (!$partner) {
             return null;
         }
