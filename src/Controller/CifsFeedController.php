@@ -13,14 +13,14 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Endpoint público que o Waze consome (feed outbound CIFS).
+ * Endpoint publico que o Waze consome (feed outbound CIFS).
  *
  * Rotas:
  *   GET /feeds/waze/{partnerUuid}.json
  *   GET /feeds/waze/{partnerUuid}.xml
  *
- * Sem login: o identificador é o UUID público do parceiro.
- * Para camada extra de segurança, gere um token por parceiro e valide
+ * Sem login: o identificador e o UUID publico do parceiro.
+ * Para camada extra de seguranca, gere um token por parceiro e valide
  * via query string (?token=...).
  */
 #[Route('/feeds', name: 'app_cifs_feed_')]
@@ -33,12 +33,12 @@ final class CifsFeedController extends AbstractController
     }
 
     #[Route('/waze/{partnerUuid}.json', name: 'json', methods: ['GET'])]
-    public function json(string $partnerUuid): JsonResponse
+    public function jsonFeed(string $partnerUuid): JsonResponse
     {
         $partner = $this->findActivePartner($partnerUuid);
         if (!$partner) {
             return $this->json(
-                ['error' => 'Parceiro não encontrado ou inativo'],
+                ['error' => 'Parceiro nao encontrado ou inativo'],
                 Response::HTTP_NOT_FOUND
             );
         }
@@ -51,12 +51,12 @@ final class CifsFeedController extends AbstractController
     }
 
     #[Route('/waze/{partnerUuid}.xml', name: 'xml', methods: ['GET'])]
-    public function xml(string $partnerUuid): Response
+    public function xmlFeed(string $partnerUuid): Response
     {
         $partner = $this->findActivePartner($partnerUuid);
         if (!$partner) {
             return new Response(
-                '<error>Parceiro não encontrado ou inativo</error>',
+                '<error>Parceiro nao encontrado ou inativo</error>',
                 Response::HTTP_NOT_FOUND,
                 ['Content-Type' => 'application/xml']
             );
