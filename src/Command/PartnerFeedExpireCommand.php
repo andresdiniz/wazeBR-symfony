@@ -13,14 +13,14 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * Expira eventos CIFS antigos (endTime já passou).
+ * Expira eventos CIFS antigos (endTime ja passou).
  *
- * Cron sugerido (mesmo padrão dos fetchers):
- *   */15 * * * *  php /caminho/projeto/bin/console app:partner-feed:expire --env=prod
+ * Cron sugerido (mesmo padrao dos fetchers), a cada 15 minutos:
+ *   0,15,30,45 * * * *  php /caminho/projeto/bin/console app:partner-feed:expire --env=prod
  */
 #[AsCommand(
     name: 'app:partner-feed:expire',
-    description: 'Desativa eventos do partner feed cujo endTime já passou'
+    description: 'Desativa eventos do partner feed cujo endTime ja passou'
 )]
 class PartnerFeedExpireCommand extends Command
 {
@@ -38,7 +38,7 @@ class PartnerFeedExpireCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        $io->title('Partner Feed - Expiração de eventos antigos');
+        $io->title('Partner Feed - Expiracao de eventos antigos');
 
         try {
             $count = $this->feedBuilder->expireOldEvents();
