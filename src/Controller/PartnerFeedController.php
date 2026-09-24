@@ -67,7 +67,6 @@ class PartnerFeedController extends AbstractController
      * GET /partner-feed/
      */
     #[Route('/', name: 'partner_feed_index', methods: ['GET'])]
-    #[IsGranted('ROLE_EDITOR')]
     public function index(): Response
     {
         $partners = $this->partnerRepository->findBy(['isActive' => true], ['name' => 'ASC']);
@@ -82,7 +81,7 @@ class PartnerFeedController extends AbstractController
      * GET /partner-feed/{code}
      */
     #[Route('/{code}', name: 'partner_feed_show', methods: ['GET'])]
-    #[IsGranted('ROLE_EDITOR')]
+
     public function show(string $code): Response
     {
         $partner = $this->getPartnerOr404($code);
@@ -102,7 +101,6 @@ class PartnerFeedController extends AbstractController
      * GET /partner-feed/{code}/events
      */
     #[Route('/{code}/events', name: 'partner_event_list', methods: ['GET'])]
-    #[IsGranted('ROLE_EDITOR')]
     public function eventList(string $code, Request $request): Response
     {
         $partner = $this->getPartnerOr404($code);
@@ -122,7 +120,6 @@ class PartnerFeedController extends AbstractController
      * GET /partner-feed/{code}/events/new
      */
     #[Route('/{code}/events/new', name: 'partner_event_new', methods: ['GET'])]
-    #[IsGranted('ROLE_EDITOR')]
     public function eventNew(string $code): Response
     {
         return $this->render('partner_feed/events/form.html.twig', [
@@ -138,7 +135,6 @@ class PartnerFeedController extends AbstractController
      * POST /partner-feed/{code}/events
      */
     #[Route('/{code}/events', name: 'partner_event_create', methods: ['POST'])]
-    #[IsGranted('ROLE_EDITOR')]
     public function eventCreate(string $code, Request $request): Response
     {
         $partner = $this->getPartnerOr404($code);
@@ -169,7 +165,6 @@ class PartnerFeedController extends AbstractController
      * GET /partner-feed/{code}/events/{id}/edit
      */
     #[Route('/{code}/events/{id}/edit', name: 'partner_event_edit', methods: ['GET'])]
-    #[IsGranted('ROLE_EDITOR')]
     public function eventEdit(string $code, int $id): Response
     {
         $partner = $this->getPartnerOr404($code);
@@ -187,7 +182,6 @@ class PartnerFeedController extends AbstractController
      * POST /partner-feed/{code}/events/{id}/edit
      */
     #[Route('/{code}/events/{id}/edit', name: 'partner_event_update', methods: ['POST'])]
-    #[IsGranted('ROLE_EDITOR')]
     public function eventUpdate(string $code, int $id, Request $request): Response
     {
         $partner = $this->getPartnerOr404($code);
@@ -216,7 +210,6 @@ class PartnerFeedController extends AbstractController
      * POST /partner-feed/{code}/events/{id}/toggle
      */
     #[Route('/{code}/events/{id}/toggle', name: 'partner_event_toggle', methods: ['POST'])]
-    #[IsGranted('ROLE_EDITOR')]
     public function eventToggle(string $code, int $id): Response
     {
         $partner = $this->getPartnerOr404($code);
@@ -259,7 +252,6 @@ class PartnerFeedController extends AbstractController
      * POST /partner-feed/{code}/events/geocode
      */
     #[Route('/{code}/events/geocode', name: 'partner_event_geocode', methods: ['POST'])]
-    #[IsGranted('ROLE_EDITOR')]
     public function eventGeocode(string $code, Request $request): JsonResponse
     {
         $partner = $this->getPartnerOr404($code);
