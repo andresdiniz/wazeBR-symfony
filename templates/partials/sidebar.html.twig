@@ -2,8 +2,10 @@
     SIDEBAR — WazeBR Centro Operacional
     ============================================================ #}
 
+
 {% set current_route = app.request.attributes.get('_route') %}
 {% set sidebar_collapsed = app.request.cookies.get('wazebr_sidebar_collapsed') == '1' %}
+
 
 <aside
     id="app-sidebar"
@@ -14,20 +16,24 @@
 >
     <div class="sidebar-inner">
 
+
         {# --------------------------------------------------------
            CABEÇALHO
            -------------------------------------------------------- #}
         <div class="sidebar-heading">
+
 
             <div class="sidebar-heading-content">
                 <span class="sidebar-heading-icon" aria-hidden="true">
                     <span></span>
                 </span>
 
+
                 <span class="sidebar-heading-label">
                     Menu principal
                 </span>
             </div>
+
 
             <button
                 type="button"
@@ -46,6 +52,7 @@
         </div>
 
 
+
         {# --------------------------------------------------------
            NAVEGAÇÃO
            -------------------------------------------------------- #}
@@ -54,6 +61,7 @@
             data-sidebar-navigation
             aria-label="Menu principal"
         >
+
 
             {# Dashboard #}
             <a
@@ -69,14 +77,17 @@
                     </svg>
                 </span>
 
+
                 <span class="sidebar-link-label">
                     Dashboard
                 </span>
+
 
                 {% if current_route == 'dashboard' %}
                     <span class="sidebar-active-indicator" aria-hidden="true"></span>
                 {% endif %}
             </a>
+
 
 
             {# Alertas #}
@@ -93,9 +104,11 @@
                     </svg>
                 </span>
 
+
                 <span class="sidebar-link-label">
                     Alertas
                 </span>
+
 
                 {% if sidebar_alert_count is defined and sidebar_alert_count > 0 %}
                     <span class="sidebar-link-badge">
@@ -103,10 +116,12 @@
                     </span>
                 {% endif %}
 
+
                 {% if current_route starts with 'app_alerts' %}
                     <span class="sidebar-active-indicator" aria-hidden="true"></span>
                 {% endif %}
             </a>
+
 
 
             {# Congestionamentos #}
@@ -123,14 +138,17 @@
                     </svg>
                 </span>
 
+
                 <span class="sidebar-link-label">
                     Congestionamentos
                 </span>
+
 
                 {% if current_route starts with 'app_jams' %}
                     <span class="sidebar-active-indicator" aria-hidden="true"></span>
                 {% endif %}
             </a>
+
 
 
             {# Rotas #}
@@ -147,14 +165,44 @@
                     </svg>
                 </span>
 
+
                 <span class="sidebar-link-label">
                     Rotas
                 </span>
+
 
                 {% if current_route starts with 'app_routes' %}
                     <span class="sidebar-active-indicator" aria-hidden="true"></span>
                 {% endif %}
             </a>
+
+
+
+            {# Feed CIFS Waze (envia dados das cidades/parceiros para o Waze) #}
+            <a
+                href="{{ path('partner_feed_index') }}"
+                class="sidebar-link{% if current_route starts with 'partner_feed' or current_route starts with 'partner_event' or current_route starts with 'app_cifs_feed' %} is-active{% endif %}"
+                data-sidebar-link
+                title="Feed CIFS Waze — dados que o Waze consome"
+                {% if current_route starts with 'partner_feed' or current_route starts with 'partner_event' or current_route starts with 'app_cifs_feed' %}aria-current="page"{% endif %}
+            >
+                <span class="sidebar-link-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                        <path d="M12 3 2 8l10 5 10-5-10-5Zm-8 9 8 4 8-4M4 15l8 4 8-4"/>
+                    </svg>
+                </span>
+
+
+                <span class="sidebar-link-label">
+                    Feed CIFS Waze
+                </span>
+
+
+                {% if current_route starts with 'partner_feed' or current_route starts with 'partner_event' or current_route starts with 'app_cifs_feed' %}
+                    <span class="sidebar-active-indicator" aria-hidden="true"></span>
+                {% endif %}
+            </a>
+
 
 
             {# Clima #}
@@ -171,14 +219,17 @@
                     </svg>
                 </span>
 
+
                 <span class="sidebar-link-label">
                     Clima
                 </span>
+
 
                 {% if current_route starts with 'weather_' %}
                     <span class="sidebar-active-indicator" aria-hidden="true"></span>
                 {% endif %}
             </a>
+
 
 
             {# TV / Wallboard #}
@@ -199,24 +250,30 @@
                     </svg>
                 </span>
 
+
                 <span class="sidebar-link-label">
                     TV Operacional
                 </span>
+
 
                 {% if current_route starts with 'tv_' %}
                     <span class="sidebar-active-indicator" aria-hidden="true"></span>
                 {% endif %}
             </a>
 
+
             
 
+
         </nav>
+
 
 
         {# --------------------------------------------------------
            ÁREA ADMINISTRATIVA (somente ROLE_ADMIN)
            -------------------------------------------------------- #}
         {% if is_granted('ROLE_ADMIN') %}
+
 
             <div class="sidebar-section-divider" aria-hidden="true">
                 <span></span>
@@ -225,10 +282,12 @@
                 </span>
             </div>
 
+
             <nav
                 class="sidebar-nav sidebar-nav--admin"
                 aria-label="Menu administrativo"
             >
+
 
                 {# Parceiros #}
                 <a
@@ -244,14 +303,17 @@
                         </svg>
                     </span>
 
+
                     <span class="sidebar-link-label">
                         Parceiros
                     </span>
+
 
                     {% if current_route starts with 'admin_partner' %}
                         <span class="sidebar-active-indicator" aria-hidden="true"></span>
                     {% endif %}
                 </a>
+
 
                 {# Usuários #}
                 <a
@@ -267,24 +329,30 @@
                         </svg>
                     </span>
 
+
                     <span class="sidebar-link-label">
                         Usuários
                     </span>
+
 
                     {% if current_route starts with 'admin_user' %}
                         <span class="sidebar-active-indicator" aria-hidden="true"></span>
                     {% endif %}
                 </a>
 
+
             </nav>
 
+
         {% endif %}
+
 
 
         {# --------------------------------------------------------
            ÁREA INFERIOR
            -------------------------------------------------------- #}
         <div class="sidebar-spacer"></div>
+
 
 
         {# --------------------------------------------------------
@@ -300,14 +368,17 @@
                 aria-hidden="true"
             ></span>
 
+
             <div class="sidebar-status-content">
                 <strong>Sistema online</strong>
                 <span>Monitoramento ativo</span>
             </div>
         </div>
 
+
     </div>
 </aside>
+
 
 
 {# Overlay para dispositivos móveis #}
