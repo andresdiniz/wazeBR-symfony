@@ -1,0 +1,76 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Feed — {{ partner.name }}{% endblock %}
+
+{% block body %}
+<div class="container-fluid py-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="{{ path('partner_feed_index') }}" class="text-muted small text-decoration-none">
+                ← Parceiros
+            </a>
+            <h1 class="h3 mb-0 mt-1">{{ partner.name }}</h1>
+            <span class="text-muted small">{{ partner.city }}{% if partner.state %}/{{ partner.state }}{% endif %}</span>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ path('partner_event_new', {code: partner.code}) }}"
+               class="btn btn-primary btn-sm">
+                <i class="fas fa-plus me-1"></i>Novo Evento
+            </a>
+            <a href="{{ url('partner_feed_json', {code: partner.code}) }}"
+               target="_blank" class="btn btn-outline-success btn-sm">
+                <i class="fas fa-external-link-alt me-1"></i>feed.json
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white fw-semibold">Informações</div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Code</span>
+                        <code>{{ partner.code }}</code>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Região GEO</span>
+                        <strong>{{ partner.geoRegion }}</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Token Geocodificação</span>
+                        {% if partner.reverseGeocodingToken %}
+                            <span class="badge bg-success">Configurado</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">Não configurado</span>
+                        {% endif %}
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Incidentes ativos</span>
+                        <strong>{{ incidents|length }}</strong>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+                    <span>Prévia feed.json</span>
+                    <button class="btn btn-sm btn-outline-secondary"
+                            onclick="navigator.clipboard.writeText(document.getElementById('feed-preview').textContent)">
+                        <i class="fas fa-copy"></i> Copiar
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <pre id="feed-preview"
+                         class="m-0 p-3 bg-dark text-light rounded-bottom"
+                         style="max-height:420px;overflow:auto;font-size:.78rem;">{{ feedJson }}</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

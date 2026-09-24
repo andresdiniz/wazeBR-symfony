@@ -1,0 +1,116 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Eventos — {{ partner.name }}{% endblock %}
+
+{% block body %}
+<div class="container-fluid py-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="{{ path('partner_feed_show', {code: partner.code}) }}"
+               class="text-muted small text-decoration-none">← {{ partner.name }}</a>
+            <h1 class="h3 mb-0 mt-1">Eventos do Feed</h1>
+        </div>
+        <a href="{{ path('partner_event_new', {code: partner.code}) }}"
+           class="btn btn-primary btn-sm">
+            <i class="fas fa-plus me-1"></i>Novo Evento
+        </a>
+    </div>
+
+    {% for type, messages in app.flashes %}
+        {% for msg in messages %}
+            <div class="alert alert-{{ type == 'success' ? 'success' : 'danger' }} alert-dismissible fade show">
+                {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID Incidente</th>
+                        <th>Tipo</th>
+                        <th>Rua</th>
+                        <th>Início</th>
+                        <th>Fim</th>
+                        <th>Status</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for event in events %}
+                <tr>
+                    <td><code class="small">{{ event.incidentId }}</code></td>
+                    <td>
+                        <span class="badge bg-secondary">{{ event.type }}</span>
+                        {% if event.subtype %}
+                        <br><small class="text-muted">{{ event.subtype }}</small>
+                        {% endif %}
+                    </td>
+                    <td>{{ event.street }}</td>
+                    <td class="small">{{ event.starttime|date('d/m/Y H:i') }}</td>
+                    <td class="small">{{ event.endtime ? event.endtime|date('d/m/Y H:i') : '—' }}</td>
+                    <td>
+                        {% if event.status == 'active' %}
+                            <span class="badge bg-success">Ativo</span>
+                        {% elseif event.status == 'draft' %}
+                            <span class="badge bg-warning text-dark">Rascunho</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Inativo</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <a href="{{ path('partner_event_edit', {code: partner.code, id: event.id}) }}"
+                           class="btn btn-sm btn-outline-secondary" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <form method="post"
+                              action="{{ path('partner_event_toggle', {code: partner.code, id: event.id}) }}"
+                              class="d-inline">
+                            <button class="btn btn-sm btn-outline-{{ event.status == 'active' ? 'warning' : 'success' }}"
+                                    title="{{ event.status == 'active' ? 'Desativar' : 'Ativar' }}">
+                                <i class="fas fa-{{ event.status == 'active' ? 'pause' : 'play' }}"></i>
+                            </button>
+                        </form>
+                        {% if is_granted('ROLE_ADMIN') %}
+                        <form method="post"
+                              action="{{ path('partner_event_delete', {code: partner.code, id: event.id}) }}"
+                              class="d-inline"
+                              onsubmit="return confirm('Excluir este evento do feed?')">
+                            <button class="btn btn-sm btn-outline-danger" title="Excluir">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        Nenhum evento cadastrado.
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if pages > 1 %}
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <small class="text-muted">{{ total }} evento(s)</small>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    {% for p in 1..pages %}
+                    <li class="page-item {{ p == page ? 'active' }}">
+                        <a class="page-link"
+                           href="{{ path('partner_event_list', {code: partner.code, page: p}) }}">{{ p }}</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

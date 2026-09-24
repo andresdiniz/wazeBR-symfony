@@ -714,4 +714,54 @@ class Partner
         return ($now->getTimestamp() - $reference->getTimestamp())
             >= $this->getFetchIntervalSeconds();
     }
+
+    // ── Campos novos — Partner Feed ──────────────────────────────────────────
+
+    /**
+     * Token da Reverse Geocoding API do Waze Partner Hub.
+     * Obtido em: Partner Hub → Toolbox → Partner feed → Reverse Geocoding Token
+     */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $reverseGeocodingToken = null;
+
+    /**
+     * Região para a URL da Reverse Geocoding API.
+     * Valores aceitos: NA, ROW, IL  (padrão: ROW — resto do mundo, inclui Brasil)
+     */
+    #[ORM\Column(length: 10, options: ['default' => 'ROW'])]
+    private string $geoRegion = 'ROW';
+
+    public function getReverseGeocodingToken(): ?string
+    {
+        return $this->reverseGeocodingToken;
+    }
+
+    public function setReverseGeocodingToken(?string $token): static
+    {
+        $this->reverseGeocodingToken = $token;
+
+        return $this;
+    }
+
+    public function getGeoRegion(): string
+    {
+        return $this->geoRegion;
+    }
+
+    public function setGeoRegion(string $geoRegion): static
+    {
+        $this->geoRegion = $geoRegion;
+
+        return $this;
+    }
+
+    /** URL base da Reverse Geocoding API do Waze para este parceiro */
+    public function getReverseGeocodingBaseUrl(): string
+    {
+        return match ($this->geoRegion) {
+            'NA' => 'https://www.waze.com/partnerhub-api/waze-map/streetsInfo',
+            'IL' => 'https://www.waze.com/il-partnerhub-api/waze-map/streetsInfo',
+            default => 'https://www.waze.com/row-partnerhub-api/waze-map/streetsInfo',
+        };
+    }
 }
