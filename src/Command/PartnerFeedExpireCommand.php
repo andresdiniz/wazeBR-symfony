@@ -4,48 +4,50 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Entity\PartnerFeedEvent;
-use App\Repository\PartnerFeedEventRepository;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Service\CifsFeedBuilder;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
+/**
+ * Expira eventos CIFS antigos (endTime já passou).
+ *
+ * Cron sugerido (mesmo padrão dos fetchers):
+ *   */15 * * * *  php /caminho/projeto/bin/console app:partner-feed:expire --env=prod
+ */
 #[AsCommand(
-    name: 'partner-feed:expire',
-    description: 'Desativa eventos do feed cujo endtime já passou.',
+    name: 'app:partner-feed:expire',
+    description: 'Desativa eventos do partner feed cujo endTime já passou'
 )]
-final class PartnerFeedExpireCommand extends Command
+class PartnerFeedExpireCommand extends Command
 {
     public function __construct(
-        private readonly PartnerFeedEventRepository $eventRepository,
-        private readonly EntityManagerInterface     $em,
+        private readonly CifsFeedBuilder $feedBuilder,
+        private readonly LoggerInterface $logger,
     ) {
         parent::__construct();
     }
 
+    protected function configure(): void
+    {
+    }
+
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $io      = new SymfonyStyle($input, $output);
-        $expired = $this->eventRepository->findExpired();
+        $io = new SymfonyStyle($input, $output);
+        $io->title('Partner Feed - Expiração de eventos antigos');
 
-        if (empty($expired)) {
-            $io->success('Nenhum evento expirado encontrado.');
-
+        try {
+            $count = $this->feedBuilder->expireOldEvents();
+            $io->success(sprintf('%d eventos foram desativados.', $count));
             return Command::SUCCESS;
+        } catch (\Throwable $e) {
+            $this->logger->error('Erro ao expirar eventos do partner feed', ['exception' => $e]);
+            $io->error($e->getMessage());
+            return Command::FAILURE;
         }
-
-        foreach ($expired as $event) {
-            $event->setStatus(PartnerFeedEvent::STATUS_INACTIVE);
-            $event->setUpdatedAt(new \DateTimeImmutable());
-        }
-
-        $this->em->flush();
-
-        $io->success(sprintf('%d evento(s) expirado(s) desativado(s).', count($expired)));
-
-        return Command::SUCCESS;
     }
 }
