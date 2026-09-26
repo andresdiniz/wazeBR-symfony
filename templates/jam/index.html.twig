@@ -6,6 +6,9 @@
     {{ parent() }}
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    {# Fallback local caso o unpkg caia (#12) — o JS verifica window.L antes de carregar #}
+    <link rel="stylesheet" href="{{ asset('vendor/leaflet/leaflet.css') }}"
+          id="leaflet-css-fallback" disabled>
     <link rel="stylesheet" href="{{ asset('css/pages/jam.css') }}">
 {% endblock %}
 
@@ -19,6 +22,7 @@
      data-jam-page
      data-api-endpoint="{{ path('jam_api_data') }}"
      data-export-endpoint="{{ path('jam_export') }}"
+     data-show-url-template="{{ path('jam_show', {id: '__ID__'}) }}"
      data-timezone="{{ app_timezone|default('America/Sao_Paulo') }}"
      data-current-filters='{{ filters|json_encode|e('html_attr') }}'>
 
@@ -37,7 +41,7 @@
             </div>
             <div class="jam-header-tools">
                 <span class="jam-live-badge" data-jam-live-badge>
-                    <i></i> Ao vivo · <span data-jam-live-clock>--:--</span>
+                    <i></i> Ao vivo · <span data-jam-live-clock>--:--:--</span>
                 </span>
                 <button type="button" class="jam-button" data-action="refresh">
                     <span>↻</span> Atualizar
@@ -176,6 +180,7 @@
                     <span><i class="lg-red"></i>4</span>
                     <span><i class="lg-dark"></i>🚫 Interdição</span>
                     <span><i class="lg-stale"></i>⚠ Antiga</span>
+                    <span><i class="lg-alert"></i>🔔 Alertas</span>
                     <span class="lg-hint" data-jam-map-hint>—</span>
                 </div>
             </section>
@@ -218,18 +223,22 @@
                 <table class="jam-table jam-table--blocked">
                     <thead>
                         <tr>
-                            <th>Nível</th>
+                            <th data-sortable="level">Nível <span class="jam-sort-icon"></span></th>
                             <th>Rua / Cidade</th>
-                            <th class="is-num">Atraso</th>
-                            <th class="is-num">Vel.</th>
-                            <th class="is-num">Ext.</th>
+                            <th class="is-num" data-sortable="delay">Atraso <span class="jam-sort-icon"></span></th>
+                            <th class="is-num" data-sortable="speed">Vel. <span class="jam-sort-icon"></span></th>
+                            <th class="is-num" data-sortable="length">Ext. <span class="jam-sort-icon"></span></th>
+                            <th class="is-num" data-sortable="nearbyAlerts">🔔 <span class="jam-sort-icon"></span></th>
                             <th>Visto</th>
                         </tr>
                     </thead>
                     <tbody data-jam-table-blocked-active>
-                        <tr><td colspan="6" class="jam-empty">Nenhuma interdição ativa no momento.</td></tr>
+                        <tr><td colspan="7" class="jam-empty">Nenhuma interdição ativa no momento.</td></tr>
                     </tbody>
                 </table>
+            </div>
+            <div class="jam-load-more" data-jam-load-more="blocked-active" style="display:none">
+                <button type="button" class="jam-button">Carregar mais</button>
             </div>
         </section>
 
@@ -247,18 +256,22 @@
                 <table class="jam-table jam-table--stale">
                     <thead>
                         <tr>
-                            <th>Nível</th>
+                            <th data-sortable="level">Nível <span class="jam-sort-icon"></span></th>
                             <th>Rua / Cidade</th>
-                            <th class="is-num">Atraso</th>
-                            <th class="is-num">Vel.</th>
-                            <th class="is-num">Ext.</th>
+                            <th class="is-num" data-sortable="delay">Atraso <span class="jam-sort-icon"></span></th>
+                            <th class="is-num" data-sortable="speed">Vel. <span class="jam-sort-icon"></span></th>
+                            <th class="is-num" data-sortable="length">Ext. <span class="jam-sort-icon"></span></th>
+                            <th class="is-num" data-sortable="nearbyAlerts">🔔 <span class="jam-sort-icon"></span></th>
                             <th>Visto</th>
                         </tr>
                     </thead>
                     <tbody data-jam-table-blocked-stale>
-                        <tr><td colspan="6" class="jam-empty">Sem interdições antigas.</td></tr>
+                        <tr><td colspan="7" class="jam-empty">Sem interdições antigas.</td></tr>
                     </tbody>
                 </table>
+            </div>
+            <div class="jam-load-more" data-jam-load-more="blocked-stale" style="display:none">
+                <button type="button" class="jam-button">Carregar mais</button>
             </div>
         </section>
 
@@ -276,18 +289,22 @@
                     <table class="jam-table">
                         <thead>
                             <tr>
-                                <th>Nível</th>
+                                <th data-sortable="level">Nível <span class="jam-sort-icon"></span></th>
                                 <th>Rua / Cidade</th>
-                                <th class="is-num">Atraso</th>
-                                <th class="is-num">Vel.</th>
-                                <th class="is-num">Ext.</th>
+                                <th class="is-num" data-sortable="delay">Atraso <span class="jam-sort-icon"></span></th>
+                                <th class="is-num" data-sortable="speed">Vel. <span class="jam-sort-icon"></span></th>
+                                <th class="is-num" data-sortable="length">Ext. <span class="jam-sort-icon"></span></th>
+                                <th class="is-num" data-sortable="nearbyAlerts">🔔 <span class="jam-sort-icon"></span></th>
                                 <th>Quando</th>
                             </tr>
                         </thead>
                         <tbody data-jam-table>
-                            <tr><td colspan="6" class="jam-empty">Sem dados</td></tr>
+                            <tr><td colspan="7" class="jam-empty">Sem dados</td></tr>
                         </tbody>
                     </table>
+                </div>
+                <div class="jam-load-more" data-jam-load-more="top-jams" style="display:none">
+                    <button type="button" class="jam-button">Carregar mais</button>
                 </div>
             </section>
 
@@ -318,7 +335,22 @@
 
 {% block javascripts %}
     {{ parent() }}
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    {# Leaflet do CDN com fallback para local (#12) #}
+    <script>
+        (function () {
+            var s = document.createElement('script');
+            s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+            s.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
+            s.crossOrigin = 'anonymous';
+            s.onerror = function () {
+                // fallback para vendor local
+                document.getElementById('leaflet-css-fallback').disabled = false;
+                var fb = document.createElement('script');
+                fb.src = '{{ asset('vendor/leaflet/leaflet.js') }}';
+                document.head.appendChild(fb);
+            };
+            document.head.appendChild(s);
+        })();
+    </script>
     <script type="module" src="{{ asset('js/pages/jam.js') }}"></script>
 {% endblock %}

@@ -6,13 +6,16 @@
     {{ parent() }}
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    {# Fallback local (#12) #}
+    <link rel="stylesheet" href="{{ asset('vendor/leaflet/leaflet.css') }}"
+          id="leaflet-css-fallback" disabled>
     <link rel="stylesheet" href="{{ asset('css/pages/jam-show.css') }}">
 {% endblock %}
 
 {% block content %}
-{% set level = jam.level|default(0) %}
-{% set isBlocked = jam.isBlocked|default(false) %}
-{% set isStale   = jam.isStale|default(false) %}
+{% set level      = jam.level|default(0) %}
+{% set isBlocked  = jam.isBlocked|default(false) %}
+{% set isStale    = jam.isStale|default(false) %}
 {% set alertCount = nearby_alerts|length %}
 
 <div class="jam-show-page"
@@ -55,7 +58,6 @@
                     {% endif %}
                 </div>
             </div>
-
             <div class="jam-show-actions">
                 <a class="jam-button" href="{{ path('jam_index') }}">← Voltar</a>
             </div>
@@ -167,9 +169,16 @@
                 </header>
                 <dl class="jam-show-info">
                     <div><dt>ID</dt><dd>#{{ jam.id }}</dd></div>
-                    {% if jam.uuid %}<div><dt>UUID</dt><dd><small style="font-family:monospace">{{ jam.uuid }}</small></dd></div>{% endif %}
+                    {% if jam.uuid %}
+                        <div>
+                            <dt>UUID</dt>
+                            <dd><small style="font-family:monospace">{{ jam.uuid }}</small></dd>
+                        </div>
+                    {% endif %}
                     <div><dt>Coletado em</dt><dd>{{ jam.when|date('d/m/Y H:i') }}</dd></div>
-                    {% if jam.lastSeen %}<div><dt>Visto por último</dt><dd>{{ jam.lastSeen|date('d/m/Y H:i') }}</dd></div>{% endif %}
+                    {% if jam.lastSeen %}
+                        <div><dt>Visto por último</dt><dd>{{ jam.lastSeen|date('d/m/Y H:i') }}</dd></div>
+                    {% endif %}
                     <div><dt>País</dt><dd>{{ jam.country|default('—') }}</dd></div>
                     <div><dt>Pontos da polyline</dt><dd>{{ jam.points }}</dd></div>
                 </dl>
@@ -182,7 +191,21 @@
 
 {% block javascripts %}
     {{ parent() }}
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    {# Leaflet com fallback local (#12) #}
+    <script>
+        (function () {
+            var s = document.createElement('script');
+            s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+            s.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
+            s.crossOrigin = 'anonymous';
+            s.onerror = function () {
+                document.getElementById('leaflet-css-fallback').disabled = false;
+                var fb = document.createElement('script');
+                fb.src = '{{ asset('vendor/leaflet/leaflet.js') }}';
+                document.head.appendChild(fb);
+            };
+            document.head.appendChild(s);
+        })();
+    </script>
     <script type="module" src="{{ asset('js/pages/jam-show.js') }}"></script>
 {% endblock %}

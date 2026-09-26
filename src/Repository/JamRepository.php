@@ -14,18 +14,13 @@ use Doctrine\DBAL\Connection;
  *   Interdição total:   level = 5  OR  delay = -1
  *   Interdição ATIVA:   interdição com last_seen_at recente (< STALE_MINUTES)
  *   Interdição ANTIGA:  interdição com last_seen_at antigo (>= STALE_MINUTES)
- *
- * ─── Novidade ─────────────────────────────────────────────────────
- *   attachNearbyAlerts() / findNearbyAlertsForJams() — cruzam
- *   waze_jams com waze_alerts por proximidade geográfica + janela
- *   temporal, para detectar quais alertas podem ter causado o jam.
  */
 final class JamRepository
 {
-    private const MAX_LEVEL     = 5;
-    private const MAP_LIMIT     = 500;
-    private const TABLE_LIMIT   = 30;
-    private const EXPORT_LIMIT  = 10_000;
+    private const MAX_LEVEL    = 5;
+    private const MAP_LIMIT    = 500;
+    private const TABLE_LIMIT  = 30;
+    private const EXPORT_LIMIT = 10_000;
 
     /** Minutos sem atualização para uma interdição virar "antiga". */
     public const STALE_MINUTES = 15;
@@ -34,9 +29,19 @@ final class JamRepository
     public const NEARBY_WINDOW_MIN = 30;
     public const NEARBY_RADIUS_M   = 300;
 
+    /**
+     * Tamanho de célula do grid geográfico usado no cruzamento jam↔alerta.
+     * ~1 km em graus (~1/111). Aumentar = menos células mas mais falsos positivos.
+     */
+    private const GEO_CELL_DEG = 0.009; // ≈ 1 km
+
     public function __construct(private readonly Connection $connection)
     {
     }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // PUBLIC API — dashboard / wallboard
+    // ═══════════════════════════════════════════════════════════════════
 
     /** @return array<string,mixed> */
     public function getWallboard(?Partner $partner, array $filters = []): array
@@ -64,20 +69,61 @@ final class JamRepository
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // SHOW — detalhes de um jam + cruzamento com alertas próximos
+    // CIDADES — movido do controller (#6)
     // ═══════════════════════════════════════════════════════════════════
 
     /**
-     * Carrega um jam pelo id, respeitando o escopo do parceiro.
+     * Lista distinta de cidades para o <select> do filtro, ordenadas por frequência.
      *
-     * @return array<string,mixed>|null
+     * @return array<string,int>  ['Cidade' => count, ...]
      */
+    public function fetchDistinctCities(?Partner $partner, int $limit = 30): array
+    {
+        $pf     = '';
+        $params = [];
+
+        if ($partner !== null) {
+            $pf                = ' AND partner_id = :pid';
+            $params['pid'] = $partner->getId();
+        }
+
+        try {
+            $rows = $this->connection->executeQuery(
+                "SELECT city, COUNT(*) AS n
+                 FROM waze_jams
+                 WHERE is_active = 1
+                   AND city IS NOT NULL
+                   AND city <> ''
+                   {$pf}
+                 GROUP BY city
+                 ORDER BY n DESC
+                 LIMIT " . (int) $limit,
+                $params
+            )->fetchAllAssociative();
+
+            $out = [];
+            foreach ($rows as $r) {
+                $out[(string) $r['city']] = (int) $r['n'];
+            }
+
+            return $out;
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // SHOW — detalhes de um jam + cruzamento com alertas próximos
+    // ═══════════════════════════════════════════════════════════════════
+
+    /** @return array<string,mixed>|null */
     public function findJamById(int $id, ?Partner $partner): ?array
     {
-        $pf = '';
+        $pf     = '';
         $params = ['id' => $id];
+
         if ($partner !== null) {
-            $pf = ' AND j.partner_id = :pid';
+            $pf              = ' AND j.partner_id = :pid';
             $params['pid'] = $partner->getId();
         }
 
@@ -96,16 +142,19 @@ final class JamRepository
             $params
         )->fetchAssociative();
 
-        if ($row === false) return null;
+        if ($row === false) {
+            return null;
+        }
 
         $mapped = $this->mapRow($row);
 
-        // Reconstrói path (mesma lógica do loadMap)
+        // Reconstrói path
         $line = $row['line'];
         if (is_string($line)) {
             $decoded = json_decode($line, true);
-            $line = is_array($decoded) ? $decoded : [];
+            $line    = is_array($decoded) ? $decoded : [];
         }
+
         $path = [];
         foreach ((is_array($line) ? $line : []) as $pt) {
             if (is_array($pt) && isset($pt['x'], $pt['y'])) {
@@ -130,16 +179,19 @@ final class JamRepository
         int $windowMinutes = self::NEARBY_WINDOW_MIN,
         int $radiusMeters  = self::NEARBY_RADIUS_M,
     ): array {
-        if (($jam['path'] ?? []) === []) return [];
+        if (($jam['path'] ?? []) === []) {
+            return [];
+        }
 
         $result = $this->findNearbyAlertsForJams([$jam], $windowMinutes, $radiusMeters);
+
         return $result[(int) $jam['id']] ?? [];
     }
 
     /**
      * Enriquece uma lista de jams com:
-     *   - 'nearbyAlerts' (int)          → contagem total
-     *   - 'alerts'       (array curto)  → 5 mais próximos p/ popup do mapa
+     *   - 'nearbyAlerts' (int)         → contagem total
+     *   - 'alerts'       (array curto) → 5 mais próximos p/ popup do mapa
      *
      * @param  array<int,array<string,mixed>> $jams
      * @return array<int,array<string,mixed>>
@@ -149,25 +201,29 @@ final class JamRepository
         int $windowMinutes = self::NEARBY_WINDOW_MIN,
         int $radiusMeters  = self::NEARBY_RADIUS_M,
     ): array {
-        if ($jams === []) return $jams;
+        if ($jams === []) {
+            return $jams;
+        }
 
         $byJam = $this->findNearbyAlertsForJams($jams, $windowMinutes, $radiusMeters);
 
         return array_map(static function (array $j) use ($byJam) {
-            $alerts = $byJam[(int) $j['id']] ?? [];
+            $alerts            = $byJam[(int) $j['id']] ?? [];
             $j['nearbyAlerts'] = count($alerts);
             $j['alerts']       = array_slice($alerts, 0, 5);
+
             return $j;
         }, $jams);
     }
 
     /**
-     * Algoritmo batched:
-     *   1. Calcula bbox união de todos os jams + janela temporal união
-     *   2. Uma única query em waze_alerts
-     *   3. Para cada alerta, encontra jams por proximidade (point→segment)
+     * Algoritmo batched com grid geográfico (#10):
+     *   1. Carrega alertas via bbox + janela temporal
+     *   2. Indexa alertas por célula de grade (≈ 1 km)
+     *   3. Para cada jam, verifica apenas células vizinhas (9 células)
      *
-     * Complexidade: O(J * A) em memória, com J ≤ 500 e A limitado pelo bbox.
+     * Complexidade: O(J * 9 * density) em vez de O(J * A).
+     * Para A=5000 e células com densidade 10: ~45× mais rápido.
      *
      * @param  array<int,array<string,mixed>> $jams
      * @return array<int,array<int,array<string,mixed>>> [jamId => alerts...]
@@ -177,8 +233,11 @@ final class JamRepository
         int $windowMinutes,
         int $radiusMeters,
     ): array {
-        if ($jams === []) return [];
+        if ($jams === []) {
+            return [];
+        }
 
+        // ── 1. Bbox + janela temporal ──────────────────────────────
         $minLat = $minLng = PHP_FLOAT_MAX;
         $maxLat = $maxLng = -PHP_FLOAT_MAX;
         $minTs  = PHP_INT_MAX;
@@ -186,12 +245,15 @@ final class JamRepository
 
         foreach ($jams as $j) {
             foreach ($j['path'] ?? [] as $pt) {
-                if (!is_array($pt) || count($pt) < 2) continue;
+                if (!is_array($pt) || count($pt) < 2) {
+                    continue;
+                }
                 $minLat = min($minLat, (float) $pt[0]);
                 $maxLat = max($maxLat, (float) $pt[0]);
                 $minLng = min($minLng, (float) $pt[1]);
                 $maxLng = max($maxLng, (float) $pt[1]);
             }
+
             $ts = strtotime((string) ($j['when'] ?? ''));
             if ($ts !== false) {
                 $minTs = min($minTs, $ts);
@@ -203,16 +265,18 @@ final class JamRepository
             return array_fill_keys(array_column($jams, 'id'), []);
         }
 
-        // Padding de raio em graus (1° ≈ 111 km) — conservador
-        $pad = $radiusMeters / 111_000;
-        $minLat -= $pad; $maxLat += $pad;
-        $minLng -= $pad; $maxLng += $pad;
+        $pad    = $radiusMeters / 111_000;
+        $minLat -= $pad;
+        $maxLat += $pad;
+        $minLng -= $pad;
+        $maxLng += $pad;
 
         $from = (new \DateTimeImmutable('@' . ($minTs - $windowMinutes * 60)))
             ->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s');
         $to   = (new \DateTimeImmutable('@' . ($maxTs + $windowMinutes * 60)))
             ->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s');
 
+        // ── 2. Query única de alertas ──────────────────────────────
         $rows = $this->connection->executeQuery(
             "SELECT id, uuid, type, subtype, street, city,
                     latitude, longitude, confidence,
@@ -231,17 +295,25 @@ final class JamRepository
             ]
         )->fetchAllAssociative();
 
-        // Pré-processa alertas uma vez
-        $alerts = [];
+        // ── 3. Indexa alertas no grid ──────────────────────────────
+        $cell    = self::GEO_CELL_DEG;
+        $grid    = [];    // ['cx,cy' => [alert, ...]]
+        $alertsP = [];    // alertas pré-processados
+
         foreach ($rows as $r) {
             $lat = (float) $r['latitude'];
             $lng = (float) $r['longitude'];
-            if ($lat === 0.0 && $lng === 0.0) continue;
+
+            if ($lat === 0.0 && $lng === 0.0) {
+                continue;
+            }
 
             $ts = strtotime((string) $r['collected_at']);
-            if ($ts === false) continue;
+            if ($ts === false) {
+                continue;
+            }
 
-            $alerts[] = [
+            $a = [
                 'id'         => (int) $r['id'],
                 'uuid'       => $r['uuid'],
                 'type'       => $r['type'],
@@ -253,8 +325,16 @@ final class JamRepository
                 'confidence' => (int) $r['confidence'],
                 '_ts'        => $ts,
             ];
+
+            $cx = (int) floor($lat / $cell);
+            $cy = (int) floor($lng / $cell);
+            $k  = "{$cx},{$cy}";
+
+            $grid[$k][]  = $a;
+            $alertsP[]   = $a;
         }
 
+        // ── 4. Para cada jam, consulta apenas as 9 células vizinhas ─
         $result   = [];
         $radiusSq = $radiusMeters * $radiusMeters;
 
@@ -263,27 +343,70 @@ final class JamRepository
             $result[$jamId] = [];
 
             $jamTs = strtotime((string) ($j['when'] ?? ''));
-            if ($jamTs === false) continue;
+            if ($jamTs === false) {
+                continue;
+            }
 
             $path = $j['path'] ?? [];
-            if ($path === []) continue;
+            if ($path === []) {
+                continue;
+            }
 
-            foreach ($alerts as $a) {
-                if (abs($a['_ts'] - $jamTs) > $windowMinutes * 60) continue;
+            // Bbox do jam para escolher células
+            $jMinLat = $jMinLng = PHP_FLOAT_MAX;
+            $jMaxLat = $jMaxLng = -PHP_FLOAT_MAX;
+            foreach ($path as $pt) {
+                $jMinLat = min($jMinLat, (float) $pt[0]);
+                $jMaxLat = max($jMaxLat, (float) $pt[0]);
+                $jMinLng = min($jMinLng, (float) $pt[1]);
+                $jMaxLng = max($jMaxLng, (float) $pt[1]);
+            }
+
+            // Células que cobrem o bbox + 1 de padding
+            $cxMin = (int) floor(($jMinLat - $pad) / $cell);
+            $cxMax = (int) floor(($jMaxLat + $pad) / $cell);
+            $cyMin = (int) floor(($jMinLng - $pad) / $cell);
+            $cyMax = (int) floor(($jMaxLng + $pad) / $cell);
+
+            // Coleta candidatos únicos das células relevantes
+            $seenIds    = [];
+            $candidates = [];
+
+            for ($cx = $cxMin; $cx <= $cxMax; $cx++) {
+                for ($cy = $cyMin; $cy <= $cyMax; $cy++) {
+                    foreach ($grid["{$cx},{$cy}"] ?? [] as $a) {
+                        if (isset($seenIds[$a['id']])) {
+                            continue;
+                        }
+                        $seenIds[$a['id']] = true;
+                        $candidates[]      = $a;
+                    }
+                }
+            }
+
+            // Filtra por janela temporal + distância real
+            foreach ($candidates as $a) {
+                if (abs($a['_ts'] - $jamTs) > $windowMinutes * 60) {
+                    continue;
+                }
 
                 $distSq = $this->minDistanceSqToPolyline($a['lat'], $a['lng'], $path);
-                if ($distSq > $radiusSq) continue;
+                if ($distSq > $radiusSq) {
+                    continue;
+                }
 
-                $aOut = $a;
+                $aOut                       = $a;
                 unset($aOut['_ts']);
                 $aOut['distanceMeters']    = (int) round(sqrt($distSq));
                 $aOut['timeOffsetMinutes'] = (int) round(($a['_ts'] - $jamTs) / 60);
                 $aOut['typeLabel']         = $this->labelAlertType((string) $a['type']);
-                $result[$jamId][] = $aOut;
+                $result[$jamId][]          = $aOut;
             }
 
-            // Ordena por distância crescente
-            usort($result[$jamId], static fn ($a, $b) => $a['distanceMeters'] <=> $b['distanceMeters']);
+            usort(
+                $result[$jamId],
+                static fn ($a, $b) => $a['distanceMeters'] <=> $b['distanceMeters']
+            );
         }
 
         return $result;
@@ -297,21 +420,24 @@ final class JamRepository
     private function minDistanceSqToPolyline(float $lat, float $lng, array $path): float
     {
         $bestSq = PHP_FLOAT_MAX;
-        $n = count($path);
+        $n      = count($path);
 
         for ($i = 0; $i < $n - 1; $i++) {
             [$lat1, $lng1] = $path[$i];
             [$lat2, $lng2] = $path[$i + 1];
 
             $d = $this->pointSegmentDistanceSq($lat, $lng, $lat1, $lng1, $lat2, $lng2);
-            if ($d < $bestSq) $bestSq = $d;
+            if ($d < $bestSq) {
+                $bestSq = $d;
+            }
         }
 
-        // Também considera o último vértice (caso o caminho tenha 1 ponto só)
         if ($n === 1) {
             [$lat1, $lng1] = $path[0];
             $d = $this->pointSegmentDistanceSq($lat, $lng, $lat1, $lng1, $lat1, $lng1);
-            if ($d < $bestSq) $bestSq = $d;
+            if ($d < $bestSq) {
+                $bestSq = $d;
+            }
         }
 
         return $bestSq;
@@ -342,8 +468,7 @@ final class JamRepository
             return $pxM * $pxM + $pyM * $pyM;
         }
 
-        $t = max(0.0, min(1.0, ($pxM * $dx + $pyM * $dy) / $len2));
-
+        $t  = max(0.0, min(1.0, ($pxM * $dx + $pyM * $dy) / $len2));
         $cx = $dx * $t;
         $cy = $dy * $t;
 
@@ -365,15 +490,13 @@ final class JamRepository
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // EXPORT
+    // EXPORT (#11 — line_points garantido no SELECT)
     // ═══════════════════════════════════════════════════════════════════
 
-    /**
-     * @return array<int,array<string,mixed>>
-     */
+    /** @return array<int,array<string,mixed>> */
     public function loadExportRows(?Partner $partner, array $filters = []): array
     {
-        $filters = $this->normalizeFilters($filters);
+        $filters    = $this->normalizeFilters($filters);
         [$where, $params] = $this->buildWhere($partner, $filters);
 
         $blockedSql = self::sqlBlocked('j');
@@ -427,22 +550,22 @@ final class JamRepository
         $params = [];
 
         if ($partner !== null) {
-            $parts[] = "{$alias}.partner_id = :pid";
+            $parts[]       = "{$alias}.partner_id = :pid";
             $params['pid'] = $partner->getId();
         }
 
         if ($filters['level_min'] > 0) {
-            $parts[] = "{$alias}.level >= :lvl";
+            $parts[]       = "{$alias}.level >= :lvl";
             $params['lvl'] = $filters['level_min'];
         }
 
         if ($filters['city'] !== '') {
-            $parts[] = "{$alias}.city = :city";
+            $parts[]        = "{$alias}.city = :city";
             $params['city'] = $filters['city'];
         }
 
         if ($filters['street'] !== '') {
-            $parts[] = "{$alias}.street LIKE :street";
+            $parts[]          = "{$alias}.street LIKE :street";
             $params['street'] = '%' . $filters['street'] . '%';
         }
 
@@ -457,23 +580,19 @@ final class JamRepository
         return [' WHERE ' . implode(' AND ', $parts), $params];
     }
 
-    /** Interdição = level 5 OU delay = -1. */
     private static function sqlBlocked(string $alias = 'j'): string
     {
         return "({$alias}.level = 5 OR {$alias}.delay = -1)";
     }
 
-    /**
-     * Interdição antiga: é interdição E não é atualizada há mais de
-     * STALE_MINUTES.
-     */
     private static function sqlStale(string $alias = 'j'): string
     {
         $min = self::STALE_MINUTES;
-        return "("
+
+        return '('
             . self::sqlBlocked($alias)
             . " AND {$alias}.last_seen_at < UTC_TIMESTAMP() - INTERVAL {$min} MINUTE"
-            . ")";
+            . ')';
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -509,7 +628,7 @@ final class JamRepository
         )->fetchAssociative() ?: [];
 
         return [
-            'total'         => (int)   ($row['total']         ?? 0),
+            'total'         => (int)   ($row['total']        ?? 0),
             'byLevel'       => [
                 1 => (int) ($row['lvl1'] ?? 0),
                 2 => (int) ($row['lvl2'] ?? 0),
@@ -517,9 +636,9 @@ final class JamRepository
                 4 => (int) ($row['lvl4'] ?? 0),
                 5 => (int) ($row['lvl5'] ?? 0),
             ],
-            'blocked'       => (int)   ($row['blocked']         ?? 0),
-            'blockedActive' => (int)   ($row['blocked_active']  ?? 0),
-            'blockedStale'  => (int)   ($row['blocked_stale']   ?? 0),
+            'blocked'       => (int)   ($row['blocked']        ?? 0),
+            'blockedActive' => (int)   ($row['blocked_active'] ?? 0),
+            'blockedStale'  => (int)   ($row['blocked_stale']  ?? 0),
             'avgDelay'      => (int) round((float) ($row['avg_delay'] ?? 0)),
             'maxDelay'      => (int)   ($row['max_delay']    ?? 0),
             'avgSpeed'      => (int) round((float) ($row['avg_speed'] ?? 0)),
@@ -550,14 +669,14 @@ final class JamRepository
             $lookup[(string) $r['bucket']] = (int) $r['cnt'];
         }
 
-        $out = [];
+        $out    = [];
         $nowUtc = (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))
             ->setTime((int) date('H'), 0, 0);
 
         for ($i = $hours - 1; $i >= 0; $i--) {
             $moment = $nowUtc->modify("-{$i} hour");
             $key    = $moment->format('Y-m-d H:00:00');
-            $out[] = [
+            $out[]  = [
                 'at'    => $moment->format('Y-m-d\TH:i:s\Z'),
                 'count' => $lookup[$key] ?? 0,
             ];
@@ -569,7 +688,6 @@ final class JamRepository
     private function loadBlockedActive(?Partner $partner, array $filters): array
     {
         [$where, $params] = $this->buildWhere($partner, $filters);
-
         $blocked = self::sqlBlocked('j');
         $stale   = self::sqlStale('j');
 
@@ -596,7 +714,6 @@ final class JamRepository
     private function loadBlockedStale(?Partner $partner, array $filters): array
     {
         [$where, $params] = $this->buildWhere($partner, $filters);
-
         $blocked = self::sqlBlocked('j');
         $stale   = self::sqlStale('j');
 
@@ -623,7 +740,6 @@ final class JamRepository
     private function loadTopJams(?Partner $partner, array $filters): array
     {
         [$where, $params] = $this->buildWhere($partner, $filters);
-
         $blocked = self::sqlBlocked('j');
 
         $rows = $this->connection->executeQuery(
@@ -646,9 +762,6 @@ final class JamRepository
         return array_map([$this, 'mapRow'], $rows);
     }
 
-    /**
-     * Mapeia linha do banco para o shape comum de um jam.
-     */
     private function mapRow(array $r): array
     {
         $delay = (int) $r['delay'];
@@ -778,9 +891,11 @@ final class JamRepository
             $line = $r['line'];
             if (is_string($line)) {
                 $decoded = json_decode($line, true);
-                $line = is_array($decoded) ? $decoded : [];
+                $line    = is_array($decoded) ? $decoded : [];
             }
-            if (!is_array($line) || $line === []) continue;
+            if (!is_array($line) || $line === []) {
+                continue;
+            }
 
             $path = [];
             foreach ($line as $pt) {
@@ -790,7 +905,9 @@ final class JamRepository
                     $path[] = [(float) $pt[1], (float) $pt[0]];
                 }
             }
-            if ($path === []) continue;
+            if ($path === []) {
+                continue;
+            }
 
             $out[] = [
                 'id'        => (int) $r['id'],
@@ -820,7 +937,7 @@ final class JamRepository
 
         $minLat = $minLng = PHP_FLOAT_MAX;
         $maxLat = $maxLng = -PHP_FLOAT_MAX;
-        $count = 0;
+        $count  = 0;
 
         foreach ($jams as $j) {
             foreach ($j['path'] as $pt) {
@@ -837,11 +954,12 @@ final class JamRepository
         }
 
         $span = max($maxLat - $minLat, $maxLng - $minLng);
-        $zoom = 12;
-        if ($span < 0.02)      $zoom = 14;
-        elseif ($span < 0.05)  $zoom = 13;
-        elseif ($span < 0.15)  $zoom = 12;
-        else                   $zoom = 11;
+        $zoom = match (true) {
+            $span < 0.02 => 14,
+            $span < 0.05 => 13,
+            $span < 0.15 => 12,
+            default      => 11,
+        };
 
         return [
             'lat'     => ($minLat + $maxLat) / 2,
@@ -853,10 +971,11 @@ final class JamRepository
 
     private function loadFreshest(?Partner $partner): array
     {
-        $pf = '';
+        $pf     = '';
         $params = [];
+
         if ($partner !== null) {
-            $pf = ' AND partner_id = :pid';
+            $pf              = ' AND partner_id = :pid';
             $params['pid'] = $partner->getId();
         }
 
@@ -877,7 +996,9 @@ final class JamRepository
 
     private function toIso(mixed $value): ?string
     {
-        if ($value === null || $value === '') return null;
+        if ($value === null || $value === '') {
+            return null;
+        }
         if ($value instanceof \DateTimeInterface) {
             return \DateTimeImmutable::createFromInterface($value)->format(DATE_ATOM);
         }

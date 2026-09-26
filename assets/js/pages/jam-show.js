@@ -5,6 +5,7 @@
  * - Lista de alertas ordenados por distância
  * - Distribuição por tipo de alerta
  * - Auto-fit do mapa
+ * #12 — fallback visual quando o CDN do Leaflet não carrega
  */
 
 const COLORS = {
@@ -31,10 +32,8 @@ function safeJson(str, fb) {
 
 function escapeHtml(str) {
     return String(str ?? '')
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
+        .replaceAll('&', '&amp;').replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;').replaceAll('"', '&quot;')
         .replaceAll("'", '&#039;');
 }
 
@@ -53,27 +52,6 @@ function levelColor(level) {
     }
 }
 
-function fmtNum(n, digits = 0) {
-    if (n === null || n === undefined) return '—';
-    return new Intl.NumberFormat('pt-BR', {
-        minimumFractionDigits: digits,
-        maximumFractionDigits: digits,
-    }).format(n);
-}
-
-function fmtDateTime(iso) {
-    if (!iso) return '—';
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return '—';
-    try {
-        return new Intl.DateTimeFormat('pt-BR', {
-            day: '2-digit', month: '2-digit',
-            hour: '2-digit', minute: '2-digit',
-            timeZone: 'America/Sao_Paulo',
-        }).format(d);
-    } catch { return '—'; }
-}
-
 // ─────────────────────────────────────────────────────────────────────────
 // Mapa
 // ─────────────────────────────────────────────────────────────────────────
@@ -82,12 +60,24 @@ function initMap(root, attempt = 0) {
     const container = root.querySelector('[data-jam-show-map]');
     if (!container) return;
 
+    // #12 — Leaflet ainda não carregou; tenta por até 4s, depois exibe aviso
     if (typeof L === 'undefined') {
-        if (attempt < 20) setTimeout(() => initMap(root, attempt + 1), 100);
+        if (attempt < 40) {
+            setTimeout(() => initMap(root, attempt + 1), 100);
+        } else {
+            container.innerHTML = `
+                <div style="display:flex;align-items:center;justify-content:center;
+                            height:100%;flex-direction:column;gap:8px;
+                            color:var(--js-text-muted,#64748b);font-size:13px">
+                    <span style="font-size:24px">🗺️</span>
+                    Não foi possível carregar o mapa.
+                    <small>Verifique sua conexão e recarregue a página.</small>
+                </div>`;
+        }
         return;
     }
 
-    const jam = safeJson(root.dataset.jam, null);
+    const jam    = safeJson(root.dataset.jam, null);
     const alerts = safeJson(root.dataset.nearbyAlerts, []) || [];
 
     if (!jam || !Array.isArray(jam.path) || jam.path.length < 2) return;
@@ -108,14 +98,14 @@ function initMap(root, attempt = 0) {
                 : jam.isBlocked                    ? COLORS.l5
                 : levelColor(jam.level);
 
-    // 1. Polyline do jam
+    // Polyline do jam
     L.polyline(jam.path, {
         color, weight: 7, opacity: 0.92,
         dashArray: (jam.isBlocked && jam.isStale) ? '8, 6' : null,
         lineCap: 'round', lineJoin: 'round',
     }).addTo(map);
 
-    // 2. Início (verde) e fim (vermelho)
+    // Marcador de início (verde) e fim (vermelho)
     L.circleMarker(jam.path[0], {
         radius: 6, color: '#fff', weight: 2,
         fillColor: '#16a34a', fillOpacity: 1,
@@ -126,29 +116,33 @@ function initMap(root, attempt = 0) {
         fillColor: '#dc2626', fillOpacity: 1,
     }).bindTooltip('Fim', { direction: 'top' }).addTo(map);
 
-    // 3. Alertas próximos
+    // Alertas próximos
     alerts.forEach((a) => {
         if (!Number.isFinite(a.lat) || !Number.isFinite(a.lng)) return;
-        const c = alertColor(a.type);
         L.circleMarker([a.lat, a.lng], {
             radius: 7, color: '#fff', weight: 2,
-            fillColor: c, fillOpacity: 0.95,
+            fillColor: alertColor(a.type), fillOpacity: 0.95,
         }).bindPopup(`
             <div style="font:inherit;font-size:12px;min-width:180px">
-                <strong style="display:block;font-size:13px">${escapeHtml(a.typeLabel || a.type || 'Alerta')}</strong>
+                <strong style="display:block;font-size:13px">
+                    ${escapeHtml(a.typeLabel || a.type || 'Alerta')}
+                </strong>
                 ${a.subtype ? `<small style="display:block;color:#64748b">${escapeHtml(a.subtype)}</small>` : ''}
-                ${a.street ? `<div style="margin-top:4px">${escapeHtml(a.street)}</div>` : ''}
-                ${a.city ? `<div style="color:#64748b">${escapeHtml(a.city)}</div>` : ''}
+                ${a.street  ? `<div style="margin-top:4px">${escapeHtml(a.street)}</div>` : ''}
+                ${a.city    ? `<div style="color:#64748b">${escapeHtml(a.city)}</div>` : ''}
                 <div style="display:flex;justify-content:space-between;padding:2px 0;margin-top:6px">
-                    <span style="color:#64748b">Distância</span><strong>${a.distanceMeters} m</strong>
+                    <span style="color:#64748b">Distância</span>
+                    <strong>${a.distanceMeters} m</strong>
                 </div>
                 <div style="display:flex;justify-content:space-between;padding:2px 0">
-                    <span style="color:#64748b">Δ Tempo</span><strong>${a.timeOffsetMinutes > 0 ? '+' : ''}${a.timeOffsetMinutes} min</strong>
+                    <span style="color:#64748b">Δ Tempo</span>
+                    <strong>${a.timeOffsetMinutes > 0 ? '+' : ''}${a.timeOffsetMinutes} min</strong>
                 </div>
             </div>
         `).addTo(map);
     });
 
+    // Fit automático
     const all = [...jam.path, ...alerts.map((a) => [a.lat, a.lng])];
     try { map.fitBounds(all, { padding: [40, 40], maxZoom: 16 }); } catch {}
 
@@ -159,7 +153,7 @@ function initMap(root, attempt = 0) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Distribuição por tipo
+// Distribuição por tipo de alerta
 // ─────────────────────────────────────────────────────────────────────────
 
 function renderTypeBreakdown(root, alerts) {
@@ -178,7 +172,7 @@ function renderTypeBreakdown(root, alerts) {
     });
 
     const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-    const max = entries[0]?.[1] || 1;
+    const max     = entries[0]?.[1] || 1;
 
     el.innerHTML = entries.map(([type, n]) => {
         const pct = Math.round((n / max) * 100);
@@ -189,8 +183,7 @@ function renderTypeBreakdown(root, alerts) {
                     <span class="jam-show-type__fill" style="width:${pct}%"></span>
                 </div>
                 <span class="jam-show-type__count">${n}</span>
-            </div>
-        `;
+            </div>`;
     }).join('');
 }
 
