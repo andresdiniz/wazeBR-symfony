@@ -1,313 +1,220 @@
-{% extends 'base.html.twig' %}
+{# templates/partner_feed/events/form.html.twig #}
+{% extends 'layouts/dashboard.html.twig' %}
 
-{% block title %}{{ event ? 'Editar' : 'Novo' }} Evento — {{ partner.name }}{% endblock %}
+{% block title %}{{ event ? 'Editar Evento' : 'Novo Evento' }} — {{ partner.name }}{% endblock %}
 
-{% block body %}
-<div class="container py-4" style="max-width:800px">
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="{{ asset('css/pages/partner-feed-form.css') }}">
+{% endblock %}
 
-    <div class="mb-4">
-        <a href="{{ path('partner_event_list', {code: partner.code}) }}"
-           class="text-muted small text-decoration-none">← Lista de Eventos</a>
-        <h1 class="h3 mb-0 mt-1">{{ event ? 'Editar Evento' : 'Novo Evento' }}</h1>
-        <p class="text-muted small mb-0">Parceiro: <strong>{{ partner.name }}</strong></p>
-    </div>
+{% block content %}
 
-    <div class="card border-0 shadow-sm">
-        <div class="card-body p-4">
-            <form method="post"
+{#
+    data-form-config: configuração injetada via data-attributes para o JS
+    Isso evita variáveis globais no <script> inline e mantém o JS sem Twig.
+#}
+<div class="pf-form" data-partner-feed-form
+    data-form-config
+    data-default-lat="{{ partner.city ? '-20.6597' : '-14.2350' }}"
+    data-default-lng="{{ partner.city ? '-43.8081' : '-51.9253' }}"
+    data-default-zoom="13"
+    data-geo-token="{{ partner.reverseGeocodingToken|default('') }}"
+    data-geo-region="{{ partner.geoRegion|default('ROW') }}"
+    data-existing-polyline="{{ event and event.polyline ? event.polyline|json_encode|e('html_attr') : '' }}"
+>
+
+    {# ── Breadcrumb ─────────────────────────────────────────────── #}
+    <a href="{{ path('partner_feed_event_list', {code: partner.code}) }}"
+       class="pf-form__breadcrumb">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <path d="M19 12H5M12 5l-7 7 7 7"/>
+        </svg>
+        Lista de eventos
+    </a>
+
+    {# ── Cabeçalho ──────────────────────────────────────────────── #}
+    <header class="pf-form__header">
+        <h1 class="pf-form__title">{{ event ? 'Editar Evento' : 'Novo Evento' }}</h1>
+        <p class="pf-form__meta">
+            Parceiro: <strong>{{ partner.name }}</strong>
+            {% if partner.city %}
+                &nbsp;·&nbsp; {{ partner.city }}{% if partner.state %}, {{ partner.state }}{% endif %}
+            {% endif %}
+        </p>
+    </header>
+
+    {# ── Layout: mapa + formulário ───────────────────────────────── #}
+    <div class="pf-form__layout">
+
+        {# ── Coluna: mapa ────────────────────────────────────────── #}
+        <div class="pf-form-card">
+
+            <div class="pf-map__instructions">
+                <span class="pf-map__mode-badge" id="pf-map-mode-badge">📍 Ponto único</span>
+                <span id="pf-map-instructions">Clique no mapa para marcar o local exato do evento.</span>
+            </div>
+
+            <div id="pf-map" role="application" aria-label="Mapa para seleção de localização"></div>
+
+            <div class="pf-map__footer">
+                <div class="pf-coords" id="pf-coords-display" aria-live="polite">
+                    Lat: —&nbsp; Lng: —
+                </div>
+
+                {% if event and event.polyline|length > 0 %}
+                    <div class="pf-polyline-info">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M3 12h4l3-9 4 18 3-9h4"/>
+                        </svg>
+                        {{ event.polyline|length }} ponto(s) na polyline
+                    </div>
+                {% endif %}
+
+                <button type="button" class="pf-btn pf-btn--danger-ghost" id="pf-clear-map-btn">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                        <path d="M10 11v6M14 11v6"/>
+                    </svg>
+                    Limpar mapa
+                </button>
+            </div>
+        </div>
+
+        {# ── Coluna: formulário ──────────────────────────────────── #}
+        <div class="pf-form-card">
+            <form method="POST"
+                  id="event-form"
                   action="{{ event
-                      ? path('partner_event_update', {code: partner.code, id: event.id})
-                      : path('partner_event_create', {code: partner.code}) }}">
+                      ? path('partner_feed_event_update', {code: partner.code, id: event.id})
+                      : path('partner_feed_event_create', {code: partner.code}) }}"
+                  novalidate>
 
-                {# ── Tipo / Subtipo ─────────────────────────────────────────── #}
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold" for="type">
-                            Tipo <span class="text-danger">*</span>
+                <input type="hidden" name="polyline" id="pf-polyline-input"
+                       value="{{ event and event.polyline ? event.polyline|json_encode|e('html_attr') : '' }}">
+
+                <div class="pf-form__body">
+
+                    {# Tipo #}
+                    <div class="pf-field">
+                        <label class="pf-label" for="cifsType">
+                            Tipo <span class="pf-label__required" aria-label="obrigatório">*</span>
                         </label>
-                        <select id="type" name="type" class="form-select" required>
-                            {% for t in types %}
-                            <option value="{{ t }}" {{ event and event.type == t ? 'selected' }}>
-                                {{ t }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold" for="subtype">Subtipo</label>
-                        <select id="subtype" name="subtype" class="form-select">
-                            <option value="">— nenhum —</option>
-                            {% for type_key, subs in subtypes %}
-                            <optgroup label="{{ type_key }}">
-                                {% for s in subs %}
-                                <option value="{{ s }}"
-                                        {{ event and event.subtype == s ? 'selected' }}>
-                                    {{ s }}
+                        <select name="cifsType" id="cifsType" class="pf-select" required>
+                            <option value="">Selecione o tipo…</option>
+                            {% for value, label in types %}
+                                <option value="{{ value }}"
+                                    {{ event and event.cifsType == value ? 'selected' : '' }}>
+                                    {{ label }}
                                 </option>
-                                {% endfor %}
-                            </optgroup>
                             {% endfor %}
                         </select>
                     </div>
-                </div>
 
-                {# ── Geocodificação Reversa ──────────────────────────────────── #}
-                <div class="card border-info mb-3">
-                    <div class="card-header bg-info bg-opacity-10 fw-semibold small text-info">
-                        <i class="fas fa-map-pin me-1"></i>Geocodificação Reversa Waze
-                        {% if not partner.reverseGeocodingToken %}
-                            <span class="badge bg-warning text-dark ms-2">Token não configurado</span>
-                        {% endif %}
+                    {# Subtipo #}
+                    <div class="pf-field">
+                        <label class="pf-label" for="cifsSubtype">Subtipo</label>
+                        <select name="cifsSubtype" id="cifsSubtype" class="pf-select">
+                            <option value="">Selecione o subtipo…</option>
+                            {% for value, label in subtypes %}
+                                <option value="{{ value }}"
+                                        data-type="{{ value|split('_')|first }}"
+                                        {{ event and event.cifsSubtype == value ? 'selected' : '' }}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
                     </div>
-                    <div class="card-body">
-                        <div class="row g-2 mb-2">
-                            <div class="col-md-4">
-                                <label class="form-label small" for="latitude">Latitude</label>
-                                <input type="number" id="latitude" name="latitude"
-                                       step="0.0000001" class="form-control form-control-sm"
-                                       value="{{ event ? event.latitude : '' }}"
-                                       placeholder="-19.9167">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label small" for="longitude">Longitude</label>
-                                <input type="number" id="longitude" name="longitude"
-                                       step="0.0000001" class="form-control form-control-sm"
-                                       value="{{ event ? event.longitude : '' }}"
-                                       placeholder="-43.9345">
-                            </div>
-                            <div class="col-md-4 d-flex align-items-end">
-                                <button type="button" id="btn-geocode"
-                                        class="btn btn-sm btn-info w-100"
-                                        {{ not partner.reverseGeocodingToken ? 'disabled' }}>
-                                    <i class="fas fa-search-location me-1"></i>Buscar rua
-                                </button>
-                            </div>
-                        </div>
-                        <div id="geocode-result" class="d-none mt-2">
-                            <p class="small fw-semibold mb-1">
-                                Ruas encontradas — clique para usar:
-                            </p>
-                            <div id="geocode-streets" class="d-flex flex-wrap gap-1"></div>
-                        </div>
-                    </div>
-                </div>
 
-                {# ── Rua ────────────────────────────────────────────────────── #}
-                <div class="mb-3">
-                    <label class="form-label fw-semibold" for="street">
-                        Rua <span class="text-danger">*</span>
-                    </label>
-                    <input type="text" id="street" name="street" class="form-control"
-                           value="{{ event ? event.street : '' }}" required
-                           placeholder="Nome exato conforme o mapa Waze">
-                    <div class="form-text">
-                        Use a geocodificação reversa acima para garantir o nome correto.
-                    </div>
-                </div>
-
-                {# ── Polyline ───────────────────────────────────────────────── #}
-                <div class="mb-3">
-                    <label class="form-label fw-semibold" for="polyline">
-                        Polyline <span class="text-danger">*</span>
-                    </label>
-                    <textarea id="polyline" name="polyline"
-                              class="form-control font-monospace" rows="3" required
-                              placeholder="-19.916700 -43.934500 -19.917000 -43.935000">{{ event ? event.polyline : '' }}</textarea>
-                    <div class="form-text">
-                        Pares <code>lat lon</code> separados por espaço. Mínimo 2 pontos.
-                        A ordem define a direção do tráfego afetado.
-                    </div>
-                </div>
-
-                {# ── Direção ────────────────────────────────────────────────── #}
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Direção</label>
-                    <div class="d-flex gap-4">
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio"
-                                   name="direction" value="ONE_DIRECTION" id="dir-one"
-                                   {{ (not event or event.direction == 'ONE_DIRECTION') ? 'checked' }}>
-                            <label class="form-check-label" for="dir-one">Uma direção</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio"
-                                   name="direction" value="BOTH_DIRECTIONS" id="dir-both"
-                                   {{ event and event.direction == 'BOTH_DIRECTIONS' ? 'checked' }}>
-                            <label class="form-check-label" for="dir-both">Ambas as direções</label>
-                        </div>
-                    </div>
-                </div>
-
-                {# ── Datas ──────────────────────────────────────────────────── #}
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold" for="starttime">
-                            Início <span class="text-danger">*</span>
+                    {# Rua #}
+                    <div class="pf-field">
+                        <label class="pf-label" for="street">
+                            Rua <span class="pf-label__required" aria-label="obrigatório">*</span>
                         </label>
-                        <input type="datetime-local" id="starttime" name="starttime"
-                               class="form-control"
-                               value="{{ event ? event.starttime|date('Y-m-d\\TH:i') : '' }}"
-                               required>
+                        <input type="text" name="street" id="street" class="pf-input" required
+                               value="{{ event ? event.street : '' }}"
+                               placeholder="Preenchido automaticamente pelo mapa">
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold" for="endtime">Fim</label>
-                        <input type="datetime-local" id="endtime" name="endtime"
-                               class="form-control"
-                               value="{{ event and event.endtime ? event.endtime|date('Y-m-d\\TH:i') : '' }}">
-                        <div class="form-text">
-                            Vazio = padrão Waze de 14 dias após o início.
+
+                    {# Referência #}
+                    <div class="pf-field">
+                        <label class="pf-label" for="reference">Referência</label>
+                        <input type="text" name="reference" id="reference" class="pf-input"
+                               value="{{ event ? event.reference : '' }}"
+                               placeholder="Ponto de referência ou bairro">
+                    </div>
+
+                    {# Descrição #}
+                    <div class="pf-field">
+                        <label class="pf-label" for="description">Descrição</label>
+                        <textarea name="description" id="description" class="pf-textarea"
+                                  rows="3" placeholder="Descrição do evento (opcional)">{{ event ? event.description : '' }}</textarea>
+                    </div>
+
+                    {# Datas #}
+                    <div class="pf-field-row">
+                        <div class="pf-field">
+                            <label class="pf-label" for="startTime">Início</label>
+                            <input type="datetime-local" name="startTime" id="startTime" class="pf-input"
+                                   value="{{ event and event.startTime ? event.startTime|date('Y-m-d\\TH:i') : '' }}">
+                        </div>
+                        <div class="pf-field">
+                            <label class="pf-label" for="endTime">Fim</label>
+                            <input type="datetime-local" name="endTime" id="endTime" class="pf-input"
+                                   value="{{ event and event.endTime ? event.endTime|date('Y-m-d\\TH:i') : '' }}">
                         </div>
                     </div>
-                </div>
 
-                {# ── Descrição ──────────────────────────────────────────────── #}
-                <div class="mb-3">
-                    <label class="form-label fw-semibold" for="description">Descrição</label>
-                    <input type="text" id="description" name="description"
-                           class="form-control" maxlength="40"
-                           value="{{ event ? event.description : '' }}"
-                           placeholder="Máx. 40 caracteres">
-                    <div class="form-text">
-                        <span id="desc-count">{{ event ? event.description|length : 0 }}</span>/40 caracteres
+                    {# Direção #}
+                    <div class="pf-field">
+                        <label class="pf-label" for="direction">Direção do tráfego</label>
+                        <select name="direction" id="direction" class="pf-select">
+                            <option value="BOTH_DIRECTIONS"
+                                {{ not event or event.direction == 'BOTH_DIRECTIONS' ? 'selected' : '' }}>
+                                Ambos os sentidos
+                            </option>
+                            <option value="ONE_DIRECTION"
+                                {{ event and event.direction == 'ONE_DIRECTION' ? 'selected' : '' }}>
+                                Um sentido
+                            </option>
+                        </select>
                     </div>
-                </div>
 
-                {# ── Status ─────────────────────────────────────────────────── #}
-                <div class="mb-4">
-                    <label class="form-label fw-semibold" for="status">Status</label>
-                    <select id="status" name="status" class="form-select">
-                        <option value="active"
-                                {{ (not event or event.status == 'active') ? 'selected' }}>
-                            Ativo
-                        </option>
-                        <option value="draft"
-                                {{ event and event.status == 'draft' ? 'selected' }}>
-                            Rascunho
-                        </option>
-                        <option value="inactive"
-                                {{ event and event.status == 'inactive' ? 'selected' }}>
-                            Inativo
-                        </option>
-                    </select>
-                </div>
+                    {# Ativo #}
+                    <div class="pf-field">
+                        <label class="pf-checkbox-label">
+                            <input type="checkbox" name="isActive" value="1"
+                                {{ not event or event.isActive ? 'checked' : '' }}>
+                            Evento ativo
+                        </label>
+                    </div>
 
-                <div class="d-flex justify-content-end gap-2">
-                    <a href="{{ path('partner_event_list', {code: partner.code}) }}"
-                       class="btn btn-outline-secondary">Cancelar</a>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-1"></i>
-                        {{ event ? 'Salvar alterações' : 'Criar evento' }}
-                    </button>
-                </div>
+                    {# Ações #}
+                    <div class="pf-form__actions">
+                        <button type="submit" class="pf-btn pf-btn--primary">
+                            {{ event ? 'Atualizar evento' : 'Criar evento' }}
+                        </button>
+                        <a href="{{ path('partner_feed_event_list', {code: partner.code}) }}"
+                           class="pf-btn pf-btn--secondary">
+                            Cancelar
+                        </a>
+                    </div>
 
+                </div>{# /.pf-form__body #}
             </form>
         </div>
-    </div>
-</div>
+
+    </div>{# /.pf-form__layout #}
+</div>{# /.pf-form #}
 {% endblock %}
 
 {% block javascripts %}
-{{ parent() }}
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-
-    // ── Contador de descrição ─────────────────────────────────────────────
-    const desc    = document.getElementById('description');
-    const counter = document.getElementById('desc-count');
-    if (desc && counter) {
-        desc.addEventListener('input', () => counter.textContent = desc.value.length);
-    }
-
-    // ── Filtro de subtypes por type ───────────────────────────────────────
-    const typeSelect    = document.getElementById('type');
-    const subtypeSelect = document.getElementById('subtype');
-    const allSubtypes   = {{ subtypes|json_encode|raw }};
-
-    function filterSubtypes() {
-        const allowed  = allSubtypes[typeSelect.value] ?? [];
-        const current  = subtypeSelect.value;
-        let hasAllowed = false;
-
-        Array.from(subtypeSelect.options).forEach(opt => {
-            if (opt.value === '') { opt.hidden = false; return; }
-            opt.hidden = !allowed.includes(opt.value);
-            if (!opt.hidden) hasAllowed = true;
-        });
-
-        if (!allowed.includes(current)) subtypeSelect.value = '';
-        subtypeSelect.disabled = !hasAllowed;
-    }
-
-    typeSelect.addEventListener('change', filterSubtypes);
-    filterSubtypes();
-
-    // ── Geocodificação Reversa ────────────────────────────────────────────
-    const btnGeocode  = document.getElementById('btn-geocode');
-    const resultBox   = document.getElementById('geocode-result');
-    const streetsBox  = document.getElementById('geocode-streets');
-    const streetInput = document.getElementById('street');
-
-    if (btnGeocode && !btnGeocode.disabled) {
-        btnGeocode.addEventListener('click', async () => {
-            const lat = document.getElementById('latitude').value.trim();
-            const lon = document.getElementById('longitude').value.trim();
-
-            if (!lat || !lon) {
-                alert('Informe latitude e longitude para buscar a rua.');
-                return;
-            }
-
-            btnGeocode.disabled = true;
-            btnGeocode.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Buscando...';
-
-            try {
-                const resp = await fetch(
-                    '{{ path('partner_event_geocode', {code: partner.code}) }}',
-                    {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: `lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`,
-                    }
-                );
-
-                const data = await resp.json();
-                streetsBox.innerHTML = '';
-
-                if (data.result && data.result.length > 0) {
-                    data.result.forEach(item => {
-                        (item.streetNames ?? []).forEach(name => {
-                            const btn = document.createElement('button');
-                            btn.type      = 'button';
-                            btn.className = 'btn btn-sm btn-outline-info';
-                            btn.textContent = `${name} (${item.distance.toFixed(1)} m)`;
-                            btn.addEventListener('click', () => {
-                                streetInput.value = name;
-                                streetsBox.querySelectorAll('button').forEach(b => {
-                                    b.classList.remove('btn-info', 'text-white');
-                                    b.classList.add('btn-outline-info');
-                                });
-                                btn.classList.add('btn-info', 'text-white');
-                                btn.classList.remove('btn-outline-info');
-                            });
-                            streetsBox.appendChild(btn);
-                        });
-                    });
-                } else {
-                    streetsBox.innerHTML =
-                        '<span class="text-muted small">Nenhuma rua encontrada nessas coordenadas.</span>';
-                }
-
-                resultBox.classList.remove('d-none');
-
-            } catch (e) {
-                alert('Erro ao consultar geocodificação: ' + e.message);
-            } finally {
-                btnGeocode.disabled = false;
-                btnGeocode.innerHTML =
-                    '<i class="fas fa-search-location me-1"></i>Buscar rua';
-            }
-        });
-    }
-});
-</script>
+    {{ parent() }}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGkVgiIyIWLLlTSXzWQzxuSg4DiQUCpauz/EWjgk5TYQqX/kvn9pG1NpYfqg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 {% endblock %}

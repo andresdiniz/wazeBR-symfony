@@ -1,76 +1,129 @@
-{% extends 'base.html.twig' %}
+{# templates/partner_feed/show.html.twig #}
+{% extends 'layouts/dashboard.html.twig' %}
 
 {% block title %}Feed — {{ partner.name }}{% endblock %}
 
-{% block body %}
-<div class="container-fluid py-4">
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('styles/pages/partner-feed-show.css') }}">
+{% endblock %}
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
+{% block content %}
+<div class="pf-show" data-partner-feed-show>
+
+    {# ── Breadcrumb ──────────────────────────────────────────────────────── #}
+    <a href="{{ path('partner_feed_index') }}" class="pf-show__breadcrumb">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <path d="M19 12H5M12 5l-7 7 7 7"/>
+        </svg>
+        Feed de Parceiros
+    </a>
+
+    {# ── Cabeçalho ───────────────────────────────────────────────────────── #}
+    <header class="pf-show__header">
         <div>
-            <a href="{{ path('partner_feed_index') }}" class="text-muted small text-decoration-none">
-                ← Parceiros
-            </a>
-            <h1 class="h3 mb-0 mt-1">{{ partner.name }}</h1>
-            <span class="text-muted small">{{ partner.city }}{% if partner.state %}/{{ partner.state }}{% endif %}</span>
+            <h1 class="pf-show__title">{{ partner.name }}</h1>
+            {% if partner.city or partner.state %}
+                <p class="pf-show__location">
+                    {{ [partner.city, partner.state]|filter(v => v is not empty)|join(', ') }}
+                </p>
+            {% endif %}
         </div>
-        <div class="d-flex gap-2">
-            <a href="{{ path('partner_event_new', {code: partner.code}) }}"
-               class="btn btn-primary btn-sm">
-                <i class="fas fa-plus me-1"></i>Novo Evento
+
+        <div class="pf-show__actions">
+            <a href="{{ path('partner_feed_event_list', {code: partner.code}) }}"
+               class="pf-show-btn pf-show-btn--events">
+                Gerenciar eventos
             </a>
+
             <a href="{{ url('partner_feed_json', {code: partner.code}) }}"
-               target="_blank" class="btn btn-outline-success btn-sm">
-                <i class="fas fa-external-link-alt me-1"></i>feed.json
+               target="_blank" rel="noopener"
+               class="pf-show-btn pf-show-btn--json">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                     stroke-linejoin="round" aria-hidden="true" focusable="false">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/>
+                </svg>
+                feed.json
+            </a>
+
+            <a href="{{ path('partner_feed_event_new', {code: partner.code}) }}"
+               class="pf-show-btn pf-show-btn--new">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                     stroke-linejoin="round" aria-hidden="true" focusable="false">
+                    <path d="M12 5v14M5 12h14"/>
+                </svg>
+                Novo evento
             </a>
         </div>
-    </div>
+    </header>
 
-    <div class="row g-3">
-        <div class="col-lg-5">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white fw-semibold">Informações</div>
-                <ul class="list-group list-group-flush">
-                    <li class="list-group-item d-flex justify-content-between">
-                        <span class="text-muted">Code</span>
-                        <code>{{ partner.code }}</code>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between">
-                        <span class="text-muted">Região GEO</span>
-                        <strong>{{ partner.geoRegion }}</strong>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between">
-                        <span class="text-muted">Token Geocodificação</span>
-                        {% if partner.reverseGeocodingToken %}
-                            <span class="badge bg-success">Configurado</span>
-                        {% else %}
-                            <span class="badge bg-warning text-dark">Não configurado</span>
-                        {% endif %}
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between">
-                        <span class="text-muted">Incidentes ativos</span>
-                        <strong>{{ incidents|length }}</strong>
-                    </li>
-                </ul>
+    {# ── Grid ────────────────────────────────────────────────────────────── #}
+    <div class="pf-show__grid">
+
+        {# ── Card: informações do parceiro ──────────────────────────────── #}
+        <section class="pf-show-card" aria-labelledby="pf-info-title">
+            <div class="pf-show-card__header">
+                <h2 class="pf-show-card__title" id="pf-info-title">Informações</h2>
             </div>
-        </div>
 
-        <div class="col-lg-7">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
-                    <span>Prévia feed.json</span>
-                    <button class="btn btn-sm btn-outline-secondary"
-                            onclick="navigator.clipboard.writeText(document.getElementById('feed-preview').textContent)">
-                        <i class="fas fa-copy"></i> Copiar
-                    </button>
-                </div>
-                <div class="card-body p-0">
-                    <pre id="feed-preview"
-                         class="m-0 p-3 bg-dark text-light rounded-bottom"
-                         style="max-height:420px;overflow:auto;font-size:.78rem;">{{ feedJson }}</pre>
-                </div>
+            <ul class="pf-info-list">
+                <li class="pf-info-list__item">
+                    <span class="pf-info-list__label">Código</span>
+                    <code class="pf-info-list__code">{{ partner.code }}</code>
+                </li>
+
+                <li class="pf-info-list__item">
+                    <span class="pf-info-list__label">Região GEO</span>
+                    <span class="pf-info-list__value">{{ partner.geoRegion|default('ROW') }}</span>
+                </li>
+
+                <li class="pf-info-list__item">
+                    <span class="pf-info-list__label">Geocodificação reversa</span>
+                    {% if partner.reverseGeocodingToken %}
+                        <span class="pf-show-badge pf-show-badge--ok">Configurada</span>
+                    {% else %}
+                        <span class="pf-show-badge pf-show-badge--warn">Não configurada</span>
+                    {% endif %}
+                </li>
+
+                <li class="pf-info-list__item">
+                    <span class="pf-info-list__label">Incidentes ativos</span>
+                    <span class="pf-info-list__count">{{ incidents|length }}</span>
+                </li>
+            </ul>
+        </section>
+
+        {# ── Card: preview feed.json ─────────────────────────────────────── #}
+        <section class="pf-show-card pf-preview" aria-labelledby="pf-preview-title">
+            <div class="pf-show-card__header">
+                <h2 class="pf-show-card__title" id="pf-preview-title">Prévia feed.json</h2>
+
+                <button
+                    type="button"
+                    class="pf-copy-btn"
+                    data-copy-json="pf-feed-preview"
+                    aria-label="Copiar JSON do feed"
+                >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                         stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    </svg>
+                    <span class="pf-copy-btn__label">Copiar</span>
+                    <span class="pf-copy-btn__label-ok">Copiado!</span>
+                </button>
             </div>
-        </div>
-    </div>
 
+            <div class="pf-preview__body">
+                <pre id="pf-feed-preview" class="pf-preview__pre">{{ feedJson|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_UNICODE') b-or constant('JSON_UNESCAPED_SLASHES')) }}</pre>
+            </div>
+        </section>
+
+    </div>
 </div>
 {% endblock %}

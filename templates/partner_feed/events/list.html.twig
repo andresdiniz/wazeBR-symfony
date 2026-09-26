@@ -1,116 +1,171 @@
-{% extends 'base.html.twig' %}
+{% extends 'layouts/dashboard.html.twig' %}
 
 {% block title %}Eventos — {{ partner.name }}{% endblock %}
 
-{% block body %}
-<div class="container-fluid py-4">
-
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <a href="{{ path('partner_feed_show', {code: partner.code}) }}"
-               class="text-muted small text-decoration-none">← {{ partner.name }}</a>
-            <h1 class="h3 mb-0 mt-1">Eventos do Feed</h1>
-        </div>
-        <a href="{{ path('partner_event_new', {code: partner.code}) }}"
-           class="btn btn-primary btn-sm">
-            <i class="fas fa-plus me-1"></i>Novo Evento
-        </a>
-    </div>
-
-    {% for type, messages in app.flashes %}
-        {% for msg in messages %}
-            <div class="alert alert-{{ type == 'success' ? 'success' : 'danger' }} alert-dismissible fade show">
-                {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        {% endfor %}
-    {% endfor %}
-
-    <div class="card border-0 shadow-sm">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>ID Incidente</th>
-                        <th>Tipo</th>
-                        <th>Rua</th>
-                        <th>Início</th>
-                        <th>Fim</th>
-                        <th>Status</th>
-                        <th class="text-end">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                {% for event in events %}
-                <tr>
-                    <td><code class="small">{{ event.incidentId }}</code></td>
-                    <td>
-                        <span class="badge bg-secondary">{{ event.type }}</span>
-                        {% if event.subtype %}
-                        <br><small class="text-muted">{{ event.subtype }}</small>
-                        {% endif %}
-                    </td>
-                    <td>{{ event.street }}</td>
-                    <td class="small">{{ event.starttime|date('d/m/Y H:i') }}</td>
-                    <td class="small">{{ event.endtime ? event.endtime|date('d/m/Y H:i') : '—' }}</td>
-                    <td>
-                        {% if event.status == 'active' %}
-                            <span class="badge bg-success">Ativo</span>
-                        {% elseif event.status == 'draft' %}
-                            <span class="badge bg-warning text-dark">Rascunho</span>
-                        {% else %}
-                            <span class="badge bg-secondary">Inativo</span>
-                        {% endif %}
-                    </td>
-                    <td class="text-end">
-                        <a href="{{ path('partner_event_edit', {code: partner.code, id: event.id}) }}"
-                           class="btn btn-sm btn-outline-secondary" title="Editar">
-                            <i class="fas fa-edit"></i>
+{% block content %}
+    <section class="partner-events-page" data-partner-events-list>
+        <div class="partner-events-page__container container-fluid py-4">
+            <header class="partner-events-header mb-4">
+                <div class="partner-events-header__top">
+                    <div>
+                        <a class="partner-events-header__back" href="{{ path('partner_feed_index') }}">
+                            ← Feed de parceiros
                         </a>
-                        <form method="post"
-                              action="{{ path('partner_event_toggle', {code: partner.code, id: event.id}) }}"
-                              class="d-inline">
-                            <button class="btn btn-sm btn-outline-{{ event.status == 'active' ? 'warning' : 'success' }}"
-                                    title="{{ event.status == 'active' ? 'Desativar' : 'Ativar' }}">
-                                <i class="fas fa-{{ event.status == 'active' ? 'pause' : 'play' }}"></i>
-                            </button>
-                        </form>
-                        {% if is_granted('ROLE_ADMIN') %}
-                        <form method="post"
-                              action="{{ path('partner_event_delete', {code: partner.code, id: event.id}) }}"
-                              class="d-inline"
-                              onsubmit="return confirm('Excluir este evento do feed?')">
-                            <button class="btn btn-sm btn-outline-danger" title="Excluir">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </form>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="7" class="text-center text-muted py-4">
-                        Nenhum evento cadastrado.
-                    </td>
-                </tr>
-                {% endfor %}
-                </tbody>
-            </table>
+                        <div class="partner-events-header__title-row">
+                            <div>
+                                <p class="partner-events-header__eyebrow">Gerenciamento de eventos</p>
+                                <h1 class="partner-events-header__title">{{ partner.name }}</h1>
+                                <p class="partner-events-header__description">
+                                    Consulte, filtre e gerencie os eventos publicados neste parceiro.
+                                </p>
+                            </div>
+                            <div class="partner-events-header__actions">
+                                <span class="partner-events-code">{{ partner.code }}</span>
+                                <a href="{{ path('partner_feed_event_new', {code: partner.code}) }}" class="btn btn-primary">
+                                    <span aria-hidden="true">+</span>
+                                    Novo evento
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            {% for message in app.flashes('success') %}
+                <div class="alert alert-success" role="status">{{ message }}</div>
+            {% endfor %}
+
+            <div class="partner-events-toolbar card mb-4">
+                <div class="partner-events-toolbar__body">
+                    <div class="partner-events-search">
+                        <label for="event-search" class="form-label">Pesquisar eventos</label>
+                        <div class="partner-events-search__field">
+                            <span aria-hidden="true">⌕</span>
+                            <input id="event-search" type="search" class="form-control" placeholder="Rua, tipo, descrição ou ID..." data-event-search>
+                        </div>
+                    </div>
+
+                    <div class="partner-events-filter">
+                        <label for="event-status-filter" class="form-label">Status</label>
+                        <select id="event-status-filter" class="form-select" data-event-status-filter>
+                            <option value="all">Todos</option>
+                            <option value="active">Ativos</option>
+                            <option value="inactive">Inativos</option>
+                        </select>
+                    </div>
+
+                    <div class="partner-events-filter">
+                        <label for="event-type-filter" class="form-label">Tipo</label>
+                        <select id="event-type-filter" class="form-select" data-event-type-filter>
+                            <option value="all">Todos os tipos</option>
+                            {% set eventTypes = [] %}
+                            {% for event in events %}
+                                {% set type = event.cifsType.value|default(event.cifsType)|default('N/A') %}
+                                {% if type not in eventTypes %}
+                                    {% set eventTypes = eventTypes|merge([type]) %}
+                                {% endif %}
+                            {% endfor %}
+                            {% for type in eventTypes|sort %}
+                                <option value="{{ type|lower|e('html_attr') }}">{{ type }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <button type="button" class="btn btn-outline-secondary partner-events-toolbar__clear" data-clear-filters>
+                        Limpar filtros
+                    </button>
+                </div>
+            </div>
+
+            <div class="partner-events-summary" data-event-summary>
+                <span><strong data-visible-count>{{ events|length }}</strong> evento(s) encontrado(s)</span>
+                <span class="partner-events-summary__hint">Atualizado conforme os filtros</span>
+            </div>
+
+            <div class="partner-events-table-card card">
+                <div class="table-responsive">
+                    <table class="table partner-events-table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col">Evento</th>
+                                <th scope="col">Tipo</th>
+                                <th scope="col">Local</th>
+                                <th scope="col">Período</th>
+                                <th scope="col">Status</th>
+                                <th scope="col" class="text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for event in events %}
+                                {% set type = event.cifsType.value|default(event.cifsType)|default('N/A') %}
+                                {% set subtype = event.cifsSubtype|default('') %}
+                                {% set isActive = event.isActive %}
+                                <tr class="partner-event-row"
+                                    data-event-row
+                                    data-event-search-text="{{ [event.uuid, type, subtype, event.street, event.city, event.description]|join(' ')|lower|e('html_attr') }}"
+                                    data-event-type="{{ type|lower|e('html_attr') }}"
+                                    data-event-status="{{ isActive ? 'active' : 'inactive' }}">
+                                    <td>
+                                        <div class="partner-event-identity">
+                                            <span class="partner-event-identity__dot {{ isActive ? 'is-active' : 'is-inactive' }}"></span>
+                                            <div>
+                                                <div class="partner-event-identity__title">{{ event.street|default('Local não informado') }}</div>
+                                                <code class="partner-event-identity__id">{{ event.uuid|default('—') }}</code>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="partner-event-type">{{ type }}</span>
+                                        {% if subtype %}<small class="partner-event-subtype">{{ subtype }}</small>{% endif %}
+                                    </td>
+                                    <td>
+                                        <span>{{ event.city|default(partner.city|default('—')) }}</span>
+                                        {% if event.reference %}<small class="partner-event-meta">{{ event.reference }}</small>{% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="partner-event-period">{{ event.startTime ? event.startTime|date('d/m/Y H:i') : '—' }}</span>
+                                        <small class="partner-event-meta">até {{ event.endTime ? event.endTime|date('d/m/Y H:i') : '—' }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="partner-event-status {{ isActive ? 'is-active' : 'is-inactive' }}">
+                                            {{ isActive ? 'Ativo' : 'Inativo' }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="partner-event-actions">
+                                            <a href="{{ path('partner_feed_event_edit', {code: partner.code, id: event.id}) }}" class="btn btn-sm btn-outline-primary">Editar</a>
+                                            <form method="post" action="{{ path('partner_feed_event_toggle', {code: partner.code, id: event.id}) }}">
+                                                <input type="hidden" name="_token" value="{{ csrf_token('toggle_event_' ~ event.id) }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-secondary">{{ isActive ? 'Desativar' : 'Ativar' }}</button>
+                                            </form>
+                                            {% if is_granted('ROLE_ADMIN') %}
+                                                <form method="post" action="{{ path('partner_feed_event_delete', {code: partner.code, id: event.id}) }}" data-delete-form>
+                                                    <input type="hidden" name="_token" value="{{ csrf_token('delete_event_' ~ event.id) }}">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">Excluir</button>
+                                                </form>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="6">
+                                        <div class="partner-events-empty">
+                                            <div class="partner-events-empty__icon">◌</div>
+                                            <h2>Nenhum evento cadastrado</h2>
+                                            <p>Crie o primeiro evento deste parceiro para começar.</p>
+                                            <a href="{{ path('partner_feed_event_new', {code: partner.code}) }}" class="btn btn-primary">Criar evento</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            <tr class="partner-events-no-results" data-no-results hidden>
+                                <td colspan="6">Nenhum evento corresponde aos filtros selecionados.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-        {% if pages > 1 %}
-        <div class="card-footer d-flex justify-content-between align-items-center">
-            <small class="text-muted">{{ total }} evento(s)</small>
-            <nav>
-                <ul class="pagination pagination-sm mb-0">
-                    {% for p in 1..pages %}
-                    <li class="page-item {{ p == page ? 'active' }}">
-                        <a class="page-link"
-                           href="{{ path('partner_event_list', {code: partner.code, page: p}) }}">{{ p }}</a>
-                    </li>
-                    {% endfor %}
-                </ul>
-            </nav>
-        </div>
-        {% endif %}
-    </div>
-</div>
+    </section>
 {% endblock %}

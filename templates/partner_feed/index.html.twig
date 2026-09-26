@@ -1,58 +1,105 @@
-{% extends 'base.html.twig' %}
+{# templates/partner_feed/index.html.twig #}
+{% extends 'layouts/dashboard.html.twig' %}
 
-{% block title %}Partner Feed{% endblock %}
+{% block title %}Feed de Parceiros{% endblock %}
 
-{% block body %}
-<div class="container-fluid py-4">
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('styles/pages/partner-feed-index.css') }}">
+{% endblock %}
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 mb-0">
-            <i class="fas fa-broadcast-tower me-2 text-primary"></i>Partner Feed
-        </h1>
-    </div>
+{% block content %}
+<div class="pf-index">
 
-    {% for type, messages in app.flashes %}
-        {% for msg in messages %}
-            <div class="alert alert-{{ type == 'success' ? 'success' : 'danger' }} alert-dismissible fade show">
-                {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        {% endfor %}
-    {% endfor %}
+    <header class="pf-index__header">
+        <h1 class="pf-index__title">Feed de Parceiros</h1>
+        <p class="pf-index__subtitle">
+            Consulte o feed CIFS de cada parceiro ou gerencie os eventos publicados no Waze.
+        </p>
+    </header>
 
-    <div class="row g-3">
-        {% for partner in partners %}
-        <div class="col-md-4">
-            <div class="card h-100 border-0 shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title mb-1">{{ partner.name }}</h5>
-                    <p class="text-muted small mb-1">
-                        Código: <code>{{ partner.code }}</code>
-                    </p>
-                    <p class="text-muted small mb-0">
-                        {{ partner.city }}{% if partner.state %}/{{ partner.state }}{% endif %}
-                    </p>
-                </div>
-                <div class="card-footer bg-transparent d-flex gap-2 flex-wrap">
-                    <a href="{{ path('partner_feed_show', {code: partner.code}) }}"
-                       class="btn btn-sm btn-outline-primary">
-                        <i class="fas fa-eye me-1"></i>Feed
-                    </a>
-                    <a href="{{ path('partner_event_list', {code: partner.code}) }}"
-                       class="btn btn-sm btn-outline-secondary">
-                        <i class="fas fa-list me-1"></i>Eventos
-                    </a>
-                    <a href="{{ url('partner_feed_json', {code: partner.code}) }}"
-                       target="_blank" class="btn btn-sm btn-outline-success">
-                        <i class="fas fa-code me-1"></i>feed.json
-                    </a>
-                </div>
-            </div>
-        </div>
+    <div class="pf-grid" role="list">
+        {% if partners|length > 0 %}
+            {% for partner in partners %}
+                <article class="pf-card" role="listitem">
+                    <div class="pf-card__body">
+
+                        <div class="pf-card__head">
+                            <div>
+                                <h2 class="pf-card__name">{{ partner.name }}</h2>
+                                {% if partner.city or partner.state %}
+                                    <p class="pf-card__location">
+                                        {{ [partner.city, partner.state]|filter(v => v is not empty)|join(', ') }}
+                                    </p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="pf-card__meta">
+                            <span class="pf-badge pf-badge--code">{{ partner.code }}</span>
+                            {% if partner.isActive %}
+                                <span class="pf-badge pf-badge--active">
+                                    <span class="pf-badge__dot" aria-hidden="true"></span>
+                                    Ativo
+                                </span>
+                            {% endif %}
+                        </div>
+
+                    </div>
+
+                    <hr class="pf-card__divider">
+
+                    <footer class="pf-card__footer">
+                        <a href="{{ path('partner_feed_show', {code: partner.code}) }}"
+                           class="pf-btn pf-btn--primary">
+                            Ver feed
+                        </a>
+
+                        <a href="{{ path('partner_feed_event_list', {code: partner.code}) }}"
+                           class="pf-btn pf-btn--ghost">
+                            Gerenciar eventos
+                        </a>
+
+                        <button
+                            type="button"
+                            class="pf-btn pf-btn--icon ms-auto"
+                            data-copy-feed-url="{{ url('partner_feed_json', {code: partner.code}) }}"
+                            aria-label="Copiar URL do feed"
+                            title="Copiar URL do feed JSON"
+                        >
+                            {# Ícone clipboard — inline SVG sem dependência externa #}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                            </svg>
+                        </button>
+                    </footer>
+                </article>
+            {% endfor %}
         {% else %}
-        <div class="col-12">
-            <div class="alert alert-info">Nenhum parceiro ativo cadastrado.</div>
-        </div>
-        {% endfor %}
+            <div class="pf-empty" role="status">
+                <span class="pf-empty__icon" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="1.5"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                </span>
+                <p class="pf-empty__title">Nenhum parceiro ativo</p>
+                <p class="pf-empty__desc">Cadastre um parceiro para que ele apareça aqui.</p>
+            </div>
+        {% endif %}
     </div>
+
 </div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="{{ asset('js/pages/partner-feed-index.js') }}" defer></script>
 {% endblock %}

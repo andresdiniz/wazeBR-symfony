@@ -155,12 +155,6 @@ const COMPONENTS = {
         match: '[data-partner-feed-form]',
         init: () => import('./pages/partner-feed-form.js'),
     },
-
-    // ─── Página: Eventos do Feed de Parceiros ─────────────────────────
-    partnerFeedEventsList: {
-        match: '[data-partner-events-list]',
-        init: () => import('./pages/partner-feed-events-list.js'),
-    },
 };
 
 // ── Infra ──────────────────────────────────────────────────────────────

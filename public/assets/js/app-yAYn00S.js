@@ -141,26 +141,10 @@ const COMPONENTS = {
     },
 
     // ─── Página: Feed de Parceiros (índice) ────────────────────────────
-    partnerFeedIndex: {
-        match: '[data-partner-feed-index]',
-        init: () => import('./pages/partner-feed-index.js'),
-    },
-    partnerFeedShow: {
-        match: '[data-partner-feed-show]',
-        init: () => import('./pages/partner-feed-show.js'),
-    },
-
-    // ─── Página: Feed de Parceiros (form novo/editar evento) ──────────────
-    partnerFeedForm: {
-        match: '[data-partner-feed-form]',
-        init: () => import('./pages/partner-feed-form.js'),
-    },
-
-    // ─── Página: Eventos do Feed de Parceiros ─────────────────────────
-    partnerFeedEventsList: {
-        match: '[data-partner-events-list]',
-        init: () => import('./pages/partner-feed-events-list.js'),
-    },
+partnerFeedIndex: {
+    match: '[data-partner-feed-index]',
+    init: () => import('./pages/partner-feed-index.js'),
+},
 };
 
 // ── Infra ──────────────────────────────────────────────────────────────

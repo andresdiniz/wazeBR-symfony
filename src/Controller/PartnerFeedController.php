@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Entity\Partner;
 use App\Entity\PartnerFeedEvent;
 use App\Repository\PartnerFeedEventRepository;
 use App\Repository\PartnerRepository;
@@ -16,314 +17,172 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-/**
- * Endpoints do Partner Feed.
- *
- * ┌─────────────────────────────────────────────────────────────────────────┐
- * │  /partner-feed/{code}/feed.json  →  PUBLIC (Waze busca aqui)           │
- * │  /partner-feed/**                →  ROLE_EDITOR  (admin / editor)      │
- * │                                    ROLE_OPERATOR não tem acesso        │
- * └─────────────────────────────────────────────────────────────────────────┘
- */
-#[Route('/partner-feed')]
-class PartnerFeedController extends AbstractController
+#[Route('/partner-feed', name: 'partner_feed_')]
+final class PartnerFeedController extends AbstractController
 {
     public function __construct(
-        private readonly PartnerRepository          $partnerRepository,
+        private readonly PartnerRepository $partnerRepository,
         private readonly PartnerFeedEventRepository $eventRepository,
-        private readonly PartnerFeedService         $feedService,
-        private readonly EntityManagerInterface     $em,
+        private readonly PartnerFeedService $feedService,
+        private readonly EntityManagerInterface $em,
     ) {}
 
-    // ── Feed público ──────────────────────────────────────────────────────────
-
-    /**
-     * URL registrada no Waze Partner Hub.
-     * GET /partner-feed/{code}/feed.json
-     */
-    #[Route('/{code}/feed.json', name: 'partner_feed_json', methods: ['GET'])]
-    public function feedJson(string $code): JsonResponse
+    #[Route('/{code}.json', name: 'json', methods: ['GET'])]
+    public function jsonFeed(string $code): JsonResponse
     {
-        $partner = $this->partnerRepository->findOneBy(['code' => $code, 'isActive' => true]);
-
-        if ($partner === null) {
-            return new JsonResponse(['incidents' => []], Response::HTTP_NOT_FOUND);
-        }
-
-        return new JsonResponse(
-            $this->feedService->buildFeed($partner),
-            Response::HTTP_OK,
-            [
-                'Cache-Control' => 'no-store, no-cache, must-revalidate',
-                'Pragma'        => 'no-cache',
-            ],
-        );
-    }
-
-    // ── Painel — somente ROLE_EDITOR / ROLE_ADMIN ────────────────────────────
-
-    /**
-     * Lista todos os parceiros ativos com resumo do feed.
-     * GET /partner-feed/
-     */
-    #[Route('/', name: 'partner_feed_index', methods: ['GET'])]
-    public function index(): Response
-    {
-        $partners = $this->partnerRepository->findBy(['isActive' => true], ['name' => 'ASC']);
-
-        return $this->render('partner_feed/index.html.twig', [
-            'partners' => $partners,
+        $partner = $this->getPartnerOr404($code);
+        $json = $this->feedService->buildJson($partner);
+        return new JsonResponse(json_decode($json, true, 512, JSON_THROW_ON_ERROR), Response::HTTP_OK, [
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
+            'Pragma' => 'no-cache',
         ]);
     }
 
-    /**
-     * Painel de um parceiro: prévia do feed + link para eventos.
-     * GET /partner-feed/{code}
-     */
-    #[Route('/{code}', name: 'partner_feed_show', methods: ['GET'])]
+    #[Route('/', name: 'index', methods: ['GET'])]
+    public function index(): Response
+    {
+        return $this->render('partner_feed/index.html.twig', [
+            'partners' => $this->partnerRepository->findBy(['isActive' => true], ['name' => 'ASC']),
+        ]);
+    }
 
+    #[Route('/{code}', name: 'show', methods: ['GET'])]
     public function show(string $code): Response
     {
         $partner = $this->getPartnerOr404($code);
-        $feed    = $this->feedService->buildFeed($partner);
-
         return $this->render('partner_feed/show.html.twig', [
-            'partner'   => $partner,
-            'feedJson'  => json_encode($feed, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE),
-            'incidents' => $feed['incidents'],
+            'partner' => $partner,
+            'feedJson' => $this->feedService->buildJson($partner),
+            'incidents' => $this->feedService->buildFeed($partner)['incidents'],
         ]);
     }
 
-    // ── Eventos ───────────────────────────────────────────────────────────────
-
-    /**
-     * Lista paginada de eventos de um parceiro.
-     * GET /partner-feed/{code}/events
-     */
-    #[Route('/{code}/events', name: 'partner_event_list', methods: ['GET'])]
+    #[Route('/{code}/events', name: 'event_list', methods: ['GET'])]
     public function eventList(string $code, Request $request): Response
     {
         $partner = $this->getPartnerOr404($code);
-        $page    = max(1, (int) $request->query->get('page', 1));
-
+        $page = max(1, (int) $request->query->get('page', 1));
+        $total = $this->eventRepository->countByPartner($partner);
         return $this->render('partner_feed/events/list.html.twig', [
             'partner' => $partner,
-            'events'  => $this->eventRepository->findByPartnerPaginated($partner, $page),
-            'total'   => $this->eventRepository->countByPartner($partner),
-            'page'    => $page,
-            'pages'   => (int) ceil($this->eventRepository->countByPartner($partner) / 25),
+            'events' => $this->eventRepository->findByPartnerPaginated($partner, $page),
+            'total' => $total,
+            'page' => $page,
+            'pages' => max(1, (int) ceil($total / 25)),
+            'usersById' => [],
         ]);
     }
 
-    /**
-     * Formulário de criação.
-     * GET /partner-feed/{code}/events/new
-     */
-    #[Route('/{code}/events/new', name: 'partner_event_new', methods: ['GET'])]
+    #[Route('/{code}/events/new', name: 'event_new', methods: ['GET'])]
     public function eventNew(string $code): Response
     {
         return $this->render('partner_feed/events/form.html.twig', [
-            'partner'  => $this->getPartnerOr404($code),
-            'event'    => null,
-            'types'    => PartnerFeedEvent::TYPES,
+            'partner' => $this->getPartnerOr404($code),
+            'event' => null,
+            'types' => PartnerFeedEvent::TYPES,
             'subtypes' => PartnerFeedEvent::SUBTYPES,
         ]);
     }
 
-    /**
-     * Criação de evento.
-     * POST /partner-feed/{code}/events
-     */
-    #[Route('/{code}/events', name: 'partner_event_create', methods: ['POST'])]
+    #[Route('/{code}/events', name: 'event_create', methods: ['POST'])]
     public function eventCreate(string $code, Request $request): Response
     {
         $partner = $this->getPartnerOr404($code);
-
         $event = new PartnerFeedEvent();
         $event->setPartner($partner);
-
-        $this->hydrateFromRequest($event, $request);
-
-        // Geocodificação reversa automática quando rua não foi digitada
-        if (trim($request->request->get('street', '')) === '') {
-            $suggested = $this->feedService->suggestStreetName($partner, $event);
-            if ($suggested !== null) {
-                $event->setStreet($suggested);
-            }
+        $user = $this->getUser();
+        if ($user !== null && method_exists($user, 'getId')) {
+            $event->setCreatedByUserId($user->getId());
         }
-
+        $this->hydrateFromRequest($event, $request);
         $this->em->persist($event);
         $this->em->flush();
-
-        $this->addFlash('success', "Evento #{$event->getIncidentId()} criado.");
-
-        return $this->redirectToRoute('partner_event_list', ['code' => $code]);
+        $this->addFlash('success', sprintf('Evento #%s criado.', $event->getUuid() ?? $event->getId()));
+        return $this->redirectToRoute('partner_feed_event_list', ['code' => $code]);
     }
 
-    /**
-     * Formulário de edição.
-     * GET /partner-feed/{code}/events/{id}/edit
-     */
-    #[Route('/{code}/events/{id}/edit', name: 'partner_event_edit', methods: ['GET'])]
+    #[Route('/{code}/events/{id}/edit', name: 'event_edit', methods: ['GET'])]
     public function eventEdit(string $code, int $id): Response
     {
         $partner = $this->getPartnerOr404($code);
-
         return $this->render('partner_feed/events/form.html.twig', [
-            'partner'  => $partner,
-            'event'    => $this->getEventOr404($id, $partner),
-            'types'    => PartnerFeedEvent::TYPES,
+            'partner' => $partner,
+            'event' => $this->getEventOr404($id, $partner),
+            'types' => PartnerFeedEvent::TYPES,
             'subtypes' => PartnerFeedEvent::SUBTYPES,
         ]);
     }
 
-    /**
-     * Atualização de evento.
-     * POST /partner-feed/{code}/events/{id}/edit
-     */
-    #[Route('/{code}/events/{id}/edit', name: 'partner_event_update', methods: ['POST'])]
+    #[Route('/{code}/events/{id}/edit', name: 'event_update', methods: ['POST'])]
     public function eventUpdate(string $code, int $id, Request $request): Response
     {
         $partner = $this->getPartnerOr404($code);
-        $event   = $this->getEventOr404($id, $partner);
-
+        $event = $this->getEventOr404($id, $partner);
         $this->hydrateFromRequest($event, $request);
-        $event->setUpdatedAt(new \DateTimeImmutable());
-
-        // Re-geocodificar quando lat/lon foi alterado
-        if (
-            $request->request->get('latitude') !== null
-            || $request->request->get('longitude') !== null
-        ) {
-            $this->feedService->suggestStreetName($partner, $event);
+        $user = $this->getUser();
+        if ($user !== null && method_exists($user, 'getId')) {
+            $event->setUpdatedByUserId($user->getId());
         }
-
         $this->em->flush();
-
         $this->addFlash('success', 'Evento atualizado.');
-
-        return $this->redirectToRoute('partner_event_list', ['code' => $code]);
+        return $this->redirectToRoute('partner_feed_event_list', ['code' => $code]);
     }
 
-    /**
-     * Alterna ativo ↔ inativo.
-     * POST /partner-feed/{code}/events/{id}/toggle
-     */
-    #[Route('/{code}/events/{id}/toggle', name: 'partner_event_toggle', methods: ['POST'])]
+    #[Route('/{code}/events/{id}/toggle', name: 'event_toggle', methods: ['POST'])]
     public function eventToggle(string $code, int $id): Response
     {
         $partner = $this->getPartnerOr404($code);
-        $event   = $this->getEventOr404($id, $partner);
-
-        $event->setStatus(
-            $event->getStatus() === PartnerFeedEvent::STATUS_ACTIVE
-                ? PartnerFeedEvent::STATUS_INACTIVE
-                : PartnerFeedEvent::STATUS_ACTIVE,
-        );
-        $event->setUpdatedAt(new \DateTimeImmutable());
+        $event = $this->getEventOr404($id, $partner);
+        $event->setIsActive(!$event->isActive());
+        $user = $this->getUser();
+        if ($user !== null && method_exists($user, 'getId')) {
+            $event->setUpdatedByUserId($user->getId());
+        }
         $this->em->flush();
-
-        $this->addFlash('success', 'Status atualizado.');
-
-        return $this->redirectToRoute('partner_event_list', ['code' => $code]);
+        return $this->redirectToRoute('partner_feed_event_list', ['code' => $code]);
     }
 
-    /**
-     * Exclusão de evento — somente ADMIN.
-     * POST /partner-feed/{code}/events/{id}/delete
-     */
-    #[Route('/{code}/events/{id}/delete', name: 'partner_event_delete', methods: ['POST'])]
+    #[Route('/{code}/events/{id}/delete', name: 'event_delete', methods: ['POST'])]
     #[IsGranted('ROLE_ADMIN')]
     public function eventDelete(string $code, int $id): Response
     {
         $partner = $this->getPartnerOr404($code);
-        $event   = $this->getEventOr404($id, $partner);
-
+        $event = $this->getEventOr404($id, $partner);
         $this->em->remove($event);
         $this->em->flush();
-
-        $this->addFlash('success', 'Evento excluído.');
-
-        return $this->redirectToRoute('partner_event_list', ['code' => $code]);
+        return $this->redirectToRoute('partner_feed_event_list', ['code' => $code]);
     }
 
-    /**
-     * Geocodificação reversa via AJAX.
-     * POST /partner-feed/{code}/events/geocode
-     */
-    #[Route('/{code}/events/geocode', name: 'partner_event_geocode', methods: ['POST'])]
-    public function eventGeocode(string $code, Request $request): JsonResponse
+    private function getPartnerOr404(string $code): Partner
     {
-        $partner = $this->getPartnerOr404($code);
-
-        $lat = (float) $request->request->get('lat', 0);
-        $lon = (float) $request->request->get('lon', 0);
-
-        if ($lat === 0.0 || $lon === 0.0) {
-            return new JsonResponse(
-                ['error' => 'lat e lon são obrigatórios'],
-                Response::HTTP_BAD_REQUEST,
-            );
-        }
-
-        return new JsonResponse([
-            'result' => $this->feedService->reverseGeocode($partner, $lat, $lon),
-        ]);
-    }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
-    private function getPartnerOr404(string $code): \App\Entity\Partner
-    {
-        $partner = $this->partnerRepository->findOneBy([
-            'code'     => $code,
-            'isActive' => true,
-        ]);
-
-        if ($partner === null) {
-            throw $this->createNotFoundException("Parceiro '{$code}' não encontrado.");
-        }
-
+        $partner = $this->partnerRepository->findOneBy(['code' => $code, 'isActive' => true]);
+        if ($partner === null) throw $this->createNotFoundException(sprintf("Parceiro '%s' não encontrado.", $code));
         return $partner;
     }
 
-    private function getEventOr404(int $id, \App\Entity\Partner $partner): PartnerFeedEvent
+    private function getEventOr404(int $id, Partner $partner): PartnerFeedEvent
     {
         $event = $this->eventRepository->find($id);
-
-        if ($event === null || $event->getPartner() !== $partner) {
-            throw $this->createNotFoundException('Evento não encontrado.');
-        }
-
+        if ($event === null || $event->getPartner() !== $partner) throw $this->createNotFoundException('Evento não encontrado.');
         return $event;
     }
 
-    private function hydrateFromRequest(
-        PartnerFeedEvent $event,
-        Request $request,
-    ): void {
+    private function hydrateFromRequest(PartnerFeedEvent $event, Request $request): void
+    {
         $r = $request->request;
-
-        if ($r->has('type'))      $event->setType($r->get('type'));
-        if ($r->has('subtype'))   $event->setSubtype($r->get('subtype') ?: null);
-        if ($r->has('polyline'))  $event->setPolyline($r->get('polyline'));
-        if ($r->has('street') && $r->get('street') !== '') {
-            $event->setStreet($r->get('street'));
+        if ($r->has('cifsType') && $r->get('cifsType') !== '') $event->setCifsType((string) $r->get('cifsType'));
+        if ($r->has('cifsSubtype')) $event->setCifsSubtype($r->get('cifsSubtype') !== '' ? (string) $r->get('cifsSubtype') : null);
+        if ($r->has('street')) $event->setStreet((string) $r->get('street'));
+        if ($r->has('reference')) $event->setReference($r->get('reference') !== '' ? (string) $r->get('reference') : null);
+        if ($r->has('description')) $event->setDescription($r->get('description') !== '' ? (string) $r->get('description') : null);
+        if ($r->has('city')) $event->setCity($r->get('city') !== '' ? (string) $r->get('city') : null);
+        if ($r->has('polyline')) {
+            $polyline = json_decode((string) $r->get('polyline'), true);
+            if (is_array($polyline)) $event->setPolyline($polyline);
         }
-        if ($r->has('direction'))  $event->setDirection($r->get('direction'));
-        if ($r->has('description')) $event->setDescription($r->get('description') ?: null);
-        if ($r->has('status'))     $event->setStatus($r->get('status'));
-        if ($r->has('latitude'))   $event->setLatitude($r->get('latitude') ?: null);
-        if ($r->has('longitude'))  $event->setLongitude($r->get('longitude') ?: null);
-
-        if ($r->has('starttime') && $r->get('starttime') !== '') {
-            $event->setStarttime(new \DateTimeImmutable($r->get('starttime')));
-        }
-
-        $event->setEndtime(
-            ($r->has('endtime') && $r->get('endtime') !== '')
-                ? new \DateTimeImmutable($r->get('endtime'))
-                : null,
-        );
+        if ($r->has('direction') && $r->get('direction') !== '') $event->setDirection((string) $r->get('direction'));
+        if ($r->has('startTime') && $r->get('startTime') !== '') $event->setStartTime(new \DateTimeImmutable((string) $r->get('startTime')));
+        if ($r->has('endTime')) $event->setEndTime($r->get('endTime') !== '' ? new \DateTimeImmutable((string) $r->get('endTime')) : null);
+        if ($r->has('isActive')) $event->setIsActive(filter_var($r->get('isActive'), FILTER_VALIDATE_BOOLEAN));
     }
 }

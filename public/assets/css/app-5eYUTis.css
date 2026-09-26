@@ -1,0 +1,43 @@
+/* assets/css/app.css — bundle global */
+
+/* ── Tema (DEVE vir primeiro) ──────────────────────────── */
+@import "theme-_HI9DFG.css";
+
+@import "layout/base-layout-VAEbl7E.css";
+@import "layout/header-pihUCsQ.css";
+@import "layout/sidebar-jjFZdlq.css";
+@import "layout/footer-5p6Z6pa.css";
+
+@import "components/typography-2WxBJd7.css";
+@import "components/animations-GHMRWoG.css";
+@import "components/scrollbars-ktp1oVN.css";
+@import "components/buttons-IqobaQX.css";
+@import "components/cards-uQA1m9s.css";
+@import "components/forms-tBq0gZi.css";
+@import "components/filters-PG7sBVK.css";
+@import "components/tables-_RoRovr.css";
+@import "components/charts-DWzcHsv.css";
+@import "components/accordions-x28MYlb.css";
+@import "components/alerts-_XODWN4.css";
+@import "components/notifications-A2aarQz.css";
+@import "components/avatars-Xe9-IYJ.css";
+@import "components/menus-W-AlO-K.css";
+@import "components/modals-TO1m-AP.css";
+@import "components/pagination-gam37sE.css";
+@import "components/empty-states-YB9IIZ8.css";
+@import "components/expand-buttons-I9fW0L0.css";
+
+@import "components/analytics-7B6zYKK.css";
+
+/* Páginas */
+@import "pages/weather-index-uJmuWBp.css";
+@import "pages/weather-show-SG2acMx.css";
+@import "pages/weather-analysis-RbZRPFI.css";
+@import "pages/tv-pYzrtUa.css";
+@import "pages/admin-wJL-Dz_.css";
+@import "pages/jam-Hel11p5.css";
+@import "pages/jam-show-KdnwslV.css";
+@import "pages/partner-feed-index-8ch0kkN.css";
+/* Dashboard, alerts, routes, route-compare, route-show etc.
+   devem ser importados pelo entrypoint da respectiva página
+   (ou adicione aqui se você já centraliza tudo em app.css). */

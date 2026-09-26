@@ -37,6 +37,10 @@
 @import './pages/admin.css';
 @import './pages/jam.css';
 @import './pages/jam-show.css';
+@import './pages/partner-feed-index.css';
+@import './pages/partner-feed-show.css';
+@import './pages/partner-feed-form.css';
+@import './pages/partner-feed-events-list.css';
 /* Dashboard, alerts, routes, route-compare, route-show etc.
    devem ser importados pelo entrypoint da respectiva página
    (ou adicione aqui se você já centraliza tudo em app.css). */

@@ -84,7 +84,7 @@
         "type": "js"
     },
     "app": {
-        "path": "\/assets\/js\/app-d2hKpj9.js",
+        "path": "\/assets\/js\/app-mI7Oi0d.js",
         "type": "js"
     },
     "\/assets\/js\/components\/buttons.js": {
@@ -153,6 +153,22 @@
     },
     "\/assets\/js\/pages\/jam-show.js": {
         "path": "\/assets\/js\/pages\/jam-show-13npYzZ.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/partner-feed-index.js": {
+        "path": "\/assets\/js\/pages\/partner-feed-index-HELQ5i2.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/partner-feed-show.js": {
+        "path": "\/assets\/js\/pages\/partner-feed-show-4xCMN6A.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/partner-feed-form.js": {
+        "path": "\/assets\/js\/pages\/partner-feed-form-dGDPzOf.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/partner-feed-events-list.js": {
+        "path": "\/assets\/js\/pages\/partner-feed-events-list-vctASFz.js",
         "type": "js"
     },
     "dashboard": {

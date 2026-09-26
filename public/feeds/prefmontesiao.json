@@ -1,0 +1,19 @@
+{
+    "incidents": [
+        {
+            "id": "a404930c-2085-4051-8be6-4033675ff534",
+            "creationtime": "2026-09-24T23:07:19+00:00",
+            "updatetime": "2026-09-24T23:07:19+00:00",
+            "type": "ROAD_CLOSED",
+            "subtype": null,
+            "street": "Rua Amélia Fiche",
+            "description": "Obras",
+            "city": null,
+            "polyline": "-20.659279 -43.805645 -20.659269 -43.805682 -20.659686 -43.806728",
+            "direction": "BOTH_DIRECTIONS",
+            "starttime": "2026-09-24T20:03:00+00:00",
+            "endtime": "2026-10-09T20:03:00+00:00",
+            "reference": "Conselheiro Lafaiete"
+        }
+    ]
+}

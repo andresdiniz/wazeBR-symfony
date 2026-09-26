@@ -22,23 +22,33 @@ final class MainSchedule implements ScheduleProviderInterface
     public function getSchedule(): Schedule
     {
         return (new Schedule())
-            ->stateful($this->cache)   // ← adicionar isso
+            ->stateful($this->cache)
+
+            // ── Partner Feed JSON (atualiza a cada minuto) ──────────────────
             ->add(
                 RecurringMessage::every(
-                    '2 minute',
+                    '1 minute',
+                    new RunCommandMessage('app:partner-feed:update-json --no-interaction'),
+                ),
+            )
+
+            // ── Waze feed (alerts/jams) ─────────────────────────────────────
+            ->add(
+                RecurringMessage::every(
+                    '2 minutes',
                     new RunCommandMessage('app:fetch-waze-feed --no-interaction'),
                 ),
             )
-            // ── Waze TVT (rotas) ───────────────────────────────────────────
+
+            // ── Waze TVT (rotas) ────────────────────────────────────────────
             ->add(
                 RecurringMessage::every(
-                    '2 minute',
+                    '2 minutes',
                     new RunCommandMessage('app:fetch:waze:tvt --no-interaction'),
                 ),
             )
 
             // ── CEMADEN Hidro (nível do rio + chuva) ───────────────────────
-            // Dados são horários; 30 min dá folga para o CEMADEN publicar.
             ->add(
                 RecurringMessage::every(
                     '10 minutes',
@@ -55,8 +65,6 @@ final class MainSchedule implements ScheduleProviderInterface
             )
 
             // ── Clima (Open-Meteo) ─────────────────────────────────────────
-            // Open-Meteo atualiza "current" a cada ~15 min. Coletar de
-            // 10 em 10 garante que pegamos cada atualização.
             ->add(
                 RecurringMessage::every(
                     '10 minutes',

@@ -1,0 +1,297 @@
+/* assets/styles/pages/partner-feed-show.css */
+
+/* ─── Wrapper ─────────────────────────────────────────────────────────────── */
+
+.pf-show {
+    padding: 1.5rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* ─── Breadcrumb ──────────────────────────────────────────────────────────── */
+
+.pf-show__breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+    color: var(--color-text-muted, #9ca3af);
+    margin-bottom: 1rem;
+    text-decoration: none;
+}
+
+.pf-show__breadcrumb:hover {
+    color: var(--color-text-secondary, #d1d5db);
+    text-decoration: none;
+}
+
+.pf-show__breadcrumb svg {
+    flex-shrink: 0;
+}
+
+/* ─── Cabeçalho da página ─────────────────────────────────────────────────── */
+
+.pf-show__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 1rem;
+    border-bottom: 1px solid var(--color-border, #374151);
+    padding-bottom: 1.25rem;
+    margin-bottom: 1.75rem;
+}
+
+.pf-show__title {
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: var(--color-text-primary, #f9fafb);
+    margin: 0 0 0.2rem;
+    line-height: 1.25;
+}
+
+.pf-show__location {
+    font-size: 0.8125rem;
+    color: var(--color-text-muted, #9ca3af);
+    margin: 0;
+}
+
+.pf-show__actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* ─── Botões ──────────────────────────────────────────────────────────────── */
+
+.pf-show-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    padding: 0.45rem 0.875rem;
+    border-radius: 0.375rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+    text-decoration: none;
+    line-height: 1.25;
+    white-space: nowrap;
+    transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.pf-show-btn--new {
+    background: rgba(52, 211, 153, 0.15);
+    color: #34d399;
+    border-color: rgba(52, 211, 153, 0.3);
+}
+
+.pf-show-btn--new:hover {
+    background: rgba(52, 211, 153, 0.25);
+    color: #34d399;
+    text-decoration: none;
+}
+
+.pf-show-btn--json {
+    background: var(--color-primary, #60a5fa);
+    color: #0f172a;
+    border-color: var(--color-primary, #60a5fa);
+}
+
+.pf-show-btn--json:hover {
+    background: var(--color-primary-hover, #93c5fd);
+    border-color: var(--color-primary-hover, #93c5fd);
+    color: #0f172a;
+    text-decoration: none;
+}
+
+.pf-show-btn--events {
+    background: transparent;
+    color: var(--color-text-secondary, #d1d5db);
+    border-color: var(--color-border, #374151);
+}
+
+.pf-show-btn--events:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--color-text-primary, #f9fafb);
+    text-decoration: none;
+}
+
+/* ─── Grid de conteúdo ────────────────────────────────────────────────────── */
+
+.pf-show__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+}
+
+@media (min-width: 1024px) {
+    .pf-show__grid {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    }
+}
+
+/* ─── Card base ───────────────────────────────────────────────────────────── */
+
+.pf-show-card {
+    background: var(--color-surface, #1f2937);
+    border: 1px solid var(--color-border, #374151);
+    border-radius: 0.625rem;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.pf-show-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.125rem;
+    border-bottom: 1px solid var(--color-border, #374151);
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.pf-show-card__title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-text-secondary, #d1d5db);
+    letter-spacing: 0.01em;
+    margin: 0;
+}
+
+/* ─── Card — lista de informações ─────────────────────────────────────────── */
+
+.pf-info-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.pf-info-list__item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1.125rem;
+    border-bottom: 1px solid var(--color-border, #374151);
+    gap: 1rem;
+}
+
+.pf-info-list__item:last-child {
+    border-bottom: none;
+}
+
+.pf-info-list__label {
+    font-size: 0.8125rem;
+    color: var(--color-text-muted, #9ca3af);
+    flex-shrink: 0;
+}
+
+.pf-info-list__value {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text-primary, #f9fafb);
+    text-align: right;
+}
+
+.pf-info-list__code {
+    font-family: ui-monospace, 'Cascadia Code', monospace;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-primary, #60a5fa);
+    background: rgba(96, 165, 250, 0.1);
+    padding: 0.15rem 0.5rem;
+    border-radius: 0.25rem;
+}
+
+.pf-info-list__count {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--color-text-primary, #f9fafb);
+}
+
+/* ─── Badges ──────────────────────────────────────────────────────────────── */
+
+.pf-show-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+}
+
+.pf-show-badge--ok {
+    background: rgba(52, 211, 153, 0.12);
+    color: #34d399;
+}
+
+.pf-show-badge--warn {
+    background: rgba(251, 191, 36, 0.12);
+    color: #fbbf24;
+}
+
+/* ─── Card — preview JSON ─────────────────────────────────────────────────── */
+
+.pf-preview__body {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+.pf-preview__pre {
+    margin: 0;
+    padding: 1rem 1.125rem;
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 0.75rem;
+    line-height: 1.6;
+    max-height: 440px;
+    overflow: auto;
+    white-space: pre;
+    word-break: normal;
+    tab-size: 2;
+}
+
+/* ─── Botão copiar no header do preview ──────────────────────────────────── */
+
+.pf-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.3rem 0.625rem;
+    border-radius: 0.3125rem;
+    border: 1px solid var(--color-border, #374151);
+    background: transparent;
+    color: var(--color-text-muted, #9ca3af);
+    cursor: pointer;
+    transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+    white-space: nowrap;
+}
+
+.pf-copy-btn:hover {
+    color: var(--color-text-primary, #f9fafb);
+    border-color: var(--color-text-muted, #9ca3af);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.pf-copy-btn[data-copied="true"] {
+    color: #34d399;
+    border-color: rgba(52, 211, 153, 0.4);
+}
+
+.pf-copy-btn[data-copied="true"] .pf-copy-btn__label {
+    display: none;
+}
+
+.pf-copy-btn__label-ok {
+    display: none;
+}
+
+.pf-copy-btn[data-copied="true"] .pf-copy-btn__label-ok {
+    display: inline;
+}
