@@ -43,6 +43,14 @@
                 <span class="jam-live-badge" data-jam-live-badge>
                     <i></i> Ao vivo · <span data-jam-live-clock>--:--:--</span>
                 </span>
+
+                {# ─── NOVO: link para o histórico ──────────────────── #}
+                <a class="jam-button"
+                   href="{{ path('jam_history_index', filters|filter(v => v is not empty and v is not same as(false))) }}"
+                   title="Ver análise histórica e correlação com alertas">
+                    <span>📊</span> Histórico
+                </a>
+
                 <button type="button" class="jam-button" data-action="refresh">
                     <span>↻</span> Atualizar
                 </button>

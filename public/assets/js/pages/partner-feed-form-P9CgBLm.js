@@ -152,6 +152,8 @@ function updateCoordsDisplay(root, lat = null, lng = null) {
     }
 }
 
+// ✅ CORRIGIDO — usa GET com query string, conforme documentação oficial:
+// https://support.google.com/waze/partners/answer/11486981
 async function reverseGeocode(lat, lng, root, geoToken, geoRegion) {
     const streetInput    = root.getElementById('street');
     const referenceInput = root.getElementById('reference');
@@ -163,34 +165,62 @@ async function reverseGeocode(lat, lng, root, geoToken, geoRegion) {
     // Tentativa 1: API Waze (se token configurado)
     if (geoToken) {
         try {
+            // URLs base corretas conforme documentação oficial
             const baseUrl = {
                 NA:  'https://www.waze.com/partnerhub-api/waze-map/streetsInfo',
                 IL:  'https://www.waze.com/il-partnerhub-api/waze-map/streetsInfo',
-                ROW: 'https://www.waze.com/partnerhub-api/waze-map/streetsInfo?lat=%3Clat%3E&lon=%3Clon%3E&token=%3Ctoken%3E',
+                ROW: 'https://www.waze.com/row-partnerhub-api/waze-map/streetsInfo',
             };
-            const url = baseUrl[geoRegion] ?? baseUrl.ROW;
+            const base = baseUrl[geoRegion] ?? baseUrl.ROW;
 
-            const res  = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: geoToken, lat, lon: lng }),
-            });
+            // Monta a URL como GET, com lat/lon/token na query string
+            const url = new URL(base);
+            url.searchParams.set('lat', String(lat));
+            url.searchParams.set('lon', String(lng));
+            url.searchParams.set('token', geoToken);
+
+            const res = await fetch(url.toString(), { method: 'GET' });
 
             if (res.ok) {
                 const data = await res.json();
-                if (data?.result?.street) {
-                    streetInput.value = data.result.street;
-                    if (referenceInput && data.result.city) referenceInput.value = data.result.city;
+
+                // Resposta esperada:
+                // { "result":[{"streetNames":["..."],"distance":4.54}], "lon":..., "radius":50, "lat":... }
+                const top = Array.isArray(data?.result) ? data.result[0] : null;
+                const streetName = top?.streetNames?.[0] ?? null;
+
+                if (streetName) {
+                    streetInput.value = streetName;
                     streetInput.disabled = false;
+
+                    // A API de Reverse Geocoding do Waze NÃO retorna cidade.
+                    // Chamamos o Nominatim apenas para preencher 'reference' (cidade/bairro),
+                    // sem sobrescrever o nome da rua já obtido do Waze.
+                    if (referenceInput && !referenceInput.value) {
+                        try {
+                            const nomRes = await fetch(
+                                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`
+                            );
+                            const nomData = await nomRes.json();
+                            const addr = nomData?.address;
+                            if (addr) {
+                                const ref = addr.city || addr.town || addr.village
+                                    || addr.county || addr.state || '';
+                                if (ref) referenceInput.value = ref;
+                            }
+                        } catch (_) { /* silencioso — só enriquece o campo */ }
+                    }
                     return;
                 }
+            } else {
+                console.warn('[pf-form] Waze geocoding HTTP', res.status);
             }
         } catch (err) {
             console.warn('[pf-form] Waze geocoding falhou:', err);
         }
     }
 
-    // Tentativa 2: Nominatim (fallback)
+    // Tentativa 2: Nominatim (fallback completo)
     try {
         const res  = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`

@@ -1,0 +1,327 @@
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}Histórico de congestionamentos | WazeBR{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/pages/jam-history.css') }}">
+{% endblock %}
+
+{% block content %}
+{% set from = filters.date_from is not empty ? filters.date_from : 'now'|date_modify('-7 days')|date('Y-m-d') %}
+{% set to   = filters.date_to   is not empty ? filters.date_to   : 'now'|date('Y-m-d') %}
+
+<div class="jam-history-page"
+     data-jh-page
+     data-api-endpoint="{{ path('jam_history_api_data') }}"
+     data-export-endpoint="{{ path('jam_history_export') }}"
+     data-timezone="{{ app_timezone|default('America/Sao_Paulo') }}">
+
+    <div class="jh-container">
+
+        {# ── Breadcrumb ───────────────────────────────────────── #}
+        <nav class="jh-breadcrumb" aria-label="Trilha">
+            <a href="{{ path('jam_index') }}">← Jams</a>
+            <span>/</span>
+            <span aria-current="page">Histórico</span>
+        </nav>
+
+        {# ── Header ───────────────────────────────────────────── #}
+        <header class="jh-header">
+            <div>
+                <span class="jh-eyebrow"><i></i> Série histórica · últimas 90 dias</span>
+                <h1>Histórico de congestionamentos{% if partner %} — {{ partner.name }}{% endif %}</h1>
+                <p>
+                    Analise os <strong>padrões de congestionamento</strong> ao longo do tempo,
+                    agrupe por hora, dia da semana e cidade, e entenda a
+                    <strong>correlação com alertas do Waze</strong>. Exportação CSV completa.
+                </p>
+            </div>
+            <div class="jh-header-tools">
+                <button type="button" class="jh-button" data-action="jh-refresh">
+                    <span>↻</span> Atualizar
+                </button>
+                <a class="jh-button is-primary" data-jh-export
+                   href="{{ path('jam_history_export', filters|filter(v => v is not empty and v != '1' or v is same as(true))) }}">
+                    ⇩ Exportar CSV
+                </a>
+            </div>
+        </header>
+
+        {# ── Filtros ──────────────────────────────────────────── #}
+        <section class="jh-filter-panel">
+            <header class="jh-filter-head">
+                <div>
+                    <span class="jh-kicker">Filtros</span>
+                    <h2>Definir intervalo e escopo</h2>
+                </div>
+                <button type="button" class="jh-button is-link" data-action="jh-clear-filters">Limpar</button>
+            </header>
+
+            <form class="jh-filter-form" data-jh-filter-form>
+
+                <label class="jh-field">
+                    <span>De</span>
+                    <input type="date" name="date_from" data-jh-filter="date_from"
+                           value="{{ from }}">
+                </label>
+
+                <label class="jh-field">
+                    <span>Até</span>
+                    <input type="date" name="date_to" data-jh-filter="date_to"
+                           value="{{ to }}">
+                </label>
+
+                <label class="jh-field">
+                    <span>Nível mínimo</span>
+                    <select name="level_min" data-jh-filter="level_min">
+                        <option value="0" {{ filters.level_min == 0 ? 'selected' }}>Todos</option>
+                        <option value="1" {{ filters.level_min == 1 ? 'selected' }}>≥ 1 Baixo</option>
+                        <option value="2" {{ filters.level_min == 2 ? 'selected' }}>≥ 2 Moderado</option>
+                        <option value="3" {{ filters.level_min == 3 ? 'selected' }}>≥ 3 Alto</option>
+                        <option value="4" {{ filters.level_min == 4 ? 'selected' }}>≥ 4 Muito alto</option>
+                        <option value="5" {{ filters.level_min == 5 ? 'selected' }}>5 Parado</option>
+                    </select>
+                </label>
+
+                <label class="jh-field">
+                    <span>Cidade</span>
+                    <select name="city" data-jh-filter="city">
+                        <option value="">Todas</option>
+                        {% for city, n in filter_options.cities %}
+                            <option value="{{ city }}" {{ filters.city == city ? 'selected' }}>
+                                {{ city }} ({{ n }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label class="jh-field jh-field--grow">
+                    <span>Rua</span>
+                    <input type="search" name="street" data-jh-filter="street"
+                           value="{{ filters.street }}"
+                           placeholder="Buscar por rua..." autocomplete="off">
+                </label>
+
+                <div class="jh-filter-actions">
+                    <button type="submit" class="jh-button is-primary" data-action="jh-apply">Aplicar</button>
+                </div>
+
+                <div class="jh-quick-range">
+                    <button type="button" data-jh-range="1">24h</button>
+                    <button type="button" data-jh-range="3">3 dias</button>
+                    <button type="button" data-jh-range="7" class="is-active">7 dias</button>
+                    <button type="button" data-jh-range="30">30 dias</button>
+                    <button type="button" data-jh-range="90">90 dias</button>
+                </div>
+
+                <label class="jh-toggle">
+                    <input type="checkbox" name="only_blocked" value="1"
+                           data-jh-filter="only_blocked"
+                           {{ filters.only_blocked ? 'checked' }}>
+                    <span>🚫 Apenas interdições</span>
+                </label>
+
+                <label class="jh-toggle">
+                    <input type="checkbox" name="include_inactive" value="1"
+                           data-jh-filter="include_inactive"
+                           {{ filters.include_inactive|default(true) ? 'checked' }}>
+                    <span>Incluir inativos</span>
+                </label>
+            </form>
+        </section>
+
+        {# ── KPIs ─────────────────────────────────────────────── #}
+        <section class="jh-kpi-grid">
+            <article class="jh-kpi kpi-blue">
+                <span class="kpi-icon" aria-hidden="true">≋</span>
+                <strong class="kpi-value" data-jh-kpi="total">0</strong>
+                <span class="kpi-label">Jams no período</span>
+                <span class="kpi-foot">
+                    <span data-jh-delta="total" class="jh-delta is-flat">—</span>
+                    <small data-jh-prev-range></small>
+                </span>
+                <small class="kpi-foot" data-jh-kpi-foot="total" style="font-size:11px"></small>
+            </article>
+
+            <article class="jh-kpi kpi-red">
+                <span class="kpi-icon" aria-hidden="true">🚫</span>
+                <strong class="kpi-value" data-jh-kpi="blocked">0</strong>
+                <span class="kpi-label">Interdições totais</span>
+                <span class="kpi-foot">
+                    <span data-jh-delta="blocked" class="jh-delta is-flat">—</span>
+                    <small data-jh-kpi-foot="blocked"></small>
+                </span>
+            </article>
+
+            <article class="jh-kpi kpi-orange">
+                <span class="kpi-icon" aria-hidden="true">⏱</span>
+                <strong class="kpi-value kpi-value--sm" data-jh-kpi="avgDelay">0s</strong>
+                <span class="kpi-label">Atraso médio</span>
+                <span class="kpi-foot">
+                    <span data-jh-delta="avgDelay" class="jh-delta is-flat">—</span>
+                </span>
+            </article>
+
+            <article class="jh-kpi kpi-green">
+                <span class="kpi-icon" aria-hidden="true">⌛</span>
+                <strong class="kpi-value kpi-value--sm" data-jh-kpi="avgDuration">—</strong>
+                <span class="kpi-label">Duração média</span>
+                <span class="kpi-foot">
+                    <span data-jh-delta="avgDuration" class="jh-delta is-flat">—</span>
+                </span>
+            </article>
+
+            <article class="jh-kpi kpi-accent">
+                <span class="kpi-icon" aria-hidden="true">🔔</span>
+                <strong class="kpi-value kpi-value--sm" data-jh-kpi="correlated">—</strong>
+                <span class="kpi-label">Correlação alertas</span>
+                <span class="kpi-foot">
+                    <small>% jams nível 3+ com alerta próximo</small>
+                </span>
+            </article>
+        </section>
+
+        {# ── Timeline + correlação ────────────────────────────── #}
+        <div class="jh-grid-2">
+            <section class="jh-panel">
+                <header class="jh-panel__head">
+                    <div>
+                        <span class="jh-kicker">Temporal</span>
+                        <h2>Timeline · jams e alertas</h2>
+                    </div>
+                </header>
+                <div class="jh-timeline" data-jh-timeline>
+                    <div class="jh-empty">Carregando…</div>
+                </div>
+            </section>
+
+            <section class="jh-panel jh-panel--accent">
+                <header class="jh-panel__head">
+                    <div>
+                        <span class="jh-kicker">Correlação</span>
+                        <h2>🔔 Alertas × Jams</h2>
+                    </div>
+                </header>
+                <div data-jh-correlation>
+                    <div class="jh-empty">Carregando…</div>
+                </div>
+            </section>
+        </div>
+
+        {# ── Distribuições ───────────────────────────────────── #}
+        <div class="jh-grid-3">
+            <section class="jh-panel">
+                <header class="jh-panel__head">
+                    <div>
+                        <span class="jh-kicker">Por hora</span>
+                        <h2>Volume por hora do dia</h2>
+                    </div>
+                </header>
+                <div class="jh-bars" data-jh-by-hour></div>
+            </section>
+
+            <section class="jh-panel">
+                <header class="jh-panel__head">
+                    <div>
+                        <span class="jh-kicker">Por dia</span>
+                        <h2>Volume por dia da semana</h2>
+                    </div>
+                </header>
+                <div class="jh-bars" data-jh-by-dow></div>
+            </section>
+
+            <section class="jh-panel">
+                <header class="jh-panel__head">
+                    <div>
+                        <span class="jh-kicker">Por nível</span>
+                        <h2>Distribuição de severidade</h2>
+                    </div>
+                </header>
+                <div class="jh-bars" data-jh-by-level></div>
+            </section>
+        </div>
+
+        {# ── Status + rankings ───────────────────────────────── #}
+        <div class="jh-grid-3">
+            <section class="jh-panel">
+                <header class="jh-panel__head">
+                    <div>
+                        <span class="jh-kicker">Composição</span>
+                        <h2>Status no período</h2>
+                    </div>
+                </header>
+                <div data-jh-by-status></div>
+            </section>
+
+            <section class="jh-panel">
+                <header class="jh-panel__head">
+                    <div>
+                        <span class="jh-kicker">Top</span>
+                        <h2>Ruas mais afetadas</h2>
+                    </div>
+                </header>
+                <ul class="jh-rank" data-jh-rank-streets>
+                    <li class="jh-empty">Sem dados</li>
+                </ul>
+            </section>
+
+            <section class="jh-panel">
+                <header class="jh-panel__head">
+                    <div>
+                        <span class="jh-kicker">Top</span>
+                        <h2>Cidades mais afetadas</h2>
+                    </div>
+                </header>
+                <ul class="jh-rank" data-jh-rank-cities>
+                    <li class="jh-empty">Sem dados</li>
+                </ul>
+            </section>
+        </div>
+
+        {# ── Tabela principal ────────────────────────────────── #}
+        <section class="jh-panel">
+            <header class="jh-panel__head">
+                <div>
+                    <span class="jh-kicker">Registros</span>
+                    <h2>Jams no período</h2>
+                </div>
+                <span class="jh-count-badge" data-jh-count="rows">0</span>
+            </header>
+
+            <div class="jh-table-wrap">
+                <table class="jh-table" data-jh-table-root>
+                    <thead>
+                        <tr>
+                            <th data-sortable="level">Nível <span class="jh-sort-icon"></span></th>
+                            <th data-sortable="street">Rua / Cidade <span class="jh-sort-icon"></span></th>
+                            <th class="is-num" data-sortable="delay">Atraso <span class="jh-sort-icon"></span></th>
+                            <th class="is-num" data-sortable="speed">Vel. <span class="jh-sort-icon"></span></th>
+                            <th class="is-num" data-sortable="length">Ext. <span class="jh-sort-icon"></span></th>
+                            <th class="is-num" data-sortable="durationMin">Duração <span class="jh-sort-icon"></span></th>
+                            <th class="is-num" data-sortable="nearbyAlerts">🔔 <span class="jh-sort-icon"></span></th>
+                            <th data-sortable="when">Quando <span class="jh-sort-icon"></span></th>
+                        </tr>
+                    </thead>
+                    <tbody data-jh-table>
+                        <tr><td colspan="8" class="jh-empty">Carregando…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="jh-load-more" data-jh-load-more style="display:none">
+                <button type="button" class="jh-button">Carregar mais</button>
+            </div>
+        </section>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script type="module">
+        import init from '{{ asset('js/pages/jam-history.js') }}';
+        init();
+    </script>
+{% endblock %}

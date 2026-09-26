@@ -1,0 +1,55 @@
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}Semáforos — {{ partner.name }}{% endblock %}
+
+{% block content %}
+<div class="pf-form">
+    <header class="pf-form__header">
+        <h1 class="pf-form__title">Controladores de semáforo</h1>
+        <p class="pf-form__meta">
+            Parceiro: <strong>{{ partner.name }}</strong>
+            &nbsp;·&nbsp; {{ lights|length }} controlador(es)
+        </p>
+    </header>
+
+    <table class="pf-table">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Nome</th>
+                <th>Protocolo</th>
+                <th>Endpoint</th>
+                <th>Última leitura</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for light in lights %}
+            <tr>
+                <td><code>{{ light.code }}</code></td>
+                <td>{{ light.name }}</td>
+                <td>{{ light.protocol }}</td>
+                <td>{{ light.endpoint }}</td>
+                <td>{{ light.lastReadAt ? light.lastReadAt|date('d/m/Y H:i:s') : '—' }}</td>
+                <td>
+                    {% if light.lastReadStatus == 'OK' %}
+                        <span class="pf-badge pf-badge--ok">OK</span>
+                    {% elseif light.lastReadStatus == 'ERROR' %}
+                        <span class="pf-badge pf-badge--error" title="{{ light.lastReadError }}">ERRO</span>
+                    {% else %}
+                        <span class="pf-badge">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{{ path('partner_feed_traffic_light_show', {code: partner.code, id: light.id}) }}"
+                       class="pf-btn pf-btn--secondary">Detalhes</a>
+                </td>
+            </tr>
+        {% else %}
+            <tr><td colspan="7">Nenhum controlador cadastrado.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

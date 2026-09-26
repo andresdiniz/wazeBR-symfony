@@ -51,6 +51,18 @@
                     {% elseif isBlocked %}
                         <span class="jam-show-badge jam-show-badge--blocked">🚫 Interdição ativa</span>
                     {% endif %}
+                    {% if jam.isActive is defined and not jam.isActive %}
+    <span class="jam-show-badge" style="
+        background: var(--js-surface-strong);
+        color: var(--js-text-muted);
+        border-color: var(--js-border-strong);
+    ">
+        ⊘ Encerrado
+        {% if jam.deactivatedAt %}
+            · {{ jam.deactivatedAt|date('d/m H:i') }}
+        {% endif %}
+    </span>
+{% endif %}
                     {% if alertCount > 0 %}
                         <span class="jam-show-badge jam-show-badge--level-3">
                             🔔 {{ alertCount }} alerta{{ alertCount > 1 ? 's' : '' }} próximo{{ alertCount > 1 ? 's' : '' }}
@@ -181,6 +193,12 @@
                     {% endif %}
                     <div><dt>País</dt><dd>{{ jam.country|default('—') }}</dd></div>
                     <div><dt>Pontos da polyline</dt><dd>{{ jam.points }}</dd></div>
+                    {% if jam.deactivatedAt %}
+    <div>
+        <dt>Encerrado em</dt>
+        <dd>{{ jam.deactivatedAt|date('d/m/Y H:i') }}</dd>
+    </div>
+{% endif %}
                 </dl>
             </section>
         </div>

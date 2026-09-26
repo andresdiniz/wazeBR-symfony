@@ -117,56 +117,61 @@ final class JamRepository
     // ═══════════════════════════════════════════════════════════════════
 
     /** @return array<string,mixed>|null */
-    public function findJamById(int $id, ?Partner $partner): ?array
-    {
-        $pf     = '';
-        $params = ['id' => $id];
+    /** @return array<string,mixed>|null */
+public function findJamById(int $id, ?Partner $partner): ?array
+{
+    $pf     = '';
+    $params = ['id' => $id];
 
-        if ($partner !== null) {
-            $pf              = ' AND j.partner_id = :pid';
-            $params['pid'] = $partner->getId();
-        }
-
-        $row = $this->connection->executeQuery(
-            "SELECT
-                j.id, j.uuid, j.street, j.city, j.country,
-                j.level, j.delay, j.length, j.speed_kmh,
-                j.line_points, j.line,
-                j.collected_at, j.last_seen_at,
-                " . self::sqlBlocked('j') . " AS is_blocked,
-                " . self::sqlStale('j')   . " AS is_stale
-             FROM waze_jams j
-             WHERE j.id = :id {$pf}
-               AND j.is_active = 1
-             LIMIT 1",
-            $params
-        )->fetchAssociative();
-
-        if ($row === false) {
-            return null;
-        }
-
-        $mapped = $this->mapRow($row);
-
-        // Reconstrói path
-        $line = $row['line'];
-        if (is_string($line)) {
-            $decoded = json_decode($line, true);
-            $line    = is_array($decoded) ? $decoded : [];
-        }
-
-        $path = [];
-        foreach ((is_array($line) ? $line : []) as $pt) {
-            if (is_array($pt) && isset($pt['x'], $pt['y'])) {
-                $path[] = [(float) $pt['y'], (float) $pt['x']];
-            } elseif (is_array($pt) && count($pt) >= 2) {
-                $path[] = [(float) $pt[1], (float) $pt[0]];
-            }
-        }
-        $mapped['path'] = $path;
-
-        return $mapped;
+    if ($partner !== null) {
+        $pf             = ' AND j.partner_id = :pid';
+        $params['pid']  = $partner->getId();
     }
+
+    // ⚠️ NÃO filtra por is_active: o /jams/{id} é página de DETALHE,
+    // inclusive para registros já desativados (link vindo do histórico).
+    $row = $this->connection->executeQuery(
+        "SELECT
+            j.id, j.uuid, j.street, j.city, j.country,
+            j.level, j.delay, j.length, j.speed_kmh,
+            j.line_points, j.line,
+            j.collected_at, j.last_seen_at, j.deactivated_at,
+            j.is_active,
+            " . self::sqlBlocked('j') . " AS is_blocked,
+            " . self::sqlStale('j')   . " AS is_stale
+         FROM waze_jams j
+         WHERE j.id = :id {$pf}
+         LIMIT 1",
+        $params
+    )->fetchAssociative();
+
+    if ($row === false) {
+        return null;
+    }
+
+    $mapped              = $this->mapRow($row);
+    $mapped['isActive']  = (bool) ($row['is_active'] ?? true);
+    $mapped['deactivatedAt'] = $this->toIso($row['deactivated_at'] ?? null);
+
+    // Reconstrói path
+    $line = $row['line'];
+    if (is_string($line)) {
+        $decoded = json_decode($line, true);
+        $line    = is_array($decoded) ? $decoded : [];
+    }
+
+    $path = [];
+    foreach ((is_array($line) ? $line : []) as $pt) {
+        if (is_array($pt) && isset($pt['x'], $pt['y'])) {
+            $path[] = [(float) $pt['y'], (float) $pt['x']];
+        } elseif (is_array($pt) && count($pt) >= 2) {
+            $path[] = [(float) $pt[1], (float) $pt[0]];
+        }
+    }
+    $mapped['path'] = $path;
+
+    return $mapped;
+}
 
     /**
      * Alertas próximos de um único jam.

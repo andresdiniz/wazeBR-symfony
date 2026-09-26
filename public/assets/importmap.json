@@ -84,7 +84,7 @@
         "type": "js"
     },
     "app": {
-        "path": "\/assets\/js\/app-mI7Oi0d.js",
+        "path": "\/assets\/js\/app-uHBJsVz.js",
         "type": "js"
     },
     "\/assets\/js\/components\/buttons.js": {
@@ -155,6 +155,10 @@
         "path": "\/assets\/js\/pages\/jam-show-9mAh6eM.js",
         "type": "js"
     },
+    "\/assets\/js\/pages\/jam-history.js": {
+        "path": "\/assets\/js\/pages\/jam-history-Bt3qBHz.js",
+        "type": "js"
+    },
     "\/assets\/js\/pages\/partner-feed-index.js": {
         "path": "\/assets\/js\/pages\/partner-feed-index-HELQ5i2.js",
         "type": "js"
@@ -164,7 +168,7 @@
         "type": "js"
     },
     "\/assets\/js\/pages\/partner-feed-form.js": {
-        "path": "\/assets\/js\/pages\/partner-feed-form-dGDPzOf.js",
+        "path": "\/assets\/js\/pages\/partner-feed-form-LPSbqeR.js",
         "type": "js"
     },
     "\/assets\/js\/pages\/partner-feed-events-list.js": {
