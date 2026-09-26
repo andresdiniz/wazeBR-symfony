@@ -22,7 +22,7 @@
      data-jam-page
      data-api-endpoint="{{ path('jam_api_data') }}"
      data-export-endpoint="{{ path('jam_export') }}"
-     data-show-url-template="{{ path('jam_show', {id: '__ID__'}) }}"
+     data-show-url-template="{{ path('jam_show', {id: 0}) }}"
      data-timezone="{{ app_timezone|default('America/Sao_Paulo') }}"
      data-current-filters='{{ filters|json_encode|e('html_attr') }}'>
 
