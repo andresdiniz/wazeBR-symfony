@@ -76,7 +76,7 @@ final class TrafficLightManager
         );
     }
 
-    /** Escreve e persiste um snapshot de confirmação. */
+    /** Escreve e persiste um snapshot de confirmação (auditoria). */
     public function write(
         TrafficLight $light,
         TrafficLightCommand $command,
@@ -89,7 +89,6 @@ final class TrafficLightManager
             options:  $light->getOptions(),
         );
 
-        // Registra a escrita como um snapshot sintético para auditoria.
         $snapshot = (new TrafficLightSnapshot())
             ->setTrafficLight($light)
             ->setReadAt(new \DateTimeImmutable('now', new \DateTimeZone('UTC')))

@@ -8,11 +8,16 @@ use App\Dto\TrafficLight\SignalPhase;
 use App\Dto\TrafficLight\TrafficLightCommand;
 use App\Dto\TrafficLight\TrafficLightState;
 use App\Service\TrafficLight\Exception\TrafficLightException;
+use App\Service\TrafficLight\Profile\VendorProfileRegistry;
 use App\Service\TrafficLight\TrafficLightConnectorInterface;
 
 final class ModbusTcpConnector implements TrafficLightConnectorInterface
 {
     private const PROTOCOL = 'MODBUS_TCP';
+
+    public function __construct(
+        private readonly VendorProfileRegistry $profiles,
+    ) {}
 
     public function supports(string $protocol): bool
     {
@@ -23,18 +28,23 @@ final class ModbusTcpConnector implements TrafficLightConnectorInterface
     {
         [$host, $port] = $this->parseEndpoint($endpoint);
         $unitId        = (int) ($options['unitId'] ?? 1);
-        $startAddress  = (int) ($options['startAddress'] ?? 0x0000);
-        $quantity      = (int) ($options['quantity'] ?? 16);
         $timeout       = (float) ($options['timeout'] ?? 2.0);
+
+        $vendor  = isset($options['vendor']) ? (string) $options['vendor'] : null;
+        $profile = $this->profiles->get('MODBUS_TCP', $vendor);
+        $regs    = $profile?->getRegisters() ?? [];
+
+        $startAddress = (int) ($options['startAddress'] ?? ($regs['phaseStatusStart'] ?? 0x0000));
+        $quantity     = (int) ($options['quantity']     ?? 16);
 
         $socket = $this->open($host, $port, $timeout);
 
         try {
-            $tx = random_int(1, 0xFFFF);
+            $tx      = random_int(1, 0xFFFF);
             $request = $this->frameReadHoldingRegisters($tx, $unitId, $startAddress, $quantity);
             fwrite($socket, $request);
 
-            $response = $this->readResponse($socket);
+            $response  = $this->readResponse($socket);
             $registers = $this->parseReadResponse($response, $tx);
         } finally {
             fclose($socket);
@@ -61,29 +71,69 @@ final class ModbusTcpConnector implements TrafficLightConnectorInterface
         $unitId        = (int) ($options['unitId'] ?? 1);
         $timeout       = (float) ($options['timeout'] ?? 2.0);
 
-        $address = match ($command->type) {
-            TrafficLightCommand::SET_MODE,
-            TrafficLightCommand::FLASH_YELLOW  => (int) ($options['modeAddress'] ?? 0x0010),
+        $vendor  = isset($options['vendor']) ? (string) $options['vendor'] : null;
+        $profile = $this->profiles->get('MODBUS_TCP', $vendor);
+        $regs    = $profile?->getRegisters() ?? [];
+
+        // Resolve endereço baseado no tipo de comando
+        [$address, $value] = match ($command->type) {
+            // ── Modo / estados globais ────────────────────────────────────
+            TrafficLightCommand::SET_MODE     => [
+                (int) ($options['modeAddress'] ?? ($regs['modeRegister'] ?? 0x0010)),
+                $this->mapModeToRegister((string) ($command->payload['mode'] ?? 'AUTOMATIC')),
+            ],
+            TrafficLightCommand::FLASH_YELLOW => [
+                (int) ($options['modeAddress'] ?? ($regs['modeRegister'] ?? 0x0010)),
+                6,
+            ],
+            TrafficLightCommand::ALL_RED      => [
+                (int) ($options['modeAddress'] ?? ($regs['modeRegister'] ?? 0x0010)),
+                4,
+            ],
+            TrafficLightCommand::ALL_DARK     => [
+                (int) ($options['modeAddress'] ?? ($regs['modeRegister'] ?? 0x0010)),
+                7,
+            ],
+
+            // ── Fases ─────────────────────────────────────────────────────
             TrafficLightCommand::SET_PHASE,
             TrafficLightCommand::FORCE_GREEN,
-            TrafficLightCommand::FORCE_RED     => (int) ($options['phaseAddress'] ?? 0x0011),
-            TrafficLightCommand::CLEAR_FAULT   => (int) ($options['clearFaultAddress'] ?? 0x0012),
-            default => throw new TrafficLightException("Comando não suportado em Modbus: {$command->type}"),
-        };
+            TrafficLightCommand::FORCE_RED => [
+                (int) ($options['phaseAddress'] ?? ($regs['phaseForceRegister'] ?? 0x0011)),
+                match ($command->type) {
+                    TrafficLightCommand::FORCE_GREEN => 1,
+                    TrafficLightCommand::FORCE_RED   => 0,
+                    default                          => (int) ($command->payload['phase'] ?? 0),
+                },
+            ],
 
-        $value = match ($command->type) {
-            TrafficLightCommand::SET_MODE     => $this->mapModeToRegister((string) ($command->payload['mode'] ?? 'AUTOMATIC')),
-            TrafficLightCommand::FLASH_YELLOW => 6,
-            TrafficLightCommand::FORCE_GREEN  => 1,
-            TrafficLightCommand::FORCE_RED    => 0,
-            TrafficLightCommand::SET_PHASE    => (int) ($command->payload['phase'] ?? 0),
-            TrafficLightCommand::CLEAR_FAULT  => 0x0001,
-            default                            => 0,
+            // ── Tempos ────────────────────────────────────────────────────
+            TrafficLightCommand::SET_CYCLE => [
+                (int) ($options['cycleAddress'] ?? ($regs['cycleRegister'] ?? 0x0020)),
+                (int) ($command->payload['seconds'] ?? 90),
+            ],
+            TrafficLightCommand::SET_OFFSET => [
+                (int) ($options['offsetAddress'] ?? ($regs['offsetRegister'] ?? 0x0021)),
+                (int) ($command->payload['seconds'] ?? 0),
+            ],
+            TrafficLightCommand::SET_SPLIT => [
+                (int) ($options['splitBase'] ?? ($regs['splitBase'] ?? 0x0030))
+                    + max(0, (int) ($command->payload['phase'] ?? 1) - 1) * 3,
+                (int) ($command->payload['green'] ?? 30),
+            ],
+
+            // ── Falhas ────────────────────────────────────────────────────
+            TrafficLightCommand::CLEAR_FAULT => [
+                (int) ($options['clearFaultAddress'] ?? ($regs['clearFaultRegister'] ?? 0x0012)),
+                0x0001,
+            ],
+
+            default => throw new TrafficLightException("Comando não suportado em Modbus: {$command->type}"),
         };
 
         $socket = $this->open($host, $port, $timeout);
         try {
-            $tx = random_int(1, 0xFFFF);
+            $tx      = random_int(1, 0xFFFF);
             $request = $this->frameWriteSingleRegister($tx, $unitId, $address, $value);
             fwrite($socket, $request);
             $response = $this->readResponse($socket);
@@ -126,8 +176,8 @@ final class ModbusTcpConnector implements TrafficLightConnectorInterface
 
     private function frameReadHoldingRegisters(int $tx, int $unitId, int $address, int $quantity): string
     {
-        $pdu     = chr(0x03) . pack('nn', $address, $quantity);
-        $mbap    = pack('nnn', $tx, 0, strlen($pdu) + 1) . chr($unitId);
+        $pdu  = chr(0x03) . pack('nn', $address, $quantity);
+        $mbap = pack('nnn', $tx, 0, strlen($pdu) + 1) . chr($unitId);
         return $mbap . $pdu;
     }
 
@@ -206,7 +256,6 @@ final class ModbusTcpConnector implements TrafficLightConnectorInterface
     /** @param int[] $registers */
     private function buildPhases(array $registers): array
     {
-        // Convenção simples: os primeiros 8 registradores são fases 1..8 (0=RED, 1=GREEN, 2=YELLOW, 3=OFF).
         $phases = [];
         for ($i = 0; $i < 8 && $i < count($registers); $i++) {
             $code = $registers[$i];

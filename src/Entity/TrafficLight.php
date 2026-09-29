@@ -15,20 +15,23 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\HasLifecycleCallbacks]
 class TrafficLight
 {
-    public const PROTOCOL_NTCIP      = 'NTCIP';
-    public const PROTOCOL_MODBUS_TCP = 'MODBUS_TCP';
-    public const PROTOCOL_HTTP_REST  = 'HTTP_REST';
-    public const PROTOCOL_FAKE       = 'FAKE';
-
-    public const STATUS_OK    = 'OK';
-    public const STATUS_ERROR = 'ERROR';
+    public const PROTOCOL_NTCIP         = 'NTCIP';
+    public const PROTOCOL_MODBUS_TCP    = 'MODBUS_TCP';
+    public const PROTOCOL_HTTP_REST     = 'HTTP_REST';
+    public const PROTOCOL_FAKE          = 'FAKE';
+    public const PROTOCOL_SENSORTHINGS  = 'SENSORTHINGS';
 
     public const PROTOCOLS = [
-        self::PROTOCOL_NTCIP      => 'NTCIP (SNMP)',
-        self::PROTOCOL_MODBUS_TCP => 'Modbus TCP',
-        self::PROTOCOL_HTTP_REST  => 'HTTP REST (gateway SCATS/SCOOT)',
-        self::PROTOCOL_FAKE       => 'Fake (desenvolvimento)',
+        self::PROTOCOL_NTCIP        => 'NTCIP (SNMP)',
+        self::PROTOCOL_MODBUS_TCP   => 'Modbus TCP',
+        self::PROTOCOL_HTTP_REST    => 'HTTP REST (gateway SCATS/SCOOT)',
+        self::PROTOCOL_FAKE         => 'Fake (desenvolvimento)',
+        self::PROTOCOL_SENSORTHINGS => 'SensorThings (OGC · leitura aberta)',
     ];
+
+    // ── Status da última leitura (usados por markReadOk/markReadError) ──
+    public const STATUS_OK    = 'OK';
+    public const STATUS_ERROR = 'ERROR';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -49,7 +52,7 @@ class TrafficLight
     #[ORM\Column(length: 32)]
     private ?string $protocol = null;
 
-    /** host:porta para NTCIP/Modbus, URL base para HTTP REST. */
+    /** host:porta para NTCIP/Modbus, URL base para HTTP REST, URL de Thing/Datastream para SensorThings. */
     #[ORM\Column(length: 255)]
     private ?string $endpoint = null;
 

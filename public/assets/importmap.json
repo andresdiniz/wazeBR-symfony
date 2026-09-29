@@ -84,7 +84,7 @@
         "type": "js"
     },
     "app": {
-        "path": "\/assets\/js\/app-uHBJsVz.js",
+        "path": "\/assets\/js\/app-1AVDsMG.js",
         "type": "js"
     },
     "\/assets\/js\/components\/buttons.js": {
@@ -173,6 +173,26 @@
     },
     "\/assets\/js\/pages\/partner-feed-events-list.js": {
         "path": "\/assets\/js\/pages\/partner-feed-events-list-vctASFz.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/traffic-light-list.js": {
+        "path": "\/assets\/js\/pages\/traffic-light-list--yWKsmP.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/traffic-light-form.js": {
+        "path": "\/assets\/js\/pages\/traffic-light-form-rMsr9pu.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/traffic-light-show.js": {
+        "path": "\/assets\/js\/pages\/traffic-light-show-cRRkGRe.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/traffic-light-dashboard.js": {
+        "path": "\/assets\/js\/pages\/traffic-light-dashboard-FSzejrY.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/traffic-light-control.js": {
+        "path": "\/assets\/js\/pages\/traffic-light-control-gbL2ODS.js",
         "type": "js"
     },
     "dashboard": {

@@ -340,6 +340,35 @@
                 </a>
 
 
+                {# Semáforos — controladores de tráfego (NTCIP / Modbus / HTTP REST) #}
+                <a
+                    href="{{ path('traffic_light_list') }}"
+                    class="sidebar-link{% if current_route starts with 'traffic_light' %} is-active{% endif %}"
+                    data-sidebar-link
+                    title="Semáforos — controladores de tráfego"
+                    {% if current_route starts with 'traffic_light' %}aria-current="page"{% endif %}
+                >
+                    <span class="sidebar-link-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false">
+                            <rect x="8" y="2.5" width="8" height="19" rx="2"/>
+                            <circle cx="12" cy="7" r="1.4"/>
+                            <circle cx="12" cy="12" r="1.4"/>
+                            <circle cx="12" cy="17" r="1.4"/>
+                        </svg>
+                    </span>
+
+
+                    <span class="sidebar-link-label">
+                        Semáforos
+                    </span>
+
+
+                    {% if current_route starts with 'traffic_light' %}
+                        <span class="sidebar-active-indicator" aria-hidden="true"></span>
+                    {% endif %}
+                </a>
+
+
             </nav>
 
 

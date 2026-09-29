@@ -1,0 +1,55 @@
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}{{ light.id ? 'Editar' : 'Novo' }} controlador — {{ partner.name }}{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/pages/traffic-light.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/pages/traffic-light-form.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="pf-form tl-form">
+    <a href="{{ path('traffic_light_list') }}" class="pf-form__breadcrumb">
+        ← Voltar para lista
+    </a>
+
+    <header class="pf-form__header">
+        <h1 class="pf-form__title">{{ light.id ? 'Editar controlador' : 'Novo controlador' }}</h1>
+        <p class="pf-form__meta">Parceiro: <strong>{{ partner.name }}</strong></p>
+    </header>
+
+    <div class="tl-form__card">
+        {{ form_start(form, {attr: {class: 'pf-form-card'}}) }}
+            <div class="pf-form__body">
+                {{ form_row(form.code) }}
+                {{ form_row(form.name) }}
+                {{ form_row(form.protocol) }}
+                {{ form_row(form.endpoint) }}
+                {{ form_row(form.optionsJson) }}
+                <div class="pf-field-row">
+                    {{ form_row(form.latitude) }}
+                    {{ form_row(form.longitude) }}
+                </div>
+                {{ form_row(form.isActive) }}
+
+                <div class="pf-form__actions">
+                    <button type="submit" class="pf-btn pf-btn--primary">
+                        {{ light.id ? 'Salvar alterações' : 'Criar controlador' }}
+                    </button>
+                    <a href="{{ path('traffic_light_list') }}"
+                       class="pf-btn pf-btn--secondary">Cancelar</a>
+                </div>
+            </div>
+        {{ form_end(form) }}
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script type="module">
+        import init from '{{ asset('js/pages/traffic-light-form.js') }}';
+        init(document);
+    </script>
+{% endblock %}

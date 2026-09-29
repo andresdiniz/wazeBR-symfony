@@ -1,0 +1,52 @@
+/* ============================================================
+   Traffic Light — Formulário
+   ============================================================ */
+
+.tl-form__card {
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+.tl-form__field-group {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+}
+
+.tl-form__hint {
+    font-size: .8rem;
+    color: var(--tl-text-muted);
+    margin-top: .15rem;
+}
+
+.tl-form__options-preview {
+    margin-top: .5rem;
+    padding: .75rem;
+    background: var(--tl-surface-2);
+    border: 1px solid var(--tl-border);
+    border-radius: var(--tl-radius-sm);
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: .8rem;
+    color: var(--tl-text);
+    max-height: 180px;
+    overflow: auto;
+    white-space: pre;
+}
+
+.tl-form__options-preview.is-error {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #991b1b;
+}
+
+.tl-form__options-preview.is-ok {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+    color: #166534;
+}
+
+.tl-form__protocol-info {
+    margin-top: .35rem;
+    font-size: .8rem;
+    color: var(--tl-text-muted);
+}

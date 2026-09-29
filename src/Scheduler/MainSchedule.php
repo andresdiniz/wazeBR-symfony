@@ -67,8 +67,16 @@ final class MainSchedule implements ScheduleProviderInterface
             // ── Clima (Open-Meteo) ─────────────────────────────────────────
             ->add(
                 RecurringMessage::every(
-                    '10 minutes',
+                    '5 minutes',
                     new RunCommandMessage('app:weather:fetch-observations --no-interaction'),
+                ),
+            )
+
+            // ── Semáforos (leitura de todos os controladores ativos) ───────
+            ->add(
+                RecurringMessage::every(
+                    '1 seconds',
+                    new RunCommandMessage('app:traffic-light:poll --no-interaction'),
                 ),
             );
     }

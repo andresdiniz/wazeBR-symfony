@@ -1,0 +1,72 @@
+/* ============================================================
+   Traffic Light — Lista
+   ============================================================ */
+
+.tl-list__header-actions {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+
+.tl-list__row-actions {
+    display: flex;
+    gap: .4rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.tl-list__row-actions .pf-btn {
+    padding: .35rem .7rem;
+    font-size: .8rem;
+}
+
+.tl-list .pf-table td {
+    vertical-align: middle;
+}
+
+.tl-list__code {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: .82rem;
+    background: var(--tl-surface-3);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--tl-text);
+}
+
+.tl-list__endpoint {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: .8rem;
+    color: var(--tl-text-muted);
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+}
+
+.tl-list__last-read {
+    font-variant-numeric: tabular-nums;
+    color: var(--tl-text-muted);
+    font-size: .85rem;
+}
+
+.tl-list__protocol {
+    font-size: .75rem;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #eef2ff;
+    color: #3730a3;
+    font-weight: 600;
+    border: 1px solid #c7d2fe;
+}
+
+.tl-list__protocol--ntcip      { background: #eef2ff; color: #3730a3; border-color: #c7d2fe; }
+.tl-list__protocol--modbus_tcp { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+.tl-list__protocol--http_rest  { background: #ecfeff; color: #155e75; border-color: #a5f3fc; }
+.tl-list__protocol--fake       { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
+
+.tl-list__preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

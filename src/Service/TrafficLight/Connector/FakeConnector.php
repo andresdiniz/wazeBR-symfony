@@ -30,7 +30,9 @@ final class FakeConnector implements TrafficLightConnectorInterface
                 new SignalPhase(2, SignalPhase::COLOR_RED, 45),
                 new SignalPhase(3, SignalPhase::COLOR_RED, 65),
             ],
-            raw: ['fake' => true],
+            detectors: [],
+            faults:    [],
+            raw:       ['fake' => true],
         );
     }
 
@@ -39,6 +41,22 @@ final class FakeConnector implements TrafficLightConnectorInterface
         TrafficLightCommand $command,
         array $options = [],
     ): bool {
+        // Em modo FAKE, apenas registramos a intenção em um arquivo temporário
+        // para inspeção manual (não há controlador real para responder).
+        $log = sprintf(
+            "[%s] %s %s %s\n",
+            (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('c'),
+            $endpoint,
+            $command->type,
+            json_encode($command->payload, JSON_UNESCAPED_SLASHES) ?: '{}',
+        );
+
+        @file_put_contents(
+            sys_get_temp_dir() . '/traffic_light_fake.log',
+            $log,
+            FILE_APPEND,
+        );
+
         return true;
     }
 }

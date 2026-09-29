@@ -1,0 +1,221 @@
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}Controlar {{ light.name }} — {{ partner.name }}{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/pages/traffic-light.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/pages/traffic-light-control.css') }}">
+{% endblock %}
+
+{% block content %}
+{% set state        = latest and latest.state ? latest.state : null %}
+{% set phases       = state and state.phases is defined ? state.phases : [] %}
+{% set firstPhase   = phases|length > 0 ? phases[0] : null %}
+{% set currentColor = firstPhase and firstPhase.color is defined ? firstPhase.color : 'OFF' %}
+{% set currentMode  = state and state.mode is defined ? state.mode : 'UNKNOWN' %}
+{% set isFlashing   = currentMode == 'FLASH' %}
+{% set isDark       = currentColor == 'OFF' %}
+
+{% set colorLabel = {
+    'RED':    '🔴 Vermelho',
+    'YELLOW': '🟡 Amarelo',
+    'GREEN':  '🟢 Verde',
+    'OFF':    '⚫ Apagado',
+}[currentColor] ?? '⚪ Desconhecido' %}
+
+<div class="pf-form tl-ctl-page" data-tl-control-url="{{ path('traffic_light_control_send', {id: light.id}) }}">
+    <a href="{{ path('traffic_light_show', {id: light.id}) }}" class="pf-form__breadcrumb">
+        ← Voltar para detalhes
+    </a>
+
+    {# ── Hero com fixture + info ─────────────────────────────── #}
+    <div class="tl-ctl__hero">
+        <div id="tl-fixture"
+             class="tl-fixture tl-fixture--lg{% if isFlashing %} is-flashing{% endif %}{% if isDark %} is-dark{% endif %}"
+             data-current-color="{{ currentColor }}"
+             data-current-mode="{{ currentMode }}">
+            <div class="tl-bulb tl-bulb--red    {% if currentColor == 'RED'    %}is-on{% endif %}" data-phase="1"></div>
+            <div class="tl-bulb tl-bulb--yellow {% if currentColor == 'YELLOW' %}is-on{% endif %}" data-phase="1"></div>
+            <div class="tl-bulb tl-bulb--green  {% if currentColor == 'GREEN'  %}is-on{% endif %}" data-phase="1"></div>
+        </div>
+
+        <div class="tl-ctl__hero-info">
+            <h1 class="tl-ctl__hero-title">{{ light.name }}</h1>
+            <div class="tl-ctl__hero-sub">
+                <span><code>{{ light.code }}</code></span>
+                <span>{{ light.protocol }}</span>
+                <span><code>{{ light.endpoint }}</code></span>
+                <span class="tl-ctl__mode-badge">
+                    {% if light.lastReadStatus == 'OK' %}
+                        <span class="tl-status-dot tl-status-dot--ok"></span> Online
+                    {% elseif light.lastReadStatus == 'ERROR' %}
+                        <span class="tl-status-dot tl-status-dot--error"></span> Erro
+                    {% else %}
+                        <span class="tl-status-dot tl-status-dot--idle"></span> Sem contato
+                    {% endif %}
+                </span>
+                <span class="tl-ctl__mode-badge">Modo: <strong>{{ currentMode }}</strong></span>
+                <span class="tl-ctl__mode-badge" id="tl-current-color-badge">
+                    Cor: <strong>{{ colorLabel }}</strong>
+                </span>
+            </div>
+            <div class="tl-ctl__field" style="margin-top:.5rem;max-width:420px;">
+                <label for="global-reason">Motivo (opcional · auditoria)</label>
+                <input type="text" id="global-reason"
+                       placeholder="Ex.: manutenção, evento, falha detectada…"
+                       maxlength="200">
+            </div>
+        </div>
+    </div>
+
+    <div class="tl-ctl">
+        {# ── Ações rápidas ─────────────────────────────────────── #}
+        <div class="tl-ctl__panel">
+            <h2 class="tl-ctl__panel-title">⚡ Ações rápidas <small>impacto imediato</small></h2>
+
+            <div class="tl-presets">
+                <button type="button" class="tl-preset is-warn" data-command="FLASH_YELLOW">
+                    <span class="tl-preset__icon">⚠</span>
+                    <span class="tl-preset__label">
+                        <strong>Piscante amarelo</strong>
+                        <small>Modo flash</small>
+                    </span>
+                </button>
+
+                <button type="button" class="tl-preset is-danger" data-command="ALL_RED">
+                    <span class="tl-preset__icon">⛔</span>
+                    <span class="tl-preset__label">
+                        <strong>Tudo vermelho</strong>
+                        <small>All-red safety</small>
+                    </span>
+                </button>
+
+                <button type="button" class="tl-preset is-danger" data-command="ALL_DARK">
+                    <span class="tl-preset__icon">⏻</span>
+                    <span class="tl-preset__label">
+                        <strong>Apagar tudo</strong>
+                        <small>Dark mode</small>
+                    </span>
+                </button>
+
+                <button type="button" class="tl-preset is-ok"
+                        data-command="SET_MODE" data-payload='{"mode":"AUTOMATIC"}'>
+                    <span class="tl-preset__icon">▶</span>
+                    <span class="tl-preset__label">
+                        <strong>Automático</strong>
+                        <small>Retomar operação</small>
+                    </span>
+                </button>
+
+                <button type="button" class="tl-preset is-primary"
+                        data-command="SET_MODE" data-payload='{"mode":"MANUAL"}'>
+                    <span class="tl-preset__icon">✋</span>
+                    <span class="tl-preset__label">
+                        <strong>Manual</strong>
+                        <small>Intervenção</small>
+                    </span>
+                </button>
+
+                <button type="button" class="tl-preset" data-command="CLEAR_FAULT">
+                    <span class="tl-preset__icon">✓</span>
+                    <span class="tl-preset__label">
+                        <strong>Limpar falhas</strong>
+                        <small>Reset alarmes</small>
+                    </span>
+                </button>
+            </div>
+
+            <div id="tl-feedback" class="tl-ctl__feedback"></div>
+        </div>
+
+        {# ── Comandos específicos ──────────────────────────────── #}
+        <div class="tl-ctl__panel">
+            <h2 class="tl-ctl__panel-title">🎯 Comandos por fase</h2>
+
+            <form id="tl-form-phase" class="tl-ctl__form">
+                <div class="tl-ctl__row">
+                    <div class="tl-ctl__field">
+                        <label for="phase-number">Fase</label>
+                        <select id="phase-number" name="phase">
+                            {% for n in 1..8 %}
+                                <option value="{{ n }}">Fase {{ n }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="tl-ctl__field">
+                        <label for="phase-action">Ação</label>
+                        <select id="phase-action" name="action">
+                            <option value="FORCE_GREEN">Forçar verde</option>
+                            <option value="FORCE_RED">Forçar vermelho</option>
+                            <option value="SET_PHASE">Ativar fase</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="tl-ctl__submit">Enviar comando de fase</button>
+            </form>
+
+            <h2 class="tl-ctl__panel-title" style="margin-top:.5rem;">⏱ Tempos semafóricos</h2>
+
+            <form id="tl-form-times" class="tl-ctl__form">
+                <div class="tl-ctl__field">
+                    <label for="time-type">O que alterar</label>
+                    <select id="time-type" name="type">
+                        <option value="SET_CYCLE">Duração do ciclo (s)</option>
+                        <option value="SET_OFFSET">Offset do ciclo (s)</option>
+                        <option value="SET_SPLIT">Verde de uma fase (s)</option>
+                    </select>
+                </div>
+                <div class="tl-ctl__row">
+                    <div class="tl-ctl__field">
+                        <label for="time-seconds">Segundos</label>
+                        <input type="number" id="time-seconds" name="seconds" value="90" min="1" max="600">
+                    </div>
+                    <div class="tl-ctl__field" id="time-phase-wrap" hidden>
+                        <label for="time-phase">Fase</label>
+                        <input type="number" id="time-phase" name="phase" value="1" min="1" max="8">
+                    </div>
+                </div>
+                <button type="submit" class="tl-ctl__submit">Enviar ajuste de tempo</button>
+            </form>
+        </div>
+    </div>
+
+    {# ── Log de comandos ──────────────────────────────────────── #}
+    <div class="tl-card" style="margin-top:1rem;">
+        <h2 class="tl-card__title">📜 Últimos comandos enviados <small>auditoria</small></h2>
+        <table class="tl-ctl__log">
+            <thead>
+                <tr><th>Quando</th><th>Resultado</th><th>Comando</th><th>Payload</th><th>Motivo</th></tr>
+            </thead>
+            <tbody>
+            {% for c in commands %}
+                <tr>
+                    <td>{{ c.at|date('d/m/Y H:i:s') }}</td>
+                    <td>
+                        {% if c.success %}
+                            <span class="tl-ctl__log-result tl-ctl__log-result--ok">✓ OK</span>
+                        {% else %}
+                            <span class="tl-ctl__log-result tl-ctl__log-result--fail">✗ FALHA</span>
+                        {% endif %}
+                    </td>
+                    <td><code>{{ c.type }}</code></td>
+                    <td><code>{{ c.payload|json_encode }}</code></td>
+                    <td>{{ c.reason ?: '—' }}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="5" style="text-align:center;color:var(--tl-text-muted);padding:1.5rem">Nenhum comando enviado ainda.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script type="module">
+        import init from '{{ asset('js/pages/traffic-light-control.js') }}';
+        init(document);
+    </script>
+{% endblock %}

@@ -1,0 +1,112 @@
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}Semáforos — {{ partner.name }}{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/pages/traffic-light.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/pages/traffic-light-list.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="pf-form tl-list">
+    <header class="pf-form__header">
+        <h1 class="pf-form__title">Controladores de semáforo</h1>
+        <p class="pf-form__meta">
+            Parceiro: <strong>{{ partner.name }}</strong>
+            &nbsp;·&nbsp; {{ lights|length }} controlador(es)
+        </p>
+        <div class="tl-list__header-actions">
+            <a href="{{ path('traffic_light_dashboard') }}" class="pf-btn pf-btn--secondary">
+                Ver dashboard
+            </a>
+            {% if is_granted('ROLE_ADMIN') %}
+                <a href="{{ path('traffic_light_new') }}" class="pf-btn pf-btn--primary">
+                    + Novo controlador
+                </a>
+            {% endif %}
+        </div>
+    </header>
+
+    <table class="pf-table">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Nome</th>
+                <th>Protocolo</th>
+                <th>Endpoint</th>
+                <th>Última leitura</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for light in lights %}
+            <tr>
+                <td><span class="tl-list__code">{{ light.code }}</span></td>
+                <td>{{ light.name }}</td>
+                <td>
+                    <span class="tl-list__protocol tl-list__protocol--{{ light.protocol|lower }}">
+                        {{ light.protocol }}
+                    </span>
+                </td>
+                <td><span class="tl-list__endpoint">{{ light.endpoint }}</span></td>
+                <td>
+                    <span class="tl-list__last-read"
+                          {% if light.lastReadAt %}data-tl-time="{{ light.lastReadAt|date('c') }}"{% endif %}>
+                        {{ light.lastReadAt ? light.lastReadAt|date('d/m/Y H:i:s') : '—' }}
+                    </span>
+                </td>
+                <td>
+                    {% if light.lastReadStatus == 'OK' %}
+                        <span class="tl-badge tl-badge--ok">
+                            <span class="tl-status-dot tl-status-dot--ok"></span> OK
+                        </span>
+                    {% elseif light.lastReadStatus == 'ERROR' %}
+                        <span class="tl-badge tl-badge--error" title="{{ light.lastReadError }}">
+                            <span class="tl-status-dot tl-status-dot--error"></span> ERRO
+                        </span>
+                    {% else %}
+                        <span class="tl-badge tl-badge--neutral">
+                            <span class="tl-status-dot tl-status-dot--idle"></span> —
+                        </span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="tl-list__row-actions">
+                        <a href="{{ path('traffic_light_show', {id: light.id}) }}"
+                           class="pf-btn pf-btn--secondary">Detalhes</a>
+                        {% if is_granted('ROLE_ADMIN') %}
+                            <a href="{{ path('traffic_light_edit', {id: light.id}) }}"
+                               class="pf-btn pf-btn--secondary">Editar</a>
+                        {% endif %}
+                        <a href="{{ path('traffic_light_control', {id: light.id}) }}"
+                           class="pf-btn pf-btn--primary">Controlar</a>
+                    </div>
+                </td>
+            </tr>
+        {% else %}
+            <tr>
+                <td colspan="7">
+                    <div class="tl-empty">
+                        <span class="tl-empty__icon">🚦</span>
+                        Nenhum controlador cadastrado.
+                        {% if is_granted('ROLE_ADMIN') %}
+                            <br><a href="{{ path('traffic_light_new') }}" class="pf-btn pf-btn--primary" style="margin-top:.75rem">Criar o primeiro</a>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script type="module">
+        import init from '{{ asset('js/pages/traffic-light-list.js') }}';
+        init(document);
+    </script>
+{% endblock %}

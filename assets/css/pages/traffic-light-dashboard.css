@@ -1,0 +1,134 @@
+/* ============================================================
+   Traffic Light — Dashboard
+   ============================================================ */
+
+.tl-dash__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.tl-dash__summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+
+.tl-dash__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .45rem .9rem;
+    border-radius: 999px;
+    background: var(--tl-surface);
+    border: 1px solid var(--tl-border);
+    font-size: .85rem;
+    font-weight: 500;
+    box-shadow: var(--tl-shadow-sm);
+}
+
+.tl-dash__chip strong {
+    font-variant-numeric: tabular-nums;
+    font-size: 1rem;
+    color: var(--tl-text);
+}
+
+.tl-dash__map {
+    height: 560px;
+    border-radius: var(--tl-radius);
+    overflow: hidden;
+    border: 1px solid var(--tl-border);
+    box-shadow: var(--tl-shadow-md);
+}
+
+.tl-dash__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .875rem;
+    margin-top: 1rem;
+    background: var(--tl-surface);
+    border: 1px solid var(--tl-border);
+    border-radius: var(--tl-radius);
+    overflow: hidden;
+}
+
+.tl-dash__table th {
+    text-align: left;
+    padding: .65rem .9rem;
+    background: var(--tl-surface-2);
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    font-weight: 600;
+    color: var(--tl-text-muted);
+    border-bottom: 1px solid var(--tl-border);
+}
+
+.tl-dash__table td {
+    padding: .65rem .9rem;
+    border-bottom: 1px solid var(--tl-border);
+}
+
+.tl-dash__table tr:last-child td { border-bottom: none; }
+.tl-dash__table tr:hover td { background: var(--tl-surface-2); }
+
+.tl-dash__table code {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: .8rem;
+    background: var(--tl-surface-3);
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+
+.tl-dash__row-status {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    font-weight: 500;
+}
+
+/* Leaflet marker custom */
+.tl-dash-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid #94a3b8;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, .2);
+    transition: transform .15s ease, border-color .2s ease;
+    position: relative;
+}
+
+.tl-dash-marker:hover { transform: scale(1.1); }
+
+.tl-dash-marker--ok    { border-color: var(--tl-green); }
+.tl-dash-marker--error { border-color: var(--tl-red); }
+.tl-dash-marker--idle  { border-color: #94a3b8; }
+
+.tl-dash-marker__pulse {
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    opacity: 0;
+    animation: tl-dash-pulse 2s ease-out infinite;
+}
+
+.tl-dash-marker--ok    .tl-dash-marker__pulse { color: var(--tl-green); }
+.tl-dash-marker--error .tl-dash-marker__pulse { color: var(--tl-red); }
+
+@keyframes tl-dash-pulse {
+    0%   { transform: scale(.7); opacity: .6; }
+    100% { transform: scale(1.6); opacity: 0; }
+}
+
+.tl-dash-marker__icon {
+    font-size: 1rem;
+    line-height: 1;
+}

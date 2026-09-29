@@ -1,0 +1,287 @@
+/* ============================================================
+   Traffic Light — base compartilhada
+   Bulbs, badges, cards, animações
+   ============================================================ */
+
+:root {
+    --tl-surface:        var(--surface, #ffffff);
+    --tl-surface-2:      var(--surface-2, #f9fafb);
+    --tl-surface-3:      var(--surface-3, #f3f4f6);
+    --tl-border:         var(--border, #e5e7eb);
+    --tl-text:           var(--text-primary, #111827);
+    --tl-text-muted:     var(--text-secondary, #6b7280);
+
+    --tl-red:            #e11919;
+    --tl-red-glow:       rgba(255, 68, 68, 0.55);
+    --tl-yellow:         #e5a000;
+    --tl-yellow-glow:    rgba(252, 211, 77, 0.6);
+    --tl-green:          #16a34a;
+    --tl-green-glow:     rgba(34, 197, 94, 0.55);
+    --tl-off:            #0f0f0f;
+
+    --tl-radius:         12px;
+    --tl-radius-sm:      8px;
+
+    --tl-shadow-sm:      0 1px 2px rgba(0, 0, 0, .04);
+    --tl-shadow-md:      0 4px 12px rgba(0, 0, 0, .06);
+    --tl-shadow-lg:      0 10px 30px rgba(0, 0, 0, .10);
+}
+
+/* ── Fixture (corpo do semáforo) ──────────────────────────── */
+
+.tl-fixture {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 12px;
+    border-radius: 14px;
+    background:
+        linear-gradient(180deg, #2f2f2f 0%, #1c1c1c 100%),
+        radial-gradient(120% 60% at 50% 0%, rgba(255, 255, 255, .06), transparent);
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, .25),
+        inset 0 0 0 1px rgba(255, 255, 255, .06),
+        inset 0 8px 12px rgba(255, 255, 255, .04);
+    position: relative;
+}
+
+.tl-fixture--horizontal {
+    flex-direction: row;
+}
+
+.tl-fixture--sm { --tl-bulb-size: 34px; --tl-bulb-gap: 6px; }
+.tl-fixture--md { --tl-bulb-size: 52px; --tl-bulb-gap: 10px; }
+.tl-fixture--lg { --tl-bulb-size: 68px; --tl-bulb-gap: 12px; }
+
+/* ── Bulb (lâmpada) ───────────────────────────────────────── */
+
+.tl-bulb {
+    width: var(--tl-bulb-size, 52px);
+    height: var(--tl-bulb-size, 52px);
+    border-radius: 50%;
+    background: var(--tl-off);
+    box-shadow:
+        inset 0 4px 10px rgba(0, 0, 0, .7),
+        inset 0 -2px 4px rgba(255, 255, 255, .05);
+    position: relative;
+    transition: background .35s ease, box-shadow .35s ease;
+    flex-shrink: 0;
+}
+
+.tl-bulb::after {
+    content: '';
+    position: absolute;
+    inset: 14% 14% 52% 14%;
+    border-radius: 50%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, .18), transparent 70%);
+    pointer-events: none;
+}
+
+/* aceso — vermelho */
+.tl-bulb--red.is-on {
+    background: radial-gradient(circle at 38% 32%, #ff8080 0%, #e11919 48%, #8b0000 100%);
+    box-shadow:
+        0 0 28px 6px var(--tl-red-glow),
+        0 0 4px 2px rgba(255, 255, 255, .35),
+        inset 0 0 20px rgba(255, 255, 255, .35);
+}
+
+/* aceso — amarelo */
+.tl-bulb--yellow.is-on {
+    background: radial-gradient(circle at 38% 32%, #fff3a8 0%, #e5a000 48%, #a06300 100%);
+    box-shadow:
+        0 0 28px 6px var(--tl-yellow-glow),
+        0 0 4px 2px rgba(255, 255, 255, .4),
+        inset 0 0 20px rgba(255, 255, 255, .4);
+}
+
+/* aceso — verde */
+.tl-bulb--green.is-on {
+    background: radial-gradient(circle at 38% 32%, #b6f8c6 0%, #16a34a 48%, #0a5f2a 100%);
+    box-shadow:
+        0 0 28px 6px var(--tl-green-glow),
+        0 0 4px 2px rgba(255, 255, 255, .35),
+        inset 0 0 20px rgba(255, 255, 255, .35);
+}
+
+/* pedestre — cor de destaque */
+.tl-bulb--ped.is-on {
+    background: radial-gradient(circle at 38% 32%, #e0e7ff 0%, #6366f1 55%, #312e81 100%);
+    box-shadow:
+        0 0 24px 5px rgba(99, 102, 241, .55),
+        inset 0 0 16px rgba(255, 255, 255, .35);
+}
+
+/* modo flash (piscante) */
+.tl-fixture.is-flashing .tl-bulb--yellow.is-on {
+    animation: tl-flash 1s steps(1) infinite;
+}
+
+@keyframes tl-flash {
+    0%, 50%   { opacity: 1; }
+    50.01%, 100% { opacity: .12; }
+}
+
+/* modo all-off */
+.tl-fixture.is-dark .tl-bulb { opacity: .25; filter: grayscale(1); }
+
+/* ── Indicadores de estado ────────────────────────────────── */
+
+.tl-status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #94a3b8;
+    position: relative;
+}
+
+.tl-status-dot--ok     { background: var(--tl-green); }
+.tl-status-dot--error  { background: var(--tl-red); }
+.tl-status-dot--warn   { background: var(--tl-yellow); }
+.tl-status-dot--idle   { background: #94a3b8; }
+
+.tl-status-dot--ok::before,
+.tl-status-dot--error::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: .25;
+    animation: tl-pulse 1.8s ease-out infinite;
+}
+
+.tl-status-dot--ok::before    { color: var(--tl-green); }
+.tl-status-dot--error::before { color: var(--tl-red); }
+
+@keyframes tl-pulse {
+    0%   { transform: scale(.6); opacity: .5; }
+    70%  { transform: scale(1.8); opacity: 0; }
+    100% { transform: scale(1.8); opacity: 0; }
+}
+
+/* ── Badges ───────────────────────────────────────────────── */
+
+.tl-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    background: var(--tl-surface-3);
+    color: var(--tl-text-muted);
+    border: 1px solid var(--tl-border);
+}
+
+.tl-badge--ok      { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+.tl-badge--error   { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+.tl-badge--warn    { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+.tl-badge--info    { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+.tl-badge--neutral { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
+
+/* ── Cards ────────────────────────────────────────────────── */
+
+.tl-card {
+    background: var(--tl-surface);
+    border: 1px solid var(--tl-border);
+    border-radius: var(--tl-radius);
+    padding: 1.25rem;
+    box-shadow: var(--tl-shadow-sm);
+}
+
+.tl-card__title {
+    margin: 0 0 .75rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--tl-text);
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+.tl-card__title small {
+    color: var(--tl-text-muted);
+    font-weight: 400;
+    font-size: .85rem;
+}
+
+/* ── Grid helpers ─────────────────────────────────────────── */
+
+.tl-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 900px) {
+    .tl-grid-2 { grid-template-columns: 1fr; }
+}
+
+/* ── Toast feedback ───────────────────────────────────────── */
+
+.tl-toast {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 9999;
+    padding: .85rem 1.2rem;
+    border-radius: var(--tl-radius-sm);
+    background: #111827;
+    color: #fff;
+    box-shadow: var(--tl-shadow-lg);
+    font-size: .875rem;
+    font-weight: 500;
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity .25s ease, transform .25s ease;
+    pointer-events: none;
+    max-width: 360px;
+}
+
+.tl-toast.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.tl-toast--ok    { background: #065f46; }
+.tl-toast--error { background: #991b1b; }
+.tl-toast--info  { background: #1e40af; }
+
+/* ── Empty state ──────────────────────────────────────────── */
+
+.tl-empty {
+    padding: 3rem 1rem;
+    text-align: center;
+    color: var(--tl-text-muted);
+    border: 1px dashed var(--tl-border);
+    border-radius: var(--tl-radius);
+    background: var(--tl-surface-2);
+}
+
+.tl-empty__icon {
+    font-size: 2.5rem;
+    display: block;
+    margin-bottom: .5rem;
+    opacity: .5;
+}
+
+/* ── Skeleton ─────────────────────────────────────────────── */
+
+.tl-skeleton {
+    background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 37%, #e5e7eb 63%);
+    background-size: 400% 100%;
+    animation: tl-skeleton 1.4s ease infinite;
+    border-radius: 4px;
+    display: inline-block;
+    height: 1em;
+    width: 60%;
+}
+
+@keyframes tl-skeleton {
+    0%   { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+}

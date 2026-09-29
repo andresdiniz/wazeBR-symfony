@@ -1,0 +1,72 @@
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}Dashboard de semáforos — {{ partner.name }}{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
+          integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw=="
+          crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="{{ asset('css/pages/traffic-light.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/pages/traffic-light-dashboard.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="pf-form tl-dash">
+    <header class="tl-dash__header">
+        <div>
+            <h1 class="pf-form__title">Mapa de controladores</h1>
+            <p class="pf-form__meta">Parceiro: <strong>{{ partner.name }}</strong></p>
+        </div>
+
+        <div class="tl-dash__summary">
+            <span class="tl-dash__chip">
+                <span class="tl-status-dot tl-status-dot--ok"></span>
+                OK <strong id="tl-chip-ok">—</strong>
+            </span>
+            <span class="tl-dash__chip">
+                <span class="tl-status-dot tl-status-dot--error"></span>
+                Erro <strong id="tl-chip-err">—</strong>
+            </span>
+            <span class="tl-dash__chip">
+                <span class="tl-status-dot tl-status-dot--idle"></span>
+                Pendente <strong id="tl-chip-pending">—</strong>
+            </span>
+            <span class="tl-dash__chip">
+                Total <strong id="tl-chip-total">—</strong>
+            </span>
+            <a href="{{ path('traffic_light_list') }}" class="pf-btn pf-btn--secondary">← Lista</a>
+        </div>
+    </header>
+
+    <div id="tl-dashboard-map" class="tl-dash__map"
+         data-status-url="{{ path('traffic_light_status_json') }}"></div>
+
+    <table class="tl-dash__table">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Nome</th>
+                <th>Protocolo</th>
+                <th>Status</th>
+                <th>Última leitura</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="tl-dashboard-tbody">
+            <tr><td colspan="6" style="text-align:center;padding:1.5rem"><span class="tl-skeleton" style="width:160px"></span></td></tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"
+            integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGkVgiIyIWLLlTSXzWQzxuSg4DiQUCpauz/EWjgk5TYQqX/kvn9pG1NpYfqg=="
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script type="module">
+        import init from '{{ asset('js/pages/traffic-light-dashboard.js') }}';
+        init(document);
+    </script>
+{% endblock %}

@@ -1,3 +1,19 @@
 {
-    "incidents": []
+    "incidents": [
+        {
+            "id": "7912b7fc-12e0-4f8d-a035-58602da640d5",
+            "creationtime": "2026-09-25T02:40:10+00:00",
+            "updatetime": "2026-09-25T02:40:10+00:00",
+            "type": "HAZARD",
+            "subtype": "HAZARD_ON_ROAD_POT_HOLE",
+            "street": "Rua Cristiano Nogueira",
+            "description": null,
+            "city": null,
+            "polyline": "",
+            "direction": "ONE_DIRECTION",
+            "starttime": "2026-09-24T23:40:00+00:00",
+            "endtime": "2026-09-30T23:40:00+00:00",
+            "reference": "Conselheiro Lafaiete"
+        }
+    ]
 }
