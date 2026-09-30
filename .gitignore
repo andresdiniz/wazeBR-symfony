@@ -1,47 +1,53 @@
-###> symfony/framework-bundle ###
-/.env
-/.env.local
-/.env.local.php
-/.env.*.local
-/config/secrets/prod/prod.decrypt.private.php
+# --- Symfony ---
+/var/
 /public/bundles/
 /public/hot-controller/
-/var/
-/vendor/
-.env
-.env.local
-.env.local.php
-.env.*.local
-###< symfony/framework-bundle ###
+/config/secrets/prod/prod.decrypt.private.php
 
-###> symfony/webpack-encore-bundle ###
+# --- Node & Assets ---
 /node_modules/
 /build/
-###< symfony/webpack-encore-bundle ###
+.pnp.js
+.pnp.cjs
 
-###> phpunit/phpunit ###
+# --- Environment & Sensitive Files ---
+.env
+.env.*
+!.env.test
+!.env.dist
+
+# --- Databases & Uploads (Evita vazar dados e mídias locais) ---
+*.sqlite
+*.sqlite3
+*.db
+/public/uploads/
+/public/media/
+
+# --- Database Dumps & Backups ---
+*.sql
+*.sql.gz
+*.bak
+*.dump
+
+# --- Testing & Code Quality ---
 /phpunit.xml
 /.phpunit/
-###< phpunit/phpunit ###
-
-###> symfony/panther ###
-/browsers.json
-###< symfony/panther ###
-
-###> symfony/runtime ###
-/.runtime/
-###< symfony/runtime ###
-
-###> Local development ###
-*.log
-*.log.*
 .phpunit.result.cache
 .php-cs-fixer.cache
+
+# --- Panther / Browsers ---
+/browsers.json
+/.runtime/
+
+# --- IDEs & Editors ---
 .idea/
 .vscode/
 *.swp
 *.swo
+.project
+.settings/
+
+# --- OS Specific ---
 .DS_Store
 Thumbs.db
-.env
-.env
+ehthumbs.db

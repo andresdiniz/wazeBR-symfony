@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Entity\Partner;
+use App\Entity\User;
+use App\Repository\UserRepository;
 use App\Service\AiNarrativeService;
 use App\Service\BriefingDataService;
 use App\Service\BriefingSchedulerService;
@@ -19,36 +22,24 @@ use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
 use Twig\Environment as Twig;
 
-/**
- * Envia o briefing diário de mobilidade urbana para todos os parceiros ativos.
- *
- * Uso:
- *   php bin/console waze:briefing:daily
- *   php bin/console waze:briefing:daily --cidade="Conselheiro Lafaiete"  # testa um parceiro
- *   php bin/console waze:briefing:daily --dry-run                         # sem enviar e-mails
- *   php bin/console waze:briefing:daily --data=2026-09-27                 # data específica
- *   php bin/console waze:briefing:daily --no-ai                           # força sem IA
- *
- * Crontab (UTC — 06h BRT = 09h UTC):
- *   0 9 * * 1-5 /usr/bin/php /var/www/html/bin/console waze:briefing:daily >> /var/log/briefing.log 2>&1
- */
 #[AsCommand(
     name: 'waze:briefing:daily',
-    description: 'Envia o briefing diário de mobilidade urbana para os parceiros Waze.',
+    description: 'Envia o briefing diário aos usuários ativos dos parceiros.',
 )]
 final class WazeDailyBriefingCommand extends Command
 {
     private const FROM_EMAIL = 'briefing@trafikhub.com.br';
-    private const FROM_NAME  = 'TrafikHub · Waze Brasil';
+    private const FROM_NAME = 'TrafikHub · Waze Brasil';
 
     public function __construct(
-        private readonly BriefingDataService     $dataService,
-        private readonly AiNarrativeService      $aiService,
+        private readonly BriefingDataService $dataService,
+        private readonly AiNarrativeService $aiService,
         private readonly BriefingSchedulerService $scheduler,
-        private readonly MailerInterface          $mailer,
-        private readonly Twig                     $twig,
-        private readonly LoggerInterface          $logger,
-        private readonly string                   $dashboardBaseUrl = 'https://trafikhub.waze.com.br',
+        private readonly UserRepository $userRepository,
+        private readonly MailerInterface $mailer,
+        private readonly Twig $twig,
+        private readonly LoggerInterface $logger,
+        private readonly string $dashboardBaseUrl = 'https://trafikhub.waze.com.br',
     ) {
         parent::__construct();
     }
@@ -56,148 +47,231 @@ final class WazeDailyBriefingCommand extends Command
     protected function configure(): void
     {
         $this
-            ->addOption('cidade',  null, InputOption::VALUE_REQUIRED, 'Processa somente esta cidade')
-            ->addOption('data',    null, InputOption::VALUE_REQUIRED, 'Data de referência (Y-m-d, BRT)')
-            ->addOption('dry-run', null, InputOption::VALUE_NONE,     'Não envia e-mails, apenas imprime')
-            ->addOption('no-ai',   null, InputOption::VALUE_NONE,     'Desativa a geração de narrativa IA');
+            ->addOption('partner-id', null, InputOption::VALUE_REQUIRED, 'Processa somente o ID do parceiro')
+            ->addOption('cidade', null, InputOption::VALUE_REQUIRED, 'Filtra pela cidade cadastrada no parceiro')
+            ->addOption('data', null, InputOption::VALUE_REQUIRED, 'Data de referência (Y-m-d, horário de São Paulo)')
+            ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Mostra destinatários e assunto; não envia nem chama IA')
+            ->addOption('no-ai', null, InputOption::VALUE_NONE, 'Desativa a narrativa IA');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $io     = new SymfonyStyle($input, $output);
-        $dryRun = $input->getOption('dry-run');
-        $noAi   = $input->getOption('no-ai');
+        $io = new SymfonyStyle($input, $output);
+        $dryRun = (bool) $input->getOption('dry-run');
+        $noAi = (bool) $input->getOption('no-ai');
         $dataRef = $input->getOption('data');
         $cidadeFiltro = $input->getOption('cidade');
+        $partnerIdFiltro = $input->getOption('partner-id');
+
+        if (
+            $partnerIdFiltro !== null
+            && (!ctype_digit((string) $partnerIdFiltro) || (int) $partnerIdFiltro < 1)
+        ) {
+            $io->error('--partner-id deve ser um inteiro positivo.');
+
+            return Command::INVALID;
+        }
 
         $io->title('Briefing Diário de Mobilidade — TrafikHub');
 
         if ($dryRun) {
-            $io->note('Modo dry-run: nenhum e-mail será enviado.');
+            $io->note('Dry-run: nenhum e-mail será enviado e a IA não será chamada.');
         }
 
         $parceiros = $this->scheduler->getParceirosPorDia();
 
-        // Aplica filtro por cidade se passado via option
+        if ($partnerIdFiltro !== null) {
+            $parceiros = array_filter(
+                $parceiros,
+                static fn (array $item): bool =>
+                    $item['partner']->getId() === (int) $partnerIdFiltro,
+            );
+        }
+
         if ($cidadeFiltro !== null) {
             $parceiros = array_filter(
                 $parceiros,
-                fn(array $p) => mb_strtolower($p['cidade']) === mb_strtolower($cidadeFiltro)
+                static fn (array $item): bool =>
+                    mb_strtolower($item['cidade'])
+                    === mb_strtolower(trim((string) $cidadeFiltro)),
             );
-
-            if (empty($parceiros)) {
-                $io->error("Nenhum parceiro ativo encontrado para cidade: {$cidadeFiltro}");
-                return Command::FAILURE;
-            }
         }
 
-        // Filtra somente parceiros ativos
-        $parceiros = array_filter($parceiros, fn(array $p) => $p['ativo'] ?? true);
+        if ($parceiros === []) {
+            $io->error('Nenhum parceiro ativo encontrado para o filtro informado.');
+
+            return Command::FAILURE;
+        }
 
         $io->text(sprintf('Parceiros a processar: %d', count($parceiros)));
 
-        $erros   = 0;
+        $erros = 0;
         $enviados = 0;
+        $simulados = 0;
+        $ignorados = 0;
 
-        foreach ($parceiros as $parceiro) {
-            $cidade = $parceiro['cidade'];
+        foreach ($parceiros as $item) {
+            /** @var Partner $partner */
+            $partner = $item['partner'];
+            $cidade = $item['cidade'];
+            $partnerId = $partner->getId();
 
             try {
-                $io->section("📍 {$cidade}");
+                $io->section(sprintf(
+                    'Parceiro %d — %s (%s)',
+                    $partnerId,
+                    $item['nome'],
+                    $cidade,
+                ));
 
-                // 1. Agrega dados do banco
-                $io->text('  → Coletando dados...');
-                $dados = $this->dataService->getForCity($cidade, $dataRef);
+                $emails = $this->getActiveEmails($partner);
 
-                if ((int) ($dados['jams']['total'] ?? 0) === 0 && (int) ($dados['alertas']['total'] ?? 0) === 0) {
-                    $io->warning("  Sem dados para {$cidade} em {$dados['data_ref']} — briefing não enviado.");
+                if ($emails === []) {
+                    $ignorados++;
+                    $io->warning('Nenhum usuário ativo com e-mail válido; não enviado.');
+                    $this->logger->warning('waze.briefing.no_recipients', [
+                        'partner_id' => $partnerId,
+                    ]);
+
                     continue;
                 }
 
-                // 2. Gera narrativa de IA (se habilitado para hoje e não desativado por option)
-                $narrativa = null;
-                $useAi     = ($parceiro['use_ai'] ?? true) && !$noAi;
+                $dados = $this->dataService->getForPartner(
+                    $partner,
+                    is_string($dataRef) ? $dataRef : null,
+                );
 
-                if ($useAi) {
-                    $io->text('  → Gerando narrativa IA (Gemini)...');
-                    $promptExtra = $parceiro['prompt_extra'] ?? null;
-                    $narrativa   = $this->aiService->generate($dados, null);
+                if (
+                    (int) ($dados['jams']['total'] ?? 0) === 0
+                    && (int) ($dados['alertas']['total'] ?? 0) === 0
+                ) {
+                    $ignorados++;
+                    $io->warning('Sem dados no período; não enviado.');
 
-                    if ($narrativa === null) {
-                        $io->warning('  IA indisponível — e-mail vai sem narrativa.');
-                    } else {
-                        $io->text('  ✔ Narrativa gerada.');
-                    }
-                } else {
-                    $io->text('  → IA desativada para este parceiro/dia.');
+                    continue;
                 }
 
-                // 3. Renderiza template Twig
-                $html = $this->twig->render('email/daily_briefing.html.twig', [
-                    'dados'         => $dados,
-                    'parceiro'      => $parceiro,
-                    'narrativa'     => $narrativa,
-                    'is_semanal'    => false,
-                    'dashboard_url' => $this->dashboardBaseUrl . '/dashboard?cidade=' . urlencode($cidade),
-                ]);
+                $narrativa = null;
+                if (!$dryRun && !$noAi && $item['use_ai']) {
+                    $narrativa = $this->aiService->generate($dados);
 
-                // 4. Monta e envia o e-mail
-                $dataFormatada = (new \DateTimeImmutable($dados['data_ref']))->format('d/m/Y');
+                    if ($narrativa === null) {
+                        $io->warning('IA indisponível; envio sem narrativa.');
+                    }
+                }
+
+                $parceiroTemplate = [
+                    'cidade' => $cidade,
+                    'nome' => $item['nome'],
+                    'email' => $emails,
+                    'partner_id' => $partnerId,
+                ];
+
+                $html = $this->twig->render(
+                    'email/daily_briefing.html.twig',
+                    [
+                        'dados' => $dados,
+                        'parceiro' => $parceiroTemplate,
+                        'narrativa' => $narrativa,
+                        'is_semanal' => false,
+                        'dashboard_url' => rtrim($this->dashboardBaseUrl, '/')
+                            . '/dashboard?cidade=' . rawurlencode($cidade),
+                    ],
+                );
+
+                $dataFormatada = (new \DateTimeImmutable($dados['data_ref']))
+                    ->format('d/m/Y');
+
                 $assunto = sprintf(
                     '[TrafikHub] Briefing %s — %s — %s',
                     $dataFormatada,
                     $cidade,
-                    $narrativa ? '✦ com análise IA' : 'dados do dia'
+                    $narrativa !== null ? '✦ com análise IA' : 'dados do dia',
                 );
+
+                if ($dryRun) {
+                    $simulados++;
+                    $io->text('[DRY-RUN] Destinatários: ' . implode(', ', $emails));
+                    $io->text('Assunto: ' . $assunto);
+                    $this->logger->info('waze.briefing.dry_run', [
+                        'partner_id' => $partnerId,
+                        'data_ref' => $dados['data_ref'],
+                        'recipient_count' => count($emails),
+                    ]);
+
+                    continue;
+                }
 
                 $email = (new Email())
                     ->from(new Address(self::FROM_EMAIL, self::FROM_NAME))
                     ->subject($assunto)
                     ->html($html);
 
-                foreach ((array) $parceiro['email'] as $dest) {
-                    $email->addTo($dest);
+                foreach ($emails as $destinatario) {
+                    $email->addTo($destinatario);
                 }
 
-                if ($dryRun) {
-                    $io->text("  [DRY-RUN] E-mail montado para: " . implode(', ', (array) $parceiro['email']));
-                    $io->text("  Assunto: {$assunto}");
-                } else {
-                    $this->mailer->send($email);
-                    $io->text('  ✔ E-mail enviado para: ' . implode(', ', (array) $parceiro['email']));
-                }
-
-                $this->logger->info('waze.briefing.sent', [
-                    'cidade'       => $cidade,
-                    'data_ref'     => $dados['data_ref'],
-                    'total_jams'   => $dados['jams']['total'],
-                    'total_alertas'=> $dados['alertas']['total'],
-                    'ai_used'      => $useAi && $narrativa !== null,
-                    'dry_run'      => $dryRun,
-                ]);
-
+                $this->mailer->send($email);
                 $enviados++;
 
+                $io->text('Envio solicitado para: ' . implode(', ', $emails));
+                $this->logger->info('waze.briefing.sent', [
+                    'partner_id' => $partnerId,
+                    'data_ref' => $dados['data_ref'],
+                    'recipient_count' => count($emails),
+                    'ai_used' => $narrativa !== null,
+                ]);
             } catch (\Throwable $e) {
                 $erros++;
-                $io->error("  Falha em {$cidade}: " . $e->getMessage());
+                $io->error(sprintf(
+                    'Falha no parceiro %s: %s',
+                    (string) $partnerId,
+                    $e->getMessage(),
+                ));
                 $this->logger->error('waze.briefing.error', [
-                    'cidade' => $cidade,
-                    'error'  => $e->getMessage(),
-                    'trace'  => $e->getTraceAsString(),
+                    'partner_id' => $partnerId,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
                 ]);
-                // Continua para o próximo parceiro — não deixa um erro derrubar todos
             }
         }
 
-        // ── Resumo ──────────────────────────────────────────────────────────
         $io->newLine();
-        $io->success(sprintf(
-            'Concluído: %d enviado(s), %d erro(s).',
+        $io->text(sprintf(
+            'Concluído: %d envio(s) solicitado(s), %d simulado(s), %d ignorado(s), %d erro(s).',
             $enviados,
+            $simulados,
+            $ignorados,
             $erros,
         ));
 
         return $erros === 0 ? Command::SUCCESS : Command::FAILURE;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function getActiveEmails(Partner $partner): array
+    {
+        $users = $this->userRepository->findBy([
+            'partner' => $partner,
+            'isActive' => true,
+        ]);
+
+        $emails = [];
+
+        foreach ($users as $user) {
+            if (!$user instanceof User || !$user->isActive()) {
+                continue;
+            }
+
+            $email = trim((string) $user->getEmail());
+
+            if (filter_var($email, FILTER_VALIDATE_EMAIL) !== false) {
+                $emails[mb_strtolower($email)] = $email;
+            }
+        }
+
+        return array_values($emails);
     }
 }

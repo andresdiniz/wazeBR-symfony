@@ -18,22 +18,31 @@
 {% set HEALTH_LEVEL = stats.health >= 80 ? 'good' : (stats.health >= 55 ? 'warn' : 'bad') %}
 {% set TOTAL_OCC = (irregularities|length) + (nearbyAlerts|length) %}
 
+{# URL base para os links de exportação #}
+{% set exportBase = path('routes_export_csv', {id: route.id}) %}
+
 <div class="rs-page"
      data-route-show
+     data-route-id="{{ route.id }}"
      data-route-polyline='{{ routePolyline|json_encode|e('html_attr') }}'
      data-nearby-alerts='{{ nearbyAlerts|json_encode|e('html_attr') }}'
      data-irregularities='{{ irregularities|json_encode|e('html_attr') }}'
-     data-subroutes-polyline='{{ subRoutesPolyline|json_encode|e('html_attr') }}'>
+     data-subroutes-polyline='{{ subRoutesPolyline|json_encode|e('html_attr') }}'
+     data-timeline='{{ timeline|json_encode|e('html_attr') }}'
+     data-by-hour='{{ byHour|json_encode|e('html_attr') }}'
+     data-by-dow='{{ byDow|json_encode|e('html_attr') }}'
+     data-subroutes='{{ topSubRoutes|json_encode|e('html_attr') }}'>
 
     <div class="rs-container">
 
-        {# ── Breadcrumb + header ─────────────────────────────────── #}
+        {# ── Breadcrumb ──────────────────────────────────────────── #}
         <nav class="rs-breadcrumb" aria-label="Navegação">
             <a href="{{ path('routes_index') }}">Rotas</a>
             <span aria-hidden="true">/</span>
             <span aria-current="page">{{ route.name }}</span>
         </nav>
 
+        {# ── Header ──────────────────────────────────────────────── #}
         <header class="rs-header">
             <div class="rs-header__main">
                 <span class="rs-eyebrow"><i></i> Análise de rota</span>
@@ -58,6 +67,79 @@
             </div>
 
             <div class="rs-header__aside">
+                {# ── Botão Exportar ─────────────────────────────── #}
+                <div class="rs-export" data-export-menu>
+                    <button class="rs-export__btn" data-export-toggle
+                            aria-haspopup="true" aria-expanded="false"
+                            aria-label="Exportar dados desta rota">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"
+                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                             aria-hidden="true">
+                            <path d="M8 1v9M4 7l4 4 4-4M2 13h12"/>
+                        </svg>
+                        Exportar
+                        <svg class="rs-export__caret" width="10" height="10" viewBox="0 0 10 10"
+                             fill="currentColor" aria-hidden="true">
+                            <path d="M2 3.5l3 3 3-3"/>
+                        </svg>
+                    </button>
+
+                    <div class="rs-export__dropdown" data-export-dropdown hidden>
+                        <p class="rs-export__label">Exportar como CSV</p>
+
+                        <a class="rs-export__item"
+                           href="{{ exportBase }}?type=timeline"
+                           download>
+                            <span class="rs-export__item-icon">📈</span>
+                            <span>
+                                <strong>Evolução do atraso</strong>
+                                <small>Timeline · últimos 7 dias</small>
+                            </span>
+                        </a>
+
+                        <a class="rs-export__item"
+                           href="{{ exportBase }}?type=by_hour"
+                           download>
+                            <span class="rs-export__item-icon">🕐</span>
+                            <span>
+                                <strong>Média por hora</strong>
+                                <small>Padrão horário · 30 dias</small>
+                            </span>
+                        </a>
+
+                        <a class="rs-export__item"
+                           href="{{ exportBase }}?type=by_dow"
+                           download>
+                            <span class="rs-export__item-icon">📅</span>
+                            <span>
+                                <strong>Média por dia da semana</strong>
+                                <small>Padrão semanal · 30 dias</small>
+                            </span>
+                        </a>
+
+                        <a class="rs-export__item"
+                           href="{{ exportBase }}?type=occurrences"
+                           download>
+                            <span class="rs-export__item-icon">⚠️</span>
+                            <span>
+                                <strong>Ocorrências</strong>
+                                <small>Alertas Waze + irregularidades TVT</small>
+                            </span>
+                        </a>
+
+                        <a class="rs-export__item"
+                           href="{{ exportBase }}?type=subroutes"
+                           download>
+                            <span class="rs-export__item-icon">🔀</span>
+                            <span>
+                                <strong>Trechos problemáticos</strong>
+                                <small>Sub-rotas com métricas</small>
+                            </span>
+                        </a>
+                    </div>
+                </div>
+
+                {# ── Health ─────────────────────────────────────── #}
                 <div class="rs-health rs-health--{{ HEALTH_LEVEL }}">
                     <span class="rs-health__value">{{ stats.health }}<small>%</small></span>
                     <span class="rs-health__label">
@@ -69,7 +151,7 @@
             </div>
         </header>
 
-        {# ── Cards de KPI ─────────────────────────────────────────── #}
+        {# ── KPIs ─────────────────────────────────────────────────── #}
         <section class="rs-kpis" aria-label="Indicadores">
             <article class="rs-kpi">
                 <span class="rs-kpi__label">Atraso atual</span>
@@ -201,7 +283,7 @@
             </p>
         </section>
 
-        {# ── Timeline com alertas sobrepostos ─────────────────────── #}
+        {# ── Timeline ─────────────────────────────────────────────── #}
         <section class="rs-panel">
             <header class="rs-panel__header">
                 <div>
@@ -290,7 +372,6 @@
                         <div class="rs-subroute rs-subroute--{{ lvl }}"
                              data-subroute-id="{{ sub.id }}">
 
-                            {# ── Coluna esquerda: conteúdo ── #}
                             <div class="rs-subroute__content">
                                 <div class="rs-subroute__head">
                                     <strong class="rs-subroute__name">{{ sub.name }}</strong>
@@ -331,7 +412,6 @@
                                 </div>
                             </div>
 
-                            {# ── Coluna direita: mini-mapa ── #}
                             <div class="rs-subroute__map-wrap">
                                 <div class="rs-subroute__map"
                                      data-subroute-map
@@ -349,7 +429,7 @@
 
         </div>
 
-        {# ── Ocorrências: irregularidades TVT + alertas Waze próximos ── #}
+        {# ── Ocorrências ──────────────────────────────────────────── #}
         <section class="rs-panel">
             <header class="rs-panel__header">
                 <div>
@@ -371,7 +451,6 @@
             {% else %}
                 <div class="rs-occurrences">
 
-                    {# ── Alertas Waze próximos ── #}
                     {% for a in nearbyAlerts %}
                         {% set t = a.type|upper %}
                         <div class="rs-occ rs-occ--waze">
@@ -400,7 +479,6 @@
                         </div>
                     {% endfor %}
 
-                    {# ── Irregularidades TVT ── #}
                     {% for irr in irregularities %}
                         <div class="rs-occ rs-occ--tvt">
                             <span class="rs-occ__icon" aria-hidden="true">⚠</span>
@@ -433,4 +511,5 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script type="module" src="{{ asset('js/pages/route-show.js') }}"></script>
 {% endblock %}

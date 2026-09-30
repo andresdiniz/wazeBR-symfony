@@ -1,0 +1,158 @@
+/* ── Exportar dropdown ──────────────────────────────────────
+   Adicionar ao final de route-show.css
+   ─────────────────────────────────────────────────────────── */
+
+/* O aside do header agora pode ter múltiplos filhos */
+.rs-header__aside {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* Wrapper posicionado para o dropdown */
+.rs-export {
+    position: relative;
+}
+
+/* Botão principal */
+.rs-export__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 16px;
+    background: var(--rs-surface);
+    color: var(--rs-text);
+    border: 1px solid var(--rs-line);
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s, border-color .15s, box-shadow .15s;
+    font-family: inherit;
+}
+
+.rs-export__btn:hover {
+    background: var(--rs-soft);
+    border-color: var(--rs-primary);
+    box-shadow: 0 2px 8px rgba(37, 99, 235, .10);
+}
+
+.rs-export__btn:focus-visible {
+    outline: 2px solid var(--rs-primary);
+    outline-offset: 2px;
+}
+
+.rs-export__btn[aria-expanded="true"] {
+    background: var(--rs-soft);
+    border-color: var(--rs-primary);
+}
+
+.rs-export__caret {
+    transition: transform .18s;
+    flex-shrink: 0;
+}
+
+.rs-export__btn[aria-expanded="true"] .rs-export__caret {
+    transform: rotate(180deg);
+}
+
+/* Dropdown */
+.rs-export__dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 200;
+    min-width: 260px;
+    background: var(--rs-surface);
+    border: 1px solid var(--rs-line);
+    border-radius: 12px;
+    box-shadow: 0 8px 28px rgba(15, 23, 42, .12), 0 2px 8px rgba(15, 23, 42, .06);
+    padding: 8px;
+    animation: rs-export-in .12s ease;
+}
+
+@keyframes rs-export-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.rs-export__label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--rs-muted);
+    padding: 4px 10px 8px;
+    margin: 0;
+}
+
+/* Itens do dropdown */
+.rs-export__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--rs-text);
+    font-size: 13px;
+    transition: background .12s;
+    cursor: pointer;
+}
+
+.rs-export__item:hover {
+    background: var(--rs-soft);
+    color: var(--rs-primary);
+}
+
+.rs-export__item:hover strong {
+    color: var(--rs-primary);
+}
+
+.rs-export__item + .rs-export__item {
+    margin-top: 1px;
+}
+
+.rs-export__item-icon {
+    font-size: 16px;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--rs-soft);
+    border-radius: 7px;
+    flex-shrink: 0;
+}
+
+.rs-export__item span:last-child {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.rs-export__item strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--rs-text);
+    line-height: 1.2;
+}
+
+.rs-export__item small {
+    font-size: 11px;
+    color: var(--rs-muted);
+    font-weight: 400;
+    line-height: 1.2;
+}
+
+/* No mobile o dropdown vai para a esquerda também se não couber */
+@media (max-width: 480px) {
+    .rs-export__dropdown {
+        right: auto;
+        left: 0;
+        min-width: 240px;
+    }
+}
