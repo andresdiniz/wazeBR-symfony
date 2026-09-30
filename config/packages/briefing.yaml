@@ -1,0 +1,80 @@
+# config/packages/briefing.yaml
+#
+# Configuração do Briefing Diário de Mobilidade Urbana
+# ─────────────────────────────────────────────────────
+#
+# strategy:
+#   always  — IA para todos os parceiros todos os dias (recomendado com Gemini Flash,
+#              que suporta 1.500 req/dia grátis — suficiente para 10 parceiros)
+#   rotate  — rotaciona 2 parceiros/dia nos dias úteis, todos no fim de semana
+#   weekly  — cada parceiro recebe IA somente no dia definido em `ai_day`
+#
+# schedule: horário de envio no cron (em BRT — o cron deve estar configurado para
+#           executar em UTC, então 06:00 BRT = 09:00 UTC → "0 9 * * 1-5")
+#
+# gemini_model: modelo a usar. Opções:
+#   gemini-1.5-flash-latest   (gratuito, mais rápido, contexto 1M tokens)
+#   gemini-2.0-flash           (gratuito tier, mais capaz)
+#   gemini-1.5-pro             (pago, melhor qualidade narrativa)
+
+briefing:
+    strategy: always
+    schedule: "0 9 * * 1-5"   # Seg–Sex às 06h BRT (09h UTC)
+    gemini_model: gemini-1.5-flash-latest
+    max_tokens_prompt: 800     # estimativa conservadora por parceiro
+
+    # ── Parceiros ─────────────────────────────────────────────────────────────
+    # cidade:    valor exato da coluna `city` na tabela waze_traffic_jam/waze_alert
+    # email:     lista de destinatários do e-mail (pode ser múltiplos)
+    # nome:      nome de exibição no assunto e cabeçalho do e-mail
+    # ai_day:    (só para strategy: weekly) 1=Seg … 7=Dom
+    # ativo:     false para desativar temporariamente sem remover o parceiro
+    # prompt_extra: texto adicional incluído no fim do prompt (personalizações por cidade)
+    #
+    parceiros:
+        -   cidade: "Conselheiro Lafaiete"
+            nome: "Prefeitura de Conselheiro Lafaiete"
+            email:
+                - gestao@conselheirolafaiete.mg.gov.br
+                - mobilidade@conselheirolafaiete.mg.gov.br
+            ativo: true
+            ai_day: 1   # usado somente em strategy: weekly
+
+        -   cidade: "Barbacena"
+            nome: "Prefeitura de Barbacena"
+            email:
+                - transito@barbacena.mg.gov.br
+            ativo: true
+            ai_day: 2
+
+        -   cidade: "São João del-Rei"
+            nome: "Prefeitura de São João del-Rei"
+            email:
+                - smtt@saojoaodelrei.mg.gov.br
+            ativo: true
+            ai_day: 3
+
+        -   cidade: "Ouro Preto"
+            nome: "Prefeitura de Ouro Preto"
+            email:
+                - transito@ouropreto.mg.gov.br
+            ativo: true
+            ai_day: 4
+
+        -   cidade: "Mariana"
+            nome: "Prefeitura de Mariana"
+            email:
+                - mobilidade@mariana.mg.gov.br
+            ativo: true
+            ai_day: 5
+            prompt_extra: >
+                Atenção especial à MG-129 e às vias de acesso às mineradoras,
+                que frequentemente registram picos no início do turno (6h BRT).
+
+        -   cidade: "Lafaiete"   # alias curto, caso o banco grave assim
+            nome: "Parceiro B — Conselheiro Lafaiete"
+            email:
+                - waze@exemplo.com.br
+            ativo: false   # desativado temporariamente
+
+        # Adicione mais parceiros seguindo o mesmo padrão...
