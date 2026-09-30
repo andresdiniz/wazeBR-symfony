@@ -74,3 +74,86 @@ services:
     App\Service\TrafficLight\TrafficLightService:
         arguments:
             $connectors: !tagged_iterator app.traffic_light_connector
+
+parameters:
+    partner_feeds_save_raw: '%env(bool:PARTNER_FEEDS_SAVE_RAW)%'
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Entity/'
+            - '../src/Kernel.php'
+
+    App\Service\PartnerFeedRawStorage:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+            $enabled: '%partner_feeds_save_raw%'
+
+    App\EventListener\TimezoneListener:
+        tags: ['kernel.event_subscriber']
+
+    App\Messenger\SchedulerTimerMiddleware:
+        arguments:
+            $schedulerLogger: '@monolog.logger.scheduler'
+        tags:
+            - { name: messenger.middleware, priority: 1000 }
+
+    App\EventSubscriber\SchedulerWorkerLoggerSubscriber:
+        arguments:
+            $schedulerLogger: '@monolog.logger.scheduler'
+        tags: ['kernel.event_subscriber']
+
+    App\Repository\TvRepository:
+        arguments:
+            $connection: '@doctrine.dbal.default_connection'
+            $params: '@parameter_bag'
+
+    # ── Traffic Light Connectors ──────────────────────────────────────────
+    App\Service\TrafficLight\Connector\NtcipConnector:
+        tags: ['app.traffic_light_connector']
+
+    App\Service\TrafficLight\Connector\ModbusTcpConnector:
+        tags: ['app.traffic_light_connector']
+
+    App\Service\TrafficLight\Connector\HttpRestConnector:
+        tags: ['app.traffic_light_connector']
+
+    App\Service\TrafficLight\Connector\FakeConnector:
+        tags: ['app.traffic_light_connector']
+
+    App\Service\TrafficLight\Connector\SensorThingsConnector:
+        tags: ['app.traffic_light_connector']
+
+    # ── Traffic Light Vendor Profiles ─────────────────────────────────────
+    App\Service\TrafficLight\Profile\GenericNtcipProfile:
+        tags: ['app.traffic_light_profile']
+
+    App\Service\TrafficLight\Profile\TescNtcipProfile:
+        tags: ['app.traffic_light_profile']
+
+    App\Service\TrafficLight\Profile\EconoliteNtcipProfile:
+        tags: ['app.traffic_light_profile']
+
+    App\Service\TrafficLight\Profile\GenericModbusProfile:
+        tags: ['app.traffic_light_profile']
+
+    App\Service\TrafficLight\Profile\VendorProfileRegistry:
+        arguments:
+            $profiles: !tagged_iterator app.traffic_light_profile
+
+    # ── Traffic Light Service (iterable tagueado) ────────────────────────
+    App\Service\TrafficLight\TrafficLightService:
+        arguments:
+            $connectors: !tagged_iterator app.traffic_light_connector
+
+    App\Service\AiNarrativeService:
+        arguments:
+            $geminiApiKey: '%env(GEMINI_API_KEY)%'
+
+
