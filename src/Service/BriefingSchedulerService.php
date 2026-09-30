@@ -7,108 +7,89 @@ namespace App\Service;
 /**
  * Decide quais parceiros recebem análise de IA no dia de hoje.
  *
- * Estratégias disponíveis (configurável em config/packages/briefing.yaml):
+ * Configurar em config/packages/briefing.yaml (chave parameters:):
+ *   briefing.strategy:  always | rotate | weekly
+ *   briefing.parceiros: lista de parceiros
  *
- *   always   — todos os parceiros recebem IA todos os dias (default quando
- *               a quota da API é suficiente — Gemini Flash gratuito suporta
- *               1.500 req/dia, o que cobre ~10 parceiros tranquilamente).
+ * Estratégias:
+ *   always  — todos recebem IA todos os dias (padrão; Gemini Flash gratuito
+ *              suporta 1.500 req/dia, suficiente para ~10 parceiros)
+ *   rotate  — 2 parceiros/dia nos dias úteis, todos no fim de semana
+ *   weekly  — cada parceiro recebe IA 1x/semana no `ai_day` configurado
  *
- *   rotate   — rotaciona os parceiros por dia da semana. Útil se o número
- *               de parceiros crescer ou se a quota for mais restrita.
- *               Cada parceiro recebe IA 2x por semana (dias úteis) + 1x no
- *               resumo semanal do fim de semana.
- *
- *   weekly   — cada parceiro recebe IA somente uma vez por semana, no dia
- *               definido na configuração do parceiro.
- *
- * Independentemente da estratégia, TODOS os parceiros recebem o e-mail com
- * os dados brutos (tabelas de KPIs). A IA é apenas o bloco narrativo extra.
+ * Independentemente da estratégia, TODOS os parceiros ativos recebem o e-mail
+ * com os dados brutos. O flag `use_ai` controla apenas o bloco narrativo.
  */
 final class BriefingSchedulerService
 {
-    /**
-     * @param array  $parceiros   Lista de parceiros do briefing.yaml
-     * @param string $strategy    'always' | 'rotate' | 'weekly'
-     */
+    /** @param array<array<string,mixed>> $parceiros Lista bruta do parâmetro briefing.parceiros */
     public function __construct(
         private readonly array  $parceiros,
         private readonly string $strategy = 'always',
     ) {}
 
     /**
-     * Retorna todos os parceiros que devem receber o briefing hoje,
-     * com o flag `use_ai` indicando se a análise de IA deve ser gerada.
+     * Retorna os parceiros ativos (ativo != false) com o flag `use_ai` calculado.
      *
-     * @return array<array{cidade: string, email: string[], use_ai: bool, ...}>
+     * @return array<array<string,mixed>>
      */
     public function getParceirosPorDia(?\DateTimeImmutable $hoje = null): array
     {
-        $hoje ??= new \DateTimeImmutable('now', new \DateTimeZone('America/Sao_Paulo'));
-        $diaSemana = (int) $hoje->format('N'); // 1=Seg … 7=Dom
+        $hoje      ??= new \DateTimeImmutable('now', new \DateTimeZone('America/Sao_Paulo'));
+        $diaSemana   = (int) $hoje->format('N'); // 1=Seg … 7=Dom
 
-        return array_map(function (array $parceiro) use ($diaSemana): array {
+        // Filtra inativos aqui — o YAML pode ter ativo: false
+        $ativos = array_values(array_filter(
+            $this->parceiros,
+            static fn(array $p) => ($p['ativo'] ?? true) !== false,
+        ));
+
+        return array_map(function (array $parceiro) use ($diaSemana, $ativos): array {
             $parceiro['use_ai'] = match ($this->strategy) {
-                'always'  => true,
-                'rotate'  => $this->rotateStrategy($parceiro, $diaSemana),
-                'weekly'  => $this->weeklyStrategy($parceiro, $diaSemana),
-                default   => true,
+                'rotate' => $this->rotateStrategy($parceiro, $ativos, $diaSemana),
+                'weekly' => $this->weeklyStrategy($parceiro, $diaSemana),
+                default  => true, // 'always' e qualquer valor desconhecido
             };
             return $parceiro;
-        }, $this->parceiros);
+        }, $ativos);
     }
 
-    /**
-     * Retorna somente os parceiros que precisam de chamada à IA hoje.
-     * Útil para calcular o total de requisições antes de executar.
-     */
+    /** Parceiros que precisam de chamada à IA hoje. */
     public function getParceiroComIA(?\DateTimeImmutable $hoje = null): array
     {
         return array_filter(
             $this->getParceirosPorDia($hoje),
-            fn(array $p) => $p['use_ai']
+            static fn(array $p) => $p['use_ai'],
         );
     }
 
-    // ─── Estratégias ──────────────────────────────────────────────────────────
+    // ─── Estratégias privadas ─────────────────────────────────────────────────
 
     /**
-     * Rotaciona 2 parceiros por dia útil + todos no fim de semana (resumo semanal).
-     *
-     * Seg: parceiros 0,5  |  Ter: 1,6  |  Qua: 2,7  |  Qui: 3,8  |  Sex: 4,9
-     * Sáb/Dom: todos (resumo semanal — prompt diferente, mais tokens)
+     * Seg: parceiros 0,1  |  Ter: 2,3  |  Qua: 4,5  |  Qui: 6,7  |  Sex: 8,9
+     * Sáb/Dom: todos (resumo semanal — prompt mais completo).
      */
-    private function rotateStrategy(array $parceiro, int $diaSemana): bool
+    private function rotateStrategy(array $parceiro, array $ativos, int $diaSemana): bool
     {
         if ($diaSemana >= 6) {
-            return true; // fim de semana: todos recebem resumo semanal
+            return true;
         }
 
-        $indice = array_search($parceiro, $this->parceiros, true);
+        $indice = array_search($parceiro, $ativos, true);
         if ($indice === false) {
             return false;
         }
 
-        // Dia 1(Seg)=slot 0, 2(Ter)=slot 1 ... 5(Sex)=slot 4
-        $slot = $diaSemana - 1; // 0–4
-        $n    = count($this->parceiros);
-
-        // Divide os parceiros em 5 grupos (um por dia útil)
-        // Cada parceiro vai aparecer em ceil(n/5) dias
+        $n         = count($ativos);
         $grupoSize = (int) ceil($n / 5);
+        $slot      = $diaSemana - 1; // 0(Seg)–4(Sex)
         $inicio    = $slot * $grupoSize;
-        $fim       = $inicio + $grupoSize - 1;
 
-        return $indice >= $inicio && $indice <= $fim;
+        return $indice >= $inicio && $indice < $inicio + $grupoSize;
     }
 
-    /**
-     * Cada parceiro tem um `ai_day` definido em sua configuração (1=Seg … 7=Dom).
-     * A IA só roda naquele dia.
-     */
     private function weeklyStrategy(array $parceiro, int $diaSemana): bool
     {
-        $aiDay = $parceiro['ai_day'] ?? null;
-
-        return $aiDay !== null && (int) $aiDay === $diaSemana;
+        return isset($parceiro['ai_day']) && (int) $parceiro['ai_day'] === $diaSemana;
     }
 }
