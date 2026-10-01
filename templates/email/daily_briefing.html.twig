@@ -1,315 +1,387 @@
 {#
-  templates/email/daily_briefing.html.twig
-  ─────────────────────────────────────────
-  Variáveis esperadas:
-    dados        → array retornado por BriefingDataService::getForCity()
-    parceiro     → array com nome, cidade, email do briefing.yaml
-    narrativa    → string|null — HTML retornado por AiNarrativeService (pode ser null)
-    is_semanal   → bool — altera cabeçalho se for resumo semanal de fim de semana
-    dashboard_url → string — URL do TrafikHub para o parceiro
-#}
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light">
-<title>Briefing de Mobilidade — {{ dados.cidade }} — {{ dados.data_ref }}</title>
-</head>
-<body style="margin:0;padding:0;background:#F0F4F8;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1A202C;">
+    templates/email/daily_briefing.html.twig
 
-{# ══ Wrapper ══════════════════════════════════════════════════════════════════ #}
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-<tr><td align="center" style="padding:24px 12px;">
+    Variáveis:
+      dados         → array de BriefingDataService::getForPartner()
+      parceiro      → array com nome e cidade
+      narrativa     → HTML validado ou null
+      is_semanal    → bool
+      dashboard_url → URL pública ou string vazia
+  #}
+  <!DOCTYPE html>
+  <html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>Briefing de Mobilidade — {{ dados.cidade }} — {{ dados.data_ref }}</title>
+  </head>
+  <body style="margin:0;padding:0;background:#F0F4F8;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1A202C;">
 
-<table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0"
-       style="max-width:600px;width:100%;background:#ffffff;border-radius:8px;
-              box-shadow:0 2px 8px rgba(0,0,0,.08);overflow:hidden;">
+  {% set data_exibicao = dados.data_ref|replace({'-': '/'})|split('/') %}
+  {% set data_br = data_exibicao[2] ~ '/' ~ data_exibicao[1] ~ '/' ~ data_exibicao[0] %}
+  {% set cobertura = dados.cobertura|default(null) %}
 
-  {# ── Header ─────────────────────────────────────────────────────────────── #}
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
   <tr>
-    <td style="background:#1A3A6B;padding:24px 28px;">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-        <tr>
-          <td>
-            <p style="margin:0;font-size:11px;color:#93B4DF;text-transform:uppercase;
-                      letter-spacing:.06em;font-weight:bold;">
-              Waze · Dados de Parceiro
-            </p>
-            <h1 style="margin:6px 0 4px;font-size:20px;color:#ffffff;font-weight:700;line-height:1.3;">
-              {% if is_semanal is defined and is_semanal %}
-                Resumo Semanal de Mobilidade
-              {% else %}
-                Briefing Diário de Mobilidade
-              {% endif %}
-            </h1>
-            <p style="margin:0;font-size:13px;color:#93B4DF;">
-              {{ parceiro.nome }} &nbsp;·&nbsp;
-              {{ dados.data_ref|date('d/m/Y') }}
-            </p>
-          </td>
-          <td align="right" valign="middle" style="padding-left:16px;white-space:nowrap;">
-            <p style="margin:0;font-size:11px;color:#93B4DF;">
-              Gerado às<br>
-              <strong style="color:#ffffff;font-size:13px;">{{ dados.gerado_em }}</strong>
-            </p>
-          </td>
-        </tr>
-      </table>
-    </td>
-  </tr>
+  <td align="center" style="padding:24px 12px;">
 
-  {# ── Alerta de interdições ativas ─────────────────────────────────────────  #}
-  {% if dados.interdicoes|length > 0 %}
-  <tr>
-    <td style="background:#FEF2F2;border-left:4px solid #C0392B;padding:14px 28px;">
-      <p style="margin:0;font-size:12px;font-weight:bold;color:#C0392B;">
-        ⚠ {{ dados.interdicoes|length }} interdição(ões) ativa(s) neste momento
-      </p>
-      <ul style="margin:6px 0 0;padding-left:18px;font-size:12px;color:#7B1D1D;line-height:1.8;">
-        {% for i in dados.interdicoes|slice(0, 4) %}
-          <li><strong>{{ i.rua ?: 'Via sem nome' }}</strong> — desde {{ i.inicio_brt }}</li>
-        {% endfor %}
-        {% if dados.interdicoes|length > 4 %}
-          <li>+ {{ dados.interdicoes|length - 4 }} outras...</li>
-        {% endif %}
-      </ul>
-    </td>
-  </tr>
-  {% endif %}
+  <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0"
+         style="max-width:600px;width:100%;background:#ffffff;border-radius:8px;
+                box-shadow:0 2px 8px rgba(0,0,0,.08);overflow:hidden;">
 
-  {# ── KPIs ─────────────────────────────────────────────────────────────────── #}
-  <tr>
-    <td style="padding:20px 28px 8px;">
-      <p style="margin:0 0 12px;font-size:10px;font-weight:bold;text-transform:uppercase;
-                letter-spacing:.07em;color:#718096;border-bottom:1px solid #E2E8F0;
-                padding-bottom:6px;">
-        Congestionamentos — {{ dados.data_ref|date('d/m/Y') }}
-      </p>
+    <tr>
+      <td style="background:#1A3A6B;padding:24px 28px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          <tr>
+            <td>
+              <p style="margin:0;font-size:11px;color:#93B4DF;text-transform:uppercase;
+                        letter-spacing:.06em;font-weight:bold;">
+                Waze · Dados de Parceiro
+              </p>
+              <h1 style="margin:6px 0 4px;font-size:20px;color:#ffffff;font-weight:700;line-height:1.3;">
+                {% if is_semanal is defined and is_semanal %}
+                  Resumo Semanal de Mobilidade
+                {% else %}
+                  Briefing Diário de Mobilidade
+                {% endif %}
+              </h1>
+              <p style="margin:0;font-size:13px;color:#93B4DF;">
+                {{ parceiro.nome }} &nbsp;·&nbsp; {{ data_br }}
+              </p>
+            </td>
+            <td align="right" valign="middle" style="padding-left:16px;white-space:nowrap;">
+              <p style="margin:0;font-size:11px;color:#93B4DF;">
+                Gerado em<br>
+                <strong style="color:#ffffff;font-size:13px;">
+                  {{ dados.gerado_em }} BRT
+                </strong>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
 
-      {# Grade 4 KPIs #}
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-        <tr>
-          {% set kpis = [
-            {label: 'Total de jams',     value: dados.jams.total,              unit: '',       color: '#2E5FA3'},
-            {label: 'Velocidade média',  value: dados.jams.velocidade_media,   unit: ' km/h',  color: '#27AE60'},
-            {label: 'Atraso médio',      value: dados.jams.atraso_medio,       unit: ' min',   color: '#D97706'},
-            {label: 'Interdições',       value: dados.jams.interdicoes,        unit: '',       color: '#C0392B'},
-          ] %}
-          {% for kpi in kpis %}
-          <td width="25%" style="text-align:center;padding:0 4px 8px;">
-            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-              <tr><td style="background:#F7FAFC;border:1px solid #E2E8F0;border-radius:6px;
+    {% if cobertura is not null %}
+    <tr>
+      <td style="padding:14px 28px;background:#F7FAFC;border-bottom:1px solid #E2E8F0;">
+        <p style="margin:0;font-size:12px;color:#2D3748;line-height:1.5;">
+          <strong>Cobertura dos dados:</strong>
+          {{ cobertura.descricao|default('não informada') }}
+          {% if cobertura.ultima_coleta|default(null) %}
+            &nbsp;·&nbsp; Última coleta:
+            {{ cobertura.ultima_coleta }} BRT
+          {% endif %}
+        </p>
+      </td>
+    </tr>
+    {% endif %}
+
+    {% if dados.interdicoes|length > 0 %}
+    <tr>
+      <td style="background:#FFF8F0;border-left:4px solid #D97706;padding:14px 28px;">
+        <p style="margin:0;font-size:12px;font-weight:bold;color:#92400E;">
+          {{ dados.interdicoes|length }}
+          registro(s) de congestionamento nível 5 no dia {{ data_br }}
+        </p>
+        <p style="margin:5px 0 0;font-size:11px;color:#7B3F00;line-height:1.5;">
+          Nível 5 indica congestionamento severo. Estes registros históricos
+          não comprovam fechamento oficial de via nem que o problema continua ativo.
+        </p>
+        <ul style="margin:7px 0 0;padding-left:18px;font-size:12px;color:#7B3F00;line-height:1.8;">
+          {% for i in dados.interdicoes|slice(0, 4) %}
+            <li>
+              <strong>{{ i.rua ?: 'Via sem nome' }}</strong>
+              — registrado em {{ i.inicio_brt }} BRT
+            </li>
+          {% endfor %}
+          {% if dados.interdicoes|length > 4 %}
+            <li>+ {{ dados.interdicoes|length - 4 }} registros exibidos abaixo do limite de visualização</li>
+          {% endif %}
+        </ul>
+      </td>
+    </tr>
+    {% endif %}
+
+    <tr>
+      <td style="padding:20px 28px 8px;">
+        <p style="margin:0 0 12px;font-size:10px;font-weight:bold;text-transform:uppercase;
+                  letter-spacing:.07em;color:#718096;border-bottom:1px solid #E2E8F0;
+                  padding-bottom:6px;">
+          Congestionamentos — {{ data_br }}
+        </p>
+
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          <tr>
+            {% set kpis = [
+              {label: 'Registros de jams', value: dados.jams.total, unit: '', color: '#2E5FA3'},
+              {label: 'Velocidade média', value: dados.jams.velocidade_media, unit: ' km/h', color: '#27AE60'},
+              {label: 'Atraso médio', value: dados.jams.atraso_medio, unit: ' min', color: '#D97706'},
+              {label: 'Registros nível 5', value: dados.jams.interdicoes, unit: '', color: '#C0392B'}
+            ] %}
+            {% for kpi in kpis %}
+            <td width="25%" style="text-align:center;padding:0 4px 8px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td style="background:#F7FAFC;border:1px solid #E2E8F0;border-radius:6px;
                              padding:12px 4px;text-align:center;">
-                <p style="margin:0;font-size:22px;font-weight:700;color:{{ kpi.color }};line-height:1.1;">
-                  {{ kpi.value is not null ? kpi.value : '—' }}{{ kpi.unit }}
-                </p>
-                <p style="margin:4px 0 0;font-size:10px;color:#718096;">{{ kpi.label }}</p>
-              </td></tr>
-            </table>
-          </td>
-          {% endfor %}
-        </tr>
-      </table>
+                    <p style="margin:0;font-size:22px;font-weight:700;
+                              color:{{ kpi.color }};line-height:1.1;">
+                      {{ kpi.value is not null ? kpi.value : '—' }}{{ kpi.unit }}
+                    </p>
+                    <p style="margin:4px 0 0;font-size:10px;color:#718096;">
+                      {{ kpi.label }}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+            {% endfor %}
+          </tr>
+        </table>
 
-      {# Comparativo 7 dias #}
-      {% if dados.media_7dias.media_jams_dia is not null %}
-      {% set variacao = dados.jams.total - dados.media_7dias.media_jams_dia %}
-      <p style="margin:4px 0 16px;font-size:11px;color:#718096;text-align:center;">
-        Média dos últimos 7 dias: <strong>{{ dados.media_7dias.media_jams_dia }}</strong> jams/dia
-        &nbsp;—&nbsp;
-        {% if variacao > 0 %}
-          <span style="color:#C0392B;font-weight:bold;">▲ {{ variacao|abs|round }} acima</span>
-        {% elseif variacao < 0 %}
-          <span style="color:#27AE60;font-weight:bold;">▼ {{ variacao|abs|round }} abaixo</span>
-        {% else %}
-          <span style="color:#718096;">igual à média</span>
+        {% if dados.media_7dias.media_jams_dia is not null %}
+          {% set variacao = dados.jams.total - dados.media_7dias.media_jams_dia %}
+          <p style="margin:4px 0 16px;font-size:11px;color:#718096;text-align:center;">
+            Média dos 7 dias anteriores:
+            <strong>{{ dados.media_7dias.media_jams_dia }}</strong>
+            registros/dia
+            &nbsp;—&nbsp;
+            {% if variacao > 0 %}
+              <span style="color:#C0392B;font-weight:bold;">
+                ▲ {{ variacao|abs|round }} acima
+              </span>
+            {% elseif variacao < 0 %}
+              <span style="color:#27AE60;font-weight:bold;">
+                ▼ {{ variacao|abs|round }} abaixo
+              </span>
+            {% else %}
+              <span style="color:#718096;">igual à média</span>
+            {% endif %}
+          </p>
         {% endif %}
-      </p>
-      {% endif %}
-    </td>
-  </tr>
+      </td>
+    </tr>
 
-  {# ── Alertas ──────────────────────────────────────────────────────────────── #}
-  <tr>
-    <td style="padding:0 28px 20px;">
-      <p style="margin:0 0 10px;font-size:10px;font-weight:bold;text-transform:uppercase;
-                letter-spacing:.07em;color:#718096;border-bottom:1px solid #E2E8F0;
-                padding-bottom:6px;">
-        Alertas
-      </p>
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-        <tr>
-          {% set alertas_kpis = [
-            {label: 'Total',       value: dados.alertas.total,       color: '#2E5FA3'},
-            {label: 'Buracos',     value: dados.alertas.buracos,     color: '#C0392B'},
-            {label: 'Acidentes',   value: dados.alertas.acidente,    color: '#D97706'},
-            {label: 'Vias fechadas', value: dados.alertas.via_fechada, color: '#7B3F00'},
-          ] %}
-          {% for k in alertas_kpis %}
-          <td width="25%" style="text-align:center;padding:0 4px 0;">
-            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-              <tr><td style="background:#F7FAFC;border:1px solid #E2E8F0;border-radius:6px;
-                             padding:10px 4px;text-align:center;">
-                <p style="margin:0;font-size:20px;font-weight:700;color:{{ k.color }};line-height:1.1;">
-                  {{ k.value is not null ? k.value : '0' }}
-                </p>
-                <p style="margin:4px 0 0;font-size:10px;color:#718096;">{{ k.label }}</p>
-              </td></tr>
-            </table>
-          </td>
-          {% endfor %}
-        </tr>
-      </table>
-    </td>
-  </tr>
-
-  {# ── Hora de pico ─────────────────────────────────────────────────────────── #}
-  {% if dados.pico_hora|length > 0 %}
-  <tr>
-    <td style="padding:0 28px 20px;">
-      <p style="margin:0 0 8px;font-size:10px;font-weight:bold;text-transform:uppercase;
-                letter-spacing:.07em;color:#718096;border-bottom:1px solid #E2E8F0;
-                padding-bottom:6px;">
-        Picos horários (BRT)
-      </p>
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-        <thead>
-          <tr style="background:#1A3A6B;">
-            <th style="padding:7px 10px;text-align:left;font-size:11px;color:#fff;font-weight:600;">Hora</th>
-            <th style="padding:7px 10px;text-align:right;font-size:11px;color:#fff;font-weight:600;">Registros</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for i, pico in dados.pico_hora %}
-          <tr style="background:{{ loop.index is odd ? '#F7FAFC' : '#ffffff' }};">
-            <td style="padding:7px 10px;font-size:12px;color:#2D3748;">
-              {{ '%02d'|format(pico.hora_brt) }}h – {{ '%02d'|format(pico.hora_brt + 1) }}h
+    <tr>
+      <td style="padding:0 28px 20px;">
+        <p style="margin:0 0 10px;font-size:10px;font-weight:bold;
+                  text-transform:uppercase;letter-spacing:.07em;color:#718096;
+                  border-bottom:1px solid #E2E8F0;padding-bottom:6px;">
+          Alertas registrados — {{ data_br }}
+        </p>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          <tr>
+            {% set alertas_kpis = [
+              {label: 'Total', value: dados.alertas.total, color: '#2E5FA3'},
+              {label: 'Buracos', value: dados.alertas.buracos, color: '#C0392B'},
+              {label: 'Acidentes', value: dados.alertas.acidente, color: '#D97706'},
+              {label: 'Vias fechadas', value: dados.alertas.via_fechada, color: '#7B3F00'}
+            ] %}
+            {% for k in alertas_kpis %}
+            <td width="25%" style="text-align:center;padding:0 4px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td style="background:#F7FAFC;border:1px solid #E2E8F0;
+                             border-radius:6px;padding:10px 4px;text-align:center;">
+                    <p style="margin:0;font-size:20px;font-weight:700;
+                              color:{{ k.color }};line-height:1.1;">
+                      {{ k.value is not null ? k.value : '0' }}
+                    </p>
+                    <p style="margin:4px 0 0;font-size:10px;color:#718096;">
+                      {{ k.label }}
+                    </p>
+                  </td>
+                </tr>
+              </table>
             </td>
-            <td style="padding:7px 10px;font-size:12px;color:#2D3748;text-align:right;font-weight:600;">
-              {{ pico.total }}
+            {% endfor %}
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    {% if dados.pico_hora|length > 0 %}
+    <tr>
+      <td style="padding:0 28px 20px;">
+        <p style="margin:0 0 8px;font-size:10px;font-weight:bold;
+                  text-transform:uppercase;letter-spacing:.07em;color:#718096;
+                  border-bottom:1px solid #E2E8F0;padding-bottom:6px;">
+          Picos horários (BRT)
+        </p>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+          <thead>
+            <tr style="background:#1A3A6B;">
+              <th style="padding:7px 10px;text-align:left;font-size:11px;color:#fff;">
+                Hora
+              </th>
+              <th style="padding:7px 10px;text-align:right;font-size:11px;color:#fff;">
+                Registros de jams
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for pico in dados.pico_hora %}
+            <tr style="background:{{ loop.index is odd ? '#F7FAFC' : '#ffffff' }};">
+              <td style="padding:7px 10px;font-size:12px;color:#2D3748;">
+                {{ '%02d'|format(pico.hora_brt) }}h –
+                {{ '%02d'|format((pico.hora_brt + 1) % 24) }}h
+              </td>
+              <td style="padding:7px 10px;font-size:12px;color:#2D3748;
+                         text-align:right;font-weight:600;">
+                {{ pico.total }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </td>
+    </tr>
+    {% endif %}
+
+    {% if dados.top_ruas|length > 0 %}
+    <tr>
+      <td style="padding:0 28px 20px;">
+        <p style="margin:0 0 8px;font-size:10px;font-weight:bold;
+                  text-transform:uppercase;letter-spacing:.07em;color:#718096;
+                  border-bottom:1px solid #E2E8F0;padding-bottom:6px;">
+          Vias com mais registros de congestionamento
+        </p>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+          <thead>
+            <tr style="background:#1A3A6B;">
+              <th style="padding:7px 10px;text-align:left;font-size:11px;color:#fff;">
+                Via
+              </th>
+              <th style="padding:7px 10px;text-align:right;font-size:11px;color:#fff;">
+                Registros
+              </th>
+              <th style="padding:7px 10px;text-align:right;font-size:11px;color:#fff;">
+                Atraso médio
+              </th>
+              <th style="padding:7px 10px;text-align:right;font-size:11px;color:#fff;">
+                Vel. média
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for rua in dados.top_ruas %}
+            <tr style="background:{{ loop.index is odd ? '#F7FAFC' : '#ffffff' }};">
+              <td style="padding:7px 10px;font-size:12px;color:#2D3748;">
+                {{ rua.rua }}
+              </td>
+              <td style="padding:7px 10px;font-size:12px;color:#2D3748;
+                         text-align:right;font-weight:600;">
+                {{ rua.total_jams }}
+              </td>
+              <td style="padding:7px 10px;font-size:12px;color:#D97706;text-align:right;">
+                {{ rua.atraso_medio is not null ? rua.atraso_medio ~ ' min' : '—' }}
+              </td>
+              <td style="padding:7px 10px;font-size:12px;color:#27AE60;text-align:right;">
+                {{ rua.velocidade_media is not null ? rua.velocidade_media ~ ' km/h' : '—' }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </td>
+    </tr>
+    {% endif %}
+
+    {% if dados.alertas.top_ruas_buracos|length > 0 %}
+    <tr>
+      <td style="padding:0 28px 20px;">
+        <p style="margin:0 0 8px;font-size:10px;font-weight:bold;
+                  text-transform:uppercase;letter-spacing:.07em;color:#718096;
+                  border-bottom:1px solid #E2E8F0;padding-bottom:6px;">
+          Registros de buracos por via
+        </p>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+          <thead>
+            <tr style="background:#7B3F00;">
+              <th style="padding:7px 10px;text-align:left;font-size:11px;color:#fff;">
+                Via
+              </th>
+              <th style="padding:7px 10px;text-align:right;font-size:11px;color:#fff;">
+                Registros
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for b in dados.alertas.top_ruas_buracos %}
+            <tr style="background:{{ loop.index is odd ? '#FFF8F4' : '#ffffff' }};">
+              <td style="padding:7px 10px;font-size:12px;color:#2D3748;">
+                {{ b.rua }}
+              </td>
+              <td style="padding:7px 10px;font-size:12px;color:#C0392B;
+                         text-align:right;font-weight:600;">
+                {{ b.qtd }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </td>
+    </tr>
+    {% endif %}
+
+    {% if narrativa is defined and narrativa is not null and narrativa|trim != '' %}
+    <tr>
+      <td style="padding:0 28px 20px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          <tr>
+            <td style="background:#EFF6FF;border:1px solid #BFDBFE;
+                       border-radius:6px;padding:16px 20px;">
+              <p style="margin:0 0 10px;font-size:10px;font-weight:bold;
+                        text-transform:uppercase;letter-spacing:.07em;color:#1D4ED8;">
+                ✦ Análise — Gemini AI
+              </p>
+              <div style="font-size:13px;color:#1E3A5F;line-height:1.7;">
+                {{ narrativa|raw }}
+              </div>
             </td>
           </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </td>
+        </table>
+      </td>
+    </tr>
+    {% endif %}
+
+    {% if dashboard_url is defined and dashboard_url starts with 'https://' %}
+    <tr>
+      <td style="padding:8px 28px 28px;text-align:center;">
+        <a href="{{ dashboard_url }}"
+           style="display:inline-block;background:#1A3A6B;color:#ffffff;
+                  font-size:13px;font-weight:600;text-decoration:none;
+                  padding:11px 28px;border-radius:5px;">
+          Acessar dashboard completo →
+        </a>
+      </td>
+    </tr>
+    {% endif %}
+
+    <tr>
+      <td style="background:#F7FAFC;border-top:1px solid #E2E8F0;padding:14px 28px;">
+        <p style="margin:0;font-size:10px;color:#718096;line-height:1.6;">
+          TrafikHub · Comunidade Waze Brasil &nbsp;|&nbsp;
+          Período dos indicadores: {{ data_br }} (BRT) &nbsp;|&nbsp;
+          Gerado em {{ dados.gerado_em }} BRT.
+        </p>
+        <p style="margin:7px 0 0;font-size:10px;color:#718096;line-height:1.6;">
+          Totais representam registros armazenados para o período;
+          coletas repetidas podem representar o mesmo evento.
+          Jams nível 5 não são, por si só, fechamento oficial de via.
+        </p>
+        <p style="margin:7px 0 0;font-size:10px;color:#718096;line-height:1.6;">
+          Para cancelar o recebimento deste briefing, entre em contato
+          com o administrador do sistema.
+        </p>
+      </td>
+    </tr>
+
+  </table>
+  </td>
   </tr>
-  {% endif %}
-
-  {# ── Top ruas ──────────────────────────────────────────────────────────────── #}
-  {% if dados.top_ruas|length > 0 %}
-  <tr>
-    <td style="padding:0 28px 20px;">
-      <p style="margin:0 0 8px;font-size:10px;font-weight:bold;text-transform:uppercase;
-                letter-spacing:.07em;color:#718096;border-bottom:1px solid #E2E8F0;
-                padding-bottom:6px;">
-        Ruas mais congestionadas
-      </p>
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-        <thead>
-          <tr style="background:#1A3A6B;">
-            <th style="padding:7px 10px;text-align:left;font-size:11px;color:#fff;font-weight:600;">Via</th>
-            <th style="padding:7px 10px;text-align:right;font-size:11px;color:#fff;font-weight:600;">Jams</th>
-            <th style="padding:7px 10px;text-align:right;font-size:11px;color:#fff;font-weight:600;">Atraso médio</th>
-            <th style="padding:7px 10px;text-align:right;font-size:11px;color:#fff;font-weight:600;">Vel. média</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for rua in dados.top_ruas %}
-          <tr style="background:{{ loop.index is odd ? '#F7FAFC' : '#ffffff' }};">
-            <td style="padding:7px 10px;font-size:12px;color:#2D3748;">{{ rua.rua }}</td>
-            <td style="padding:7px 10px;font-size:12px;color:#2D3748;text-align:right;font-weight:600;">{{ rua.total_jams }}</td>
-            <td style="padding:7px 10px;font-size:12px;color:#D97706;text-align:right;">{{ rua.atraso_medio }} min</td>
-            <td style="padding:7px 10px;font-size:12px;color:#27AE60;text-align:right;">{{ rua.velocidade_media }} km/h</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </td>
-  </tr>
-  {% endif %}
-
-  {# ── Buracos por rua ──────────────────────────────────────────────────────── #}
-  {% if dados.alertas.top_ruas_buracos|length > 0 %}
-  <tr>
-    <td style="padding:0 28px 20px;">
-      <p style="margin:0 0 8px;font-size:10px;font-weight:bold;text-transform:uppercase;
-                letter-spacing:.07em;color:#718096;border-bottom:1px solid #E2E8F0;
-                padding-bottom:6px;">
-        Principais ocorrências de buracos
-      </p>
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-        <thead>
-          <tr style="background:#7B3F00;">
-            <th style="padding:7px 10px;text-align:left;font-size:11px;color:#fff;font-weight:600;">Via</th>
-            <th style="padding:7px 10px;text-align:right;font-size:11px;color:#fff;font-weight:600;">Alertas</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for b in dados.alertas.top_ruas_buracos %}
-          <tr style="background:{{ loop.index is odd ? '#FFF8F4' : '#ffffff' }};">
-            <td style="padding:7px 10px;font-size:12px;color:#2D3748;">{{ b.rua }}</td>
-            <td style="padding:7px 10px;font-size:12px;color:#C0392B;text-align:right;font-weight:600;">{{ b.qtd }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </td>
-  </tr>
-  {% endif %}
-
-  {# ══ BLOCO DE IA — só renderiza se a narrativa foi gerada ══════════════════ #}
-  {% if narrativa is not null %}
-  <tr>
-    <td style="padding:0 28px 20px;">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-        <tr>
-          <td style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;
-                     padding:16px 20px;">
-            <p style="margin:0 0 10px;font-size:10px;font-weight:bold;text-transform:uppercase;
-                      letter-spacing:.07em;color:#1D4ED8;">
-              ✦ Análise — Gemini AI
-            </p>
-            <div style="font-size:13px;color:#1E3A5F;line-height:1.7;">
-              {{ narrativa|raw }}
-            </div>
-          </td>
-        </tr>
-      </table>
-    </td>
-  </tr>
-  {% else %}
-  {# Fallback silencioso — sem o bloco, sem mensagem de erro para o destinatário #}
-  {% endif %}
-
-  {# ── CTA ──────────────────────────────────────────────────────────────────── #}
-  <tr>
-    <td style="padding:8px 28px 28px;text-align:center;">
-      <a href="{{ dashboard_url }}"
-         style="display:inline-block;background:#1A3A6B;color:#ffffff;font-size:13px;
-                font-weight:600;text-decoration:none;padding:11px 28px;border-radius:5px;">
-        Acessar Dashboard completo →
-      </a>
-    </td>
-  </tr>
-
-  {# ── Footer ───────────────────────────────────────────────────────────────── #}
-  <tr>
-    <td style="background:#F7FAFC;border-top:1px solid #E2E8F0;padding:14px 28px;">
-      <p style="margin:0;font-size:10px;color:#A0AEC0;line-height:1.6;">
-        TrafikHub · Comunidade Waze Brasil &nbsp;|&nbsp;
-        Dados: Waze Data For Cities API (UTC-3) &nbsp;|&nbsp;
-        Enviado em {{ dados.gerado_em }}<br>
-        Para cancelar o recebimento deste briefing, entre em contato com o administrador do sistema.
-      </p>
-    </td>
-  </tr>
-
-</table>{# /inner #}
-
-</td></tr>
-</table>{# /wrapper #}
-
-</body>
-</html>
+  </table>
+  </body>
+  </html>

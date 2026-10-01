@@ -1,0 +1,55 @@
+{#
+  Adicionar no dropdown de exportação do show.html.twig,
+  após o último <a class="rs-export__item"> existente.
+
+  Substituir a variável exportBase que já existe no template:
+    {% set exportBase = path('routes_export_csv', {id: route.id}) %}
+  por:
+    {% set exportBase     = path('routes_export_csv',      {id: route.id}) %}
+    {% set exportHistBase = path('routes_export_historico_csv', {id: route.id}) %}
+
+  Depois adicionar este bloco dentro do rs-export__dropdown:
+#}
+
+<hr style="border:none;border-top:1px solid var(--rs-line);margin:6px 0 4px;">
+<p class="rs-export__label">Histórico bruto para análise externa</p>
+
+<a class="rs-export__item"
+   href="{{ exportHistBase }}?days=30"
+   download>
+    <span class="rs-export__item-icon">🗂️</span>
+    <span>
+        <strong>Histórico 30 dias</strong>
+        <small>Linha a linha · velocidade, tempos, jam · BRT</small>
+    </span>
+</a>
+
+<a class="rs-export__item"
+   href="{{ exportHistBase }}?days=90"
+   download>
+    <span class="rs-export__item-icon">📦</span>
+    <span>
+        <strong>Histórico 90 dias</strong>
+        <small>Linha a linha · velocidade, tempos, jam · BRT</small>
+    </span>
+</a>
+
+<a class="rs-export__item"
+   href="{{ exportHistBase }}?days=365"
+   download>
+    <span class="rs-export__item-icon">🗄️</span>
+    <span>
+        <strong>Histórico 1 ano</strong>
+        <small>Todos os snapshots disponíveis · máx 50.000 linhas</small>
+    </span>
+</a>
+
+<a class="rs-export__item rs-export__item--python"
+   href="{{ exportHistBase }}?days=90&sep=,"
+   download>
+    <span class="rs-export__item-icon">🐍</span>
+    <span>
+        <strong>Histórico 90 dias (Python/R)</strong>
+        <small>Separador vírgula · pandas / tidyverse / Excel EN</small>
+    </span>
+</a>
