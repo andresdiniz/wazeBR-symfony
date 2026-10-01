@@ -28,7 +28,7 @@ use Twig\Environment as Twig;
 )]
 final class WazeDailyBriefingCommand extends Command
 {
-    private const FROM_EMAIL = 'briefing@trafikhub.com.br';
+    private const FROM_EMAIL = 'no-reply@trafik.acheireviews.com.br';
     private const FROM_NAME = 'TrafikHub · Waze Brasil';
 
     public function __construct(
