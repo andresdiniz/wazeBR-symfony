@@ -852,17 +852,6 @@ final class RouteDetailRepository
         };
     }
 
-    <?php
-// ─────────────────────────────────────────────────────────────────────────────
-// ADICIONAR ao RouteDetailRepository.php
-//
-// 1. O método público getHistorico() — chamado pelo controller
-// 2. O método privado loadHistorico() — a query bruta
-//
-// Inserir antes do método privado loadRoute() ou no final da classe,
-// antes do fechamento da chave `}`
-// ─────────────────────────────────────────────────────────────────────────────
-
     // ─────────────────────────────────────────────────────────────────────
     // Histórico bruto para exportação CSV
     // ─────────────────────────────────────────────────────────────────────
