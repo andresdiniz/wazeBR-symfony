@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Redefinir senha</title>
+</head>
+<body>
+    <div style="max-width: 600px; margin: 40px auto; padding: 30px; font-family: Arial, sans-serif; color: #333;">
+        <h1>Redefinir senha</h1>
+
+        <p>Olá,</p>
+
+        <p>
+            Recebemos uma solicitação para redefinir a senha da sua conta no Trafik.
+        </p>
+
+        <p>
+            Clique no botão abaixo para escolher uma nova senha:
+        </p>
+
+        <p style="margin: 30px 0;">
+            <a
+                href="{{ url('app_reset_password', {token: resetToken.token}) }}"
+                style="display: inline-block; padding: 12px 24px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 6px;"
+            >
+                Redefinir minha senha
+            </a>
+        </p>
+
+        <p>
+            Se o botão não funcionar, copie e cole este endereço no navegador:
+        </p>
+
+        <p style="word-break: break-all;">
+            {{ url('app_reset_password', {token: resetToken.token}) }}
+        </p>
+
+        <p>
+            Por segurança, este link expira em pouco tempo e só pode ser usado uma vez.
+        </p>
+
+        <p>
+            Se você não solicitou a redefinição da senha, ignore este e-mail.
+        </p>
+
+        <p>
+            Atenciosamente,<br>
+            Equipe Trafik
+        </p>
+    </div>
+</body>
+</html>

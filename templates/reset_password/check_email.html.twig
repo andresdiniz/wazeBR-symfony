@@ -35,7 +35,11 @@
                     <i class="bi bi-clock"></i>
                 </div>
                 <div>
-                    <strong>Link válido por {{ resetToken.expirationMessageKey|trans(resetToken.expirationMessageData, 'ResetPasswordBundle') }}</strong>
+                    {% if resetToken %}
+                        <strong>Link válido por {{ resetToken.expirationMessageKey|trans(resetToken.expirationMessageData, 'ResetPasswordBundle') }}</strong>
+                    {% else %}
+                        <strong>Link válido por 1 hora</strong>
+                    {% endif %}
                     <p>Depois disso será necessário solicitar novamente.</p>
                 </div>
             </div>
@@ -51,7 +55,7 @@
             </div>
 
             <div class="auth-footer-link" style="margin-top:1.5rem">
-                <a href="{{ path('app_reset_password_request') }}">
+                <a href="{{ path('app_forgot_password_request') }}">
                     <i class="bi bi-arrow-repeat"></i>
                     Solicitar novamente
                 </a>
