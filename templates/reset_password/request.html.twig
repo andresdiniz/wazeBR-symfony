@@ -13,7 +13,6 @@
 {% block body %}
 <div class="auth-page">
 
-    {# ── Lado esquerdo — formulário ───────────────────────────── #}
     <div class="auth-left">
         <div class="auth-container">
 
@@ -43,35 +42,45 @@
                 {% endfor %}
             {% endfor %}
 
-            <form method="post" action="{{ path('app_forgot_password_request') }}" class="auth-form" novalidate>
+            {{ form_start(requestForm, {
+                method: 'POST',
+                action: path('app_forgot_password_request'),
+                attr: {
+                    class: 'auth-form',
+                    novalidate: 'novalidate'
+                }
+            }) }}
 
-                <div class="auth-field">
-                    <label for="reset_email">
-                        <i class="bi bi-envelope"></i>
-                        Email cadastrado
-                    </label>
-                    <input
-                        type="email"
-                        id="reset_email"
-                        name="email"
-                        class="auth-input"
-                        autocomplete="email"
-                        placeholder="seu@email.com"
-                        required
-                        autofocus
-                    >
-                    <span class="auth-field-help">
-                        <i class="bi bi-info-circle"></i>
-                        Digite o email associado à sua conta WazeBR
-                    </span>
-                </div>
+            <div class="auth-field">
+                {{ form_label(requestForm.email, 'Email cadastrado', {
+                    label_attr: {
+                        class: 'auth-label'
+                    }
+                }) }}
 
-                <button type="submit" class="auth-btn auth-btn-primary" id="resetSubmit">
-                    <span>Enviar instruções</span>
-                    <i class="bi bi-send"></i>
-                </button>
+                {{ form_widget(requestForm.email, {
+                    attr: {
+                        id: 'reset_email',
+                        class: 'auth-input',
+                        autocomplete: 'email',
+                        placeholder: 'seu@email.com'
+                    }
+                }) }}
 
-            </form>
+                {{ form_errors(requestForm.email) }}
+
+                <span class="auth-field-help">
+                    <i class="bi bi-info-circle"></i>
+                    Digite o email associado à sua conta WazeBR
+                </span>
+            </div>
+
+            <button type="submit" class="auth-btn auth-btn-primary" id="resetSubmit">
+                <span>Enviar instruções</span>
+                <i class="bi bi-send"></i>
+            </button>
+
+            {{ form_end(requestForm) }}
 
             <div class="auth-info-box">
                 <div class="auth-info-box-icon">
@@ -93,7 +102,6 @@
         </div>
     </div>
 
-    {# ── Lado direito — visual ────────────────────────────────── #}
     <div class="auth-right">
         <div class="auth-visual">
 

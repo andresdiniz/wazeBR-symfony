@@ -36,9 +36,9 @@ class AuthController extends AbstractController
         ]);
     }
 
-    #[Route('/logout', name: 'app_logout')]
-    public function logout(): void
+    #[Route('/logout', name: 'app_logout', methods: ['GET', 'POST'])]
+    public function logout(LogoutUrlGenerator $logoutUrlGenerator): Response
     {
-        throw new \LogicException('This method can be blank - it will be intercepted by the logout key on your firewall.');
+        return $this->redirect($logoutUrlGenerator->getLogoutPath());
     }
 }
