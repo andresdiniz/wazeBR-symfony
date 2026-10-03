@@ -1,149 +1,115 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Controller\Admin;
 
 use App\Entity\User;
-use App\Repository\PartnerRepository;
+use App\Form\UserType;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/admin/users', name: 'admin_user_')]
+#[Route('/admin/users')]
 #[IsGranted('ROLE_ADMIN')]
-final class AdminUserController extends AbstractController
+class AdminUserController extends AbstractController
 {
-    private const AVAILABLE_ROLES = [
-        User::ROLE_ADMIN,
-        User::ROLE_PARTNER_ADMIN,
-        User::ROLE_OPERATOR,
-        User::ROLE_VIEWER,
-    ];
-
-    private const ROLES_REQUIRING_PARTNER = [
-        User::ROLE_PARTNER_ADMIN,
-        User::ROLE_OPERATOR,
-    ];
-
     public function __construct(
-        private readonly EntityManagerInterface $em,
-        private readonly UserRepository $users,
-        private readonly PartnerRepository $partners,
-        private readonly UserPasswordHasherInterface $hasher,
-    ) {
-    }
+        private EntityManagerInterface $entityManager,
+        private UserPasswordHasherInterface $passwordHasher
+    ) {}
 
-    #[Route('', name: 'index', methods: ['GET'])]
-    public function index(): Response
+    #[Route('', name: 'admin_users_index', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function index(UserRepository $userRepository): Response
     {
         return $this->render('admin/user/index.html.twig', [
-            'users' => $this->users->findBy([], ['email' => 'ASC']),
+            'users' => $userRepository->findAll(),
         ]);
     }
 
-    #[Route('/new', name: 'new', methods: ['GET', 'POST'])]
+    #[Route('/new', name: 'admin_users_new', methods: ['GET', 'POST'])]
+    #[IsGranted('ROLE_ADMIN')]
     public function new(Request $request): Response
     {
-        if ($request->isMethod('POST')) {
-            return $this->handleCreate($request);
+        $user = new User();
+
+        $form = $this->createForm(\App\Form\UserType::class, $user);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            // Hash da senha
+            $hashedPassword = $this->passwordHasher->hashPassword(
+                $user,
+                $form->get('plainPassword')->getData()
+            );
+            $user->setPassword($hashedPassword);
+
+            // Define como ativo por padrão
+            $user->setIsActive(true);
+            $user->setCreatedAt(new \DateTimeImmutable());
+            $user->setUpdatedAt(new \DateTimeImmutable());
+
+            $this->entityManager->persist($user);
+            $this->entityManager->flush();
+
+            $this->addFlash('success', 'Usuário criado com sucesso!');
+
+            return $this->redirectToRoute('admin_users_index');
         }
 
         return $this->render('admin/user/new.html.twig', [
-            'partners'            => $this->partners->findBy([], ['name' => 'ASC']),
-            'availableRoles'      => self::AVAILABLE_ROLES,
-            'rolesRequirePartner' => self::ROLES_REQUIRING_PARTNER,
+            'form' => $form,
         ]);
     }
 
-    private function handleCreate(Request $request): Response
+    #[Route('/{id}/edit', name: 'admin_users_edit', methods: ['GET', 'POST'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function edit(Request $request, User $user): Response
     {
-        if (!$this->isCsrfTokenValid(
-            'admin_user_new',
-            (string) $request->request->get('_token'),
-        )) {
-            $this->addFlash('error', 'Token de segurança inválido.');
+        $form = $this->createForm(\App\Form\UserType::class, $user);
+        $form->handleRequest($request);
 
-            return $this->redirectToRoute('admin_user_new');
-        }
-
-        $email    = trim((string) $request->request->get('email', ''));
-        $name     = trim((string) $request->request->get('name', ''));
-        $phone    = trim((string) $request->request->get('phone', ''));
-        $password = (string) $request->request->get('password', '');
-        $role     = (string) $request->request->get('role', User::ROLE_VIEWER);
-        $partner  = $request->request->get('partnerId');
-
-        $errors = [];
-
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $errors[] = 'E-mail inválido.';
-        } elseif ($this->users->findOneBy(['email' => $email]) !== null) {
-            $errors[] = 'Este e-mail já está cadastrado.';
-        }
-
-        if (mb_strlen($password) < 8) {
-            $errors[] = 'A senha deve ter pelo menos 8 caracteres.';
-        }
-
-        if (!in_array($role, self::AVAILABLE_ROLES, true)) {
-            $errors[] = 'Papel de usuário inválido.';
-        }
-
-        $partnerEntity = null;
-        if ($partner !== null && $partner !== '') {
-            $partnerEntity = $this->partners->find((int) $partner);
-
-            if ($partnerEntity === null) {
-                $errors[] = 'Parceiro informado não foi encontrado.';
-            }
-        }
-
-        if (
-            in_array($role, self::ROLES_REQUIRING_PARTNER, true)
-            && $partnerEntity === null
-        ) {
-            $errors[] = sprintf('O papel %s exige um parceiro associado.', $role);
-        }
-
-        if ($errors !== []) {
-            foreach ($errors as $error) {
-                $this->addFlash('error', $error);
+        if ($form->isSubmitted() && $form->isValid()) {
+            // Se mudou a senha, faz hash
+            if ($form->get('plainPassword')->getData()) {
+                $hashedPassword = $this->passwordHasher->hashPassword(
+                    $user,
+                    $form->get('plainPassword')->getData()
+                );
+                $user->setPassword($hashedPassword);
             }
 
-            return $this->redirectToRoute('admin_user_new');
+            $user->setUpdatedAt(new \DateTimeImmutable());
+
+            $this->entityManager->flush();
+
+            $this->addFlash('success', 'Usuário atualizado com sucesso!');
+
+            return $this->redirectToRoute('admin_users_index');
         }
 
-        $user = new User();
+        return $this->render('admin/user/edit.html.twig', [
+            'form' => $form,
+            'user' => $user,
+        ]);
+    }
 
-        if ($partnerEntity !== null) {
-            // Precisa vir antes de setRoles por causa das regras do domínio.
-            $user->setPartner($partnerEntity);
+    #[Route('/{id}', name: 'admin_users_delete', methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function delete(Request $request, User $user): Response
+    {
+        // Verifica token CSRF
+        if ($this->isCsrfTokenValid('delete'.$user->getId(), $request->request->get('_token'))) {
+            $this->entityManager->remove($user);
+            $this->entityManager->flush();
+
+            $this->addFlash('success', 'Usuário removido com sucesso!');
         }
 
-        $user->setEmail($email);
-        $user->setName($name);
-        $user->setPhone($phone !== '' ? $phone : null);
-        $user->setPassword($this->hasher->hashPassword($user, $password));
-
-        try {
-            $user->setRoles([$role]);
-        } catch (\InvalidArgumentException|\LogicException $e) {
-            $this->addFlash('error', $e->getMessage());
-
-            return $this->redirectToRoute('admin_user_new');
-        }
-
-        $this->em->persist($user);
-        $this->em->flush();
-
-        $this->addFlash('success', sprintf('Usuário "%s" criado com sucesso.', $email));
-
-        return $this->redirectToRoute('admin_user_index');
+        return $this->redirectToRoute('admin_users_index');
     }
 }

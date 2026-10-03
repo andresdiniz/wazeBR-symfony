@@ -50,6 +50,8 @@ security:
         - { path: ^/partner, roles: ROLE_PARTNER_ADMIN }
         - { path: ^/field-agent, roles: ROLE_FIELD_AGENT }
         - { path: ^/dashboard, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/admin/users, roles: ROLE_ACCOUNT_ADMIN }
+
 
         - { path: ^/, roles: PUBLIC_ACCESS }
 

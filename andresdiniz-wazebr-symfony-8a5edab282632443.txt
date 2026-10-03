@@ -2072,8 +2072,8 @@ FILE: AUDIT_REPORT.md
 # Relatório de Auditoria: wazeBR-symfony
 ## Página Inicial e Login
 
-**Data:** 07 de Agosto de 2026  
-**Projeto:** WazeBR Monitor - Painel de Mobilidade Urbana  
+**Data:** 07 de Agosto de 2026
+**Projeto:** WazeBR Monitor - Painel de Mobilidade Urbana
 **Escopo:** Análise de Layout, SEO, Segurança e Otimização
 
 ---
@@ -2316,8 +2316,8 @@ FILE: CICD_GUIDE.md
 ================================================
 # Guia do Pipeline de CI/CD - wazeBR-symfony
 
-**Data:** 07 de Agosto de 2026  
-**Projeto:** WazeBR Monitor  
+**Data:** 07 de Agosto de 2026
+**Projeto:** WazeBR Monitor
 **Plataforma:** GitHub Actions
 
 ---
@@ -3146,7 +3146,7 @@ Partner (1) ----< WazeFeed (N)
                                                     +-- WazeTvtRouteHistory (N mÃ©tricas)
 ```
 
-**Regra de ouro:** Cada URL do Waze Ã‰ um registro em `WazeFeed`, vinculado a um `Partner`.  
+**Regra de ouro:** Cada URL do Waze Ã‰ um registro em `WazeFeed`, vinculado a um `Partner`.
 NÃ£o armazenar URLs em `.env`, cÃ³digo hard-coded ou configuraÃ§Ã£o global.
 
 ---
@@ -4280,8 +4280,8 @@ FILE: IMPLEMENTATION_GUIDE.md
 # Guia de Implementação das Melhorias
 ## wazeBR-symfony
 
-**Data:** 07 de Agosto de 2026  
-**Versão:** 1.0  
+**Data:** 07 de Agosto de 2026
+**Versão:** 1.0
 **Status:** Pronto para Implementação
 
 ---
@@ -4296,7 +4296,7 @@ Este guia detalha como implementar as melhorias de **layout**, **SEO**, **segura
 
 ### 1.1 Implementar Headers de Segurança HTTP
 
-**Arquivo:** `config/packages/security_headers.yaml`  
+**Arquivo:** `config/packages/security_headers.yaml`
 **Middleware:** `src/Middleware/SecurityHeadersMiddleware.php`
 
 **Passos:**
@@ -4458,24 +4458,24 @@ private function sanitizeInput(string $input): string
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
+
     <!-- SEO -->
     <title>{% block title %}WazeBR Monitor{% endblock %}</title>
     <meta name="description" content="{% block meta_description %}...{% endblock %}">
     <link rel="canonical" href="{% block canonical_url %}{{ app.request.uri }}{% endblock %}">
-    
+
     <!-- Open Graph -->
     <meta property="og:type" content="website">
     <meta property="og:title" content="{% block og_title %}...{% endblock %}">
     <meta property="og:description" content="{% block og_description %}...{% endblock %}">
     <meta property="og:url" content="{% block og_url %}{{ app.request.uri }}{% endblock %}">
     <meta property="og:image" content="{% block og_image %}{{ absolute_url(asset('images/og-image.png')) }}{% endblock %}">
-    
+
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{% block twitter_title %}...{% endblock %}">
     <meta name="twitter:description" content="{% block twitter_description %}...{% endblock %}">
-    
+
     <!-- Security -->
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
@@ -4678,7 +4678,7 @@ lighthouse https://seu-dominio.com/login --view
     <!-- Preload de recursos críticos -->
     <link rel="preload" as="font" href="{{ asset('fonts/inter.woff2') }}" type="font/woff2" crossorigin>
     <link rel="preload" as="style" href="{{ asset('css/base.css') }}">
-    
+
     <!-- Prefetch de recursos secundários -->
     <link rel="prefetch" href="{{ asset('js/form-validation.js') }}">
     <link rel="dns-prefetch" href="https://fonts.googleapis.com">
@@ -4803,7 +4803,7 @@ Para dúvidas ou problemas na implementação, consulte:
 
 ---
 
-**Última atualização:** 07 de Agosto de 2026  
+**Última atualização:** 07 de Agosto de 2026
 **Próxima revisão:** Após implementação completa
 
 
@@ -4814,10 +4814,10 @@ FILE: import.php
 <?php
 /**
  * wazeBR - Import Data Model
- * 
+ *
  * This file serves as a reference model for data import operations.
  * It demonstrates the structure for importing traffic, alerts, and monitoring data.
- * 
+ *
  * Usage: This is a reference model. In Symfony, use Commands or Services for imports.
  */
 
@@ -4841,7 +4841,7 @@ $apiConfig = [
 
 /**
  * Import traffic data from external API
- * 
+ *
  * @param array $config Database configuration
  * @param array $apiConfig API configuration
  * @return array Import results
@@ -4853,7 +4853,7 @@ function importTrafficData($dbConfig, $apiConfig) {
         'errors' => [],
         'timestamp' => date('Y-m-d H:i:s'),
     ];
-    
+
     try {
         // Connect to database
         $pdo = new PDO(
@@ -4865,7 +4865,7 @@ function importTrafficData($dbConfig, $apiConfig) {
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             ]
         );
-        
+
         // Fetch data from API
         $apiUrl = $apiConfig['waze_base_url'] . '/traffic/live';
         $ch = curl_init();
@@ -4879,25 +4879,25 @@ function importTrafficData($dbConfig, $apiConfig) {
                 'Accept: application/json',
             ],
         ]);
-        
+
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
-        
+
         if ($httpCode !== 200) {
             throw new Exception("API request failed with HTTP code: {$httpCode}");
         }
-        
+
         $data = json_decode($response, true);
-        
+
         if (!isset($data['alerts']) || !is_array($data['alerts'])) {
             throw new Exception("Invalid API response format");
         }
-        
+
         // Prepare insert statement
         $stmt = $pdo->prepare("
             INSERT INTO traffic_alerts (
-                uuid, type, subtype, location, latitude, longitude, 
+                uuid, type, subtype, location, latitude, longitude,
                 reported_by, reliability, confidence, timestamp, created_at
             ) VALUES (
                 :uuid, :type, :subtype, :location, :latitude, :longitude,
@@ -4914,7 +4914,7 @@ function importTrafficData($dbConfig, $apiConfig) {
                 timestamp = VALUES(timestamp),
                 updated_at = NOW()
         ");
-        
+
         // Process each alert
         foreach ($data['alerts'] as $alert) {
             try {
@@ -4930,7 +4930,7 @@ function importTrafficData($dbConfig, $apiConfig) {
                     ':confidence' => $alert['confidence'] ?? 0,
                     ':timestamp' => $alert['timestamp'] ?? date('Y-m-d H:i:s'),
                 ]);
-                
+
                 $results['success']++;
             } catch (Exception $e) {
                 $results['failed']++;
@@ -4940,20 +4940,20 @@ function importTrafficData($dbConfig, $apiConfig) {
                 ];
             }
         }
-        
+
     } catch (Exception $e) {
         $results['errors'][] = [
             'type' => 'critical',
             'error' => $e->getMessage(),
         ];
     }
-    
+
     return $results;
 }
 
 /**
  * Import route/jam data
- * 
+ *
  * @param array $dbConfig Database configuration
  * @param array $apiConfig API configuration
  * @return array Import results
@@ -4965,7 +4965,7 @@ function importJamData($dbConfig, $apiConfig) {
         'errors' => [],
         'timestamp' => date('Y-m-d H:i:s'),
     ];
-    
+
     try {
         $pdo = new PDO(
             "mysql:host={$dbConfig['host']};port={$dbConfig['port']};dbname={$dbConfig['database']};charset={$dbConfig['charset']}",
@@ -4976,7 +4976,7 @@ function importJamData($dbConfig, $apiConfig) {
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             ]
         );
-        
+
         // Fetch jam data from API
         $apiUrl = $apiConfig['waze_base_url'] . '/jams/live';
         $ch = curl_init();
@@ -4989,21 +4989,21 @@ function importJamData($dbConfig, $apiConfig) {
                 'Content-Type: application/json',
             ],
         ]);
-        
+
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
-        
+
         if ($httpCode !== 200) {
             throw new Exception("API request failed: {$httpCode}");
         }
-        
+
         $data = json_decode($response, true);
-        
+
         if (!isset($data['jams']) || !is_array($data['jams'])) {
             throw new Exception("Invalid jams API response");
         }
-        
+
         $stmt = $pdo->prepare("
             INSERT INTO traffic_jams (
                 uuid, level, speed, delay, length, line,
@@ -5022,7 +5022,7 @@ function importJamData($dbConfig, $apiConfig) {
                 timestamp = VALUES(timestamp),
                 updated_at = NOW()
         ");
-        
+
         foreach ($data['jams'] as $jam) {
             try {
                 $stmt->execute([
@@ -5038,7 +5038,7 @@ function importJamData($dbConfig, $apiConfig) {
                     ':end_lon' => $jam['end_longitude'] ?? null,
                     ':timestamp' => $jam['timestamp'] ?? date('Y-m-d H:i:s'),
                 ]);
-                
+
                 $results['success']++;
             } catch (Exception $e) {
                 $results['failed']++;
@@ -5048,20 +5048,20 @@ function importJamData($dbConfig, $apiConfig) {
                 ];
             }
         }
-        
+
     } catch (Exception $e) {
         $results['errors'][] = [
             'type' => 'critical',
             'error' => $e->getMessage(),
         ];
     }
-    
+
     return $results;
 }
 
 /**
  * Log import results
- * 
+ *
  * @param array $results Import results
  * @param string $logFile Log file path
  */
@@ -5073,29 +5073,29 @@ function logImportResults($results, $logFile = 'import.log') {
         $results['failed'],
         count($results['errors'])
     );
-    
+
     if (!empty($results['errors'])) {
         foreach ($results['errors'] as $error) {
-            $logEntry .= sprintf("  ERROR: %s - %s\n", 
-                $error['uuid'] ?? 'unknown', 
+            $logEntry .= sprintf("  ERROR: %s - %s\n",
+                $error['uuid'] ?? 'unknown',
                 $error['error']
             );
         }
     }
-    
+
     file_put_contents($logFile, $logEntry, FILE_APPEND);
 }
 
 // Example usage (for CLI execution)
 if (php_sapi_name() === 'cli' && isset($argv[0]) && basename($argv[0]) === 'import.php') {
     echo "Starting wazeBR data import...\n";
-    
+
     $trafficResults = importTrafficData($dbConfig, $apiConfig);
     logImportResults($trafficResults, 'traffic_import.log');
-    
+
     $jamResults = importJamData($dbConfig, $apiConfig);
     logImportResults($jamResults, 'jams_import.log');
-    
+
     echo "Traffic import: {$trafficResults['success']} success, {$trafficResults['failed']} failed\n";
     echo "Jam import: {$jamResults['success']} success, {$jamResults['failed']} failed\n";
     echo "Import completed at {$trafficResults['timestamp']}\n";
@@ -6333,8 +6333,8 @@ FILE: VALIDATION_CHECKLIST.md
 # Checklist de Validação e Testes
 ## wazeBR-symfony - Melhorias de Layout, SEO e Segurança
 
-**Data:** 07 de Agosto de 2026  
-**Status:** Pronto para Validação  
+**Data:** 07 de Agosto de 2026
+**Status:** Pronto para Validação
 **Responsável:** Equipe de QA
 
 ---
@@ -6717,8 +6717,8 @@ FILE: VALIDATION_CHECKLIST.md
 
 ## ✍️ Assinatura
 
-**Testador:** ________________  
-**Data:** ________________  
+**Testador:** ________________
+**Data:** ________________
 **Status Final:** ☐ Aprovado ☐ Aprovado com Ressalvas ☐ Reprovado
 
 ---
@@ -18522,9 +18522,9 @@ document.addEventListener('DOMContentLoaded', function() {
 function togglePassword() {
     const passwordInput = document.getElementById('password');
     const toggleIcon = document.getElementById('toggleIcon');
-    
+
     if (!passwordInput || !toggleIcon) return;
-    
+
     if (passwordInput.type === 'password') {
         passwordInput.type = 'text';
         toggleIcon.classList.remove('fa-eye');
@@ -18542,19 +18542,19 @@ function togglePassword() {
 function initLoginForm() {
     const form = document.querySelector('.login-form');
     const submitBtn = form.querySelector('.btn-login');
-    
+
     if (!form || !submitBtn) return;
-    
+
     form.addEventListener('submit', function(e) {
         // Validate before submit
         if (!validateForm()) {
             e.preventDefault();
             return;
         }
-        
+
         // Show loading state
         showLoading(submitBtn);
-        
+
         // Form will submit normally
         // Loading state will be cleared on page reload
     });
@@ -18566,7 +18566,7 @@ function initLoginForm() {
 function showLoading(button) {
     button.classList.add('btn-loading');
     button.disabled = true;
-    
+
     // Optional: Add timeout to prevent multiple submissions
     setTimeout(() => {
         button.classList.remove('btn-loading');
@@ -18579,13 +18579,13 @@ function showLoading(button) {
  */
 function initFormValidation() {
     const inputs = document.querySelectorAll('.form-control');
-    
+
     inputs.forEach(input => {
         // Real-time validation on blur
         input.addEventListener('blur', function() {
             validateInput(this);
         });
-        
+
         // Clear error on input
         input.addEventListener('input', function() {
             clearError(this);
@@ -18601,16 +18601,16 @@ function validateInput(input) {
     const type = input.type;
     let isValid = true;
     let errorMessage = '';
-    
+
     // Remove previous error
     clearError(input);
-    
+
     // Required validation
     if (input.required && !value) {
         isValid = false;
         errorMessage = 'Este campo é obrigat&oacute;rio';
     }
-    
+
     // Email validation
     if (type === 'email' && value) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -18619,7 +18619,7 @@ function validateInput(input) {
             errorMessage = 'Digite um email v&aacute;lido';
         }
     }
-    
+
     // Password validation
     if (type === 'password' && value) {
         if (value.length < 6) {
@@ -18627,12 +18627,12 @@ function validateInput(input) {
             errorMessage = 'A senha deve ter pelo menos 6 caracteres';
         }
     }
-    
+
     // Show error if invalid
     if (!isValid) {
         showError(input, errorMessage);
     }
-    
+
     return isValid;
 }
 
@@ -18642,23 +18642,23 @@ function validateInput(input) {
 function validateForm() {
     const emailInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
-    
+
     let isValid = true;
-    
+
     // Validate email
     if (emailInput) {
         if (!validateInput(emailInput)) {
             isValid = false;
         }
     }
-    
+
     // Validate password
     if (passwordInput) {
         if (!validateInput(passwordInput)) {
             isValid = false;
         }
     }
-    
+
     return isValid;
 }
 
@@ -18667,18 +18667,18 @@ function validateForm() {
  */
 function showError(input, message) {
     input.classList.add('error');
-    
+
     // Remove existing error message
     const existingError = input.parentElement.querySelector('.error-message');
     if (existingError) {
         existingError.remove();
     }
-    
+
     // Create error message
     const errorDiv = document.createElement('div');
     errorDiv.className = 'error-message';
     errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
-    
+
     // Insert after input
     input.parentElement.appendChild(errorDiv);
 }
@@ -18688,7 +18688,7 @@ function showError(input, message) {
  */
 function clearError(input) {
     input.classList.remove('error');
-    
+
     const errorDiv = input.parentElement.querySelector('.error-message');
     if (errorDiv) {
         errorDiv.remove();
@@ -18701,7 +18701,7 @@ function clearError(input) {
 function initPasswordToggle() {
     const toggleBtn = document.querySelector('.toggle-password');
     if (!toggleBtn) return;
-    
+
     toggleBtn.addEventListener('click', togglePassword);
 }
 
@@ -18710,7 +18710,7 @@ function initPasswordToggle() {
  */
 function initAutoFill() {
     const inputs = document.querySelectorAll('.form-control');
-    
+
     inputs.forEach(input => {
         // Handle browser auto-fill
         input.addEventListener('animationstart', function() {
@@ -18730,33 +18730,33 @@ function initAnimations() {
     alerts.forEach((alert, index) => {
         alert.style.opacity = '0';
         alert.style.transform = 'translateY(-10px)';
-        
+
         setTimeout(() => {
             alert.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
             alert.style.opacity = '1';
             alert.style.transform = 'translateY(0)';
         }, index * 100);
     });
-    
+
     // Stagger animation for form elements
     const formGroups = document.querySelectorAll('.form-group');
     formGroups.forEach((group, index) => {
         group.style.opacity = '0';
         group.style.transform = 'translateY(10px)';
-        
+
         setTimeout(() => {
             group.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
             group.style.opacity = '1';
             group.style.transform = 'translateY(0)';
         }, 200 + (index * 100));
     });
-    
+
     // Button animation
     const submitBtn = document.querySelector('.btn-login');
     if (submitBtn) {
         submitBtn.style.opacity = '0';
         submitBtn.style.transform = 'translateY(10px)';
-        
+
         setTimeout(() => {
             submitBtn.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
             submitBtn.style.opacity = '1';
@@ -18771,11 +18771,11 @@ function initAnimations() {
 function saveRememberMeState() {
     const rememberMe = document.getElementById('remember_me');
     if (!rememberMe) return;
-    
+
     rememberMe.addEventListener('change', function() {
         localStorage.setItem('rememberMe', this.checked);
     });
-    
+
     // Restore state
     const saved = localStorage.getItem('rememberMe');
     if (saved === 'true') {
@@ -18789,7 +18789,7 @@ function saveRememberMeState() {
 function focusFirstEmptyField() {
     const emailInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
-    
+
     if (emailInput && !emailInput.value) {
         emailInput.focus();
     } else if (passwordInput && !passwordInput.value) {
@@ -18802,12 +18802,12 @@ function focusFirstEmptyField() {
  */
 function initEnterKey() {
     const inputs = document.querySelectorAll('.form-control');
-    
+
     inputs.forEach((input, index) => {
         input.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                
+
                 // Move to next input or submit
                 const nextInput = inputs[index + 1];
                 if (nextInput) {
@@ -28070,7 +28070,7 @@ public function show(Entity $entity): Response
 {
     // Validar acesso por partner
     $this->denyAccessUnlessGranted(PartnerVoter::VIEW, $entity);
-    
+
     return $this->render('entity/show.html.twig', [
         'entity' => $entity,
     ]);
@@ -28085,14 +28085,14 @@ public function index(EntityRepository $repository): Response
 {
     /** @var User $user */
     $user = $this->getUser();
-    
+
     // Admin global ve tudo, outros veem apenas do seu partner
     if ($user->isGlobalAdmin()) {
         $entities = $repository->findAll();
     } else {
         $entities = $repository->findByPartner($user->getPartner());
     }
-    
+
     return $this->render('entity/index.html.twig', [
         'entities' => $entities,
     ]);
@@ -28107,7 +28107,7 @@ public function edit(Entity $entity, Request $request): Response
 {
     // Validar permissao de edicao por partner
     $this->denyAccessUnlessGranted(PartnerVoter::EDIT, $entity);
-    
+
     // ... logica de edicao
 }
 ```
@@ -28120,7 +28120,7 @@ public function delete(Entity $entity, Request $request): Response
 {
     // Validar permissao de delete por partner
     $this->denyAccessUnlessGranted(PartnerVoter::DELETE, $entity);
-    
+
     // ... logica de delete
 }
 ```
@@ -28145,12 +28145,12 @@ public function findByPartner(Partner $partner): array
 public function findAllWithPartnerFilter(?Partner $partner = null): array
 {
     $qb = $this->createQueryBuilder('e');
-    
+
     if ($partner !== null) {
         $qb->where('e.partner = :partner')
            ->setParameter('partner', $partner);
     }
-    
+
     return $qb->orderBy('e.createdAt', 'DESC')
               ->getQuery()
               ->getResult();
@@ -28200,15 +28200,15 @@ public function testPartnerAccess(): void
     $user1 = $this->createUserWithPartner('partner1');
     $user2 = $this->createUserWithPartner('partner2');
     $admin = $this->createGlobalAdmin();
-    
+
     $alert = $this->createAlert('partner1');
-    
+
     // User1 pode ver (mesmo partner)
     $this->assertTrue($this->isGranted(PartnerVoter::VIEW, $alert, $user1));
-    
+
     // User2 NAO pode ver (partner diferente)
     $this->assertFalse($this->isGranted(PartnerVoter::VIEW, $alert, $user2));
-    
+
     // Admin pode ver (global)
     $this->assertTrue($this->isGranted(PartnerVoter::VIEW, $alert, $admin));
 }
@@ -29279,7 +29279,7 @@ O sistema de CI/CD do wazeBR-symfony consiste em:
 
 ### CI - Tests & Quality (.github/workflows/ci.yml)
 
-**Quando roda**: 
+**Quando roda**:
 - Push em `main` ou `develop`
 - Pull requests para `main`
 
@@ -29293,7 +29293,7 @@ O sistema de CI/CD do wazeBR-symfony consiste em:
 
 ### CD - Deploy to Production (.github/workflows/cd.yml)
 
-**Quando roda**: 
+**Quando roda**:
 - Push em `main`
 
 **O que faz**:
@@ -29444,7 +29444,7 @@ php vendor/bin/phpstan analyse
 
 ### Cache desatualizado
 
-Delete cache no GitHub: 
+Delete cache no GitHub:
 Settings > Actions > Caches > Delete
 
 ## Monitoramento
@@ -29488,8 +29488,8 @@ FILE: docs/ENTITY_RELATIONSHIPS.md
 ================================================
 # Entity Relationships
 
-**Repository:** `andresdiniz/wazeBR-symfony`  
-**Last updated:** 2026-09-12  
+**Repository:** `andresdiniz/wazeBR-symfony`
+**Last updated:** 2026-09-12
 **Scope:** Partner-scoped Waze, weather, CEMADEN, and camera monitoring data.
 
 ---
@@ -29531,7 +29531,7 @@ The application partitions operational integrations by `Partner`. Each external 
 
 ### `Partner`
 
-**Table:** `partner`  
+**Table:** `partner`
 **Purpose:** Tenant entity representing an organization or client.
 
 - Fields: `name`, `code`, `slug` and other business attributes.
@@ -29539,7 +29539,7 @@ The application partitions operational integrations by `Partner`. Each external 
 
 ### `User`
 
-**Table:** `user`  
+**Table:** `user`
 **Purpose:** Application users, optionally associated with a partner.
 
 - `partner` is optional Many-to-One; global admins may have no partner.
@@ -29547,7 +29547,7 @@ The application partitions operational integrations by `Partner`. Each external 
 
 ### `PartnerApiLink`
 
-**Table:** `partner_api_link`  
+**Table:** `partner_api_link`
 **Purpose:** Stores API credentials or links for external providers per partner.
 
 - Many-to-One to `Partner`.
@@ -29555,7 +29555,7 @@ The application partitions operational integrations by `Partner`. Each external 
 
 ### `WazeAlert` and `WazeJam`
 
-**Tables:** `waze_alert`, `waze_jam`  
+**Tables:** `waze_alert`, `waze_jam`
 **Purpose:** Normalized Waze alerts and jams associated with a partner.
 
 - Non-nullable `partner` foreign key.
@@ -29612,7 +29612,7 @@ The application partitions operational integrations by `Partner`. Each external 
 
 ### `WazeTvtRoute`
 
-**Table:** `waze_tvt_route`  
+**Table:** `waze_tvt_route`
 **Purpose:** Master record for a TVT route and its complete metadata/geometry.
 
 - Required: `partner`, `routeId`.
@@ -29621,7 +29621,7 @@ The application partitions operational integrations by `Partner`. Each external 
 
 ### `WazeTvtSubRoute`
 
-**Table:** `waze_tvt_sub_route`  
+**Table:** `waze_tvt_sub_route`
 **Purpose:** Persists each object in the Waze `subRoutes` array as an entity related to its master route.
 
 - Required: `partner`, `route`, `wazeRouteId`, `subRouteId`.
@@ -29631,7 +29631,7 @@ The application partitions operational integrations by `Partner`. Each external 
 
 ### `WazeTvtRouteSnapshot`
 
-**Table:** `waze_tvt_route_snapshot`  
+**Table:** `waze_tvt_route_snapshot`
 **Purpose:** Append-only historical metric per route reading.
 
 - Required: `partner`, `route`, `recordedAt`.
@@ -29640,7 +29640,7 @@ The application partitions operational integrations by `Partner`. Each external 
 
 ### `WazeTvtUserOnJam`
 
-**Table:** `waze_tvt_user_on_jam`  
+**Table:** `waze_tvt_user_on_jam`
 **Purpose:** Append-only history of the users-on-jams observation from the TVT payload.
 
 - Required: `partner`, `recordedAt`.
@@ -29651,7 +29651,7 @@ The application partitions operational integrations by `Partner`. Each external 
 
 ### `WazeTvtIrregularity`
 
-**Table:** `waze_tvt_irregularity`  
+**Table:** `waze_tvt_irregularity`
 **Purpose:** Persists one entity for each item found in a route or subroute `irregularities` array.
 
 - Required: `partner`, `route`, `wazeRouteId`, `contentHash`, `payload`, `recordedAt`.
@@ -29709,7 +29709,7 @@ The application partitions operational integrations by `Partner`. Each external 
 
 ### `WeatherLocation`
 
-**Table:** `weather_location`  
+**Table:** `weather_location`
 **Purpose:** Stores a city or exact coordinates to monitor for a partner using Open-Meteo.
 
 - Required: `partner`, `name`, `latitude`, `longitude`, `provider`.
@@ -29720,7 +29720,7 @@ The application partitions operational integrations by `Partner`. Each external 
 
 ### `WeatherObservation`
 
-**Table:** `weather_observation`  
+**Table:** `weather_observation`
 **Purpose:** Append-only historical record of a provider response for a monitored location.
 
 - Required: `partner`, `weatherLocation`, `observedAt`, `payload`.
@@ -29779,7 +29779,7 @@ The application partitions operational integrations by `Partner`. Each external 
 
 ### `CemadenStationLink`
 
-**Table:** `cemaden_station_link`  
+**Table:** `cemaden_station_link`
 **Purpose:** Stores a partner-specific CEMADEN station and its request configuration.
 
 - Required: `partner`, `cemadenStationId`, `stationName`, `latitude`, `longitude`, and `baseUrl`.
@@ -29791,7 +29791,7 @@ The application partitions operational integrations by `Partner`. Each external 
 
 ### `CemadenPluviometricObservation`
 
-**Table:** `cemaden_pluviometric_observation`  
+**Table:** `cemaden_pluviometric_observation`
 **Purpose:** Append-only rainfall history, with one row for each CEMADEN date/hour cell in `datas`, `horarios`, and `acumulados`.
 
 - Required: `partner`, `cemadenStationLink`, `referenceDate`, `hourSlot`, and `observedAt`.
@@ -29848,7 +29848,7 @@ The application partitions operational integrations by `Partner`. Each external 
 
 ### `CemadenHidroStationLink`
 
-**Table:** `cemaden_hidro_station_link`  
+**Table:** `cemaden_hidro_station_link`
 **Purpose:** Stores one partner-specific CEMADEN hydrological station query.
 
 - Required: `partner`, `cemadenTransactionId`, and `baseUrl`.
@@ -29860,7 +29860,7 @@ The application partitions operational integrations by `Partner`. Each external 
 
 ### `CemadenHidroObservation`
 
-**Table:** `cemaden_hidro_observation`  
+**Table:** `cemaden_hidro_observation`
 **Purpose:** Append-only river-level history, with one row for every item returned by the hydrological endpoint.
 
 - Required: `partner`, `cemadenHidroStationLink`, `observedAt`, and `sourcePayload`.
@@ -29904,7 +29904,7 @@ The application partitions operational integrations by `Partner`. Each external 
 
 ### `PartnerCameraLink`
 
-**Table:** `partner_camera_link`  
+**Table:** `partner_camera_link`
 **Purpose:** Stores partner-owned camera links for monitoring, without storing media content.
 
 - Required: `partner`, `name`, `url`, `latitude`, `longitude`.
@@ -30159,7 +30159,7 @@ CREATE TABLE waze_tvt_routes (
     last_update_at DATETIME,
     created_at DATETIME,
     updated_at DATETIME,
-    
+
     INDEX idx_routes_partner (partner_id),
     INDEX idx_routes_last_update (last_update_at)
 );
@@ -30179,7 +30179,7 @@ CREATE TABLE waze_tvt_route_history (
     speed_kmh DECIMAL(5,2),
     collected_at DATETIME,
     created_at DATETIME,
-    
+
     INDEX idx_history_route (route_id),
     INDEX idx_history_collected (collected_at)
 );
@@ -30196,7 +30196,7 @@ CREATE TABLE waze_tvt_route_history_coords (
     latitude DECIMAL(10,8),
     longitude DECIMAL(11,8),
     order_index INT,
-    
+
     INDEX idx_coords_history (history_id)
 );
 ```
@@ -30241,7 +30241,7 @@ CREATE TABLE waze_tvt_route_history_coords (
 ```sql
 -- 1. Criar tabela temporaria com estado atual (ultimo snapshot por rota)
 CREATE TEMPORARY TABLE current_routes AS
-SELECT 
+SELECT
     r.route_id,
     r.partner_id,
     MAX(s.collected_at) as last_update,
@@ -30297,9 +30297,9 @@ Este documento descreve como configurar a página de acesso negado no wazeBR-sym
 # config/packages/security.yaml
 security:
     # ... outras configuraçµ£es ...
-    
+
     access_denied_url: /security/access-denied
-    
+
     firewalls:
         main:
             # ... configuraçµ£es do firewall ...
@@ -30311,7 +30311,7 @@ security:
 # config/packages/security.yaml
 security:
     # ... outras configuraçµ£es ...
-    
+
     firewalls:
         main:
             # ... configuraçµ£es do firewall ...
@@ -33241,24 +33241,24 @@ FILE: public/assets/css/api-docs-pz2o86N.css
     --primary-light: #3b82f6;
     --secondary: #10b981;
     --accent: #f59e0b;
-    
+
     --bg-dark: #0f172a;
     --bg-darker: #020617;
     --bg-card: #1e293b;
     --bg-code: #1e1e1e;
-    
+
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
     --text-muted: #64748b;
-    
+
     --border: #334155;
     --border-light: #475569;
-    
+
     --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    
+
     --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-    
+
     --radius: 0.5rem;
     --radius-md: 0.75rem;
     --radius-lg: 1rem;
@@ -33843,32 +33843,32 @@ body {
     .hero h1 {
         font-size: 2rem;
     }
-    
+
     .hero-actions {
         flex-direction: column;
     }
-    
+
     .nav-links {
         display: none;
     }
-    
+
     .auth-card {
         grid-template-columns: 1fr;
         text-align: center;
     }
-    
+
     .auth-icon {
         margin: 0 auto;
     }
-    
+
     .examples-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .cta-buttons {
         flex-direction: column;
     }
-    
+
     .footer-content {
         flex-direction: column;
         gap: 1rem;
@@ -35522,24 +35522,24 @@ FILE: public/assets/css/auth-z5h47LC.css
     --secondary: #10b981;
     --danger: #ef4444;
     --success: #22c55e;
-    
+
     --bg-dark: #0f172a;
     --bg-darker: #020617;
     --bg-card: #1e293b;
     --bg-input: #334155;
-    
+
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
     --text-muted: #64748b;
-    
+
     --border: #334155;
     --border-light: #475569;
-    
+
     --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    
+
     --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    
+
     --radius: 0.5rem;
     --radius-md: 0.75rem;
     --radius-lg: 1rem;
@@ -35840,11 +35840,11 @@ body {
     body {
         padding: 1rem;
     }
-    
+
     .login-box {
         padding: 2rem 1.5rem;
     }
-    
+
     .form-options {
         flex-direction: column;
         gap: 0.75rem;
@@ -35870,32 +35870,32 @@ FILE: public/assets/css/base-layout-P-obqtn.css
     --secondary: #10b981;
     --accent: #f59e0b;
     --danger: #ef4444;
-    
+
     --bg-dark: #0f172a;
     --bg-darker: #020617;
     --bg-card: #1e293b;
     --bg-input: #334155;
-    
+
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
     --text-muted: #64748b;
-    
+
     --border: #334155;
     --border-light: #475569;
-    
+
     --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    
+
     /* Spacing */
     --header-height: 80px;
     --container-max: 1280px;
-    
+
     /* Shadows */
     --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-    
+
     /* Transitions */
     --transition: 300ms ease;
-    
+
     /* Border Radius */
     --radius: 0.5rem;
     --radius-md: 0.75rem;
@@ -36488,15 +36488,15 @@ body {
     .site-nav {
         display: none;
     }
-    
+
     .mobile-nav-toggle {
         display: flex;
     }
-    
+
     .user-name {
         display: none;
     }
-    
+
     .footer-grid {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -36506,12 +36506,12 @@ body {
     .header-container {
         padding: 0 1rem;
     }
-    
+
     .footer-grid {
         grid-template-columns: 1fr;
         text-align: center;
     }
-    
+
     .footer-social {
         justify-content: center;
     }
@@ -39179,27 +39179,27 @@ FILE: public/assets/css/dashboard-xI_8BT8.css
     --info: #3b82f6;
     --success: #22c55e;
     --warning: #f59e0b;
-    
+
     --bg-dark: #0f172a;
     --bg-darker: #020617;
     --bg-card: #1e293b;
     --bg-input: #334155;
     --bg-sidebar: #1e293b;
-    
+
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
     --text-muted: #64748b;
-    
+
     --border: #334155;
     --border-light: #475569;
-    
+
     --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    
+
     /* Spacing */
     --sidebar-width: 280px;
     --sidebar-collapsed-width: 80px;
     --top-bar-height: 70px;
-    
+
     /* Shadows
        (mesmos valores de assets/css/global.css — esse arquivo carrega
        depois do global.css em templates/layouts/dashboard.html.twig,
@@ -39208,10 +39208,10 @@ FILE: public/assets/css/dashboard-xI_8BT8.css
     --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
     --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    
+
     /* Transitions */
     --transition: 300ms ease;
-    
+
     /* Border Radius
        (alinhado à escala de assets/css/global.css: --radius, --radius-md,
        --radius-lg e --radius-xl usavam valores maiores aqui e, quando este
@@ -40212,11 +40212,11 @@ body {
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .content-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .card.large {
         grid-column: span 1;
     }
@@ -40231,19 +40231,19 @@ body {
         transform: translateX(-100%);
         z-index: 200;
     }
-    
+
     .sidebar.active {
         transform: translateX(0);
     }
-    
+
     .mobile-menu-toggle {
         display: flex;
     }
-    
+
     .search-box {
         display: none;
     }
-    
+
     .user-name-small {
         display: none;
     }
@@ -40253,33 +40253,33 @@ body {
     .stats-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .top-bar {
         padding: 0 1rem;
     }
-    
+
     .page-title {
         font-size: 1.25rem;
     }
-    
+
     .content-wrapper {
         padding: 1rem;
     }
-    
+
     .welcome-card {
         flex-direction: column;
         text-align: center;
     }
-    
+
     .welcome-content h2 {
         font-size: 1.5rem;
     }
-    
+
     .welcome-actions {
         width: 100%;
         justify-content: center;
     }
-    
+
     .quick-actions {
         grid-template-columns: 1fr;
     }
@@ -45357,16 +45357,16 @@ FILE: public/assets/css/header-kI-6pMf.css
     .footer-grid {
         grid-template-columns: repeat(3, 1fr);
     }
-    
+
     .footer-col-brand {
         grid-column: span 3;
         text-align: center;
     }
-    
+
     .footer-social {
         justify-content: center;
     }
-    
+
     .footer-contact {
         max-width: 400px;
         margin: 0 auto;
@@ -45377,32 +45377,32 @@ FILE: public/assets/css/header-kI-6pMf.css
     .site-nav {
         display: none;
     }
-    
+
     .mobile-menu-toggle {
         display: flex;
     }
-    
+
     .search-box {
         display: none;
     }
-    
+
     .user-name {
         display: none;
     }
-    
+
     .footer-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .footer-col-brand {
         grid-column: span 2;
     }
-    
+
     .footer-newsletter {
         flex-direction: column;
         text-align: center;
     }
-    
+
     .newsletter-form {
         width: 100%;
         max-width: none;
@@ -45413,25 +45413,25 @@ FILE: public/assets/css/header-kI-6pMf.css
     .header-container {
         padding: 0 1rem;
     }
-    
+
     .auth-buttons {
         display: none;
     }
-    
+
     .footer-grid {
         grid-template-columns: 1fr;
         text-align: center;
     }
-    
+
     .footer-col-brand {
         grid-column: span 1;
     }
-    
+
     .footer-bottom-content {
         flex-direction: column;
         text-align: center;
     }
-    
+
     .footer-payment {
         flex-direction: column;
     }
@@ -45442,7 +45442,7 @@ FILE: public/assets/css/header-kI-6pMf.css
         width: calc(100vw - 2rem);
         right: -1rem;
     }
-    
+
     .user-dropdown {
         width: calc(100vw - 2rem);
         right: -1rem;
@@ -46370,39 +46370,39 @@ FILE: public/assets/css/landing-0pDZkGT.css
     --secondary: #10b981;
     --accent: #f59e0b;
     --danger: #ef4444;
-    
+
     --bg-dark: #0f172a;
     --bg-darker: #020617;
     --bg-card: #1e293b;
     --bg-card-hover: #334155;
-    
+
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
     --text-muted: #64748b;
-    
+
     --border: #334155;
     --border-light: #475569;
-    
+
     --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     --gradient-hero: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #06b6d4 100%);
     --gradient-card: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
-    
+
     /* Spacing */
     --section-padding: 5rem;
     --container-max: 1280px;
-    
+
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
     --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    
+
     /* Transitions */
     --transition-fast: 150ms ease;
     --transition: 300ms ease;
     --transition-slow: 500ms ease;
-    
+
     /* Border Radius */
     --radius-sm: 0.375rem;
     --radius: 0.5rem;
@@ -46683,7 +46683,7 @@ body {
 .hero-particles {
     position: absolute;
     inset: 0;
-    background-image: 
+    background-image:
         radial-gradient(circle at 20% 50%, rgba(37, 99, 235, 0.15) 0%, transparent 50%),
         radial-gradient(circle at 80% 80%, rgba(124, 58, 237, 0.15) 0%, transparent 50%);
 }
@@ -46830,7 +46830,7 @@ body {
 .map-grid {
     position: absolute;
     inset: 0;
-    background-image: 
+    background-image:
         linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
     background-size: 40px 40px;
@@ -47857,7 +47857,7 @@ body {
     .pricing-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .footer-grid {
         grid-template-columns: repeat(3, 1fr);
     }
@@ -47868,48 +47868,48 @@ body {
         grid-template-columns: 1fr;
         gap: 3rem;
     }
-    
+
     .hero-content {
         max-width: 100%;
         text-align: center;
     }
-    
+
     .hero-cta,
     .hero-trust {
         justify-content: center;
     }
-    
+
     .hero-title {
         font-size: 2.5rem;
     }
-    
+
     .features-grid,
     .testimonials-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .steps-grid,
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .solution-grid {
         grid-template-columns: 1fr;
         text-align: center;
     }
-    
+
     .solution-list {
         display: inline-block;
         text-align: left;
     }
-    
+
     .pricing-grid {
         grid-template-columns: 1fr;
         max-width: 400px;
         margin-left: auto;
         margin-right: auto;
     }
-    
+
     .footer-grid {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -47919,66 +47919,66 @@ body {
     :root {
         --section-padding: 3rem;
     }
-    
+
     .nav-menu,
     .nav-actions {
         display: none;
     }
-    
+
     .mobile-menu-btn {
         display: flex;
     }
-    
+
     .hero {
         padding: 6rem 0 3rem;
     }
-    
+
     .hero-title {
         font-size: 2rem;
     }
-    
+
     .hero-subtitle {
         font-size: 1.125rem;
     }
-    
+
     .hero-cta {
         flex-direction: column;
     }
-    
+
     .section-title {
         font-size: 2rem;
     }
-    
+
     .steps-grid,
     .stats-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .solutions-tabs {
         flex-direction: column;
     }
-    
+
     .tab-btn {
         justify-content: center;
     }
-    
+
     .cta-box {
         padding: 2rem;
     }
-    
+
     .cta-content h2 {
         font-size: 1.75rem;
     }
-    
+
     .cta-buttons {
         flex-direction: column;
     }
-    
+
     .footer-grid {
         grid-template-columns: 1fr;
         text-align: center;
     }
-    
+
     .footer-social {
         justify-content: center;
     }
@@ -47988,11 +47988,11 @@ body {
     .hero-title {
         font-size: 1.75rem;
     }
-    
+
     .pricing-price .amount {
         font-size: 3rem;
     }
-    
+
     .testimonial-card {
         padding: 1.5rem;
     }
@@ -49287,39 +49287,39 @@ FILE: public/assets/css/landing-GG40mhG.css
     --secondary: #10b981;
     --accent: #f59e0b;
     --danger: #ef4444;
-    
+
     --bg-dark: #0f172a;
     --bg-darker: #020617;
     --bg-card: #1e293b;
     --bg-card-hover: #334155;
-    
+
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
     --text-muted: #64748b;
-    
+
     --border: #334155;
     --border-light: #475569;
-    
+
     --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     --gradient-hero: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #06b6d4 100%);
     --gradient-card: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
-    
+
     /* Spacing */
     --section-padding: 5rem;
     --container-max: 1280px;
-    
+
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
     --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    
+
     /* Transitions */
     --transition-fast: 150ms ease;
     --transition: 300ms ease;
     --transition-slow: 500ms ease;
-    
+
     /* Border Radius */
     --radius-sm: 0.375rem;
     --radius: 0.5rem;
@@ -49600,7 +49600,7 @@ body {
 .hero-particles {
     position: absolute;
     inset: 0;
-    background-image: 
+    background-image:
         radial-gradient(circle at 20% 50%, rgba(37, 99, 235, 0.15) 0%, transparent 50%),
         radial-gradient(circle at 80% 80%, rgba(124, 58, 237, 0.15) 0%, transparent 50%);
 }
@@ -49747,7 +49747,7 @@ body {
 .map-grid {
     position: absolute;
     inset: 0;
-    background-image: 
+    background-image:
         linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
     background-size: 40px 40px;
@@ -50774,7 +50774,7 @@ body {
     .pricing-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .footer-grid {
         grid-template-columns: repeat(3, 1fr);
     }
@@ -50785,48 +50785,48 @@ body {
         grid-template-columns: 1fr;
         gap: 3rem;
     }
-    
+
     .hero-content {
         max-width: 100%;
         text-align: center;
     }
-    
+
     .hero-cta,
     .hero-trust {
         justify-content: center;
     }
-    
+
     .hero-title {
         font-size: 2.5rem;
     }
-    
+
     .features-grid,
     .testimonials-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .steps-grid,
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .solution-grid {
         grid-template-columns: 1fr;
         text-align: center;
     }
-    
+
     .solution-list {
         display: inline-block;
         text-align: left;
     }
-    
+
     .pricing-grid {
         grid-template-columns: 1fr;
         max-width: 400px;
         margin-left: auto;
         margin-right: auto;
     }
-    
+
     .footer-grid {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -50836,66 +50836,66 @@ body {
     :root {
         --section-padding: 3rem;
     }
-    
+
     .nav-menu,
     .nav-actions {
         display: none;
     }
-    
+
     .mobile-menu-btn {
         display: flex;
     }
-    
+
     .hero {
         padding: 6rem 0 3rem;
     }
-    
+
     .hero-title {
         font-size: 2rem;
     }
-    
+
     .hero-subtitle {
         font-size: 1.125rem;
     }
-    
+
     .hero-cta {
         flex-direction: column;
     }
-    
+
     .section-title {
         font-size: 2rem;
     }
-    
+
     .steps-grid,
     .stats-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .solutions-tabs {
         flex-direction: column;
     }
-    
+
     .tab-btn {
         justify-content: center;
     }
-    
+
     .cta-box {
         padding: 2rem;
     }
-    
+
     .cta-content h2 {
         font-size: 1.75rem;
     }
-    
+
     .cta-buttons {
         flex-direction: column;
     }
-    
+
     .footer-grid {
         grid-template-columns: 1fr;
         text-align: center;
     }
-    
+
     .footer-social {
         justify-content: center;
     }
@@ -50905,11 +50905,11 @@ body {
     .hero-title {
         font-size: 1.75rem;
     }
-    
+
     .pricing-price .amount {
         font-size: 3rem;
     }
-    
+
     .testimonial-card {
         padding: 1.5rem;
     }
@@ -53051,27 +53051,27 @@ FILE: public/assets/css/reset-password-efWAdm-.css
     --secondary: #10b981;
     --accent: #f59e0b;
     --danger: #ef4444;
-    
+
     --bg-dark: #0f172a;
     --bg-darker: #020617;
     --bg-card: #1e293b;
     --bg-input: #334155;
     --bg-input-focus: #475569;
-    
+
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
     --text-muted: #64748b;
-    
+
     --border: #334155;
     --border-light: #475569;
-    
+
     --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     --gradient-right: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #06b6d4 100%);
-    
+
     --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
     --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    
+
     --radius: 0.5rem;
     --radius-md: 0.75rem;
     --radius-lg: 1rem;
@@ -53783,12 +53783,12 @@ body {
     .reset-right {
         display: none;
     }
-    
+
     .reset-left {
         width: 100%;
         flex: none;
     }
-    
+
     .reset-container {
         max-width: 420px;
     }
@@ -53798,20 +53798,20 @@ body {
     .reset-left {
         padding: 1.5rem;
     }
-    
+
     .reset-container {
         padding: 1rem;
     }
-    
+
     .logo {
         justify-content: center;
     }
-    
+
     .reset-header h1,
     .success-section h1 {
         font-size: 1.75rem;
     }
-    
+
     .visual-stats {
         grid-template-columns: 1fr;
     }
@@ -53890,27 +53890,27 @@ FILE: public/assets/css/reset-password-fW1cF6k.css
     --secondary: #10b981;
     --accent: #f59e0b;
     --danger: #ef4444;
-    
+
     --bg-dark: #0f172a;
     --bg-darker: #020617;
     --bg-card: #1e293b;
     --bg-input: #334155;
     --bg-input-focus: #475569;
-    
+
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
     --text-muted: #64748b;
-    
+
     --border: #334155;
     --border-light: #475569;
-    
+
     --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     --gradient-right: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #06b6d4 100%);
-    
+
     --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
     --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    
+
     --radius: 0.5rem;
     --radius-md: 0.75rem;
     --radius-lg: 1rem;
@@ -54622,12 +54622,12 @@ body {
     .reset-right {
         display: none;
     }
-    
+
     .reset-left {
         width: 100%;
         flex: none;
     }
-    
+
     .reset-container {
         max-width: 420px;
     }
@@ -54637,20 +54637,20 @@ body {
     .reset-left {
         padding: 1.5rem;
     }
-    
+
     .reset-container {
         padding: 1rem;
     }
-    
+
     .logo {
         justify-content: center;
     }
-    
+
     .reset-header h1,
     .success-section h1 {
         font-size: 1.75rem;
     }
-    
+
     .visual-stats {
         grid-template-columns: 1fr;
     }
@@ -82451,7 +82451,7 @@ const COMPONENTS = {
         match: '[data-route-show]',
         init: () => import('./pages/route-show.js'),
     },
-    
+
     // ____ página de comparação de rotas
     routeCompare: {
         match: '[data-route-compare]',
@@ -83401,7 +83401,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function initHeaderScroll() {
     const header = document.querySelector('.site-header');
     if (!header) return;
-    
+
     window.addEventListener('scroll', () => {
         if (window.scrollY > 50) {
             header.classList.add('scrolled');
@@ -83417,21 +83417,21 @@ function initHeaderScroll() {
 function toggleUserMenu() {
     const dropdown = document.getElementById('user-dropdown');
     if (!dropdown) return;
-    
+
     dropdown.classList.toggle('active');
 }
 
 function initUserMenu() {
     const userMenuBtn = document.querySelector('.user-menu-btn');
     const dropdown = document.getElementById('user-dropdown');
-    
+
     if (!userMenuBtn || !dropdown) return;
-    
+
     userMenuBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleUserMenu();
     });
-    
+
     // Close dropdown when clicking outside
     document.addEventListener('click', (e) => {
         if (!dropdown.contains(e.target) && !userMenuBtn.contains(e.target)) {
@@ -83446,9 +83446,9 @@ function initUserMenu() {
 function toggleMobileNav() {
     const mobileNav = document.getElementById('mobile-nav');
     if (!mobileNav) return;
-    
+
     mobileNav.classList.toggle('active');
-    
+
     // Prevent body scroll when menu is open
     if (mobileNav.classList.contains('active')) {
         document.body.style.overflow = 'hidden';
@@ -83460,11 +83460,11 @@ function toggleMobileNav() {
 function initMobileNavigation() {
     const mobileNav = document.getElementById('mobile-nav');
     const mobileNavToggle = document.getElementById('mobile-nav-toggle');
-    
+
     if (!mobileNav || !mobileNavToggle) return;
-    
+
     mobileNavToggle.addEventListener('click', toggleMobileNav);
-    
+
     // Close mobile nav when clicking on a link
     const mobileNavLinks = mobileNav.querySelectorAll('a');
     mobileNavLinks.forEach(link => {
@@ -83472,7 +83472,7 @@ function initMobileNavigation() {
             toggleMobileNav();
         });
     });
-    
+
     // Close mobile nav on resize if desktop
     window.addEventListener('resize', () => {
         if (window.innerWidth > 992 && mobileNav.classList.contains('active')) {
@@ -83486,23 +83486,23 @@ function initMobileNavigation() {
  */
 function toggleSubmenu(event) {
     event.preventDefault();
-    
+
     const navItem = event.currentTarget.closest('.nav-item');
     const submenu = navItem.querySelector('.submenu');
-    
+
     if (!submenu) return;
-    
+
     // Toggle active class
     navItem.classList.toggle('submenu-active');
 }
 
 function initSubmenus() {
     const submenuLinks = document.querySelectorAll('.has-submenu > .nav-link');
-    
+
     submenuLinks.forEach(link => {
         link.addEventListener('click', toggleSubmenu);
     });
-    
+
     // Close submenus when clicking outside
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.has-submenu')) {
@@ -83519,14 +83519,14 @@ function initSubmenus() {
 function initActiveNavLink() {
     const currentPath = window.location.pathname;
     const navLinks = document.querySelectorAll('.nav-link, .mobile-nav-list a');
-    
+
     navLinks.forEach(link => {
         const href = link.getAttribute('href');
-        
+
         if (href && href !== '#' && !href.startsWith('#')) {
             try {
                 const linkPath = new URL(href, window.location.origin).pathname;
-                
+
                 if (linkPath === currentPath) {
                     link.classList.add('active');
                 }
@@ -83545,7 +83545,7 @@ function initSmoothScroll() {
         anchor.addEventListener('click', function(e) {
             const targetId = this.getAttribute('href');
             if (targetId === '#') return;
-            
+
             const targetElement = document.querySelector(targetId);
             if (targetElement) {
                 e.preventDefault();
@@ -84217,32 +84217,32 @@ FILE: public/assets/js/dashboard-7TdLnO3.js
 // Animate stats on load
 document.addEventListener('DOMContentLoaded', () => {
     const statCards = document.querySelectorAll('.stat-card');
-    
+
     // Stagger animation for stat cards
     statCards.forEach((card, index) => {
         card.style.opacity = '0';
         card.style.transform = 'translateY(20px)';
-        
+
         setTimeout(() => {
             card.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
             card.style.opacity = '1';
             card.style.transform = 'translateY(0)';
         }, index * 100);
     });
-    
+
     // Animate dashboard cards
     const dashboardCards = document.querySelectorAll('.dashboard-card');
     dashboardCards.forEach((card, index) => {
         card.style.opacity = '0';
         card.style.transform = 'translateY(20px)';
-        
+
         setTimeout(() => {
             card.style.transition = 'opacity 0.4s ease 0.3s, transform 0.4s ease 0.3s';
             card.style.opacity = '1';
             card.style.transform = 'translateY(0)';
         }, 300 + (index * 150));
     });
-    
+
     // Add click animation to stat cards
     statCards.forEach(card => {
         card.addEventListener('click', () => {
@@ -84252,7 +84252,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 150);
         });
     });
-    
+
     // Table row hover effect enhancement
     const tableRows = document.querySelectorAll('.data-table tbody tr');
     tableRows.forEach(row => {
@@ -84260,7 +84260,7 @@ document.addEventListener('DOMContentLoaded', () => {
             row.style.transition = 'background 0.2s ease';
         });
     });
-    
+
     console.log('Dashboard initialized');
 });
 
@@ -84671,7 +84671,7 @@ FILE: public/assets/js/global-foCOLEN.js
             const toast = document.createElement('div');
             toast.className = `toast toast-${type} toast-${position}`;
             toast.setAttribute('role', 'alert');
-            
+
             let iconHtml = '';
             if (icon) {
                 iconHtml = `<i class="${icon}"></i>`;
@@ -85028,11 +85028,11 @@ FILE: public/assets/js/global-foCOLEN.js
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
                         const img = entry.target;
-                        
+
                         if (img.dataset.src) {
                             img.src = img.dataset.src;
                         }
-                        
+
                         if (img.dataset.srcset) {
                             img.srcset = img.dataset.srcset;
                         }
@@ -85741,7 +85741,7 @@ FILE: public/assets/js/header--HyRhWO.js
         initMobileSubmenus();
         initSkipLink();
         initKeyboardShortcuts();
-        
+
         console.log('%c🧭 wazeBR Header', 'font-size: 14px; font-weight: bold; color: #2563eb;');
         console.log('%cHeader, Nav & Footer JavaScript loaded successfully!', 'font-size: 12px; color: #22c55e;');
     });
@@ -85800,7 +85800,7 @@ FILE: public/assets/js/header--HyRhWO.js
             const isActive = mobileNav.classList.toggle('active');
             mobileMenuToggle.classList.toggle('active');
             mobileMenuToggle.setAttribute('aria-expanded', isActive);
-            
+
             // Prevent body scroll
             document.body.style.overflow = isActive ? 'hidden' : '';
         });
@@ -85930,7 +85930,7 @@ FILE: public/assets/js/header--HyRhWO.js
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     const isOpen = submenu.style.visibility === 'visible';
-                    
+
                     // Close all other submenus
                     document.querySelectorAll('.nav-item.has-submenu .submenu').forEach(s => {
                         s.style.opacity = '0';
@@ -85988,10 +85988,10 @@ FILE: public/assets/js/header--HyRhWO.js
 
         function performSearch(query) {
             if (!query.trim()) return;
-            
+
             // TODO: Implement search functionality
             console.log('Searching for:', query);
-            
+
             // Example: Redirect to search page
             // window.location.href = `/search?q=${encodeURIComponent(query)}`;
         }
@@ -86024,7 +86024,7 @@ FILE: public/assets/js/header--HyRhWO.js
         document.querySelectorAll('.notification-item').forEach(item => {
             item.addEventListener('click', function() {
                 this.classList.remove('unread');
-                
+
                 // TODO: Navigate to notification link
                 // window.location.href = this.dataset.link;
             });
@@ -86133,7 +86133,7 @@ FILE: public/assets/js/header--HyRhWO.js
             if (e.key === 'Escape') {
                 const mobileNav = document.getElementById('mobile-nav');
                 const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
-                
+
                 if (mobileNav && mobileNav.classList.contains('active')) {
                     mobileNav.classList.remove('active');
                     mobileMenuToggle.classList.remove('active');
@@ -87010,18 +87010,18 @@ document.addEventListener('DOMContentLoaded', function() {
 function initNavbar() {
     const navbar = document.getElementById('navbar');
     if (!navbar) return;
-    
+
     let lastScroll = 0;
-    
+
     window.addEventListener('scroll', () => {
         const currentScroll = window.pageYOffset;
-        
+
         if (currentScroll > 100) {
             navbar.classList.add('scrolled');
         } else {
             navbar.classList.remove('scrolled');
         }
-        
+
         lastScroll = currentScroll;
     });
 }
@@ -87032,14 +87032,14 @@ function initNavbar() {
 function initMobileMenu() {
     const menuBtn = document.getElementById('mobile-menu-btn');
     const navMenu = document.getElementById('nav-menu');
-    
+
     if (!menuBtn || !navMenu) return;
-    
+
     menuBtn.addEventListener('click', () => {
         navMenu.classList.toggle('active');
         menuBtn.classList.toggle('active');
     });
-    
+
     // Close menu on link click
     navMenu.querySelectorAll('a').forEach(link => {
         link.addEventListener('click', () => {
@@ -87055,7 +87055,7 @@ function initMobileMenu() {
 function initStatsAnimation() {
     const statsSection = document.querySelector('.stats-section');
     if (!statsSection) return;
-    
+
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -87064,22 +87064,22 @@ function initStatsAnimation() {
             }
         });
     }, { threshold: 0.5 });
-    
+
     observer.observe(statsSection);
 }
 
 function animateStats() {
     const statNumbers = document.querySelectorAll('.stat-number');
-    
+
     statNumbers.forEach(stat => {
         const finalValue = parseInt(stat.getAttribute('data-value'));
         if (!finalValue) return;
-        
+
         let currentValue = 0;
         const increment = finalValue / 50;
         const duration = 2000;
         const stepTime = duration / 50;
-        
+
         const timer = setInterval(() => {
             currentValue += increment;
             if (currentValue >= finalValue) {
@@ -87110,17 +87110,17 @@ function formatNumber(num) {
 function initSolutionsTabs() {
     const tabBtns = document.querySelectorAll('.tab-btn');
     const panels = document.querySelectorAll('.solution-panel');
-    
+
     if (!tabBtns.length || !panels.length) return;
-    
+
     tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             const tabId = btn.getAttribute('data-tab');
-            
+
             // Remove active from all
             tabBtns.forEach(b => b.classList.remove('active'));
             panels.forEach(p => p.classList.remove('active'));
-            
+
             // Add active to clicked
             btn.classList.add('active');
             document.getElementById(tabId).classList.add('active');
@@ -87133,16 +87133,16 @@ function initSolutionsTabs() {
  */
 function initFAQ() {
     const faqItems = document.querySelectorAll('.faq-item');
-    
+
     faqItems.forEach(item => {
         const question = item.querySelector('.faq-question');
-        
+
         question.addEventListener('click', () => {
             const isActive = item.classList.contains('active');
-            
+
             // Close all
             faqItems.forEach(i => i.classList.remove('active'));
-            
+
             // Toggle current
             if (!isActive) {
                 item.classList.add('active');
@@ -87157,20 +87157,20 @@ function initFAQ() {
 function initPricingToggle() {
     const pricingSwitch = document.getElementById('pricing-switch');
     if (!pricingSwitch) return;
-    
+
     const prices = document.querySelectorAll('.pricing-price .amount');
     const periods = document.querySelectorAll('.pricing-price .period');
     const monthlyPrices = [197, 497, 997];
     const annualPrices = [158, 398, 798]; // 20% discount
-    
+
     pricingSwitch.addEventListener('change', () => {
         const isAnnual = pricingSwitch.checked;
         const pricesArray = isAnnual ? annualPrices : monthlyPrices;
-        
+
         prices.forEach((price, index) => {
             animatePriceChange(price, pricesArray[index]);
         });
-        
+
         // Update period text
         periods.forEach(period => {
             period.textContent = isAnnual ? '/m\u00eas (anual)' : '/m\u00eas';
@@ -87184,15 +87184,15 @@ function initPricingToggle() {
 function animatePriceChange(element, newValue) {
     const currentValue = parseInt(element.textContent);
     if (!currentValue) return;
-    
+
     const increment = (newValue - currentValue) / 20;
     let count = 0;
-    
+
     const timer = setInterval(() => {
         count++;
         const displayValue = Math.round(currentValue + (increment * count));
         element.textContent = displayValue;
-        
+
         if (count >= 20) {
             element.textContent = newValue;
             clearInterval(timer);
@@ -87208,7 +87208,7 @@ function initSmoothScroll() {
         anchor.addEventListener('click', function(e) {
             const targetId = this.getAttribute('href');
             if (targetId === '#') return;
-            
+
             const targetElement = document.querySelector(targetId);
             if (targetElement) {
                 e.preventDefault();
@@ -87228,7 +87228,7 @@ function initScrollAnimations() {
     const animatedElements = document.querySelectorAll(
         '.feature-card, .pricing-card, .testimonial-card, .step-card, .endpoint-card'
     );
-    
+
     const observer = new IntersectionObserver((entries) => {
         entries.forEach((entry, index) => {
             if (entry.isIntersecting) {
@@ -87237,12 +87237,12 @@ function initScrollAnimations() {
                     entry.target.style.opacity = '1';
                     entry.target.style.transform = 'translateY(0)';
                 }, index * 100);
-                
+
                 observer.unobserve(entry.target);
             }
         });
     }, { threshold: 0.1 });
-    
+
     animatedElements.forEach(el => {
         el.style.opacity = '0';
         el.style.transform = 'translateY(30px)';
@@ -87257,7 +87257,7 @@ function initScrollAnimations() {
 function initHeroParticles() {
     const particlesContainer = document.getElementById('particles');
     if (!particlesContainer) return;
-    
+
     // Create floating particles
     for (let i = 0; i < 20; i++) {
         const particle = document.createElement('div');
@@ -87275,7 +87275,7 @@ function initHeroParticles() {
         `;
         particlesContainer.appendChild(particle);
     }
-    
+
     // Add CSS for float animation
     const style = document.createElement('style');
     style.textContent = `
@@ -87306,7 +87306,7 @@ function initHeroParticles() {
  */
 function initCounterAnimation() {
     const counters = document.querySelectorAll('.stat-value');
-    
+
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -87315,7 +87315,7 @@ function initCounterAnimation() {
             }
         });
     }, { threshold: 0.5 });
-    
+
     counters.forEach(counter => {
         observer.observe(counter);
     });
@@ -87325,14 +87325,14 @@ function animateCounter(element) {
     const text = element.textContent;
     const hasPlus = text.includes('+');
     const number = parseInt(text.replace(/[^0-9]/g, ''));
-    
+
     if (!number) return;
-    
+
     let current = 0;
     const increment = number / 30;
     const duration = 1500;
     const stepTime = duration / 30;
-    
+
     const timer = setInterval(() => {
         current += increment;
         if (current >= number) {
@@ -87351,11 +87351,11 @@ function animateCounter(element) {
 function initTypingEffect() {
     const heroTitle = document.querySelector('.hero-title');
     if (!heroTitle) return;
-    
+
     const text = heroTitle.textContent;
     heroTitle.textContent = '';
     heroTitle.style.borderRight = '3px solid var(--primary-light)';
-    
+
     let i = 0;
     const timer = setInterval(() => {
         if (i < text.length) {
@@ -87374,11 +87374,11 @@ function initTypingEffect() {
 function initParallax() {
     const hero = document.querySelector('.hero');
     if (!hero) return;
-    
+
     window.addEventListener('scroll', () => {
         const scrolled = window.pageYOffset;
         const heroContent = hero.querySelector('.hero-content');
-        
+
         if (heroContent && scrolled < 800) {
             heroContent.style.transform = `translateY(${scrolled * 0.3}px)`;
             heroContent.style.opacity = 1 - (scrolled / 800);
@@ -87391,7 +87391,7 @@ function initParallax() {
  */
 function initLazyLoad() {
     const images = document.querySelectorAll('img[data-src]');
-    
+
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -87402,7 +87402,7 @@ function initLazyLoad() {
             }
         });
     }, { threshold: 0.1 });
-    
+
     images.forEach(img => observer.observe(img));
 }
 
@@ -87412,19 +87412,19 @@ function initLazyLoad() {
 function initActiveNavLink() {
     const sections = document.querySelectorAll('section[id]');
     const navLinks = document.querySelectorAll('.nav-links a');
-    
+
     window.addEventListener('scroll', () => {
         let current = '';
-        
+
         sections.forEach(section => {
             const sectionTop = section.offsetTop;
             const sectionHeight = section.clientHeight;
-            
+
             if (pageYOffset >= sectionTop - 200) {
                 current = section.getAttribute('id');
             }
         });
-        
+
         navLinks.forEach(link => {
             link.classList.remove('active');
             if (link.getAttribute('href') === `#${current}`) {
@@ -87439,12 +87439,12 @@ function initActiveNavLink() {
  */
 function initFormValidation() {
     const forms = document.querySelectorAll('form');
-    
+
     forms.forEach(form => {
         form.addEventListener('submit', (e) => {
             const inputs = form.querySelectorAll('input[required]');
             let isValid = true;
-            
+
             inputs.forEach(input => {
                 if (!input.value.trim()) {
                     isValid = false;
@@ -87453,7 +87453,7 @@ function initFormValidation() {
                     input.classList.remove('error');
                 }
             });
-            
+
             if (!isValid) {
                 e.preventDefault();
             }
@@ -87511,16 +87511,16 @@ function initResizeHandler() {
         // Close mobile menu on resize
         const navMenu = document.getElementById('nav-menu');
         const menuBtn = document.getElementById('mobile-menu-btn');
-        
+
         if (window.innerWidth > 768) {
             if (navMenu) navMenu.classList.remove('active');
             if (menuBtn) menuBtn.classList.remove('active');
         }
-        
+
         // Recalculate animations if needed
         initScrollAnimations();
     }, 250);
-    
+
     window.addEventListener('resize', resizeHandler);
 }
 
@@ -87569,18 +87569,18 @@ document.addEventListener('DOMContentLoaded', function() {
 function initNavbar() {
     const navbar = document.getElementById('navbar');
     if (!navbar) return;
-    
+
     let lastScroll = 0;
-    
+
     window.addEventListener('scroll', () => {
         const currentScroll = window.pageYOffset;
-        
+
         if (currentScroll > 100) {
             navbar.classList.add('scrolled');
         } else {
             navbar.classList.remove('scrolled');
         }
-        
+
         lastScroll = currentScroll;
     });
 }
@@ -87591,14 +87591,14 @@ function initNavbar() {
 function initMobileMenu() {
     const menuBtn = document.getElementById('mobile-menu-btn');
     const navMenu = document.getElementById('nav-menu');
-    
+
     if (!menuBtn || !navMenu) return;
-    
+
     menuBtn.addEventListener('click', () => {
         navMenu.classList.toggle('active');
         menuBtn.classList.toggle('active');
     });
-    
+
     // Close menu on link click
     navMenu.querySelectorAll('a').forEach(link => {
         link.addEventListener('click', () => {
@@ -87614,7 +87614,7 @@ function initMobileMenu() {
 function initStatsAnimation() {
     const statsSection = document.querySelector('.stats-section');
     if (!statsSection) return;
-    
+
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -87623,22 +87623,22 @@ function initStatsAnimation() {
             }
         });
     }, { threshold: 0.5 });
-    
+
     observer.observe(statsSection);
 }
 
 function animateStats() {
     const statNumbers = document.querySelectorAll('.stat-number');
-    
+
     statNumbers.forEach(stat => {
         const finalValue = parseInt(stat.getAttribute('data-value'));
         if (!finalValue) return;
-        
+
         let currentValue = 0;
         const increment = finalValue / 50;
         const duration = 2000;
         const stepTime = duration / 50;
-        
+
         const timer = setInterval(() => {
             currentValue += increment;
             if (currentValue >= finalValue) {
@@ -87669,17 +87669,17 @@ function formatNumber(num) {
 function initSolutionsTabs() {
     const tabBtns = document.querySelectorAll('.tab-btn');
     const panels = document.querySelectorAll('.solution-panel');
-    
+
     if (!tabBtns.length || !panels.length) return;
-    
+
     tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             const tabId = btn.getAttribute('data-tab');
-            
+
             // Remove active from all
             tabBtns.forEach(b => b.classList.remove('active'));
             panels.forEach(p => p.classList.remove('active'));
-            
+
             // Add active to clicked
             btn.classList.add('active');
             document.getElementById(tabId).classList.add('active');
@@ -87692,16 +87692,16 @@ function initSolutionsTabs() {
  */
 function initFAQ() {
     const faqItems = document.querySelectorAll('.faq-item');
-    
+
     faqItems.forEach(item => {
         const question = item.querySelector('.faq-question');
-        
+
         question.addEventListener('click', () => {
             const isActive = item.classList.contains('active');
-            
+
             // Close all
             faqItems.forEach(i => i.classList.remove('active'));
-            
+
             // Toggle current
             if (!isActive) {
                 item.classList.add('active');
@@ -87716,20 +87716,20 @@ function initFAQ() {
 function initPricingToggle() {
     const pricingSwitch = document.getElementById('pricing-switch');
     if (!pricingSwitch) return;
-    
+
     const prices = document.querySelectorAll('.pricing-price .amount');
     const periods = document.querySelectorAll('.pricing-price .period');
     const monthlyPrices = [197, 497, 997];
     const annualPrices = [158, 398, 798]; // 20% discount
-    
+
     pricingSwitch.addEventListener('change', () => {
         const isAnnual = pricingSwitch.checked;
         const pricesArray = isAnnual ? annualPrices : monthlyPrices;
-        
+
         prices.forEach((price, index) => {
             animatePriceChange(price, pricesArray[index]);
         });
-        
+
         // Update period text
         periods.forEach(period => {
             period.textContent = isAnnual ? '/m\u00eas (anual)' : '/m\u00eas';
@@ -87743,15 +87743,15 @@ function initPricingToggle() {
 function animatePriceChange(element, newValue) {
     const currentValue = parseInt(element.textContent);
     if (!currentValue) return;
-    
+
     const increment = (newValue - currentValue) / 20;
     let count = 0;
-    
+
     const timer = setInterval(() => {
         count++;
         const displayValue = Math.round(currentValue + (increment * count));
         element.textContent = displayValue;
-        
+
         if (count >= 20) {
             element.textContent = newValue;
             clearInterval(timer);
@@ -87767,7 +87767,7 @@ function initSmoothScroll() {
         anchor.addEventListener('click', function(e) {
             const targetId = this.getAttribute('href');
             if (targetId === '#') return;
-            
+
             const targetElement = document.querySelector(targetId);
             if (targetElement) {
                 e.preventDefault();
@@ -87787,7 +87787,7 @@ function initScrollAnimations() {
     const animatedElements = document.querySelectorAll(
         '.feature-card, .pricing-card, .testimonial-card, .step-card, .endpoint-card'
     );
-    
+
     const observer = new IntersectionObserver((entries) => {
         entries.forEach((entry, index) => {
             if (entry.isIntersecting) {
@@ -87796,12 +87796,12 @@ function initScrollAnimations() {
                     entry.target.style.opacity = '1';
                     entry.target.style.transform = 'translateY(0)';
                 }, index * 100);
-                
+
                 observer.unobserve(entry.target);
             }
         });
     }, { threshold: 0.1 });
-    
+
     animatedElements.forEach(el => {
         el.style.opacity = '0';
         el.style.transform = 'translateY(30px)';
@@ -87816,7 +87816,7 @@ function initScrollAnimations() {
 function initHeroParticles() {
     const particlesContainer = document.getElementById('particles');
     if (!particlesContainer) return;
-    
+
     // Create floating particles
     for (let i = 0; i < 20; i++) {
         const particle = document.createElement('div');
@@ -87834,7 +87834,7 @@ function initHeroParticles() {
         `;
         particlesContainer.appendChild(particle);
     }
-    
+
     // Add CSS for float animation
     const style = document.createElement('style');
     style.textContent = `
@@ -87865,7 +87865,7 @@ function initHeroParticles() {
  */
 function initCounterAnimation() {
     const counters = document.querySelectorAll('.stat-value');
-    
+
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -87874,7 +87874,7 @@ function initCounterAnimation() {
             }
         });
     }, { threshold: 0.5 });
-    
+
     counters.forEach(counter => {
         observer.observe(counter);
     });
@@ -87884,14 +87884,14 @@ function animateCounter(element) {
     const text = element.textContent;
     const hasPlus = text.includes('+');
     const number = parseInt(text.replace(/[^0-9]/g, ''));
-    
+
     if (!number) return;
-    
+
     let current = 0;
     const increment = number / 30;
     const duration = 1500;
     const stepTime = duration / 30;
-    
+
     const timer = setInterval(() => {
         current += increment;
         if (current >= number) {
@@ -87910,11 +87910,11 @@ function animateCounter(element) {
 function initTypingEffect() {
     const heroTitle = document.querySelector('.hero-title');
     if (!heroTitle) return;
-    
+
     const text = heroTitle.textContent;
     heroTitle.textContent = '';
     heroTitle.style.borderRight = '3px solid var(--primary-light)';
-    
+
     let i = 0;
     const timer = setInterval(() => {
         if (i < text.length) {
@@ -87933,11 +87933,11 @@ function initTypingEffect() {
 function initParallax() {
     const hero = document.querySelector('.hero');
     if (!hero) return;
-    
+
     window.addEventListener('scroll', () => {
         const scrolled = window.pageYOffset;
         const heroContent = hero.querySelector('.hero-content');
-        
+
         if (heroContent && scrolled < 800) {
             heroContent.style.transform = `translateY(${scrolled * 0.3}px)`;
             heroContent.style.opacity = 1 - (scrolled / 800);
@@ -87950,7 +87950,7 @@ function initParallax() {
  */
 function initLazyLoad() {
     const images = document.querySelectorAll('img[data-src]');
-    
+
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -87961,7 +87961,7 @@ function initLazyLoad() {
             }
         });
     }, { threshold: 0.1 });
-    
+
     images.forEach(img => observer.observe(img));
 }
 
@@ -87971,19 +87971,19 @@ function initLazyLoad() {
 function initActiveNavLink() {
     const sections = document.querySelectorAll('section[id]');
     const navLinks = document.querySelectorAll('.nav-links a');
-    
+
     window.addEventListener('scroll', () => {
         let current = '';
-        
+
         sections.forEach(section => {
             const sectionTop = section.offsetTop;
             const sectionHeight = section.clientHeight;
-            
+
             if (pageYOffset >= sectionTop - 200) {
                 current = section.getAttribute('id');
             }
         });
-        
+
         navLinks.forEach(link => {
             link.classList.remove('active');
             if (link.getAttribute('href') === `#${current}`) {
@@ -87998,12 +87998,12 @@ function initActiveNavLink() {
  */
 function initFormValidation() {
     const forms = document.querySelectorAll('form');
-    
+
     forms.forEach(form => {
         form.addEventListener('submit', (e) => {
             const inputs = form.querySelectorAll('input[required]');
             let isValid = true;
-            
+
             inputs.forEach(input => {
                 if (!input.value.trim()) {
                     isValid = false;
@@ -88012,7 +88012,7 @@ function initFormValidation() {
                     input.classList.remove('error');
                 }
             });
-            
+
             if (!isValid) {
                 e.preventDefault();
             }
@@ -88070,16 +88070,16 @@ function initResizeHandler() {
         // Close mobile menu on resize
         const navMenu = document.getElementById('nav-menu');
         const menuBtn = document.getElementById('mobile-menu-btn');
-        
+
         if (window.innerWidth > 768) {
             if (navMenu) navMenu.classList.remove('active');
             if (menuBtn) menuBtn.classList.remove('active');
         }
-        
+
         // Recalculate animations if needed
         initScrollAnimations();
     }, 250);
-    
+
     window.addEventListener('resize', resizeHandler);
 }
 
@@ -88205,9 +88205,9 @@ document.addEventListener('DOMContentLoaded', function() {
 function togglePassword() {
     const passwordInput = document.getElementById('password');
     const toggleIcon = document.getElementById('toggleIcon');
-    
+
     if (!passwordInput || !toggleIcon) return;
-    
+
     if (passwordInput.type === 'password') {
         passwordInput.type = 'text';
         toggleIcon.classList.remove('fa-eye');
@@ -88225,19 +88225,19 @@ function togglePassword() {
 function initLoginForm() {
     const form = document.querySelector('.login-form');
     const submitBtn = form.querySelector('.btn-login');
-    
+
     if (!form || !submitBtn) return;
-    
+
     form.addEventListener('submit', function(e) {
         // Validate before submit
         if (!validateForm()) {
             e.preventDefault();
             return;
         }
-        
+
         // Show loading state
         showLoading(submitBtn);
-        
+
         // Form will submit normally
         // Loading state will be cleared on page reload
     });
@@ -88249,7 +88249,7 @@ function initLoginForm() {
 function showLoading(button) {
     button.classList.add('btn-loading');
     button.disabled = true;
-    
+
     // Optional: Add timeout to prevent multiple submissions
     setTimeout(() => {
         button.classList.remove('btn-loading');
@@ -88262,13 +88262,13 @@ function showLoading(button) {
  */
 function initFormValidation() {
     const inputs = document.querySelectorAll('.form-control');
-    
+
     inputs.forEach(input => {
         // Real-time validation on blur
         input.addEventListener('blur', function() {
             validateInput(this);
         });
-        
+
         // Clear error on input
         input.addEventListener('input', function() {
             clearError(this);
@@ -88284,16 +88284,16 @@ function validateInput(input) {
     const type = input.type;
     let isValid = true;
     let errorMessage = '';
-    
+
     // Remove previous error
     clearError(input);
-    
+
     // Required validation
     if (input.required && !value) {
         isValid = false;
         errorMessage = 'Este campo é obrigat&oacute;rio';
     }
-    
+
     // Email validation
     if (type === 'email' && value) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -88302,7 +88302,7 @@ function validateInput(input) {
             errorMessage = 'Digite um email v&aacute;lido';
         }
     }
-    
+
     // Password validation
     if (type === 'password' && value) {
         if (value.length < 6) {
@@ -88310,12 +88310,12 @@ function validateInput(input) {
             errorMessage = 'A senha deve ter pelo menos 6 caracteres';
         }
     }
-    
+
     // Show error if invalid
     if (!isValid) {
         showError(input, errorMessage);
     }
-    
+
     return isValid;
 }
 
@@ -88325,23 +88325,23 @@ function validateInput(input) {
 function validateForm() {
     const emailInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
-    
+
     let isValid = true;
-    
+
     // Validate email
     if (emailInput) {
         if (!validateInput(emailInput)) {
             isValid = false;
         }
     }
-    
+
     // Validate password
     if (passwordInput) {
         if (!validateInput(passwordInput)) {
             isValid = false;
         }
     }
-    
+
     return isValid;
 }
 
@@ -88350,18 +88350,18 @@ function validateForm() {
  */
 function showError(input, message) {
     input.classList.add('error');
-    
+
     // Remove existing error message
     const existingError = input.parentElement.querySelector('.error-message');
     if (existingError) {
         existingError.remove();
     }
-    
+
     // Create error message
     const errorDiv = document.createElement('div');
     errorDiv.className = 'error-message';
     errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
-    
+
     // Insert after input
     input.parentElement.appendChild(errorDiv);
 }
@@ -88371,7 +88371,7 @@ function showError(input, message) {
  */
 function clearError(input) {
     input.classList.remove('error');
-    
+
     const errorDiv = input.parentElement.querySelector('.error-message');
     if (errorDiv) {
         errorDiv.remove();
@@ -88384,7 +88384,7 @@ function clearError(input) {
 function initPasswordToggle() {
     const toggleBtn = document.querySelector('.toggle-password');
     if (!toggleBtn) return;
-    
+
     toggleBtn.addEventListener('click', togglePassword);
 }
 
@@ -88393,7 +88393,7 @@ function initPasswordToggle() {
  */
 function initAutoFill() {
     const inputs = document.querySelectorAll('.form-control');
-    
+
     inputs.forEach(input => {
         // Handle browser auto-fill
         input.addEventListener('animationstart', function() {
@@ -88413,33 +88413,33 @@ function initAnimations() {
     alerts.forEach((alert, index) => {
         alert.style.opacity = '0';
         alert.style.transform = 'translateY(-10px)';
-        
+
         setTimeout(() => {
             alert.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
             alert.style.opacity = '1';
             alert.style.transform = 'translateY(0)';
         }, index * 100);
     });
-    
+
     // Stagger animation for form elements
     const formGroups = document.querySelectorAll('.form-group');
     formGroups.forEach((group, index) => {
         group.style.opacity = '0';
         group.style.transform = 'translateY(10px)';
-        
+
         setTimeout(() => {
             group.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
             group.style.opacity = '1';
             group.style.transform = 'translateY(0)';
         }, 200 + (index * 100));
     });
-    
+
     // Button animation
     const submitBtn = document.querySelector('.btn-login');
     if (submitBtn) {
         submitBtn.style.opacity = '0';
         submitBtn.style.transform = 'translateY(10px)';
-        
+
         setTimeout(() => {
             submitBtn.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
             submitBtn.style.opacity = '1';
@@ -88454,11 +88454,11 @@ function initAnimations() {
 function saveRememberMeState() {
     const rememberMe = document.getElementById('remember_me');
     if (!rememberMe) return;
-    
+
     rememberMe.addEventListener('change', function() {
         localStorage.setItem('rememberMe', this.checked);
     });
-    
+
     // Restore state
     const saved = localStorage.getItem('rememberMe');
     if (saved === 'true') {
@@ -88472,7 +88472,7 @@ function saveRememberMeState() {
 function focusFirstEmptyField() {
     const emailInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
-    
+
     if (emailInput && !emailInput.value) {
         emailInput.focus();
     } else if (passwordInput && !passwordInput.value) {
@@ -88485,12 +88485,12 @@ function focusFirstEmptyField() {
  */
 function initEnterKey() {
     const inputs = document.querySelectorAll('.form-control');
-    
+
     inputs.forEach((input, index) => {
         input.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                
+
                 // Move to next input or submit
                 const nextInput = inputs[index + 1];
                 if (nextInput) {
@@ -88543,9 +88543,9 @@ document.addEventListener('DOMContentLoaded', function() {
 function togglePassword() {
     const passwordInput = document.getElementById('password');
     const toggleIcon = document.getElementById('toggleIcon');
-    
+
     if (!passwordInput || !toggleIcon) return;
-    
+
     if (passwordInput.type === 'password') {
         passwordInput.type = 'text';
         toggleIcon.classList.remove('fa-eye');
@@ -88563,19 +88563,19 @@ function togglePassword() {
 function initLoginForm() {
     const form = document.querySelector('.login-form');
     const submitBtn = form.querySelector('.btn-login');
-    
+
     if (!form || !submitBtn) return;
-    
+
     form.addEventListener('submit', function(e) {
         // Validate before submit
         if (!validateForm()) {
             e.preventDefault();
             return;
         }
-        
+
         // Show loading state
         showLoading(submitBtn);
-        
+
         // Form will submit normally
         // Loading state will be cleared on page reload
     });
@@ -88587,7 +88587,7 @@ function initLoginForm() {
 function showLoading(button) {
     button.classList.add('btn-loading');
     button.disabled = true;
-    
+
     // Optional: Add timeout to prevent multiple submissions
     setTimeout(() => {
         button.classList.remove('btn-loading');
@@ -88600,13 +88600,13 @@ function showLoading(button) {
  */
 function initFormValidation() {
     const inputs = document.querySelectorAll('.form-control');
-    
+
     inputs.forEach(input => {
         // Real-time validation on blur
         input.addEventListener('blur', function() {
             validateInput(this);
         });
-        
+
         // Clear error on input
         input.addEventListener('input', function() {
             clearError(this);
@@ -88622,16 +88622,16 @@ function validateInput(input) {
     const type = input.type;
     let isValid = true;
     let errorMessage = '';
-    
+
     // Remove previous error
     clearError(input);
-    
+
     // Required validation
     if (input.required && !value) {
         isValid = false;
         errorMessage = 'Este campo é obrigat&oacute;rio';
     }
-    
+
     // Email validation
     if (type === 'email' && value) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -88640,7 +88640,7 @@ function validateInput(input) {
             errorMessage = 'Digite um email v&aacute;lido';
         }
     }
-    
+
     // Password validation
     if (type === 'password' && value) {
         if (value.length < 6) {
@@ -88648,12 +88648,12 @@ function validateInput(input) {
             errorMessage = 'A senha deve ter pelo menos 6 caracteres';
         }
     }
-    
+
     // Show error if invalid
     if (!isValid) {
         showError(input, errorMessage);
     }
-    
+
     return isValid;
 }
 
@@ -88663,23 +88663,23 @@ function validateInput(input) {
 function validateForm() {
     const emailInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
-    
+
     let isValid = true;
-    
+
     // Validate email
     if (emailInput) {
         if (!validateInput(emailInput)) {
             isValid = false;
         }
     }
-    
+
     // Validate password
     if (passwordInput) {
         if (!validateInput(passwordInput)) {
             isValid = false;
         }
     }
-    
+
     return isValid;
 }
 
@@ -88688,18 +88688,18 @@ function validateForm() {
  */
 function showError(input, message) {
     input.classList.add('error');
-    
+
     // Remove existing error message
     const existingError = input.parentElement.querySelector('.error-message');
     if (existingError) {
         existingError.remove();
     }
-    
+
     // Create error message
     const errorDiv = document.createElement('div');
     errorDiv.className = 'error-message';
     errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
-    
+
     // Insert after input
     input.parentElement.appendChild(errorDiv);
 }
@@ -88709,7 +88709,7 @@ function showError(input, message) {
  */
 function clearError(input) {
     input.classList.remove('error');
-    
+
     const errorDiv = input.parentElement.querySelector('.error-message');
     if (errorDiv) {
         errorDiv.remove();
@@ -88722,7 +88722,7 @@ function clearError(input) {
 function initPasswordToggle() {
     const toggleBtn = document.querySelector('.toggle-password');
     if (!toggleBtn) return;
-    
+
     toggleBtn.addEventListener('click', togglePassword);
 }
 
@@ -88731,7 +88731,7 @@ function initPasswordToggle() {
  */
 function initAutoFill() {
     const inputs = document.querySelectorAll('.form-control');
-    
+
     inputs.forEach(input => {
         // Handle browser auto-fill
         input.addEventListener('animationstart', function() {
@@ -88751,33 +88751,33 @@ function initAnimations() {
     alerts.forEach((alert, index) => {
         alert.style.opacity = '0';
         alert.style.transform = 'translateY(-10px)';
-        
+
         setTimeout(() => {
             alert.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
             alert.style.opacity = '1';
             alert.style.transform = 'translateY(0)';
         }, index * 100);
     });
-    
+
     // Stagger animation for form elements
     const formGroups = document.querySelectorAll('.form-group');
     formGroups.forEach((group, index) => {
         group.style.opacity = '0';
         group.style.transform = 'translateY(10px)';
-        
+
         setTimeout(() => {
             group.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
             group.style.opacity = '1';
             group.style.transform = 'translateY(0)';
         }, 200 + (index * 100));
     });
-    
+
     // Button animation
     const submitBtn = document.querySelector('.btn-login');
     if (submitBtn) {
         submitBtn.style.opacity = '0';
         submitBtn.style.transform = 'translateY(10px)';
-        
+
         setTimeout(() => {
             submitBtn.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
             submitBtn.style.opacity = '1';
@@ -88792,11 +88792,11 @@ function initAnimations() {
 function saveRememberMeState() {
     const rememberMe = document.getElementById('remember_me');
     if (!rememberMe) return;
-    
+
     rememberMe.addEventListener('change', function() {
         localStorage.setItem('rememberMe', this.checked);
     });
-    
+
     // Restore state
     const saved = localStorage.getItem('rememberMe');
     if (saved === 'true') {
@@ -88810,7 +88810,7 @@ function saveRememberMeState() {
 function focusFirstEmptyField() {
     const emailInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
-    
+
     if (emailInput && !emailInput.value) {
         emailInput.focus();
     } else if (passwordInput && !passwordInput.value) {
@@ -88823,12 +88823,12 @@ function focusFirstEmptyField() {
  */
 function initEnterKey() {
     const inputs = document.querySelectorAll('.form-control');
-    
+
     inputs.forEach((input, index) => {
         input.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                
+
                 // Move to next input or submit
                 const nextInput = inputs[index + 1];
                 if (nextInput) {
@@ -88880,19 +88880,19 @@ document.addEventListener('DOMContentLoaded', function() {
 function initResetForm() {
     const form = document.querySelector('.reset-form');
     const submitBtn = form ? form.querySelector('.btn-reset') : null;
-    
+
     if (!form || !submitBtn) return;
-    
+
     form.addEventListener('submit', function(e) {
         // Validate before submit
         if (!validateForm()) {
             e.preventDefault();
             return;
         }
-        
+
         // Show loading state
         showLoading(submitBtn);
-        
+
         // Form will submit normally to the backend
         // Backend should handle sending email and redirecting to check-email page
     });
@@ -88904,7 +88904,7 @@ function initResetForm() {
 function showLoading(button) {
     button.classList.add('btn-loading');
     button.disabled = true;
-    
+
     // Optional: Add timeout to prevent multiple submissions
     setTimeout(() => {
         button.classList.remove('btn-loading');
@@ -88917,14 +88917,14 @@ function showLoading(button) {
  */
 function initFormValidation() {
     const emailInput = document.getElementById('email');
-    
+
     if (!emailInput) return;
-    
+
     // Real-time validation on blur
     emailInput.addEventListener('blur', function() {
         validateEmail(this);
     });
-    
+
     // Clear error on input
     emailInput.addEventListener('input', function() {
         clearError(this);
@@ -88938,10 +88938,10 @@ function validateEmail(input) {
     const value = input.value.trim();
     let isValid = true;
     let errorMessage = '';
-    
+
     // Remove previous error
     clearError(input);
-    
+
     // Required validation
     if (!value) {
         isValid = false;
@@ -88954,12 +88954,12 @@ function validateEmail(input) {
             errorMessage = 'Digite um email v&aacute;lido';
         }
     }
-    
+
     // Show error if invalid
     if (!isValid) {
         showError(input, errorMessage);
     }
-    
+
     return isValid;
 }
 
@@ -88968,9 +88968,9 @@ function validateEmail(input) {
  */
 function validateForm() {
     const emailInput = document.getElementById('email');
-    
+
     if (!emailInput) return true;
-    
+
     return validateEmail(emailInput);
 }
 
@@ -88979,18 +88979,18 @@ function validateForm() {
  */
 function showError(input, message) {
     input.classList.add('error');
-    
+
     // Remove existing error message
     const existingError = input.parentElement.querySelector('.error-message');
     if (existingError) {
         existingError.remove();
     }
-    
+
     // Create error message
     const errorDiv = document.createElement('div');
     errorDiv.className = 'error-message';
     errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
-    
+
     // Insert after input
     input.parentElement.appendChild(errorDiv);
 }
@@ -89000,7 +89000,7 @@ function showError(input, message) {
  */
 function clearError(input) {
     input.classList.remove('error');
-    
+
     const errorDiv = input.parentElement.querySelector('.error-message');
     if (errorDiv) {
         errorDiv.remove();
@@ -89016,46 +89016,46 @@ function initAnimations() {
     alerts.forEach((alert, index) => {
         alert.style.opacity = '0';
         alert.style.transform = 'translateY(-10px)';
-        
+
         setTimeout(() => {
             alert.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
             alert.style.opacity = '1';
             alert.style.transform = 'translateY(0)';
         }, index * 100);
     });
-    
+
     // Stagger animation for form elements
     const formGroups = document.querySelectorAll('.form-group');
     formGroups.forEach((group, index) => {
         group.style.opacity = '0';
         group.style.transform = 'translateY(10px)';
-        
+
         setTimeout(() => {
             group.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
             group.style.opacity = '1';
             group.style.transform = 'translateY(0)';
         }, 200 + (index * 100));
     });
-    
+
     // Button animation
     const submitBtn = document.querySelector('.btn-reset');
     if (submitBtn) {
         submitBtn.style.opacity = '0';
         submitBtn.style.transform = 'translateY(10px)';
-        
+
         setTimeout(() => {
             submitBtn.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
             submitBtn.style.opacity = '1';
             submitBtn.style.transform = 'translateY(0)';
         }, 200 + (formGroups.length * 100));
     }
-    
+
     // Info box animation
     const infoBox = document.querySelector('.info-box');
     if (infoBox) {
         infoBox.style.opacity = '0';
         infoBox.style.transform = 'translateY(10px)';
-        
+
         setTimeout(() => {
             infoBox.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
             infoBox.style.opacity = '1';
@@ -89070,7 +89070,7 @@ function initAnimations() {
 function initEmailSuggestions() {
     const emailInput = document.getElementById('email');
     if (!emailInput) return;
-    
+
     // Common email domains
     const commonDomains = [
         'gmail.com',
@@ -89082,22 +89082,22 @@ function initEmailSuggestions() {
         'protonmail.com',
         'mail.com'
     ];
-    
+
     // Show suggestion on @ typing
     emailInput.addEventListener('input', function() {
         const value = this.value;
-        
+
         // If user typed @ but no domain
         if (value.includes('@') && !value.includes('@.')) {
             const parts = value.split('@');
             const username = parts[0];
             const partialDomain = parts[1] || '';
-            
+
             // Find matching domains
-            const matches = commonDomains.filter(domain => 
+            const matches = commonDomains.filter(domain =>
                 domain.startsWith(partialDomain)
             );
-            
+
             if (matches.length === 1) {
                 // Auto-complete if only one match
                 this.value = `${username}@${matches[0]}`;
@@ -89111,7 +89111,7 @@ function initEmailSuggestions() {
  */
 function focusFirstEmptyField() {
     const emailInput = document.getElementById('email');
-    
+
     if (emailInput && !emailInput.value) {
         emailInput.focus();
     }
@@ -89122,12 +89122,12 @@ function focusFirstEmptyField() {
  */
 function initEnterKey() {
     const inputs = document.querySelectorAll('.form-control');
-    
+
     inputs.forEach((input) => {
         input.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                
+
                 // Submit form
                 const form = this.closest('form');
                 if (form) {
@@ -89144,24 +89144,24 @@ function initEnterKey() {
 function initCountdown() {
     const countdownElement = document.querySelector('.countdown');
     if (!countdownElement) return;
-    
+
     const duration = 3600; // 1 hour in seconds
     let remaining = duration;
-    
+
     const timer = setInterval(() => {
         remaining--;
-        
+
         if (remaining <= 0) {
             clearInterval(timer);
             countdownElement.textContent = 'Expirado';
             return;
         }
-        
+
         const hours = Math.floor(remaining / 3600);
         const minutes = Math.floor((remaining % 3600) / 60);
         const seconds = remaining % 60;
-        
-        countdownElement.textContent = 
+
+        countdownElement.textContent =
             `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }, 1000);
 }
@@ -89197,19 +89197,19 @@ document.addEventListener('DOMContentLoaded', function() {
 function initResetForm() {
     const form = document.querySelector('.reset-form');
     const submitBtn = form ? form.querySelector('.btn-reset') : null;
-    
+
     if (!form || !submitBtn) return;
-    
+
     form.addEventListener('submit', function(e) {
         // Validate before submit
         if (!validateForm()) {
             e.preventDefault();
             return;
         }
-        
+
         // Show loading state
         showLoading(submitBtn);
-        
+
         // Form will submit normally to the backend
         // Backend should handle sending email and redirecting to check-email page
     });
@@ -89221,7 +89221,7 @@ function initResetForm() {
 function showLoading(button) {
     button.classList.add('btn-loading');
     button.disabled = true;
-    
+
     // Optional: Add timeout to prevent multiple submissions
     setTimeout(() => {
         button.classList.remove('btn-loading');
@@ -89234,14 +89234,14 @@ function showLoading(button) {
  */
 function initFormValidation() {
     const emailInput = document.getElementById('email');
-    
+
     if (!emailInput) return;
-    
+
     // Real-time validation on blur
     emailInput.addEventListener('blur', function() {
         validateEmail(this);
     });
-    
+
     // Clear error on input
     emailInput.addEventListener('input', function() {
         clearError(this);
@@ -89255,10 +89255,10 @@ function validateEmail(input) {
     const value = input.value.trim();
     let isValid = true;
     let errorMessage = '';
-    
+
     // Remove previous error
     clearError(input);
-    
+
     // Required validation
     if (!value) {
         isValid = false;
@@ -89271,12 +89271,12 @@ function validateEmail(input) {
             errorMessage = 'Digite um email v&aacute;lido';
         }
     }
-    
+
     // Show error if invalid
     if (!isValid) {
         showError(input, errorMessage);
     }
-    
+
     return isValid;
 }
 
@@ -89285,9 +89285,9 @@ function validateEmail(input) {
  */
 function validateForm() {
     const emailInput = document.getElementById('email');
-    
+
     if (!emailInput) return true;
-    
+
     return validateEmail(emailInput);
 }
 
@@ -89296,18 +89296,18 @@ function validateForm() {
  */
 function showError(input, message) {
     input.classList.add('error');
-    
+
     // Remove existing error message
     const existingError = input.parentElement.querySelector('.error-message');
     if (existingError) {
         existingError.remove();
     }
-    
+
     // Create error message
     const errorDiv = document.createElement('div');
     errorDiv.className = 'error-message';
     errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
-    
+
     // Insert after input
     input.parentElement.appendChild(errorDiv);
 }
@@ -89317,7 +89317,7 @@ function showError(input, message) {
  */
 function clearError(input) {
     input.classList.remove('error');
-    
+
     const errorDiv = input.parentElement.querySelector('.error-message');
     if (errorDiv) {
         errorDiv.remove();
@@ -89333,46 +89333,46 @@ function initAnimations() {
     alerts.forEach((alert, index) => {
         alert.style.opacity = '0';
         alert.style.transform = 'translateY(-10px)';
-        
+
         setTimeout(() => {
             alert.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
             alert.style.opacity = '1';
             alert.style.transform = 'translateY(0)';
         }, index * 100);
     });
-    
+
     // Stagger animation for form elements
     const formGroups = document.querySelectorAll('.form-group');
     formGroups.forEach((group, index) => {
         group.style.opacity = '0';
         group.style.transform = 'translateY(10px)';
-        
+
         setTimeout(() => {
             group.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
             group.style.opacity = '1';
             group.style.transform = 'translateY(0)';
         }, 200 + (index * 100));
     });
-    
+
     // Button animation
     const submitBtn = document.querySelector('.btn-reset');
     if (submitBtn) {
         submitBtn.style.opacity = '0';
         submitBtn.style.transform = 'translateY(10px)';
-        
+
         setTimeout(() => {
             submitBtn.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
             submitBtn.style.opacity = '1';
             submitBtn.style.transform = 'translateY(0)';
         }, 200 + (formGroups.length * 100));
     }
-    
+
     // Info box animation
     const infoBox = document.querySelector('.info-box');
     if (infoBox) {
         infoBox.style.opacity = '0';
         infoBox.style.transform = 'translateY(10px)';
-        
+
         setTimeout(() => {
             infoBox.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
             infoBox.style.opacity = '1';
@@ -89387,7 +89387,7 @@ function initAnimations() {
 function initEmailSuggestions() {
     const emailInput = document.getElementById('email');
     if (!emailInput) return;
-    
+
     // Common email domains
     const commonDomains = [
         'gmail.com',
@@ -89399,22 +89399,22 @@ function initEmailSuggestions() {
         'protonmail.com',
         'mail.com'
     ];
-    
+
     // Show suggestion on @ typing
     emailInput.addEventListener('input', function() {
         const value = this.value;
-        
+
         // If user typed @ but no domain
         if (value.includes('@') && !value.includes('@.')) {
             const parts = value.split('@');
             const username = parts[0];
             const partialDomain = parts[1] || '';
-            
+
             // Find matching domains
-            const matches = commonDomains.filter(domain => 
+            const matches = commonDomains.filter(domain =>
                 domain.startsWith(partialDomain)
             );
-            
+
             if (matches.length === 1) {
                 // Auto-complete if only one match
                 this.value = `${username}@${matches[0]}`;
@@ -89428,7 +89428,7 @@ function initEmailSuggestions() {
  */
 function focusFirstEmptyField() {
     const emailInput = document.getElementById('email');
-    
+
     if (emailInput && !emailInput.value) {
         emailInput.focus();
     }
@@ -89439,12 +89439,12 @@ function focusFirstEmptyField() {
  */
 function initEnterKey() {
     const inputs = document.querySelectorAll('.form-control');
-    
+
     inputs.forEach((input) => {
         input.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                
+
                 // Submit form
                 const form = this.closest('form');
                 if (form) {
@@ -89461,24 +89461,24 @@ function initEnterKey() {
 function initCountdown() {
     const countdownElement = document.querySelector('.countdown');
     if (!countdownElement) return;
-    
+
     const duration = 3600; // 1 hour in seconds
     let remaining = duration;
-    
+
     const timer = setInterval(() => {
         remaining--;
-        
+
         if (remaining <= 0) {
             clearInterval(timer);
             countdownElement.textContent = 'Expirado';
             return;
         }
-        
+
         const hours = Math.floor(remaining / 3600);
         const minutes = Math.floor((remaining % 3600) / 60);
         const seconds = remaining % 60;
-        
-        countdownElement.textContent = 
+
+        countdownElement.textContent =
             `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }, 1000);
 }
@@ -123229,7 +123229,7 @@ try {
     $input = new ArrayInput(['command' => 'waze:collect-feed']);
     $output = new BufferedOutput();
     $exitCode = $application->run($input, $output);
-    
+
     echo ($exitCode === 0) ? "[OK] Coleta concluida\n" : "[ERRO] Codigo " . $exitCode . "\n";
     echo $output->fetch() . "\n";
 } catch (\Throwable $e) {
@@ -144840,7 +144840,7 @@ class PartnerVoter extends Voter
     public const VIEW = 'view';
     public const EDIT = 'edit';
     public const DELETE = 'delete';
-    
+
     private const PARTNER_SCOPED_ATTRIBUTES = [
         self::VIEW,
         self::EDIT,
@@ -144931,7 +144931,7 @@ public function show(Alert $alert, Security $security): Response
 {
     // Verifica se o usuario pode visualizar este alert
     $this->denyAccessUnlessGranted(PartnerVoter::VIEW, $alert);
-    
+
     return $this->render('alert/show.html.twig', [
         'alert' => $alert,
     ]);
@@ -144946,7 +144946,7 @@ public function edit(Alert $alert, Request $request, Security $security): Respon
 {
     // Verifica se o usuario pode editar este alert
     $this->denyAccessUnlessGranted(PartnerVoter::EDIT, $alert);
-    
+
     // ... logica de edicao
 }
 ```
@@ -144959,7 +144959,7 @@ public function delete(Alert $alert, Request $request, Security $security): Resp
 {
     // Verifica se o usuario pode deletar este alert
     $this->denyAccessUnlessGranted(PartnerVoter::DELETE, $alert);
-    
+
     // ... logica de exclusao
 }
 ```
@@ -144972,7 +144972,7 @@ public function index(AlertRepository $alertRepository, Security $security): Res
 {
     /** @var User $user */
     $user = $this->getUser();
-    
+
     // Admin global ve todos os alerts
     if ($user->isGlobalAdmin()) {
         $alerts = $alertRepository->findAll();
@@ -144980,7 +144980,7 @@ public function index(AlertRepository $alertRepository, Security $security): Res
         // Usuarios com partner veem apenas alerts do seu partner
         $alerts = $alertRepository->findBy(['partner' => $user->getPartner()]);
     }
-    
+
     return $this->render('alert/index.html.twig', [
         'alerts' => $alerts,
     ]);
@@ -145035,14 +145035,14 @@ class AlertController extends AbstractController
     {
         /** @var User $user */
         $user = $this->getUser();
-        
+
         // Admin global ve todos, outros veem apenas do seu partner
         if ($user->isGlobalAdmin()) {
             $alerts = $alertRepository->findAll();
         } else {
             $alerts = $alertRepository->findBy(['partner' => $user->getPartner()]);
         }
-        
+
         return $this->render('alert/index.html.twig', [
             'alerts' => $alerts,
         ]);
@@ -145052,7 +145052,7 @@ class AlertController extends AbstractController
     public function show(Alert $alert): Response
     {
         $this->denyAccessUnlessGranted(PartnerVoter::VIEW, $alert);
-        
+
         return $this->render('alert/show.html.twig', [
             'alert' => $alert,
         ]);
@@ -145062,7 +145062,7 @@ class AlertController extends AbstractController
     public function edit(Alert $alert, Request $request): Response
     {
         $this->denyAccessUnlessGranted(PartnerVoter::EDIT, $alert);
-        
+
         // ... logica de edicao
     }
 
@@ -145070,7 +145070,7 @@ class AlertController extends AbstractController
     public function delete(Alert $alert, Request $request): Response
     {
         $this->denyAccessUnlessGranted(PartnerVoter::DELETE, $alert);
-        
+
         // ... logica de exclusao
     }
 }
@@ -145100,16 +145100,16 @@ class AlertRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
-    
+
     public function findAllWithPartnerFilter(?Partner $partner = null): array
     {
         $qb = $this->createQueryBuilder('a');
-        
+
         if ($partner !== null) {
             $qb->where('a.partner = :partner')
                ->setParameter('partner', $partner);
         }
-        
+
         return $qb->orderBy('a.createdAt', 'DESC')
                   ->getQuery()
                   ->getResult();
@@ -150815,7 +150815,7 @@ FILE: templates/api/docs.html.twig
     <div class="row">
         <div class="col-12">
             <h1 class="display-5 mb-4">Documentaç°µo da API</h1>
-            
+
             <div class="card mb-4">
                 <div class="card-body">
                     <h5 class="card-title">Autenticaç°µo</h5>
@@ -151748,7 +151748,7 @@ FILE: templates/dashboard/index.html.twig
                 </div>
                 <span class="dashboard-panel-period">
                     {% if hydroStats.last_fetch %}
-                        Última coleta {{ hydroStats.last_fetch|date('d/m H:i') }}
+                        Última coleta {{ hydroStats.last_fetch|app_date('d/m H:i') }}
                     {% else %}
                         Sem coletas ainda
                     {% endif %}
@@ -151826,7 +151826,7 @@ FILE: templates/dashboard/index.html.twig
                 </div>
                 <span class="dashboard-panel-period">
                     {% if pluvioStats.last_reading %}
-                        Última leitura {{ pluvioStats.last_reading|date('d/m H:i') }}
+                        Última leitura {{ pluvioStats.last_reading|app_date('d/m H:i') }}
                     {% else %}
                         Sem leituras
                     {% endif %}
@@ -151886,7 +151886,7 @@ FILE: templates/dashboard/index.html.twig
                             </span>
                             <small>
                                 {{ s.city|default('—') }}{% if s.state %}/{{ s.state }}{% endif %}
-                                {% if s.lastReading %} · {{ s.lastReading|date('d/m H:i') }}{% endif %}
+                                {% if s.lastReading %} · {{ s.lastReading|app_date('d/m H:i') }}{% endif %}
                             </small>
                             <span class="hydro-station-btn-level">
                                 {{ s.rain24h|number_format(1, ',', '.') }} mm
@@ -152149,13 +152149,13 @@ FILE: templates/emails/reset_password.html.twig
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #f4f6f8;
             padding: 40px 20px;
         }
-        
+
         .email-container {
             max-width: 600px;
             margin: 0 auto;
@@ -152164,20 +152164,20 @@ FILE: templates/emails/reset_password.html.twig
             overflow: hidden;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-        
+
         .email-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             padding: 40px 30px;
             text-align: center;
         }
-        
+
         .logo {
             display: inline-flex;
             align-items: center;
             gap: 12px;
             margin-bottom: 20px;
         }
-        
+
         .logo-icon {
             width: 60px;
             height: 60px;
@@ -152189,17 +152189,17 @@ FILE: templates/emails/reset_password.html.twig
             font-size: 28px;
             color: #ffffff;
         }
-        
+
         .logo-text {
             font-size: 28px;
             font-weight: 800;
             color: #ffffff;
         }
-        
+
         .email-body {
             padding: 40px 30px;
         }
-        
+
         .email-title {
             font-size: 24px;
             font-weight: 700;
@@ -152207,7 +152207,7 @@ FILE: templates/emails/reset_password.html.twig
             margin-bottom: 16px;
             text-align: center;
         }
-        
+
         .email-message {
             font-size: 16px;
             color: #64748b;
@@ -152215,7 +152215,7 @@ FILE: templates/emails/reset_password.html.twig
             margin-bottom: 30px;
             text-align: center;
         }
-        
+
         .cta-button {
             display: inline-block;
             background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
@@ -152229,16 +152229,16 @@ FILE: templates/emails/reset_password.html.twig
             text-align: center;
             box-shadow: 0 4px 14px rgba(37, 99, 235, 0.39);
         }
-        
+
         .cta-button:hover {
             background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
         }
-        
+
         .button-container {
             text-align: center;
             margin: 30px 0;
         }
-        
+
         .token-box {
             background: #f1f5f9;
             border: 2px dashed #cbd5e1;
@@ -152247,7 +152247,7 @@ FILE: templates/emails/reset_password.html.twig
             margin: 30px 0;
             text-align: center;
         }
-        
+
         .token-label {
             font-size: 14px;
             color: #64748b;
@@ -152255,7 +152255,7 @@ FILE: templates/emails/reset_password.html.twig
             text-transform: uppercase;
             letter-spacing: 1px;
         }
-        
+
         .token-code {
             font-family: 'Courier New', monospace;
             font-size: 24px;
@@ -152264,7 +152264,7 @@ FILE: templates/emails/reset_password.html.twig
             letter-spacing: 2px;
             word-break: break-all;
         }
-        
+
         .info-box {
             background: #fef3c7;
             border-left: 4px solid #f59e0b;
@@ -152272,34 +152272,34 @@ FILE: templates/emails/reset_password.html.twig
             padding: 20px;
             margin: 30px 0;
         }
-        
+
         .info-title {
             font-size: 16px;
             font-weight: 600;
             color: #92400e;
             margin-bottom: 10px;
         }
-        
+
         .info-list {
             list-style: none;
             margin: 0;
             padding: 0;
         }
-        
+
         .info-list li {
             font-size: 14px;
             color: #78350f;
             margin-bottom: 8px;
             line-height: 1.5;
         }
-        
+
         .info-list li:before {
             content: "\2713";
             color: #f59e0b;
             font-weight: bold;
             margin-right: 8px;
         }
-        
+
         .security-box {
             background: #dbeafe;
             border-left: 4px solid #2563eb;
@@ -152307,75 +152307,75 @@ FILE: templates/emails/reset_password.html.twig
             padding: 20px;
             margin: 30px 0;
         }
-        
+
         .security-title {
             font-size: 16px;
             font-weight: 600;
             color: #1e40af;
             margin-bottom: 10px;
         }
-        
+
         .security-text {
             font-size: 14px;
             color: #1e3a8a;
             line-height: 1.6;
         }
-        
+
         .email-footer {
             background: #f8fafc;
             padding: 30px;
             text-align: center;
             border-top: 1px solid #e2e8f0;
         }
-        
+
         .footer-text {
             font-size: 14px;
             color: #64748b;
             margin-bottom: 10px;
         }
-        
+
         .footer-links {
             margin-top: 20px;
         }
-        
+
         .footer-links a {
             color: #2563eb;
             text-decoration: none;
             margin: 0 10px;
             font-size: 14px;
         }
-        
+
         .footer-links a:hover {
             text-decoration: underline;
         }
-        
+
         .divider {
             height: 1px;
             background: #e2e8f0;
             margin: 30px 0;
         }
-        
+
         @media only screen and (max-width: 600px) {
             body {
                 padding: 20px 10px;
             }
-            
+
             .email-header {
                 padding: 30px 20px;
             }
-            
+
             .email-body {
                 padding: 30px 20px;
             }
-            
+
             .email-title {
                 font-size: 20px;
             }
-            
+
             .email-message {
                 font-size: 14px;
             }
-            
+
             .cta-button {
                 padding: 14px 30px;
                 font-size: 14px;
@@ -152396,10 +152396,10 @@ FILE: templates/emails/reset_password.html.twig
         {# Body #}
         <div class="email-body">
             <h1 class="email-title">Recupera&ccedil;&atilde;o de Senha</h1>
-            
+
             <p class="email-message">
                 Ol&aacute;,<br><br>
-                Recebemos uma solicita&ccedil;&atilde;o para redefinir a senha da sua conta wazeBR. 
+                Recebemos uma solicita&ccedil;&atilde;o para redefinir a senha da sua conta wazeBR.
                 Se voc&ecirc; n&atilde;o fez esta solicita&ccedil;&atilde;o, pode ignorar este email com seguran&ccedil;a.
             </p>
 
@@ -152433,8 +152433,8 @@ FILE: templates/emails/reset_password.html.twig
             <div class="security-box">
                 <div class="security-title">&#128274; Seguran&ccedil;a</div>
                 <p class="security-text">
-                    Este &eacute; um email autom&aacute;tico e seguro. O link acima usar&aacute; conex&atilde;o criptografada 
-                    (HTTPS) para proteger seus dados. Se voc&ecirc; n&atilde;o solicitou esta redefini&ccedil;&atilde;o, 
+                    Este &eacute; um email autom&aacute;tico e seguro. O link acima usar&aacute; conex&atilde;o criptografada
+                    (HTTPS) para proteger seus dados. Se voc&ecirc; n&atilde;o solicitou esta redefini&ccedil;&atilde;o,
                     sua conta est&aacute; segura e nenhuma a&ccedil;&atilde;o &eacute; necess&aacute;ria.
                 </p>
             </div>
@@ -152452,7 +152452,7 @@ FILE: templates/emails/reset_password.html.twig
             <p class="footer-text">
                 Desenvolvido com &#10084; no Brasil 🇧🇷
             </p>
-            
+
             <div class="footer-links">
                 <a href="{{ url('app_home') }}">Home</a>
                 <a href="{{ url('app_login') }}">Login</a>
@@ -155204,7 +155204,7 @@ FILE: templates/partials/sidebar.html.twig
             </a>
 
 
-            
+
 
 
         </nav>
@@ -158730,7 +158730,7 @@ jobs:
   deploy:
     name: Deploy to Hostinger
     runs-on: ubuntu-latest
-    
+
     environment:
       name: production
       url: https://wazebr.com.br
@@ -158825,7 +158825,7 @@ jobs:
   tests:
     name: Tests & Quality
     runs-on: ubuntu-latest
-    
+
     services:
       mysql:
         image: mysql:8.0

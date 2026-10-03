@@ -49,7 +49,7 @@
             <div class="dashboard-header-tools">
                 <span class="dashboard-last-update">
                     <i></i> Atualizado em
-                    <time data-dashboard-clock>{{ stats.updated_at|date('d/m H:i') }}</time>
+                    <time data-dashboard-clock>{{ stats.updated_at|app_date('d/m H:i') }}</time>
                 </span>
                 <button type="button" class="dashboard-button" data-action="refresh-dashboard" aria-label="Recarregar dados">
                     <span>↻</span> Atualizar
@@ -289,7 +289,7 @@
                 </div>
                 <span class="dashboard-panel-period">
                     {% if hydroStats.last_fetch %}
-                        Última coleta {{ hydroStats.last_fetch|date('d/m H:i') }}
+                        Última coleta {{ hydroStats.last_fetch|app_date('d/m H:i') }}
                     {% else %}
                         Sem coletas ainda
                     {% endif %}
@@ -367,7 +367,7 @@
                 </div>
                 <span class="dashboard-panel-period">
                     {% if pluvioStats.last_reading %}
-                        Última leitura {{ pluvioStats.last_reading|date('d/m H:i') }}
+                        Última leitura {{ pluvioStats.last_reading|app_date('d/m H:i') }}
                     {% else %}
                         Sem leituras
                     {% endif %}
@@ -427,7 +427,7 @@
                             </span>
                             <small>
                                 {{ s.city|default('—') }}{% if s.state %}/{{ s.state }}{% endif %}
-                                {% if s.lastReading %} · {{ s.lastReading|date('d/m H:i') }}{% endif %}
+                                {% if s.lastReading %} · {{ s.lastReading|app_date('d/m H:i') }}{% endif %}
                             </small>
                             <span class="hydro-station-btn-level">
                                 {{ s.rain24h|number_format(1, ',', '.') }} mm

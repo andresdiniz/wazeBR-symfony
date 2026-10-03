@@ -39,7 +39,7 @@ class CemadenPluviometricObservation
 
     #[ORM\Column(name: 'accumulated_rainfall', type: Types::DECIMAL, precision: 8, scale: 3, nullable: true)]
     #[Assert\PositiveOrZero]
-    private ?string $accumulatedRainfall = null;
+    private ?float $accumulatedRainfall = null;  // ✅ CORREGIDO: ?string → ?float
 
     #[ORM\Column(name: 'observed_at', type: Types::DATETIME_IMMUTABLE)]
     #[Assert\NotNull]
@@ -68,8 +68,11 @@ class CemadenPluviometricObservation
     public function setReferenceDate(\DateTimeImmutable $referenceDate): static { $this->referenceDate = $referenceDate; return $this; }
     public function getHourSlot(): ?int { return $this->hourSlot; }
     public function setHourSlot(int $hourSlot): static { $this->hourSlot = $hourSlot; return $this; }
-    public function getAccumulatedRainfall(): ?string { return $this->accumulatedRainfall; }
-    public function setAccumulatedRainfall(?string $accumulatedRainfall): static { $this->accumulatedRainfall = $accumulatedRainfall; return $this; }
+
+    // ✅ CORREGIDO: ?string → ?float
+    public function getAccumulatedRainfall(): ?float { return $this->accumulatedRainfall; }
+    public function setAccumulatedRainfall(?float $accumulatedRainfall): static { $this->accumulatedRainfall = $accumulatedRainfall; return $this; }
+
     public function getObservedAt(): \DateTimeImmutable { return $this->observedAt; }
     public function setObservedAt(\DateTimeImmutable $observedAt): static { $this->observedAt = $observedAt; return $this; }
     public function getSourcePayload(): array { return $this->sourcePayload; }

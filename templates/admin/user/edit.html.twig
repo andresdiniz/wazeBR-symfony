@@ -1,6 +1,6 @@
 {% extends 'layouts/dashboard.html.twig' %}
 
-{% block title %}Novo Usuário{% endblock %}
+{% block title %}Editar Usuário{% endblock %}
 
 {% block body %}
 <div class="container mt-4">
@@ -8,7 +8,7 @@
         <div class="col-md-8 offset-md-2">
             <div class="card">
                 <div class="card-header">
-                    <h3>Criar Novo Usuário</h3>
+                    <h3>Editar Usuário: {{ user.name }}</h3>
                 </div>
                 <div class="card-body">
                     {{ form_start(form) }}
@@ -33,6 +33,7 @@
 
                     <div class="mb-3">
                         {{ form_label(form.plainPassword) }}
+                        <small class="text-muted">Deixe em branco para manter a senha atual</small>
                         {{ form_widget(form.plainPassword) }}
                         {{ form_errors(form.plainPassword) }}
                     </div>
@@ -51,7 +52,7 @@
 
                     <div class="d-flex justify-content-between">
                         <a href="{{ path('admin_users_index') }}" class="btn btn-secondary">Voltar</a>
-                        <button type="submit" class="btn btn-success">Criar Usuário</button>
+                        <button type="submit" class="btn btn-success">Salvar Alterações</button>
                     </div>
 
                     {{ form_end(form) }}
