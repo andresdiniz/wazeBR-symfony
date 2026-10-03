@@ -9,7 +9,6 @@
 {% block body %}
 <div class="auth-page">
 
-    {# ── Lado esquerdo — mensagem ─────────────────────────────── #}
     <div class="auth-left">
         <div class="auth-container">
 
@@ -35,11 +34,7 @@
                     <i class="bi bi-clock"></i>
                 </div>
                 <div>
-                    {% if resetToken %}
-                        <strong>Link válido por {{ resetToken.expirationMessageKey|trans(resetToken.expirationMessageData, 'ResetPasswordBundle') }}</strong>
-                    {% else %}
-                        <strong>Link válido por 1 hora</strong>
-                    {% endif %}
+                    <strong>Link válido por 1 hora</strong>
                     <p>Depois disso será necessário solicitar novamente.</p>
                 </div>
             </div>
@@ -71,7 +66,6 @@
         </div>
     </div>
 
-    {# ── Lado direito — visual ────────────────────────────────── #}
     <div class="auth-right">
         <div class="auth-visual">
 

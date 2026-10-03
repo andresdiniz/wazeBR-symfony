@@ -5,62 +5,50 @@ declare(strict_types=1);
 namespace App\Form;
 
 use Symfony\Component\Form\AbstractType;
-use Symfony\Component\Form\Extension\Core\Type\PasswordType;
+use Symfony\Component\Form\Extension\Core\Type\EmailType;
+use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\Form\FormBuilderInterface;
-use Symfony\Component\Validator\Constraints\Callback;
-use Symfony\Component\Validator\Constraints\Length;
+use Symfony\Component\OptionsResolver\OptionsResolver;
+use Symfony\Component\Validator\Constraints\Email;
 use Symfony\Component\Validator\Constraints\NotBlank;
-use Symfony\Component\Validator\Constraints\Regex;
-use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
-class ResetPasswordFormType extends AbstractType
+class ResetPasswordRequestFormType extends AbstractType
 {
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
-            ->add('plainPassword', PasswordType::class, [
-                'label' => 'Nova senha',
-                'constraints' => [
-                    new NotBlank(['message' => 'Digite uma senha.']),
-                    new Length([
-                        'min' => 8,
-                        'minMessage' => 'A senha deve ter pelo menos {{ limit }} caracteres.',
-                    ]),
-                    new Regex([
-                        'pattern' => '/[A-Z]/',
-                        'message' => 'A senha deve conter pelo menos uma letra maiúscula.',
-                    ]),
-                    new Regex([
-                        'pattern' => '/[a-z]/',
-                        'message' => 'A senha deve conter pelo menos uma letra minúscula.',
-                    ]),
-                    new Regex([
-                        'pattern' => '/[0-9]/',
-                        'message' => 'A senha deve conter pelo menos um número.',
-                    ]),
-                    new Regex([
-                        'pattern' => '/[^a-zA-Z0-9]/',
-                        'message' => 'A senha deve conter pelo menos um caractere especial (@, #, $, etc.).',
-                    ]),
-                ],
-            ])
-            ->add('confirmPassword', PasswordType::class, [
-                'label' => 'Confirmar senha',
+            ->add('email', EmailType::class, [
+                'label' => false,
+                'required' => true,
                 'mapped' => false,
+                'trim' => true,
+                'attr' => [
+                    'id' => 'reset_email',
+                    'autocomplete' => 'email',
+                    'placeholder' => 'seu@email.com',
+                    'class' => 'auth-input',
+                ],
                 'constraints' => [
-                    new NotBlank(['message' => 'Confirme sua senha.']),
-                    new Callback([
-                        'callback' => function ($value, ExecutionContextInterface $context) {
-                            $form = $context->getRoot();
-                            $plainPassword = $form->get('plainPassword')->getData();
-                            if ($value !== $plainPassword) {
-                                $context->buildViolation('As senhas não coincidem.')
-                                    ->addViolation();
-                            }
-                        },
-                    ]),
+                    new NotBlank(
+                        message: 'Informe seu e-mail.'
+                    ),
+                    new Email(
+                        message: 'Informe um e-mail válido.'
+                    ),
                 ],
             ])
-        ;
+            ->add('submit', SubmitType::class, [
+                'label' => 'Enviar instruções',
+            ]);
+    }
+
+    public function configureOptions(OptionsResolver $resolver): void
+    {
+        $resolver->setDefaults([]);
+    }
+
+    public function getBlockPrefix(): string
+    {
+        return '';
     }
 }
