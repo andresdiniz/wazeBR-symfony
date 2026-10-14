@@ -72,6 +72,24 @@ final class MainSchedule implements ScheduleProviderInterface
                 ),
             )
 
+            ->add(
+                RecurringMessage::cron(
+                    '15 3 * * *',
+                    new RunCommandMessage(
+                        'app:tvt:evaluate-congestion-forecast --no-interaction'
+                    ),
+                    new \DateTimeZone('America/Sao_Paulo'),
+                ),
+            )
+
+            // ── Previsao (Preve proximas horas de cada rotas) ───────
+            ->add(
+                RecurringMessage::every(
+                    '30 minutes',
+                    new RunCommandMessage('app:tvt:refresh-congestion-forecast --no-interaction'),
+                ),
+            )
+
             // ── Semáforos (leitura de todos os controladores ativos) ───────
             ->add(
                 RecurringMessage::every(

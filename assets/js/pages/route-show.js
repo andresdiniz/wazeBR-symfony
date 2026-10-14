@@ -2,93 +2,135 @@
  * pages/route-show.js — Página /routes/{id}
  *
  * - Mapa principal (Leaflet) com traçado + sub-rotas + alertas + irregularidades
- * - Mini-mapas por trecho problemático (com tiles light e pinos de início/fim)
- * - Heatmap dia×hora (CSS grid puro, baseado em % vs histórico)
- * - Gráficos Chart.js: timeline com linhas de alertas, por hora, por dia, jam
- * - Dropdown de exportação CSV (5 tipos)
- *
- * ─── Sobre o heatmap ─────────────────────────────────────────────
- * A cor de cada célula depende de `avgRatio = (time - historic) / historic`.
- * Rota de 180s com +2s → 1.1% → verde. Rota de 20s com +2s → 10% → amarelo.
+ * - Mini-mapas por trecho problemático
+ * - Heatmap dia × hora
+ * - Gráficos Chart.js
+ * - Dropdown de exportação CSV
  */
 
 const COLORS = {
-    blue:   '#2563eb',
-    red:    '#dc2626',
-    green:  '#16a34a',
-    amber:  '#f59e0b',
+    blue: '#2563eb',
+    red: '#dc2626',
+    green: '#16a34a',
+    amber: '#f59e0b',
     orange: '#ea580c',
     purple: '#7c3aed',
-    grid:   'rgba(148, 163, 184, .25)',
-    text:   '#475569',
+    grid: 'rgba(148, 163, 184, .25)',
+    text: '#475569',
 };
 
 const DOW_LABELS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 
 const JAM_LABELS = [
-    'Sem congestionamento', 'Baixo', 'Moderado', 'Alto', 'Muito alto', 'Parado',
+    'Sem congestionamento',
+    'Baixo',
+    'Moderado',
+    'Alto',
+    'Muito alto',
+    'Parado',
 ];
 
 const JAM_COLORS = [
-    '#16a34a', '#84cc16', '#f59e0b', '#f97316', '#ea580c', '#dc2626',
+    '#16a34a',
+    '#84cc16',
+    '#f59e0b',
+    '#f97316',
+    '#ea580c',
+    '#dc2626',
 ];
 
 const charts = new Map();
+const miniMaps = [];
+
+let mainMap = null;
+let bootstrapped = false;
 
 // ─────────────────────────────────────────────────────────────────────────
 // Utils
 // ─────────────────────────────────────────────────────────────────────────
 
-function safeJson(str, fallback) {
-    try { return JSON.parse(str); } catch { return fallback; }
+function safeJson(value, fallback) {
+    try {
+        return JSON.parse(value);
+    } catch {
+        return fallback;
+    }
 }
 
 function resolvePage(root) {
-    if (!root) return null;
-    if (root.matches?.('[data-route-show]')) return root;
+    if (!root) {
+        return null;
+    }
+
+    if (root.matches?.('[data-route-show]')) {
+        return root;
+    }
+
     return root.querySelector?.('[data-route-show]') ?? null;
 }
 
 function destroyChart(key) {
-    const c = charts.get(key);
-    if (c) { c.destroy(); charts.delete(key); }
+    const chart = charts.get(key);
+
+    if (chart) {
+        chart.destroy();
+        charts.delete(key);
+    }
 }
 
 function mountChart(key, canvas, config) {
-    if (!canvas || typeof Chart === 'undefined') return;
+    if (!canvas || typeof Chart === 'undefined') {
+        return;
+    }
+
     destroyChart(key);
     charts.set(key, new Chart(canvas.getContext('2d'), config));
 }
 
 function ratioToColor(ratio) {
-    if (ratio === null || ratio === undefined) return null;
-    const r = Math.max(0, Math.min(ratio, 1));
-    const hue   = 140 - r * 140;
-    const sat   = 62 + r * 12;
-    const light = 44 - r * 2;
-    return `hsl(${hue}, ${sat}%, ${light}%)`;
+    if (ratio === null || ratio === undefined) {
+        return null;
+    }
+
+    const normalized = Math.max(0, Math.min(ratio, 1));
+    const hue = 140 - normalized * 140;
+    const saturation = 62 + normalized * 12;
+    const lightness = 44 - normalized * 2;
+
+    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 }
 
-function fmtRatio(r) {
-    if (r === null || r === undefined) return '—';
-    return `${Math.round(r * 100)}%`;
+function fmtRatio(ratio) {
+    if (ratio === null || ratio === undefined) {
+        return '—';
+    }
+
+    return `${Math.round(ratio * 100)}%`;
 }
 
 function alertColor(type) {
     switch (String(type || '').toUpperCase()) {
-        case 'ACCIDENT':      return '#dc2626';
-        case 'JAM':           return '#ea580c';
-        case 'ROAD_CLOSED':   return '#111827';
-        case 'POLICE':        return '#1d4ed8';
-        case 'WEATHERHAZARD': return '#0891b2';
-        case 'HAZARD':        return '#f59e0b';
-        case 'CONSTRUCTION':  return '#7c3aed';
-        default:              return '#2563eb';
+        case 'ACCIDENT':
+            return '#dc2626';
+        case 'JAM':
+            return '#ea580c';
+        case 'ROAD_CLOSED':
+            return '#111827';
+        case 'POLICE':
+            return '#1d4ed8';
+        case 'WEATHERHAZARD':
+            return '#0891b2';
+        case 'HAZARD':
+            return '#f59e0b';
+        case 'CONSTRUCTION':
+            return '#7c3aed';
+        default:
+            return '#2563eb';
     }
 }
 
-function escapeHtml(str) {
-    return String(str ?? '')
+function escapeHtml(value) {
+    return String(value ?? '')
         .replaceAll('&', '&amp;')
         .replaceAll('<', '&lt;')
         .replaceAll('>', '&gt;')
@@ -97,68 +139,102 @@ function escapeHtml(str) {
 }
 
 function computeBBox(line, padding = 0.0005) {
-    if (!Array.isArray(line) || line.length === 0) return null;
-    let minLat = line[0][0], maxLat = line[0][0];
-    let minLng = line[0][1], maxLng = line[0][1];
-    for (const [lat, lng] of line) {
-        if (lat < minLat) minLat = lat;
-        if (lat > maxLat) maxLat = lat;
-        if (lng < minLng) minLng = lng;
-        if (lng > maxLng) maxLng = lng;
+    if (!Array.isArray(line) || line.length === 0) {
+        return null;
     }
+
+    let minLat = line[0][0];
+    let maxLat = line[0][0];
+    let minLng = line[0][1];
+    let maxLng = line[0][1];
+
+    for (const [lat, lng] of line) {
+        minLat = Math.min(minLat, lat);
+        maxLat = Math.max(maxLat, lat);
+        minLng = Math.min(minLng, lng);
+        maxLng = Math.max(maxLng, lng);
+    }
+
     return {
-        minLat: minLat - padding, maxLat: maxLat + padding,
-        minLng: minLng - padding, maxLng: maxLng + padding,
+        minLat: minLat - padding,
+        maxLat: maxLat + padding,
+        minLng: minLng - padding,
+        maxLng: maxLng + padding,
     };
 }
 
 function pointInBBox(lat, lng, bbox) {
-    return lat >= bbox.minLat && lat <= bbox.maxLat
-        && lng >= bbox.minLng && lng <= bbox.maxLng;
+    return (
+        lat >= bbox.minLat &&
+        lat <= bbox.maxLat &&
+        lng >= bbox.minLng &&
+        lng <= bbox.maxLng
+    );
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Heatmap (CSS grid)
+// Heatmap
 // ─────────────────────────────────────────────────────────────────────────
 
 function renderHeatmap(root) {
     const page = resolvePage(root);
-    if (!page) return;
+
+    if (!page) {
+        return;
+    }
 
     const container = page.querySelector('[data-heatmap]');
-    if (!container) return;
+
+    if (!container) {
+        return;
+    }
 
     const data = safeJson(container.dataset.heatmapData, []) || [];
     const lookup = new Map();
-    data.forEach((c) => lookup.set(`${c.dow}:${c.hour}`, c));
+
+    data.forEach((cell) => {
+        lookup.set(`${cell.dow}:${cell.hour}`, cell);
+    });
 
     const html = [];
 
     html.push('<div class="rs-heatmap__corner"></div>');
-    for (let h = 0; h < 24; h++) {
-        html.push(`<div class="rs-heatmap__hour-label">${String(h).padStart(2, '0')}</div>`);
+
+    for (let hour = 0; hour < 24; hour++) {
+        html.push(
+            `<div class="rs-heatmap__hour-label">${String(hour).padStart(2, '0')}</div>`
+        );
     }
 
-    for (let d = 0; d < 7; d++) {
-        html.push(`<div class="rs-heatmap__dow-label">${DOW_LABELS[d]}</div>`);
-        for (let h = 0; h < 24; h++) {
-            const c = lookup.get(`${d}:${h}`);
-            const hasData = c && c.count >= 2 && c.avgRatio !== null;
+    for (let dow = 0; dow < 7; dow++) {
+        html.push(`<div class="rs-heatmap__dow-label">${DOW_LABELS[dow]}</div>`);
+
+        for (let hour = 0; hour < 24; hour++) {
+            const cell = lookup.get(`${dow}:${hour}`);
+            const hasData = cell && cell.count >= 2 && cell.avgRatio !== null;
 
             if (!hasData) {
-                html.push(`<div class="rs-heatmap__cell rs-heatmap__cell--empty" title="${DOW_LABELS[d]} ${String(h).padStart(2,'0')}h · sem amostras"></div>`);
+                html.push(
+                    `<div class="rs-heatmap__cell rs-heatmap__cell--empty" title="${DOW_LABELS[dow]} ${String(hour).padStart(2, '0')}h · sem amostras"></div>`
+                );
                 continue;
             }
 
-            const color = ratioToColor(c.avgRatio);
+            const color = ratioToColor(cell.avgRatio);
             const title = [
-                `${DOW_LABELS[d]} ${String(h).padStart(2, '0')}h`,
-                `Ratio: ${fmtRatio(c.avgRatio)} vs histórico`,
-                c.avgDelay !== null ? `Atraso médio: +${Math.round(c.avgDelay)}s` : null,
-                `${c.count} amostra${c.count !== 1 ? 's' : ''}`,
-            ].filter(Boolean).join(' · ');
+                `${DOW_LABELS[dow]} ${String(hour).padStart(2, '0')}h`,
+                `Ratio: ${fmtRatio(cell.avgRatio)} vs histórico`,
+                cell.avgDelay !== null
+                    ? `Atraso médio: +${Math.round(cell.avgDelay)}s`
+                    : null,
+                `${cell.count} amostra${cell.count !== 1 ? 's' : ''}`,
+            ]
+                .filter(Boolean)
+                .join(' · ');
 
-            html.push(`<div class="rs-heatmap__cell" style="background:${color}" title="${title}"></div>`);
+            html.push(
+                `<div class="rs-heatmap__cell" style="background:${color}" title="${title}"></div>`
+            );
         }
     }
 
@@ -169,25 +245,42 @@ function renderHeatmap(root) {
 // Mapa principal
 // ─────────────────────────────────────────────────────────────────────────
 
-let mainMap = null;
+function showMapFallback(container) {
+    const fallback = container.querySelector('[data-rs-map-fallback]');
+
+    if (fallback) {
+        fallback.hidden = false;
+    }
+}
 
 function initMainMap(root, attempt = 0) {
     const page = resolvePage(root);
-    if (!page) return;
 
-    const container = page.querySelector('[data-rs-map]');
-    if (!container || mainMap) return;
-
-    if (typeof L === 'undefined') {
-        if (attempt < 20) setTimeout(() => initMainMap(root, attempt + 1), 100);
-        else { console.warn('[WazeBR route-show] Leaflet não carregou'); showMapFallback(container); }
+    if (!page) {
         return;
     }
 
-    const routePolyline  = safeJson(page.dataset.routePolyline, []) || [];
-    const alerts         = safeJson(page.dataset.nearbyAlerts, []) || [];
+    const container = page.querySelector('[data-rs-map]');
+
+    if (!container || mainMap) {
+        return;
+    }
+
+    if (typeof L === 'undefined') {
+        if (attempt < 20) {
+            setTimeout(() => initMainMap(root, attempt + 1), 100);
+        } else {
+            console.warn('[WazeBR route-show] Leaflet não carregou');
+            showMapFallback(container);
+        }
+
+        return;
+    }
+
+    const routePolyline = safeJson(page.dataset.routePolyline, []) || [];
+    const alerts = safeJson(page.dataset.nearbyAlerts, []) || [];
     const irregularities = safeJson(page.dataset.irregularities, []) || [];
-    const subPolylines   = safeJson(page.dataset.subroutesPolyline, {}) || {};
+    const subPolylines = safeJson(page.dataset.subroutesPolyline, {}) || {};
 
     if (routePolyline.length < 2 && Object.keys(subPolylines).length === 0) {
         showMapFallback(container);
@@ -209,102 +302,147 @@ function initMainMap(root, attempt = 0) {
 
         if (routePolyline.length > 1) {
             L.polyline(routePolyline, {
-                color: '#94a3b8', weight: 7, opacity: 0.55,
-                lineCap: 'round', lineJoin: 'round',
+                color: '#94a3b8',
+                weight: 7,
+                opacity: 0.55,
+                lineCap: 'round',
+                lineJoin: 'round',
             }).addTo(mainMap);
         }
 
         Object.values(subPolylines).forEach((line) => {
-            if (!Array.isArray(line) || line.length < 2) return;
+            if (!Array.isArray(line) || line.length < 2) {
+                return;
+            }
+
             L.polyline(line, {
-                color: COLORS.blue, weight: 4, opacity: 0.7,
-                lineCap: 'round', lineJoin: 'round',
+                color: COLORS.blue,
+                weight: 4,
+                opacity: 0.7,
+                lineCap: 'round',
+                lineJoin: 'round',
             }).addTo(mainMap);
         });
 
-        alerts.forEach((a) => {
-            if (!Number.isFinite(a.lat) || !Number.isFinite(a.lng)) return;
-            L.circleMarker([a.lat, a.lng], {
-                radius: 9, color: '#ffffff', weight: 2,
-                fillColor: alertColor(a.type), fillOpacity: 0.95,
-            }).bindPopup(`
-                <div class="rs-popup">
-                    <strong>${escapeHtml(a.typeLabel || a.type || 'Alerta')}</strong>
-                    ${a.subtype ? `<small>${escapeHtml(a.subtype)}</small>` : ''}
-                    ${a.street ? `<div class="rs-popup__row"><span>Via</span><span>${escapeHtml(a.street)}</span></div>` : ''}
-                    ${a.city ? `<div class="rs-popup__row"><span>Cidade</span><span>${escapeHtml(a.city)}</span></div>` : ''}
-                    <div class="rs-popup__row"><span>Distância</span><span>${a.distanceMeters} m</span></div>
-                    ${a.pubDateTime ? `<div class="rs-popup__row"><span>Quando</span><span>${new Date(a.pubDateTime).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span></div>` : ''}
-                </div>
-            `).addTo(mainMap);
+        alerts.forEach((alert) => {
+            if (!Number.isFinite(alert.lat) || !Number.isFinite(alert.lng)) {
+                return;
+            }
+
+            L.circleMarker([alert.lat, alert.lng], {
+                radius: 9,
+                color: '#ffffff',
+                weight: 2,
+                fillColor: alertColor(alert.type),
+                fillOpacity: 0.95,
+            })
+                .bindPopup(`
+                    <div class="rs-popup">
+                        <strong>${escapeHtml(alert.typeLabel || alert.type || 'Alerta')}</strong>
+                        ${alert.subtype ? `<small>${escapeHtml(alert.subtype)}</small>` : ''}
+                        ${alert.street ? `<div class="rs-popup__row"><span>Via</span><span>${escapeHtml(alert.street)}</span></div>` : ''}
+                        ${alert.city ? `<div class="rs-popup__row"><span>Cidade</span><span>${escapeHtml(alert.city)}</span></div>` : ''}
+                        <div class="rs-popup__row"><span>Distância</span><span>${alert.distanceMeters} m</span></div>
+                        ${alert.pubDateTime ? `<div class="rs-popup__row"><span>Quando</span><span>${new Date(alert.pubDateTime).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span></div>` : ''}
+                    </div>
+                `)
+                .addTo(mainMap);
         });
 
-        irregularities.forEach((irr) => {
-            if (!Number.isFinite(irr.lat) || !Number.isFinite(irr.lng)) return;
-            L.circleMarker([irr.lat, irr.lng], {
-                radius: 8, color: '#ffffff', weight: 2,
-                fillColor: COLORS.purple, fillOpacity: 0.9,
-            }).bindPopup(`
-                <div class="rs-popup">
-                    <strong>${escapeHtml(irr.type || 'Irregularidade')}</strong>
-                    ${irr.subtype ? `<small>${escapeHtml(irr.subtype)}</small>` : ''}
-                    ${irr.street ? `<div class="rs-popup__row"><span>Via</span><span>${escapeHtml(irr.street)}</span></div>` : ''}
-                    ${irr.severity ? `<div class="rs-popup__row"><span>Severidade</span><span>${escapeHtml(irr.severity)}</span></div>` : ''}
-                </div>
-            `).addTo(mainMap);
+        irregularities.forEach((irregularity) => {
+            if (
+                !Number.isFinite(irregularity.lat) ||
+                !Number.isFinite(irregularity.lng)
+            ) {
+                return;
+            }
+
+            L.circleMarker([irregularity.lat, irregularity.lng], {
+                radius: 8,
+                color: '#ffffff',
+                weight: 2,
+                fillColor: COLORS.purple,
+                fillOpacity: 0.9,
+            })
+                .bindPopup(`
+                    <div class="rs-popup">
+                        <strong>${escapeHtml(irregularity.type || 'Irregularidade')}</strong>
+                        ${irregularity.subtype ? `<small>${escapeHtml(irregularity.subtype)}</small>` : ''}
+                        ${irregularity.street ? `<div class="rs-popup__row"><span>Via</span><span>${escapeHtml(irregularity.street)}</span></div>` : ''}
+                        ${irregularity.severity ? `<div class="rs-popup__row"><span>Severidade</span><span>${escapeHtml(irregularity.severity)}</span></div>` : ''}
+                    </div>
+                `)
+                .addTo(mainMap);
         });
 
         const allPoints = [
             ...routePolyline,
-            ...alerts.map((a) => [a.lat, a.lng]).filter((p) => p[0] && p[1]),
-            ...irregularities.map((i) => [i.lat, i.lng]).filter((p) => p[0] && p[1]),
+            ...alerts
+                .map((alert) => [alert.lat, alert.lng])
+                .filter((point) => point[0] && point[1]),
+            ...irregularities
+                .map((irregularity) => [irregularity.lat, irregularity.lng])
+                .filter((point) => point[0] && point[1]),
         ];
 
         if (allPoints.length > 0) {
-            try { mainMap.fitBounds(allPoints, { padding: [30, 30], maxZoom: 16 }); } catch {}
+            try {
+                mainMap.fitBounds(allPoints, {
+                    padding: [30, 30],
+                    maxZoom: 16,
+                });
+            } catch {
+                // Ignora falha de enquadramento.
+            }
         }
 
         setTimeout(() => mainMap && mainMap.invalidateSize(), 100);
         setTimeout(() => mainMap && mainMap.invalidateSize(), 400);
-        window.addEventListener('resize', () => mainMap && mainMap.invalidateSize());
+
+        window.addEventListener('resize', () => {
+            mainMap && mainMap.invalidateSize();
+        });
 
         window.routeShowMap = mainMap;
-    } catch (err) {
-        console.error('[WazeBR route-show] falha ao montar o mapa', err);
+    } catch (error) {
+        console.error('[WazeBR route-show] falha ao montar o mapa', error);
         showMapFallback(container);
     }
-}
-
-function showMapFallback(container) {
-    const fb = container.querySelector('[data-rs-map-fallback]');
-    if (fb) fb.hidden = false;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
 // Mini-mapas das sub-rotas
 // ─────────────────────────────────────────────────────────────────────────
 
-const miniMaps = [];
-
 function initSubRouteMaps(root, attempt = 0) {
     const page = resolvePage(root);
-    if (!page) return;
+
+    if (!page) {
+        return;
+    }
 
     if (typeof L === 'undefined') {
-        if (attempt < 20) setTimeout(() => initSubRouteMaps(root, attempt + 1), 100);
+        if (attempt < 20) {
+            setTimeout(() => initSubRouteMaps(root, attempt + 1), 100);
+        }
+
         return;
     }
 
     const routePolyline = safeJson(page.dataset.routePolyline, []) || [];
-    const subPolylines  = safeJson(page.dataset.subroutesPolyline, {}) || {};
-    const alerts        = safeJson(page.dataset.nearbyAlerts, []) || [];
+    const subPolylines = safeJson(page.dataset.subroutesPolyline, {}) || {};
+    const alerts = safeJson(page.dataset.nearbyAlerts, []) || [];
 
     page.querySelectorAll('[data-subroute-map]').forEach((container) => {
-        if (container.dataset.miniMapInit === '1') return;
+        if (container.dataset.miniMapInit === '1') {
+            return;
+        }
+
         container.dataset.miniMapInit = '1';
 
-        const subId   = Number(container.dataset.subrouteId);
-        const subLine = subPolylines[subId] || subPolylines[String(subId)];
+        const subRouteId = Number(container.dataset.subrouteId);
+        const subLine =
+            subPolylines[subRouteId] || subPolylines[String(subRouteId)];
 
         if (!Array.isArray(subLine) || subLine.length < 2) {
             container.classList.add('is-empty');
@@ -312,88 +450,146 @@ function initSubRouteMaps(root, attempt = 0) {
         }
 
         try {
-            const m = L.map(container, {
-                zoomControl: false, attributionControl: false,
-                dragging: false, touchZoom: false,
-                scrollWheelZoom: false, doubleClickZoom: false,
-                boxZoom: false, keyboard: false, preferCanvas: true,
+            const map = L.map(container, {
+                zoomControl: false,
+                attributionControl: false,
+                dragging: false,
+                touchZoom: false,
+                scrollWheelZoom: false,
+                doubleClickZoom: false,
+                boxZoom: false,
+                keyboard: false,
+                preferCanvas: true,
             });
 
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                maxZoom: 19, subdomains: 'abcd',
-            }).addTo(m);
+            L.tileLayer(
+                'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                {
+                    maxZoom: 19,
+                    subdomains: 'abcd',
+                }
+            ).addTo(map);
 
             if (routePolyline.length > 1) {
                 L.polyline(routePolyline, {
-                    color: '#64748b', weight: 3, opacity: 0.5,
-                    lineCap: 'round', lineJoin: 'round',
-                }).addTo(m);
+                    color: '#64748b',
+                    weight: 3,
+                    opacity: 0.5,
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                }).addTo(map);
             }
 
             const bbox = computeBBox(subLine, 0.0008);
+
             if (bbox) {
-                alerts.forEach((a) => {
-                    if (!Number.isFinite(a.lat) || !Number.isFinite(a.lng)) return;
-                    if (!pointInBBox(a.lat, a.lng, bbox)) return;
-                    L.circleMarker([a.lat, a.lng], {
-                        radius: 4, color: '#ffffff', weight: 1.5,
-                        fillColor: alertColor(a.type), fillOpacity: 0.95,
-                    }).addTo(m);
+                alerts.forEach((alert) => {
+                    if (
+                        !Number.isFinite(alert.lat) ||
+                        !Number.isFinite(alert.lng)
+                    ) {
+                        return;
+                    }
+
+                    if (!pointInBBox(alert.lat, alert.lng, bbox)) {
+                        return;
+                    }
+
+                    L.circleMarker([alert.lat, alert.lng], {
+                        radius: 4,
+                        color: '#ffffff',
+                        weight: 1.5,
+                        fillColor: alertColor(alert.type),
+                        fillOpacity: 0.95,
+                    }).addTo(map);
                 });
             }
 
             L.polyline(subLine, {
-                color: COLORS.blue, weight: 5, opacity: 1,
-                lineCap: 'round', lineJoin: 'round',
-            }).addTo(m);
+                color: COLORS.blue,
+                weight: 5,
+                opacity: 1,
+                lineCap: 'round',
+                lineJoin: 'round',
+            }).addTo(map);
 
             const start = subLine[0];
-            const end   = subLine[subLine.length - 1];
+            const end = subLine[subLine.length - 1];
 
             L.circleMarker(start, {
-                radius: 4.5, color: '#ffffff', weight: 2,
-                fillColor: '#16a34a', fillOpacity: 1,
-            }).addTo(m);
+                radius: 4.5,
+                color: '#ffffff',
+                weight: 2,
+                fillColor: '#16a34a',
+                fillOpacity: 1,
+            }).addTo(map);
 
             L.circleMarker(end, {
-                radius: 4.5, color: '#ffffff', weight: 2,
-                fillColor: '#dc2626', fillOpacity: 1,
-            }).addTo(m);
+                radius: 4.5,
+                color: '#ffffff',
+                weight: 2,
+                fillColor: '#dc2626',
+                fillOpacity: 1,
+            }).addTo(map);
 
-            try { m.fitBounds(subLine, { padding: [16, 16], maxZoom: 16 }); } catch {}
+            try {
+                map.fitBounds(subLine, {
+                    padding: [16, 16],
+                    maxZoom: 16,
+                });
+            } catch {
+                // Ignora falha de enquadramento.
+            }
 
-            miniMaps.push(m);
-            setTimeout(() => m.invalidateSize(), 80);
-        } catch (err) {
-            console.warn('[WazeBR route-show] mini-mapa falhou', subId, err);
+            miniMaps.push(map);
+            setTimeout(() => map.invalidateSize(), 80);
+        } catch (error) {
+            console.warn(
+                '[WazeBR route-show] mini-mapa falhou',
+                subRouteId,
+                error
+            );
             container.classList.add('is-empty');
         }
     });
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Chart.js — plugin: linhas verticais de alertas no timeline
+// Chart.js
 // ─────────────────────────────────────────────────────────────────────────
 
 const alertLinesPlugin = {
     id: 'rsAlertLines',
-    afterDatasetsDraw(chart, _args, opts) {
-        const indices = opts?.indices || [];
-        if (indices.length === 0) return;
+    afterDatasetsDraw(chart, args, options) {
+        const indices = options?.indices || [];
+
+        if (indices.length === 0) {
+            return;
+        }
 
         const { ctx, chartArea, scales } = chart;
         const xScale = scales.x;
-        if (!xScale) return;
+
+        if (!xScale) {
+            return;
+        }
 
         ctx.save();
         ctx.setLineDash([3, 3]);
         ctx.lineWidth = 1.5;
         ctx.strokeStyle = 'rgba(234, 88, 12, 0.55)';
 
-        indices.forEach((i) => {
-            const x = xScale.getPixelForValue(i);
-            if (!Number.isFinite(x)) return;
-            if (x < chartArea.left || x > chartArea.right) return;
+        indices.forEach((index) => {
+            const x = xScale.getPixelForValue(index);
+
+            if (!Number.isFinite(x)) {
+                return;
+            }
+
+            if (x < chartArea.left || x > chartArea.right) {
+                return;
+            }
+
             ctx.beginPath();
             ctx.moveTo(x, chartArea.top);
             ctx.lineTo(x, chartArea.bottom);
@@ -408,59 +604,86 @@ if (typeof Chart !== 'undefined') {
     Chart.register(alertLinesPlugin);
 }
 
-function bucketFor(dateStr) {
-    const m = String(dateStr).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):/);
-    if (!m) return null;
-    let [, y, mo, d, h] = m;
-    h = parseInt(h, 10) - 3;
-    if (h < 0) {
-        h += 24;
-        const dt = new Date(`${y}-${mo}-${d}T00:00:00Z`);
-        dt.setUTCDate(dt.getUTCDate() - 1);
-        y  = dt.getUTCFullYear();
-        mo = String(dt.getUTCMonth() + 1).padStart(2, '0');
-        d  = String(dt.getUTCDate()).padStart(2, '0');
+function bucketFor(dateString) {
+    const match = String(dateString).match(
+        /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):/
+    );
+
+    if (!match) {
+        return null;
     }
-    return `${y}-${mo}-${d} ${String(h).padStart(2, '0')}:00:00`;
+
+    let [, year, month, day, hour] = match;
+
+    hour = parseInt(hour, 10) - 3;
+
+    if (hour < 0) {
+        hour += 24;
+
+        const date = new Date(`${year}-${month}-${day}T00:00:00Z`);
+        date.setUTCDate(date.getUTCDate() - 1);
+
+        year = date.getUTCFullYear();
+        month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        day = String(date.getUTCDate()).padStart(2, '0');
+    }
+
+    return `${year}-${month}-${day} ${String(hour).padStart(2, '0')}:00:00`;
 }
 
 function alertIndices(alerts, labels) {
-    const set = new Set();
-    alerts.forEach((a) => {
-        const bucket = bucketFor(a.collectedAt || '');
-        if (!bucket) return;
-        const idx = labels.indexOf(bucket);
-        if (idx >= 0) set.add(idx);
-    });
-    return [...set].sort((a, b) => a - b);
-}
+    const indices = new Set();
 
-// ─────────────────────────────────────────────────────────────────────────
-// Gráficos
-// ─────────────────────────────────────────────────────────────────────────
+    alerts.forEach((alert) => {
+        const bucket = bucketFor(alert.collectedAt || '');
+
+        if (!bucket) {
+            return;
+        }
+
+        const index = labels.indexOf(bucket);
+
+        if (index >= 0) {
+            indices.add(index);
+        }
+    });
+
+    return [...indices].sort((a, b) => a - b);
+}
 
 function initCharts(root) {
     const page = resolvePage(root);
-    if (!page) return;
-    if (typeof Chart === 'undefined') return;
+
+    if (!page || typeof Chart === 'undefined') {
+        return;
+    }
 
     Chart.defaults.color = COLORS.text;
-    Chart.defaults.font.family = "Inter, system-ui, -apple-system, 'Segoe UI', sans-serif";
+    Chart.defaults.font.family =
+        "Inter, system-ui, -apple-system, 'Segoe UI', sans-serif";
     Chart.defaults.font.size = 12;
 
     const alerts = safeJson(page.dataset.nearbyAlerts, []) || [];
 
-    // ── Timeline ────────────────────────────────────────────────
     page.querySelectorAll('[data-chart="route-timeline"]').forEach((canvas) => {
         const points = safeJson(canvas.dataset.chartData, []) || [];
 
-        const labels = points.map((p) => {
-            const t = (p.time || '');
-            return t.length >= 16 ? `${t.slice(8, 10)}/${t.slice(5, 7)} ${t.slice(11, 16)}` : t;
+        const labels = points.map((point) => {
+            const time = point.time || '';
+
+            return time.length >= 16
+                ? `${time.slice(8, 10)}/${time.slice(5, 7)} ${time.slice(11, 16)}`
+                : time;
         });
-        const delay   = points.map((p) => p.avgDelay);
-        const ratio   = points.map((p) => p.avgRatio !== null ? p.avgRatio * 100 : null);
-        const indices = alertIndices(alerts, points.map((p) => p.time));
+
+        const delay = points.map((point) => point.avgDelay);
+        const ratio = points.map((point) =>
+            point.avgRatio !== null ? point.avgRatio * 100 : null
+        );
+        const alertLineIndices = alertIndices(
+            alerts,
+            points.map((point) => point.time)
+        );
 
         mountChart('routeTimeline', canvas, {
             type: 'line',
@@ -468,147 +691,290 @@ function initCharts(root) {
                 labels,
                 datasets: [
                     {
-                        label: 'Atraso (s)', data: delay,
+                        label: 'Atraso (s)',
+                        data: delay,
                         borderColor: COLORS.blue,
                         backgroundColor: 'rgba(37,99,235,.10)',
-                        fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2,
+                        fill: true,
+                        tension: 0.35,
+                        pointRadius: 0,
+                        borderWidth: 2,
                         yAxisID: 'y',
                     },
                     {
-                        label: '% vs histórico', data: ratio,
+                        label: '% vs histórico',
+                        data: ratio,
                         borderColor: COLORS.red,
                         backgroundColor: 'rgba(220,38,38,.08)',
-                        fill: false, tension: 0.35, pointRadius: 0, borderWidth: 2,
+                        fill: false,
+                        tension: 0.35,
+                        pointRadius: 0,
+                        borderWidth: 2,
                         borderDash: [4, 3],
                         yAxisID: 'y1',
                     },
                 ],
             },
             options: {
-                responsive: true, maintainAspectRatio: false, resizeDelay: 120,
-                interaction: { mode: 'index', intersect: false },
+                responsive: true,
+                maintainAspectRatio: false,
+                resizeDelay: 120,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
                 plugins: {
-                    legend: { display: false },
+                    legend: {
+                        display: false,
+                    },
                     tooltip: {
                         callbacks: {
-                            label: (ctx) => ctx.dataset.label === '% vs histórico'
-                                ? `${ctx.parsed.y?.toFixed(0)}%`
-                                : `+${ctx.parsed.y?.toFixed(0)}s`,
+                            label(context) {
+                                return context.dataset.label ===
+                                    '% vs histórico'
+                                    ? `${context.parsed.y?.toFixed(0)}%`
+                                    : `+${context.parsed.y?.toFixed(0)}s`;
+                            },
                         },
                     },
-                    rsAlertLines: { indices },
+                    rsAlertLines: {
+                        indices: alertLineIndices,
+                    },
                 },
                 scales: {
-                    x: { grid: { display: false } },
-                    y:  { position: 'left',  grid: { color: COLORS.grid }, beginAtZero: true, title: { display: true, text: 'segundos' } },
-                    y1: { position: 'right', grid: { display: false }, beginAtZero: true, ticks: { callback: (v) => `${v}%` } },
+                    x: {
+                        grid: {
+                            display: false,
+                        },
+                    },
+                    y: {
+                        position: 'left',
+                        grid: {
+                            color: COLORS.grid,
+                        },
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'segundos',
+                        },
+                    },
+                    y1: {
+                        position: 'right',
+                        grid: {
+                            display: false,
+                        },
+                        beginAtZero: true,
+                        ticks: {
+                            callback(value) {
+                                return `${value}%`;
+                            },
+                        },
+                    },
                 },
             },
         });
     });
 
-    // ── Por hora ────────────────────────────────────────────────
     page.querySelectorAll('[data-chart="route-by-hour"]').forEach((canvas) => {
-        const points   = safeJson(canvas.dataset.chartData, []) || [];
-        const labels   = points.map((p) => `${String(p.hour).padStart(2, '0')}h`);
-        const ratios   = points.map((p) => p.avgRatio);
-        const delays   = points.map((p) => p.avgDelay ?? 0);
-        const counts   = points.map((p) => p.count ?? 0);
-        const bgColors = ratios.map((r, i) => {
-            if (counts[i] < 2 || r === null) return 'rgba(148,163,184,.35)';
-            return ratioToColor(r);
+        const points = safeJson(canvas.dataset.chartData, []) || [];
+
+        const labels = points.map(
+            (point) => `${String(point.hour).padStart(2, '0')}h`
+        );
+        const ratios = points.map((point) => point.avgRatio);
+        const delays = points.map((point) => point.avgDelay ?? 0);
+        const counts = points.map((point) => point.count ?? 0);
+
+        const backgrounds = ratios.map((ratio, index) => {
+            if (counts[index] < 2 || ratio === null) {
+                return 'rgba(148,163,184,.35)';
+            }
+
+            return ratioToColor(ratio);
         });
 
         mountChart('routeByHour', canvas, {
             type: 'bar',
             data: {
                 labels,
-                datasets: [{ label: 'Atraso médio (s)', data: delays, backgroundColor: bgColors, borderRadius: 4 }],
+                datasets: [
+                    {
+                        label: 'Atraso médio (s)',
+                        data: delays,
+                        backgroundColor: backgrounds,
+                        borderRadius: 4,
+                    },
+                ],
             },
             options: {
-                responsive: true, maintainAspectRatio: false, resizeDelay: 120,
+                responsive: true,
+                maintainAspectRatio: false,
+                resizeDelay: 120,
                 plugins: {
-                    legend: { display: false },
+                    legend: {
+                        display: false,
+                    },
                     tooltip: {
                         callbacks: {
-                            label: (ctx) => {
-                                const i = ctx.dataIndex;
-                                if (counts[i] < 2 || ratios[i] === null) return 'Sem amostras suficientes';
-                                return `+${Math.round(delays[i])}s · ${Math.round(ratios[i] * 100)}% vs histórico · ${counts[i]} amostras`;
+                            label(context) {
+                                const index = context.dataIndex;
+
+                                if (counts[index] < 2 || ratios[index] === null) {
+                                    return 'Sem amostras suficientes';
+                                }
+
+                                return `+${Math.round(delays[index])}s · ${Math.round(ratios[index] * 100)}% vs histórico · ${counts[index]} amostras`;
                             },
                         },
                     },
                 },
                 scales: {
-                    x: { grid: { display: false } },
-                    y: { grid: { color: COLORS.grid }, beginAtZero: true, title: { display: true, text: 'segundos' } },
+                    x: {
+                        grid: {
+                            display: false,
+                        },
+                    },
+                    y: {
+                        grid: {
+                            color: COLORS.grid,
+                        },
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'segundos',
+                        },
+                    },
                 },
             },
         });
     });
 
-    // ── Por dia da semana ──────────────────────────────────────
     page.querySelectorAll('[data-chart="route-by-dow"]').forEach((canvas) => {
-        const points   = safeJson(canvas.dataset.chartData, []) || [];
-        const labels   = points.map((p) => DOW_LABELS[p.dow] ?? '?');
-        const ratios   = points.map((p) => p.avgRatio);
-        const delays   = points.map((p) => p.avgDelay ?? 0);
-        const counts   = points.map((p) => p.count ?? 0);
-        const bgColors = ratios.map((r, i) => {
-            if (counts[i] < 2 || r === null) return 'rgba(148,163,184,.35)';
-            return ratioToColor(r);
+        const points = safeJson(canvas.dataset.chartData, []) || [];
+
+        const labels = points.map(
+            (point) => DOW_LABELS[point.dow] ?? '?'
+        );
+        const ratios = points.map((point) => point.avgRatio);
+        const delays = points.map((point) => point.avgDelay ?? 0);
+        const counts = points.map((point) => point.count ?? 0);
+
+        const backgrounds = ratios.map((ratio, index) => {
+            if (counts[index] < 2 || ratio === null) {
+                return 'rgba(148,163,184,.35)';
+            }
+
+            return ratioToColor(ratio);
         });
 
         mountChart('routeByDow', canvas, {
             type: 'bar',
             data: {
                 labels,
-                datasets: [{ label: 'Atraso médio (s)', data: delays, backgroundColor: bgColors, borderRadius: 4 }],
+                datasets: [
+                    {
+                        label: 'Atraso médio (s)',
+                        data: delays,
+                        backgroundColor: backgrounds,
+                        borderRadius: 4,
+                    },
+                ],
             },
             options: {
-                responsive: true, maintainAspectRatio: false, resizeDelay: 120,
+                responsive: true,
+                maintainAspectRatio: false,
+                resizeDelay: 120,
                 plugins: {
-                    legend: { display: false },
+                    legend: {
+                        display: false,
+                    },
                     tooltip: {
                         callbacks: {
-                            label: (ctx) => {
-                                const i = ctx.dataIndex;
-                                if (counts[i] < 2 || ratios[i] === null) return 'Sem amostras suficientes';
-                                return `+${Math.round(delays[i])}s · ${Math.round(ratios[i] * 100)}% vs histórico · ${counts[i]} amostras`;
+                            label(context) {
+                                const index = context.dataIndex;
+
+                                if (counts[index] < 2 || ratios[index] === null) {
+                                    return 'Sem amostras suficientes';
+                                }
+
+                                return `+${Math.round(delays[index])}s · ${Math.round(ratios[index] * 100)}% vs histórico · ${counts[index]} amostras`;
                             },
                         },
                     },
                 },
                 scales: {
-                    x: { grid: { display: false } },
-                    y: { grid: { color: COLORS.grid }, beginAtZero: true, title: { display: true, text: 'segundos' } },
+                    x: {
+                        grid: {
+                            display: false,
+                        },
+                    },
+                    y: {
+                        grid: {
+                            color: COLORS.grid,
+                        },
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'segundos',
+                        },
+                    },
                 },
             },
         });
     });
 
-    // ── Distribuição de jam ────────────────────────────────────
     page.querySelectorAll('[data-chart="route-jam-dist"]').forEach((canvas) => {
-        const points   = safeJson(canvas.dataset.chartData, []) || [];
-        const filtered = points.filter((p) => p.count > 0);
-        const labels   = filtered.map((p) => JAM_LABELS[p.level] ?? `Nível ${p.level}`);
-        const data     = filtered.map((p) => p.count);
-        const bg       = filtered.map((p) => JAM_COLORS[p.level] ?? '#94a3b8');
+        const points = safeJson(canvas.dataset.chartData, []) || [];
+        const filtered = points.filter((point) => point.count > 0);
+
+        const labels = filtered.map(
+            (point) => JAM_LABELS[point.level] ?? `Nível ${point.level}`
+        );
+        const data = filtered.map((point) => point.count);
+        const backgrounds = filtered.map(
+            (point) => JAM_COLORS[point.level] ?? '#94a3b8'
+        );
 
         mountChart('routeJamDist', canvas, {
             type: 'doughnut',
-            data: { labels, datasets: [{ data, backgroundColor: bg, borderWidth: 0 }] },
+            data: {
+                labels,
+                datasets: [
+                    {
+                        data,
+                        backgroundColor: backgrounds,
+                        borderWidth: 0,
+                    },
+                ],
+            },
             options: {
-                responsive: true, maintainAspectRatio: false, resizeDelay: 120,
+                responsive: true,
+                maintainAspectRatio: false,
+                resizeDelay: 120,
                 cutout: '62%',
                 plugins: {
-                    legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 8 } },
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            usePointStyle: true,
+                            boxWidth: 8,
+                        },
+                    },
                     tooltip: {
                         callbacks: {
-                            label: (ctx) => {
-                                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-                                const pct = total > 0 ? Math.round((ctx.parsed / total) * 100) : 0;
-                                return `${ctx.parsed} amostras (${pct}%)`;
+                            label(context) {
+                                const total = context.dataset.data.reduce(
+                                    (accumulator, value) => accumulator + value,
+                                    0
+                                );
+                                const percentage =
+                                    total > 0
+                                        ? Math.round(
+                                              (context.parsed / total) * 100
+                                          )
+                                        : 0;
+
+                                return `${context.parsed} amostras (${percentage}%)`;
                             },
                         },
                     },
@@ -619,18 +985,23 @@ function initCharts(root) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Export dropdown
+// Menu de exportação
 // ─────────────────────────────────────────────────────────────────────────
 
 function initExportMenu(root) {
     const page = resolvePage(root);
-    if (!page) return;
 
-    const wrapper  = page.querySelector('[data-export-menu]');
-    const toggle   = page.querySelector('[data-export-toggle]');
+    if (!page) {
+        return;
+    }
+
+    const wrapper = page.querySelector('[data-export-menu]');
+    const toggle = page.querySelector('[data-export-toggle]');
     const dropdown = page.querySelector('[data-export-dropdown]');
 
-    if (!wrapper || !toggle || !dropdown) return;
+    if (!wrapper || !toggle || !dropdown) {
+        return;
+    }
 
     const open = () => {
         dropdown.hidden = false;
@@ -643,94 +1014,24 @@ function initExportMenu(root) {
         toggle.setAttribute('aria-expanded', 'false');
     };
 
-    toggle.addEventListener('click', (e) => {
-        e.stopPropagation();
+    toggle.addEventListener('click', (event) => {
+        event.stopPropagation();
         dropdown.hidden ? open() : close();
     });
 
-    document.addEventListener('click', (e) => {
-        if (!wrapper.contains(e.target)) close();
+    document.addEventListener('click', (event) => {
+        if (!wrapper.contains(event.target)) {
+            close();
+        }
     });
 
-    wrapper.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') { close(); toggle.focus(); }
-    });
-
-    dropdown.querySelectorAll('.rs-export__item').forEach((link) => {
-        link.addEventListener('click', () => setTimeout(close, 200));
-    });
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Bootstrap
-// ─────────────────────────────────────────────────────────────────────────
-
-let bootstrapped = false;
-
-export function initRouteShow(root = document) {
-    const page = resolvePage(root);
-    if (!page || bootstrapped) return;
-    bootstrapped = true;
-
-    renderHeatmap(page);
-    initCharts(page);
-    initMainMap(page);
-    initSubRouteMaps(page);
-    initExportMenu(page);
-}
-
-export default initRouteShow;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Export dropdown — adicionar DENTRO de initRouteShow(), após as chamadas
-// existentes de renderHeatmap / initCharts / initMainMap / initSubRouteMaps
-// ─────────────────────────────────────────────────────────────────────────────
-
-function initExportMenu(root) {
-    const page = resolvePage(root);
-    if (!page) return;
-
-    const wrapper  = page.querySelector('[data-export-menu]');
-    const toggle   = page.querySelector('[data-export-toggle]');
-    const dropdown = page.querySelector('[data-export-dropdown]');
-
-    if (!wrapper || !toggle || !dropdown) return;
-
-    function open() {
-        dropdown.hidden = false;
-        toggle.setAttribute('aria-expanded', 'true');
-        // Foca o primeiro item para acessibilidade
-        dropdown.querySelector('.rs-export__item')?.focus();
-    }
-
-    function close() {
-        dropdown.hidden = true;
-        toggle.setAttribute('aria-expanded', 'false');
-    }
-
-    function isOpen() {
-        return !dropdown.hidden;
-    }
-
-    toggle.addEventListener('click', (e) => {
-        e.stopPropagation();
-        isOpen() ? close() : open();
-    });
-
-    // Fecha ao clicar fora
-    document.addEventListener('click', (e) => {
-        if (!wrapper.contains(e.target)) close();
-    });
-
-    // Fecha com Escape
-    wrapper.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
+    wrapper.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
             close();
             toggle.focus();
         }
     });
 
-    // Fecha automaticamente após iniciar o download
     dropdown.querySelectorAll('.rs-export__item').forEach((link) => {
         link.addEventListener('click', () => {
             setTimeout(close, 200);
@@ -738,23 +1039,24 @@ function initExportMenu(root) {
     });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Bootstrap — versão atualizada de initRouteShow()
-// Substitui a função existente no final do arquivo
-// ─────────────────────────────────────────────────────────────────────────────
-
-let bootstrapped = false;
+// ─────────────────────────────────────────────────────────────────────────
+// Bootstrap
+// ─────────────────────────────────────────────────────────────────────────
 
 export function initRouteShow(root = document) {
     const page = resolvePage(root);
-    if (!page || bootstrapped) return;
+
+    if (!page || bootstrapped) {
+        return;
+    }
+
     bootstrapped = true;
 
     renderHeatmap(page);
     initCharts(page);
     initMainMap(page);
     initSubRouteMaps(page);
-    initExportMenu(page);   // ← novo
+    initExportMenu(page);
 }
 
 export default initRouteShow;

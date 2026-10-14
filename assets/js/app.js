@@ -79,6 +79,10 @@ const COMPONENTS = {
         match: '[data-route-show]',
         init: () => import('./pages/route-show.js'),
     },
+    routeForecast: {
+        match: '[data-route-show]',
+        init: () => import('./pages/route-forecast.js'),
+    },
     routeCompare: {
         match: '[data-route-compare]',
         init: () => import('./pages/route-compare.js'),

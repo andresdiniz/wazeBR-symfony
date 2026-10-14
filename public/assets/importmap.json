@@ -84,7 +84,7 @@
         "type": "js"
     },
     "app": {
-        "path": "\/assets\/js\/app-1AVDsMG.js",
+        "path": "\/assets\/js\/app-yQTxlxq.js",
         "type": "js"
     },
     "\/assets\/js\/components\/buttons.js": {
@@ -108,7 +108,11 @@
         "type": "js"
     },
     "\/assets\/js\/pages\/route-show.js": {
-        "path": "\/assets\/js\/pages\/route-show--hPyoiH.js",
+        "path": "\/assets\/js\/pages\/route-show-pI6pOA8.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/route-forecast.js": {
+        "path": "\/assets\/js\/pages\/route-forecast-857muEC.js",
         "type": "js"
     },
     "\/assets\/js\/pages\/route-compare.js": {

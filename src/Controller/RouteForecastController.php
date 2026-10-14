@@ -28,13 +28,26 @@ final class RouteForecastController extends AbstractController
             $slot = $now->modify("+{$i} hours");
             $at = $slot->setTime((int)$slot->format('G'), 0, 0);
             $row = $this->connection->fetchAssociative(
-                "SELECT AVG(s.time) a, AVG(s.historic_time) h, AVG(s.jam_level) j, COUNT(*) c
-                 FROM waze_tvt_route_snapshot s
-                 WHERE s.route_id = :id AND s.time IS NOT NULL
-                 AND s.recorded_at >= UTC_TIMESTAMP() - INTERVAL 30 DAY
-                 AND WEEKDAY(CONVERT_TZ(s.recorded_at,'UTC',:tz)) = :w
-                 AND HOUR(CONVERT_TZ(s.recorded_at,'UTC',:tz)) = :h",
-                ['id'=>$id,'tz'=>$tz,'w'=>((int)$at->format('w') + 6) % 7,'h'=>(int)$at->format('G')]
+                "SELECT
+                    AVG(s.time) AS a,
+                    AVG(s.historic_time) AS h,
+                    AVG(s.jam_level) AS j,
+                    COUNT(*) AS c
+                FROM waze_tvt_route_snapshot s
+                WHERE s.route_id = :id
+                AND s.time IS NOT NULL
+                AND s.recorded_at >= UTC_TIMESTAMP() - INTERVAL 30 DAY
+                AND WEEKDAY(
+                    CONVERT_TZ(s.recorded_at, '+00:00', '-03:00')
+                ) = :w
+                AND HOUR(
+                    CONVERT_TZ(s.recorded_at, '+00:00', '-03:00')
+                ) = :h",
+                [
+                    'id' => $id,
+                    'w' => (int) $at->format('N') - 1,
+                    'h' => (int) $at->format('G'),
+                ]
             );
             $t = $row['a'] !== null ? (float)$row['a'] : null;
             $ht = $row['h'] !== null ? (float)$row['h'] : null;

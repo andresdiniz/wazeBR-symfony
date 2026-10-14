@@ -56,9 +56,9 @@ class CongestionForecastService
                {$partnerFilter}
                AND s.time IS NOT NULL
                AND s.recorded_at >= UTC_TIMESTAMP() - INTERVAL :history_days DAY
-               AND WEEKDAY(CONVERT_TZ(s.recorded_at, 'UTC', :tz)) = :weekday
-               AND TIME(CONVERT_TZ(s.recorded_at, 'UTC', :tz)) >= :window_start
-               AND TIME(CONVERT_TZ(s.recorded_at, 'UTC', :tz)) < :window_end
+               AND WEEKDAY(CONVERT_TZ(s.recorded_at, '+00:00', '-03:00')) = :weekday
+               AND TIME(CONVERT_TZ(s.recorded_at, '+00:00', '-03:00')) >= :window_start
+               AND TIME(CONVERT_TZ(s.recorded_at, '+00:00', '-03:00')) < :window_end
              GROUP BY r.id",
             $params,
         );
