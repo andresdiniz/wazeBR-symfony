@@ -13,7 +13,7 @@ final class RouteForecastController extends AbstractController
 {
     public function __construct(private readonly Connection $connection) {}
 
-    #[Route('', name: 'show', requirements: ['id' => '\d+'], methods: ['GET'])]
+    #[Route('', name: 'show', requirements: ['id' => '\\d+'], methods: ['GET'])]
     public function show(int $id): JsonResponse
     {
         $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
@@ -34,7 +34,7 @@ final class RouteForecastController extends AbstractController
                  AND s.recorded_at >= UTC_TIMESTAMP() - INTERVAL 30 DAY
                  AND WEEKDAY(CONVERT_TZ(s.recorded_at,'UTC',:tz)) = :w
                  AND HOUR(CONVERT_TZ(s.recorded_at,'UTC',:tz)) = :h",
-                ['id'=>$id,'tz'=>$tz,'w'=>(int)$at->format('w'),'h'=>(int)$at->format('G')]
+                ['id'=>$id,'tz'=>$tz,'w'=>((int)$at->format('w') + 6) % 7,'h'=>(int)$at->format('G')]
             );
             $t = $row['a'] !== null ? (float)$row['a'] : null;
             $ht = $row['h'] !== null ? (float)$row['h'] : null;
