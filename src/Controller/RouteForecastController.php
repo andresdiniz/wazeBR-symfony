@@ -56,7 +56,7 @@ final class RouteForecastController extends AbstractController
 
     private function risk(?float $t, ?float $h, ?float $j, int $c): array
     {
-        if ($c < 3) return [0.0,'low'];
+        if ($c < 1) return [0.0,'low'];
         $sl = ($t!==null && $h!==null && $h>0) ? max(0, (($t-$h)/$h)*100) : 0;
         $s = min(100, $sl*1.5 + max(0, ($j ?? 0)-1)*15);
         $l = $s>=75?'critical':($s>=55?'high':($s>=30?'medium':'low'));
