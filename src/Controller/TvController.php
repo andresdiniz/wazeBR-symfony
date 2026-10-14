@@ -78,6 +78,11 @@ final class TvController extends AbstractController
 
             return $repository->getWallboard($partner);
         });
+        $payload['congestionForecast'] = $this->congestionForecastService->getUpcomingForWallboard(
+            $partner,
+            slotMinutes: 30,
+            slotsAhead: 2,
+        );
 
         $response = $this->json([
             'ok'   => true,
