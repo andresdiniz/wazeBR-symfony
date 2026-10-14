@@ -10,18 +10,9 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: WazeTvtRouteForecastRepository::class)]
 #[ORM\Table(name: 'waze_tvt_route_forecast')]
-#[ORM\UniqueConstraint(
-    name: 'uniq_tvt_route_forecast_slot',
-    columns: ['route_id', 'forecast_at'],
-)]
-#[ORM\Index(
-    name: 'idx_tvt_route_forecast_lookup',
-    columns: ['forecast_at', 'risk_level'],
-)]
-#[ORM\Index(
-    name: 'idx_tvt_route_forecast_route',
-    columns: ['route_id', 'forecast_at'],
-)]
+#[ORM\UniqueConstraint(name: 'uniq_tvt_route_forecast_slot', columns: ['route_id', 'forecast_at'])]
+#[ORM\Index(name: 'idx_tvt_route_forecast_lookup', columns: ['forecast_at', 'risk_level'])]
+#[ORM\Index(name: 'idx_tvt_route_forecast_route', columns: ['route_id', 'forecast_at'])]
 class WazeTvtRouteForecast
 {
     public const LEVEL_LOW = 'low';
@@ -35,22 +26,12 @@ class WazeTvtRouteForecast
     private ?int $id = null;
 
     #[ORM\ManyToOne(targetEntity: WazeTvtRoute::class)]
-    #[ORM\JoinColumn(
-        name: 'route_id',
-        referencedColumnName: 'id',
-        nullable: false,
-        onDelete: 'CASCADE',
-    )]
+    #[ORM\JoinColumn(name: 'route_id', referencedColumnName: 'id', nullable: false, onDelete: 'CASCADE')]
     private ?WazeTvtRoute $route = null;
 
-    /**
-     * Início da janela prevista, já no fuso da aplicação.
-     * Ex.: 17:30 significa a previsão para 17:30–18:00.
-     */
     #[ORM\Column(name: 'forecast_at', type: Types::DATETIME_IMMUTABLE)]
     private ?\DateTimeImmutable $forecastAt = null;
 
-    /** 0 = domingo, 6 = sábado. */
     #[ORM\Column(type: Types::SMALLINT)]
     private int $weekday = 0;
 

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Entity\Partner;
 use App\Service\CongestionForecastService;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -19,6 +21,7 @@ final class RefreshCongestionForecastCommand extends Command
 {
     public function __construct(
         private readonly CongestionForecastService $forecastService,
+        private readonly EntityManagerInterface $entityManager,
     ) {
         parent::__construct();
     }
@@ -35,15 +38,20 @@ final class RefreshCongestionForecastCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $partnerId = $input->getOption('partner');
-        $partner = $partnerId !== null
-            ? $this->forecastService instanceof CongestionForecastService ? null : null
-            : null;
+        $partner = null;
 
-        // Se quiser restringir por parceiro, injete PartnerRepository no serviço
-        // e resolva o Partner aqui. Por padrão, atualiza todas as rotas ativas.
+        if ($partnerId !== null) {
+            $partner = $this->entityManager->find(Partner::class, (int) $partnerId);
+
+            if ($partner === null) {
+                $output->writeln(sprintf('<error>Parceiro %s não encontrado.</error>', $partnerId));
+
+                return Command::FAILURE;
+            }
+        }
 
         $written = $this->forecastService->refreshUpcoming(
-            null,
+            $partner,
             max(5, (int) $input->getOption('slot')),
             max(1, (int) $input->getOption('slots-ahead')),
             max(7, (int) $input->getOption('history-days')),
