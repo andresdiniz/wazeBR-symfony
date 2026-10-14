@@ -19,7 +19,7 @@ class CongestionForecastService
     ) {
     }
 
-    public function refreshUpcoming(?Partner $partner = null, int $slotMinutes = 30, int $slotsAhead = 2, int $historyDays = 30, int $minimumSamples = 3): int
+    public function refreshUpcoming(?Partner $partner = null, int $slotMinutes = 30, int $slotsAhead = 2, int $historyDays = 30, int $minimumSamples = 1): int
     {
         $timezone = $this->appTimezone();
         $now = new \DateTimeImmutable('now', new \DateTimeZone($timezone));
@@ -32,7 +32,7 @@ class CongestionForecastService
         return $written;
     }
 
-    public function refreshSlot(?Partner $partner, \DateTimeImmutable $forecastAt, int $slotMinutes = 30, int $historyDays = 30, int $minimumSamples = 3): int
+    public function refreshSlot(?Partner $partner, \DateTimeImmutable $forecastAt, int $slotMinutes = 30, int $historyDays = 30, int $minimumSamples = 1): int
     {
         $timezone = $this->appTimezone();
         $windowEnd = $forecastAt->modify(sprintf('+%d minutes', $slotMinutes));
