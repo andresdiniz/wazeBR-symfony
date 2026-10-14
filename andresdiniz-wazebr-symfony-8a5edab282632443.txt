@@ -31334,7 +31334,7 @@ const CACHE = 'cifs-v1';
 const OFFLINE_URLS = [
     '/cifs',
     '/cifs/api/types?locale=pt',
-    'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css',
     'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
 ];
 
@@ -150047,7 +150047,7 @@ FILE: templates/alert/index.html.twig
 
 {% block stylesheets %}
     {{ parent() }}
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin="">
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin="">
@@ -150588,7 +150588,7 @@ FILE: templates/alert/show.html.twig
 
 {% block stylesheets %}
     {{ parent() }}
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
     <link rel="stylesheet" href="{{ asset('css/pages/alerts-show.css') }}">
 {% endblock %}
@@ -151037,7 +151037,7 @@ FILE: templates/cifs/index.html.twig
 
 {% block stylesheets %}
     {{ parent() }}
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
     <link rel="stylesheet" href="{{ asset('css/cifs.css') }}">
 {% endblock %}
 
@@ -151463,7 +151463,7 @@ FILE: templates/dashboard/index.html.twig
 
 {% block stylesheets %}
     {{ parent() }}
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" ...>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" ...>
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard.css') }}">
 {% endblock %}
 
@@ -153641,7 +153641,7 @@ FILE: templates/jam/show.html.twig
 
 {% block stylesheets %}
     {{ parent() }}
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
     <link rel="stylesheet" href="{{ asset('css/pages/jam-show.css') }}">
 {% endblock %}
@@ -156061,7 +156061,7 @@ FILE: templates/routes/compare.html.twig
 
 {% block stylesheets %}
     {{ parent() }}
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
     <link rel="stylesheet" href="{{ asset('css/pages/route-compare.css') }}">
 {% endblock %}
@@ -156551,7 +156551,7 @@ FILE: templates/routes/index.html.twig
 
 {% block stylesheets %}
     {{ parent() }}
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
     <link rel="stylesheet" href="{{ asset('css/pages/routes.css') }}">
 {% endblock %}
@@ -156777,7 +156777,7 @@ FILE: templates/routes/show.html.twig
 
 {% block stylesheets %}
     {{ parent() }}
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
     <link rel="stylesheet" href="{{ asset('css/pages/route-show.css') }}">
 {% endblock %}
@@ -157274,7 +157274,7 @@ FILE: templates/tv/index.html.twig
 {% block title %}Operação ao vivo | WazeBR{% endblock %}
 
 {% block stylesheets %}
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
     <link rel="stylesheet" href="{{ asset('css/pages/tv.css') }}">
 {% endblock %}
