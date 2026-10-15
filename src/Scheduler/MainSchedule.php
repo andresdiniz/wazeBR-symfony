@@ -82,11 +82,23 @@ final class MainSchedule implements ScheduleProviderInterface
                 ),
             )
 
-            // ── Previsao (Preve proximas horas de cada rotas) ───────
+            // ── Previsão: 24 janelas de 15 minutos = próximas 6 horas ───────
             ->add(
                 RecurringMessage::every(
-                    '30 minutes',
-                    new RunCommandMessage('app:tvt:refresh-congestion-forecast --no-interaction'),
+                    '15 minutes',
+                    new RunCommandMessage(
+                        'app:tvt:refresh-congestion-forecast --slot=15 --slots-ahead=32 --no-interaction'
+                    ),
+                ),
+            )
+
+            // ── Auditoria: captura as previsões futuras disponíveis ───────
+            ->add(
+                RecurringMessage::every(
+                    '1 minute',
+                    new RunCommandMessage(
+                        'app:tvt:evaluate-congestion-forecast --capture --no-interaction'
+                    ),
                 ),
             )
 
