@@ -78,7 +78,6 @@ final class MainSchedule implements ScheduleProviderInterface
                     new RunCommandMessage(
                         'app:tvt:evaluate-congestion-forecast --no-interaction'
                     ),
-                    new \DateTimeZone('America/Sao_Paulo'),
                 ),
             )
 
