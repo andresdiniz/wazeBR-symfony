@@ -150382,7 +150382,7 @@ FILE: templates/alert/index.html.twig
 
 {% block javascripts %}
     {{ parent() }}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.min.js" integrity="sha512-mOiNIzRB+4/INX75lwv3+eSG+Sih4wQy+qS/+0mHkk2MjHZW6ABGN6eQD1MoV5Tv9KG+G3UAMy1vW3fk5goVXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.js">" integrity="sha512-mOiNIzRB+4/INX75lwv3+eSG+Sih4wQy+qS/+0mHkk2MjHZW6ABGN6eQD1MoV5Tv9KG+G3UAMy1vW3fk5goVXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
@@ -152127,7 +152127,7 @@ FILE: templates/dashboard/index.html.twig
 
 {% block javascripts %}
     {{ parent() }}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.min.js" integrity="sha512-mOiNIzRB+4/INX75lwv3+eSG+Sih4wQy+qS/+0mHkk2MjHZW6ABGN6eQD1MoV5Tv9KG+G3UAMy1vW3fk5goVXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.js">" integrity="sha512-mOiNIzRB+4/INX75lwv3+eSG+Sih4wQy+qS/+0mHkk2MjHZW6ABGN6eQD1MoV5Tv9KG+G3UAMy1vW3fk5goVXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     {# sem <script type="module"> aqui — o app.js carrega o dashboard.js sozinho #}
@@ -156535,7 +156535,7 @@ FILE: templates/routes/compare.html.twig
 
 {% block javascripts %}
     {{ parent() }}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.min.js" integrity="sha512-mOiNIzRB+4/INX75lwv3+eSG+Sih4wQy+qS/+0mHkk2MjHZW6ABGN6eQD1MoV5Tv9KG+G3UAMy1vW3fk5goVXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.js">" integrity="sha512-mOiNIzRB+4/INX75lwv3+eSG+Sih4wQy+qS/+0mHkk2MjHZW6ABGN6eQD1MoV5Tv9KG+G3UAMy1vW3fk5goVXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 {% endblock %}
@@ -157203,7 +157203,7 @@ FILE: templates/routes/show.html.twig
 
 {% block javascripts %}
     {{ parent() }}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.min.js" integrity="sha512-mOiNIzRB+4/INX75lwv3+eSG+Sih4wQy+qS/+0mHkk2MjHZW6ABGN6eQD1MoV5Tv9KG+G3UAMy1vW3fk5goVXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.js">" integrity="sha512-mOiNIzRB+4/INX75lwv3+eSG+Sih4wQy+qS/+0mHkk2MjHZW6ABGN6eQD1MoV5Tv9KG+G3UAMy1vW3fk5goVXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 {% endblock %}
@@ -157809,7 +157809,7 @@ FILE: templates/weather/show.html.twig
 
 {% block javascripts %}
     {{ parent() }}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.min.js" integrity="sha512-mOiNIzRB+4/INX75lwv3+eSG+Sih4wQy+qS/+0mHkk2MjHZW6ABGN6eQD1MoV5Tv9KG+G3UAMy1vW3fk5goVXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.js">" integrity="sha512-mOiNIzRB+4/INX75lwv3+eSG+Sih4wQy+qS/+0mHkk2MjHZW6ABGN6eQD1MoV5Tv9KG+G3UAMy1vW3fk5goVXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 {% endblock %}
 
 
