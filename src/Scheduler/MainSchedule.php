@@ -73,8 +73,8 @@ final class MainSchedule implements ScheduleProviderInterface
             )
 
             ->add(
-                RecurringMessage::cron(
-                    '15 3 * * *',
+                RecurringMessage::every(
+                    '15 minutes',
                     new RunCommandMessage(
                         'app:tvt:evaluate-congestion-forecast --no-interaction'
                     ),

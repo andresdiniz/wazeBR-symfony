@@ -14,37 +14,42 @@ nelmio_security:
         enabled: true
         enforce:
             default-src: ['self']
-            script-src: 
+            script-src:
                 - 'self'
-                - 'unsafe-inline' # Necessário se usar Rocket Loader ou scripts inline da aplicação
+                - 'unsafe-inline'
                 - 'https://cdn.jsdelivr.net'
                 - 'https://cdnjs.cloudflare.com'
                 - 'https://unpkg.com'
                 - 'https://static.cloudflareinsights.com'
-            style-src: 
+                - 'https://use.typekit.net'
+            style-src:
                 - 'self'
-                - 'unsafe-inline' # Recomendado para Leaflet e estilizações dinâmicas em DOM
+                - 'unsafe-inline'
                 - 'https://cdn.jsdelivr.net'
                 - 'https://cdnjs.cloudflare.com'
                 - 'https://fonts.googleapis.com'
                 - 'https://unpkg.com'
-            img-src: 
+                - 'https://use.typekit.net'
+            img-src:
                 - 'self'
                 - 'data:'
                 - 'blob:'
                 - 'https://*.tile.openstreetmap.org'
                 - 'https://cdnjs.cloudflare.com'
                 - 'https://unpkg.com'
-            font-src: 
+            font-src:
                 - 'self'
                 - 'data:'
                 - 'https://fonts.gstatic.com'
                 - 'https://fonts.googleapis.com'
-            connect-src: 
+                - 'https://use.typekit.net'
+            connect-src:
                 - 'self'
                 - 'https://api.waze.com'
                 - 'https://cloudflareinsights.com'
                 - 'https://static.cloudflareinsights.com'
+                - 'https://unpkg.com'
+                - 'https://cdnjs.cloudflare.com'
 
 when@dev:
     nelmio_security:

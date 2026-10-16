@@ -11,21 +11,73 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\Persistence\ManagerRegistry;
+use Symfony\Contracts\Cache\CacheInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 
 final class DashboardRepository extends ServiceEntityRepository
 {
+    /** Cache entre requisições (segundos). Use 0 para desligar. */
+    private const CACHE_TTL = 30;
+
     private Connection $connection;
 
-    public function __construct(ManagerRegistry $registry)
+    /** Memoização por requisição: evita repetir a mesma query dentro de um getDashboardStats(). */
+    private array $memo = [];
+
+    public function __construct(ManagerRegistry $registry, private readonly CacheInterface $cache)
     {
         parent::__construct($registry, WazeAlert::class);
         $this->connection = $registry->getConnection();
+    }
+
+    /**
+     * Executa $compute uma única vez por chave durante a requisição.
+     *
+     * @param callable():mixed $compute
+     */
+    private function memo(string $key, callable $compute): mixed
+    {
+        if (!array_key_exists($key, $this->memo)) {
+            $this->memo[$key] = $compute();
+        }
+
+        return $this->memo[$key];
+    }
+
+    private function scopeKey(?Partner $partner): string
+    {
+        return $partner !== null ? (string) $partner->getId() : 'all';
     }
 
     /** @return array<string,mixed> */
     public function getDashboardStats(?Partner $partner = null, array $filters = []): array
     {
         $filters = $this->normalizeFilters($filters);
+
+        // Só cacheia combinações limitadas (sem texto livre), para não encher o cache
+        // com uma chave por busca digitada.
+        $cacheable = self::CACHE_TTL > 0
+            && $filters['query'] === ''
+            && $filters['city'] === null
+            && $filters['exclude_streets'] === '';
+
+        if (!$cacheable) {
+            return $this->buildDashboardStats($partner, $filters);
+        }
+
+        $key = sprintf('dashboard_stats_%s_%s_%s', $this->scopeKey($partner), $filters['period'], $filters['type']);
+
+        return $this->cache->get($key, function (ItemInterface $item) use ($partner, $filters): array {
+            $item->expiresAfter(self::CACHE_TTL);
+
+            return $this->buildDashboardStats($partner, $filters);
+        });
+    }
+
+    /** @return array<string,mixed> */
+    private function buildDashboardStats(?Partner $partner, array $filters): array
+    {
+        $this->memo = [];
 
         return [
             'totals'   => $this->getTotals($partner, $filters),
@@ -50,7 +102,7 @@ final class DashboardRepository extends ServiceEntityRepository
             'recent'   => [
                 'alerts'  => $this->getRecentAlerts($partner, $filters, 8),
                 'jams'    => $this->getRecentJams($partner, $filters, 8),
-                'routes'  => $this->getRoutesWithLatestSnapshots($partner, 10),
+                'routes'  => array_slice($this->getRoutesCached($partner, 200), 0, 10),
                 'weather' => $this->getRecentWeather($partner, 5),
             ],
             'hydro'    => [
@@ -197,6 +249,14 @@ final class DashboardRepository extends ServiceEntityRepository
     /** @param array<string,mixed> $filters */
     private function getTotals(?Partner $partner, array $filters): array
     {
+        $key = 'totals:' . $this->scopeKey($partner) . ':' . md5(json_encode($filters, JSON_THROW_ON_ERROR));
+
+        return $this->memo($key, fn (): array => $this->computeTotals($partner, $filters));
+    }
+
+    /** @param array<string,mixed> $filters */
+    private function computeTotals(?Partner $partner, array $filters): array
+    {
         [$wAlerts, $pAlerts]     = $this->buildWhere($partner, $filters, 'collected_at', 'partner_id', 'city', true);
         [$wJams,   $pJams]       = $this->buildWhere($partner, $filters, 'collected_at', 'partner_id', 'city', true, ['street', 'city']);
         [$wWeather,$pWeather]    = $this->buildWhere($partner, $filters, 'observed_at', 'partner_id', '', false, []);
@@ -281,9 +341,18 @@ final class DashboardRepository extends ServiceEntityRepository
         ];
     }
 
+    /** Rotas com último snapshot, buscadas uma vez por requisição. */
+    private function getRoutesCached(?Partner $partner, int $limit): array
+    {
+        return $this->memo(
+            'routes:' . $this->scopeKey($partner) . ':' . $limit,
+            fn (): array => $this->getRoutesWithLatestSnapshots($partner, $limit)
+        );
+    }
+
     private function getRoutesSummary(?Partner $partner): array
     {
-        $routes = $this->getRoutesWithLatestSnapshots($partner, 200);
+        $routes = $this->getRoutesCached($partner, 200);
 
         $total = count($routes);
         $delayed = 0;
@@ -303,6 +372,11 @@ final class DashboardRepository extends ServiceEntityRepository
     // ─────────────────────────────────────────────────────────────────────
 
     private function getHydroStats(?Partner $partner): array
+    {
+        return $this->memo('hydro_stats:' . $this->scopeKey($partner), fn (): array => $this->computeHydroStats($partner));
+    }
+
+    private function computeHydroStats(?Partner $partner): array
     {
         $params = [];
         $where  = ['h.active = 1'];
@@ -598,6 +672,11 @@ final class DashboardRepository extends ServiceEntityRepository
     // ─────────────────────────────────────────────────────────────────────
 
     private function getPluvioStats(?Partner $partner): array
+    {
+        return $this->memo('pluvio_stats:' . $this->scopeKey($partner), fn (): array => $this->computePluvioStats($partner));
+    }
+
+    private function computePluvioStats(?Partner $partner): array
     {
         $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
         $since1h  = $now->modify('-1 hour')->format('Y-m-d H:i:s');
