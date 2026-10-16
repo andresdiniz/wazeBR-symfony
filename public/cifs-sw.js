@@ -3,7 +3,7 @@ const CACHE = 'cifs-v1';
 const OFFLINE_URLS = [
     '/cifs',
     '/cifs/api/types?locale=pt',
-    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css',
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous" />,
     'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
 ];
 
