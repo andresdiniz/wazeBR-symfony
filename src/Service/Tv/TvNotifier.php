@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Tv;
 
 use App\Entity\Partner;
+use App\Service\RouteLiveNotifier;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Mercure\HubInterface;
 use Symfony\Component\Mercure\Update;
@@ -16,6 +17,7 @@ use Symfony\Contracts\Cache\TagAwareCacheInterface;
  * Fluxo:
  *   1. Invalida o cache tag-aware do wallboard (tv_partner_{id} ou tv_global).
  *   2. Publica um evento "magro" no Mercure no tópico tv/{id}.
+ *   3. Repassa o aviso ao RouteLiveNotifier (tópico routes/{id}).
  *
  * O browser NÃO recebe o payload completo por SSE — apenas o aviso.
  * Ao receber o evento, faz um fetch em /tv/api/data, que já estará
@@ -27,6 +29,7 @@ final class TvNotifier
         private readonly HubInterface $hub,
         private readonly TagAwareCacheInterface $tvCache,
         private readonly LoggerInterface $logger,
+        private readonly RouteLiveNotifier $routeLiveNotifier,
     ) {
     }
 
@@ -70,6 +73,9 @@ final class TvNotifier
                 'topic' => $topic,
             ]);
         }
+
+        // 3. Mesmo aviso para as páginas /routes/{id} abertas (atualização ao vivo).
+        $this->routeLiveNotifier->notify($partner);
     }
 
     /**

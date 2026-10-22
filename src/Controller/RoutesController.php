@@ -4,45 +4,51 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use Doctrine\DBAL\Connection;
 use App\Entity\Partner;
-use App\Entity\User;
+use App\Repository\RouteCompareRepository;
+use App\Repository\RouteDetailRepository;
+use App\Repository\RouteFavoriteRepository;
 use App\Repository\RoutesRepository;
+use App\Service\PartnerScopeResolver;
+use App\Service\RouteCsvExporter;
+use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Routing\Attribute\Route;
-use App\Repository\RouteDetailRepository;
-use App\Repository\RouteCompareRepository;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/routes', name: 'routes_')]
+#[IsGranted('IS_AUTHENTICATED_FULLY')]
 final class RoutesController extends AbstractController
 {
+    public function __construct(private readonly PartnerScopeResolver $scope)
+    {
+    }
+
     #[Route('', name: 'index', methods: ['GET'])]
     public function index(Request $request, RoutesRepository $repository): Response
     {
-        $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
-
         $partner = $this->resolvePartnerScope();
         $filters = $this->extractFilters($request);
         $payload = $repository->getRoutesDashboard($partner, $filters);
 
         return $this->render('routes/index.html.twig', [
-            'routes'   => $payload['routes'],
-            'stats'    => $payload['stats'],
-            'map'      => $payload['map'],
-            'filters'  => $filters,
-            'partner'  => $partner,
+            'routes'  => $payload['routes'],
+            'stats'   => $payload['stats'],
+            'map'     => $payload['map'],
+            'filters' => $filters,
+            'partner' => $partner,
         ]);
     }
 
     #[Route('/api/data', name: 'api_data', methods: ['GET'])]
     public function apiData(Request $request, RoutesRepository $repository): JsonResponse
     {
-        $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
-
         $partner = $this->resolvePartnerScope();
         $filters = $this->extractFilters($request);
         $payload = $repository->getRoutesDashboard($partner, $filters);
@@ -55,287 +61,114 @@ final class RoutesController extends AbstractController
         ]);
     }
 
+    // ─── Detalhe da rota ──────────────────────────────────────────────────────
+
     #[Route('/{id}', name: 'show', requirements: ['id' => '\d+'], methods: ['GET'])]
-    public function show(int $id, RouteDetailRepository $repository): Response
-    {
-        $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
-
+    public function show(
+        int $id,
+        RouteDetailRepository $repository,
+        RouteFavoriteRepository $favorites,
+    ): Response {
         $partner = $this->resolvePartnerScope();
-        $detail  = $repository->getRouteDetail($partner, $id);
+        $detail  = $repository->getRouteDetail($partner, $id)
+            ?? throw $this->createNotFoundException('Rota não encontrada.');
 
-        if ($detail === null) {
-            throw $this->createNotFoundException('Rota não encontrada.');
-        }
+        $userId = (int) $this->scope->user()->getId();
 
-        return $this->render('routes/show.html.twig', [
-            'route'             => $detail['route'],
-            'current'           => $detail['current'],
-            'stats'             => $detail['stats'],
-            'heatmap'           => $detail['heatmap'],
-            'timeline'          => $detail['timeline'],
-            'byHour'            => $detail['byHour'],
-            'byDow'             => $detail['byDow'],
-            'jamDistribution'   => $detail['jamDistribution'],
-            'topSubRoutes'      => $detail['topSubRoutes'],
-            'irregularities'    => $detail['irregularities'],
-            'nearbyAlerts'      => $detail['nearbyAlerts']     ?? [],
-            'routePolyline'     => $detail['routePolyline']    ?? [],
-            'subRoutesPolyline' => $detail['subRoutesPolyline']?? [],
-            'partner'           => $partner,
+        // As chaves de $detail são exatamente as variáveis do template
+        // (route, current, stats, heatmap, timeline, byHour, byDow, jamDistribution,
+        //  topSubRoutes, irregularities, nearbyAlerts, occurrences, routePolyline,
+        //  subRoutesPolyline).
+        return $this->render('routes/show.html.twig', $detail + [
+            'partner'        => $partner,
+            'isFavorite'     => $favorites->isFavorite($userId, $id),
         ]);
     }
 
-    // ─── Export CSV ───────────────────────────────────────────────────────────
+    // ─── Exportações CSV ──────────────────────────────────────────────────────
 
     /**
      * Exporta os dados da rota em CSV.
      *
-     * Tipos suportados via query string `?type=`:
+     * Tipos suportados via `?type=` (ver RouteCsvExporter::TYPES):
      *   timeline      — evolução do atraso (últimos 7 dias)  [padrão]
      *   by_hour       — média por hora do dia (30 dias)
      *   by_dow        — média por dia da semana (30 dias)
      *   occurrences   — alertas Waze + irregularidades TVT próximos
      *   subroutes     — trechos problemáticos com métricas
      *
-     * Exemplos:
-     *   /routes/42/export.csv
-     *   /routes/42/export.csv?type=occurrences
+     * Tipo desconhecido → 400.
      */
     #[Route('/{id}/export.csv', name: 'export_csv', requirements: ['id' => '\d+'], methods: ['GET'])]
-    public function exportCsv(int $id, Request $request, RouteDetailRepository $repository): StreamedResponse
-    {
-        $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
-
-        $partner = $this->resolvePartnerScope();
-        $detail  = $repository->getRouteDetail($partner, $id);
-
-        if ($detail === null) {
-            throw $this->createNotFoundException('Rota não encontrada.');
+    public function exportCsv(
+        int $id,
+        Request $request,
+        RouteDetailRepository $repository,
+        RouteCsvExporter $exporter,
+    ): StreamedResponse {
+        $type = (string) $request->query->get('type', 'timeline');
+        if (!RouteCsvExporter::isValidType($type)) {
+            throw new BadRequestHttpException('Tipo de exportação inválido.');
         }
 
-        $type      = $request->query->get('type', 'timeline');
-        $routeName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $detail['route']['name'] ?? "rota_{$id}");
-        $filename  = "rota_{$routeName}_{$type}_" . date('Ymd') . '.csv';
+        $partner = $this->resolvePartnerScope();
+        $detail  = $repository->getRouteDetail($partner, $id)
+            ?? throw $this->createNotFoundException('Rota não encontrada.');
 
-        $response = new StreamedResponse(function () use ($detail, $type): void {
+        $response = new StreamedResponse(function () use ($exporter, $type, $detail): void {
             $out = fopen('php://output', 'w');
-            // BOM UTF-8 para Excel abrir corretamente
-            fwrite($out, "\xEF\xBB\xBF");
-
-            match ($type) {
-                'by_hour'     => $this->writeCsvByHour($out, $detail),
-                'by_dow'      => $this->writeCsvByDow($out, $detail),
-                'occurrences' => $this->writeCsvOccurrences($out, $detail),
-                'subroutes'   => $this->writeCsvSubRoutes($out, $detail),
-                default       => $this->writeCsvTimeline($out, $detail),
-            };
-
+            $exporter->write($out, $type, $detail);
             fclose($out);
         });
 
+        return $this->csvHeaders($response, $exporter->filename((string) $detail['route']['name'], $id, $type));
+    }
+
+    /**
+     * Histórico bruto (snapshot a snapshot), em streaming.
+     *
+     *   ?days=30   janela (1–365, padrão 30)
+     *   ?sep=,     separador: `;` (padrão, Excel pt-BR) ou `,` (pandas / tidyverse)
+     */
+    #[Route('/{id}/export/historico.csv', name: 'export_historico_csv', requirements: ['id' => '\d+'], methods: ['GET'])]
+    public function exportHistoricoCsv(
+        int $id,
+        Request $request,
+        RouteDetailRepository $repository,
+        RouteCsvExporter $exporter,
+    ): StreamedResponse {
+        $days = max(1, min(365, (int) $request->query->get('days', 30)));
+        $sep  = (string) $request->query->get('sep', ';') === ',' ? ',' : ';';
+
+        $historico = $repository->getHistorico($this->resolvePartnerScope(), $id, $days)
+            ?? throw $this->createNotFoundException('Rota não encontrada.');
+
+        $response = new StreamedResponse(function () use ($exporter, $historico, $sep): void {
+            $out = fopen('php://output', 'w');
+            $exporter->writeHistorico($out, $historico, $sep);
+            fclose($out);
+        });
+
+        return $this->csvHeaders(
+            $response,
+            $exporter->filename((string) $historico['route']['name'], $id, "historico_{$days}d")
+        );
+    }
+
+    private function csvHeaders(StreamedResponse $response, string $filename): StreamedResponse
+    {
         $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
-        $response->headers->set('Content-Disposition', "attachment; filename=\"{$filename}\"");
+        $response->headers->set(
+            'Content-Disposition',
+            $response->headers->makeDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $filename)
+        );
         $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate');
+        $response->headers->set('X-Content-Type-Options', 'nosniff');
 
         return $response;
     }
 
-    // ─── Writers CSV ──────────────────────────────────────────────────────────
-
-    /** @param resource $out */
-    private function writeCsvTimeline($out, array $detail): void
-    {
-        $route    = $detail['route'];
-        $timeline = $detail['timeline'] ?? [];
-
-        // Metadados no topo
-        fputcsv($out, ['# Rota', $route['name'] ?? ''], ';');
-        fputcsv($out, ['# Período', 'Últimos 7 dias'], ';');
-        fputcsv($out, ['# Gerado em', (new \DateTimeImmutable())->format('d/m/Y H:i')], ';');
-        fputcsv($out, [], ';');
-
-        // Cabeçalho
-        fputcsv($out, [
-            'Data/Hora (BRT)',
-            'Atraso médio (s)',
-            '% vs histórico',
-            'Amostras',
-        ], ';');
-
-        foreach ($timeline as $p) {
-            // Converte UTC→BRT se a coluna time vier em UTC
-            $time = $p['time'] ?? '';
-            try {
-                $dt  = new \DateTimeImmutable($time, new \DateTimeZone('UTC'));
-                $brt = $dt->setTimezone(new \DateTimeZone('America/Sao_Paulo'))->format('d/m/Y H:i');
-            } catch (\Throwable) {
-                $brt = $time;
-            }
-
-            $ratio = $p['avgRatio'] !== null ? round($p['avgRatio'] * 100, 1) : '';
-
-            fputcsv($out, [
-                $brt,
-                $p['avgDelay'] !== null ? round((float) $p['avgDelay'], 1) : '',
-                $ratio !== '' ? "{$ratio}%" : '',
-                $p['count'] ?? '',
-            ], ';');
-        }
-    }
-
-    /** @param resource $out */
-    private function writeCsvByHour($out, array $detail): void
-    {
-        $route   = $detail['route'];
-        $byHour  = $detail['byHour'] ?? [];
-
-        fputcsv($out, ['# Rota', $route['name'] ?? ''], ';');
-        fputcsv($out, ['# Período', 'Últimos 30 dias'], ';');
-        fputcsv($out, ['# Gerado em', (new \DateTimeImmutable())->format('d/m/Y H:i')], ';');
-        fputcsv($out, [], ';');
-
-        fputcsv($out, ['Hora', 'Atraso médio (s)', '% vs histórico', 'Amostras'], ';');
-
-        foreach ($byHour as $p) {
-            $ratio = $p['avgRatio'] !== null ? round($p['avgRatio'] * 100, 1) . '%' : '';
-            fputcsv($out, [
-                sprintf('%02dh', (int) $p['hour']),
-                $p['avgDelay'] !== null ? round((float) $p['avgDelay'], 1) : '',
-                $ratio,
-                $p['count'] ?? '',
-            ], ';');
-        }
-    }
-
-    /** @param resource $out */
-    private function writeCsvByDow($out, array $detail): void
-    {
-        $route  = $detail['route'];
-        $byDow  = $detail['byDow'] ?? [];
-        $labels = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
-
-        fputcsv($out, ['# Rota', $route['name'] ?? ''], ';');
-        fputcsv($out, ['# Período', 'Últimos 30 dias'], ';');
-        fputcsv($out, ['# Gerado em', (new \DateTimeImmutable())->format('d/m/Y H:i')], ';');
-        fputcsv($out, [], ';');
-
-        fputcsv($out, ['Dia da semana', 'Atraso médio (s)', '% vs histórico', 'Amostras'], ';');
-
-        foreach ($byDow as $p) {
-            $ratio = $p['avgRatio'] !== null ? round($p['avgRatio'] * 100, 1) . '%' : '';
-            fputcsv($out, [
-                $labels[(int) $p['dow']] ?? "Dia {$p['dow']}",
-                $p['avgDelay'] !== null ? round((float) $p['avgDelay'], 1) : '',
-                $ratio,
-                $p['count'] ?? '',
-            ], ';');
-        }
-    }
-
-    /** @param resource $out */
-    private function writeCsvOccurrences($out, array $detail): void
-    {
-        $route         = $detail['route'];
-        $nearbyAlerts  = $detail['nearbyAlerts']   ?? [];
-        $irregularities = $detail['irregularities'] ?? [];
-
-        fputcsv($out, ['# Rota', $route['name'] ?? ''], ';');
-        fputcsv($out, ['# Período', 'Últimos 7 dias · até 60 m do traçado'], ';');
-        fputcsv($out, ['# Gerado em', (new \DateTimeImmutable())->format('d/m/Y H:i')], ';');
-        fputcsv($out, [], ';');
-
-        fputcsv($out, [
-            'Fonte',
-            'Tipo',
-            'Subtipo',
-            'Via',
-            'Cidade',
-            'Severidade',
-            'Distância do traçado (m)',
-            'Data/Hora (BRT)',
-        ], ';');
-
-        foreach ($nearbyAlerts as $a) {
-            $dt = '';
-            if (!empty($a['pubDateTime'])) {
-                try {
-                    $dt = (new \DateTimeImmutable($a['pubDateTime'], new \DateTimeZone('UTC')))
-                        ->setTimezone(new \DateTimeZone('America/Sao_Paulo'))
-                        ->format('d/m/Y H:i');
-                } catch (\Throwable) {}
-            }
-            fputcsv($out, [
-                'Waze',
-                $a['typeLabel'] ?? $a['type'] ?? '',
-                $a['subtype'] ?? '',
-                $a['street']  ?? '',
-                $a['city']    ?? '',
-                '',
-                $a['distanceMeters'] ?? '',
-                $dt,
-            ], ';');
-        }
-
-        foreach ($irregularities as $irr) {
-            $dt = '';
-            if (!empty($irr['reportedAt'])) {
-                try {
-                    $dt = (new \DateTimeImmutable($irr['reportedAt']))
-                        ->setTimezone(new \DateTimeZone('America/Sao_Paulo'))
-                        ->format('d/m/Y H:i');
-                } catch (\Throwable) {}
-            }
-            fputcsv($out, [
-                'TVT',
-                $irr['type']    ?? 'Irregularidade',
-                $irr['subtype'] ?? '',
-                $irr['street']  ?? '',
-                $irr['city']    ?? '',
-                $irr['severity'] ?? '',
-                '',
-                $dt,
-            ], ';');
-        }
-    }
-
-    /** @param resource $out */
-    private function writeCsvSubRoutes($out, array $detail): void
-    {
-        $route      = $detail['route'];
-        $subRoutes  = $detail['topSubRoutes'] ?? [];
-
-        fputcsv($out, ['# Rota', $route['name'] ?? ''], ';');
-        fputcsv($out, ['# Gerado em', (new \DateTimeImmutable())->format('d/m/Y H:i')], ';');
-        fputcsv($out, [], ';');
-
-        fputcsv($out, [
-            'Trecho',
-            'De',
-            'Até',
-            'Atraso (s)',
-            '% vs histórico',
-            'Tempo histórico (s)',
-            'Nível de jam',
-            'Extensão (km)',
-        ], ';');
-
-        foreach ($subRoutes as $sub) {
-            $ratio = $sub['delayRatio'] !== null ? round($sub['delayRatio'] * 100, 1) . '%' : '';
-            $km    = $sub['lengthMeters'] ? round($sub['lengthMeters'] / 1000, 2) : '';
-            fputcsv($out, [
-                $sub['name']         ?? '',
-                $sub['from']         ?? '',
-                $sub['to']           ?? '',
-                $sub['delaySeconds'] ?? '',
-                $ratio,
-                $sub['historicTime'] !== null ? round((float) $sub['historicTime'], 0) : '',
-                $sub['jamLevel']     ?? '',
-                $km,
-            ], ';');
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─── Comparação ───────────────────────────────────────────────────────────
 
     #[Route('/compare', name: 'compare', methods: ['GET'])]
     public function compare(
@@ -343,8 +176,6 @@ final class RoutesController extends AbstractController
         RouteCompareRepository $repository,
         Connection $connection,
     ): Response {
-        $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
-
         $partner = $this->resolvePartnerScope();
         $aId = (int) $request->query->get('a', 0);
         $bId = (int) $request->query->get('b', 0);
@@ -405,11 +236,7 @@ final class RoutesController extends AbstractController
 
     private function resolvePartnerScope(): ?Partner
     {
-        /** @var User|null $user */
-        $user = $this->getUser();
-        if (!$user instanceof User) return null;
-        if ($user->isGlobalAdmin()) return null;
-        return $user->getPartner();
+        return $this->scope->resolve();
     }
 
     /** @return array{query:string,level:string} */

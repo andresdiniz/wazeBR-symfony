@@ -108,11 +108,15 @@
         "type": "js"
     },
     "\/assets\/js\/pages\/route-show.js": {
-        "path": "\/assets\/js\/pages\/route-show-pI6pOA8.js",
+        "path": "\/assets\/js\/pages\/route-show-lI3tVCj.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/route-live.js": {
+        "path": "\/assets\/js\/pages\/route-live-PTI0R0y.js",
         "type": "js"
     },
     "\/assets\/js\/pages\/route-forecast.js": {
-        "path": "\/assets\/js\/pages\/route-forecast-857muEC.js",
+        "path": "\/assets\/js\/pages\/route-forecast-w8npXeP.js",
         "type": "js"
     },
     "\/assets\/js\/pages\/route-compare.js": {

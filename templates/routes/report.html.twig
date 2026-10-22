@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow, noarchive">
+    <title>Relatório · {{ route.name }} · WazeBR</title>
+    <link rel="stylesheet" href="{{ asset('css/pages/route-report.css') }}">
+</head>
+<body>
+{% set cur = {
+    time: null, historicTime: null, delaySeconds: null, delayRatio: null, level: null,
+    recordedAt: null, city: null, state: null
+}|merge(current ?? {}) %}
+
+<main class="rr-page" data-route-report>
+
+    <div class="rr-toolbar no-print">
+        {% if not public %}
+            <a class="rr-btn" href="{{ path('routes_show', {id: route.id}) }}">← Voltar à rota</a>
+        {% else %}
+            <span></span>
+        {% endif %}
+        <button type="button" class="rr-btn rr-btn--primary" data-report-print>Imprimir / Salvar em PDF</button>
+    </div>
+
+    <header class="rr-header">
+        <div>
+            <span class="rr-eyebrow">Relatório de trânsito · WazeBR</span>
+            <h1>{{ route.name }}</h1>
+            <p class="rr-sub">
+                {% if route.from and route.to %}{{ route.from }} → {{ route.to }}{% elseif route.from %}{{ route.from }}{% elseif route.to %}{{ route.to }}{% endif %}
+                {% if route.lengthMeters %} · {{ (route.lengthMeters / 1000)|number_format(1, ',', '.') }} km{% endif %}
+                {% if cur.city %} · {{ cur.city }}{% if cur.state %}/{{ cur.state }}{% endif %}{% endif %}
+            </p>
+        </div>
+        <div class="rr-meta">
+            <div class="rr-health rr-health--{{ stats.healthLevel }}">
+                <strong>{{ stats.health }}<small>%</small></strong>
+                <span>{{ stats.healthLabel }}</span>
+            </div>
+            <small>Gerado em {{ 'now'|date('d/m/Y H:i') }}</small>
+            {% if public and expiresAt %}<small>Link válido até {{ expiresAt|date('d/m/Y H:i') }}</small>{% endif %}
+        </div>
+    </header>
+
+    {% if not route.isActive %}
+        <p class="rr-note rr-note--bad">Rota desativada: os dados abaixo são históricos.</p>
+    {% endif %}
+
+    {# ── Resumo ────────────────────────────────────────────────── #}
+    <section class="rr-section rr-summary">
+        <h2>Resumo</h2>
+        <ul>
+            {% for line in report.summary %}<li>{{ line }}</li>{% endfor %}
+        </ul>
+    </section>
+
+    {# ── Indicadores ───────────────────────────────────────────── #}
+    <section class="rr-kpis">
+        <div class="rr-kpi">
+            <span>Tempo atual</span>
+            {% if cur.time is not null %}
+                {% set t = cur.time|round(0) %}
+                <strong>{% if t >= 60 %}{{ (t // 60)|round(0, 'floor') }}min {{ '%02d'|format(t % 60) }}s{% else %}{{ t }}s{% endif %}</strong>
+                <small>{% if cur.historicTime is not null %}normal: {{ cur.historicTime|round(0) }}s{% endif %}</small>
+            {% else %}<strong>—</strong><small>sem leitura</small>{% endif %}
+        </div>
+        <div class="rr-kpi">
+            <span>Média 24h</span>
+            {% if stats.avgDelay24h is not null %}
+                <strong>{{ stats.avgDelay24h >= 0 ? '+' : '−' }}{{ stats.avgDelay24h|abs|round(0) }}s</strong>
+                <small>{{ ((stats.avgRatio24h ?? 0) * 100)|round(0) }}% vs histórico</small>
+            {% else %}<strong>—</strong><small>sem dados</small>{% endif %}
+        </div>
+        <div class="rr-kpi">
+            <span>Média 7 dias</span>
+            {% if stats.avgDelay7d is not null %}
+                <strong>{{ stats.avgDelay7d >= 0 ? '+' : '−' }}{{ stats.avgDelay7d|abs|round(0) }}s</strong>
+                <small>{{ ((stats.avgRatio7d ?? 0) * 100)|round(0) }}% vs histórico</small>
+            {% else %}<strong>—</strong><small>sem dados</small>{% endif %}
+        </div>
+        <div class="rr-kpi">
+            <span>Pior hora</span>
+            {% if stats.worstHour %}
+                <strong>{{ '%02d'|format(stats.worstHour.hour) }}h</strong>
+                <small>{{ (stats.worstHour.avgRatio * 100)|round(0) }}% vs histórico</small>
+            {% else %}<strong>—</strong><small>amostra insuficiente</small>{% endif %}
+        </div>
+        <div class="rr-kpi">
+            <span>Pior dia</span>
+            {% if stats.worstDow %}
+                <strong>{{ ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'][stats.worstDow.dow] }}</strong>
+                <small>{{ (stats.worstDow.avgRatio * 100)|round(0) }}% vs histórico</small>
+            {% else %}<strong>—</strong><small>amostra insuficiente</small>{% endif %}
+        </div>
+        <div class="rr-kpi">
+            <span>Amostras</span>
+            <strong>{{ stats.sampleCount30d|number_format(0, ',', '.') }}</strong>
+            <small>últimos 30 dias</small>
+        </div>
+    </section>
+
+    {# ── Mapa ──────────────────────────────────────────────────── #}
+    <section class="rr-section">
+        <h2>Traçado e ocorrências</h2>
+        {% if report.map %}
+            {% set m = report.map %}
+            <svg class="rr-map" viewBox="0 0 {{ m.w }} {{ m.h }}" role="img"
+                 aria-label="Esquema do traçado da rota com alertas e irregularidades">
+                <rect width="{{ m.w }}" height="{{ m.h }}" fill="#f1f5f9"/>
+                {% if m.main %}<path d="{{ m.main }}" fill="none" stroke="#cbd5e1" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>{% endif %}
+                {% for s in m.subs %}
+                    <path d="{{ s.d }}" fill="none" stroke="{{ s.color }}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><title>{{ s.title }}</title></path>
+                {% endfor %}
+                {% if m.main and not m.subs %}<path d="{{ m.main }}" fill="none" stroke="#2563eb" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>{% endif %}
+                {% for p in m.alerts %}<circle cx="{{ p.x }}" cy="{{ p.y }}" r="5" fill="{{ p.color }}" stroke="#fff" stroke-width="1.5"/>{% endfor %}
+                {% for p in m.irr %}<circle cx="{{ p.x }}" cy="{{ p.y }}" r="5" fill="{{ p.color }}" stroke="#fff" stroke-width="1.5"/>{% endfor %}
+            </svg>
+            <p class="rr-legend">
+                {% if m.hasColor %}Trechos coloridos pela média das últimas {{ recentWindow.hours }} h (verde = normal, vermelho = muito lento).{% endif %}
+                <span class="rr-dot" style="background:#f59e0b"></span> alertas Waze
+                <span class="rr-dot" style="background:#7c3aed"></span> irregularidades.
+                Esquema sem escala de fundo.
+            </p>
+        {% else %}
+            <p class="rr-empty">Esta rota não possui geometria cadastrada.</p>
+        {% endif %}
+    </section>
+
+    {# ── Heatmap ───────────────────────────────────────────────── #}
+    <section class="rr-section">
+        <h2>Padrão semanal — dia × hora <small>(últimos 30 dias, % acima do histórico)</small></h2>
+        <div class="rr-heat">
+            <div class="rr-heat__row rr-heat__row--head">
+                <span></span>
+                {% for h in 0..23 %}<span>{{ '%02d'|format(h) }}</span>{% endfor %}
+            </div>
+            {% for row in report.heatmap %}
+                <div class="rr-heat__row">
+                    <span class="rr-heat__label">{{ row.label }}</span>
+                    {% for c in row.cells %}
+                        <i title="{{ c.title }}" style="{% if c.color %}background:{{ c.color }}{% endif %}"{% if not c.color %} class="is-empty"{% endif %}></i>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+        <p class="rr-legend"><span class="rr-grad"></span> sem atraso → muito atraso · células cinza: sem amostras suficientes.</p>
+    </section>
+
+    {# ── Timeline ──────────────────────────────────────────────── #}
+    <section class="rr-section">
+        <h2>Evolução do atraso <small>(últimos 7 dias, segundos acima do histórico)</small></h2>
+        {% if report.timeline %}
+            {% set t = report.timeline %}
+            <svg class="rr-chart" viewBox="0 0 {{ t.w }} {{ t.h }}" preserveAspectRatio="none" role="img"
+                 aria-label="Evolução horária do atraso nos últimos 7 dias">
+                <line x1="0" x2="{{ t.w }}" y1="{{ t.zeroY }}" y2="{{ t.zeroY }}" stroke="#cbd5e1" stroke-dasharray="4 3"/>
+                <path d="{{ t.area }}" fill="rgba(37,99,235,.14)"/>
+                <path d="{{ t.line }}" fill="none" stroke="#2563eb" stroke-width="1.8" vector-effect="non-scaling-stroke"/>
+            </svg>
+            <p class="rr-axis"><span>{{ t.from|slice(8, 2) }}/{{ t.from|slice(5, 2) }} {{ t.from|slice(11, 5) }}</span><span>pico: +{{ t.max }}s</span><span>{{ t.to|slice(8, 2) }}/{{ t.to|slice(5, 2) }} {{ t.to|slice(11, 5) }}</span></p>
+        {% else %}
+            <p class="rr-empty">Sem dados suficientes nos últimos 7 dias.</p>
+        {% endif %}
+    </section>
+
+    {# ── Por hora / por dia ────────────────────────────────────── #}
+    <div class="rr-cols">
+        <section class="rr-section">
+            <h2>Média por hora do dia</h2>
+            <div class="rr-bars rr-bars--24">
+                {% for b in report.byHour %}
+                    <div title="{{ b.title }}"><i style="height:{{ b.height }}%;background:{{ b.color }}"></i><span>{{ b.label }}</span></div>
+                {% endfor %}
+            </div>
+        </section>
+        <section class="rr-section">
+            <h2>Média por dia da semana</h2>
+            <div class="rr-bars rr-bars--7">
+                {% for b in report.byDow %}
+                    <div title="{{ b.title }}"><i style="height:{{ b.height }}%;background:{{ b.color }}"></i><span>{{ b.label }}</span></div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+
+    {# ── Trechos ───────────────────────────────────────────────── #}
+    <section class="rr-section">
+        <h2>Trechos mais problemáticos <small>(estado atual)</small></h2>
+        {% if report.subRoutes %}
+            <table class="rr-table">
+                <thead><tr><th>Trecho</th><th>Agora</th><th>Normal</th><th>Atraso</th><th>% vs histórico</th><th>Extensão</th></tr></thead>
+                <tbody>
+                {% for s in report.subRoutes %}
+                    <tr>
+                        <td>{{ s.name }}</td>
+                        <td>{{ s.time is not null ? (s.time|round(0)) ~ ' s' : '—' }}</td>
+                        <td>{{ s.historicTime is not null ? (s.historicTime|round(0)) ~ ' s' : '—' }}</td>
+                        <td>+{{ s.delaySeconds ?? 0 }} s</td>
+                        <td><span class="rr-pill rr-pill--{{ s.level }}">{{ s.delayRatio is not null ? (s.delayRatio * 100)|round(0) ~ '%' : '—' }}</span></td>
+                        <td>{{ s.lengthMeters ? (s.lengthMeters / 1000)|number_format(2, ',', '.') ~ ' km' : '—' }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="rr-empty">Sem sub-rotas cadastradas.</p>
+        {% endif %}
+    </section>
+
+    {# ── Ocorrências ───────────────────────────────────────────── #}
+    <section class="rr-section">
+        <h2>Ocorrências recentes <small>(7 dias · até 60 m do traçado)</small></h2>
+        {% if report.occurrences %}
+            <table class="rr-table">
+                <thead><tr><th>Quando</th><th>Fonte</th><th>Tipo</th><th>Local</th></tr></thead>
+                <tbody>
+                {% for o in report.occurrences %}
+                    <tr>
+                        <td>{{ o.at ? o.at|date('d/m H:i') : '—' }}</td>
+                        <td>{{ o.source == 'waze' ? 'Waze' : 'TVT' }}</td>
+                        <td>{{ o.type }}{% if o.subtype %} · {{ o.subtype }}{% endif %}</td>
+                        <td>{{ [o.street, o.city]|filter(p => p)|join(' · ') ?: '—' }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="rr-empty">Nenhuma ocorrência registrada no período.</p>
+        {% endif %}
+    </section>
+
+    <footer class="rr-foot">
+        <p><strong>Como ler:</strong> “% vs histórico” = (tempo medido − tempo histórico) ÷ tempo histórico. A escala de cores usa essa razão, não o atraso em segundos, para tratar igual uma rota curta e uma longa. Horas com menos de 2 amostras ficam em cinza.</p>
+        <p>Fonte: dados de trânsito coletados via Waze (Traffic View) e organizados pelo WazeBR. Horários no fuso {{ app_timezone }}.</p>
+    </footer>
+</main>
+
+<script type="module" src="{{ asset('js/pages/route-report.js') }}"></script>
+</body>
+</html>

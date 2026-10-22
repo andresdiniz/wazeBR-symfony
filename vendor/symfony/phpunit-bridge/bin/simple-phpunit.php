@@ -21,7 +21,7 @@ error_reporting(-1);
 global $argv, $argc;
 $argv = $_SERVER['argv'] ?? [];
 $argc = $_SERVER['argc'] ?? 0;
-$getEnvVar = function ($name, $default = false) use ($argv) {
+$getEnvVar = static function ($name, $default = false) use ($argv) {
     if (false !== $value = getenv($name)) {
         return $value;
     }
@@ -29,7 +29,7 @@ $getEnvVar = function ($name, $default = false) use ($argv) {
     static $phpunitConfig = null;
     if (null === $phpunitConfig) {
         $phpunitConfigFilename = null;
-        $getPhpUnitConfig = function ($probableConfig) use (&$getPhpUnitConfig) {
+        $getPhpUnitConfig = static function ($probableConfig) use (&$getPhpUnitConfig) {
             if (!$probableConfig) {
                 return null;
             }
@@ -89,7 +89,7 @@ $getEnvVar = function ($name, $default = false) use ($argv) {
     return $default;
 };
 
-$passthruOrFail = function ($command) {
+$passthruOrFail = static function ($command) {
     passthru($command, $status);
 
     if ($status) {
@@ -114,13 +114,19 @@ $PHPUNIT_REMOVE_RETURN_TYPEHINT = filter_var($getEnvVar('SYMFONY_PHPUNIT_REMOVE_
 
 $COMPOSER_JSON = getenv('COMPOSER') ?: 'composer.json';
 
-$root = __DIR__;
-while (!file_exists($root.'/'.$COMPOSER_JSON) || file_exists($root.'/DeprecationErrorHandler.php')) {
-    if ($root === dirname($root)) {
-        break;
+$findRoot = static function ($dir) use ($COMPOSER_JSON) {
+    while (!file_exists($dir.'/'.$COMPOSER_JSON) || file_exists($dir.'/DeprecationErrorHandler.php')) {
+        if ($dir === dirname($dir)) {
+            return null;
+        }
+        $dir = dirname($dir);
     }
-    $root = dirname($root);
-}
+
+    return $dir;
+};
+
+// __DIR__ has symlinks resolved, so the walk up leaves the project when vendor/ points outside of it
+$root = $findRoot(__DIR__) ?? $findRoot(getcwd()) ?? getcwd();
 
 $oldPwd = getcwd();
 $PHPUNIT_DIR = rtrim($getEnvVar('SYMFONY_PHPUNIT_DIR', $root.'/vendor/bin/.phpunit'), '/'.\DIRECTORY_SEPARATOR);
@@ -218,9 +224,7 @@ if (!file_exists("$PHPUNIT_DIR/$PHPUNIT_VERSION_DIR/phpunit") || $configurationH
         'requires' => ['php' => '*'],
     ];
 
-    $stableVersions = array_filter($info['versions'], function ($v) {
-        return !preg_match('/-dev$|^dev-/', $v);
-    });
+    $stableVersions = array_filter($info['versions'], static fn ($v) => !preg_match('/-dev$|^dev-/', $v));
 
     if (!$stableVersions) {
         $passthruOrFail("$COMPOSER create-project --ignore-platform-reqs --no-install --prefer-dist --no-scripts --no-plugins --no-progress -s dev phpunit/phpunit $PHPUNIT_VERSION_DIR \"$PHPUNIT_VERSION.*\"");

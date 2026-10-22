@@ -889,6 +889,57 @@ abstract class AbstractPlatform
         return $this->buildCreateTableSQL($table, false);
     }
 
+    /**
+     * Resolves the DBAL type instance of a column or of a column definition array.
+     *
+     * @param array<string, mixed>|Column $column Column properties.
+     */
+    final protected function getColumnType(array|Column $column): Type
+    {
+        if ($column instanceof Column) {
+            // @phpstan-ignore missingType.checkedException
+            return Type::getType($column->getTypeName());
+        }
+
+        $type = $this->getColumnTypeOrNull($column);
+
+        if ($type === null) {
+            $name = $column['name'] ?? '';
+
+            throw InvalidColumnDeclaration::fromMissingColumnType(is_string($name) ? $name : '');
+        }
+
+        return $type;
+    }
+
+    /**
+     * Resolves the DBAL type instance of a column or of a column definition array, or null when the definition
+     * carries no type.
+     *
+     * @param array<string, mixed> $column Column properties.
+     */
+    final protected function getColumnTypeOrNull(array $column): ?Type
+    {
+        if (isset($column['typeName']) && is_string($column['typeName'])) {
+            // @phpstan-ignore missingType.checkedException
+            return Type::getType($column['typeName']);
+        }
+
+        if (isset($column['type']) && $column['type'] instanceof Type) {
+            Deprecation::trigger(
+                'doctrine/dbal',
+                'https://github.com/doctrine/dbal/pull/7490',
+                'Providing a %s instance under the "type" key of a column definition array is deprecated.'
+                    . ' Provide the type name under the "typeName" key instead.',
+                Type::class,
+            );
+
+            return $column['type'];
+        }
+
+        return null;
+    }
+
     /** @return list<string> */
     private function buildCreateTableSQL(Table $table, bool $createForeignKeys): array
     {
@@ -940,11 +991,9 @@ abstract class AbstractPlatform
             foreach ($table->getColumns() as $column) {
                 $comment = $column->getComment();
 
-                if ($comment === '') {
-                    continue;
+                if ($comment !== '') {
+                    $sql[] = $this->getCommentOnColumnSQL($tableName, $column->getQuotedName($this), $comment);
                 }
-
-                $sql[] = $this->getCommentOnColumnSQL($tableName, $column->getQuotedName($this), $comment);
             }
         }
 
@@ -1098,23 +1147,21 @@ abstract class AbstractPlatform
     final protected function validateCreateTableOptions(array $options, string $methodName): void
     {
         if (
-            isset(
+            ! isset(
                 $options['primary'],
                 $options['indexes'],
                 $options['uniqueConstraints'],
                 $options['foreignKeys'],
             )
         ) {
-            return;
+            Deprecation::trigger(
+                'doctrine/dbal',
+                'https://github.com/doctrine/dbal/pull/6805',
+                'Not passing $options or any of its following keys to %s() is deprecated:'
+                    . ' "primary", "indexes", "uniqueConstraints", "foreignKeys".',
+                $methodName,
+            );
         }
-
-        Deprecation::trigger(
-            'doctrine/dbal',
-            'https://github.com/doctrine/dbal/pull/6805',
-            'Not passing $options or any of its following keys to %s() is deprecated:'
-                . ' "primary", "indexes", "uniqueConstraints", "foreignKeys".',
-            $methodName,
-        );
     }
 
     public function getCreateTemporaryTableSnippetSQL(): string
@@ -1497,7 +1544,7 @@ abstract class AbstractPlatform
 
             $notnull = ! empty($column['notnull']) ? ' NOT NULL' : '';
 
-            $typeDecl    = $column['type']->getSQLDeclaration($column, $this);
+            $typeDecl    = $this->getColumnType($column)->getSQLDeclaration($column, $this);
             $declaration = $typeDecl . $charset . $default . $notnull . $collation;
 
             if ($this->supportsInlineColumnComments() && isset($column['comment']) && $column['comment'] !== '') {
@@ -1548,11 +1595,11 @@ abstract class AbstractPlatform
             return ' DEFAULT ' . $default->toSQL($this);
         }
 
-        if (! isset($column['type'])) {
+        $type = $this->getColumnTypeOrNull($column);
+
+        if ($type === null) {
             return " DEFAULT '" . $default . "'";
         }
-
-        $type = $column['type'];
 
         if ($type instanceof Types\PhpIntegerMappingType) {
             return ' DEFAULT ' . $default;
@@ -1599,6 +1646,10 @@ abstract class AbstractPlatform
             return ' DEFAULT ' . $default;
         }
 
+        if ($type instanceof Types\PhpFloatMappingType) {
+            return ' DEFAULT ' . (float) $default;
+        }
+
         return ' DEFAULT ' . $this->quoteStringLiteral($default);
     }
 
@@ -1631,11 +1682,9 @@ abstract class AbstractPlatform
                     $constraints[] = 'CHECK (' . $def['name'] . ' >= ' . $def['min'] . ')';
                 }
 
-                if (! isset($def['max'])) {
-                    continue;
+                if (isset($def['max'])) {
+                    $constraints[] = 'CHECK (' . $def['name'] . ' <= ' . $def['max'] . ')';
                 }
-
-                $constraints[] = 'CHECK (' . $def['name'] . ' <= ' . $def['max'] . ')';
             }
         }
 
@@ -1877,11 +1926,9 @@ abstract class AbstractPlatform
     {
         if (is_array($item)) {
             foreach ($item as $k => $value) {
-                if (! is_bool($value)) {
-                    continue;
+                if (is_bool($value)) {
+                    $item[$k] = (int) $value;
                 }
-
-                $item[$k] = (int) $value;
             }
         } elseif (is_bool($item)) {
             $item = (int) $item;
@@ -2295,6 +2342,8 @@ abstract class AbstractPlatform
 
     /**
      * Returns the SQL to create a new savepoint.
+     *
+     * This method should be invoked only if {@see supportsSavepoints()} returns true.
      */
     public function createSavePoint(string $savepoint): string
     {
@@ -2303,6 +2352,8 @@ abstract class AbstractPlatform
 
     /**
      * Returns the SQL to release a savepoint.
+     *
+     * This method should be invoked only if {@see supportsReleaseSavepoints()} returns true.
      */
     public function releaseSavePoint(string $savepoint): string
     {
@@ -2311,6 +2362,8 @@ abstract class AbstractPlatform
 
     /**
      * Returns the SQL to rollback a savepoint.
+     *
+     * This method should be invoked only if {@see supportsSavepoints()} returns true.
      */
     public function rollbackSavePoint(string $savepoint): string
     {
@@ -2384,7 +2437,7 @@ abstract class AbstractPlatform
      */
     private function columnToArray(Column $column): array
     {
-        return array_merge($column->toArray(), [
+        return array_merge($column->toArray(true), [
             'name' => $column->getQuotedName($this),
             'version' => $column->hasPlatformOption('version') ? $column->getPlatformOption('version') : false,
             'comment' => $column->getComment(),

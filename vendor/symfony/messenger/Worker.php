@@ -22,12 +22,14 @@ use Symfony\Component\Messenger\Event\WorkerRateLimitedEvent;
 use Symfony\Component\Messenger\Event\WorkerRunningEvent;
 use Symfony\Component\Messenger\Event\WorkerStartedEvent;
 use Symfony\Component\Messenger\Event\WorkerStoppedEvent;
+use Symfony\Component\Messenger\Exception\DelayedMessageHandlingException;
 use Symfony\Component\Messenger\Exception\EnvelopeAwareExceptionInterface;
 use Symfony\Component\Messenger\Exception\RejectRedeliveredMessageException;
 use Symfony\Component\Messenger\Exception\RuntimeException;
 use Symfony\Component\Messenger\Stamp\AckStamp;
 use Symfony\Component\Messenger\Stamp\ConsumedByWorkerStamp;
 use Symfony\Component\Messenger\Stamp\FlushBatchHandlersStamp;
+use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Messenger\Stamp\NoAutoAckStamp;
 use Symfony\Component\Messenger\Stamp\ReceivedStamp;
 use Symfony\Component\Messenger\Stamp\TransportMessageIdStamp;
@@ -220,6 +222,11 @@ class Worker
                     $envelope = $e->getEnvelope();
                 }
 
+                if ($e instanceof DelayedMessageHandlingException) {
+                    // a retry must run the handlers again, so that they dispatch the delayed messages that failed again
+                    $envelope = $envelope->withoutAll(HandledStamp::class);
+                }
+
                 $failedEvent = new WorkerMessageFailedEvent($envelope, $transportName, $e);
 
                 $this->eventDispatcher?->dispatch($failedEvent);
@@ -335,11 +342,20 @@ class Worker
                 throw new RuntimeException(\sprintf('Receiver for "%s" does not implement "%s".', $transportName, KeepaliveReceiverInterface::class));
             }
 
-            $this->logger?->info('Sending keepalive request.', [
+            $context = [
                 'transport' => $transportName,
                 'message_id' => $envelope->last(TransportMessageIdStamp::class)?->getId(),
-            ]);
-            $this->receivers[$transportName]->keepalive($envelope, $seconds);
+            ];
+            $this->logger?->info('Sending keepalive request.', $context);
+
+            try {
+                $this->receivers[$transportName]->keepalive($envelope, $seconds);
+            } catch (\Throwable $e) {
+                // the alarm is raised at any point of the program, so an error thrown from here
+                // surfaces wherever the worker happened to be: it stops the worker, or it is read
+                // as a failure of the message that was being handled at that moment
+                $this->logger?->warning('Keepalive request failed: {error}', $context + ['error' => $e->getMessage(), 'exception' => $e]);
+            }
         }
     }
 

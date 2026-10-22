@@ -1,4 +1,9 @@
 <!-- START of Symfony Web Debug Toolbar -->
+{# The stylesheet is loaded before the toolbar markup, and the empty script below makes
+   the parser wait for it, so the toolbar is never painted unstyled. #}
+<link rel="stylesheet"{% if csp_style_nonce %} nonce="{{ csp_style_nonce }}"{% endif %} href="{{ url('_wdt_stylesheet') }}" />
+<script{% if csp_script_nonce is defined and csp_script_nonce %} nonce="{{ csp_script_nonce }}"{% endif %}> </script>
+
 <div class="sf-toolbar sf-toolbar-opened" role="region" aria-label="Symfony Web Debug Toolbar" data-frankenphp-hot-reload-preserve>
     <div id="sfwdt{{ token }}">
         {{ include('@WebProfiler/Profiler/toolbar.html.twig', {
@@ -10,8 +15,6 @@
             profiler_markup_version: 3,
         }) }}
     </div>
-
-    <link rel="stylesheet"{% if csp_style_nonce %} nonce="{{ csp_style_nonce }}"{% endif %} href="{{ url('_wdt_stylesheet') }}" />
 
     {# CAUTION: the contents of this file are processed by Twig before loading
                 them as JavaScript source code. Always use '/*' comments instead
@@ -144,6 +147,10 @@
                     }
 
                     var ajaxToolbarPanel = document.querySelector('.sf-toolbar-block-ajax');
+                    if (!ajaxToolbarPanel) {
+                        return;
+                    }
+
                     if (requestStack.length) {
                         ajaxToolbarPanel.style.display = '';
                     } else {
@@ -206,7 +213,9 @@
                         pathLink.textContent = request.url;
                         pathCell.appendChild(pathLink);
                     } else {
-                        pathCell.textContent = request.url;
+                        var pathText = document.createElement('span');
+                        pathText.textContent = request.url;
+                        pathCell.appendChild(pathText);
                     }
                     pathCell.setAttribute('title', request.url);
                     row.appendChild(pathCell);
@@ -313,10 +322,18 @@
                             };
 
                             var idx = requestStack.push(stackElement) - 1;
+                            var finished = false;
+                            /* The "Clear" link empties the list, after which idx points to another request or to none */
+                            var finish = function () {
+                                finished = true;
+                                if (stackElement === requestStack[idx]) {
+                                    finishAjaxRequest(idx);
+                                }
+                            };
                             startAjaxRequest(idx);
                             addEventListener(es, 'error', function () {
                                 stackElement.error = true;
-                                finishAjaxRequest(idx);
+                                finish();
                             });
                             addEventListener(es, 'open', function () {
                                 stackElement.statusCode = 200;
@@ -331,14 +348,24 @@
                             addEventListener(es, 'symfony:debug:error', function (event) {
                                 stackElement.error = true;
                                 stackElement.statusCode = event.data;
-                                finishAjaxRequest(idx);
+                                finish();
                             });
                             addEventListener(es, 'symfony:debug:finished', function () {
                                 stackElement.duration = new Date() - stackElement.start;
                                 stackElement.toolbarReplaceFinished = false;
                                 stackElement.toolbarReplace = true;
-                                finishAjaxRequest(idx);
+                                finish();
                             });
+                            /* close() dispatches no event: wrap it to mark the request as finished, unless an event already did */
+                            var originalClose = es.close.bind(es);
+                            es.close = function () {
+                                originalClose();
+
+                                if (!finished) {
+                                    stackElement.duration = new Date() - stackElement.start;
+                                    finish();
+                                }
+                            };
                         }
 
                         return es;
@@ -404,6 +431,7 @@
 
                     XMLHttpRequest.prototype.open = function(method, url, async, user, pass) {
                         var self = this;
+                        url = String(url);
 
                         /* prevent logging AJAX calls to static and inline files, like templates */
                         var path = url;

@@ -17,7 +17,7 @@ O projeto **wazeBR-symfony** conta com um sistema completo de Integração Cont�
 O workflow de CI é executado automaticamente em todo `push` ou `pull_request` para as branches principais (`main`, `master`, `develop`).
 
 ### Etapas do Pipeline de CI:
-1. **Configuração de Ambiente (Matrix)**: Inicializa o ambiente PHP nas versões `8.2` e `8.3` com extensões essenciais (`mbstring`, `xml`, `intl`, `pdo_mysql`, etc.).
+1. **Configuração de Ambiente (Matrix)**: Inicializa o ambiente PHP nas versões `8.5` e `8.3` com extensões essenciais (`mbstring`, `xml`, `intl`, `pdo_mysql`, etc.).
 2. **Serviço MySQL**: Inicializa um container MySQL 8.0 temporário para testes de integração com banco de dados.
 3. **Cache de Dependências**: Utiliza o cache do Composer para acelerar a instalação de dependências.
 4. **Instalação de Dependências**: Executa `composer install`.

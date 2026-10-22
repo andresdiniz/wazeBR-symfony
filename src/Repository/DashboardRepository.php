@@ -1545,75 +1545,50 @@ SQL;
     private function getPartnerFetchStatus(?Partner $partner): array
     {
         $params = [];
-        $pFilter = '';
+        $partnerFilterActive = '';
+
         if ($partner !== null) {
-            $pFilter = ' WHERE partner_id = :pid';
+            $partnerFilterActive = 'WHERE partner_id = :pid AND active = 1';
             $params['pid'] = $partner->getId();
-        }
-
-        $status = [
-            'waze_alerts'    => null,
-            'waze_jams'      => null,
-            'waze_tvt'       => null,
-            'weather'        => null,
-            'cemaden_hydro'  => null,
-            'cemaden_pluvio' => null,
-            'cameras'        => null,
-        ];
-
-        // Partner.fetchAt cobre alerts + jams (mesma coleta) e TVT separado
-        if ($partner !== null) {
-            $status['waze_alerts'] = $partner->getLastFetchAt();
-            $status['waze_jams']   = $partner->getLastFetchAt();
-            $status['waze_tvt']    = $partner->getLastTvtFetchAt();
         } else {
-            // admin global: usar MAX histórico
-            $row = $this->connection->executeQuery(
-                "SELECT MAX(last_fetch_at) FROM partner WHERE last_fetch_at IS NOT NULL"
-            )->fetchOne();
-            $status['waze_alerts'] = $this->toUtc($row);
-            $status['waze_jams']   = $this->toUtc($row);
-
-            $rowTvt = $this->connection->executeQuery(
-                "SELECT MAX(last_tvt_fetch_at) FROM partner WHERE last_tvt_fetch_at IS NOT NULL"
-            )->fetchOne();
-            $status['waze_tvt'] = $this->toUtc($rowTvt);
+            $partnerFilterActive = 'WHERE active = 1';
         }
 
-        $wFilter = $partner !== null ? 'WHERE partner_id = :pid' : '';
+        // Para Waze (Partner entity ou global max)
+        $wazeAlertsMax = null;
+        $wazeTvtMax = null;
+        if ($partner !== null) {
+            $wazeAlertsMax = $partner->getLastFetchAt();
+            $wazeTvtMax = $partner->getLastTvtFetchAt();
+        } else {
+            $rowPartner = $this->connection->executeQuery(
+                "SELECT MAX(last_fetch_at) AS f1, MAX(last_tvt_fetch_at) AS f2 FROM partner WHERE last_fetch_at IS NOT NULL OR last_tvt_fetch_at IS NOT NULL"
+            )->fetchAssociative() ?: [];
+            $wazeAlertsMax = $this->toUtc($rowPartner['f1'] ?? null);
+            $wazeTvtMax = $this->toUtc($rowPartner['f2'] ?? null);
+        }
 
-        // weather
-        $status['weather'] = $this->toUtc($this->connection->executeQuery(
-            "SELECT MAX(observed_at) FROM weather_observation $wFilter",
-            $params
-        )->fetchOne());
+        $weatherWhere = $partner !== null ? 'WHERE partner_id = :pid' : '';
+        $camerasWhere = $partner !== null ? 'WHERE partner_id = :pid' : '';
 
-        // cemaden hydro
-        $hFilter = $partner !== null
-            ? 'WHERE partner_id = :pid AND active = 1'
-            : 'WHERE active = 1';
-        $status['cemaden_hydro'] = $this->toUtc($this->connection->executeQuery(
-            "SELECT MAX(last_fetched_at) FROM cemaden_hidro_station_link $hFilter",
-            $params
-        )->fetchOne());
+        // Executa todas as outras verificações numa única query com subconsultas escalares
+        $sql = "SELECT
+            (SELECT MAX(observed_at) FROM weather_observation {$weatherWhere}) AS weather,
+            (SELECT MAX(last_fetched_at) FROM cemaden_hidro_station_link {$partnerFilterActive}) AS cemaden_hydro,
+            (SELECT MAX(last_fetched_at) FROM cemaden_station_link {$partnerFilterActive}) AS cemaden_pluvio,
+            (SELECT MAX(created_at) FROM partner_camera_link {$camerasWhere}) AS cameras";
 
-        // cemaden pluvio
-        $pFilter2 = $partner !== null
-            ? 'WHERE partner_id = :pid AND active = 1'
-            : 'WHERE active = 1';
-        $status['cemaden_pluvio'] = $this->toUtc($this->connection->executeQuery(
-            "SELECT MAX(last_fetched_at) FROM cemaden_station_link $pFilter2",
-            $params
-        )->fetchOne());
+        $row = $this->connection->executeQuery($sql, $params)->fetchAssociative() ?: [];
 
-        // cameras
-        $cFilter = $partner !== null ? 'WHERE partner_id = :pid' : '';
-        $status['cameras'] = $this->toUtc($this->connection->executeQuery(
-            "SELECT MAX(created_at) FROM partner_camera_link $cFilter",
-            $params
-        )->fetchOne());
-
-        return $status;
+        return [
+            'waze_alerts'    => $wazeAlertsMax,
+            'waze_jams'      => $wazeAlertsMax,
+            'waze_tvt'       => $wazeTvtMax,
+            'weather'        => $this->toUtc($row['weather'] ?? null),
+            'cemaden_hydro'  => $this->toUtc($row['cemaden_hydro'] ?? null),
+            'cemaden_pluvio' => $this->toUtc($row['cemaden_pluvio'] ?? null),
+            'cameras'        => $this->toUtc($row['cameras'] ?? null),
+        ];
     }
 
     // ─────────────────────────────────────────────────────────────────────

@@ -17,6 +17,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Index(name: 'idx_waze_alert_collected_at', columns: ['collected_at'])]
 #[ORM\Index(name: 'idx_waze_alert_last_seen_at', columns: ['last_seen_at'])]
 #[ORM\Index(name: 'idx_waze_alert_location', columns: ['longitude', 'latitude'])]
+#[ORM\Index(name: 'idx_waze_alert_partner_collected', columns: ['partner_id', 'collected_at'])]
 #[ORM\UniqueConstraint(name: 'uniq_waze_alert_partner_uuid', columns: ['partner_id', 'uuid'])]
 class WazeAlert
 {

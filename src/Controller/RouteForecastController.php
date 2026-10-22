@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\Partner;
-use App\Entity\User;
+use App\Service\PartnerScopeResolver;
+use App\Service\RouteForecastInsights;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -19,6 +20,8 @@ final class RouteForecastController extends AbstractController
 
     public function __construct(
         private readonly Connection $connection,
+        private readonly RouteForecastInsights $insights,
+        private readonly PartnerScopeResolver $scope,
     ) {
     }
 
@@ -38,7 +41,7 @@ final class RouteForecastController extends AbstractController
             throw $this->createNotFoundException('Rota não encontrada.');
         }
 
-        $timezone = new \DateTimeZone('America/Sao_Paulo');
+        $timezone = $this->insights->timezone();
         $utc = new \DateTimeZone('UTC');
 
         $now = new \DateTimeImmutable('now', $timezone);
@@ -201,6 +204,14 @@ final class RouteForecastController extends AbstractController
             'missingSlots' => self::SLOTS_AHEAD - $available,
 
             'items' => $items,
+
+            // ── Previsão ao lado do real ─────────────────────────────────
+            // `actual`: tempo medido nas últimas 6 h (fatias de 15 min, ISO com offset).
+            // `pastForecasts`: o que o modelo previu (~1 h antes) para essas mesmas fatias.
+            // `accuracy`: erro das previsões já avaliadas (null quando ainda não há).
+            'actual' => $this->insights->actualSeries($id, 6),
+            'pastForecasts' => $this->insights->pastForecasts($id, 6),
+            'accuracy' => $this->insights->accuracy($id, 7),
         ]);
 
         $response->headers->set('Cache-Control', 'private, no-store');
@@ -241,25 +252,6 @@ final class RouteForecastController extends AbstractController
 
     private function resolvePartnerScope(): ?Partner
     {
-        $user = $this->getUser();
-
-        if (!$user instanceof User) {
-            throw $this->createAccessDeniedException();
-        }
-
-        if ($user->isGlobalAdmin()) {
-            return null;
-        }
-
-        $partner = $user->getPartner();
-
-        // Usuário sem parceiro não deve receber acesso global.
-        if ($partner === null) {
-            throw $this->createAccessDeniedException(
-                'Usuário sem parceiro associado.'
-            );
-        }
-
-        return $partner;
+        return $this->scope->resolve();
     }
 }
