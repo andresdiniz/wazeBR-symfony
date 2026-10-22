@@ -2,18 +2,20 @@ nelmio_security:
     clickjacking:
         paths:
             '^/.*': DENY
-    xss_protection:
-        enabled: false # A própria CSP substitui esta proteção nos navegadores modernos
+
     content_type:
         nosniff: true
+
     referrer_policy:
         enabled: true
         policies:
             - strict-origin-when-cross-origin
+
     csp:
         enabled: true
         enforce:
-            default-src: ['self']
+            default-src:
+                - 'self'
             script-src:
                 - 'self'
                 - 'unsafe-inline'

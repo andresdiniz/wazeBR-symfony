@@ -30,10 +30,6 @@ class ResetPasswordRequestRepository extends ServiceEntityRepository implements 
         return new ResetPasswordRequest($user, $expiresAt, $selector, $hashedToken);
     }
 
-    /**
-     * Retorna o valor único que identifica o usuário para o bundle.
-     * DEVE ser o valor real — não uma string literal como 'id'.
-     */
     public function getUserIdentifier(object $user): string
     {
         /** @var User $user */
@@ -80,6 +76,16 @@ class ResetPasswordRequestRepository extends ServiceEntityRepository implements 
     {
         $this->getEntityManager()->remove($resetPasswordRequest);
         $this->getEntityManager()->flush();
+    }
+
+    public function removeRequests(object $user): void
+    {
+        $this->createQueryBuilder('rpr')
+            ->delete()
+            ->where('rpr.user = :user')
+            ->setParameter('user', $user)
+            ->getQuery()
+            ->execute();
     }
 
     public function removeExpiredResetPasswordRequests(): int
