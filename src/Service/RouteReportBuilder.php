@@ -18,9 +18,6 @@ final class RouteReportBuilder
     private const MAP_PAD = 18;
     private const MAX_POINTS = 400;
 
-    private const CHART_W = 640;
-    private const CHART_H = 150;
-
     private const DOW = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
     private const DOW_FULL = ['segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado', 'domingo'];
 
@@ -36,8 +33,8 @@ final class RouteReportBuilder
             'map'      => $this->map($detail),
             'heatmap'  => $this->heatmap($detail['heatmap'] ?? []),
             'timeline' => $this->timeline($detail['timeline'] ?? []),
-            'byHour'   => $this->bars($detail['byHour'] ?? [], static fn (array $p): string => sprintf('%02d', $p['hour'])),
-            'byDow'    => $this->bars($detail['byDow'] ?? [], static fn (array $p): string => self::DOW[$p['dow']] ?? '?'),
+            'byHour'   => $this->barChart($detail['byHour'] ?? [], static fn (array $p): string => sprintf('%02d', $p['hour']), 460, 3),
+            'byDow'    => $this->barChart($detail['byDow'] ?? [], static fn (array $p): string => self::DOW[$p['dow']] ?? '?', 300, 1),
             'subRoutes' => array_slice($detail['topSubRoutes'] ?? [], 0, 8),
             'occurrences' => array_slice($detail['occurrences'] ?? [], 0, 12),
         ];
@@ -118,9 +115,29 @@ final class RouteReportBuilder
         return $out;
     }
 
-    // ─── Mapa (SVG) ──────────────────────────────────────────────────────
+    // ─── Mapa ────────────────────────────────────────────────────────────
 
-    /** @return array<string,mixed>|null */
+    private const ALERT_COLORS = [
+        'ACCIDENT'      => '#dc2626',
+        'JAM'           => '#ea580c',
+        'ROAD_CLOSED'   => '#111827',
+        'POLICE'        => '#1d4ed8',
+        'WEATHERHAZARD' => '#0891b2',
+        'HAZARD'        => '#f59e0b',
+        'CONSTRUCTION'  => '#a16207',
+    ];
+    private const IRREGULARITY_COLOR = '#7c3aed';
+
+    /**
+     * Modelo do mapa. Duas representações dos MESMOS dados:
+     *   - `live`: coordenadas para o mapa com ruas (Leaflet + OpenStreetMap, montado no navegador);
+     *   - `svg` : esquema do traçado em SVG, usado como reserva quando os tiles não carregam.
+     *
+     * Cor de cada trecho: média das últimas horas (quando os snapshots trazem dados por
+     * trecho) ou, na falta dela, o estado atual do trecho (`colorSource` informa qual).
+     *
+     * @return array<string,mixed>|null
+     */
     private function map(array $d): ?array
     {
         $main = $this->thin($d['routePolyline'] ?? []);
@@ -139,9 +156,54 @@ final class RouteReportBuilder
             return null;
         }
 
-        $alerts = array_values(array_filter($d['nearbyAlerts'] ?? [], static fn (array $a): bool => isset($a['lat'], $a['lng'])));
-        $irr = array_values(array_filter($d['irregularities'] ?? [], static fn (array $a): bool => isset($a['lat'], $a['lng']) && $a['lat'] !== null));
+        // ── cor dos trechos ──
+        $avg = $d['recentWindow']['avg'] ?? [];
+        $current = [];
+        $names = [];
+        foreach (($d['topSubRoutes'] ?? []) as $sr) {
+            $names[$sr['id']] = $sr['name'];
+            if ($sr['delayRatio'] !== null) {
+                $current[$sr['id']] = (float) $sr['delayRatio'];
+            }
+        }
+        $colorSource = $avg !== [] ? 'avg' : ($current !== [] ? 'current' : null);
+        $ratios = $colorSource === 'avg' ? $avg : ($colorSource === 'current' ? $current : []);
 
+        $subItems = [];
+        foreach ($subs as $id => $line) {
+            $ratio = $ratios[$id] ?? null;
+            $subItems[] = [
+                'pts'   => $line,
+                'color' => $this->ratioColor($ratio) ?? '#64748b',
+                'title' => ($names[$id] ?? 'Trecho') . ($ratio !== null ? sprintf(' · %d%% vs histórico', (int) round($ratio * 100)) : ''),
+            ];
+        }
+
+        // ── ocorrências ──
+        $alerts = [];
+        $legend = [];
+        foreach (($d['nearbyAlerts'] ?? []) as $a) {
+            if (!isset($a['lat'], $a['lng'])) {
+                continue;
+            }
+            $color = self::ALERT_COLORS[strtoupper((string) $a['type'])] ?? '#64748b';
+            $label = (string) ($a['typeLabel'] ?: ($a['type'] ?: 'Alerta'));
+            $alerts[] = ['lat' => (float) $a['lat'], 'lng' => (float) $a['lng'], 'color' => $color, 'title' => $label . ($a['street'] ? ' — ' . $a['street'] : '')];
+            $legend[$label] = ['label' => $label, 'color' => $color, 'count' => ($legend[$label]['count'] ?? 0) + 1];
+        }
+
+        $irr = [];
+        foreach (($d['irregularities'] ?? []) as $i) {
+            if (!isset($i['lat'], $i['lng']) || $i['lat'] === null) {
+                continue;
+            }
+            $irr[] = ['lat' => (float) $i['lat'], 'lng' => (float) $i['lng'], 'color' => self::IRREGULARITY_COLOR, 'title' => (string) ($i['type'] ?: 'Irregularidade')];
+        }
+        if ($irr !== []) {
+            $legend['Irregularidade'] = ['label' => 'Irregularidade', 'color' => self::IRREGULARITY_COLOR, 'count' => count($irr)];
+        }
+
+        // ── esquema SVG (reserva) ──
         $lats = array_column($points, 0);
         $lngs = array_column($points, 1);
         $minLat = min($lats);
@@ -174,28 +236,12 @@ final class RouteReportBuilder
             return implode(' ', $parts);
         };
 
-        $avg = $d['recentWindow']['avg'] ?? [];
-        $names = [];
-        foreach (($d['topSubRoutes'] ?? []) as $s) {
-            $names[$s['id']] = $s['name'];
-        }
-
-        $subPaths = [];
-        foreach ($subs as $id => $line) {
-            $ratio = $avg[$id] ?? null;
-            $subPaths[] = [
-                'd'     => $toPath($line),
-                'color' => $this->ratioColor($ratio) ?? '#64748b',
-                'title' => ($names[$id] ?? 'Trecho') . ($ratio !== null ? sprintf(' · %d%% vs histórico', (int) round($ratio * 100)) : ''),
-            ];
-        }
-
-        $dots = static function (array $items, string $color) use ($project): array {
+        $dots = static function (array $items) use ($project): array {
             $out = [];
             foreach ($items as $it) {
-                [$x, $y] = $project((float) $it['lat'], (float) $it['lng']);
+                [$x, $y] = $project($it['lat'], $it['lng']);
                 if ($x >= 0 && $x <= self::MAP_W && $y >= 0 && $y <= self::MAP_H) {
-                    $out[] = ['x' => $x, 'y' => $y, 'color' => $color];
+                    $out[] = ['x' => $x, 'y' => $y, 'color' => $it['color']];
                 }
             }
 
@@ -203,14 +249,21 @@ final class RouteReportBuilder
         };
 
         return [
-            'w'        => self::MAP_W,
-            'h'        => self::MAP_H,
-            'main'     => $main !== [] ? $toPath($main) : null,
-            'subs'     => $subPaths,
-            'hasColor' => $avg !== [],
-            'alerts'   => $dots($alerts, '#f59e0b'),
-            'irr'      => $dots($irr, '#7c3aed'),
-            'start'    => $subs === [] && $main !== [] ? $project((float) $main[0][0], (float) $main[0][1]) : null,
+            'w'           => self::MAP_W,
+            'h'           => self::MAP_H,
+            'main'        => $main !== [] ? $toPath($main) : null,
+            'subs'        => array_map(static fn (array $s): array => ['d' => $toPath($s['pts']), 'color' => $s['color'], 'title' => $s['title']], $subItems),
+            'alerts'      => $dots($alerts),
+            'irr'         => $dots($irr),
+            'colorSource' => $colorSource,
+            'legend'      => array_values($legend),
+            // dados do mapa com ruas (JSON no HTML; montado por assets/js/pages/route-report.js)
+            'live'        => [
+                'main'   => $main,
+                'subs'   => $subItems,
+                'alerts' => $alerts,
+                'irr'    => $irr,
+            ],
         ];
     }
 
@@ -267,10 +320,16 @@ final class RouteReportBuilder
         return $rows;
     }
 
-    // ─── Gráficos ────────────────────────────────────────────────────────
+    // ─── Gráficos (SVG com eixos e grade) ───────────────────────────────
+
+    private const DOW_SHORT_LOWER = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'];
 
     /**
-     * Linha do atraso (s) nos últimos 7 dias.
+     * Evolução do atraso (s) nos últimos 7 dias, com:
+     *   - escala em segundos e linhas de grade horizontais;
+     *   - linha tracejada à meia-noite e rótulo do dia ("qui 16/10");
+     *   - posição horizontal PROPORCIONAL ao horário (buracos nos dados não são
+     *     "esticados") e a linha é interrompida onde faltam mais de 2 h de dados.
      *
      * @param list<array<string,mixed>> $points
      *
@@ -278,73 +337,191 @@ final class RouteReportBuilder
      */
     private function timeline(array $points): ?array
     {
-        $n = count($points);
+        if (count($points) < 2) {
+            return null;
+        }
+
+        $w = 640;
+        $h = 200;
+        $padL = 42;
+        $padR = 10;
+        $padT = 10;
+        $padB = 26;
+
+        $ts = [];
+        $values = [];
+        foreach ($points as $p) {
+            $t = strtotime((string) $p['time'] . ' UTC');
+            if ($t === false) {
+                continue;
+            }
+            $ts[] = $t;
+            $values[] = (float) $p['avgDelay'];
+        }
+        $n = count($ts);
         if ($n < 2) {
             return null;
         }
 
-        $values = array_map(static fn (array $p): float => (float) $p['avgDelay'], $points);
-        $min = min(0.0, min($values));
-        $max = max(1.0, max($values));
-        $padT = 8;
-        $padB = 8;
-        $h = self::CHART_H;
-        $w = self::CHART_W;
+        $t0 = $ts[0];
+        $t1 = $ts[$n - 1];
+        $span = max(1, $t1 - $t0);
 
-        $coords = [];
-        foreach ($values as $i => $v) {
-            $coords[] = [
-                round($i / ($n - 1) * $w, 1),
-                round($padT + (1 - ($v - $min) / ($max - $min)) * ($h - $padT - $padB), 1),
+        [$ticks, $yMin, $yMax] = $this->niceTicks(min(0.0, min($values)), max(1.0, max($values)), 4);
+
+        $plotW = $w - $padL - $padR;
+        $plotH = $h - $padT - $padB;
+        $x = static fn (int $t): float => round($padL + ($t - $t0) / $span * $plotW, 1);
+        $y = static fn (float $v): float => round($padT + (1 - ($v - $yMin) / ($yMax - $yMin)) * $plotH, 1);
+        $zeroY = $y(0.0);
+
+        // Segmentos contínuos (lacuna > 2 h quebra a linha).
+        $segments = [];
+        $cur = [];
+        foreach ($ts as $i => $t) {
+            if ($cur !== [] && $t - $ts[$i - 1] > 7200) {
+                $segments[] = $cur;
+                $cur = [];
+            }
+            $cur[] = [$x($t), $y($values[$i])];
+        }
+        $segments[] = $cur;
+
+        $paths = [];
+        foreach ($segments as $seg) {
+            $line = '';
+            foreach ($seg as $k => [$px, $py]) {
+                $line .= ($k === 0 ? 'M' : 'L') . $px . ' ' . $py . ' ';
+            }
+            $last = $seg[count($seg) - 1];
+            $paths[] = [
+                'line' => trim($line),
+                'area' => count($seg) > 1 ? trim($line) . sprintf(' L%s %s L%s %s Z', $last[0], $zeroY, $seg[0][0], $zeroY) : null,
             ];
         }
 
-        $line = '';
-        foreach ($coords as $i => [$x, $y]) {
-            $line .= ($i === 0 ? 'M' : 'L') . $x . ' ' . $y . ' ';
+        // Dias: linha à meia-noite + rótulo centralizado no trecho visível do dia.
+        $days = [];
+        $dayStart = (int) strtotime(gmdate('Y-m-d', $t0) . ' 00:00:00 UTC');
+        for ($d = $dayStart; $d <= $t1; $d += 86400) {
+            $from = max($d, $t0);
+            $to = min($d + 86400, $t1);
+            if ($to <= $from) {
+                continue;
+            }
+            $days[] = [
+                'line'  => $d > $t0 ? $x($d) : null,
+                'cx'    => round(($x($from) + $x($to)) / 2, 1),
+                'width' => $x($to) - $x($from),
+                'label' => self::DOW_SHORT_LOWER[(int) gmdate('N', $d) - 1] . ' ' . gmdate('d/m', $d),
+            ];
         }
 
-        $zeroY = round($padT + (1 - (0 - $min) / ($max - $min)) * ($h - $padT - $padB), 1);
+        $peakIdx = array_search(max($values), $values, true);
 
         return [
-            'w'      => $w,
-            'h'      => $h,
-            'line'   => trim($line),
-            'area'   => trim($line) . sprintf(' L%s %s L0 %s Z', $coords[$n - 1][0], $zeroY, $zeroY),
-            'zeroY'  => $zeroY,
-            'max'    => (int) round($max),
-            'from'   => (string) $points[0]['time'],
-            'to'     => (string) $points[$n - 1]['time'],
+            'w'     => $w,
+            'h'     => $h,
+            'padL'  => $padL,
+            'padR'  => $padR,
+            'padT'  => $padT,
+            'padB'  => $padB,
+            'plotR' => $w - $padR,
+            'plotB' => $h - $padB,
+            'ticks' => array_map(static fn (float $v): array => ['y' => $y($v), 'label' => (int) round($v) . ' s'], $ticks),
+            'zeroY' => $zeroY,
+            'paths' => $paths,
+            'days'  => $days,
+            'max'   => (int) round(max($values)),
+            'peak'  => $peakIdx !== false ? ['x' => $x($ts[$peakIdx]), 'y' => $y($values[$peakIdx]), 'at' => (string) $points[$peakIdx]['time']] : null,
+            'from'  => (string) $points[0]['time'],
+            'to'    => (string) $points[count($points) - 1]['time'],
         ];
     }
 
     /**
-     * @param list<array<string,mixed>>        $points
-     * @param callable(array<string,mixed>):string $label
+     * Barras com escala em segundos e grade horizontal (média por hora / por dia).
      *
-     * @return list<array{label:string,height:float,color:string,title:string}>
+     * @param list<array<string,mixed>>            $points
+     * @param callable(array<string,mixed>):string $label
+     * @param int                                  $labelEvery rotula 1 a cada N barras
+     *
+     * @return array<string,mixed>
      */
-    private function bars(array $points, callable $label): array
+    private function barChart(array $points, callable $label, int $w, int $labelEvery): array
     {
+        $h = 170;
+        $padL = 38;
+        $padR = 4;
+        $padT = 10;
+        $padB = 20;
+
         $max = 0.0;
         foreach ($points as $p) {
             $max = max($max, (float) ($p['avgDelay'] ?? 0));
         }
-        $max = max($max, 1.0);
 
-        $out = [];
-        foreach ($points as $p) {
+        [$ticks, , $yMax] = $this->niceTicks(0.0, max($max, 1.0), 4);
+
+        $n = max(1, count($points));
+        $plotW = $w - $padL - $padR;
+        $plotH = $h - $padT - $padB;
+        $slot = $plotW / $n;
+        $barW = round($slot * 0.72, 1);
+        $baseY = $padT + $plotH;
+
+        $bars = [];
+        foreach ($points as $i => $p) {
             $ok = ($p['count'] ?? 0) >= 2 && $p['avgRatio'] !== null;
             $delay = max(0.0, (float) ($p['avgDelay'] ?? 0));
-            $out[] = [
-                'label'  => $label($p),
-                'height' => $ok ? round(max(2.0, $delay / $max * 100), 1) : 2.0,
+            $barH = $ok ? max(2.0, $delay / $yMax * $plotH) : 2.0;
+
+            $bars[] = [
+                'x'      => round($padL + $i * $slot + ($slot - $barW) / 2, 1),
+                'y'      => round($baseY - $barH, 1),
+                'w'      => $barW,
+                'h'      => round($barH, 1),
                 'color'  => $ok ? ($this->ratioColor((float) $p['avgRatio']) ?? '#cbd5e1') : '#cbd5e1',
-                'title'  => $label($p) . ($ok ? sprintf(' · %s s · %d%%', $this->signed($p['avgDelay']), (int) round($p['avgRatio'] * 100)) : ' · sem amostras'),
+                'label'  => $i % $labelEvery === 0 ? $label($p) : null,
+                'cx'     => round($padL + $i * $slot + $slot / 2, 1),
+                'title'  => $label($p) . ($ok ? sprintf(' · %s s · %d%% vs histórico', $this->signed($p['avgDelay']), (int) round($p['avgRatio'] * 100)) : ' · sem amostras'),
             ];
         }
 
-        return $out;
+        return [
+            'w'     => $w,
+            'h'     => $h,
+            'padL'  => $padL,
+            'plotR' => $w - $padR,
+            'baseY' => $baseY,
+            'labelY' => $h - 6,
+            'ticks' => array_map(static fn (float $v): array => ['y' => round($baseY - $v / $yMax * $plotH, 1), 'label' => (int) round($v) . ' s'], $ticks),
+            'bars'  => $bars,
+        ];
+    }
+
+    /**
+     * Marcações "redondas" (1, 2, 5 × 10ⁿ) cobrindo [min, max].
+     *
+     * @return array{0:list<float>,1:float,2:float} [ticks, min do eixo, max do eixo]
+     */
+    private function niceTicks(float $min, float $max, int $intervals): array
+    {
+        $range = max($max - $min, 1e-9);
+        $rough = $range / $intervals;
+        $pow = 10 ** floor(log10($rough));
+        $frac = $rough / $pow;
+        $step = ($frac <= 1 ? 1 : ($frac <= 2 ? 2 : ($frac <= 5 ? 5 : 10))) * $pow;
+
+        $lo = floor($min / $step) * $step;
+        $hi = ceil($max / $step) * $step;
+
+        $ticks = [];
+        for ($v = $lo; $v <= $hi + $step / 2; $v += $step) {
+            $ticks[] = round($v, 6);
+        }
+
+        return [$ticks, (float) $lo, (float) $hi];
     }
 
     // ─── Utilitários ─────────────────────────────────────────────────────

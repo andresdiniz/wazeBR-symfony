@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow, noarchive">
     <title>Relatório · {{ route.name }} · WazeBR</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
     <link rel="stylesheet" href="{{ asset('css/pages/route-report.css') }}">
 </head>
 <body>
@@ -106,23 +107,38 @@
         <h2>Traçado e ocorrências</h2>
         {% if report.map %}
             {% set m = report.map %}
-            <svg class="rr-map" viewBox="0 0 {{ m.w }} {{ m.h }}" role="img"
-                 aria-label="Esquema do traçado da rota com alertas e irregularidades">
-                <rect width="{{ m.w }}" height="{{ m.h }}" fill="#f1f5f9"/>
-                {% if m.main %}<path d="{{ m.main }}" fill="none" stroke="#cbd5e1" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>{% endif %}
-                {% for s in m.subs %}
-                    <path d="{{ s.d }}" fill="none" stroke="{{ s.color }}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><title>{{ s.title }}</title></path>
-                {% endfor %}
-                {% if m.main and not m.subs %}<path d="{{ m.main }}" fill="none" stroke="#2563eb" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>{% endif %}
-                {% for p in m.alerts %}<circle cx="{{ p.x }}" cy="{{ p.y }}" r="5" fill="{{ p.color }}" stroke="#fff" stroke-width="1.5"/>{% endfor %}
-                {% for p in m.irr %}<circle cx="{{ p.x }}" cy="{{ p.y }}" r="5" fill="{{ p.color }}" stroke="#fff" stroke-width="1.5"/>{% endfor %}
-            </svg>
+            <div class="rr-mapwrap" data-report-mapwrap>
+                {# Reserva: esquema do traçado em SVG (aparece se o mapa com ruas não carregar). #}
+                <svg class="rr-map-fallback" viewBox="0 0 {{ m.w }} {{ m.h }}" role="img"
+                     aria-label="Esquema do traçado da rota com alertas e irregularidades">
+                    <rect width="{{ m.w }}" height="{{ m.h }}" fill="#f1f5f9"/>
+                    {% if m.main %}<path d="{{ m.main }}" fill="none" stroke="#cbd5e1" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>{% endif %}
+                    {% for s in m.subs %}
+                        <path d="{{ s.d }}" fill="none" stroke="{{ s.color }}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><title>{{ s.title }}</title></path>
+                    {% endfor %}
+                    {% if m.main and not m.subs %}<path d="{{ m.main }}" fill="none" stroke="#2563eb" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>{% endif %}
+                    {% for p in m.alerts %}<circle cx="{{ p.x }}" cy="{{ p.y }}" r="5" fill="{{ p.color }}" stroke="#fff" stroke-width="1.5"/>{% endfor %}
+                    {% for p in m.irr %}<circle cx="{{ p.x }}" cy="{{ p.y }}" r="5" fill="{{ p.color }}" stroke="#fff" stroke-width="1.5"/>{% endfor %}
+                </svg>
+                {# Mapa com ruas (OpenStreetMap), montado por route-report.js. #}
+                <div class="rr-map-live" data-report-live-map aria-label="Mapa da rota"></div>
+            </div>
+            <script type="application/json" data-report-map>{{ m.live|json_encode(constant('JSON_HEX_TAG') b-or constant('JSON_HEX_AMP') b-or constant('JSON_HEX_APOS') b-or constant('JSON_HEX_QUOT') b-or constant('JSON_UNESCAPED_UNICODE'))|raw }}</script>
+
             <p class="rr-legend">
-                {% if m.hasColor %}Trechos coloridos pela média das últimas {{ recentWindow.hours }} h (verde = normal, vermelho = muito lento).{% endif %}
-                <span class="rr-dot" style="background:#f59e0b"></span> alertas Waze
-                <span class="rr-dot" style="background:#7c3aed"></span> irregularidades.
-                Esquema sem escala de fundo.
+                {% if m.colorSource == 'avg' %}
+                    Trechos coloridos pela média das últimas {{ recentWindow.hours }} h
+                {% elseif m.colorSource == 'current' %}
+                    Trechos coloridos pelo estado atual
+                {% else %}
+                    Trechos sem dados para colorir
+                {% endif %}
+                (<span class="rr-grad"></span> normal → muito lento).
+                {% for l in m.legend %}
+                    <span class="rr-dot" style="background:{{ l.color }}"></span>{{ l.label }}{% if l.count > 1 %} ({{ l.count }}){% endif %}
+                {% endfor %}
             </p>
+            <p class="rr-legend rr-legend--credit" data-report-map-credit>Esquema do traçado, sem mapa de fundo.</p>
         {% else %}
             <p class="rr-empty">Esta rota não possui geometria cadastrada.</p>
         {% endif %}
@@ -152,14 +168,33 @@
     <section class="rr-section">
         <h2>Evolução do atraso <small>(últimos 7 dias, segundos acima do histórico)</small></h2>
         {% if report.timeline %}
-            {% set t = report.timeline %}
-            <svg class="rr-chart" viewBox="0 0 {{ t.w }} {{ t.h }}" preserveAspectRatio="none" role="img"
+            {% set c = report.timeline %}
+            <svg class="rr-chart" viewBox="0 0 {{ c.w }} {{ c.h }}" role="img"
                  aria-label="Evolução horária do atraso nos últimos 7 dias">
-                <line x1="0" x2="{{ t.w }}" y1="{{ t.zeroY }}" y2="{{ t.zeroY }}" stroke="#cbd5e1" stroke-dasharray="4 3"/>
-                <path d="{{ t.area }}" fill="rgba(37,99,235,.14)"/>
-                <path d="{{ t.line }}" fill="none" stroke="#2563eb" stroke-width="1.8" vector-effect="non-scaling-stroke"/>
+                {# grade horizontal + escala (s) #}
+                {% for tk in c.ticks %}
+                    <line x1="{{ c.padL }}" x2="{{ c.plotR }}" y1="{{ tk.y }}" y2="{{ tk.y }}" stroke="#e2e8f0" stroke-width="1"/>
+                    <text x="{{ c.padL - 5 }}" y="{{ tk.y + 3 }}" text-anchor="end" font-size="9" fill="#64748b" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">{{ tk.label }}</text>
+                {% endfor %}
+                {# separadores de dia + rótulos #}
+                {% for d in c.days %}
+                    {% if d.line is not null %}<line x1="{{ d.line }}" x2="{{ d.line }}" y1="{{ c.padT }}" y2="{{ c.plotB }}" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 3"/>{% endif %}
+                    {% if d.width > 34 %}<text x="{{ d.cx }}" y="{{ c.h - 8 }}" text-anchor="middle" font-size="9" fill="#64748b" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">{{ d.label }}</text>{% endif %}
+                {% endfor %}
+                <line x1="{{ c.padL }}" x2="{{ c.plotR }}" y1="{{ c.zeroY }}" y2="{{ c.zeroY }}" stroke="#94a3b8" stroke-width="1"/>
+                {% for seg in c.paths %}
+                    {% if seg.area %}<path d="{{ seg.area }}" fill="rgba(37,99,235,.13)"/>{% endif %}
+                    <path d="{{ seg.line }}" fill="none" stroke="#2563eb" stroke-width="1.6" stroke-linejoin="round"/>
+                {% endfor %}
+                {% if c.peak %}
+                    <circle cx="{{ c.peak.x }}" cy="{{ c.peak.y }}" r="3.5" fill="#dc2626" stroke="#fff" stroke-width="1.2"/>
+                {% endif %}
             </svg>
-            <p class="rr-axis"><span>{{ t.from|slice(8, 2) }}/{{ t.from|slice(5, 2) }} {{ t.from|slice(11, 5) }}</span><span>pico: +{{ t.max }}s</span><span>{{ t.to|slice(8, 2) }}/{{ t.to|slice(5, 2) }} {{ t.to|slice(11, 5) }}</span></p>
+            <p class="rr-axis">
+                <span>de {{ c.from|slice(8, 2) }}/{{ c.from|slice(5, 2) }} {{ c.from|slice(11, 5) }}</span>
+                <span><span class="rr-dot rr-dot--first" style="background:#dc2626"></span>pico: +{{ c.max }} s{% if c.peak %} em {{ c.peak.at|slice(8, 2) }}/{{ c.peak.at|slice(5, 2) }} {{ c.peak.at|slice(11, 5) }}{% endif %}</span>
+                <span>até {{ c.to|slice(8, 2) }}/{{ c.to|slice(5, 2) }} {{ c.to|slice(11, 5) }}</span>
+            </p>
         {% else %}
             <p class="rr-empty">Sem dados suficientes nos últimos 7 dias.</p>
         {% endif %}
@@ -167,22 +202,22 @@
 
     {# ── Por hora / por dia ────────────────────────────────────── #}
     <div class="rr-cols">
-        <section class="rr-section">
-            <h2>Média por hora do dia</h2>
-            <div class="rr-bars rr-bars--24">
-                {% for b in report.byHour %}
-                    <div title="{{ b.title }}"><i style="height:{{ b.height }}%;background:{{ b.color }}"></i><span>{{ b.label }}</span></div>
-                {% endfor %}
-            </div>
-        </section>
-        <section class="rr-section">
-            <h2>Média por dia da semana</h2>
-            <div class="rr-bars rr-bars--7">
-                {% for b in report.byDow %}
-                    <div title="{{ b.title }}"><i style="height:{{ b.height }}%;background:{{ b.color }}"></i><span>{{ b.label }}</span></div>
-                {% endfor %}
-            </div>
-        </section>
+        {% for item in [{chart: report.byHour, title: 'Média por hora do dia', aria: 'Atraso médio por hora do dia'}, {chart: report.byDow, title: 'Média por dia da semana', aria: 'Atraso médio por dia da semana'}] %}
+            {% set chart = item.chart %}
+            <section class="rr-section">
+                <h2>{{ item.title }} <small>(30 dias)</small></h2>
+                <svg class="rr-chart rr-chart--bars" viewBox="0 0 {{ chart.w }} {{ chart.h }}" role="img" aria-label="{{ item.aria }}">
+                    {% for tk in chart.ticks %}
+                        <line x1="{{ chart.padL }}" x2="{{ chart.plotR }}" y1="{{ tk.y }}" y2="{{ tk.y }}" stroke="{{ loop.first ? '#94a3b8' : '#e2e8f0' }}" stroke-width="1"/>
+                        <text x="{{ chart.padL - 5 }}" y="{{ tk.y + 3 }}" text-anchor="end" font-size="9" fill="#64748b" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">{{ tk.label }}</text>
+                    {% endfor %}
+                    {% for b in chart.bars %}
+                        <rect x="{{ b.x }}" y="{{ b.y }}" width="{{ b.w }}" height="{{ b.h }}" rx="1.5" fill="{{ b.color }}"><title>{{ b.title }}</title></rect>
+                        {% if b.label is not null %}<text x="{{ b.cx }}" y="{{ chart.labelY }}" text-anchor="middle" font-size="9" fill="#64748b" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">{{ b.label }}</text>{% endif %}
+                    {% endfor %}
+                </svg>
+            </section>
+        {% endfor %}
     </div>
 
     {# ── Trechos ───────────────────────────────────────────────── #}
@@ -237,6 +272,8 @@
     </footer>
 </main>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script type="module" src="{{ asset('js/pages/route-report.js') }}"></script>
 </body>
 </html>
