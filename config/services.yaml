@@ -1,5 +1,6 @@
 parameters:
     partner_feeds_save_raw: '%env(bool:PARTNER_FEEDS_SAVE_RAW)%'
+    empty: ''
 
 services:
     _defaults:

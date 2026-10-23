@@ -11,6 +11,7 @@ use App\Entity\WazeJam;
 use App\Repository\PartnerApiLinkRepository;
 use App\Repository\WazeAlertRepository;
 use App\Repository\WazeJamRepository;
+use App\Service\AlertNotificationService;
 use App\Service\Tv\TvNotifier;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -38,6 +39,7 @@ final class FetchWazeFeedCommand extends Command
         private readonly LockFactory $lockFactory,
         private readonly LoggerInterface $logger,
         private readonly TvNotifier $tvNotifier,
+        private readonly AlertNotificationService $alertNotificationService,
     ) {
         parent::__construct();
     }
@@ -565,6 +567,7 @@ final class FetchWazeFeedCommand extends Command
         $currentUuids = [];
 
         $seenInBatch = [];
+        $notifiableAlerts = [];
 
         $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
 
@@ -617,6 +620,7 @@ final class FetchWazeFeedCommand extends Command
             if (!$dryRun) {
                 $alert = $this->alertRepository
                     ->findOneByPartnerAndUuid($partner, $uuid);
+                $shouldNotify = $alert === null;
 
                 if ($alert === null) {
                     $alert = new WazeAlert();
@@ -632,10 +636,14 @@ final class FetchWazeFeedCommand extends Command
 
                     if (!$alert->isActive()) {
                         $reactivated++;
+                        $shouldNotify = true;
                     }
                 }
 
                 $this->hydrateAlert($alert, $data, $now);
+                if ($shouldNotify) {
+                    $notifiableAlerts[] = $alert;
+                }
             }
 
             $progressBar->advance();
@@ -648,6 +656,10 @@ final class FetchWazeFeedCommand extends Command
 
         if (!$dryRun && $currentUuids !== []) {
             $this->entityManager->flush();
+
+            foreach ($notifiableAlerts as $notifiableAlert) {
+                $this->alertNotificationService->notifyImportantAlert($notifiableAlert);
+            }
 
             $deactivated = $this->alertRepository
                 ->deactivateMissingForPartner(
