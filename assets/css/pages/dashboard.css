@@ -10,20 +10,20 @@
 @layer tokens {
   :root {
     /* Superfícies */
-    --surface-0: #f5f7fb;
-    --surface-1: #ffffff;
-    --surface-2: #f8fafc;
-    --surface-3: #f1f5f9;
+    --surface-0: var(--bg);
+    --surface-1: var(--surface);
+    --surface-2: var(--surface-muted);
+    --surface-3: var(--surface-soft);
 
     /* Texto */
-    --text-1: #0f172a;
-    --text-2: #475569;
-    --text-3: #94a3b8;
+    --text-1: var(--text);
+    --text-2: var(--text-muted);
+    --text-3: var(--text-soft);
     --text-inv: #ffffff;
 
     /* Bordas */
-    --border-1: #e2e8f0;
-    --border-2: #cbd5e1;
+    --border-1: var(--border);
+    --border-2: var(--border-strong);
 
     /* Cores semânticas */
     --accent: #2563eb;
@@ -87,7 +87,7 @@
 
     /* Layout */
     --container-max: 1440px;
-    --container-pad: clamp(16px, 2.5vw, 24px);
+    --container-pad: var(--page-gutter);
 
     /* Z-index */
     --z-sticky: 40;
@@ -95,33 +95,7 @@
     --z-toast: 100;
   }
 
-  /* Dark via atributo (o base.html.twig já resolve) */
-  :where([data-theme="dark"], [data-theme-resolved="dark"]) {
-    --surface-0: #0b1220;
-    --surface-1: #111827;
-    --surface-2: #1a2233;
-    --surface-3: #232d3f;
-    --text-1: #f1f5f9;
-    --text-2: #cbd5e1;
-    --text-3: #94a3b8;
-    --border-1: #1e293b;
-    --border-2: #334155;
-  }
-
-  /* Fallback: system theme sem atributo */
-  @media (prefers-color-scheme: dark) {
-    :where([data-theme="system"], :root:not([data-theme])) {
-      --surface-0: #0b1220;
-      --surface-1: #111827;
-      --surface-2: #1a2233;
-      --surface-3: #232d3f;
-      --text-1: #f1f5f9;
-      --text-2: #cbd5e1;
-      --text-3: #94a3b8;
-      --border-1: #1e293b;
-      --border-2: #334155;
-    }
-  }
+  /* Cores semânticas vêm do tema global; a página acompanha light/dark/system. */
 
   /* Anima a ring da saúde */
   @property --health-score {
@@ -228,7 +202,7 @@
   .dashboard-commandbar {
     position: sticky;
     inset-block-start: 0;
-    z-index: var(--z-sticky);
+    z-index: calc(var(--z-sticky) - 10);
     margin-inline: calc(-1 * var(--container-pad));
     padding: var(--space-4) var(--container-pad);
     background: color-mix(in oklab, var(--surface-0) 88%, transparent);
@@ -252,7 +226,7 @@
   }
 
   .dashboard-page-header h1 {
-    font-size: var(--text-hero);
+    font-size: var(--page-title-size);
     margin-block: 2px 4px;
   }
 

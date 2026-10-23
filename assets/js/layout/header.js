@@ -74,6 +74,7 @@ function applyTheme(theme, doc, withTransition = true) {
     root.setAttribute('data-theme', theme);
     root.setAttribute('data-theme-resolved', theme);
   }
+  doc.defaultView?.dispatchEvent(new CustomEvent('wazebr:themechange', { detail: { theme } }));
 }
 
 function initTheme(header, doc) {

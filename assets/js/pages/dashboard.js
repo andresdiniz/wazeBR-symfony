@@ -167,7 +167,7 @@ const BASE_OPTIONS = {
   },
   scales: {
     x: { grid: { display: false } },
-    y: { grid: { color: COLORS.grid }, beginAtZero: true },
+    y: { grid: { color: getDashboardChartTheme().grid }, beginAtZero: true },
   },
 };
 
@@ -239,7 +239,7 @@ const CHART_CONFIGS = {
       ...BASE_OPTIONS,
       scales: {
         x: { grid: { display: false } },
-        y:  { position: 'left',  grid: { color: COLORS.grid }, title: { display: true, text: '°C' } },
+        y:  { position: 'left',  grid: { color: getDashboardChartTheme().grid }, title: { display: true, text: '°C' } },
         y1: { position: 'right', grid: { display: false }, title: { display: true, text: '%' }, ticks: { max: 100 } },
         y2: { display: false, beginAtZero: true },
       },
@@ -266,7 +266,7 @@ const CHART_CONFIGS = {
       ...BASE_OPTIONS,
       scales: {
         x: { grid: { display: false } },
-        y: { grid: { color: COLORS.grid }, title: { display: true, text: 'metros' } },
+        y: { grid: { color: getDashboardChartTheme().grid }, title: { display: true, text: 'metros' } },
       },
     },
   }),
@@ -319,7 +319,7 @@ function barHorizontal(data, label, color) {
       interaction: { mode: 'nearest' },
       plugins: { legend: { display: false } },
       scales: {
-        x: { grid: { color: COLORS.grid }, beginAtZero: true },
+        x: { grid: { color: getDashboardChartTheme().grid }, beginAtZero: true },
         y: { grid: { display: false } },
       },
     },
@@ -354,10 +354,18 @@ function mountOrUpdateChart(canvas, data) {
   chartByKey.set(key, instance);
 }
 
+function getDashboardChartTheme() {
+  const styles = getComputedStyle(document.documentElement);
+  return {
+    text: styles.getPropertyValue('--text').trim() || COLORS.text,
+    grid: styles.getPropertyValue('--border-soft').trim() || COLORS.grid,
+  };
+}
+
 function initCharts(root = document) {
   if (typeof Chart === 'undefined') return;
 
-  Chart.defaults.color = COLORS.text;
+  Chart.defaults.color = getDashboardChartTheme().text;
   Chart.defaults.font.family = "Inter, system-ui, -apple-system, 'Segoe UI', sans-serif";
   Chart.defaults.font.size = 12;
 
@@ -1239,6 +1247,7 @@ export function initDashboard(root = document) {
   window.addEventListener('dashboard:update', (e) => {
     withViewTransition(() => hydrate(e.detail, root));
   });
+  window.addEventListener('wazebr:themechange', () => initCharts(root));
 }
 
 export function initDashboardCharts(root = document) { initCharts(root); }
