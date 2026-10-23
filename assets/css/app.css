@@ -1,7 +1,7 @@
 /* assets/css/app.css — bundle global */
 
 /* ── Tema (DEVE vir primeiro) ──────────────────────────── */
-@layer tokens, base, layout, components, utilities;
+@layer tokens, reset, base, layout, components, utilities;
 
 @import url('./layout/theme.css');
 @import url('./layout/base-layout.css');
