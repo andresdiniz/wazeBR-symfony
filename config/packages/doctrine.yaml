@@ -2,19 +2,17 @@ doctrine:
     dbal:
         url: '%env(resolve:DATABASE_URL)%'
         profiling_collect_backtrace: '%kernel.debug%'
-        use_savepoints: true
         server_version: 'mariadb-10.4.32'
         options:
             # MySQL: desabilita conversão implícita de timezone
             1002: "SET time_zone = '+00:00'"
 
     orm:
-        auto_generate_proxy_classes: true
-        enable_lazy_ghost_objects: true
-        report_fields_where_declared: true
+        enable_native_lazy_objects: true
         validate_xml_mapping: true
         naming_strategy: doctrine.orm.naming_strategy.underscore_number_aware
-        auto_mapping: true
+        controller_resolver:
+            auto_mapping: false
         mappings:
             App:
                 type: attribute
@@ -34,7 +32,6 @@ when@test:
 when@prod:
     doctrine:
         orm:
-            auto_generate_proxy_classes: false
             proxy_dir: '%kernel.build_dir%/doctrine/orm/Proxies'
             query_cache_driver:
                 type: pool

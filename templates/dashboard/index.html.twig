@@ -8,6 +8,14 @@
     <link rel="stylesheet" href="{{ asset('css/pages/dashboard.css') }}">
 {% endblock %}
 
+{% macro riskClass(risk) %}
+{%- if risk == 'overflow' -%}hydro-station-btn--overflow
+{%- elseif risk == 'alert' -%}hydro-station-btn--alert
+{%- elseif risk == 'attention' -%}hydro-station-btn--attention
+{%- elseif risk == 'normal' -%}hydro-station-btn--normal
+{%- else -%}hydro-station-btn--unknown
+{%- endif -%}
+{% endmacro %}
 
 {% block content %}
 {% set totals = stats.totals|default({}) %}
@@ -20,15 +28,6 @@
 {% set pluvioStats = pluvio.stats|default({}) %}
 {% set fetch       = stats.fetch_status|default({}) %}
 
-{% macro riskClass(risk) %}
-{%- if risk == 'overflow' -%}hydro-station-btn--overflow
-{%- elseif risk == 'alert' -%}hydro-station-btn--alert
-{%- elseif risk == 'attention' -%}hydro-station-btn--attention
-{%- elseif risk == 'normal' -%}hydro-station-btn--normal
-{%- else -%}hydro-station-btn--unknown
-{%- endif -%}
-{% endmacro %}
-
 <div class="dashboard-page"
      data-dashboard
      data-api-endpoint="{{ path('dashboard_api_data') }}"
@@ -37,7 +36,9 @@
     <div class="dashboard-container">
 
         {# ── Cabeçalho ─────────────────────────────────────────────── #}
-        <header class="dashboard-page-header">
+        <header class="dashboard-commandbar">
+    <div class="dashboard-commandbar-inner">
+<header class="dashboard-page-header">
             <div>
                 <span class="dashboard-eyebrow"><i></i> Centro operacional</span>
                 <h1>Visão geral da mobilidade</h1>
@@ -121,6 +122,8 @@
 
             <p class="dashboard-filter-feedback" data-filter-feedback aria-live="polite"></p>
         </section>
+    </div>
+</header>
 
         {# ── KPIs ───────────────────────────────────────────────────── #}
         <section class="dashboard-kpi-grid" aria-label="Indicadores principais">
@@ -204,6 +207,81 @@
                 </div>
             </article>
         </section>
+{# ── Operação: mapa + contexto ─────────────────────────────── #}
+<div class="dashboard-operations-grid">
+{# ── Mapa ───────────────────────────────────────────────────── #}
+        <section class="dashboard-panel dashboard-map-panel">
+            <header class="dashboard-panel-header">
+                <div>
+                    <span class="dashboard-panel-kicker">Geolocalização</span>
+                    <h2>Mapa operacional</h2>
+                </div>
+                <div class="dashboard-map-legend" aria-label="Legenda do mapa">
+                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="alerts">⚠ Alertas</button>
+                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="jams">≋ Jams</button>
+                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="cameras">◎ Câmeras</button>
+                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="weather">☁ Clima</button>
+                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="stations">☔ Chuva</button>
+                </div>
+            </header>
+            <div class="dashboard-map"
+                 data-dashboard-map
+                 data-map-center='{{ stats.map.center|json_encode|e('html_attr') }}'
+                 data-map-alerts='{{ stats.map.alerts|json_encode|e('html_attr') }}'
+                 data-map-jams='{{ stats.map.jams|json_encode|e('html_attr') }}'
+                 data-map-cameras='{{ stats.map.cameras|json_encode|e('html_attr') }}'
+                 data-map-weather='{{ stats.map.weather|json_encode|e('html_attr') }}'
+                 data-map-stations='{{ stats.map.stations|json_encode|e('html_attr') }}'></div>
+        </section>
+    <aside class="dashboard-context-rail">
+        <section class="dashboard-panel dashboard-context-panel">
+            <header class="dashboard-panel-header">
+                <div><span class="dashboard-panel-kicker">Riscos</span><h2>Situação agora</h2></div>
+            </header>
+            <div class="dashboard-context-list">
+                <div class="dashboard-context-item {{ (hydroStats.risk.overflow|default(0) + hydroStats.risk.alert|default(0)) > 0 ? 'is-danger' }}">
+                    <span>Rios em alerta/transbordo</span>
+                    <strong>{{ hydroStats.risk.overflow|default(0) + hydroStats.risk.alert|default(0) }}</strong>
+                </div>
+                <div class="dashboard-context-item {{ hydroStats.risk.attention|default(0) > 0 ? 'is-warning' }}">
+                    <span>Rios em atenção</span>
+                    <strong>{{ hydroStats.risk.attention|default(0) }}</strong>
+                </div>
+                <div class="dashboard-context-item {{ kpis.pluvio_rain_24h|default(0) > 0 ? 'is-info' }}">
+                    <span>Chuva acumulada 24h</span>
+                    <strong>{{ kpis.pluvio_rain_24h|default(0)|number_format(1, ',', '.') }} mm</strong>
+                </div>
+                <div class="dashboard-context-item {{ kpis.routes_delayed|default(0) > 0 ? 'is-warning' }}">
+                    <span>Rotas atrasadas</span>
+                    <strong>{{ kpis.routes_delayed|default(0) }}</strong>
+                </div>
+            </div>
+        </section>
+
+        <section class="dashboard-panel dashboard-context-panel">
+            <header class="dashboard-panel-header">
+                <div><span class="dashboard-panel-kicker">Coletas</span><h2>Última execução</h2></div>
+            </header>
+            <div class="dashboard-context-list">
+                {% for label, key in {
+                    'Waze Alerts': 'waze_alerts',
+                    'Waze Jams': 'waze_jams',
+                    'Waze TVT': 'waze_tvt',
+                    'Clima': 'weather',
+                    'CEMADEN Hidro': 'cemaden_hydro',
+                    'CEMADEN Chuva': 'cemaden_pluvio',
+                    'Câmeras': 'cameras'
+                } %}
+                    <div class="dashboard-context-item">
+                        <span>{{ label }}</span>
+                        <strong>{{ fetch[key] ? fetch[key]|date('d/m H:i') : '—' }}</strong>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+    </aside>
+</div>
+
 
         {# ── Linha 1: atividade + tipos ────────────────────────────── #}
         <div class="dashboard-main-grid">
@@ -444,30 +522,7 @@
             </div>
         </section>
 
-        {# ── Mapa ───────────────────────────────────────────────────── #}
-        <section class="dashboard-panel dashboard-map-panel">
-            <header class="dashboard-panel-header">
-                <div>
-                    <span class="dashboard-panel-kicker">Geolocalização</span>
-                    <h2>Mapa operacional</h2>
-                </div>
-                <div class="dashboard-map-legend" aria-label="Legenda do mapa">
-                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="alerts">⚠ Alertas</button>
-                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="jams">≋ Jams</button>
-                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="cameras">◎ Câmeras</button>
-                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="weather">☁ Clima</button>
-                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="stations">☔ Chuva</button>
-                </div>
-            </header>
-            <div class="dashboard-map"
-                 data-dashboard-map
-                 data-map-center='{{ stats.map.center|json_encode|e('html_attr') }}'
-                 data-map-alerts='{{ stats.map.alerts|json_encode|e('html_attr') }}'
-                 data-map-jams='{{ stats.map.jams|json_encode|e('html_attr') }}'
-                 data-map-cameras='{{ stats.map.cameras|json_encode|e('html_attr') }}'
-                 data-map-weather='{{ stats.map.weather|json_encode|e('html_attr') }}'
-                 data-map-stations='{{ stats.map.stations|json_encode|e('html_attr') }}'></div>
-        </section>
+        
 
         {# ── Listas de dados ────────────────────────────────────────── #}
         <div class="dashboard-content-grid">
@@ -661,6 +716,14 @@
                 <div><span>Câmeras parceiras</span><strong class="dashboard-status {{ totals.cameras > 0 ? 'is-active' }}">{{ totals.cameras > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
             </div>
         </section>
+
+
+<footer class="dashboard-statusbar">
+    <div class="dashboard-statusbar-item"><span>Saúde</span><strong>{{ health }}%</strong></div>
+    <div class="dashboard-statusbar-item"><span>Alertas ativos</span><strong>{{ totals.alerts_active|default(0) }}</strong></div>
+    <div class="dashboard-statusbar-item"><span>Jams ativos</span><strong>{{ totals.jams_active|default(0) }}</strong></div>
+    <div class="dashboard-statusbar-item"><span>Atualizado</span><strong>{{ stats.updated_at|app_date('H:i') }}</strong></div>
+</footer>
 
     </div>
 </div>

@@ -5,6 +5,7 @@ framework:
             tv.cache:
                 adapter: cache.adapter.filesystem
                 default_lifetime: 60
+                tags: true
 
 services:
     # Faz o autowire do TagAwareCacheInterface resolver para o pool tv.cache
