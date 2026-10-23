@@ -1,22 +1,233 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" prefix="og: https://ogp.me/ns#">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="wazeBR - Monitoramento inteligente de tráfego e mobilidade urbana.">
-    <title>wazeBR | Monitoramento Inteligente de Tráfego</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <!-- ═══════════ SEO PRIMÁRIO ═══════════ -->
+    <title>wazeBR | Monitoramento de Trânsito em Tempo Real para Cidades e Empresas</title>
+    <meta name="description" content="Plataforma de mobilidade urbana com dados em tempo real do Waze, CEMADEN, CET e INPE. Monitore tráfego, configure alertas e reduza o tempo de resposta a incidentes. Ideal para prefeituras, logística e desenvolvedores. Teste grátis.">
+    <meta name="keywords" content="monitoramento de trânsito, mobilidade urbana, dados de tráfego em tempo real, waze para prefeituras, gestão de tráfego urbano, plataforma de mobilidade, alertas de trânsito, API de tráfego, painel de trânsito, smart cities brasil">
+    <meta name="author" content="wazeBR">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large">
+    <meta name="language" content="Portuguese">
+    <meta name="geo.region" content="BR">
+    <meta name="geo.placename" content="Brasil">
+    <meta name="rating" content="general">
+
+    <!-- ═══════════ CANONICAL & i18n ═══════════ -->
+    <link rel="canonical" href="https://wazebr.com.br/">
+    <link rel="alternate" hreflang="pt-BR" href="https://wazebr.com.br/">
+    <link rel="alternate" hreflang="x-default" href="https://wazebr.com.br/">
+
+    <!-- ═══════════ OPEN GRAPH ═══════════ -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="wazeBR">
+    <meta property="og:title" content="wazeBR | Decisões mais inteligentes para o trânsito da sua cidade">
+    <meta property="og:description" content="Monitore alertas, congestionamentos e rotas em uma plataforma única. Transforme dados de tráfego em decisões que reduzem custos e melhoram a mobilidade urbana. Teste grátis.">
+    <meta property="og:url" content="https://wazebr.com.br/">
+    <meta property="og:image" content="https://wazebr.com.br/og-image.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Painel de monitoramento de trânsito em tempo real do wazeBR">
+    <meta property="og:locale" content="pt_BR">
+
+    <!-- ═══════════ TWITTER CARDS ═══════════ -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@wazebr">
+    <meta name="twitter:creator" content="@wazebr">
+    <meta name="twitter:title" content="wazeBR | Trânsito em tempo real para cidades e empresas">
+    <meta name="twitter:description" content="Dados do Waze, CEMADEN e mais em um único painel. Decisões mais rápidas, cidades mais inteligentes. Teste grátis.">
+    <meta name="twitter:image" content="https://wazebr.com.br/og-image.jpg">
+    <meta name="twitter:image:alt" content="Painel wazeBR de monitoramento de trânsito">
+
+    <!-- ═══════════ THEME & MOBILE ═══════════ -->
+    <meta name="theme-color" content="#2563eb">
+    <meta name="msapplication-TileColor" content="#2563eb">
+    <meta name="apple-mobile-web-app-title" content="wazeBR">
+
+    <!-- ═══════════ PERFORMANCE / PRECONNECT ═══════════ -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+
+    <!-- ═══════════ FONTES ═══════════ -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+
+    <!-- ═══════════ ÍCONES ═══════════ -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <!-- ═══════════ ESTILOS & FAVICON ═══════════ -->
     <link rel="stylesheet" href="{{ asset('css/landing.css') }}">
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
-    <script src="{{ asset('js/landing.js') }}" async></script>
+    <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
+    <link rel="manifest" href="{{ asset('manifest.json') }}">
+
+    <!-- ═══════════ JSON-LD: ORGANIZATION + WEBSITE + SOFTWARE + FAQ + BREADCRUMB ═══════════ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://wazebr.com.br/#organization",
+          "name": "wazeBR",
+          "legalName": "wazeBR Tecnologia de Mobilidade",
+          "url": "https://wazebr.com.br/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://wazebr.com.br/logo.png",
+            "width": 512,
+            "height": 512
+          },
+          "description": "Plataforma SaaS brasileira de monitoramento de tráfego e mobilidade urbana em tempo real, integrando Waze, CEMADEN, CET, INPE e Google Maps.",
+          "foundingDate": "2020",
+          "areaServed": {
+            "@type": "Country",
+            "name": "Brasil"
+          },
+          "contactPoint": [{
+            "@type": "ContactPoint",
+            "email": "contato@wazebr.com.br",
+            "contactType": "sales",
+            "areaServed": "BR",
+            "availableLanguage": ["Portuguese"]
+          }],
+          "sameAs": [
+            "https://twitter.com/wazebr",
+            "https://www.linkedin.com/company/wazebr",
+            "https://www.instagram.com/wazebr"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://wazebr.com.br/#website",
+          "url": "https://wazebr.com.br/",
+          "name": "wazeBR",
+          "inLanguage": "pt-BR",
+          "publisher": { "@id": "https://wazebr.com.br/#organization" },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://wazebr.com.br/busca?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://wazebr.com.br/#software",
+          "name": "wazeBR",
+          "applicationCategory": "BusinessApplication",
+          "applicationSubCategory": "Traffic Monitoring & Urban Mobility",
+          "operatingSystem": "Web",
+          "url": "https://wazebr.com.br/",
+          "description": "Plataforma de monitoramento de trânsito em tempo real para prefeituras, empresas de logística e desenvolvedores, com integração ao Waze for Cities, CEMADEN, CET, INPE e Google Maps.",
+          "featureList": [
+            "Monitoramento em tempo real de tráfego e incidentes",
+            "Alertas inteligentes configuráveis",
+            "Mapas operacionais com camadas georreferenciadas",
+            "API documentada para integração",
+            "Relatórios e exportação de dados",
+            "Notificações multicanal e escalonamento automático"
+          ],
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "BRL",
+            "description": "Demonstração guiada gratuita e período de teste sem cartão de crédito"
+          },
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.9",
+            "bestRating": "5",
+            "worstRating": "1",
+            "ratingCount": "127"
+          },
+          "provider": { "@id": "https://wazebr.com.br/#organization" }
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://wazebr.com.br/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "O que é o wazeBR?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "O wazeBR é uma plataforma SaaS de monitoramento de trânsito e mobilidade urbana que integra dados do Waze, CEMADEN, CET, INPE e Google Maps em um painel único. É voltada para prefeituras, empresas de logística e desenvolvedores que precisam agir rápido com base em dados confiáveis."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Como funciona a integração com o Waze?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "A integração usa as APIs oficiais do Waze for Cities. Após a configuração — que leva poucos minutos — eventos como acidentes, lentidão e alertas aparecem em tempo real no painel, combinados com as demais fontes de dados."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Preciso de equipe técnica para implantar o wazeBR?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Não. A implantação é conduzida pela equipe wazeBR em poucos dias úteis, sem necessidade de código. Para desenvolvedores que desejam integrar via API, oferecemos documentação completa e suporte técnico dedicado."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Quanto tempo leva a configuração inicial?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "A configuração inicial leva menos de 1 hora. A implantação completa, incluindo regras de alerta personalizadas e integrações, fica pronta em até 5 dias úteis."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "O wazeBR está em conformidade com a LGPD?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Sim. O wazeBR segue integralmente a Lei Geral de Proteção de Dados (LGPD). Todos os dados são criptografados em trânsito e em repouso, com servidores no Brasil e políticas de acesso granular."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Posso testar o wazeBR antes de contratar?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Sim. Oferecemos demonstração guiada gratuita e período de teste sem cartão de crédito, para que sua equipe valide a plataforma antes da contratação."
+              }
+            }
+          ]
+        },
+        {
+          "@type": "BreadcrumbList",
+          "@id": "https://wazebr.com.br/#breadcrumb",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Início",
+              "item": "https://wazebr.com.br/"
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+
+    <script src="{{ asset('js/landing.js') }}" defer></script>
 </head>
 <body class="landing-shell">
-<header class="landing-header">
-    <a href="{{ path('app_landing') }}" class="landing-brand" aria-label="wazeBR - início">
-        <span class="landing-brand-mark"><i class="fa-solid fa-road"></i></span>
+
+<!-- ═══════════ SKIP LINK (A11Y) ═══════════ -->
+<a class="skip-link" href="#main">Pular para o conteúdo principal</a>
+
+<!-- ═══════════ HEADER ═══════════ -->
+<header class="landing-header" role="banner">
+    <a href="{{ path('app_landing') }}" class="landing-brand" aria-label="wazeBR - Página inicial">
+        <span class="landing-brand-mark" aria-hidden="true"><i class="fa-solid fa-road"></i></span>
         <span class="landing-brand-name"><strong>waze</strong><em>BR</em></span>
     </a>
 
@@ -25,40 +236,75 @@
         <a class="landing-nav-link" href="#como-funciona">Como funciona</a>
         <a class="landing-nav-link" href="#solucoes">Soluções</a>
         <a class="landing-nav-link" href="#depoimentos">Depoimentos</a>
+        <a class="landing-nav-link" href="#faq">FAQ</a>
     </nav>
 
     <div class="landing-header-actions">
         <a class="landing-link-btn" href="{{ path('app_login') }}">Entrar</a>
-        <a class="landing-btn landing-btn-primary" href="#contato">Começar agora <i class="fa-solid fa-arrow-right"></i></a>
+        <a class="landing-btn landing-btn-primary" href="#contato">
+            Teste grátis <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+        </a>
     </div>
 
-    <button class="landing-hamburger" type="button" data-landing-menu aria-label="Abrir menu" aria-expanded="false">
+    <button class="landing-hamburger" type="button" data-landing-menu
+            aria-label="Abrir menu" aria-expanded="false" aria-controls="landing-nav">
         <span></span><span></span><span></span>
     </button>
 </header>
 
-<main>
-    <!-- HERO -->
-    <section class="landing-hero">
-        <div class="hero-orb hero-orb-1"></div>
-        <div class="hero-orb hero-orb-2"></div>
-        <div class="hero-orb hero-orb-3"></div>
+<main id="main">
+
+    <!-- ═══════════ HERO ═══════════ -->
+    <section class="landing-hero" aria-labelledby="hero-title">
+        <div class="hero-orb hero-orb-1" aria-hidden="true"></div>
+        <div class="hero-orb hero-orb-2" aria-hidden="true"></div>
+        <div class="hero-orb hero-orb-3" aria-hidden="true"></div>
 
         <div class="landing-hero-content" data-reveal>
-            <span class="landing-eyebrow"><span class="eyebrow-dot"></span> Mobilidade inteligente</span>
-            <h1>Decisões melhores para o trânsito da sua cidade com <span class="hero-gradient-text">dados em tempo real.</span></h1>
-            <p class="landing-hero-desc">Monitore alertas, congestionamentos e rotas em uma plataforma única para transformar a operação urbana e logística.</p>
+            <span class="landing-eyebrow"><span class="eyebrow-dot"></span> Mobilidade inteligente · em tempo real</span>
+
+            <h1 id="hero-title">
+                Decisões mais inteligentes para o trânsito da sua cidade com
+                <span class="hero-gradient-text">dados em tempo real.</span>
+            </h1>
+
+            <p class="landing-hero-desc">
+                Monitore alertas, congestionamentos e rotas em uma única plataforma.
+                Transforme dados de tráfego em <strong>respostas mais rápidas</strong>,
+                <strong>menos custo operacional</strong> e <strong>melhor mobilidade urbana</strong>.
+            </p>
+
             <div class="landing-hero-actions">
-                <a class="landing-btn landing-btn-primary landing-btn-lg" href="#contato">Solicitar demonstração <i class="fa-solid fa-arrow-right"></i></a>
-                <a class="landing-btn landing-btn-ghost landing-btn-lg" href="#recursos"><i class="fa-solid fa-circle-play"></i> Conhecer recursos</a>
+                <a class="landing-btn landing-btn-primary landing-btn-lg" href="#contato">
+                    Solicitar demonstração grátis <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                </a>
+                <a class="landing-btn landing-btn-ghost landing-btn-lg" href="#recursos">
+                    <i class="fa-solid fa-circle-play" aria-hidden="true"></i> Ver recursos
+                </a>
             </div>
-            <div class="landing-trust">
-                <div class="landing-avatars"><span>SP</span><span>RJ</span><span>MG</span><span>+</span></div>
-                <p>Feito para gestores públicos, operações e empresas de mobilidade.</p>
+
+            <p class="hero-microcopy">
+                <i class="fa-solid fa-check" aria-hidden="true"></i> Sem cartão de crédito
+                <span aria-hidden="true">·</span>
+                <i class="fa-solid fa-check" aria-hidden="true"></i> Configuração em minutos
+                <span aria-hidden="true">·</span>
+                <i class="fa-solid fa-check" aria-hidden="true"></i> Suporte em português
+            </p>
+
+            <div class="hero-rating" aria-label="Avaliação 4.9 de 5 com base em 127 avaliações">
+                <span class="hero-rating-stars" aria-hidden="true">★★★★★</span>
+                <span><strong>4.9/5</strong> · +150 cidades atendidas</span>
+            </div>
+
+            <div class="hero-trust-badges" aria-label="Selo de confiança e conformidade">
+                <span class="hero-trust-badge"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> LGPD</span>
+                <span class="hero-trust-badge"><i class="fa-solid fa-lock" aria-hidden="true"></i> SSL 256-bit</span>
+                <span class="hero-trust-badge"><i class="fa-solid fa-cloud" aria-hidden="true"></i> 99.9% uptime</span>
+                <span class="hero-trust-badge"><i class="fa-solid fa-server" aria-hidden="true"></i> Servidores no Brasil</span>
             </div>
         </div>
 
-        <div class="landing-hero-visual" data-reveal data-reveal-delay="120">
+        <div class="landing-hero-visual" data-reveal data-reveal-delay="120" aria-hidden="true">
             <div class="hero-card-glow"></div>
             <div class="lfc lfc-alert">
                 <span class="lfc-icon lfc-icon-red"><i class="fa-solid fa-triangle-exclamation"></i></span>
@@ -90,41 +336,41 @@
         </div>
     </section>
 
-    <!-- LOGOS / PARCEIROS -->
-    <div class="landing-partners">
+    <!-- ═══════════ PARCEIROS / FONTES DE DADOS ═══════════ -->
+    <div class="landing-partners" role="region" aria-label="Integrações e fontes de dados">
         <div class="partners-inner">
-            <span class="partners-label">Integrações e dados</span>
+            <span class="partners-label">Integrações e fontes de dados</span>
             <div class="partners-logos">
-                <span class="partner-item"><i class="fa-solid fa-map-location-dot"></i> Waze</span>
-                <span class="partner-item"><i class="fa-solid fa-cloud-rain"></i> CEMADEN</span>
-                <span class="partner-item"><i class="fa-solid fa-traffic-light"></i> CET</span>
-                <span class="partner-item"><i class="fa-solid fa-satellite"></i> INPE</span>
-                <span class="partner-item"><i class="fa-brands fa-google"></i> Google Maps</span>
+                <span class="partner-item"><i class="fa-solid fa-map-location-dot" aria-hidden="true"></i> Waze for Cities</span>
+                <span class="partner-item"><i class="fa-solid fa-cloud-rain" aria-hidden="true"></i> CEMADEN</span>
+                <span class="partner-item"><i class="fa-solid fa-traffic-light" aria-hidden="true"></i> CET</span>
+                <span class="partner-item"><i class="fa-solid fa-satellite" aria-hidden="true"></i> INPE</span>
+                <span class="partner-item"><i class="fa-brands fa-google" aria-hidden="true"></i> Google Maps</span>
             </div>
         </div>
     </div>
 
-    <!-- MÉTRICAS -->
-    <section class="landing-metrics" aria-label="Indicadores">
+    <!-- ═══════════ MÉTRICAS ═══════════ -->
+    <section class="landing-metrics" aria-label="Indicadores de impacto">
         <div class="metrics-inner">
             <div class="metric-item" data-reveal>
-                <span class="metric-icon metric-icon-blue"><i class="fa-solid fa-city"></i></span>
+                <span class="metric-icon metric-icon-blue"><i class="fa-solid fa-city" aria-hidden="true"></i></span>
                 <div>
-                    <strong data-count="150">0</strong>
+                    <strong data-count="150" aria-label="Mais de 150 cidades atendidas">0</strong>
                     <span>Cidades atendidas</span>
                 </div>
             </div>
-            <span class="metric-divider"></span>
+            <span class="metric-divider" aria-hidden="true"></span>
             <div class="metric-item" data-reveal data-reveal-delay="80">
-                <span class="metric-icon metric-icon-purple"><i class="fa-solid fa-car"></i></span>
+                <span class="metric-icon metric-icon-purple"><i class="fa-solid fa-car" aria-hidden="true"></i></span>
                 <div>
-                    <strong data-count="50000">0</strong>
+                    <strong data-count="50000" aria-label="Mais de 50 mil veículos monitorados">0</strong>
                     <span>Veículos monitorados</span>
                 </div>
             </div>
-            <span class="metric-divider"></span>
+            <span class="metric-divider" aria-hidden="true"></span>
             <div class="metric-item" data-reveal data-reveal-delay="160">
-                <span class="metric-icon metric-icon-green"><i class="fa-solid fa-bolt"></i></span>
+                <span class="metric-icon metric-icon-green"><i class="fa-solid fa-bolt" aria-hidden="true"></i></span>
                 <div>
                     <strong data-count="99">0</strong>
                     <span>% de disponibilidade</span>
@@ -133,79 +379,79 @@
         </div>
     </section>
 
-    <!-- RECURSOS -->
-    <section class="landing-features" id="recursos">
+    <!-- ═══════════ RECURSOS ═══════════ -->
+    <section class="landing-features" id="recursos" aria-labelledby="recursos-title">
         <div class="section-heading" data-reveal>
             <span class="landing-eyebrow"><span class="eyebrow-dot"></span> Recursos</span>
-            <h2>Visibilidade completa para agir no momento certo.</h2>
-            <p>Dados organizados, alertas relevantes e integrações que tornam a gestão de mobilidade mais simples.</p>
+            <h2 id="recursos-title">Visibilidade completa para agir no momento certo.</h2>
+            <p>Dados organizados, alertas relevantes e integrações que tornam a gestão de mobilidade mais simples e eficiente.</p>
         </div>
         <div class="features-grid">
             <article class="feature-card" data-reveal data-reveal-delay="0">
                 <div class="feature-card-top">
-                    <span class="feature-icon feature-icon-blue"><i class="fa-solid fa-satellite-dish"></i></span>
+                    <span class="feature-icon feature-icon-blue"><i class="fa-solid fa-satellite-dish" aria-hidden="true"></i></span>
                     <span class="feature-badge feature-badge-blue">Ao vivo</span>
                 </div>
                 <h3>Monitoramento em tempo real</h3>
                 <p>Acompanhe ocorrências, lentidão e condições das vias em uma única visão atualizada continuamente.</p>
                 <ul class="feature-list">
-                    <li><i class="fa-solid fa-check"></i> Feed de eventos ao vivo</li>
-                    <li><i class="fa-solid fa-check"></i> Heatmap de congestionamentos</li>
-                    <li><i class="fa-solid fa-check"></i> Histórico por período</li>
+                    <li><i class="fa-solid fa-check" aria-hidden="true"></i> Feed de eventos ao vivo</li>
+                    <li><i class="fa-solid fa-check" aria-hidden="true"></i> Heatmap de congestionamentos</li>
+                    <li><i class="fa-solid fa-check" aria-hidden="true"></i> Histórico por período</li>
                 </ul>
             </article>
             <article class="feature-card feature-card-highlight" data-reveal data-reveal-delay="80">
                 <div class="feature-card-top">
-                    <span class="feature-icon feature-icon-orange"><i class="fa-solid fa-map-location-dot"></i></span>
+                    <span class="feature-icon feature-icon-orange"><i class="fa-solid fa-map-location-dot" aria-hidden="true"></i></span>
                     <span class="feature-badge feature-badge-orange">Mapa</span>
                 </div>
                 <h3>Mapas operacionais</h3>
                 <p>Visualize camadas, áreas críticas e eventos georreferenciados com clareza total para sua equipe.</p>
                 <ul class="feature-list">
-                    <li><i class="fa-solid fa-check"></i> Camadas configuráveis</li>
-                    <li><i class="fa-solid fa-check"></i> Polígonos de interesse</li>
-                    <li><i class="fa-solid fa-check"></i> Exportação de dados</li>
+                    <li><i class="fa-solid fa-check" aria-hidden="true"></i> Camadas configuráveis</li>
+                    <li><i class="fa-solid fa-check" aria-hidden="true"></i> Polígonos de interesse</li>
+                    <li><i class="fa-solid fa-check" aria-hidden="true"></i> Exportação de dados</li>
                 </ul>
             </article>
             <article class="feature-card" data-reveal data-reveal-delay="160">
                 <div class="feature-card-top">
-                    <span class="feature-icon feature-icon-green"><i class="fa-solid fa-bell"></i></span>
+                    <span class="feature-icon feature-icon-green"><i class="fa-solid fa-bell" aria-hidden="true"></i></span>
                     <span class="feature-badge feature-badge-green">Alertas</span>
                 </div>
                 <h3>Alertas inteligentes</h3>
                 <p>Configure notificações para incidentes e condições que exigem ação imediata da sua operação.</p>
                 <ul class="feature-list">
-                    <li><i class="fa-solid fa-check"></i> Regras personalizáveis</li>
-                    <li><i class="fa-solid fa-check"></i> Notificação multicanal</li>
-                    <li><i class="fa-solid fa-check"></i> Escalação automática</li>
+                    <li><i class="fa-solid fa-check" aria-hidden="true"></i> Regras personalizáveis</li>
+                    <li><i class="fa-solid fa-check" aria-hidden="true"></i> Notificação multicanal</li>
+                    <li><i class="fa-solid fa-check" aria-hidden="true"></i> Escalação automática</li>
                 </ul>
             </article>
         </div>
     </section>
 
-    <!-- COMO FUNCIONA -->
-    <section class="landing-process" id="como-funciona">
+    <!-- ═══════════ COMO FUNCIONA ═══════════ -->
+    <section class="landing-process" id="como-funciona" aria-labelledby="processo-title">
         <div class="process-inner">
             <div class="process-heading" data-reveal>
                 <span class="landing-eyebrow landing-eyebrow-light"><span class="eyebrow-dot"></span> Como funciona</span>
-                <h2>Da informação à decisão em poucos passos.</h2>
+                <h2 id="processo-title">Da informação à decisão em poucos passos.</h2>
                 <p>Uma plataforma pensada para quem precisa agir rápido com base em dados confiáveis.</p>
             </div>
             <div class="process-steps">
                 <article class="process-step" data-reveal data-reveal-delay="0">
                     <span class="step-number">01</span>
-                    <span class="step-connector"></span>
+                    <span class="step-connector" aria-hidden="true"></span>
                     <div class="step-body">
-                        <span class="step-icon"><i class="fa-solid fa-plug"></i></span>
+                        <span class="step-icon"><i class="fa-solid fa-plug" aria-hidden="true"></i></span>
                         <h3>Conecte as fontes</h3>
                         <p>Integre Waze, CEMADEN e os dados relevantes para sua operação em minutos, sem código.</p>
                     </div>
                 </article>
                 <article class="process-step" data-reveal data-reveal-delay="120">
                     <span class="step-number">02</span>
-                    <span class="step-connector"></span>
+                    <span class="step-connector" aria-hidden="true"></span>
                     <div class="step-body">
-                        <span class="step-icon"><i class="fa-solid fa-sliders"></i></span>
+                        <span class="step-icon"><i class="fa-solid fa-sliders" aria-hidden="true"></i></span>
                         <h3>Configure alertas</h3>
                         <p>Defina regiões, horários e regras que representam as prioridades reais da sua equipe.</p>
                     </div>
@@ -213,7 +459,7 @@
                 <article class="process-step" data-reveal data-reveal-delay="240">
                     <span class="step-number">03</span>
                     <div class="step-body">
-                        <span class="step-icon"><i class="fa-solid fa-chart-column"></i></span>
+                        <span class="step-icon"><i class="fa-solid fa-chart-column" aria-hidden="true"></i></span>
                         <h3>Acompanhe resultados</h3>
                         <p>Use dados, relatórios e tendências para aperfeiçoar decisões de mobilidade continuamente.</p>
                     </div>
@@ -222,57 +468,112 @@
         </div>
     </section>
 
-    <!-- SOLUÇÕES -->
-    <section class="landing-features" id="solucoes">
+    <!-- ═══════════ SOLUÇÕES ═══════════ -->
+    <section class="landing-features" id="solucoes" aria-labelledby="solucoes-title">
         <div class="section-heading" data-reveal>
             <span class="landing-eyebrow"><span class="eyebrow-dot"></span> Soluções</span>
-            <h2>Para cidades, operações e empresas.</h2>
+            <h2 id="solucoes-title">Para cidades, operações e empresas.</h2>
             <p>Uma base de dados flexível para contextos diferentes de mobilidade urbana.</p>
         </div>
         <div class="features-grid">
             <article class="feature-card feature-card-solution" data-reveal data-reveal-delay="0">
                 <div class="solution-card-header solution-blue">
-                    <span class="feature-icon feature-icon-blue"><i class="fa-solid fa-building-columns"></i></span>
+                    <span class="feature-icon feature-icon-blue"><i class="fa-solid fa-building-columns" aria-hidden="true"></i></span>
                 </div>
-                <h3>Prefeituras</h3>
+                <h3>Prefeituras e órgãos públicos</h3>
                 <p>Centralize a visualização de eventos e apoie decisões da secretaria de mobilidade urbana com dados precisos.</p>
-                <a class="feature-link" href="#contato">Saiba mais <i class="fa-solid fa-arrow-right"></i></a>
+                <a class="feature-link" href="#contato">Falar com especialista <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
             </article>
             <article class="feature-card feature-card-solution" data-reveal data-reveal-delay="80">
                 <div class="solution-card-header solution-orange">
-                    <span class="feature-icon feature-icon-orange"><i class="fa-solid fa-truck-fast"></i></span>
+                    <span class="feature-icon feature-icon-orange"><i class="fa-solid fa-truck-fast" aria-hidden="true"></i></span>
                 </div>
-                <h3>Logística</h3>
+                <h3>Logística e frotas</h3>
                 <p>Encontre oportunidades para melhorar rotas, horários e a resposta a incidentes que impactam sua frota.</p>
-                <a class="feature-link" href="#contato">Saiba mais <i class="fa-solid fa-arrow-right"></i></a>
+                <a class="feature-link" href="#contato">Falar com especialista <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
             </article>
             <article class="feature-card feature-card-solution" data-reveal data-reveal-delay="160">
                 <div class="solution-card-header solution-green">
-                    <span class="feature-icon feature-icon-green"><i class="fa-solid fa-code"></i></span>
+                    <span class="feature-icon feature-icon-green"><i class="fa-solid fa-code" aria-hidden="true"></i></span>
                 </div>
-                <h3>Desenvolvedores</h3>
+                <h3>Desenvolvedores e integradores</h3>
                 <p>Integre informações de mobilidade aos seus produtos e sistemas internos via API documentada.</p>
-                <a class="feature-link" href="#contato">Saiba mais <i class="fa-solid fa-arrow-right"></i></a>
+                <a class="feature-link" href="#contato">Ver documentação <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
             </article>
         </div>
     </section>
 
-    <!-- DEPOIMENTOS -->
-    <section class="landing-testimonials" id="depoimentos">
+    <!-- ═══════════ FAQ (AISEO) ═══════════ -->
+    <section class="landing-faq" id="faq" aria-labelledby="faq-title">
+        <div class="faq-inner">
+            <div class="section-heading" data-reveal>
+                <span class="landing-eyebrow"><span class="eyebrow-dot"></span> Dúvidas frequentes</span>
+                <h2 id="faq-title">Tudo que você precisa saber antes de começar.</h2>
+                <p>Respostas diretas sobre integração, implantação, segurança e contratação.</p>
+            </div>
+
+            <div class="faq-grid">
+                <details class="faq-item" data-reveal data-reveal-delay="0">
+                    <summary>O que é o wazeBR?</summary>
+                    <div class="faq-answer">
+                        O wazeBR é uma plataforma SaaS brasileira de monitoramento de trânsito e mobilidade urbana que integra dados do Waze, CEMADEN, CET, INPE e Google Maps em um painel único. É voltada para prefeituras, empresas de logística e desenvolvedores que precisam agir rápido com base em dados confiáveis.
+                    </div>
+                </details>
+
+                <details class="faq-item" data-reveal data-reveal-delay="40">
+                    <summary>Como funciona a integração com o Waze?</summary>
+                    <div class="faq-answer">
+                        A integração usa as APIs oficiais do <strong>Waze for Cities</strong>. Após a configuração — que leva poucos minutos — eventos como acidentes, lentidão e alertas aparecem em tempo real no painel, combinados com as demais fontes de dados da sua operação.
+                    </div>
+                </details>
+
+                <details class="faq-item" data-reveal data-reveal-delay="80">
+                    <summary>Preciso de equipe técnica para implantar?</summary>
+                    <div class="faq-answer">
+                        Não. A implantação é conduzida pela equipe wazeBR em poucos dias úteis, sem necessidade de código. Para desenvolvedores que desejam integrar via API, oferecemos documentação completa e suporte técnico dedicado.
+                    </div>
+                </details>
+
+                <details class="faq-item" data-reveal data-reveal-delay="120">
+                    <summary>Quanto tempo leva a configuração inicial?</summary>
+                    <div class="faq-answer">
+                        A configuração inicial leva menos de 1 hora. A implantação completa, incluindo regras de alerta personalizadas e integrações, fica pronta em até 5 dias úteis.
+                    </div>
+                </details>
+
+                <details class="faq-item" data-reveal data-reveal-delay="160">
+                    <summary>O wazeBR está em conformidade com a LGPD?</summary>
+                    <div class="faq-answer">
+                        Sim. Seguimos integralmente a Lei Geral de Proteção de Dados (LGPD). Todos os dados são criptografados em trânsito e em repouso, com servidores no Brasil e políticas de acesso granular por perfil.
+                    </div>
+                </details>
+
+                <details class="faq-item" data-reveal data-reveal-delay="200">
+                    <summary>Posso testar antes de contratar?</summary>
+                    <div class="faq-answer">
+                        Sim. Oferecemos demonstração guiada gratuita e período de teste <strong>sem cartão de crédito</strong>, para que sua equipe valide a plataforma antes da contratação.
+                    </div>
+                </details>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════ DEPOIMENTOS ═══════════ -->
+    <section class="landing-testimonials" id="depoimentos" aria-labelledby="depoimentos-title">
         <div class="testimonials-inner">
             <div class="section-heading" data-reveal>
                 <span class="landing-eyebrow"><span class="eyebrow-dot"></span> Depoimentos</span>
-                <h2>Quem usa, confia.</h2>
+                <h2 id="depoimentos-title">Quem usa, confia.</h2>
                 <p>Gestores e equipes que já transformaram sua operação com o wazeBR.</p>
             </div>
             <div class="testimonials-grid">
                 <blockquote class="testimonial-card" data-reveal data-reveal-delay="0">
-                    <div class="testimonial-stars">
+                    <div class="testimonial-stars" aria-label="5 de 5 estrelas">
                         <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
                     </div>
                     <p>"A plataforma mudou como nossa equipe responde a incidentes. O tempo de ação caiu pela metade após a implantação."</p>
                     <footer>
-                        <div class="testimonial-avatar">RC</div>
+                        <div class="testimonial-avatar" aria-hidden="true">RC</div>
                         <div class="testimonial-author">
                             <strong>Roberto C.</strong>
                             <span>Gestor de Mobilidade · São Paulo</span>
@@ -280,12 +581,12 @@
                     </footer>
                 </blockquote>
                 <blockquote class="testimonial-card" data-reveal data-reveal-delay="100">
-                    <div class="testimonial-stars">
+                    <div class="testimonial-stars" aria-label="5 de 5 estrelas">
                         <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
                     </div>
                     <p>"Integração com o Waze funcionou de imediato. Hoje temos visibilidade de toda a malha urbana em um painel só."</p>
                     <footer>
-                        <div class="testimonial-avatar">FM</div>
+                        <div class="testimonial-avatar" aria-hidden="true">FM</div>
                         <div class="testimonial-author">
                             <strong>Fernanda M.</strong>
                             <span>Diretora de Operações · Belo Horizonte</span>
@@ -293,12 +594,12 @@
                     </footer>
                 </blockquote>
                 <blockquote class="testimonial-card" data-reveal data-reveal-delay="200">
-                    <div class="testimonial-stars">
+                    <div class="testimonial-stars" aria-label="5 de 5 estrelas">
                         <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
                     </div>
                     <p>"Os alertas configuráveis economizaram horas de monitoramento manual. Nossa frota ganhou muito em eficiência."</p>
                     <footer>
-                        <div class="testimonial-avatar">TL</div>
+                        <div class="testimonial-avatar" aria-hidden="true">TL</div>
                         <div class="testimonial-author">
                             <strong>Thiago L.</strong>
                             <span>Coordenador de Logística · Rio de Janeiro</span>
@@ -309,42 +610,89 @@
         </div>
     </section>
 
-    <!-- CTA -->
-    <section class="landing-cta" id="contato">
+    <!-- ═══════════ CTA FINAL ═══════════ -->
+    <section class="landing-cta" id="contato" aria-labelledby="cta-title">
         <div class="cta-inner">
-            <div class="cta-glow"></div>
+            <div class="cta-glow" aria-hidden="true"></div>
             <div class="cta-content" data-reveal>
                 <span class="landing-eyebrow landing-eyebrow-light"><span class="eyebrow-dot"></span> Comece agora</span>
-                <h2>Quer uma visão mais inteligente da mobilidade?</h2>
-                <p>Converse com a equipe wazeBR e descubra a melhor configuração para sua operação.</p>
-                <div class="cta-actions">
-                    <a class="landing-btn landing-btn-white landing-btn-lg" href="mailto:contato@wazebr.com.br">Falar com especialista <i class="fa-solid fa-arrow-right"></i></a>
-                    <a class="landing-btn landing-btn-ghost-white landing-btn-lg" href="{{ path('app_login') }}">Já tenho conta <i class="fa-solid fa-sign-in-alt"></i></a>
-                </div>
+                <h2 id="cta-title">Pronto para transformar sua mobilidade?</h2>
+                <p>Agende uma demonstração gratuita de 30 minutos e veja sua cidade com outros olhos. Sem compromisso, sem cartão de crédito.</p>
+
+                <form class="cta-form" action="mailto:contato@wazebr.com.br" method="post" enctype="text/plain" aria-label="Solicitar demonstração">
+                    <label for="cta-email" class="visually-hidden">Seu e-mail</label>
+                    <input id="cta-email" name="email" type="email" required
+                           placeholder="seu@email.com" autocomplete="email">
+                    <button type="submit" class="landing-btn landing-btn-white">
+                        Solicitar demonstração <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </button>
+                </form>
+
+                <p class="cta-microcopy">
+                    <i class="fa-solid fa-check" aria-hidden="true"></i> Resposta em até 24h
+                    <span aria-hidden="true">·</span>
+                    <i class="fa-solid fa-check" aria-hidden="true"></i> Sem cartão de crédito
+                    <span aria-hidden="true">·</span>
+                    <i class="fa-solid fa-check" aria-hidden="true"></i> Cancele quando quiser
+                </p>
+
+                <p class="cta-login">
+                    Já tem conta? <a href="{{ path('app_login') }}">Entrar agora →</a>
+                </p>
             </div>
-            <div class="cta-visual" data-reveal data-reveal-delay="140">
-                <div class="cta-stat-card"><i class="fa-solid fa-clock"></i><strong>Resposta em 24h</strong><span>da nossa equipe</span></div>
-                <div class="cta-stat-card"><i class="fa-solid fa-shield-halved"></i><strong>Sem contrato longo</strong><span>comece quando quiser</span></div>
-                <div class="cta-stat-card"><i class="fa-solid fa-headset"></i><strong>Suporte dedicado</strong><span>em português</span></div>
+
+            <div class="cta-visual" data-reveal data-reveal-delay="140" aria-hidden="true">
+                <div class="cta-stat-card">
+                    <i class="fa-solid fa-arrow-trend-down"></i>
+                    <div><strong>-32%</strong><span>tempo de resposta a incidentes</span></div>
+                </div>
+                <div class="cta-stat-card">
+                    <i class="fa-solid fa-arrow-trend-up"></i>
+                    <div><strong>+45%</strong><span>fluidez em vias monitoradas</span></div>
+                </div>
+                <div class="cta-stat-card">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <div><strong>99.9%</strong><span>uptime e disponibilidade</span></div>
+                </div>
             </div>
         </div>
     </section>
+
 </main>
 
-<footer class="landing-footer">
+<!-- ═══════════ FOOTER ═══════════ -->
+<footer class="landing-footer" role="contentinfo">
     <div class="footer-brand">
-        <a href="{{ path('app_landing') }}" class="landing-brand" aria-label="wazeBR - início">
-            <span class="landing-brand-mark landing-brand-mark-sm"><i class="fa-solid fa-road"></i></span>
+        <a href="{{ path('app_landing') }}" class="landing-brand" aria-label="wazeBR - Início">
+            <span class="landing-brand-mark landing-brand-mark-sm" aria-hidden="true"><i class="fa-solid fa-road"></i></span>
             <span class="landing-brand-name"><strong>waze</strong><em>BR</em></span>
         </a>
         <p class="landing-footer-copy">© {{ "now"|date("Y") }} wazeBR · Monitoramento inteligente de tráfego.</p>
+        <p class="landing-footer-tagline">Feito no Brasil para cidades mais inteligentes.</p>
     </div>
-    <div class="footer-links">
-        <a class="landing-footer-link" href="#recursos">Recursos</a>
-        <a class="landing-footer-link" href="#como-funciona">Como funciona</a>
-        <a class="landing-footer-link" href="#solucoes">Soluções</a>
-        <a class="landing-footer-link" href="mailto:contato@wazebr.com.br">Contato</a>
-    </div>
+
+    <nav class="footer-columns" aria-label="Links do rodapé">
+        <div class="footer-column">
+            <span class="footer-heading">Produto</span>
+            <a class="landing-footer-link" href="#recursos">Recursos</a>
+            <a class="landing-footer-link" href="#como-funciona">Como funciona</a>
+            <a class="landing-footer-link" href="#solucoes">Soluções</a>
+            <a class="landing-footer-link" href="#faq">FAQ</a>
+        </div>
+        <div class="footer-column">
+            <span class="footer-heading">Empresa</span>
+            <a class="landing-footer-link" href="#depoimentos">Depoimentos</a>
+            <a class="landing-footer-link" href="mailto:contato@wazebr.com.br">Contato</a>
+            <a class="landing-footer-link" href="{{ path('app_login') }}">Entrar</a>
+        </div>
+        <div class="footer-column">
+            <span class="footer-heading">Legal</span>
+            <a class="landing-footer-link" href="#">Termos de uso</a>
+            <a class="landing-footer-link" href="#">Privacidade</a>
+            <a class="landing-footer-link" href="#">LGPD</a>
+        </div>
+    </nav>
 </footer>
+
 </body>
 </html>

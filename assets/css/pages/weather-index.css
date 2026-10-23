@@ -25,12 +25,12 @@
 }
 
 .wx-container {
-    max-width: 1400px;
+    max-width: var(--page-max-wide);
     margin: 0 auto;
-    padding: 0 24px;
+    padding: 0 var(--page-gutter);
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: var(--page-section-gap);
 }
 
 /* ── Breadcrumb ─────────────────────────────────────────── */
@@ -59,7 +59,7 @@
     box-shadow: 0 0 0 4px rgba(37, 99, 235, .15);
 }
 .wx-header h1 {
-    font-size: 26px; line-height: 1.2; margin: 0 0 6px; font-weight: 700;
+    font-size: var(--page-title-size); line-height: 1.2; margin: 0 0 6px; font-weight: 700;
 }
 .wx-header p {
     margin: 0; color: var(--wx-muted); font-size: 13px; max-width: 720px;
@@ -253,8 +253,8 @@
 
 /* ── Responsivo ─────────────────────────────────────────── */
 @media (max-width: 640px) {
-    .wx-container { padding: 0 14px; }
-    .wx-header h1 { font-size: 22px; }
+    .wx-container { padding: 0 var(--page-gutter); }
+    .wx-header h1 { font-size: var(--page-title-size); }
     .wx-kpis { grid-template-columns: repeat(2, 1fr); }
     .wx-kpi__value { font-size: 20px; }
 }

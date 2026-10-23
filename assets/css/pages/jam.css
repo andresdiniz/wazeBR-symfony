@@ -93,12 +93,12 @@
 }
 
 .jam-container {
-    max-width: 1600px;
+    max-width: var(--page-max-wide);
     margin: 0 auto;
-    padding: 0 24px;
+    padding: 0 var(--page-gutter);
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: var(--page-section-gap);
 }
 
 /* ── Header ────────────────────────────────────────────── */
@@ -111,7 +111,7 @@
 }
 .jam-header h1 {
     margin: 4px 0 6px;
-    font-size: 26px;
+    font-size: var(--page-title-size);
     font-weight: 800;
     letter-spacing: -.02em;
     color: var(--jam-text);

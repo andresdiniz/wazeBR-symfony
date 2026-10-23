@@ -1,0 +1,113 @@
+/* Relatório imprimível da rota — sempre tema claro (papel / PDF). */
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+html { background: #e2e8f0; }
+body {
+    margin: 0; color: #0f172a; background: #e2e8f0;
+    font: 14px/1.5 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+.rr-page {
+    max-width: 860px; margin: 24px auto; padding: 28px 32px 36px;
+    background: #fff; border-radius: 10px; box-shadow: 0 8px 30px rgba(15, 23, 42, .12);
+}
+.rr-toolbar { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.rr-btn {
+    display: inline-block; padding: 8px 14px; border-radius: 8px; cursor: pointer;
+    border: 1px solid #cbd5e1; background: #fff; color: #0f172a;
+    font: inherit; font-weight: 600; text-decoration: none;
+}
+.rr-btn--primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+.rr-btn:disabled { opacity: .65; cursor: progress; }
+
+.rr-header { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; padding-bottom: 14px; border-bottom: 2px solid #0f172a; }
+.rr-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #64748b; }
+.rr-header h1 { margin: 4px 0 2px; font-size: 24px; line-height: 1.2; }
+.rr-sub { margin: 0; color: #475569; }
+.rr-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; text-align: right; color: #64748b; }
+.rr-health { padding: 6px 14px; border-radius: 10px; text-align: center; border: 1px solid #cbd5e1; }
+.rr-health strong { display: block; font-size: 26px; line-height: 1.1; }
+.rr-health small { font-size: 14px; }
+.rr-health span { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.rr-health--good { background: #dcfce7; border-color: #86efac; color: #166534; }
+.rr-health--warn { background: #fef3c7; border-color: #fcd34d; color: #92400e; }
+.rr-health--bad  { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+
+.rr-note { margin: 14px 0 0; padding: 8px 12px; border-radius: 8px; }
+.rr-note--bad { background: #fee2e2; color: #991b1b; }
+
+.rr-section { margin-top: 22px; break-inside: avoid; }
+.rr-section h2 { margin: 0 0 8px; font-size: 15px; }
+.rr-section h2 small { font-weight: 500; color: #64748b; font-size: 12px; }
+.rr-summary { padding: 12px 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; }
+.rr-summary ul { margin: 0; padding-left: 18px; }
+.rr-summary li { margin: 3px 0; }
+
+.rr-kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-top: 18px; }
+.rr-kpi { padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; break-inside: avoid; }
+.rr-kpi span { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: #64748b; }
+.rr-kpi strong { display: block; font-size: 18px; line-height: 1.3; }
+.rr-kpi small { color: #64748b; font-size: 11px; }
+
+.rr-mapwrap {
+    position: relative; width: 700px; max-width: 100%; height: 340px;
+    border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: #f1f5f9;
+}
+/* Tamanho fixo (700×340) na tela e na impressão: o mapa não precisa recarregar ao imprimir. */
+.rr-map-fallback, .rr-map-live { position: absolute; inset: 0; width: 100%; height: 100%; }
+.rr-map-live { z-index: 1; background: transparent; }
+.rr-map-live.leaflet-container { background: transparent; font: inherit; }
+.rr-mapwrap.is-live .rr-map-fallback { visibility: hidden; }
+.rr-mapwrap.is-live .rr-map-live.leaflet-container { background: #e5e7eb; }
+.rr-legend--credit { margin-top: 2px; }
+.rr-legend { margin: 6px 0 0; font-size: 12px; color: #64748b; }
+.rr-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin: 0 3px 0 8px; }
+.rr-dot--first { margin-left: 0; }
+.rr-grad { display: inline-block; width: 90px; height: 8px; border-radius: 99px; vertical-align: middle;
+    background: linear-gradient(90deg, hsl(140,62%,45%), hsl(70,68%,45%), hsl(0,74%,42%)); }
+.rr-empty { margin: 0; color: #64748b; font-style: italic; }
+
+.rr-heat { display: grid; gap: 2px; }
+.rr-heat__row { display: grid; grid-template-columns: 34px repeat(24, 1fr); gap: 2px; align-items: center; }
+.rr-heat__row--head span { font-size: 9px; text-align: center; color: #64748b; }
+.rr-heat__label { font-size: 11px; font-weight: 600; color: #475569; }
+.rr-heat__row i { display: block; height: 18px; border-radius: 3px; }
+.rr-heat__row i.is-empty { background: #e2e8f0; }
+
+.rr-chart { display: block; width: 100%; height: auto; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+.rr-axis-text { font: 9px/1 Inter, system-ui, sans-serif; fill: #64748b; }
+.rr-axis { display: flex; justify-content: space-between; margin: 4px 0 0; font-size: 11px; color: #64748b; }
+
+.rr-cols { display: grid; grid-template-columns: 3fr 2fr; gap: 18px; }
+
+.rr-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.rr-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #64748b; padding: 6px 8px; border-bottom: 1px solid #cbd5e1; }
+.rr-table td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+.rr-table tr { break-inside: avoid; }
+.rr-pill { display: inline-block; padding: 1px 8px; border-radius: 99px; font-weight: 700; background: #e2e8f0; }
+.rr-pill--severe   { background: #fee2e2; color: #991b1b; }
+.rr-pill--heavy    { background: #ffedd5; color: #9a3412; }
+.rr-pill--moderate { background: #fef3c7; color: #92400e; }
+.rr-pill--light    { background: #ecfccb; color: #3f6212; }
+
+.rr-foot { margin-top: 26px; padding-top: 12px; border-top: 1px solid #cbd5e1; font-size: 11.5px; color: #64748b; }
+.rr-foot p { margin: 4px 0; }
+
+@media (max-width: 720px) {
+    .rr-page { margin: 0; border-radius: 0; padding: 18px 14px 28px; }
+    .rr-header { flex-direction: column; }
+    .rr-meta { align-items: flex-start; text-align: left; }
+    .rr-kpis { grid-template-columns: repeat(2, 1fr); }
+    .rr-cols { grid-template-columns: 1fr; }
+    .rr-table { display: block; overflow-x: auto; }
+}
+
+@page { size: A4; margin: 12mm; }
+@media print {
+    html, body { background: #fff; }
+    .rr-page { max-width: none; margin: 0; padding: 0; box-shadow: none; border-radius: 0; }
+    .no-print { display: none !important; }
+    .rr-section { break-inside: avoid; }
+    .rr-kpis { grid-template-columns: repeat(6, 1fr); }
+    .rr-cols { grid-template-columns: 3fr 2fr; }
+}

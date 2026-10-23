@@ -1,0 +1,165 @@
+/* ─────────────────────────────────────────────
+   v2 — loading, a11y, auto-refresh, dark-mode-safe
+   ───────────────────────────────────────────── */
+
+/* Loading state global */
+.dashboard-page.is-loading .dashboard-kpi-value,
+.dashboard-page.is-loading .dashboard-chart-wrap,
+.dashboard-page.is-loading .dashboard-data-list,
+.dashboard-page.is-loading .dashboard-map {
+    opacity: .4;
+    transition: opacity .2s ease;
+    pointer-events: none;
+}
+
+.dashboard-page.is-loading::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    z-index: 1000;
+    background: linear-gradient(90deg,
+        transparent 0%,
+        var(--dash-blue) 50%,
+        transparent 100%);
+    animation: dashboard-loading-bar 1.2s infinite;
+}
+
+@keyframes dashboard-loading-bar {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* Botão refresh em estado loading */
+.dashboard-button.is-loading {
+    opacity: .65;
+    pointer-events: none;
+    cursor: wait;
+}
+
+.dashboard-button.is-loading::before {
+    content: '';
+    display: inline-block;
+    width: 12px; height: 12px;
+    margin-right: 6px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: dashboard-spin .7s linear infinite;
+    vertical-align: -2px;
+}
+
+@keyframes dashboard-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* a11y — focus visível em elementos interativos */
+.dashboard-page button:focus-visible,
+.dashboard-page a:focus-visible,
+.dashboard-page input:focus-visible,
+.dashboard-page select:focus-visible,
+.dashboard-page textarea:focus-visible,
+.dashboard-page [tabindex]:focus-visible {
+    outline: 2px solid var(--dash-blue);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
+/* Feedback de filtros como live region */
+.dashboard-filter-feedback {
+    transition: color .15s, background .15s;
+    border-radius: 8px;
+    padding: 4px 8px;
+    margin-left: -8px;
+}
+
+.dashboard-filter-feedback.is-error {
+    background: rgba(220, 38, 38, .08);
+    color: var(--dash-red);
+}
+
+/* Kbd (atalhos) */
+kbd {
+    display: inline-block;
+    padding: 2px 6px;
+    background: var(--dash-soft);
+    border: 1px solid var(--dash-line);
+    border-radius: 4px;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--dash-text);
+    line-height: 1.3;
+}
+
+/* Auto-refresh timestamp */
+[data-auto-refresh-ts] {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: var(--dash-text);
+}
+
+/* Timer do "Atualizado em" — melhora legibilidade */
+.dashboard-last-update {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    color: var(--dash-muted);
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: var(--dash-soft);
+    border: 1px solid var(--dash-line);
+}
+
+/* Dark mode — garante contraste nos elementos translúcidos */
+@media (prefers-color-scheme: dark) {
+    html[data-theme="system"] .dashboard-context-item.is-danger,
+    html[data-theme="dark"] .dashboard-context-item.is-danger {
+        background: rgba(239, 68, 68, .14);
+        color: #fecaca;
+    }
+
+    html[data-theme="system"] .dashboard-context-item.is-warning,
+    html[data-theme="dark"] .dashboard-context-item.is-warning {
+        background: rgba(245, 158, 11, .14);
+        color: #fde68a;
+    }
+
+    html[data-theme="system"] .dashboard-context-item.is-info,
+    html[data-theme="dark"] .dashboard-context-item.is-info {
+        background: rgba(59, 130, 246, .16);
+        color: #bfdbfe;
+    }
+
+    html[data-theme="system"] .dashboard-button,
+    html[data-theme="dark"] .dashboard-button {
+        background: rgba(30, 41, 59, .8);
+        border-color: rgba(71, 85, 105, .7);
+        color: #e2e8f0;
+    }
+
+    html[data-theme="system"] .dashboard-button.is-primary,
+    html[data-theme="dark"] .dashboard-button.is-primary {
+        background: var(--dash-blue);
+        color: #fff;
+        border-color: var(--dash-blue);
+    }
+
+    html[data-theme="system"] .dashboard-filter-field input,
+    html[data-theme="system"] .dashboard-filter-field select,
+    html[data-theme="system"] .dashboard-filter-field textarea,
+    html[data-theme="dark"] .dashboard-filter-field input,
+    html[data-theme="dark"] .dashboard-filter-field select,
+    html[data-theme="dark"] .dashboard-filter-field textarea {
+        background: rgba(15, 23, 42, .5);
+        border-color: rgba(71, 85, 105, .6);
+        color: #e2e8f0;
+    }
+
+    html[data-theme="system"] .dashboard-data-row,
+    html[data-theme="dark"] .dashboard-data-row {
+        background: rgba(15, 23, 42, .4);
+        border-color: rgba(71, 85, 105, .4);
+    }
+}

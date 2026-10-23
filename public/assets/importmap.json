@@ -24,7 +24,7 @@
         "type": "js"
     },
     "\/assets\/js\/core\/theme.js": {
-        "path": "\/assets\/js\/core\/theme-FrVuTRQ.js",
+        "path": "\/assets\/js\/core\/theme-m9qJJIp.js",
         "type": "js"
     },
     "\/assets\/js\/layout\/base-layout.js": {
@@ -36,7 +36,7 @@
         "type": "js"
     },
     "\/assets\/js\/layout\/header.js": {
-        "path": "\/assets\/js\/layout\/header-F-IJo6I.js",
+        "path": "\/assets\/js\/layout\/header-sBCLtth.js",
         "type": "js"
     },
     "\/assets\/js\/layout\/sidebar.js": {
@@ -80,11 +80,11 @@
         "type": "js"
     },
     "\/assets\/js\/pages\/dashboard.js": {
-        "path": "\/assets\/js\/pages\/dashboard-OF68HzB.js",
+        "path": "\/assets\/js\/pages\/dashboard-CMLwsE9.js",
         "type": "js"
     },
     "app": {
-        "path": "\/assets\/js\/app-yQTxlxq.js",
+        "path": "\/assets\/js\/app-hq42vhb.js",
         "type": "js"
     },
     "\/assets\/js\/components\/buttons.js": {
@@ -101,6 +101,10 @@
     },
     "\/assets\/js\/components\/modals.js": {
         "path": "\/assets\/js\/components\/modals-FQ2mX-D.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/cifs.js": {
+        "path": "\/assets\/js\/pages\/cifs-OcfcM0F.js",
         "type": "js"
     },
     "\/assets\/js\/pages\/routes.js": {
@@ -204,7 +208,7 @@
         "type": "js"
     },
     "dashboard": {
-        "path": "\/assets\/js\/pages\/dashboard-OF68HzB.js",
+        "path": "\/assets\/js\/pages\/dashboard-CMLwsE9.js",
         "type": "js"
     }
 }

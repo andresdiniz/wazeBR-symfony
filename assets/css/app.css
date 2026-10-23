@@ -1,14 +1,15 @@
 /* assets/css/app.css — bundle global */
 
 /* ── Tema (DEVE vir primeiro) ──────────────────────────── */
-@import './theme.css';
+@layer tokens, base, layout, components, utilities;
 
-@import './layout/base-layout.css';
-@import './layout/header.css';
-@import './layout/sidebar.css';
-@import './layout/footer.css';
+@import url('./layout/theme.css');
+@import url('./layout/base-layout.css');
+@import url('./layout/header.css');
+@import url('./layout/sidebar.css');
+@import url('./layout/footer.css');
 
-@import './components/typography.css';
+@import url('./components/typography.css');
 @import './components/animations.css';
 @import './components/scrollbars.css';
 @import './components/buttons.css';

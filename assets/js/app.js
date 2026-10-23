@@ -70,6 +70,12 @@ const COMPONENTS = {
         init: () => import('./pages/dashboard.js'),
     },
 
+    // ─── Página: CIFS ──────────────────────────────────────────────
+    cifs: {
+        match: '#cifs-main',
+        init: () => import('./pages/cifs.js'),
+    },
+
     // ─── Página: Rotas ────────────────────────────────────────────────
     routes: {
         match: '[data-routes-page]',

@@ -49,8 +49,10 @@
             </div>
             <div class="dashboard-header-tools">
                 <span class="dashboard-last-update">
-                    <i></i> Atualizado em
+                    <i></i> Atualizado
                     <time data-dashboard-clock>{{ stats.updated_at|app_date('d/m H:i') }}</time>
+                    <span aria-hidden="true">·</span>
+                    <span>auto: <time data-auto-refresh-ts>—</time></span>
                 </span>
                 <button type="button" class="dashboard-button" data-action="refresh-dashboard" aria-label="Recarregar dados">
                     <span>↻</span> Atualizar
@@ -132,7 +134,10 @@
                     <span class="dashboard-kpi-icon" aria-hidden="true">⚠</span>
                     <span class="dashboard-kpi-trend" data-kpi-trend="alerts_active">{{ totals.alerts_active|default(0) }} ativos</span>
                 </div>
-                <strong class="dashboard-kpi-value" data-count-value="{{ kpis.alerts|default(0) }}">{{ kpis.alerts|default(0) }}</strong>
+                <strong class="dashboard-kpi-value"
+        data-count-value="{{ kpis.alerts|default(0) }}"
+        aria-live="polite"
+        aria-atomic="true">{{ kpis.alerts|default(0) }}</strong>
                 <span class="dashboard-kpi-label">Alertas registrados</span>
                 <div class="dashboard-kpi-footer"><span>Waze Partner Feed</span><span aria-hidden="true">→</span></div>
             </article>
@@ -522,7 +527,7 @@
             </div>
         </section>
 
-        
+
 
         {# ── Listas de dados ────────────────────────────────────────── #}
         <div class="dashboard-content-grid">

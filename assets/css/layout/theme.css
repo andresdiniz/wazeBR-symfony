@@ -1,0 +1,199 @@
+/* =========================================================================
+   WazeBR — Theme tokens
+   ─────────────────────────────────────────────────────────────────────────
+   Única fonte de verdade para cores. Usa light-dark() nativo:
+   • [data-theme="light"]  → força light
+   • [data-theme="dark"]   → força dark
+   • [data-theme="system"] → segue SO (padrão)
+   • sem atributo          → segue SO (padrão)
+
+   Nunca use `[data-theme]` ou `@media (prefers-color-scheme)` fora daqui.
+   ========================================================================= */
+
+@layer tokens {
+  :root {
+    color-scheme: light dark;
+
+    /* ─── Palette base (OKLCH — perceptualmente uniforme) ──────────────── */
+    --gray-0:    light-dark(oklch(100% 0 0),         oklch(13% 0.010 250));
+    --gray-50:   light-dark(oklch(98.5% 0.002 250),  oklch(16% 0.012 250));
+    --gray-100:  light-dark(oklch(96.5% 0.004 250),  oklch(21% 0.015 250));
+    --gray-200:  light-dark(oklch(92.5% 0.006 250),  oklch(27% 0.018 250));
+    --gray-300:  light-dark(oklch(85%   0.008 250),  oklch(35% 0.020 250));
+    --gray-400:  light-dark(oklch(70%   0.012 250),  oklch(48% 0.020 250));
+    --gray-500:  light-dark(oklch(55%   0.015 250),  oklch(60% 0.020 250));
+    --gray-600:  light-dark(oklch(42%   0.015 250),  oklch(72% 0.015 250));
+    --gray-700:  light-dark(oklch(30%   0.012 250),  oklch(82% 0.010 250));
+    --gray-800:  light-dark(oklch(22%   0.010 250),  oklch(89% 0.005 250));
+    --gray-900:  light-dark(oklch(15%   0.008 250),  oklch(96% 0.003 250));
+
+    --brand-400: light-dark(oklch(65% 0.18 255), oklch(75% 0.15 255));
+    --brand-500: light-dark(oklch(58% 0.19 255), oklch(68% 0.17 255));
+    --brand-600: light-dark(oklch(50% 0.19 255), oklch(62% 0.17 255));
+    --brand-700: light-dark(oklch(42% 0.17 255), oklch(55% 0.17 255));
+
+    --green-500:  light-dark(oklch(60% 0.16 145), oklch(72% 0.16 145));
+    --green-600:  light-dark(oklch(52% 0.16 145), oklch(65% 0.16 145));
+    --orange-500: light-dark(oklch(65% 0.17 60),  oklch(76% 0.15 60));
+    --red-500:    light-dark(oklch(55% 0.22 25),  oklch(70% 0.20 25));
+    --cyan-500:   light-dark(oklch(60% 0.12 220), oklch(72% 0.10 220));
+    --purple-500: light-dark(oklch(58% 0.20 300), oklch(72% 0.18 300));
+    --gold-500:   light-dark(oklch(70% 0.16 75),  oklch(80% 0.14 75));
+
+    /* ─── Semantic surfaces ───────────────────────────────────────────── */
+    --bg:            var(--gray-50);
+    --surface:       var(--gray-0);
+    --surface-soft:  var(--gray-100);
+    --surface-muted: var(--gray-100);
+    --surface-hover: var(--gray-200);
+    --overlay:       light-dark(oklch(15% 0.008 250 / 0.45), oklch(0% 0 0 / 0.7));
+
+    /* ─── Text ─────────────────────────────────────────────────────────── */
+    --text:       var(--gray-900);
+    --text-muted: var(--gray-600);
+    --text-soft:  var(--gray-500);
+    --text-inv:   var(--gray-0);
+
+    /* ─── Borders ──────────────────────────────────────────────────────── */
+    --border:        var(--gray-200);
+    --border-strong: var(--gray-300);
+    --border-soft:   color-mix(in oklab, var(--border) 60%, transparent);
+
+    /* ─── Primary ──────────────────────────────────────────────────────── */
+    --primary:        var(--brand-500);
+    --primary-hover:  var(--brand-600);
+    --primary-active: var(--brand-700);
+    --primary-soft:   color-mix(in oklab, var(--brand-500) 10%, transparent);
+    --primary-ring:   color-mix(in oklab, var(--brand-500) 28%, transparent);
+
+    /* ─── Semantic ─────────────────────────────────────────────────────── */
+    --success:        var(--green-500);
+    --success-strong: var(--green-600);
+    --success-soft:   color-mix(in oklab, var(--green-500) 12%, transparent);
+
+    --warning:      var(--orange-500);
+    --warning-soft: color-mix(in oklab, var(--orange-500) 12%, transparent);
+
+    --danger:      var(--red-500);
+    --danger-soft: color-mix(in oklab, var(--red-500) 12%, transparent);
+
+    --info:      var(--cyan-500);
+    --info-soft: color-mix(in oklab, var(--cyan-500) 12%, transparent);
+
+    --purple:      var(--purple-500);
+    --purple-soft: color-mix(in oklab, var(--purple-500) 12%, transparent);
+
+    --gold:      var(--gold-500);
+    --gold-soft: color-mix(in oklab, var(--gold-500) 12%, transparent);
+
+    /* ─── Shadows (respeitam color-scheme) ─────────────────────────────── */
+    --shadow-xs: 0 1px 2px  color-mix(in oklab, var(--text) 5%,  transparent);
+    --shadow-sm: 0 1px 3px  color-mix(in oklab, var(--text) 7%,  transparent);
+    --shadow-md: 0 4px 12px color-mix(in oklab, var(--text) 9%,  transparent);
+    --shadow-lg: 0 12px 32px color-mix(in oklab, var(--text) 13%, transparent);
+    --shadow-xl: 0 24px 56px color-mix(in oklab, var(--text) 18%, transparent);
+
+    /* ─── Shape ────────────────────────────────────────────────────────── */
+    --radius-xs: 6px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-pill: 999px;
+
+    /* ─── Spacing (4px base) ───────────────────────────────────────────── */
+    --space-1: 4px;   --space-2: 8px;   --space-3: 12px;
+    --space-4: 16px;  --space-5: 20px;  --space-6: 24px;
+    --space-8: 32px;  --space-10: 40px; --space-12: 48px;
+    --space-16: 64px;
+
+    /* ─── Typography ───────────────────────────────────────────────────── */
+    --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+    --text-xs: 11px;
+    --text-sm: 12.5px;
+    --text-base: 14px;
+    --text-md: 15px;
+    --text-lg: 17px;
+    --text-xl: 20px;
+    --text-2xl: 24px;
+
+    /* ─── Motion ───────────────────────────────────────────────────────── */
+    --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --duration-fast: 120ms;
+    --duration-base: 200ms;
+    --duration-slow: 320ms;
+
+    /* ─── Z-index ──────────────────────────────────────────────────────── */
+    --z-sticky: 40;
+    --z-overlay: 60;
+    --z-modal: 80;
+    --z-toast: 100;
+
+    /* ─── Layout ───────────────────────────────────────────────────────── */
+    --header-h: 72px;
+    --sidebar-w: 272px;
+    --sidebar-w-collapsed: 76px;
+    --page-max-wide: 1600px;
+    --page-max-detail: 1400px;
+
+    --page-title-size: clamp(22px, 1.5vw, 26px);
+    --page-gutter: clamp(16px, 1.5vw, 24px);
+    --page-section-gap: 20px;
+    --container-max: var(--page-max-wide);
+    --container-pad: var(--page-gutter);
+
+    /* ─── Aliases (compatibilidade com código legado) ──────────────────── */
+    --theme-bg:             var(--bg);
+    --theme-surface:        var(--surface);
+    --theme-surface-muted:  var(--surface-muted);
+    --theme-surface-soft:   var(--surface-soft);
+    --theme-text:           var(--text);
+    --theme-text-muted:     var(--text-muted);
+    --theme-text-soft:      var(--text-soft);
+    --theme-border:         var(--border);
+    --theme-border-soft:    var(--border-soft);
+    --theme-primary:        var(--primary);
+    --theme-primary-hover:  var(--primary-hover);
+    --theme-primary-soft:   var(--primary-soft);
+    --theme-primary-ring:   var(--primary-ring);
+    --theme-success:        var(--success);
+    --theme-success-soft:   var(--success-soft);
+    --theme-warning:        var(--warning);
+    --theme-danger:         var(--danger);
+    --theme-danger-soft:    var(--danger-soft);
+    --theme-overlay:        var(--overlay);
+    --theme-shadow-sm:      var(--shadow-sm);
+    --theme-shadow-lg:      var(--shadow-lg);
+    --color-background:     var(--bg);
+    --color-text:           var(--text);
+  }
+
+  /* Força o tema — light-dark() resolve com base nisso */
+  [data-theme="light"] { color-scheme: light; }
+  [data-theme="dark"]  { color-scheme: dark; }
+
+  /* Transição suave durante troca manual (classe temporária do JS) */
+  html.theme-transition,
+  html.theme-transition *,
+  html.theme-transition *::before,
+  html.theme-transition *::after {
+    transition:
+      background-color var(--duration-base) var(--ease-out),
+      border-color     var(--duration-base) var(--ease-out),
+      color            var(--duration-base) var(--ease-out),
+      box-shadow       var(--duration-base) var(--ease-out) !important;
+    transition-delay: 0s !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html.theme-transition,
+    html.theme-transition *,
+    html.theme-transition *::before,
+    html.theme-transition *::after {
+      transition: none !important;
+    }
+  }
+}

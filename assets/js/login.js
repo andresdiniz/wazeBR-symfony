@@ -326,7 +326,6 @@ focusFirstEmptyField();
 initEnterKey();
 
 // Console log for debugging
-console.log('wazeBR Login Page initialized successfully! 🔐');
 
 // Export functions for global access
 window.togglePassword = togglePassword;

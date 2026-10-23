@@ -71,12 +71,12 @@
 }
 
 .jh-container {
-    max-width: 1600px;
+    max-width: var(--page-max-wide);
     margin: 0 auto;
-    padding: 0 24px;
+    padding: 0 var(--page-gutter);
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: var(--page-section-gap);
 }
 
 /* ── Breadcrumb ─────────────────────────────────────────── */
@@ -97,7 +97,7 @@
 }
 .jh-header h1 {
     margin: 4px 0 6px;
-    font-size: 26px; font-weight: 800;
+    font-size: var(--page-title-size); font-weight: 800;
     letter-spacing: -.02em; color: var(--jh-text);
 }
 .jh-header p {
@@ -204,7 +204,6 @@
     color: var(--jh-text);
     font: inherit; font-size: 13px; outline: none;
     transition: border-color .15s, box-shadow .15s;
-    color-scheme: light dark;
 }
 .jh-field select:focus,
 .jh-field input:focus {

@@ -1,0 +1,93 @@
+/* =========================================================================
+   WazeBR — Base Layout
+   ========================================================================= */
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html {
+    min-height: 100%;
+    color-scheme: light dark;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  .app-shell > .app-header { flex: 0 0 auto; }
+
+  .app-layout {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    background: var(--bg);
+  }
+
+  .app-content {
+    position: relative;
+    min-width: 0;
+    min-height: 100%;
+    margin-inline-start: var(--sidebar-w);
+    background: var(--bg);
+    transition: margin-inline-start var(--duration-slow) var(--ease-out);
+  }
+
+  .app-shell.sidebar-collapsed .app-content {
+    margin-inline-start: var(--sidebar-w-collapsed);
+  }
+
+  .app-shell > .app-footer,
+  .app-shell > .footer {
+    flex: 0 0 auto;
+    width: calc(100% - var(--sidebar-w));
+    margin-inline-start: var(--sidebar-w);
+    transition:
+      margin-inline-start var(--duration-slow) var(--ease-out),
+      width                var(--duration-slow) var(--ease-out);
+  }
+
+  .app-shell.sidebar-collapsed > .app-footer,
+  .app-shell.sidebar-collapsed > .footer {
+    width: calc(100% - var(--sidebar-w-collapsed));
+    margin-inline-start: var(--sidebar-w-collapsed);
+  }
+
+  .app-layout > .app-sidebar { position: fixed; }
+
+  @media (max-width: 1180px) {
+    .app-content,
+    .app-shell.sidebar-collapsed .app-content {
+      margin-inline-start: 0;
+    }
+    .app-shell > .app-footer,
+    .app-shell > .footer,
+    .app-shell.sidebar-collapsed > .app-footer,
+    .app-shell.sidebar-collapsed > .footer {
+      width: 100%;
+      margin-inline-start: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .app-content,
+    .app-footer,
+    .footer { transition: none; }
+  }
+}

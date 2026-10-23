@@ -255,60 +255,77 @@ final class DashboardRepository extends ServiceEntityRepository
     }
 
     /** @param array<string,mixed> $filters */
-    private function computeTotals(?Partner $partner, array $filters): array
-    {
-        [$wAlerts, $pAlerts]     = $this->buildWhere($partner, $filters, 'collected_at', 'partner_id', 'city', true);
-        [$wJams,   $pJams]       = $this->buildWhere($partner, $filters, 'collected_at', 'partner_id', 'city', true, ['street', 'city']);
-        [$wWeather,$pWeather]    = $this->buildWhere($partner, $filters, 'observed_at', 'partner_id', '', false, []);
-        [$wCams,   $pCams]       = $this->buildWhere($partner, [], 'created_at', 'partner_id', '', false, []);
-        [$wStations, $pStations] = $this->buildWhere($partner, [], 'created_at', 'partner_id', '', false, []);
+    /** @param array<string,mixed> $filters */
+private function computeTotals(?Partner $partner, array $filters): array
+{
+    [$wAlerts, $pAlerts]     = $this->buildWhere($partner, $filters, 'collected_at', 'partner_id', 'city', true);
+    [$wJams,   $pJams]       = $this->buildWhere($partner, $filters, 'collected_at', 'partner_id', 'city', true, ['street', 'city']);
+    [$wWeather,$pWeather]    = $this->buildWhere($partner, $filters, 'observed_at', 'partner_id', '', false, []);
+    [$wCams,   $pCams]       = $this->buildWhere($partner, [], 'created_at', 'partner_id', '', false, []);
+    [$wStations, $pStations] = $this->buildWhere($partner, [], 'created_at', 'partner_id', '', false, []);
 
-        $alerts  = $this->connection->executeQuery(
-            "SELECT COUNT(*) AS total, SUM(CASE WHEN t.is_active = 1 THEN 1 ELSE 0 END) AS active
-             FROM waze_alerts t WHERE $wAlerts",
-            $pAlerts
-        )->fetchAssociative() ?: [];
+    // Merge de params é seguro: os valores (partner_id, date_from, city, q) são idênticos
+    // entre os branches. `exclude_re` só existe no branch de alerts; DBAL ignora params
+    // não referenciados em cada subquery.
+    $allParams = array_merge($pAlerts, $pJams, $pWeather, $pCams, $pStations);
 
-        $jams = $this->connection->executeQuery(
-            "SELECT COUNT(*) AS total, SUM(CASE WHEN t.is_active = 1 THEN 1 ELSE 0 END) AS active,
-                    AVG(t.delay) AS avg_delay, AVG(t.level) AS avg_level
-             FROM waze_jams t WHERE $wJams",
-            $pJams
-        )->fetchAssociative() ?: [];
+    // Uma única round-trip ao banco em vez de 5.
+    $sql = "
+        SELECT
+            (SELECT COUNT(*) FROM waze_alerts t WHERE $wAlerts) AS alerts_total,
+            (SELECT SUM(CASE WHEN t.is_active = 1 THEN 1 ELSE 0 END) FROM waze_alerts t WHERE $wAlerts) AS alerts_active,
+            (SELECT COUNT(*) FROM waze_jams t WHERE $wJams) AS jams_total,
+            (SELECT SUM(CASE WHEN t.is_active = 1 THEN 1 ELSE 0 END) FROM waze_jams t WHERE $wJams) AS jams_active,
+            (SELECT AVG(t.delay) FROM waze_jams t WHERE $wJams) AS jams_avg_delay,
+            (SELECT AVG(t.level) FROM waze_jams t WHERE $wJams) AS jams_avg_level,
+            (SELECT COUNT(*) FROM weather_observation t WHERE $wWeather) AS weather_total,
+            (SELECT COUNT(*) FROM partner_camera_link t WHERE $wCams) AS cameras_total,
+            (SELECT SUM(CASE WHEN t.is_active = 1 THEN 1 ELSE 0 END) FROM partner_camera_link t WHERE $wCams) AS cameras_active,
+            (SELECT COUNT(*) FROM cemaden_station_link t WHERE $wStations) AS stations_total
+    ";
 
-        $weather = $this->connection->executeQuery(
-            "SELECT COUNT(*) AS total FROM weather_observation t WHERE $wWeather",
-            $pWeather
-        )->fetchAssociative() ?: [];
-
-        $cams = $this->connection->executeQuery(
-            "SELECT COUNT(*) AS total, SUM(CASE WHEN t.is_active = 1 THEN 1 ELSE 0 END) AS active
-             FROM partner_camera_link t WHERE $wCams",
-            $pCams
-        )->fetchAssociative() ?: [];
-
-        $stations = $this->connection->executeQuery(
-            "SELECT COUNT(*) AS total FROM cemaden_station_link t WHERE $wStations",
-            $pStations
-        )->fetchAssociative() ?: [];
-
-        $em = $this->getEntityManager();
-
-        return [
-            'alerts'          => (int) ($alerts['total'] ?? 0),
-            'alerts_active'   => (int) ($alerts['active'] ?? 0),
-            'jams'            => (int) ($jams['total'] ?? 0),
-            'jams_active'     => (int) ($jams['active'] ?? 0),
-            'jams_avg_delay'  => (float) ($jams['avg_delay'] ?? 0),
-            'jams_avg_level'  => (float) ($jams['avg_level'] ?? 0),
-            'weather'         => (int) ($weather['total'] ?? 0),
-            'cameras'         => (int) ($cams['total'] ?? 0),
-            'cameras_active'  => (int) ($cams['active'] ?? 0),
-            'stations'        => (int) ($stations['total'] ?? 0),
-            'partners'        => (int) $em->getRepository(Partner::class)->count([]),
-            'users'           => (int) $em->getRepository(User::class)->count([]),
+    try {
+        $row = $this->connection->executeQuery($sql, $allParams)->fetchAssociative() ?: [];
+    } catch (\Throwable $e) {
+        // Fallback defensivo: se a versão do DBAL não aceitar params extras
+        // em subqueries com WHERE reutilizadas, cai para o caminho antigo.
+        $row = [
+            'alerts_total'    => $this->scalar("SELECT COUNT(*) FROM waze_alerts t WHERE $wAlerts", $pAlerts),
+            'alerts_active'   => $this->scalar("SELECT SUM(CASE WHEN t.is_active = 1 THEN 1 ELSE 0 END) FROM waze_alerts t WHERE $wAlerts", $pAlerts),
+            'jams_total'      => $this->scalar("SELECT COUNT(*) FROM waze_jams t WHERE $wJams", $pJams),
+            'jams_active'     => $this->scalar("SELECT SUM(CASE WHEN t.is_active = 1 THEN 1 ELSE 0 END) FROM waze_jams t WHERE $wJams", $pJams),
+            'jams_avg_delay'  => $this->scalar("SELECT AVG(t.delay) FROM waze_jams t WHERE $wJams", $pJams),
+            'jams_avg_level'  => $this->scalar("SELECT AVG(t.level) FROM waze_jams t WHERE $wJams", $pJams),
+            'weather_total'   => $this->scalar("SELECT COUNT(*) FROM weather_observation t WHERE $wWeather", $pWeather),
+            'cameras_total'   => $this->scalar("SELECT COUNT(*) FROM partner_camera_link t WHERE $wCams", $pCams),
+            'cameras_active'  => $this->scalar("SELECT SUM(CASE WHEN t.is_active = 1 THEN 1 ELSE 0 END) FROM partner_camera_link t WHERE $wCams", $pCams),
+            'stations_total'  => $this->scalar("SELECT COUNT(*) FROM cemaden_station_link t WHERE $wStations", $pStations),
         ];
     }
+
+    $em = $this->getEntityManager();
+
+    return [
+        'alerts'         => (int) ($row['alerts_total'] ?? 0),
+        'alerts_active'  => (int) ($row['alerts_active'] ?? 0),
+        'jams'           => (int) ($row['jams_total'] ?? 0),
+        'jams_active'    => (int) ($row['jams_active'] ?? 0),
+        'jams_avg_delay' => (float) ($row['jams_avg_delay'] ?? 0),
+        'jams_avg_level' => (float) ($row['jams_avg_level'] ?? 0),
+        'weather'        => (int) ($row['weather_total'] ?? 0),
+        'cameras'        => (int) ($row['cameras_total'] ?? 0),
+        'cameras_active' => (int) ($row['cameras_active'] ?? 0),
+        'stations'       => (int) ($row['stations_total'] ?? 0),
+        'partners'       => (int) $em->getRepository(Partner::class)->count([]),
+        'users'          => (int) $em->getRepository(User::class)->count([]),
+    ];
+}
+
+/** Executa uma query escalar; usado apenas no fallback do computeTotals. */
+private function scalar(string $sql, array $params): mixed
+{
+    return $this->connection->executeQuery($sql, $params)->fetchOne();
+}
 
     /** @param array<string,mixed> $filters */
     private function getKpis(?Partner $partner, array $filters): array

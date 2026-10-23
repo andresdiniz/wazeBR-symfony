@@ -1,243 +1,111 @@
-/* ============================================================
+/* =========================================================================
    WazeBR — Base Layout
-   ============================================================ */
+   ========================================================================= */
 
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
 
-/* ============================================================
-   VARIÁVEIS
-   ============================================================ */
-
-:root {
-    --app-sidebar-width: 272px;
-    --app-sidebar-collapsed-width: 76px;
-}
-
-
-/* ============================================================
-   RESET
-   ============================================================ */
-
-html {
+  html {
     min-height: 100%;
+    -webkit-text-size-adjust: 100%;
+  }
 
+  body {
     margin: 0;
-    padding: 0;
-}
+    min-height: 100dvh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
 
-body {
-    margin: 0;
-    padding: 0;
-
-    min-height: 100vh;
-
-    background:
-        var(--theme-bg, var(--color-background));
-
-    color:
-        var(--theme-text, var(--color-text));
-
-    font-family:
-        var(--font-sans);
-}
-
-*,
-*::before,
-*::after {
-    box-sizing: border-box;
-}
-
-
-/* ============================================================
-   APP SHELL
-   ============================================================ */
-
-.app-shell {
-    position: relative;
-
-    min-height: 100vh;
-
+  .app-shell {
     display: flex;
     flex-direction: column;
+    min-height: 100dvh;
+    background: var(--bg);
+    color: var(--text);
+  }
 
-    background:
-        var(--theme-bg, var(--color-background));
-
-    color:
-        var(--theme-text, var(--color-text));
-}
-
-
-/* ============================================================
-   HEADER
-   ============================================================ */
-
-.app-shell > .app-header {
+  .app-shell > .app-header {
     flex: 0 0 auto;
-}
+    width: calc(100% - var(--sidebar-w));
+    margin-inline-start: var(--sidebar-w);
+    transition:
+      width var(--duration-slow) var(--ease-out),
+      margin-inline-start var(--duration-slow) var(--ease-out);
+  }
 
+  .app-shell.sidebar-collapsed > .app-header {
+    width: calc(100% - var(--sidebar-w-collapsed));
+    margin-inline-start: var(--sidebar-w-collapsed);
+  }
 
-/* ============================================================
-   LAYOUT
-   ============================================================ */
-
-.app-layout {
+  .app-layout {
     position: relative;
-
     flex: 1 1 auto;
-
     min-width: 0;
     min-height: 0;
+    background: var(--bg);
+  }
 
-    display: block;
-
-    background:
-        var(--theme-bg, var(--color-background));
-}
-
-
-/* ============================================================
-   CONTEÚDO PRINCIPAL
-   ============================================================ */
-
-.app-content {
+  .app-content {
     position: relative;
-
     min-width: 0;
     min-height: 100%;
+    margin-inline-start: var(--sidebar-w);
+    background: var(--bg);
+    transition: margin-inline-start var(--duration-slow) var(--ease-out);
+  }
 
-    margin-left:
-        var(--app-sidebar-width);
+  .app-shell.sidebar-collapsed .app-content {
+    margin-inline-start: var(--sidebar-w-collapsed);
+  }
 
-    background:
-        var(--theme-bg, var(--color-background));
-
-    transition:
-        margin-left 220ms ease;
-}
-
-
-/* ============================================================
-   SIDEBAR RECOLHIDA
-   ============================================================ */
-
-.app-shell.sidebar-collapsed
-    .app-content {
-    margin-left:
-        var(--app-sidebar-collapsed-width);
-}
-
-
-/* ============================================================
-   FOOTER
-   ============================================================ */
-
-.app-shell > .app-footer,
-.app-shell > .footer {
+  .app-shell > .app-footer,
+  .app-shell > .footer {
     flex: 0 0 auto;
-
-    width: calc(
-        100% - var(--app-sidebar-width)
-    );
-
-    margin-left:
-        var(--app-sidebar-width);
-
+    width: calc(100% - var(--sidebar-w));
+    margin-inline-start: var(--sidebar-w);
     transition:
-        margin-left 220ms ease,
-        width 220ms ease;
-}
+      margin-inline-start var(--duration-slow) var(--ease-out),
+      width                var(--duration-slow) var(--ease-out);
+  }
 
+  .app-shell.sidebar-collapsed > .app-footer,
+  .app-shell.sidebar-collapsed > .footer {
+    width: calc(100% - var(--sidebar-w-collapsed));
+    margin-inline-start: var(--sidebar-w-collapsed);
+  }
 
-/* ============================================================
-   FOOTER COM SIDEBAR RECOLHIDA
-   ============================================================ */
+  .app-layout > .app-sidebar { position: fixed; }
 
-.app-shell.sidebar-collapsed
-    > .app-footer,
-
-.app-shell.sidebar-collapsed
-    > .footer {
-    width: calc(
-        100% - var(--app-sidebar-collapsed-width)
-    );
-
-    margin-left:
-        var(--app-sidebar-collapsed-width);
-}
-
-
-/* ============================================================
-   GARANTE QUE SIDEBAR NÃO AFETE O FLUXO
-   ============================================================ */
-
-.app-layout > .app-sidebar {
-    position: fixed;
-}
-
-
-/* ============================================================
-   MOBILE / TABLET
-   ============================================================ */
-
-@media (max-width: 1180px) {
-
-    .app-content {
-        margin-left: 0;
+  @media (max-width: 1180px) {
+    .app-shell > .app-header,
+    .app-shell.sidebar-collapsed > .app-header {
+      width: 100%;
+      margin-inline-start: 0;
     }
-
-
-    .app-shell.sidebar-collapsed
-        .app-content {
-        margin-left: 0;
-    }
-
-
-    .app-shell > .app-footer,
-    .app-shell > .footer {
-
-        width: 100%;
-
-        margin-left: 0;
-    }
-
-
-    .app-shell.sidebar-collapsed
-        > .app-footer,
-
-    .app-shell.sidebar-collapsed
-        > .footer {
-
-        width: 100%;
-
-        margin-left: 0;
-    }
-
-}
-
-
-/* ============================================================
-   MOBILE
-   ============================================================ */
-
-@media (max-width: 640px) {
-
-    .app-content {
-        min-height: 0;
-    }
-
-}
-
-
-/* ============================================================
-   REDUCED MOTION
-   ============================================================ */
-
-@media (prefers-reduced-motion: reduce) {
 
     .app-content,
-    .app-footer,
-    .footer {
-        transition: none;
+    .app-shell.sidebar-collapsed .app-content {
+      margin-inline-start: 0;
     }
 
+    .app-shell > .app-footer,
+    .app-shell > .footer,
+    .app-shell.sidebar-collapsed > .app-footer,
+    .app-shell.sidebar-collapsed > .footer {
+      width: 100%;
+      margin-inline-start: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .app-content,
+    .app-footer,
+    .footer { transition: none; }
+  }
 }

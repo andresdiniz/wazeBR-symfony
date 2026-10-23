@@ -53,12 +53,12 @@
 }
 
 .jam-show-container {
-    max-width: 1400px;
+    max-width: var(--page-max-detail);
     margin: 0 auto;
-    padding: 0 24px;
+    padding: 0 var(--page-gutter);
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: var(--page-section-gap);
 }
 
 /* ── Breadcrumb ─────────────────────────────────────────── */
@@ -80,7 +80,7 @@
 }
 .jam-show-header h1 {
     margin: 6px 0 6px;
-    font-size: 26px; line-height: 1.2; font-weight: 800;
+    font-size: var(--page-title-size); line-height: 1.2; font-weight: 800;
     color: var(--js-text);
     letter-spacing: -.02em;
 }
@@ -400,7 +400,7 @@
 
 /* ── Responsivo ────────────────────────────────────────── */
 @media (max-width: 640px) {
-    .jam-show-container { padding: 0 14px; }
-    .jam-show-header h1 { font-size: 22px; }
+    .jam-show-container { padding: 0 var(--page-gutter); }
+    .jam-show-header h1 { font-size: var(--page-title-size); }
     .jam-show-type { grid-template-columns: 100px 1fr 36px; }
 }

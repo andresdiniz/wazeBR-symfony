@@ -34,20 +34,14 @@ final class DashboardController extends AbstractController
     }
 
     #[Route('/dashboard/api/data', name: 'dashboard_api_data', methods: ['GET'])]
-    public function apiData(Request $request, DashboardRepository $repository): JsonResponse
+    public function apiData(Request $request, DashboardRepository $repository): Response
     {
-        $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
-
-        $partner = $this->resolvePartnerScope();
-        $filters = $this->extractFilters($request);
-
-        $stats = $repository->getDashboardStats($partner, $filters);
-
-        return $this->dashboardJson($stats, $filters);
+        $stats = $this->getStats($request, $repository);
+        return $this->dashboardJson($stats, $stats['filters'] ?? [], $request);
     }
 
     #[Route('/dashboard/api/summary', name: 'dashboard_api_summary', methods: ['GET'])]
-    public function summary(Request $request, DashboardRepository $repository): JsonResponse
+    public function summary(Request $request, DashboardRepository $repository): Response
     {
         $stats = $this->getStats($request, $repository);
 
@@ -56,68 +50,68 @@ final class DashboardController extends AbstractController
             'kpis'         => $stats['kpis'] ?? [],
             'health_score' => $stats['health_score'] ?? null,
             'fetch_status' => $stats['fetch_status'] ?? [],
-        ], $stats['filters'] ?? []);
+        ], $stats['filters'] ?? [], $request);
     }
 
     #[Route('/dashboard/api/charts', name: 'dashboard_api_charts', methods: ['GET'])]
-    public function charts(Request $request, DashboardRepository $repository): JsonResponse
+    public function charts(Request $request, DashboardRepository $repository): Response
     {
         $stats = $this->getStats($request, $repository);
 
         return $this->dashboardJson([
             'charts' => $stats['charts'] ?? [],
-        ], $stats['filters'] ?? []);
+        ], $stats['filters'] ?? [], $request);
     }
 
     #[Route('/dashboard/api/map', name: 'dashboard_api_map', methods: ['GET'])]
-    public function map(Request $request, DashboardRepository $repository): JsonResponse
+    public function map(Request $request, DashboardRepository $repository): Response
     {
         $stats = $this->getStats($request, $repository);
 
         return $this->dashboardJson([
             'map' => $stats['map'] ?? [],
-        ], $stats['filters'] ?? []);
+        ], $stats['filters'] ?? [], $request);
     }
 
     #[Route('/dashboard/api/recent', name: 'dashboard_api_recent', methods: ['GET'])]
-    public function recent(Request $request, DashboardRepository $repository): JsonResponse
+    public function recent(Request $request, DashboardRepository $repository): Response
     {
         $stats = $this->getStats($request, $repository);
 
         return $this->dashboardJson([
             'recent' => $stats['recent'] ?? [],
-        ], $stats['filters'] ?? []);
+        ], $stats['filters'] ?? [], $request);
     }
 
     #[Route('/dashboard/api/hydro', name: 'dashboard_api_hydro', methods: ['GET'])]
-    public function hydro(Request $request, DashboardRepository $repository): JsonResponse
+    public function hydro(Request $request, DashboardRepository $repository): Response
     {
         $stats = $this->getStats($request, $repository);
 
         return $this->dashboardJson([
             'hydro' => $stats['hydro'] ?? [],
-        ], $stats['filters'] ?? []);
+        ], $stats['filters'] ?? [], $request);
     }
 
     #[Route('/dashboard/api/pluvio', name: 'dashboard_api_pluvio', methods: ['GET'])]
-    public function pluvio(Request $request, DashboardRepository $repository): JsonResponse
+    public function pluvio(Request $request, DashboardRepository $repository): Response
     {
         $stats = $this->getStats($request, $repository);
 
         return $this->dashboardJson([
             'pluvio' => $stats['pluvio'] ?? [],
-        ], $stats['filters'] ?? []);
+        ], $stats['filters'] ?? [], $request);
     }
 
     #[Route('/dashboard/api/status', name: 'dashboard_api_status', methods: ['GET'])]
-    public function status(Request $request, DashboardRepository $repository): JsonResponse
+    public function status(Request $request, DashboardRepository $repository): Response
     {
         $stats = $this->getStats($request, $repository);
 
         return $this->dashboardJson([
             'fetch_status' => $stats['fetch_status'] ?? [],
             'health_score' => $stats['health_score'] ?? null,
-        ], $stats['filters'] ?? []);
+        ], $stats['filters'] ?? [], $request);
     }
 
     private function getStats(Request $request, DashboardRepository $repository): array
@@ -130,14 +124,44 @@ final class DashboardController extends AbstractController
         return $repository->getDashboardStats($partner, $filters);
     }
 
-    private function dashboardJson(array $data, array $filters): JsonResponse
+    /**
+     * Resposta JSON com:
+     *  - ETag (permite 304 via browser / proxy quando dados não mudaram)
+     *  - X-Response-Time (observabilidade)
+     *  - Cache-Control privado (não cacheia em CDN, mas permite revalidação)
+     *  - X-Content-Type-Options / Referrer-Policy
+     */
+    private function dashboardJson(array $data, array $filters, Request $request): Response
     {
-        return $this->json([
+        $start = $_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true);
+
+        $payload = [
             'ok'           => true,
             'generated_at' => (new \DateTimeImmutable())->format(DATE_ATOM),
             'filters'      => $filters,
             'data'         => $this->normalizeDatesForJson($data),
+        ];
+
+        $json = json_encode(
+            $payload,
+            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
+        );
+
+        $response = new Response($json, 200, [
+            'Content-Type'           => 'application/json; charset=UTF-8',
+            'ETag'                   => '"' . md5($json) . '"',
+            'Cache-Control'          => 'private, must-revalidate, max-age=0',
+            'X-Response-Time'        => sprintf('%.1f', (microtime(true) - $start) * 1000),
+            'X-Content-Type-Options' => 'nosniff',
+            'Referrer-Policy'        => 'no-referrer',
         ]);
+
+        // 304 automático quando o If-None-Match bate com o ETag
+        if ($response->isNotModified($request)) {
+            return $response;
+        }
+
+        return $response;
     }
 
     private function resolvePartnerScope(): ?\App\Entity\Partner
@@ -176,11 +200,9 @@ final class DashboardController extends AbstractController
 
         if (is_array($value)) {
             $out = [];
-
             foreach ($value as $key => $item) {
                 $out[$key] = $this->normalizeDatesForJson($item);
             }
-
             return $out;
         }
 
