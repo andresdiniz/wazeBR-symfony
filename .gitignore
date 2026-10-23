@@ -3,6 +3,8 @@
 /public/bundles/
 /public/hot-controller/
 /config/secrets/prod/prod.decrypt.private.php
+/vendor/
+/var/
 
 # --- Node & Assets ---
 /node_modules/
