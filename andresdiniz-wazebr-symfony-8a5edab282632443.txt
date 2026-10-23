@@ -127496,6 +127496,7 @@ final class DashboardController extends AbstractController
             'partner'     => $partner,
             'map_payload' => $stats['map'],
             'charts'      => $stats['charts'],
+            
         ]);
     }
 
