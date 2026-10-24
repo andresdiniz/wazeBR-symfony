@@ -18,7 +18,7 @@ nelmio_security:
                 - 'self'
             script-src:
                 - 'self'
-                - 'unsafe-inline'
+                - 'strict-dynamic'
                 - 'https://cdn.jsdelivr.net'
                 - 'https://cdnjs.cloudflare.com'
                 - 'https://unpkg.com'
@@ -26,7 +26,6 @@ nelmio_security:
                 - 'https://use.typekit.net'
             style-src:
                 - 'self'
-                - 'unsafe-inline'
                 - 'https://cdn.jsdelivr.net'
                 - 'https://cdnjs.cloudflare.com'
                 - 'https://fonts.googleapis.com'
@@ -52,6 +51,10 @@ nelmio_security:
                 - 'https://static.cloudflareinsights.com'
                 - 'https://unpkg.com'
                 - 'https://cdnjs.cloudflare.com'
+                - 'https://*.camtraffic.com'
+                - 'https://*.cetransito.com.br'
+                - 'https://*.detran.mg.gov.br'
+                - 'https://*.transparencia.mg.gov.br'
 
 when@dev:
     nelmio_security:
