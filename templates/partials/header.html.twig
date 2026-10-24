@@ -186,6 +186,11 @@
                                <a href="{{ path('admin_users_index') }}" role="menuitem"{% if _route starts with 'admin_user' %} aria-current="page"{% endif %}>
                                    <span aria-hidden="true">♙</span>Gerenciar usuários
                                </a>
+                               {% if is_granted('ROLE_PARTNER_ADMIN') and app.user.partner %}
+                                   <a href="{{ path('admin_partner_data_index', {id: app.user.partner.id}) }}" role="menuitem"{% if _route starts with 'admin_partner_data' %} aria-current="page"{% endif %}>
+                                       <span aria-hidden="true">⌖</span>Dados do parceiro
+                                   </a>
+                               {% endif %}
                                {% if is_granted('ROLE_ADMIN') and app.user.partner is null %}
                                    <a href="{{ path('admin_partner_index') }}" role="menuitem"{% if _route starts with 'admin_partner' %} aria-current="page"{% endif %}>
                                        <span aria-hidden="true">⌂</span>Gerenciar parceiros

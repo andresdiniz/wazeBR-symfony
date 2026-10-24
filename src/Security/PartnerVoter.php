@@ -54,7 +54,7 @@ class PartnerVoter extends Voter
         $subjectPartner = $this->getSubjectPartner($subject);
 
         if ($subjectPartner === null) {
-            return true;
+            return false;
         }
 
         $userPartner = $user->getPartner();

@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\Entity\Partner;
 use App\Entity\User;
+use App\Repository\PartnerRepository;
 use App\Repository\TvRepository;
 use App\Service\CongestionForecastService;
 use Doctrine\DBAL\Connection;
@@ -30,6 +31,7 @@ final class TvController extends AbstractController
 
     public function __construct(
         private readonly Connection $connection,
+        private readonly PartnerRepository $partnerRepository,
         private readonly TagAwareCacheInterface $tvCache,
         private readonly CongestionForecastService $congestionForecastService,
     ) {
@@ -150,14 +152,14 @@ final class TvController extends AbstractController
             if ($this->matchesEtag($request, $etag)) {
                 return new Response('', Response::HTTP_NOT_MODIFIED, [
                     'ETag' => $etag,
-                    'Cache-Control' => 'public, max-age=' . self::HLS_SEGMENT_TTL,
+                    'Cache-Control' => 'private, no-store, max-age=0',
                 ]);
             }
 
             return new Response($body, Response::HTTP_OK, [
                 'Content-Type' => 'video/mp2t',
                 'Content-Length' => (string) strlen($body),
-                'Cache-Control' => 'public, max-age=' . self::HLS_SEGMENT_TTL,
+                'Cache-Control' => 'private, no-store, max-age=0',
                 'ETag' => $etag,
             ]);
         }
@@ -169,14 +171,14 @@ final class TvController extends AbstractController
             if ($this->matchesEtag($request, $etag)) {
                 return new Response('', Response::HTTP_NOT_MODIFIED, [
                     'ETag' => $etag,
-                    'Cache-Control' => 'public, max-age=' . self::HLS_MANIFEST_TTL,
+                    'Cache-Control' => 'private, no-store, max-age=0',
                 ]);
             }
 
             return new Response($body, Response::HTTP_OK, [
                 'Content-Type' => 'application/vnd.apple.mpegurl',
                 'Content-Length' => (string) strlen($body),
-                'Cache-Control' => 'public, max-age=' . self::HLS_MANIFEST_TTL,
+                'Cache-Control' => 'private, no-store, max-age=0',
                 'ETag' => $etag,
             ]);
         }
@@ -255,6 +257,42 @@ final class TvController extends AbstractController
     /**
      * @return array{0:?string,1:int,2:string,3:string}
      */
+    private function isSafeRemoteTarget(string $url): bool
+    {
+        $parts = parse_url($url);
+        if (!is_array($parts) || !isset($parts['scheme'], $parts['host'])
+            || !in_array(strtolower($parts['scheme']), ['http', 'https'], true)
+            || isset($parts['user']) || isset($parts['pass'])) {
+            return false;
+        }
+
+        $host = strtolower(rtrim($parts['host'], '.'));
+        if ($host === 'localhost' || str_ends_with($host, '.localhost') || str_ends_with($host, '.local')) {
+            return false;
+        }
+
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            $addresses = [$host];
+        } else {
+            $records = dns_get_record($host, DNS_A | DNS_AAAA) ?: [];
+            $addresses = array_values(array_unique(array_filter(array_map(
+                static fn (array $record): string => (string) ($record['ip'] ?? $record['ipv6'] ?? ''),
+                $records,
+            ))));
+        }
+
+        if ($addresses === []) {
+            return false;
+        }
+
+        foreach ($addresses as $address) {
+            if (filter_var($address, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+                return false;
+            }
+        }
+
+        return true;
+    }
     private function fetchRemote(string $url, int $attempt = 0): array
     {
         if (!function_exists('curl_init')) {
@@ -266,12 +304,12 @@ final class TvController extends AbstractController
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => self::CAMERA_TIMEOUT,
             CURLOPT_CONNECTTIMEOUT => 3,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_MAXREDIRS => 3,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_MAXREDIRS => 0,
             CURLOPT_USERAGENT => 'WazeBR-TV/1.0',
             CURLOPT_HTTPHEADER => ['Accept: */*'],
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => 0,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_LOW_SPEED_LIMIT => 1024,
             CURLOPT_LOW_SPEED_TIME => 3,
         ]);
@@ -319,18 +357,26 @@ final class TvController extends AbstractController
     private function resolvePartnerScope(): ?Partner
     {
         $user = $this->getUser();
-
-        if (!$user instanceof User) {
-            return null;
+        if (!$user instanceof User || $user->getId() === null) {
+            throw $this->createAccessDeniedException();
         }
 
-        if ($user->isGlobalAdmin()) {
-            return null;
+        $partnerId = $this->connection->fetchOne('SELECT partner_id FROM user WHERE id = ?', [$user->getId()]);
+        if ($partnerId === false || $partnerId === null || $partnerId === '') {
+            $roles = $user->getRoles();
+            if (in_array('ROLE_ADMIN', $roles, true) || in_array('ROLE_SUPER_ADMIN', $roles, true)) {
+                return null;
+            }
+            throw $this->createAccessDeniedException('Seu usuário não possui parceiro vinculado.');
         }
 
-        return $user->getPartner();
+        $partner = $this->partnerRepository->find((int) $partnerId);
+        if ($partner === null) {
+            throw $this->createAccessDeniedException('O parceiro vinculado não existe.');
+        }
+
+        return $partner;
     }
-
     private function normalizeDatesForJson(mixed $value): mixed
     {
         if ($value instanceof \DateTimeInterface) {

@@ -1,0 +1,26 @@
+{% set sameSubmission = submitted.kind|default('') == kind and (create ? submitted.id|default('') in ['', '0'] : submitted.id|default('') == item.id ~ '') %}
+{% set submittedValues = sameSubmission ? submitted.data|default({}) : {} %}
+{% set defaults = {weather: {provider: 'open-meteo'}, cemaden: {baseUrl: 'https://mapservices.cemaden.gov.br/MapaInterativoWS/resources/horario', hoursToFetch: 24}, hydro: {baseUrl: 'https://resources.cemaden.gov.br/graficos/cemaden/hidro/resources/json/AcumuladoResource.php', levelBaseUrl: 'https://resources.cemaden.gov.br/graficos/cemaden/hidro/resources/json/MedidaResource.php', recordsToFetch: 24}} %}
+<form method="post" class="partner-data-form">
+    <input type="hidden" name="_token" value="{{ csrf_token('partner_data_' ~ partner.id) }}">
+    <input type="hidden" name="kind" value="{{ kind }}">
+    <input type="hidden" name="id" value="{{ create ? '' : item.id }}">
+    <input type="hidden" name="action" value="save">
+    <div class="partner-data-form__grid">
+        {% for field in fields %}
+            {% set key = field[0] %}
+            {% set current = submittedValues[key]|default(item ? attribute(item, key) : (defaults[kind][key]|default(''))) %}
+            {% if field[2] == 'checkbox' %}
+                <label class="partner-data-check"><input type="checkbox" name="data[{{ key }}]" value="1" {% if current %}checked{% endif %}><span>{{ field[1] }}</span></label>
+            {% elseif field[2] == 'textarea' %}
+                <label class="partner-data-field partner-data-field--wide"><span>{{ field[1] }}</span><textarea name="data[{{ key }}]" {% if field[3] %}required{% endif %}>{{ current }}</textarea></label>
+            {% elseif field[2] == 'select' %}
+                <label class="partner-data-field"><span>{{ field[1] }}</span><select name="data[{{ key }}]" {% if field[3] %}required{% endif %}><option value="">Selecione</option>{% for value, label in {alerts: 'Alertas', jams: 'Congestionamentos', traffic: 'Trânsito', tvt: 'TVT'} %}<option value="{{ value }}" {% if current == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+            {% else %}
+                <label class="partner-data-field {{ field[2] == 'url' ? 'partner-data-field--wide' : '' }}"><span>{{ field[1] }}</span><input type="{{ field[2] }}" name="data[{{ key }}]" value="{{ field[2] == 'password' ? '' : current }}" {% if field[2] == 'number' %}step="any"{% endif %} {% if field[3] %}required{% endif %} {% if field[2] == 'password' and not create %}placeholder="Deixe em branco para manter o token atual"{% endif %}></label>
+            {% endif %}
+        {% endfor %}
+    </div>
+    {% if errors and sameSubmission %}<ul class="partner-data-errors" role="alert">{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}
+    <div class="partner-data-form__actions"><button type="submit" class="admin-btn admin-btn--primary">{{ create ? 'Adicionar' : 'Salvar alterações' }}</button></div>
+</form>

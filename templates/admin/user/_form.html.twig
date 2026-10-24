@@ -1,16 +1,16 @@
 <div class="admin-page admin-user-editor" data-admin-user>
     <header class="admin-page__header">
         <div class="admin-page__heading">
-            <div class="admin-breadcrumb"><a href="{{ path('admin_users_index') }}">Usuários</a><span aria-hidden="true">/</span><span>{{ is_new ? 'Novo usuário' : 'Editar usuário' }}</span></div>
+            <div class="admin-breadcrumb"><a href="{{ path('admin_users_index', partner_context ? {partner: partner_context.id} : {}) }}">Usuários</a><span aria-hidden="true">/</span><span>{{ is_new ? 'Novo usuário' : 'Editar usuário' }}</span></div>
             <h1 class="admin-page__title">{{ is_new ? 'Criar usuário' : 'Editar usuário' }}</h1>
             <p class="admin-page__subtitle">Configure os dados da conta e escolha o acesso adequado para as tarefas desta pessoa.</p>
         </div>
-        <a href="{{ path('admin_users_index') }}" class="admin-btn admin-btn--ghost">← Voltar para usuários</a>
+        <a href="{{ path('admin_users_index', partner_context ? {partner: partner_context.id} : {}) }}" class="admin-btn admin-btn--ghost">← Voltar para usuários</a>
     </header>
 
     <div class="admin-user-editor__notice">
         <strong>Como funciona o acesso</strong>
-        <p>O perfil define quais áreas o usuário pode abrir. Perfis de parceiro, operador e agente de via precisam de um parceiro vinculado.</p>
+        <p>O perfil determina as permissões desta conta. O parceiro identifica a organização à qual a pessoa pertence; alguns perfis exigem esse vínculo.</p>
     </div>
 
     {{ form_start(form, {attr: {class: 'admin-user-editor__form'}}) }}
@@ -25,7 +25,7 @@
         </section>
 
         <section class="admin-user-editor__section" aria-labelledby="user-access-title">
-            <div class="admin-user-editor__section-heading"><span>02</span><div><h2 id="user-access-title">Acesso e parceiro</h2><p>Selecione um perfil permitido para sua conta e vincule o parceiro quando necessário.</p></div></div>
+            <div class="admin-user-editor__section-heading"><span>02</span><div><h2 id="user-access-title">Acesso e parceiro</h2><p>Escolha o que esta pessoa poderá fazer. Se ela trabalhar para um parceiro, selecione o parceiro logo abaixo.</p></div></div>
             <div class="admin-user-editor__fields">
                 <div class="admin-user-editor__role-field">{{ form_row(form.roles) }}</div>
                 <div data-partner-field>{{ form_row(form.partner) }}</div>
@@ -41,7 +41,7 @@
         </section>
 
         <footer class="admin-user-editor__actions">
-            <a href="{{ path('admin_users_index') }}" class="admin-btn admin-btn--ghost">Cancelar</a>
+            <a href="{{ path('admin_users_index', partner_context ? {partner: partner_context.id} : {}) }}" class="admin-btn admin-btn--ghost">Cancelar</a>
             <button type="submit" class="admin-btn admin-btn--primary">{{ is_new ? 'Criar usuário' : 'Salvar alterações' }}</button>
         </footer>
     {{ form_end(form) }}

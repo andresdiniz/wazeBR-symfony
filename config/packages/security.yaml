@@ -25,6 +25,9 @@ security:
                 login_path: auth_login
                 check_path: auth_login
                 enable_csrf: true
+                login_throttling:
+                    max_attempts: 5
+                    interval: '1 minute'
                 default_target_path: app_post_login_redirect
                 use_referer: true
 
@@ -47,13 +50,18 @@ security:
         - { path: ^/post-login-redirect, roles: IS_AUTHENTICATED_FULLY }
 
         - { path: ^/account-admin, roles: ROLE_ACCOUNT_ADMIN }
-        - { path: ^/partner, roles: ROLE_PARTNER_ADMIN }
+        - { path: ^/partner(?:/|$), roles: ROLE_PARTNER_ADMIN }
         - { path: ^/field-agent, roles: ROLE_FIELD_AGENT }
         - { path: ^/dashboard, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/admin/users, allow_if: "is_granted('ROLE_ACCOUNT_ADMIN') or is_granted('ROLE_PARTNER_ADMIN')" }
 
 
-        - { path: ^/, roles: PUBLIC_ACCESS }
+        - { path: ^/$, roles: PUBLIC_ACCESS }
+        - { path: ^/partner-feed/?$, roles: PUBLIC_ACCESS }
+        - { path: ^/partner-feed/[^/]+$, roles: PUBLIC_ACCESS }
+        - { path: ^/feeds/waze/[^/]+\.(json|xml)$, roles: PUBLIC_ACCESS }
+        - { path: ^/relatorio/rota/\d+$, roles: PUBLIC_ACCESS }
+        - { path: ^/, roles: IS_AUTHENTICATED_FULLY }
 
     role_hierarchy:
         ROLE_SUPER_ADMIN:

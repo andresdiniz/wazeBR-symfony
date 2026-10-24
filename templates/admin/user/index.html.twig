@@ -10,7 +10,7 @@
             <p class="admin-page__subtitle">
                 {% if partner_filter %}
                     Usuários vinculados a <strong>{{ partner_filter.name }}</strong>.
-                    <a href="{{ path('admin_users_index') }}">Remover filtro</a>
+                    {% if can_remove_partner_filter %}<a href="{{ path('admin_users_index') }}">Remover filtro</a>{% endif %}
                 {% elseif can_manage_roles %}
                     Gerencie contas, perfis de acesso e vínculos com parceiros.
                 {% else %}
@@ -18,7 +18,7 @@
                 {% endif %}
             </p>
         </div>
-        <a href="{{ path('admin_users_new') }}" class="admin-btn admin-btn--primary">+ Novo usuário</a>
+        <a href="{{ path('admin_users_new', partner_filter ? {partner: partner_filter.id} : {}) }}" class="admin-btn admin-btn--primary">+ Novo usuário</a>
     </header>
 
     {% for message in app.flashes('success') %}<div class="admin-notice admin-notice--success" role="status">{{ message }}</div>{% endfor %}
@@ -39,7 +39,7 @@
             <span class="admin-empty__icon" aria-hidden="true">♙</span>
             <h2 class="admin-empty__title">Nenhum usuário encontrado</h2>
             <p class="admin-empty__text">Não há contas neste escopo com os critérios informados.</p>
-            <a href="{{ path('admin_users_new') }}" class="admin-btn admin-btn--primary">Criar usuário</a>
+            <a href="{{ path('admin_users_new', partner_filter ? {partner: partner_filter.id} : {}) }}" class="admin-btn admin-btn--primary">Criar usuário</a>
         </div>
     {% else %}
         {% set role_labels = {
@@ -78,7 +78,7 @@
                     {% if can_edit_this_user %}
                         {% set inline_form = inline_forms[user.id] %}
                         <div class="admin-user-card__actions">
-                            <a href="{{ path('admin_users_edit', {id: user.id}) }}" class="admin-btn admin-btn--primary">Editar usuário</a>
+                            <a href="{{ path('admin_users_edit', partner_filter ? {id: user.id, partner: partner_filter.id} : {id: user.id}) }}" class="admin-btn admin-btn--primary">Editar usuário</a>
                             <details class="admin-user-edit-panel" id="{{ 'admin-user-edit-' ~ user.id }}" {% if submitted_user_id == user.id %}open{% endif %}>
                             <summary>Editar este usuário</summary>
                             {{ form_start(inline_form, {'attr': {'class': 'admin-inline-form'}}) }}
@@ -96,12 +96,12 @@
                                 </div>
                                 <div class="admin-inline-form__actions">
                                     <button type="submit" class="admin-btn admin-btn--primary">Salvar usuário</button>
-                                    <a href="{{ path('admin_users_edit', {id: user.id}) }}" class="admin-btn admin-btn--ghost">Abrir edição completa</a>
+                                    <a href="{{ path('admin_users_edit', partner_filter ? {id: user.id, partner: partner_filter.id} : {id: user.id}) }}" class="admin-btn admin-btn--ghost">Abrir edição completa</a>
                                 </div>
                             {{ form_end(inline_form) }}
                         </details>
                         {% if user.id != app.user.id %}
-                            <form method="post" action="{{ path('admin_users_toggle', {id: user.id}) }}" class="admin-user-card__status-form">
+                            <form method="post" action="{{ path('admin_users_toggle', partner_filter ? {id: user.id, partner: partner_filter.id} : {id: user.id}) }}" class="admin-user-card__status-form">
                                 <input type="hidden" name="_token" value="{{ csrf_token('admin_user_toggle_' ~ user.id) }}">
                                 <button type="submit" class="admin-action">{{ user.isActive ? 'Desativar conta' : 'Reativar conta' }}</button>
                             </form>

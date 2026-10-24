@@ -10,6 +10,7 @@ use App\Repository\PartnerFeedEventRepository;
 use App\Repository\PartnerRepository;
 use App\Service\PartnerFeedService;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -25,6 +26,7 @@ final class PartnerFeedController extends AbstractController
         private readonly PartnerFeedEventRepository $eventRepository,
         private readonly PartnerFeedService $feedService,
         private readonly EntityManagerInterface $em,
+        private readonly Connection $connection,
     ) {}
 
     #[Route('/{code}.json', name: 'json', methods: ['GET'])]
@@ -58,9 +60,11 @@ final class PartnerFeedController extends AbstractController
     }
 
     #[Route('/{code}/events', name: 'event_list', methods: ['GET'])]
+    #[IsGranted('ROLE_PARTNER_ADMIN')]
     public function eventList(string $code, Request $request): Response
     {
         $partner = $this->getPartnerOr404($code);
+        $this->assertCanManagePartner($partner);
         $page = max(1, (int) $request->query->get('page', 1));
         $total = $this->eventRepository->countByPartner($partner);
         return $this->render('partner_feed/events/list.html.twig', [
@@ -74,10 +78,13 @@ final class PartnerFeedController extends AbstractController
     }
 
     #[Route('/{code}/events/new', name: 'event_new', methods: ['GET'])]
+    #[IsGranted('ROLE_PARTNER_ADMIN')]
     public function eventNew(string $code): Response
     {
+        $partner = $this->getPartnerOr404($code);
+        $this->assertCanManagePartner($partner);
         return $this->render('partner_feed/events/form.html.twig', [
-            'partner' => $this->getPartnerOr404($code),
+            'partner' => $partner,
             'event' => null,
             'types' => PartnerFeedEvent::TYPES,
             'subtypes' => PartnerFeedEvent::SUBTYPES,
@@ -85,9 +92,14 @@ final class PartnerFeedController extends AbstractController
     }
 
     #[Route('/{code}/events', name: 'event_create', methods: ['POST'])]
+    #[IsGranted('ROLE_PARTNER_ADMIN')]
     public function eventCreate(string $code, Request $request): Response
     {
         $partner = $this->getPartnerOr404($code);
+        $this->assertCanManagePartner($partner);
+        if (!$this->isCsrfTokenValid('partner_feed_event_create_' . $partner->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Token CSRF inválido.');
+        }
         $event = new PartnerFeedEvent();
         $event->setPartner($partner);
         $user = $this->getUser();
@@ -102,9 +114,11 @@ final class PartnerFeedController extends AbstractController
     }
 
     #[Route('/{code}/events/{id}/edit', name: 'event_edit', methods: ['GET'])]
+    #[IsGranted('ROLE_PARTNER_ADMIN')]
     public function eventEdit(string $code, int $id): Response
     {
         $partner = $this->getPartnerOr404($code);
+        $this->assertCanManagePartner($partner);
         return $this->render('partner_feed/events/form.html.twig', [
             'partner' => $partner,
             'event' => $this->getEventOr404($id, $partner),
@@ -114,9 +128,14 @@ final class PartnerFeedController extends AbstractController
     }
 
     #[Route('/{code}/events/{id}/edit', name: 'event_update', methods: ['POST'])]
+    #[IsGranted('ROLE_PARTNER_ADMIN')]
     public function eventUpdate(string $code, int $id, Request $request): Response
     {
         $partner = $this->getPartnerOr404($code);
+        $this->assertCanManagePartner($partner);
+        if (!$this->isCsrfTokenValid('partner_feed_event_update_' . $id, (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Token CSRF inválido.');
+        }
         $event = $this->getEventOr404($id, $partner);
         $this->hydrateFromRequest($event, $request);
         $user = $this->getUser();
@@ -129,9 +148,14 @@ final class PartnerFeedController extends AbstractController
     }
 
     #[Route('/{code}/events/{id}/toggle', name: 'event_toggle', methods: ['POST'])]
-    public function eventToggle(string $code, int $id): Response
+    #[IsGranted('ROLE_PARTNER_ADMIN')]
+    public function eventToggle(string $code, int $id, Request $request): Response
     {
         $partner = $this->getPartnerOr404($code);
+        $this->assertCanManagePartner($partner);
+        if (!$this->isCsrfTokenValid('toggle_event_' . $id, (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Token CSRF inválido.');
+        }
         $event = $this->getEventOr404($id, $partner);
         $event->setIsActive(!$event->isActive());
         $user = $this->getUser();
@@ -143,10 +167,14 @@ final class PartnerFeedController extends AbstractController
     }
 
     #[Route('/{code}/events/{id}/delete', name: 'event_delete', methods: ['POST'])]
-    #[IsGranted('ROLE_ADMIN')]
-    public function eventDelete(string $code, int $id): Response
+    #[IsGranted('ROLE_PARTNER_ADMIN')]
+    public function eventDelete(string $code, int $id, Request $request): Response
     {
         $partner = $this->getPartnerOr404($code);
+        $this->assertCanManagePartner($partner);
+        if (!$this->isCsrfTokenValid('delete_event_' . $id, (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Token CSRF inválido.');
+        }
         $event = $this->getEventOr404($id, $partner);
         $this->em->remove($event);
         $this->em->flush();
@@ -163,8 +191,23 @@ final class PartnerFeedController extends AbstractController
     private function getEventOr404(int $id, Partner $partner): PartnerFeedEvent
     {
         $event = $this->eventRepository->find($id);
-        if ($event === null || $event->getPartner() !== $partner) throw $this->createNotFoundException('Evento não encontrado.');
+        if ($event === null || $event->getPartner()?->getId() !== $partner->getId()) throw $this->createNotFoundException('Evento não encontrado.');
         return $event;
+    }
+
+    private function assertCanManagePartner(Partner $partner): void
+    {
+        $user = $this->getUser();
+        if (!$user instanceof \App\Entity\User || $user->getId() === null) {
+            throw $this->createAccessDeniedException();
+        }
+        $partnerId = $this->connection->fetchOne('SELECT partner_id FROM user WHERE id = ?', [$user->getId()]);
+        $roles = $user->getRoles();
+        $isGlobal = ($partnerId === false || $partnerId === null)
+            && (in_array('ROLE_ADMIN', $roles, true) || in_array('ROLE_SUPER_ADMIN', $roles, true));
+        if (!$isGlobal && (int) $partnerId !== $partner->getId()) {
+            throw $this->createAccessDeniedException('Você só pode administrar eventos do parceiro vinculado à sua conta.');
+        }
     }
 
     private function hydrateFromRequest(PartnerFeedEvent $event, Request $request): void

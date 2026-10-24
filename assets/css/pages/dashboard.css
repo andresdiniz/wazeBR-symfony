@@ -26,14 +26,14 @@
     --border-2: var(--border-strong);
 
     /* Cores semânticas */
-    --accent: #2563eb;
-    --accent-hover: #1d4ed8;
-    --success: #16a34a;
-    --warning: #ea580c;
-    --danger: #dc2626;
-    --info: #0891b2;
-    --gold: #d97706;
-    --purple: #7c3aed;
+    --accent: var(--primary);
+    --accent-hover: var(--primary-hover);
+    --success: var(--green-500);
+    --warning: var(--orange-500);
+    --danger: var(--red-500);
+    --info: var(--cyan-500);
+    --gold: var(--gold-500);
+    --purple: var(--purple-500);
 
     /* Tints derivados */
     --accent-soft: color-mix(in oklab, var(--accent) 10%, transparent);

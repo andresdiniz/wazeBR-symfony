@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Entity\User;
+use App\Entity\Partner;
 use App\Form\UserType;
 use App\Repository\PartnerRepository;
 use App\Repository\UserRepository;
@@ -20,6 +21,8 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/admin/users')]
 final class AdminUserController extends AbstractController
 {
+    private bool $actorPartnerResolved = false;
+    private ?int $actorPartnerId = null;
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly UserPasswordHasherInterface $passwordHasher,
@@ -33,15 +36,16 @@ final class AdminUserController extends AbstractController
         $this->requireUserAdminAccess();
         $partner = null;
         if ($this->isPartnerAdmin()) {
-            $partner = $this->getUser()->getPartner();
+            $partner = $this->requireActorPartner();
         } elseif ($request->query->getInt('partner') > 0) {
             $partner = $partnerRepository->find($request->query->getInt('partner'));
+            if ($partner === null) throw $this->createNotFoundException('Parceiro não encontrado.');
         }
 
         $criteria = $partner !== null ? ['partner' => $partner] : [];
         $users = $userRepository->findBy($criteria, ['name' => 'ASC', 'email' => 'ASC']);
         if (!$this->isGlobalAdmin()) {
-            $users = array_values(array_filter($users, fn (User $user): bool => $this->canViewUser($user)));
+            $users = array_values(array_filter($users, fn (User $user): bool => $this->canViewUser($user, $partner?->getId())));
         }
         $searchQuery = trim((string) $request->query->get('q', ''));
         if ($searchQuery !== '') {
@@ -62,12 +66,12 @@ final class AdminUserController extends AbstractController
         $submittedUserId = null;
 
         foreach ($users as $user) {
-            if (!$this->canManageUser($user)) {
+            if (!$this->canManageUser($user, $partner?->getId())) {
                 continue;
             }
 
             $userId = (int) $user->getId();
-            $form = $this->createUserForm($user, false, 'edit_user_' . $userId);
+            $form = $this->createUserForm($user, false, 'edit_user_' . $userId, $partner);
             $form->handleRequest($request);
 
             if ($form->isSubmitted()) {
@@ -105,15 +109,21 @@ final class AdminUserController extends AbstractController
             'submitted_user_id' => $submittedUserId,
             'can_manage_roles' => $this->isGlobalAdmin(),
             'partner_filter' => $partner,
+            'can_remove_partner_filter' => $this->isGlobalAdmin(),
             'search_query' => $searchQuery,
         ]);
     }
     #[Route('/new', name: 'admin_users_new', methods: ['GET', 'POST'])]
-    public function new(Request $request): Response
+    public function new(Request $request, PartnerRepository $partnerRepository): Response
     {
         $this->requireUserAdminAccess();
+        $partner = $this->isPartnerAdmin() ? $this->requireActorPartner() : null;
+        if ($partner === null && $request->query->getInt('partner') > 0) {
+            $partner = $partnerRepository->find($request->query->getInt('partner'));
+            if ($partner === null) throw $this->createNotFoundException('Parceiro não encontrado.');
+        }
         $user = new User();
-        $form = $this->createUserForm($user, true);
+        $form = $this->createUserForm($user, true, null, $partner);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -132,11 +142,11 @@ final class AdminUserController extends AbstractController
                 $this->entityManager->flush();
                 $this->addFlash('success', 'Usuário criado com o perfil selecionado.');
 
-                return $this->redirectToRoute('admin_users_index');
+                return $this->redirectToRoute('admin_users_index', array_filter(['partner' => $partner?->getId()]));
             }
         }
 
-        return $this->render('admin/user/new.html.twig', ['form' => $form]);
+        return $this->render('admin/user/new.html.twig', ['form' => $form, 'partner_context' => $partner]);
     }
 
     #[Route('/{id}/edit', name: 'admin_users_edit', methods: ['GET', 'POST'])]
@@ -144,7 +154,8 @@ final class AdminUserController extends AbstractController
     {
         $this->requireUserAdminAccess();
         $this->denyUnlessManageable($user);
-        $form = $this->createUserForm($user, false);
+        $partnerContext = $this->isPartnerAdmin() ? $this->requireActorPartner() : $user->getPartner();
+        $form = $this->createUserForm($user, false, null, $partnerContext);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -163,11 +174,11 @@ final class AdminUserController extends AbstractController
                 $this->entityManager->flush();
                 $this->addFlash('success', 'Usuário atualizado.');
 
-                return $this->redirectToRoute('admin_users_index');
+                return $this->redirectToRoute('admin_users_index', array_filter(['partner' => $request->query->getInt('partner') ?: $partnerContext?->getId()]));
             }
         }
 
-        return $this->render('admin/user/edit.html.twig', ['form' => $form, 'user' => $user]);
+        return $this->render('admin/user/edit.html.twig', ['form' => $form, 'user' => $user, 'partner_context' => $partnerContext]);
     }
 
     #[Route('/{id}/toggle', name: 'admin_users_toggle', methods: ['POST'])]
@@ -180,17 +191,17 @@ final class AdminUserController extends AbstractController
         }
         if (!$this->isCsrfTokenValid('admin_user_toggle_' . $user->getId(), (string) $request->request->get('_token'))) {
             $this->addFlash('error', 'Token de segurança inválido.');
-            return $this->redirectToRoute('admin_users_index');
+            return $this->redirectToRoute('admin_users_index', array_filter(['partner' => $request->query->getInt('partner') ?: $user->getPartner()?->getId()]));
         }
 
         $user->setActive(!$user->isActive());
         $this->entityManager->flush();
         $this->addFlash('success', $user->isActive() ? 'Conta reativada.' : 'Conta desativada.');
 
-        return $this->redirectToRoute('admin_users_index');
+        return $this->redirectToRoute('admin_users_index', array_filter(['partner' => $request->query->getInt('partner') ?: $user->getPartner()?->getId()]));
     }
 
-    private function createUserForm(User $user, bool $requirePassword, ?string $name = null): FormInterface
+    private function createUserForm(User $user, bool $requirePassword, ?string $name = null, ?Partner $partnerContext = null): FormInterface
     {
         $roles = $this->availableRoles();
         $profileLocked = $user->getId() !== null && $user->getId() === $this->getUser()?->getId();
@@ -250,8 +261,8 @@ final class AdminUserController extends AbstractController
         if (!$this->isGranted('ROLE_ACCOUNT_ADMIN') && !$this->isGranted('ROLE_PARTNER_ADMIN')) {
             throw $this->createAccessDeniedException();
         }
-        if ($this->isPartnerAdmin() && $this->getUser()?->getPartner() === null) {
-            throw $this->createAccessDeniedException('Seu perfil precisa estar vinculado a um parceiro.');
+        if ($this->isPartnerAdmin()) {
+            $this->requireActorPartner();
         }
     }
     private function isSuperAdmin(): bool
@@ -261,10 +272,36 @@ final class AdminUserController extends AbstractController
     private function isGlobalAdmin(): bool
     {
         $user = $this->getUser();
-        return $user instanceof User && $user->isGlobalAdmin();
+        return $user instanceof User
+            && array_intersect($user->getRoles(), [User::ROLE_ADMIN, User::ROLE_SUPER_ADMIN]) !== []
+            && $this->persistedActorPartnerId() === null;
     }
 
-    private function canViewUser(User $target): bool
+    private function persistedActorPartnerId(): ?int
+    {
+        if ($this->actorPartnerResolved) return $this->actorPartnerId;
+        $this->actorPartnerResolved = true;
+        $actor = $this->getUser();
+        if (!$actor instanceof User || $actor->getId() === null) return null;
+        $id = $this->entityManager->createQueryBuilder()
+            ->select('IDENTITY(account.partner)')
+            ->from(User::class, 'account')
+            ->where('account.id = :userId')
+            ->setParameter('userId', $actor->getId())
+            ->getQuery()->getSingleScalarResult();
+        return $this->actorPartnerId = $id === null ? null : (int) $id;
+    }
+
+    private function requireActorPartner(): Partner
+    {
+        $partnerId = $this->persistedActorPartnerId();
+        if ($partnerId === null) {
+            throw $this->createAccessDeniedException('Seu perfil precisa estar vinculado a um parceiro. Associe o usuário a um parceiro para administrar os dados e usuários dele.');
+        }
+        return $this->entityManager->getReference(Partner::class, $partnerId);
+    }
+
+    private function canViewUser(User $target, ?int $scopePartnerId = null): bool
     {
         if ($target->getId() === $this->getUser()?->getId()) {
             return true;
@@ -274,7 +311,7 @@ final class AdminUserController extends AbstractController
         // Partner admins can manage every account attached to their partner,
         // including accounts with elevated partner-scoped roles.
         if ($this->isPartnerAdmin()) {
-            $actorPartnerId = $this->getUser()?->getPartner()?->getId();
+            $actorPartnerId = $scopePartnerId ?? $this->persistedActorPartnerId();
             return $actorPartnerId !== null && $target->getPartner()?->getId() === $actorPartnerId;
         }
 
@@ -289,15 +326,15 @@ final class AdminUserController extends AbstractController
         return false;
     }
 
-    private function canManageUser(User $target): bool
+    private function canManageUser(User $target, ?int $scopePartnerId = null): bool
     {
         if ($target->getId() === $this->getUser()?->getId()) {
             return true;
         }
         $targetRoles = $target->getRoles();
         if ($this->isPartnerAdmin()) {
-            $actorPartner = $this->getUser()?->getPartner();
-            return $actorPartner !== null && $target->getPartner()?->getId() === $actorPartner->getId();
+            $actorPartnerId = $scopePartnerId ?? $this->persistedActorPartnerId();
+            return $actorPartnerId !== null && $target->getPartner()?->getId() === $actorPartnerId;
         }
         if (in_array(User::ROLE_SUPER_ADMIN, $targetRoles, true) && !$this->isSuperAdmin()) {
             return false;

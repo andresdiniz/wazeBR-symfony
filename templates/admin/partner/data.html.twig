@@ -1,0 +1,22 @@
+{% extends 'admin/layout.html.twig' %}
+{% block title %}Dados de {{ partner.name }} — Administração{% endblock %}
+{% block content %}
+<div class="admin-page partner-data-page">
+    <header class="admin-page__header">
+        <div class="admin-page__heading">
+            <div class="admin-breadcrumb"><a href="{{ path('admin_partner_index') }}">Parceiros</a><span aria-hidden="true">/</span><a href="{{ path('admin_partner_edit', {id: partner.id}) }}">{{ partner.name }}</a><span aria-hidden="true">/</span><span>Dados e integrações</span></div>
+            <h1 class="admin-page__title">Dados e integrações</h1>
+            <p class="admin-page__subtitle">Gerencie câmeras, estações e links usados por {{ partner.name }}.</p>
+        </div>
+        <div class="admin-page__actions"><a href="{{ path('admin_users_index', {partner: partner.id}) }}" class="admin-btn admin-btn--primary">Usuários deste parceiro</a><a href="{{ path('admin_partner_edit', {id: partner.id}) }}" class="admin-btn admin-btn--ghost">← Voltar ao parceiro</a></div>
+    </header>
+    {% for message in app.flashes('success') %}<div class="admin-notice admin-notice--success" role="status">{{ message }}</div>{% endfor %}
+    {% if errors %}<div class="admin-notice admin-notice--error" role="alert"><strong>Não foi possível salvar:</strong><ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul></div>{% endif %}
+    <section class="partner-data-feed">
+        <div><span class="partner-data-section__eyebrow">FEED PÚBLICO</span><h2>Feed do parceiro</h2><p>URL pública gerada para os dados do parceiro. Para alterar o código usado no caminho, ajuste os dados básicos do parceiro.</p></div>
+        {% if partner.feedUrl %}<a href="{{ partner.feedUrl }}" target="_blank" rel="noopener noreferrer" class="partner-data-feed__url">{{ partner.feedUrl }}</a><div class="partner-data-feed__actions"><a class="admin-btn admin-btn--ghost" href="{{ partner.feedUrl }}" target="_blank" rel="noopener noreferrer">Abrir feed ↗</a><a class="admin-btn admin-btn--ghost" href="{{ path('admin_partner_edit', {id: partner.id}) }}">Editar código</a></div>{% else %}<span class="partner-data-empty">Feed ainda não configurado. Edite os dados básicos do parceiro para gerar o link.</span>{% endif %}
+    </section>
+    <nav class="partner-data-nav" aria-label="Categorias de dados">{% for kind, section in data %}<a href="#partner-data-{{ kind }}">{{ {'api':'Links de feed/API','camera':'Câmeras','weather':'Meteorologia','cemaden':'Estações Cemaden','hydro':'Hidrologia'}[kind] }}</a>{% endfor %}</nav>
+    {% for kind, section in data %}{{ include('admin/partner/_data_section.html.twig', {kind: kind, section: section, partner: partner, submitted: submitted, errors: errors}) }}{% endfor %}
+</div>
+{% endblock %}

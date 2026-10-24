@@ -30,28 +30,6 @@
 
 @import './components/analytics.css';
 
-/* Páginas */
-@import './pages/weather-index.css';
-@import './pages/weather-show.css';
-@import './pages/weather-analysis.css';
-@import './pages/tv.css';
-@import './pages/admin.css';
-@import './pages/jam.css';
-@import './pages/jam-show.css';
-@import './pages/partner-feed-index.css';
-@import './pages/partner-feed-show.css';
-@import './pages/partner-feed-form.css';
-@import './pages/partner-feed-events-list.css';
-@import './pages/jam-history.css';
-
-/* Semáforos — base compartilhada primeiro, depois específicos */
-@import './pages/traffic-light.css';
-@import './pages/traffic-light-list.css';
-@import './pages/traffic-light-form.css';
-@import './pages/traffic-light-show.css';
-@import './pages/traffic-light-dashboard.css';
-@import './pages/traffic-light-control.css';
-
 /* Dashboard, alerts, routes, route-compare, route-show etc.
    devem ser importados pelo entrypoint da respectiva página
    (ou adicione aqui se você já centraliza tudo em app.css). */

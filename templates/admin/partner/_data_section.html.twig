@@ -1,0 +1,32 @@
+{% set labels = {
+    'api': ['Links de feed e API', 'Endpoints usados para receber alertas, congestionamentos, trânsito e TVT.'],
+    'camera': ['Câmeras', 'Links de vídeo associados às coordenadas e à cidade.'],
+    'weather': ['Estações meteorológicas', 'Locais e provedores usados para consultar condições do tempo.'],
+    'cemaden': ['Estações pluviométricas Cemaden', 'Estações de chuva monitoradas e intervalo de coleta.'],
+    'hydro': ['Estações hidrológicas Cemaden', 'Estações de chuva acumulada e nível dos rios.']
+} %}
+<section class="partner-data-section" id="partner-data-{{ kind }}">
+    <header class="partner-data-section__header">
+        <div><span class="partner-data-section__eyebrow">{{ section.items|length }} registros</span><h2>{{ labels[kind][0] }}</h2><p>{{ labels[kind][1] }}</p></div>
+        <a class="admin-btn admin-btn--primary" href="#partner-data-new-{{ kind }}">+ Adicionar</a>
+    </header>
+    <div class="partner-data-section__body">
+        <details class="partner-data-create" id="partner-data-new-{{ kind }}">
+            <summary>Adicionar registro</summary>
+            {{ include('admin/partner/_data_form.html.twig', {kind: kind, fields: section.fields, item: null, partner: partner, submitted: submitted, create: true}) }}
+        </details>
+        {% for item in section.items %}
+            {% set title = kind == 'api' or kind == 'camera' or kind == 'weather' ? item.name : (item.stationName ?: (kind == 'cemaden' ? 'Estação ' ~ item.cemadenStationId : 'Estação ' ~ item.cemadenTransactionId)) %}
+            <details class="partner-data-record" {% if submitted.kind|default('') == kind and submitted.id|default('') == item.id ~ '' %}open{% endif %}>
+                <summary><span>{{ title }}</span><span class="partner-data-record__status {{ item.active|default(item.isActive|default(false)) ? 'is-active' : 'is-inactive' }}">{{ item.active|default(item.isActive|default(false)) ? 'Ativo' : 'Inativo' }}</span></summary>
+                {{ include('admin/partner/_data_form.html.twig', {kind: kind, fields: section.fields, item: item, partner: partner, submitted: submitted, create: false}) }}
+                <form method="post" class="partner-data-delete" onsubmit="return confirm('Excluir este registro?')">
+                    <input type="hidden" name="_token" value="{{ csrf_token('partner_data_' ~ partner.id) }}"><input type="hidden" name="kind" value="{{ kind }}"><input type="hidden" name="id" value="{{ item.id }}"><input type="hidden" name="action" value="delete">
+                    <button class="admin-btn admin-btn--danger" type="submit">Excluir registro</button>
+                </form>
+            </details>
+        {% else %}
+            <p class="partner-data-empty">Nenhum registro cadastrado nesta categoria.</p>
+        {% endfor %}
+    </div>
+</section>

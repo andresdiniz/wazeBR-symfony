@@ -20,12 +20,10 @@
             </p>
         </div>
 
-        <a
-            href="{{ path('admin_partner_index') }}"
-            class="admin-btn admin-btn--ghost"
-        >
-            ← Voltar
-        </a>
+        <div class="partner-data-header-actions">
+            <a href="{{ path('admin_partner_data_index', {id: partner.id}) }}" class="admin-btn admin-btn--primary">Dados, links e estações</a>
+            <a href="{{ path('admin_partner_index') }}" class="admin-btn admin-btn--ghost">← Voltar</a>
+        </div>
     </header>
 
     {# ═════════════════════════════════════════════════════════════

@@ -138,7 +138,7 @@
                                                 <input type="hidden" name="_token" value="{{ csrf_token('toggle_event_' ~ event.id) }}">
                                                 <button type="submit" class="btn btn-sm btn-outline-secondary">{{ isActive ? 'Desativar' : 'Ativar' }}</button>
                                             </form>
-                                            {% if is_granted('ROLE_ADMIN') %}
+                                            {% if is_granted('ROLE_PARTNER_ADMIN') %}
                                                 <form method="post" action="{{ path('partner_feed_event_delete', {code: partner.code, id: event.id}) }}" data-delete-form>
                                                     <input type="hidden" name="_token" value="{{ csrf_token('delete_event_' ~ event.id) }}">
                                                     <button type="submit" class="btn btn-sm btn-outline-danger">Excluir</button>

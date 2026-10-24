@@ -97,6 +97,7 @@
                       : path('partner_feed_event_create', {code: partner.code}) }}"
                   novalidate>
 
+                <input type="hidden" name="_token" value="{{ csrf_token(event ? ('partner_feed_event_update_' ~ event.id) : ('partner_feed_event_create_' ~ partner.id)) }}">
                 <input type="hidden" name="polyline" id="pf-polyline-input"
                        value="{{ event and event.polyline ? event.polyline|json_encode|e('html_attr') : '' }}">
 
