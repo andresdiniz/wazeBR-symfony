@@ -16,22 +16,29 @@ nelmio_security:
         enforce:
             default-src:
                 - 'self'
+
             script-src:
                 - 'self'
-                - 'strict-dynamic'
-                - 'sha256-NgIIXtUYqeFz8pc52tSmIvzI4lOTDAMun9JVGSfR0os='
                 - 'https://cdn.jsdelivr.net'
                 - 'https://cdnjs.cloudflare.com'
                 - 'https://unpkg.com'
                 - 'https://static.cloudflareinsights.com'
                 - 'https://use.typekit.net'
+                - "'sha256-NgIIXtUYqeFz8pc52tSmIvzI4lOTDAMun9JVGSfR0os='"
+                - "'sha256-4bDPEWygbscdkeVePkBeoi2TQWL4D5w9UBpd+kjVCX4='"
+                - "'sha256-AwcfFH8/qhnh/6Q2qeJgcvXDZDsX6rbPYO/A+IaXcno='"
+                - "'sha256-6PeNBy+owUm6Gd8Z5yEum0eIWDj1/qFaCZ3n8xIKraY='"
+
             style-src:
                 - 'self'
+                - 'unsafe-inline' # Libera tags <style> e atributos style="" sem conflito com hashes
                 - 'https://cdn.jsdelivr.net'
                 - 'https://cdnjs.cloudflare.com'
                 - 'https://fonts.googleapis.com'
                 - 'https://unpkg.com'
                 - 'https://use.typekit.net'
+                # (Hashes de estilo removidos para permitir que o unsafe-inline funcione livremente)
+
             img-src:
                 - 'self'
                 - 'data:'
@@ -39,12 +46,14 @@ nelmio_security:
                 - 'https://*.tile.openstreetmap.org'
                 - 'https://cdnjs.cloudflare.com'
                 - 'https://unpkg.com'
+
             font-src:
                 - 'self'
                 - 'data:'
                 - 'https://fonts.gstatic.com'
                 - 'https://fonts.googleapis.com'
                 - 'https://use.typekit.net'
+
             connect-src:
                 - 'self'
                 - 'https://api.waze.com'
@@ -56,6 +65,15 @@ nelmio_security:
                 - 'https://*.cetransito.com.br'
                 - 'https://*.detran.mg.gov.br'
                 - 'https://*.transparencia.mg.gov.br'
+
+            object-src:
+                - 'none'
+
+            base-uri:
+                - 'self'
+
+            form-action:
+                - 'self'
 
 when@dev:
     nelmio_security:
