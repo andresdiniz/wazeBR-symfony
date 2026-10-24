@@ -1008,3 +1008,40 @@ button.admin-status-badge:active {
         width: 100%;
     }
 }
+
+/* Administração de usuários: formulários responsivos e mensagens legíveis. */
+.admin-user-form__roles,
+.admin-user-form__password,
+.admin-user-form__active {
+    grid-column: 1 / -1;
+}
+
+.admin-role-picker {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: 0.7rem;
+    padding: 0.9rem;
+    border: 1px solid var(--adm-border);
+    border-radius: var(--adm-radius);
+    background: var(--adm-bg-muted);
+}
+
+.admin-role-picker label {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-height: 42px;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--adm-border);
+    border-radius: var(--adm-radius-sm);
+    background: var(--adm-bg);
+    cursor: pointer;
+}
+
+.admin-role-picker input { accent-color: var(--primary); }
+.admin-notice { padding: 0.85rem 1rem; border-radius: var(--adm-radius-sm); margin-block-end: 1rem; }
+.admin-notice--success { color: var(--success); background: var(--success-soft); border: 1px solid var(--success); }
+.admin-notice--error { color: var(--danger); background: var(--danger-soft); border: 1px solid var(--danger); }
+.admin-table__actions .admin-actions { flex-wrap: wrap; }
+.admin-badge[href] { text-decoration: none; }
+.admin-badge[href]:hover { filter: brightness(0.94); }

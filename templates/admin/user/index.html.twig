@@ -1,69 +1,84 @@
-{% extends 'layouts/dashboard.html.twig' %}
+{% extends 'admin/layout.html.twig' %}
 
-{% block title %}Gerenciar Usuários{% endblock %}
+{% block title %}Usuários — Administração{% endblock %}
 
-{% block body %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Gerenciar Usuários</h1>
-        <a href="{{ path('admin_users_new') }}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Novo Usuário
-        </a>
-    </div>
-
-    {% for message in app.flashes('success') %}
-        <div class="alert alert-success">{{ message }}</div>
-    {% endfor %}
-
-    <div class="card">
-        <div class="card-body">
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nome</th>
-                        <th>E-mail</th>
-                        <th>Roles</th>
-                        <th>Ativo</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                {% for user in users %}
-                    <tr>
-                        <td>{{ user.id }}</td>
-                        <td>{{ user.name }}</td>
-                        <td>{{ user.email }}</td>
-                        <td>
-                            {% for role in user.roles %}
-                                <span class="badge bg-info">{{ role }}</span>
-                            {% endfor %}
-                        </td>
-                        <td>
-                            {% if user.isActive %}
-                                <span class="badge bg-success">Sim</span>
-                            {% else %}
-                                <span class="badge bg-danger">Não</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <a href="{{ path('admin_users_edit', {id: user.id}) }}" class="btn btn-sm btn-warning">
-                                Editar
-                            </a>
-                            <form method="post" action="{{ path('admin_users_delete', {id: user.id}) }}" style="display:inline" onsubmit="return confirm('Tem certeza?')">
-                                <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ user.id) }}">
-                                <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
-                            </form>
-                        </td>
-                    </tr>
+{% block content %}
+<div class="admin-page">
+    <header class="admin-page__header">
+        <div class="admin-page__heading">
+            <h1 class="admin-page__title">Usuários</h1>
+            <p class="admin-page__subtitle">
+                {% if partner_filter %}
+                    Usuários vinculados a <strong>{{ partner_filter.name }}</strong>.
+                    <a href="{{ path('admin_users_index') }}">Remover filtro</a>
+                {% elseif can_manage_roles %}
+                    Gerencie contas, perfis de acesso e vínculos com parceiros.
                 {% else %}
-                    <tr>
-                        <td colspan="6" class="text-center">Nenhum usuário encontrado</td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
+                    Gerencie apenas usuários do seu escopo e conceda permissões operacionais.
+                {% endif %}
+            </p>
         </div>
-    </div>
+        <a href="{{ path('admin_users_new') }}" class="admin-btn admin-btn--primary">+ Novo usuário</a>
+    </header>
+
+    {% for message in app.flashes('success') %}<div class="admin-notice admin-notice--success" role="status">{{ message }}</div>{% endfor %}
+    {% for message in app.flashes('error') %}<div class="admin-notice admin-notice--error" role="alert">{{ message }}</div>{% endfor %}
+
+    {% if users is empty %}
+        <div class="admin-empty">
+            <span class="admin-empty__icon" aria-hidden="true">♙</span>
+            <h2 class="admin-empty__title">Nenhum usuário neste escopo</h2>
+            <p class="admin-empty__text">Crie um usuário para o parceiro ou área sob sua responsabilidade.</p>
+            <a href="{{ path('admin_users_new') }}" class="admin-btn admin-btn--primary">Criar usuário</a>
+        </div>
+    {% else %}
+        {% set role_labels = {
+            'ROLE_SUPER_ADMIN': 'Superadministrador',
+            'ROLE_ADMIN': 'Administrador global',
+            'ROLE_ACCOUNT_ADMIN': 'Administrador de contas',
+            'ROLE_PARTNER_ADMIN': 'Administrador de parceiro',
+            'ROLE_OPERATOR': 'Operador',
+            'ROLE_FIELD_AGENT': 'Agente de via',
+            'ROLE_VIEWER': 'Visualizador',
+            'ROLE_USER': 'Visualizador'
+        } %}
+        <div class="admin-card admin-card--table">
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead><tr><th>Usuário</th><th>Perfil</th><th>Parceiro</th><th>Status</th><th class="admin-table__actions-col">Ações</th></tr></thead>
+                    <tbody>
+                    {% for user in users %}
+                        <tr class="{{ user.isActive ? '' : 'is-inactive' }}">
+                            <td>
+                                <strong>{{ user.name ?: 'Sem nome' }}</strong><br>
+                                <span class="admin-cell-muted">{{ user.email }}</span>
+                            </td>
+                            <td>
+                                {% for role in user.roles %}
+                                    <span class="admin-badge">{{ role_labels[role]|default(role) }}</span>
+                                {% endfor %}
+                            </td>
+                            <td class="admin-cell-muted">{{ user.partner ? user.partner.name : 'Sem parceiro' }}</td>
+                            <td><span class="admin-status-badge {{ user.isActive ? 'is-active' : 'is-inactive' }}"><span class="admin-status-dot"></span>{{ user.isActive ? 'Ativo' : 'Inativo' }}</span></td>
+                            <td class="admin-table__actions">
+                                <div class="admin-actions">
+                                    {% if user.id != app.user.id %}<a href="{{ path('admin_users_edit', {id: user.id}) }}" class="admin-action">Editar</a>{% else %}<span class="admin-cell-muted">Sua conta</span>{% endif %}
+                                    {% if user.id != app.user.id %}
+                                        <form method="post" action="{{ path('admin_users_toggle', {id: user.id}) }}" class="admin-toggle-form">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('admin_user_toggle_' ~ user.id) }}">
+                                            <button type="submit" class="admin-action" aria-label="{{ user.isActive ? 'Desativar' : 'Reativar' }} {{ user.name }}">
+                                                {{ user.isActive ? 'Desativar' : 'Reativar' }}
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
 </div>
 {% endblock %}

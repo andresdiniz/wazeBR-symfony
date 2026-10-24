@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Entity\Partner;
+use App\Entity\User;
 use App\Repository\PartnerRepository;
 use App\Service\PartnerFeedManager;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
@@ -48,6 +49,7 @@ final class AdminPartnerController extends AbstractController
     #[Route('', name: 'index', methods: ['GET'])]
     public function index(): Response
     {
+        $this->denyUnlessGlobalAdmin();
         return $this->render('admin/partner/index.html.twig', [
             'partners' => $this->partners->findBy([], ['name' => 'ASC']),
         ]);
@@ -60,6 +62,7 @@ final class AdminPartnerController extends AbstractController
     #[Route('/new', name: 'new', methods: ['GET', 'POST'])]
     public function new(Request $request): Response
     {
+        $this->denyUnlessGlobalAdmin();
         if ($request->isMethod('POST')) {
             return $this->handleCreate($request);
         }
@@ -157,6 +160,7 @@ final class AdminPartnerController extends AbstractController
     #[Route('/{id}/edit', name: 'edit', methods: ['GET', 'POST'])]
     public function edit(Partner $partner, Request $request): Response
     {
+        $this->denyUnlessGlobalAdmin();
         if ($request->isMethod('POST')) {
             return $this->handleUpdate($partner, $request);
         }
@@ -338,6 +342,7 @@ final class AdminPartnerController extends AbstractController
     #[Route('/{id}/toggle', name: 'toggle', methods: ['POST'])]
     public function toggle(Partner $partner, Request $request): Response
     {
+        $this->denyUnlessGlobalAdmin();
         $partnerId = $partner->getId();
 
         if ($partnerId === null) {
@@ -410,6 +415,7 @@ final class AdminPartnerController extends AbstractController
     #[Route('/{id}', name: 'delete', methods: ['POST'])]
     public function delete(Partner $partner, Request $request): Response
     {
+        $this->denyUnlessGlobalAdmin();
         $partnerId = $partner->getId();
 
         if ($partnerId === null) {
@@ -606,5 +612,13 @@ final class AdminPartnerController extends AbstractController
         }
 
         return $this->redirectToRoute($route, $params);
+    }
+
+    private function denyUnlessGlobalAdmin(): void
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User || !$user->isGlobalAdmin()) {
+            throw $this->createAccessDeniedException('Somente administradores globais podem gerenciar parceiros.');
+        }
     }
 }

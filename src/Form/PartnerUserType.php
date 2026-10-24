@@ -39,9 +39,9 @@ class PartnerUserType extends AbstractType
             ->add('roles', ChoiceType::class, [
                 'label' => 'Perfil de acesso',
                 'choices' => [
-                    'Administrador da conta' => 'ROLE_ACCOUNT_ADMIN',
-                    'Agente de via' => 'ROLE_FIELD_AGENT',
-                    'Visualizador' => 'ROLE_USER',
+                    'Administrador do parceiro' => User::ROLE_PARTNER_ADMIN,
+                    'Operador' => User::ROLE_OPERATOR,
+                    'Visualizador' => User::ROLE_VIEWER,
                 ],
                 'multiple' => true,
                 'expanded' => true,

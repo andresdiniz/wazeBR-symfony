@@ -36,7 +36,7 @@
         "type": "js"
     },
     "\/assets\/js\/layout\/header.js": {
-        "path": "\/assets\/js\/layout\/header-sBCLtth.js",
+        "path": "\/assets\/js\/layout\/header-mHCZCil.js",
         "type": "js"
     },
     "\/assets\/js\/layout\/sidebar.js": {
@@ -80,7 +80,7 @@
         "type": "js"
     },
     "\/assets\/js\/pages\/dashboard.js": {
-        "path": "\/assets\/js\/pages\/dashboard-CMLwsE9.js",
+        "path": "\/assets\/js\/pages\/dashboard-qVMvKFT.js",
         "type": "js"
     },
     "app": {
@@ -208,7 +208,7 @@
         "type": "js"
     },
     "dashboard": {
-        "path": "\/assets\/js\/pages\/dashboard-CMLwsE9.js",
+        "path": "\/assets\/js\/pages\/dashboard-qVMvKFT.js",
         "type": "js"
     }
 }

@@ -53,12 +53,12 @@ class AppFixtures extends Fixture
         // ----------------------------------------------------------------
         // Usuários por parceiro
         // ----------------------------------------------------------------
-        $adminBH = $this->createUser($manager, 'admin@pbh.gov.br',          'Admin BH',       ['ROLE_ADMIN'], 'Admin@12345',  $partnerBH);
+        $adminBH = $this->createUser($manager, 'admin@pbh.gov.br',          'Admin BH',       [User::ROLE_PARTNER_ADMIN], 'Admin@12345',  $partnerBH);
         $userBH  = $this->createUser($manager, 'operador@pbh.gov.br',       'Operador BH',    [],            'User@12345',   $partnerBH);
-        $adminCT = $this->createUser($manager, 'admin@contagem.mg.gov.br',  'Admin Contagem', ['ROLE_ADMIN'], 'Admin@12345',  $partnerCT);
+        $adminCT = $this->createUser($manager, 'admin@contagem.mg.gov.br',  'Admin Contagem', [User::ROLE_PARTNER_ADMIN], 'Admin@12345',  $partnerCT);
 
         // Super admin global (sem parceiro vinculado)
-        $this->createUser($manager, 'superadmin@wazebr.local', 'Super Admin', ['ROLE_SUPER_ADMIN'], 'Super@12345', null);
+        $this->createUser($manager, 'superadmin@wazebr.local', 'Super Admin', [User::ROLE_SUPER_ADMIN], 'Super@12345', null);
 
         $manager->flush();
 
@@ -241,12 +241,12 @@ class AppFixtures extends Fixture
         $user = (new User())
             ->setEmail($email)
             ->setName($name)
-            ->setRoles($roles)
             ->setIsActive(true);
 
         if ($partner !== null) {
             $user->setPartner($partner);
         }
+        $user->setRoles($roles);
 
         $user->setPassword($this->hasher->hashPassword($user, $password));
         $manager->persist($user);

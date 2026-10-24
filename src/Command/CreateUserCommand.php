@@ -131,7 +131,7 @@ final class CreateUserCommand extends Command
         }
 
         // Pré-check de negócio: ROLE_PARTNER_ADMIN / ROLE_OPERATOR exigem partner
-        $rolesRequiringPartner = [User::ROLE_PARTNER_ADMIN, User::ROLE_OPERATOR];
+        $rolesRequiringPartner = [User::ROLE_PARTNER_ADMIN, User::ROLE_OPERATOR, User::ROLE_FIELD_AGENT];
         if (array_intersect($rolesRequiringPartner, $roles) !== [] && $partner === null) {
             $io->error(sprintf(
                 'As roles %s exigem um partner vinculado. Informe --partner-id ou --partner-code.',

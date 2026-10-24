@@ -1,115 +1,223 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller\Admin;
 
 use App\Entity\User;
 use App\Form\UserType;
+use App\Repository\PartnerRepository;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
-use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/admin/users')]
-#[IsGranted('ROLE_ADMIN')]
-class AdminUserController extends AbstractController
+final class AdminUserController extends AbstractController
 {
     public function __construct(
-        private EntityManagerInterface $entityManager,
-        private UserPasswordHasherInterface $passwordHasher
-    ) {}
-
-    #[Route('', name: 'admin_users_index', methods: ['GET'])]
-    #[IsGranted('ROLE_ADMIN')]
-    public function index(UserRepository $userRepository): Response
-    {
-        return $this->render('admin/user/index.html.twig', [
-            'users' => $userRepository->findAll(),
-        ]);
+        private readonly EntityManagerInterface $entityManager,
+        private readonly UserPasswordHasherInterface $passwordHasher,
+    ) {
     }
 
+    #[Route('', name: 'admin_users_index', methods: ['GET'])]
+    public function index(Request $request, UserRepository $userRepository, PartnerRepository $partnerRepository): Response
+    {
+        $this->requireUserAdminAccess();
+        $partner = null;
+        if ($this->isPartnerAdmin()) {
+            $partner = $this->getUser()->getPartner();
+        } elseif ($request->query->getInt('partner') > 0) {
+            $partner = $partnerRepository->find($request->query->getInt('partner'));
+        }
+
+        $criteria = $partner !== null ? ['partner' => $partner] : [];
+        $users = $userRepository->findBy($criteria, ['name' => 'ASC', 'email' => 'ASC']);
+        if (!$this->isGlobalAdmin()) {
+            $users = array_values(array_filter($users, fn (User $user): bool => $this->canManageUser($user)));
+        }
+
+        return $this->render('admin/user/index.html.twig', [
+            'users' => $users,
+            'can_manage_roles' => $this->isGlobalAdmin(),
+            'partner_filter' => $partner,
+        ]);
+    }
     #[Route('/new', name: 'admin_users_new', methods: ['GET', 'POST'])]
-    #[IsGranted('ROLE_ADMIN')]
     public function new(Request $request): Response
     {
+        $this->requireUserAdminAccess();
         $user = new User();
-
-        $form = $this->createForm(\App\Form\UserType::class, $user);
+        $form = $this->createUserForm($user, true);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            // Hash da senha
-            $hashedPassword = $this->passwordHasher->hashPassword(
-                $user,
-                $form->get('plainPassword')->getData()
-            );
-            $user->setPassword($hashedPassword);
+            try {
+                $user->setAccessProfile($form->get('partner')->getData(), (array) $form->get('roles')->getData());
+            } catch (\InvalidArgumentException $exception) {
+                $form->get('roles')->addError(new \Symfony\Component\Form\FormError($exception->getMessage()));
+            }
 
-            // Define como ativo por padrão
-            $user->setIsActive(true);
-            $user->setCreatedAt(new \DateTimeImmutable());
-            $user->setUpdatedAt(new \DateTimeImmutable());
+            if ($form->isValid()) {
+                $plainPassword = (string) $form->get('plainPassword')->getData();
+                $user->setPassword($this->passwordHasher->hashPassword($user, $plainPassword));
+                $user->setCreatedAt(new \DateTimeImmutable());
+                $user->setUpdatedAt(new \DateTimeImmutable());
+                $this->entityManager->persist($user);
+                $this->entityManager->flush();
+                $this->addFlash('success', 'Usuário criado com o perfil selecionado.');
 
-            $this->entityManager->persist($user);
-            $this->entityManager->flush();
-
-            $this->addFlash('success', 'Usuário criado com sucesso!');
-
-            return $this->redirectToRoute('admin_users_index');
+                return $this->redirectToRoute('admin_users_index');
+            }
         }
 
-        return $this->render('admin/user/new.html.twig', [
-            'form' => $form,
-        ]);
+        return $this->render('admin/user/new.html.twig', ['form' => $form]);
     }
 
     #[Route('/{id}/edit', name: 'admin_users_edit', methods: ['GET', 'POST'])]
-    #[IsGranted('ROLE_ADMIN')]
     public function edit(Request $request, User $user): Response
     {
-        $form = $this->createForm(\App\Form\UserType::class, $user);
+        $this->requireUserAdminAccess();
+        $this->denyUnlessManageable($user);
+        $form = $this->createUserForm($user, false);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            // Se mudou a senha, faz hash
-            if ($form->get('plainPassword')->getData()) {
-                $hashedPassword = $this->passwordHasher->hashPassword(
-                    $user,
-                    $form->get('plainPassword')->getData()
-                );
-                $user->setPassword($hashedPassword);
+            try {
+                $user->setAccessProfile($form->get('partner')->getData(), (array) $form->get('roles')->getData());
+            } catch (\InvalidArgumentException $exception) {
+                $form->get('roles')->addError(new \Symfony\Component\Form\FormError($exception->getMessage()));
             }
 
-            $user->setUpdatedAt(new \DateTimeImmutable());
+            if ($form->isValid()) {
+                $plainPassword = (string) $form->get('plainPassword')->getData();
+                if ($plainPassword !== '') {
+                    $user->setPassword($this->passwordHasher->hashPassword($user, $plainPassword));
+                }
+                $user->setUpdatedAt(new \DateTimeImmutable());
+                $this->entityManager->flush();
+                $this->addFlash('success', 'Usuário atualizado.');
 
-            $this->entityManager->flush();
+                return $this->redirectToRoute('admin_users_index');
+            }
+        }
 
-            $this->addFlash('success', 'Usuário atualizado com sucesso!');
+        return $this->render('admin/user/edit.html.twig', ['form' => $form, 'user' => $user]);
+    }
 
+    #[Route('/{id}/toggle', name: 'admin_users_toggle', methods: ['POST'])]
+    public function toggle(Request $request, User $user): Response
+    {
+        $this->requireUserAdminAccess();
+        $this->denyUnlessManageable($user);
+        if ($user->getId() === $this->getUser()?->getId()) {
+            throw $this->createAccessDeniedException('Não é possível desativar a própria conta por esta tela.');
+        }
+        if (!$this->isCsrfTokenValid('admin_user_toggle_' . $user->getId(), (string) $request->request->get('_token'))) {
+            $this->addFlash('error', 'Token de segurança inválido.');
             return $this->redirectToRoute('admin_users_index');
         }
 
-        return $this->render('admin/user/edit.html.twig', [
-            'form' => $form,
-            'user' => $user,
+        $user->setActive(!$user->isActive());
+        $this->entityManager->flush();
+        $this->addFlash('success', $user->isActive() ? 'Conta reativada.' : 'Conta desativada.');
+
+        return $this->redirectToRoute('admin_users_index');
+    }
+
+    private function createUserForm(User $user, bool $requirePassword): FormInterface
+    {
+        $roles = $this->availableRoles();
+        $roleValues = array_values($roles);
+        $selectedRoles = array_values(array_intersect($user->getRoles(), $roleValues));
+        $selectedRole = $selectedRoles[0] ?? User::ROLE_VIEWER;
+        return $this->createForm(UserType::class, $user, [
+            'require_password' => $requirePassword,
+            'available_roles' => $roles,
+            'roles_data' => $selectedRole,
+            'partner_data' => $this->isPartnerAdmin() ? $this->getUser()->getPartner() : $user->getPartner(),
+            'partner_locked' => $this->isPartnerAdmin(),
         ]);
     }
 
-    #[Route('/{id}', name: 'admin_users_delete', methods: ['POST'])]
-    #[IsGranted('ROLE_ADMIN')]
-    public function delete(Request $request, User $user): Response
+    /** @return array<string, string> */
+    private function availableRoles(): array
     {
-        // Verifica token CSRF
-        if ($this->isCsrfTokenValid('delete'.$user->getId(), $request->request->get('_token'))) {
-            $this->entityManager->remove($user);
-            $this->entityManager->flush();
-
-            $this->addFlash('success', 'Usuário removido com sucesso!');
+        $roles = [];
+        if ($this->isSuperAdmin()) {
+            $roles['Super administrador'] = User::ROLE_SUPER_ADMIN;
+        }
+        if ($this->isGlobalAdmin()) {
+            return $roles + [
+                'Administrador global' => User::ROLE_ADMIN,
+                'Administrador de contas' => User::ROLE_ACCOUNT_ADMIN,
+                'Administrador de parceiro' => User::ROLE_PARTNER_ADMIN,
+                'Operador do parceiro' => User::ROLE_OPERATOR,
+                'Agente de via' => User::ROLE_FIELD_AGENT,
+                'Visualizador' => User::ROLE_VIEWER,
+            ];
         }
 
-        return $this->redirectToRoute('admin_users_index');
+        return [
+            'Operador do parceiro' => User::ROLE_OPERATOR,
+            'Visualizador' => User::ROLE_VIEWER,
+        ];
+    }
+    private function isPartnerAdmin(): bool
+    {
+        return $this->isGranted('ROLE_PARTNER_ADMIN') && !$this->isGlobalAdmin();
+    }
+
+    private function requireUserAdminAccess(): void
+    {
+        if (!$this->isGranted('ROLE_ACCOUNT_ADMIN') && !$this->isGranted('ROLE_PARTNER_ADMIN')) {
+            throw $this->createAccessDeniedException();
+        }
+        if ($this->isPartnerAdmin() && $this->getUser()?->getPartner() === null) {
+            throw $this->createAccessDeniedException('Seu perfil precisa estar vinculado a um parceiro.');
+        }
+    }
+    private function isSuperAdmin(): bool
+    {
+        return $this->isGranted('ROLE_SUPER_ADMIN');
+    }
+    private function isGlobalAdmin(): bool
+    {
+        $user = $this->getUser();
+        return $user instanceof User && $user->isGlobalAdmin();
+    }
+
+    private function canManageUser(User $target): bool
+    {
+        if ($target->getId() === $this->getUser()?->getId()) {
+            return false;
+        }
+        $targetRoles = $target->getRoles();
+        if (in_array(User::ROLE_SUPER_ADMIN, $targetRoles, true) && !$this->isSuperAdmin()) {
+            return false;
+        }
+        if ($this->isGlobalAdmin()) {
+            return true;
+        }
+        if (array_intersect($targetRoles, [User::ROLE_ADMIN, User::ROLE_ACCOUNT_ADMIN, User::ROLE_PARTNER_ADMIN])) {
+            return false;
+        }
+        if ($this->isPartnerAdmin()) {
+            $actorPartner = $this->getUser()?->getPartner();
+            return $actorPartner !== null && $target->getPartner()?->getId() === $actorPartner->getId();
+        }
+
+        return true;
+    }
+    private function denyUnlessManageable(User $target): void
+    {
+        if (!$this->canManageUser($target)) {
+            throw $this->createAccessDeniedException('Seu perfil não pode administrar este usuário.');
+        }
     }
 }

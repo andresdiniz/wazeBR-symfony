@@ -17,7 +17,10 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[UniqueEntity(fields: ['email'], message: 'This email is already registered.')]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
+    public const ROLE_SUPER_ADMIN = 'ROLE_SUPER_ADMIN';
     public const ROLE_ADMIN = 'ROLE_ADMIN';
+    public const ROLE_ACCOUNT_ADMIN = 'ROLE_ACCOUNT_ADMIN';
+    public const ROLE_FIELD_AGENT = 'ROLE_FIELD_AGENT';
     public const ROLE_PARTNER_ADMIN = 'ROLE_PARTNER_ADMIN';
     public const ROLE_OPERATOR = 'ROLE_OPERATOR';
     public const ROLE_VIEWER = 'ROLE_VIEWER';
@@ -26,7 +29,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * Roles that require the user to be associated with a partner.
      * Global admins (ROLE_ADMIN without partner) are allowed to have partner === null.
      */
-    private const ROLES_REQUIRING_PARTNER = [self::ROLE_PARTNER_ADMIN, self::ROLE_OPERATOR];
+    private const ROLES_REQUIRING_PARTNER = [self::ROLE_PARTNER_ADMIN, self::ROLE_OPERATOR, self::ROLE_FIELD_AGENT];
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -60,7 +63,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      *
      * Business rule:
      * - Global admins (ROLE_ADMIN without partner) MAY have partner === null.
-     * - Users with ROLE_PARTNER_ADMIN or ROLE_OPERATOR MUST have a partner.
+     * - Partner administrators, operators, and field agents MUST have a partner.
      * - This is enforced in setPartner(), setRoles() and addRole().
      */
     #[ORM\ManyToOne(inversedBy: 'users')]
@@ -121,22 +124,31 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * Set roles with validation.
      *
      * Business rule:
-     * - If any role requires a partner (ROLE_PARTNER_ADMIN or ROLE_OPERATOR),
+     * - Partner administrators, operators, and field agents require a partner.
      *   the user MUST have a partner associated.
      * - Global admins (ROLE_ADMIN) are allowed to have partner === null.
      */
     public function setRoles(array $roles): static
     {
-        $roles = array_map('strtoupper', $roles);
-
-        $hasRoleRequiringPartner = !empty(array_intersect(self::ROLES_REQUIRING_PARTNER, $roles));
-        if ($hasRoleRequiringPartner && !$this->getPartner()) {
-            throw new \InvalidArgumentException(
-                'Users with ROLE_PARTNER_ADMIN or ROLE_OPERATOR must have a partner associated.'
-            );
+        $roles = array_map(static fn (string $role): string => match (strtoupper($role)) {
+            'ROLE_USER' => self::ROLE_VIEWER,
+            'ROLE_ADMIN_PARTNER' => self::ROLE_PARTNER_ADMIN,
+            default => strtoupper($role),
+        }, $roles);
+        if ($roles === []) {
+            $roles = [self::ROLE_VIEWER];
         }
-
-        $this->roles = $roles;
+        $allowedRoles = [self::ROLE_SUPER_ADMIN, self::ROLE_ADMIN, self::ROLE_ACCOUNT_ADMIN, self::ROLE_PARTNER_ADMIN, self::ROLE_FIELD_AGENT, self::ROLE_OPERATOR, self::ROLE_VIEWER];
+        if (array_diff($roles, $allowedRoles) !== []) {
+            throw new \InvalidArgumentException('The selected user profile is not supported.');
+        }
+        if (array_intersect([self::ROLE_SUPER_ADMIN, self::ROLE_ADMIN], $roles) !== [] && $this->getPartner() !== null) {
+            throw new \InvalidArgumentException('Global administrators cannot be linked to a partner.');
+        }
+        if (!empty(array_intersect(self::ROLES_REQUIRING_PARTNER, $roles)) && !$this->getPartner()) {
+            throw new \InvalidArgumentException('This user profile requires a partner.');
+        }
+        $this->roles = array_values(array_unique($roles ?: [self::ROLE_VIEWER]));
         $this->updatedAt = new \DateTimeImmutable();
         return $this;
     }
@@ -145,14 +157,38 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * Add a single role with validation.
      *
      * Business rule:
-     * - ROLE_PARTNER_ADMIN and ROLE_OPERATOR require a partner.
+     * - Partner administrator, operator, and field agent profiles require a partner.
      * - Attempting to add such a role without a partner throws an exception.
      */
+    public function setAccessProfile(?Partner $partner, array $roles): static
+    {
+        $normalizedRoles = array_map(static fn (string $role): string => match (strtoupper($role)) {
+            'ROLE_USER' => self::ROLE_VIEWER,
+            'ROLE_ADMIN_PARTNER' => self::ROLE_PARTNER_ADMIN,
+            default => strtoupper($role),
+        }, $roles);
+        if ($normalizedRoles === []) {
+            $normalizedRoles = [self::ROLE_VIEWER];
+        }
+        if (array_intersect([self::ROLE_SUPER_ADMIN, self::ROLE_ADMIN], $normalizedRoles) !== [] && $partner !== null) {
+            throw new \InvalidArgumentException('Global administrators cannot be linked to a partner.');
+        }
+        if (!empty(array_intersect(self::ROLES_REQUIRING_PARTNER, $normalizedRoles)) && $partner === null) {
+            throw new \InvalidArgumentException('This user profile requires a partner.');
+        }
+
+        $this->partner = $partner;
+        return $this->setRoles($normalizedRoles);
+    }
     public function addRole(string $role): static
     {
         $role = strtoupper($role);
 
-        if (!in_array($role, [self::ROLE_ADMIN, self::ROLE_PARTNER_ADMIN, self::ROLE_OPERATOR, self::ROLE_VIEWER], true)) {
+        if (in_array($role, [self::ROLE_SUPER_ADMIN, self::ROLE_ADMIN], true) && $this->getPartner() !== null) {
+            throw new \InvalidArgumentException('Global administrators cannot be linked to a partner.');
+        }
+
+        if (!in_array($role, [self::ROLE_SUPER_ADMIN, self::ROLE_ADMIN, self::ROLE_ACCOUNT_ADMIN, self::ROLE_PARTNER_ADMIN, self::ROLE_FIELD_AGENT, self::ROLE_OPERATOR, self::ROLE_VIEWER], true)) {
             throw new \InvalidArgumentException(sprintf('Invalid role "%s"', $role));
         }
 
@@ -192,7 +228,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function isAdmin(): bool
     {
-        return in_array(self::ROLE_ADMIN, $this->getRoles(), true);
+        return in_array(self::ROLE_ADMIN, $this->getRoles(), true) || in_array(self::ROLE_SUPER_ADMIN, $this->getRoles(), true);
+    }
+
+    public function isAccountAdmin(): bool
+    {
+        return in_array(self::ROLE_ACCOUNT_ADMIN, $this->getRoles(), true);
+    }
+
+    public function isFieldAgent(): bool
+    {
+        return in_array(self::ROLE_FIELD_AGENT, $this->getRoles(), true);
     }
 
     public function isPartnerAdmin(): bool
@@ -271,6 +317,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->isActive;
     }
 
+    public function setIsActive(bool $active): static
+    {
+        return $this->setActive($active);
+    }
     public function setActive(bool $active): static
     {
         if ($this->isActive === $active) {
@@ -293,17 +343,20 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      *
      * Rules:
      * - Global admins (ROLE_ADMIN without partner) are allowed to have partner === null.
-     * - Users with ROLE_PARTNER_ADMIN or ROLE_OPERATOR MUST have a partner.
+     * - Partner administrators, operators, and field agents MUST have a partner.
      * - Removing partner from such a user throws a LogicException.
      */
     public function setPartner(?Partner $partner): static
     {
+        if ($partner !== null && $this->isAdmin()) {
+            throw new \InvalidArgumentException('Global administrators cannot be linked to a partner.');
+        }
         // Prevent removing partner from users that require one
         if ($partner === null && $this->partner !== null) {
             $hasRoleRequiringPartner = !empty(array_intersect(self::ROLES_REQUIRING_PARTNER, $this->getRoles()));
             if ($hasRoleRequiringPartner) {
                 throw new \LogicException(
-                    'Cannot remove partner from user with ROLE_PARTNER_ADMIN or ROLE_OPERATOR.'
+                    'Cannot remove a required partner from this profile.'
                 );
             }
         }
@@ -315,7 +368,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             if ($hasRoleRequiringPartner) {
                 // Option 1: throw exception (stricter)
                 throw new \LogicException(
-                    'Users with ROLE_PARTNER_ADMIN or ROLE_OPERATOR must have a partner associated.'
+                    'Partner administrator, operator, and field agent profiles must have a partner associated.'
                 );
                 // Option 2 (alternative): automatically downgrade roles to ROLE_VIEWER
                 // $this->roles = [self::ROLE_VIEWER];
