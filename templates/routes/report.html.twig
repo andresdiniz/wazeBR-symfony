@@ -6,7 +6,7 @@
     <meta name="robots" content="noindex, nofollow, noarchive">
     <title>Relatório · {{ route.name }} · WazeBR</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
-    <link rel="stylesheet" href="{{ asset('css/pages/route-report.css') }}">
+    <style>{% include 'routes/_report_styles.html.twig' %}</style>
 </head>
 <body>
 {% set cur = {
@@ -166,33 +166,61 @@
 
     {# ── Timeline ──────────────────────────────────────────────── #}
     <section class="rr-section">
-        <h2>Evolução do atraso <small>(últimos 7 dias, segundos acima do histórico)</small></h2>
+        <h2>Evolução do atraso <small>(últimos 7 dias · 0 s = tempo histórico da rota)</small></h2>
         {% if report.timeline %}
             {% set c = report.timeline %}
-            <svg class="rr-chart" viewBox="0 0 {{ c.w }} {{ c.h }}" role="img"
+            <svg class="rr-chart" viewBox="0 0 {{ c.w }} {{ c.h }}" role="img" style="display:block;width:100%;height:auto"
                  aria-label="Evolução horária do atraso nos últimos 7 dias">
+                <defs>
+                    <clipPath id="rr-clip-slow"><rect x="{{ c.padL }}" y="{{ c.padT }}" width="{{ c.plotW }}" height="{{ c.zeroY - c.padT }}"/></clipPath>
+                    <clipPath id="rr-clip-fast"><rect x="{{ c.padL }}" y="{{ c.zeroY }}" width="{{ c.plotW }}" height="{{ c.plotB - c.zeroY }}"/></clipPath>
+                </defs>
+                {# fins de semana e lacunas de dados #}
+                {% for wk in c.weekends %}<rect x="{{ wk.x }}" y="{{ c.padT }}" width="{{ wk.w }}" height="{{ c.plotB - c.padT }}" fill="#f1f5f9"/>{% endfor %}
+                {% for g in c.gaps %}
+                    <rect x="{{ g.x }}" y="{{ c.padT }}" width="{{ g.w }}" height="{{ c.plotB - c.padT }}" fill="#e2e8f0" opacity=".75"/>
+                    {% if g.w > 44 %}<text x="{{ g.x + g.w / 2 }}" y="{{ (c.padT + c.plotB) / 2 }}" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">sem dados</text>{% endif %}
+                {% endfor %}
                 {# grade horizontal + escala (s) #}
                 {% for tk in c.ticks %}
                     <line x1="{{ c.padL }}" x2="{{ c.plotR }}" y1="{{ tk.y }}" y2="{{ tk.y }}" stroke="#e2e8f0" stroke-width="1"/>
-                    <text x="{{ c.padL - 5 }}" y="{{ tk.y + 3 }}" text-anchor="end" font-size="9" fill="#64748b" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">{{ tk.label }}</text>
+                    <text x="{{ c.padL - 6 }}" y="{{ tk.y + 3 }}" text-anchor="end" font-size="10" fill="#64748b" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">{{ tk.label }}</text>
                 {% endfor %}
                 {# separadores de dia + rótulos #}
                 {% for d in c.days %}
                     {% if d.line is not null %}<line x1="{{ d.line }}" x2="{{ d.line }}" y1="{{ c.padT }}" y2="{{ c.plotB }}" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 3"/>{% endif %}
-                    {% if d.width > 34 %}<text x="{{ d.cx }}" y="{{ c.h - 8 }}" text-anchor="middle" font-size="9" fill="#64748b" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">{{ d.label }}</text>{% endif %}
+                    {% if d.width > 34 %}<text x="{{ d.cx }}" y="{{ c.h - 9 }}" text-anchor="middle" font-size="10" font-weight="{{ d.weekend ? '700' : '400' }}" fill="#64748b" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">{{ d.label }}</text>{% endif %}
                 {% endfor %}
-                <line x1="{{ c.padL }}" x2="{{ c.plotR }}" y1="{{ c.zeroY }}" y2="{{ c.zeroY }}" stroke="#94a3b8" stroke-width="1"/>
+                {# áreas: laranja = mais lento que o normal, verde = mais rápido #}
                 {% for seg in c.paths %}
-                    {% if seg.area %}<path d="{{ seg.area }}" fill="rgba(37,99,235,.13)"/>{% endif %}
-                    <path d="{{ seg.line }}" fill="none" stroke="#2563eb" stroke-width="1.6" stroke-linejoin="round"/>
+                    {% if seg.area %}
+                        <path d="{{ seg.area }}" fill="rgba(234,88,12,.30)" clip-path="url(#rr-clip-slow)"/>
+                        <path d="{{ seg.area }}" fill="rgba(22,163,74,.30)" clip-path="url(#rr-clip-fast)"/>
+                    {% endif %}
                 {% endfor %}
+                <line x1="{{ c.padL }}" x2="{{ c.plotR }}" y1="{{ c.zeroY }}" y2="{{ c.zeroY }}" stroke="#64748b" stroke-width="1.2"/>
+                {% for seg in c.paths %}<path d="{{ seg.line }}" fill="none" stroke="#1d4ed8" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/>{% endfor %}
+                {# média dos 7 dias #}
+                {% if c.meanY is not null %}
+                    <line x1="{{ c.padL }}" x2="{{ c.plotR + 4 }}" y1="{{ c.meanY }}" y2="{{ c.meanY }}" stroke="#64748b" stroke-width="1.2" stroke-dasharray="5 4"/>
+                    <text x="{{ c.plotR + 7 }}" y="{{ c.meanY + 3 }}" text-anchor="start" font-size="9.5" fill="#475569" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">{{ c.meanLabel }}</text>
+                {% endif %}
+                {# pico #}
                 {% if c.peak %}
-                    <circle cx="{{ c.peak.x }}" cy="{{ c.peak.y }}" r="3.5" fill="#dc2626" stroke="#fff" stroke-width="1.2"/>
+                    <circle cx="{{ c.peak.x }}" cy="{{ c.peak.y }}" r="3.8" fill="#dc2626" stroke="#fff" stroke-width="1.4"/>
+                    <text x="{{ c.peak.labelX }}" y="{{ c.peak.labelY }}" text-anchor="middle" font-size="10" font-weight="700" fill="#b91c1c" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">{{ c.peak.label }}</text>
                 {% endif %}
             </svg>
+            <p class="rr-legend">
+                <span class="rr-key rr-key--slow"></span>mais lento que o normal
+                <span class="rr-key rr-key--fast"></span>mais rápido que o normal
+                <span class="rr-key rr-key--mean"></span>média do período
+                <span class="rr-key rr-key--weekend"></span>fim de semana
+                {% if c.gaps %}<span class="rr-key rr-key--gap"></span>sem dados{% endif %}
+            </p>
             <p class="rr-axis">
                 <span>de {{ c.from|slice(8, 2) }}/{{ c.from|slice(5, 2) }} {{ c.from|slice(11, 5) }}</span>
-                <span><span class="rr-dot rr-dot--first" style="background:#dc2626"></span>pico: +{{ c.max }} s{% if c.peak %} em {{ c.peak.at|slice(8, 2) }}/{{ c.peak.at|slice(5, 2) }} {{ c.peak.at|slice(11, 5) }}{% endif %}</span>
+                <span>{% if c.peak %}<span class="rr-dot rr-dot--first" style="background:#dc2626"></span>pico: {{ c.peak.label }} em {{ c.peak.at|slice(8, 2) }}/{{ c.peak.at|slice(5, 2) }} {{ c.peak.at|slice(11, 5) }}{% endif %}</span>
                 <span>até {{ c.to|slice(8, 2) }}/{{ c.to|slice(5, 2) }} {{ c.to|slice(11, 5) }}</span>
             </p>
         {% else %}
@@ -274,6 +302,6 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-<script type="module" src="{{ asset('js/pages/route-report.js') }}"></script>
+<script type="module">{% include 'routes/_report_script.html.twig' %}</script>
 </body>
 </html>

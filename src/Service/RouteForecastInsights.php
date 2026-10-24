@@ -134,16 +134,66 @@ final class RouteForecastInsights
         return $out;
     }
 
+    /** Estima duração de episódios históricos de lentidão a partir dos snapshots. */
+    public function congestionDuration(int $routeId, int $days = 30): array
+    {
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+        $since = $now->modify('-' . max(7, $days) . ' days')->format('Y-m-d H:i:s');
+        $rows = $this->connection->executeQuery(
+            'SELECT recorded_at, time, historic_time, jam_level
+             FROM waze_tvt_route_snapshot
+             WHERE route_id = :id AND recorded_at >= :since AND time IS NOT NULL
+             ORDER BY recorded_at DESC LIMIT 12000',
+            ['id' => $routeId, 'since' => $since],
+        )->fetchAllAssociative();
+
+        $episodes = [];
+        $start = null;
+        $last = null;
+        $latestCongested = false;
+        foreach ($rows as $row) {
+            $at = new \DateTimeImmutable((string) $row['recorded_at'], new \DateTimeZone('UTC'));
+            $historic = (float) ($row['historic_time'] ?? 0);
+            $slow = (float) $row['time'] >= 60 && (($row['jam_level'] !== null && (float) $row['jam_level'] >= 3)
+                || ($historic > 0 && (float) $row['time'] / $historic >= 1.15));
+            if ($slow && ($last === null || $at->getTimestamp() - $last->getTimestamp() <= 12 * 60)) {
+                $start ??= $at;
+                $last = $at;
+            } elseif ($slow) {
+                if ($start !== null && $last !== null) $episodes[] = max(1, (int) round(($last->getTimestamp() - $start->getTimestamp()) / 60) + 5);
+                $start = $at;
+                $last = $at;
+            } elseif ($start !== null && $last !== null) {
+                $episodes[] = max(1, (int) round(($last->getTimestamp() - $start->getTimestamp()) / 60) + 5);
+                $start = $last = null;
+            }
+            $latestCongested = $slow;
+        }
+        $active = $start !== null && $last !== null && $latestCongested && $now->getTimestamp() - $last->getTimestamp() <= 15 * 60;
+        $activeElapsed = $active ? max(0, (int) round(($now->getTimestamp() - $start->getTimestamp()) / 60)) : null;
+        $sorted = $episodes;
+        sort($sorted);
+        $typical = null;
+        if ($sorted !== []) {
+            $mid = intdiv(count($sorted), 2);
+            $typical = count($sorted) % 2 ? $sorted[$mid] : (int) round(($sorted[$mid - 1] + $sorted[$mid]) / 2);
+        }
+        return [
+            'active' => $active,
+            'startedAt' => $active ? $start->setTimezone($this->tz)->format(DATE_ATOM) : null,
+            'elapsedMinutes' => $activeElapsed,
+            'typicalDurationMinutes' => $typical,
+            'expectedRemainingMinutes' => $active && $typical !== null ? max(0, $typical - $activeElapsed) : null,
+            'episodes' => count($episodes),
+            'confidence' => count($episodes) >= 10 ? 'alta' : (count($episodes) >= 4 ? 'moderada' : 'baixa'),
+            'note' => 'Estimativa estatística baseada no histórico; duração real pode variar.',
+        ];
+    }
     /**
      * Qualidade das previsões já avaliadas da rota.
      *
-     *   mae      erro absoluto médio (s)
-     *   bias     previsto − real (s): positivo = o modelo superestima o tempo
-     *   hitRate  % de previsões dentro da tolerância do comando de avaliação
-     *
      * @return array{days:int,samples:int,mae:float,bias:float,hitRate:?float,bands:list<array<string,mixed>>}|null
-     */
-    public function accuracy(int $routeId, int $days = 7): ?array
+     */    public function accuracy(int $routeId, int $days = 7): ?array
     {
         $since = (new \DateTimeImmutable("-{$days} days", new \DateTimeZone('UTC')))->format('Y-m-d H:i:s');
 

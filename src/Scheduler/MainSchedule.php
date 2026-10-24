@@ -81,12 +81,12 @@ final class MainSchedule implements ScheduleProviderInterface
                 ),
             )
 
-            // ── Previsão: 24 janelas de 15 minutos = próximas 6 horas ───────
+            // ── Previsão: reprocessada a cada 5 min, em janelas de 15 min pelas próximas 6 h ───────
             ->add(
                 RecurringMessage::every(
                     '5 minutes',
                     new RunCommandMessage(
-                        'app:tvt:refresh-congestion-forecast --slot=5 --slots-ahead=40 --no-interaction'
+                        'app:tvt:refresh-congestion-forecast --slot=15 --slots-ahead=24 --no-interaction'
                     ),
                 ),
             )

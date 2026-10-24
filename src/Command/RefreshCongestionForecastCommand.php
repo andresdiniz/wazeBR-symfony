@@ -30,8 +30,8 @@ final class RefreshCongestionForecastCommand extends Command
     {
         $this
             ->addOption('partner', null, InputOption::VALUE_REQUIRED, 'ID do parceiro')
-            ->addOption('slot', null, InputOption::VALUE_REQUIRED, 'Tamanho da janela em minutos', '30')
-            ->addOption('slots-ahead', null, InputOption::VALUE_REQUIRED, 'Quantidade de janelas futuras', '2')
+            ->addOption('slot', null, InputOption::VALUE_REQUIRED, 'Tamanho da janela em minutos', '15')
+            ->addOption('slots-ahead', null, InputOption::VALUE_REQUIRED, 'Quantidade de janelas futuras', '24')
             ->addOption('history-days', null, InputOption::VALUE_REQUIRED, 'Dias de histórico', '30');
     }
 

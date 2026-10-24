@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Entity\Partner;
 use App\Service\PartnerScopeResolver;
 use App\Service\RouteForecastInsights;
+use App\Repository\RouteDetailRepository;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -21,6 +22,7 @@ final class RouteForecastController extends AbstractController
     public function __construct(
         private readonly Connection $connection,
         private readonly RouteForecastInsights $insights,
+        private readonly RouteDetailRepository $routeDetails,
         private readonly PartnerScopeResolver $scope,
     ) {
     }
@@ -182,6 +184,9 @@ final class RouteForecastController extends AbstractController
             ];
         }
 
+        $detail = $this->routeDetails->getRouteDetail($partner, $id);
+        $nearbySignals = array_slice(array_values(array_filter($detail['nearbyAlerts'] ?? [], static fn (array $alert): bool => ($alert['isRecent'] ?? false) === true)), 0, 8);
+
         $response = $this->json([
             'ok' => true,
             'routeId' => $id,
@@ -212,6 +217,17 @@ final class RouteForecastController extends AbstractController
             'actual' => $this->insights->actualSeries($id, 6),
             'pastForecasts' => $this->insights->pastForecasts($id, 6),
             'accuracy' => $this->insights->accuracy($id, 7),
+            'congestionDuration' => $this->insights->congestionDuration($id, 30),
+            'nearbySignals' => array_map(static fn (array $alert): array => [
+                'type' => $alert['typeLabel'] ?? $alert['type'] ?? 'Alerta',
+                'subtype' => $alert['subtype'] ?? null,
+                'street' => $alert['street'] ?? null,
+                'city' => $alert['city'] ?? null,
+                'distanceMeters' => $alert['distanceMeters'] ?? null,
+                'collectedAt' => $alert['collectedAt'] ?? null,
+                'confidence' => $alert['confidence'] ?? null,
+                'reliability' => $alert['reliability'] ?? null,
+            ], $nearbySignals),
         ]);
 
         $response->headers->set('Cache-Control', 'private, no-store');

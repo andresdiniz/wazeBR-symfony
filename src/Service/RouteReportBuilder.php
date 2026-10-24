@@ -32,7 +32,7 @@ final class RouteReportBuilder
             'summary'  => $this->summary($detail),
             'map'      => $this->map($detail),
             'heatmap'  => $this->heatmap($detail['heatmap'] ?? []),
-            'timeline' => $this->timeline($detail['timeline'] ?? []),
+            'timeline' => $this->timeline($detail['timeline'] ?? [], $detail['stats']['avgDelay7d'] ?? null),
             'byHour'   => $this->barChart($detail['byHour'] ?? [], static fn (array $p): string => sprintf('%02d', $p['hour']), 460, 3),
             'byDow'    => $this->barChart($detail['byDow'] ?? [], static fn (array $p): string => self::DOW[$p['dow']] ?? '?', 300, 1),
             'subRoutes' => array_slice($detail['topSubRoutes'] ?? [], 0, 8),
@@ -325,28 +325,32 @@ final class RouteReportBuilder
     private const DOW_SHORT_LOWER = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'];
 
     /**
-     * Evolução do atraso (s) nos últimos 7 dias, com:
-     *   - escala em segundos e linhas de grade horizontais;
-     *   - linha tracejada à meia-noite e rótulo do dia ("qui 16/10");
-     *   - posição horizontal PROPORCIONAL ao horário (buracos nos dados não são
-     *     "esticados") e a linha é interrompida onde faltam mais de 2 h de dados.
+     * Evolução do atraso (s) nos últimos 7 dias.
+     *
+     *   - escala em segundos, grade horizontal, separador à meia-noite e rótulo do dia;
+     *   - área ACIMA do zero (mais lento que o normal) e ABAIXO (mais rápido) em cores
+     *     diferentes — o zero é o tempo histórico da rota;
+     *   - linha tracejada com a média dos 7 dias;
+     *   - fins de semana sombreados e lacunas de dados (> 2 h) marcadas como "sem dados",
+     *     em vez de ligadas por uma linha que pareceria dado real;
+     *   - posição horizontal proporcional ao horário.
      *
      * @param list<array<string,mixed>> $points
      *
      * @return array<string,mixed>|null
      */
-    private function timeline(array $points): ?array
+    private function timeline(array $points, mixed $mean = null): ?array
     {
         if (count($points) < 2) {
             return null;
         }
 
         $w = 640;
-        $h = 200;
-        $padL = 42;
-        $padR = 10;
-        $padT = 10;
-        $padB = 26;
+        $h = 220;
+        $padL = 44;
+        $padR = 72; // espaço à direita para o rótulo da média, fora da área dos dados
+        $padT = 14;
+        $padB = 28;
 
         $ts = [];
         $values = [];
@@ -375,13 +379,15 @@ final class RouteReportBuilder
         $y = static fn (float $v): float => round($padT + (1 - ($v - $yMin) / ($yMax - $yMin)) * $plotH, 1);
         $zeroY = $y(0.0);
 
-        // Segmentos contínuos (lacuna > 2 h quebra a linha).
+        // Segmentos contínuos; lacuna > 2 h quebra a linha e vira faixa "sem dados".
         $segments = [];
+        $gaps = [];
         $cur = [];
         foreach ($ts as $i => $t) {
             if ($cur !== [] && $t - $ts[$i - 1] > 7200) {
                 $segments[] = $cur;
                 $cur = [];
+                $gaps[] = ['x' => $x($ts[$i - 1]), 'w' => round($x($t) - $x($ts[$i - 1]), 1)];
             }
             $cur[] = [$x($t), $y($values[$i])];
         }
@@ -400,8 +406,9 @@ final class RouteReportBuilder
             ];
         }
 
-        // Dias: linha à meia-noite + rótulo centralizado no trecho visível do dia.
+        // Dias: linha à meia-noite, rótulo centralizado e sombreado de fim de semana.
         $days = [];
+        $weekends = [];
         $dayStart = (int) strtotime(gmdate('Y-m-d', $t0) . ' 00:00:00 UTC');
         for ($d = $dayStart; $d <= $t1; $d += 86400) {
             $from = max($d, $t0);
@@ -409,33 +416,60 @@ final class RouteReportBuilder
             if ($to <= $from) {
                 continue;
             }
+
+            $dow = (int) gmdate('N', $d);
             $days[] = [
                 'line'  => $d > $t0 ? $x($d) : null,
                 'cx'    => round(($x($from) + $x($to)) / 2, 1),
                 'width' => $x($to) - $x($from),
-                'label' => self::DOW_SHORT_LOWER[(int) gmdate('N', $d) - 1] . ' ' . gmdate('d/m', $d),
+                'label' => self::DOW_SHORT_LOWER[$dow - 1] . ' ' . gmdate('d/m', $d),
+                'weekend' => $dow >= 6,
+            ];
+            if ($dow >= 6) {
+                $weekends[] = ['x' => $x($from), 'w' => round($x($to) - $x($from), 1)];
+            }
+        }
+
+        // Pico, com rótulo que não sai da área do gráfico.
+        $peakIdx = array_search(max($values), $values, true);
+        $peak = null;
+        if ($peakIdx !== false) {
+            $px = $x($ts[$peakIdx]);
+            $py = $y($values[$peakIdx]);
+            $peak = [
+                'x'      => $px,
+                'y'      => $py,
+                'at'     => (string) $points[$peakIdx]['time'],
+                'label'  => $this->signed($values[$peakIdx]) . ' s',
+                'labelX' => max($padL + 16, min($w - $padR - 16, $px)),
+                'labelY' => $py - 8 < $padT + 6 ? $py + 16 : $py - 8,
             ];
         }
 
-        $peakIdx = array_search(max($values), $values, true);
+        $meanVal = $mean !== null ? (float) $mean : null;
 
         return [
-            'w'     => $w,
-            'h'     => $h,
-            'padL'  => $padL,
-            'padR'  => $padR,
-            'padT'  => $padT,
-            'padB'  => $padB,
-            'plotR' => $w - $padR,
-            'plotB' => $h - $padB,
-            'ticks' => array_map(static fn (float $v): array => ['y' => $y($v), 'label' => (int) round($v) . ' s'], $ticks),
-            'zeroY' => $zeroY,
-            'paths' => $paths,
-            'days'  => $days,
-            'max'   => (int) round(max($values)),
-            'peak'  => $peakIdx !== false ? ['x' => $x($ts[$peakIdx]), 'y' => $y($values[$peakIdx]), 'at' => (string) $points[$peakIdx]['time']] : null,
-            'from'  => (string) $points[0]['time'],
-            'to'    => (string) $points[count($points) - 1]['time'],
+            'w'         => $w,
+            'h'         => $h,
+            'padL'      => $padL,
+            'padR'      => $padR,
+            'padT'      => $padT,
+            'padB'      => $padB,
+            'plotW'     => $plotW,
+            'plotR'     => $w - $padR,
+            'plotB'     => $h - $padB,
+            'ticks'     => array_map(static fn (float $v): array => ['y' => $y($v), 'label' => (int) round($v) . ' s'], $ticks),
+            'zeroY'     => $zeroY,
+            'paths'     => $paths,
+            'days'      => $days,
+            'weekends'  => $weekends,
+            'gaps'      => $gaps,
+            'meanY'     => $meanVal !== null ? $y(max($yMin, min($yMax, $meanVal))) : null,
+            'meanLabel' => $meanVal !== null ? 'média ' . $this->signed($meanVal) . ' s' : null,
+            'max'       => (int) round(max($values)),
+            'peak'      => $peak,
+            'from'      => (string) $points[0]['time'],
+            'to'        => (string) $points[count($points) - 1]['time'],
         ];
     }
 

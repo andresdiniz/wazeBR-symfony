@@ -986,7 +986,12 @@
 .rs-forecast__chip span { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--rs-muted); }
 .rs-forecast__chip strong { font-size: 18px; color: var(--rs-text); }
 .rs-forecast__chip small { font-size: 12px; color: var(--rs-muted); }
-.rs-forecast__chips[hidden] { display: none; }
+.rs-forecast__chips[hidden] { display: none; }.rs-forecast__context { margin: 14px 0; padding: 14px 16px; border: 1px solid var(--rs-line); border-radius: 12px; background: var(--rs-soft); color: var(--rs-text); }
+.rs-forecast__context h3 { margin: 0 0 6px; font-size: 15px; }
+.rs-forecast__context p { margin: 0 0 6px; color: var(--rs-text); }
+.rs-forecast__context small { color: var(--rs-muted); }
+.rs-forecast__signal-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
+.rs-forecast__signal { padding: 6px 9px; border: 1px solid var(--rs-line); border-radius: 999px; color: var(--rs-muted); font-size: 12px; }
 
 .rs-favorite { margin: 0; display: inline-flex; }
 .rs-report-link { text-decoration: none; }

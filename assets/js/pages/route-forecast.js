@@ -84,6 +84,7 @@ function createPanel(page) {
         </p>
 
         <div class="rs-forecast__chips" data-forecast-accuracy hidden></div>
+        <section class="rs-forecast__context" data-forecast-context aria-label="Duração estimada e alertas próximos"></section>
 
         <div data-forecast-chart-wrap style="position: relative; width: 100%; height: 320px;" hidden>
             <canvas data-forecast-chart role="img" aria-label="Tempo real, previsão passada e previsão futura"></canvas>
@@ -145,6 +146,47 @@ function renderAccuracy(panel, accuracy) {
     box.hidden = false;
 }
 
+function renderContext(panel, duration, signals) {
+    const box = panel.querySelector('[data-forecast-context]');
+    if (!box) return;
+    box.replaceChildren();
+    const title = document.createElement('h3');
+    title.textContent = 'Duração e sinais próximos';
+    box.append(title);
+    const summary = document.createElement('p');
+    if (duration?.active) {
+        const elapsed = duration.elapsedMinutes ?? 0;
+        summary.textContent = duration.expectedRemainingMinutes !== null
+            ? `Lentidão ativa há cerca de ${elapsed} min; estimativa de mais ${duration.expectedRemainingMinutes} min. Duração típica: ${duration.typicalDurationMinutes ?? 'indisponível'} min (${duration.episodes ?? 0} episódios, confiança ${duration.confidence ?? 'baixa'}).`
+            : `Lentidão ativa há cerca de ${elapsed} min. Ainda não há histórico suficiente para estimar o fim.`;
+    } else {
+        summary.textContent = duration?.typicalDurationMinutes != null
+            ? `Sem lentidão confirmada agora. A duração típica de episódios semelhantes foi cerca de ${duration.typicalDurationMinutes} min (${duration.episodes ?? 0} episódios, confiança ${duration.confidence ?? 'baixa'}).`
+            : 'Sem lentidão confirmada agora e sem episódios históricos suficientes para estimar duração.';
+    }
+    box.append(summary);
+    const note = document.createElement('small');
+    note.textContent = 'Estimativa aproximada; alertas próximos são indícios de contexto, não confirmação de causa.';
+    box.append(note);
+
+    const list = document.createElement('ul');
+    list.className = 'rs-forecast__signal-list';
+    (signals ?? []).slice(0, 8).forEach((signal) => {
+        const li = document.createElement('li');
+        li.className = 'rs-forecast__signal';
+        const place = [signal.street, signal.city].filter(Boolean).join(' · ');
+        const distance = signal.distanceMeters !== null ? `${Math.round(signal.distanceMeters)} m` : '';
+        li.textContent = [signal.type, signal.subtype, place, distance].filter(Boolean).join(' — ');
+        list.append(li);
+    });
+    if (!list.children.length) {
+        const empty = document.createElement('li');
+        empty.className = 'rs-forecast__signal';
+        empty.textContent = 'Nenhum alerta Waze recente próximo desta rota.';
+        list.append(empty);
+    }
+    box.append(list);
+}
 /** Linha vertical tracejada separando passado e futuro. */
 const nowLinePlugin = {
     id: 'rsNowLine',
@@ -370,6 +412,7 @@ export async function init(root = document) {
         const timeZone = data.timezone || page.dataset.timezone || 'America/Sao_Paulo';
 
         renderAccuracy(panel, data.accuracy ?? null);
+        renderContext(panel, data.congestionDuration ?? null, data.nearbySignals ?? []);
         drawChart(panel, data, timeZone);
     } catch (error) {
         console.error('[WazeBR route-forecast]', error);

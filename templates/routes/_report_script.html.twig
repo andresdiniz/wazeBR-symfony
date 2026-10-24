@@ -1,0 +1,158 @@
+{#- JS do relatório, embutido em report.html.twig (ver comentário no topo do código). -#}
+{% verbatim %}
+/**
+ * pages/route-report.js — relatório imprimível da rota.
+ *
+ * O relatório é HTML/SVG estático renderizado no servidor. Este módulo faz duas coisas:
+ *
+ *   1. Mapa com ruas (Leaflet + OpenStreetMap): desenha o traçado, os trechos coloridos e
+ *      as ocorrências sobre os tiles do OSM. Se os tiles não carregarem (rede, CSP, bloqueio),
+ *      o esquema em SVG do próprio relatório continua visível — o relatório nunca fica sem mapa.
+ *   2. Botão "Imprimir / Salvar em PDF": espera o mapa terminar de carregar os tiles, para o
+ *      PDF não sair com o mapa pela metade.
+ *
+ * Os dados vêm de <script type="application/json" data-report-map> (sem fetch).
+ *
+ * Este código fica EMBUTIDO na página do relatório (templates/routes/_report_script.html.twig),
+ * e não em assets/: o relatório é um documento que sai do sistema (PDF, link público) e não
+ * pode depender de o AssetMapper estar com o manifesto em dia.
+ */
+
+const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const READY_TIMEOUT_MS = 6000;
+const MAX_TILE_ERRORS = 3;
+const NEUTRAL = '#94a3b8';
+
+const printButtons = [...document.querySelectorAll('[data-report-print]')];
+
+function setPrintBusy(busy) {
+    printButtons.forEach((button) => {
+        button.dataset.label ??= button.textContent;
+        button.disabled = busy;
+        button.textContent = busy ? 'Preparando mapa…' : button.dataset.label;
+    });
+}
+
+printButtons.forEach((button) => button.addEventListener('click', () => window.print()));
+
+function readMapData() {
+    const raw = document.querySelector('[data-report-map]')?.textContent;
+    if (!raw) return null;
+
+    try {
+        return JSON.parse(raw);
+    } catch {
+        return null;
+    }
+}
+
+function setCredit(text) {
+    const credit = document.querySelector('[data-report-map-credit]');
+    if (credit) credit.textContent = text;
+}
+
+/** Mantém o esquema SVG e diz ao leitor (e ao console) por que não há mapa com ruas. */
+function showFallback(reason) {
+    if (!reason) return;
+    console.warn(`[WazeBR relatório] mapa com ruas indisponível: ${reason}`);
+    setCredit(`Esquema do traçado, sem mapa de fundo (${reason}).`);
+}
+
+function initMap() {
+    const wrap = document.querySelector('[data-report-mapwrap]');
+    const container = wrap?.querySelector('[data-report-live-map]');
+    const data = readMapData();
+
+    if (!wrap || !container || !data) return;
+
+    // Sem Leaflet (CDN bloqueado/offline): fica o esquema em SVG.
+    if (typeof L === 'undefined') {
+        showFallback('a biblioteca de mapas não carregou');
+        return;
+    }
+
+    setPrintBusy(true);
+
+    let map = null;
+    let loaded = false;
+    let finished = false;
+    let tileErrors = 0;
+    let timer = null;
+
+    const finish = (success, reason = '') => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timer);
+
+        if (success) {
+            wrap.classList.add('is-live');
+            setCredit('Mapa: © colaboradores do OpenStreetMap.');
+        } else {
+            try { map?.remove(); } catch { /* noop */ }
+            container.replaceChildren();
+            showFallback(reason);
+        }
+
+        setPrintBusy(false);
+    };
+
+    try {
+        map = L.map(container, { zoomControl: true, scrollWheelZoom: false, attributionControl: true });
+
+        const tiles = L.tileLayer(TILE_URL, { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+        tiles.on('load', () => {
+            loaded = true;
+            finish(true);
+        });
+        tiles.on('tileerror', () => {
+            tileErrors += 1;
+            if (!loaded && tileErrors >= MAX_TILE_ERRORS) finish(false, 'os tiles do OpenStreetMap não carregaram');
+        });
+
+        const line = (pts, color, weight, opacity) =>
+            L.polyline(pts, { color, weight, opacity, lineCap: 'round', lineJoin: 'round' }).addTo(map);
+
+        const all = [];
+
+        if (data.main?.length > 1) {
+            line(data.main, NEUTRAL, 9, 0.55);
+            all.push(...data.main);
+        }
+
+        (data.subs ?? []).forEach((sub) => {
+            if (!sub.pts || sub.pts.length < 2) return;
+            // contorno branco + cor: legível sobre qualquer fundo de mapa
+            line(sub.pts, '#ffffff', 8, 0.9);
+            const colored = line(sub.pts, sub.color || NEUTRAL, 5, 1);
+            if (sub.title) colored.bindTooltip(sub.title, { sticky: true });
+            all.push(...sub.pts);
+        });
+
+        const dot = (item, radius) => {
+            const marker = L.circleMarker([item.lat, item.lng], {
+                radius, color: '#ffffff', weight: 2, fillColor: item.color, fillOpacity: 0.95,
+            }).addTo(map);
+            if (item.title) marker.bindTooltip(item.title);
+            all.push([item.lat, item.lng]);
+        };
+
+        (data.alerts ?? []).forEach((item) => dot(item, 7));
+        (data.irr ?? []).forEach((item) => dot(item, 7));
+
+        if (all.length > 0) {
+            map.fitBounds(all, { padding: [24, 24], maxZoom: 17 });
+        } else {
+            map.setView([-15.78, -47.93], 4);
+        }
+
+        window.addEventListener('beforeprint', () => map?.invalidateSize());
+        timer = setTimeout(() => finish(loaded, 'tempo esgotado ao carregar os tiles'), READY_TIMEOUT_MS);
+    } catch (error) {
+        console.warn('[WazeBR relatório] erro ao montar o mapa', error);
+        finish(false, 'erro ao montar o mapa');
+    }
+}
+
+initMap();
+
+{% endverbatim %}
