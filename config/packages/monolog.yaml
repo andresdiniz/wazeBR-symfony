@@ -3,7 +3,16 @@ monolog:
         - deprecation
         - scheduler
         - mailer
+        - audit
     handlers:
+        audit:
+            type: rotating_file
+            path: '%kernel.logs_dir%/audit.log'
+            level: info
+            channels: ['audit']
+            max_files: 30
+            formatter: monolog.formatter.json
+
         # Canal dedicado de e-mail — sempre grava em var/log/mailer.log
         mailer:
             type: stream
@@ -26,7 +35,7 @@ when@dev:
                 type: stream
                 path: '%kernel.logs_dir%/%kernel.environment%.log'
                 level: debug
-                channels: ['!event']
+                channels: ['!event', '!audit']
             scheduler:
                 type: stream
                 path: '%kernel.logs_dir%/scheduler_dev.log'
@@ -35,7 +44,7 @@ when@dev:
             console:
                 type: console
                 process_psr_3_messages: false
-                channels: ['!event', '!doctrine', '!console']
+                channels: ['!event', '!doctrine', '!console', '!audit']
 
 when@prod:
     monolog:
@@ -46,7 +55,7 @@ when@prod:
                 handler: nested
                 excluded_http_codes: [404, 405]
                 buffer_size: 50
-                channels: ['!deprecation', '!scheduler', '!mailer']
+                channels: ['!deprecation', '!scheduler', '!mailer', '!audit']
 
             nested:
                 type: stream

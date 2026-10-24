@@ -11,6 +11,8 @@ use App\Repository\PartnerRepository;
 use App\Service\PartnerFeedService;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\DBAL\Connection;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -27,6 +29,8 @@ final class PartnerFeedController extends AbstractController
         private readonly PartnerFeedService $feedService,
         private readonly EntityManagerInterface $em,
         private readonly Connection $connection,
+        #[Autowire(service: 'monolog.logger.audit')]
+        private readonly LoggerInterface $auditLogger,
     ) {}
 
     #[Route('/{code}.json', name: 'json', methods: ['GET'])]
@@ -109,6 +113,7 @@ final class PartnerFeedController extends AbstractController
         $this->hydrateFromRequest($event, $request);
         $this->em->persist($event);
         $this->em->flush();
+        $this->logEventAction('created', $partner, (int) $event->getId());
         $this->addFlash('success', sprintf('Evento #%s criado.', $event->getUuid() ?? $event->getId()));
         return $this->redirectToRoute('partner_feed_event_list', ['code' => $code]);
     }
@@ -143,6 +148,7 @@ final class PartnerFeedController extends AbstractController
             $event->setUpdatedByUserId($user->getId());
         }
         $this->em->flush();
+        $this->logEventAction('updated', $partner, $id);
         $this->addFlash('success', 'Evento atualizado.');
         return $this->redirectToRoute('partner_feed_event_list', ['code' => $code]);
     }
@@ -157,12 +163,17 @@ final class PartnerFeedController extends AbstractController
             throw $this->createAccessDeniedException('Token CSRF inválido.');
         }
         $event = $this->getEventOr404($id, $partner);
-        $event->setIsActive(!$event->isActive());
+        $wasActive = $event->isActive();
+        $event->setIsActive(!$wasActive);
         $user = $this->getUser();
         if ($user !== null && method_exists($user, 'getId')) {
             $event->setUpdatedByUserId($user->getId());
         }
         $this->em->flush();
+        $this->logEventAction($event->isActive() ? 'activated' : 'deactivated', $partner, $id, [
+            'previous_is_active' => $wasActive,
+            'is_active' => $event->isActive(),
+        ]);
         return $this->redirectToRoute('partner_feed_event_list', ['code' => $code]);
     }
 
@@ -178,7 +189,20 @@ final class PartnerFeedController extends AbstractController
         $event = $this->getEventOr404($id, $partner);
         $this->em->remove($event);
         $this->em->flush();
+        $this->logEventAction('deleted', $partner, $id);
         return $this->redirectToRoute('partner_feed_event_list', ['code' => $code]);
+    }
+
+    private function logEventAction(string $action, Partner $partner, int $eventId, array $context = []): void
+    {
+        $user = $this->getUser();
+        $this->auditLogger->info('partner_feed.event.' . $action, [
+            'action' => $action,
+            'user_id' => $user instanceof \App\Entity\User ? $user->getId() : null,
+            'partner_id' => $partner->getId(),
+            'event_id' => $eventId,
+            'occurred_at' => (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format(DATE_ATOM),
+        ] + $context);
     }
 
     private function getPartnerOr404(string $code): Partner
