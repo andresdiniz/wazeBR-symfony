@@ -43,6 +43,20 @@ final class AdminUserController extends AbstractController
         if (!$this->isGlobalAdmin()) {
             $users = array_values(array_filter($users, fn (User $user): bool => $this->canViewUser($user)));
         }
+        $searchQuery = trim((string) $request->query->get('q', ''));
+        if ($searchQuery !== '') {
+            $needle = mb_strtolower($searchQuery);
+            $users = array_values(array_filter($users, static function (User $user) use ($needle): bool {
+                $haystack = mb_strtolower(implode(' ', array_filter([
+                    $user->getName(),
+                    $user->getEmail(),
+                    $user->getPhone(),
+                    $user->getPartner()?->getName(),
+                ])));
+
+                return str_contains($haystack, $needle);
+            }));
+        }
         $inlineForms = [];
         $manageableUserIds = [];
         $submittedUserId = null;
@@ -74,7 +88,8 @@ final class AdminUserController extends AbstractController
                         $this->entityManager->flush();
                         $this->addFlash('success', sprintf('Usuário %s atualizado.', $user->getName()));
 
-                        return $this->redirectToRoute('admin_users_index', $partner ? ['partner' => $partner->getId()] : []);
+                        $filters = array_filter(['partner' => $partner?->getId(), 'q' => $searchQuery]);
+                        return $this->redirectToRoute('admin_users_index', $filters);
                     }
                 }
             }
@@ -90,6 +105,7 @@ final class AdminUserController extends AbstractController
             'submitted_user_id' => $submittedUserId,
             'can_manage_roles' => $this->isGlobalAdmin(),
             'partner_filter' => $partner,
+            'search_query' => $searchQuery,
         ]);
     }
     #[Route('/new', name: 'admin_users_new', methods: ['GET', 'POST'])]
