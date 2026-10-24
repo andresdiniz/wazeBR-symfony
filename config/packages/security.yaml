@@ -16,6 +16,9 @@ security:
         partner_feed_json:
             pattern: ^/partner-feed/[^/]+\.json$
             security: false
+            rate_limiter:
+                max_attempts: 1
+                interval: '1 minute'
 
         main:
             lazy: true
