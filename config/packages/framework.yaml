@@ -28,6 +28,12 @@ framework:
     http_cache:
         enabled: true   # ← se estiver true, é mais uma camada de cache
 
+    rate_limiter:
+        partner_feed_api:
+            policy: token_bucket
+            limit: 1
+            rate: '1 minute'
+
 when@test:
     framework:
         test: true
