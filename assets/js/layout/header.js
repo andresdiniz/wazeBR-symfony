@@ -31,6 +31,7 @@ export function initHeader(doc = globalThis.document) {
   initTheme(header, doc);
   initNotifications(header, doc);
   initUserMenu(header, doc);
+  initAdminMenu(header, doc);
   initMobileNav(header, doc);
   initSearchShortcut(header, doc);
   initGlobalClose(header, doc);
@@ -189,6 +190,7 @@ function createDropdown({ trigger, dropdown, onOpen, onClose, doc }) {
 
 let notificationsApi = null;
 let userMenuApi = null;
+let adminMenuApi = null;
 
 function initNotifications(header, doc) {
   const btn = header.querySelector('[data-header-notifications-toggle]');
@@ -234,7 +236,20 @@ function initUserMenu(header, doc) {
     trigger: btn,
     dropdown,
     doc,
-    onOpen: () => notificationsApi?.close(),
+    onOpen: () => { notificationsApi?.close(); adminMenuApi?.close(); },
+  });
+}
+
+function initAdminMenu(header, doc) {
+  const btn = header.querySelector('[data-header-admin-toggle]');
+  const dropdown = header.querySelector('[data-header-admin-menu]');
+  if (!btn || !dropdown) return;
+
+  adminMenuApi = createDropdown({
+    trigger: btn,
+    dropdown,
+    doc,
+    onOpen: () => { notificationsApi?.close(); userMenuApi?.close(); },
   });
 }
 
@@ -252,6 +267,7 @@ function initMobileNav(header, doc) {
 
     notificationsApi?.close();
     userMenuApi?.close();
+    adminMenuApi?.close();
 
     const sidebar = doc.querySelector('[data-sidebar]');
 
@@ -306,6 +322,7 @@ function initGlobalClose(header, doc) {
     if (!header.contains(e.target)) {
       notificationsApi?.close();
       userMenuApi?.close();
+      adminMenuApi?.close();
     }
 
     // Nav-fallback do header
@@ -323,6 +340,7 @@ function initGlobalClose(header, doc) {
 
     if (notificationsApi?.isOpen()) { notificationsApi.close(true); return; }
     if (userMenuApi?.isOpen())      { userMenuApi.close(true);      return; }
+    if (adminMenuApi?.isOpen())     { adminMenuApi.close(true);     return; }
   });
 }
 

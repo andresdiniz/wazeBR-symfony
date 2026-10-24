@@ -125,6 +125,15 @@
     gap: 4px;
   }
 
+  .app-header__nav-admin {
+    position: relative;
+  }
+  .app-header__nav-admin > button {
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+  }
   .app-header__nav-link {
     position: relative;
     min-height: 38px;
@@ -147,6 +156,24 @@
     color: var(--primary);
     background: var(--primary-soft);
   }
+  .app-header__nav-link[aria-expanded="true"] .app-header__nav-chevron { transform: rotate(180deg); }
+  .app-header__nav-chevron { font-size: 0.7rem; transition: transform var(--hd-transition); }
+  .app-header__admin-menu { width: 245px; z-index: 1200; }
+  .app-header__admin-menu a[role="menuitem"] {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 10px;
+    border-radius: var(--radius-xs);
+    color: var(--text-muted);
+    font-size: 0.61rem;
+    font-weight: 550;
+    text-decoration: none;
+    transition: background var(--hd-transition), color var(--hd-transition);
+  }
+  .app-header__admin-menu a[role="menuitem"] > span { width: 15px; color: var(--text-soft); text-align: center; }
+  .app-header__admin-menu a[role="menuitem"]:hover,
+  .app-header__admin-menu a[role="menuitem"][aria-current="page"] { background: var(--surface-soft); color: var(--text); }
   .app-header__nav-icon {
     display: inline-grid;
     place-items: center;

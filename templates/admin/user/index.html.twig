@@ -3,7 +3,7 @@
 {% block title %}Usuários — Administração{% endblock %}
 
 {% block content %}
-<div class="admin-page">
+<div class="admin-page" data-admin-user>
     <header class="admin-page__header">
         <div class="admin-page__heading">
             <h1 class="admin-page__title">Usuários</h1>
@@ -14,7 +14,7 @@
                 {% elseif can_manage_roles %}
                     Gerencie contas, perfis de acesso e vínculos com parceiros.
                 {% else %}
-                    Gerencie apenas usuários do seu escopo e conceda permissões operacionais.
+                    Gerencie usuários do seu escopo conforme as permissões do seu perfil.
                 {% endif %}
             </p>
         </div>
@@ -28,7 +28,7 @@
         <div class="admin-empty">
             <span class="admin-empty__icon" aria-hidden="true">♙</span>
             <h2 class="admin-empty__title">Nenhum usuário neste escopo</h2>
-            <p class="admin-empty__text">Crie um usuário para o parceiro ou área sob sua responsabilidade.</p>
+            <p class="admin-empty__text">Não há contas cadastradas que este perfil possa consultar.</p>
             <a href="{{ path('admin_users_new') }}" class="admin-btn admin-btn--primary">Criar usuário</a>
         </div>
     {% else %}
@@ -45,7 +45,9 @@
         <div class="admin-card admin-card--table">
             <div class="admin-table-wrap">
                 <table class="admin-table">
-                    <thead><tr><th>Usuário</th><th>Perfil</th><th>Parceiro</th><th>Status</th><th class="admin-table__actions-col">Ações</th></tr></thead>
+                    <thead>
+                        <tr><th>Usuário</th><th>Perfil</th><th>Parceiro</th><th>Status</th><th class="admin-table__actions-col">Ações</th></tr>
+                    </thead>
                     <tbody>
                     {% for user in users %}
                         <tr class="{{ user.isActive ? '' : 'is-inactive' }}">
@@ -62,18 +64,61 @@
                             <td><span class="admin-status-badge {{ user.isActive ? 'is-active' : 'is-inactive' }}"><span class="admin-status-dot"></span>{{ user.isActive ? 'Ativo' : 'Inativo' }}</span></td>
                             <td class="admin-table__actions">
                                 <div class="admin-actions">
-                                    {% if user.id != app.user.id %}<a href="{{ path('admin_users_edit', {id: user.id}) }}" class="admin-action">Editar</a>{% else %}<span class="admin-cell-muted">Sua conta</span>{% endif %}
-                                    {% if user.id != app.user.id %}
+                                    {% if user.id in manageable_user_ids %}
+                                        <button
+                                            type="button"
+                                            class="admin-action"
+                                            data-user-edit-toggle="{{ 'admin-user-edit-' ~ user.id }}"
+                                            aria-expanded="{{ submitted_user_id == user.id ? 'true' : 'false' }}"
+                                        >{{ submitted_user_id == user.id ? 'Fechar edição' : 'Editar aqui' }}</button>
                                         <form method="post" action="{{ path('admin_users_toggle', {id: user.id}) }}" class="admin-toggle-form">
                                             <input type="hidden" name="_token" value="{{ csrf_token('admin_user_toggle_' ~ user.id) }}">
                                             <button type="submit" class="admin-action" aria-label="{{ user.isActive ? 'Desativar' : 'Reativar' }} {{ user.name }}">
                                                 {{ user.isActive ? 'Desativar' : 'Reativar' }}
                                             </button>
                                         </form>
+                                    {% elseif user.id == app.user.id %}
+                                        <span class="admin-cell-muted">Sua conta</span>
+                                    {% else %}
+                                        <span class="admin-cell-muted">Somente leitura</span>
                                     {% endif %}
                                 </div>
                             </td>
                         </tr>
+                        {% if user.id in manageable_user_ids %}
+                            <tr class="admin-user-edit-row">
+                                <td colspan="5">
+                                    {% set inline_form = inline_forms[user.id] %}
+                                    <details
+                                        class="admin-user-edit-panel"
+                                        id="{{ 'admin-user-edit-' ~ user.id }}"
+                                        {% if submitted_user_id == user.id %}open{% endif %}
+                                    >
+                                        <summary>Campos para editar {{ user.name ?: user.email }}</summary>
+                                        {{ form_start(inline_form, {'attr': {'class': 'admin-inline-form'}}) }}
+                                            {{ form_errors(inline_form) }}
+                                            <div class="admin-inline-form__grid">
+                                                {{ form_row(inline_form.name) }}
+                                                {{ form_row(inline_form.email) }}
+                                                {{ form_row(inline_form.phone) }}
+                                                {{ form_row(inline_form.partner) }}
+                                            </div>
+                                            <div class="admin-inline-form__section">
+                                                {{ form_row(inline_form.roles) }}
+                                            </div>
+                                            <div class="admin-inline-form__grid admin-inline-form__grid--secondary">
+                                                {{ form_row(inline_form.isActive) }}
+                                                {{ form_row(inline_form.plainPassword) }}
+                                            </div>
+                                            <div class="admin-inline-form__actions">
+                                                <button type="submit" class="admin-btn admin-btn--primary">Salvar alterações</button>
+                                                <a href="{{ path('admin_users_edit', {id: user.id}) }}" class="admin-btn admin-btn--ghost">Abrir página completa</a>
+                                            </div>
+                                        {{ form_end(inline_form) }}
+                                    </details>
+                                </td>
+                            </tr>
+                        {% endif %}
                     {% endfor %}
                     </tbody>
                 </table>

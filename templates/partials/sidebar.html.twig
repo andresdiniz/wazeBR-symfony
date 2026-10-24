@@ -4,6 +4,7 @@
 
 
 {% set current_route = app.request.attributes.get('_route') %}
+{% set sidebar_admin_context = current_route starts with 'admin_user' or current_route starts with 'admin_partner' or current_route starts with 'admin_overview' %}
 {% set sidebar_collapsed = app.request.cookies.get('wazebr_sidebar_collapsed') == '1' %}
 
 
@@ -30,7 +31,7 @@
 
 
                 <span class="sidebar-heading-label">
-                    Menu principal
+                    {{ sidebar_admin_context ? 'Administração' : 'Menu principal' }}
                 </span>
             </div>
 
@@ -56,6 +57,8 @@
         {# --------------------------------------------------------
            NAVEGAÇÃO
            -------------------------------------------------------- #}
+        {% if not sidebar_admin_context %}
+
         <nav
             class="sidebar-nav"
             data-sidebar-navigation
@@ -265,86 +268,80 @@
 
 
         </nav>
+        {% endif %}
 
 
 
-        {# --------------------------------------------------------
-           ÁREA ADMINISTRATIVA (conforme o perfil)
-           -------------------------------------------------------- #}
-        {% if is_granted('ROLE_ACCOUNT_ADMIN') or is_granted('ROLE_PARTNER_ADMIN') %}
-
-
+        {% if sidebar_admin_context %}
             <div class="sidebar-section-divider" aria-hidden="true">
                 <span></span>
-                <span class="sidebar-section-divider-label">
-                    Administração
-                </span>
+                <span class="sidebar-section-divider-label">Administração</span>
             </div>
 
-
-            <nav
-                class="sidebar-nav sidebar-nav--admin"
-                aria-label="Menu administrativo"
-            >
-
-
-                {% if is_granted('ROLE_ADMIN') and app.user.partner is null %}
-                {# Parceiros #}
-                <a
-                    href="{{ path('admin_partner_index') }}"
-                    class="sidebar-link{% if current_route starts with 'admin_partner' %} is-active{% endif %}"
-                    data-sidebar-link
-                    title="Parceiros"
-                    {% if current_route starts with 'admin_partner' %}aria-current="page"{% endif %}
-                >
-                    <span class="sidebar-link-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" focusable="false">
-                            <path d="M3 20V9l9-6 9 6v11a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z"/>
-                        </svg>
-                    </span>
-
-
-                    <span class="sidebar-link-label">
-                        Parceiros
-                    </span>
-
-
-                    {% if current_route starts with 'admin_partner' %}
-                        <span class="sidebar-active-indicator" aria-hidden="true"></span>
-                    {% endif %}
-                </a>
-
-
+            <nav class="sidebar-nav sidebar-nav--admin" aria-label="Menu administrativo">
+                {% if is_granted('ROLE_ACCOUNT_ADMIN') or is_granted('ROLE_PARTNER_ADMIN') %}
+                    <a
+                        href="{{ path('admin_users_index') }}"
+                        class="sidebar-link{% if current_route starts with 'admin_user' %} is-active{% endif %}"
+                        data-sidebar-link
+                        title="Usuários"
+                        {% if current_route starts with 'admin_user' %}aria-current="page"{% endif %}
+                    >
+                        <span class="sidebar-link-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" focusable="false">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm9-3v6M21 11h-6"/>
+                            </svg>
+                        </span>
+                        <span class="sidebar-link-label">Usuários</span>
+                        {% if current_route starts with 'admin_user' %}
+                            <span class="sidebar-active-indicator" aria-hidden="true"></span>
+                        {% endif %}
+                    </a>
                 {% endif %}
 
-                {# Usuários #}
-                <a
-                    href="{{ path('admin_users_index') }}"
-                    class="sidebar-link{% if current_route starts with 'admin_user' %} is-active{% endif %}"
-                    data-sidebar-link
-                    title="Usuários"
-                    {% if current_route starts with 'admin_user' %}aria-current="page"{% endif %}
-                >
-                    <span class="sidebar-link-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" focusable="false">
-                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm9-3v6M21 11h-6"/>
-                        </svg>
-                    </span>
-
-
-                    <span class="sidebar-link-label">
-                        Usuários
-                    </span>
-
-
-                    {% if current_route starts with 'admin_user' %}
-                        <span class="sidebar-active-indicator" aria-hidden="true"></span>
-                    {% endif %}
-                </a>
-
-
                 {% if is_granted('ROLE_ADMIN') and app.user.partner is null %}
-                {# Semáforos — controladores de tráfego (NTCIP / Modbus / HTTP REST) #}
+                    <a
+                        href="{{ path('admin_partner_index') }}"
+                        class="sidebar-link{% if current_route starts with 'admin_partner' %} is-active{% endif %}"
+                        data-sidebar-link
+                        title="Parceiros"
+                        {% if current_route starts with 'admin_partner' %}aria-current="page"{% endif %}
+                    >
+                        <span class="sidebar-link-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" focusable="false">
+                                <path d="M3 20V9l9-6 9 6v11a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z"/>
+                            </svg>
+                        </span>
+                        <span class="sidebar-link-label">Parceiros</span>
+                        {% if current_route starts with 'admin_partner' %}
+                            <span class="sidebar-active-indicator" aria-hidden="true"></span>
+                        {% endif %}
+                    </a>
+
+                    <a
+                        href="{{ path('traffic_light_list') }}"
+                        class="sidebar-link{% if current_route starts with 'traffic_light' %} is-active{% endif %}"
+                        data-sidebar-link
+                        title="Semáforos"
+                    >
+                        <span class="sidebar-link-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" focusable="false">
+                                <rect x="8" y="2.5" width="8" height="19" rx="2"/>
+                                <circle cx="12" cy="7" r="1.4"/>
+                                <circle cx="12" cy="12" r="1.4"/>
+                                <circle cx="12" cy="17" r="1.4"/>
+                            </svg>
+                        </span>
+                        <span class="sidebar-link-label">Semáforos</span>
+                    </a>
+                {% endif %}
+            </nav>
+        {% elseif is_granted('ROLE_ADMIN') and app.user.partner is null %}
+            <div class="sidebar-section-divider" aria-hidden="true">
+                <span></span>
+                <span class="sidebar-section-divider-label">Administração</span>
+            </div>
+            <nav class="sidebar-nav sidebar-nav--admin" aria-label="Menu administrativo">
                 <a
                     href="{{ path('traffic_light_list') }}"
                     class="sidebar-link{% if current_route starts with 'traffic_light' %} is-active{% endif %}"
@@ -360,27 +357,13 @@
                             <circle cx="12" cy="17" r="1.4"/>
                         </svg>
                     </span>
-
-
-                    <span class="sidebar-link-label">
-                        Semáforos
-                    </span>
-
-
+                    <span class="sidebar-link-label">Semáforos</span>
                     {% if current_route starts with 'traffic_light' %}
                         <span class="sidebar-active-indicator" aria-hidden="true"></span>
                     {% endif %}
                 </a>
-                {% endif %}
-
-
             </nav>
-
-
         {% endif %}
-
-
-
         {# --------------------------------------------------------
            ÁREA INFERIOR
            -------------------------------------------------------- #}

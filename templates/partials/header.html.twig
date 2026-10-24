@@ -24,13 +24,12 @@
 
    {% set _user_role = _user
        ? (
-           is_granted('ROLE_ADMIN')
-               ? 'Administrador'
-               : (
-                   is_granted('ROLE_PARTNER')
-                       ? 'Parceiro'
-                       : 'Operador'
-               )
+           is_granted('ROLE_SUPER_ADMIN') ? 'Superadministrador'
+           : (is_granted('ROLE_ADMIN') ? 'Administrador global'
+           : (is_granted('ROLE_ACCOUNT_ADMIN') ? 'Administrador de contas'
+           : (is_granted('ROLE_PARTNER_ADMIN') ? 'Administrador de parceiro'
+           : (is_granted('ROLE_FIELD_AGENT') ? 'Agente de via'
+           : (is_granted('ROLE_OPERATOR') ? 'Operador' : 'Visualizador')))))
          )
        : 'Não autenticado'
    %}
@@ -159,19 +158,42 @@
                    <span>Visão geral</span>
                </a>
 
-               {% if is_granted('ROLE_ADMIN') %}
+               {% if is_granted('ROLE_ACCOUNT_ADMIN') or is_granted('ROLE_PARTNER_ADMIN') %}
 
-                   <a
-                       href="#"
-                       class="app-header__nav-link"
-                   >
-                       <span
-                           class="app-header__nav-icon"
-                           aria-hidden="true"
-                       >▦</span>
-
-                       <span>Administração</span>
-                   </a>
+                   <div class="app-header__nav-admin">
+                       <button
+                           type="button"
+                           class="app-header__nav-link{{ _route starts with 'admin_user' or _route starts with 'admin_partner' ? ' is-active' : '' }}"
+                           data-header-admin-toggle
+                           aria-expanded="false"
+                           aria-haspopup="menu"
+                           aria-controls="header-admin-menu"
+                       >
+                           <span class="app-header__nav-icon" aria-hidden="true">▦</span>
+                           <span>Administração</span>
+                           <span class="app-header__nav-chevron" aria-hidden="true">⌄</span>
+                       </button>
+                       <div
+                           class="app-header__dropdown app-header__admin-menu"
+                           id="header-admin-menu"
+                           data-header-admin-menu
+                           role="menu"
+                           aria-label="Administração"
+                           hidden
+                       >
+                           <div class="app-header__dropdown-section">
+                               <span class="app-header__dropdown-section-label">Gestão de acesso</span>
+                               <a href="{{ path('admin_users_index') }}" role="menuitem"{% if _route starts with 'admin_user' %} aria-current="page"{% endif %}>
+                                   <span aria-hidden="true">♙</span>Gerenciar usuários
+                               </a>
+                               {% if is_granted('ROLE_ADMIN') and app.user.partner is null %}
+                                   <a href="{{ path('admin_partner_index') }}" role="menuitem"{% if _route starts with 'admin_partner' %} aria-current="page"{% endif %}>
+                                       <span aria-hidden="true">⌂</span>Gerenciar parceiros
+                                   </a>
+                               {% endif %}
+                           </div>
+                       </div>
+                   </div>
 
                {% endif %}
 
@@ -461,6 +483,7 @@
                                </div>
 
                            </div>
+
 
 
                            <div class="app-header__dropdown-section">

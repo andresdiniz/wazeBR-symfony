@@ -1045,3 +1045,137 @@ button.admin-status-badge:active {
 .admin-table__actions .admin-actions { flex-wrap: wrap; }
 .admin-badge[href] { text-decoration: none; }
 .admin-badge[href]:hover { filter: brightness(0.94); }
+
+
+/* Limites do painel administrativo e edição inline de usuários. */
+.admin-page {
+    width: 100%;
+    min-width: 0;
+    max-width: min(var(--page-max-wide, 100%), 100%);
+    overflow-x: clip;
+}
+
+.admin-page__header,
+.admin-page__heading,
+.admin-card,
+.admin-table-wrap {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.admin-card--table {
+    width: 100%;
+    overflow: hidden;
+}
+
+.admin-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+}
+
+.admin-table {
+    min-width: 820px;
+}
+
+.admin-user-edit-row > td {
+    padding: 0 !important;
+    background: var(--adm-bg-muted);
+}
+
+.admin-user-edit-panel {
+    max-width: 100%;
+    padding: 0.8rem 1rem;
+}
+
+.admin-user-edit-panel > summary {
+    width: fit-content;
+    max-width: 100%;
+    color: var(--adm-primary);
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+}
+
+.admin-inline-form {
+    display: grid;
+    gap: 1rem;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin-top: 1rem;
+}
+
+.admin-inline-form__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem 1rem;
+    min-width: 0;
+}
+
+.admin-inline-form__grid > *,
+.admin-inline-form__section,
+.admin-inline-form .form-group {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.admin-inline-form .form-control,
+.admin-inline-form .form-select,
+.admin-inline-form input {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.admin-inline-form__section .admin-role-picker {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+}
+
+.admin-inline-form__grid--secondary {
+    align-items: start;
+}
+
+.admin-inline-form__grid--secondary .form-group--short {
+    max-width: 100%;
+}
+
+.admin-inline-form__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    justify-content: flex-end;
+    min-width: 0;
+}
+
+.admin-inline-form__actions > * {
+    max-width: 100%;
+}
+
+.admin-table__actions .admin-actions {
+    gap: 0.45rem;
+}
+
+@media (max-width: 720px) {
+    .admin-table {
+        min-width: 720px;
+    }
+
+    .admin-user-edit-panel {
+        padding: 0.75rem;
+    }
+
+    .admin-inline-form__grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-inline-form__actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .admin-inline-form__actions > * {
+        width: 100%;
+    }
+}

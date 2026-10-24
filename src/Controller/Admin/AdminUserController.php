@@ -10,6 +10,7 @@ use App\Repository\PartnerRepository;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -22,10 +23,11 @@ final class AdminUserController extends AbstractController
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly UserPasswordHasherInterface $passwordHasher,
+        private readonly FormFactoryInterface $formFactory,
     ) {
     }
 
-    #[Route('', name: 'admin_users_index', methods: ['GET'])]
+    #[Route('', name: 'admin_users_index', methods: ['GET', 'POST'])]
     public function index(Request $request, UserRepository $userRepository, PartnerRepository $partnerRepository): Response
     {
         $this->requireUserAdminAccess();
@@ -39,11 +41,53 @@ final class AdminUserController extends AbstractController
         $criteria = $partner !== null ? ['partner' => $partner] : [];
         $users = $userRepository->findBy($criteria, ['name' => 'ASC', 'email' => 'ASC']);
         if (!$this->isGlobalAdmin()) {
-            $users = array_values(array_filter($users, fn (User $user): bool => $this->canManageUser($user)));
+            $users = array_values(array_filter($users, fn (User $user): bool => $this->canViewUser($user)));
+        }
+        $inlineForms = [];
+        $manageableUserIds = [];
+        $submittedUserId = null;
+
+        foreach ($users as $user) {
+            if (!$this->canManageUser($user)) {
+                continue;
+            }
+
+            $userId = (int) $user->getId();
+            $form = $this->createUserForm($user, false, 'edit_user_' . $userId);
+            $form->handleRequest($request);
+
+            if ($form->isSubmitted()) {
+                $submittedUserId = $userId;
+                if ($form->isValid()) {
+                    try {
+                        $user->setAccessProfile($form->get('partner')->getData(), (array) $form->get('roles')->getData());
+                    } catch (\InvalidArgumentException $exception) {
+                        $form->get('roles')->addError(new \Symfony\Component\Form\FormError($exception->getMessage()));
+                    }
+
+                    if ($form->isValid()) {
+                        $plainPassword = (string) $form->get('plainPassword')->getData();
+                        if ($plainPassword !== '') {
+                            $user->setPassword($this->passwordHasher->hashPassword($user, $plainPassword));
+                        }
+                        $user->setUpdatedAt(new \DateTimeImmutable());
+                        $this->entityManager->flush();
+                        $this->addFlash('success', sprintf('Usuário %s atualizado.', $user->getName()));
+
+                        return $this->redirectToRoute('admin_users_index', $partner ? ['partner' => $partner->getId()] : []);
+                    }
+                }
+            }
+
+            $manageableUserIds[] = $userId;
+            $inlineForms[$userId] = $form->createView();
         }
 
         return $this->render('admin/user/index.html.twig', [
             'users' => $users,
+            'manageable_user_ids' => $manageableUserIds,
+            'inline_forms' => $inlineForms,
+            'submitted_user_id' => $submittedUserId,
             'can_manage_roles' => $this->isGlobalAdmin(),
             'partner_filter' => $partner,
         ]);
@@ -130,21 +174,24 @@ final class AdminUserController extends AbstractController
         return $this->redirectToRoute('admin_users_index');
     }
 
-    private function createUserForm(User $user, bool $requirePassword): FormInterface
+    private function createUserForm(User $user, bool $requirePassword, ?string $name = null): FormInterface
     {
         $roles = $this->availableRoles();
         $roleValues = array_values($roles);
         $selectedRoles = array_values(array_intersect($user->getRoles(), $roleValues));
         $selectedRole = $selectedRoles[0] ?? User::ROLE_VIEWER;
-        return $this->createForm(UserType::class, $user, [
+        $options = [
             'require_password' => $requirePassword,
             'available_roles' => $roles,
             'roles_data' => $selectedRole,
             'partner_data' => $this->isPartnerAdmin() ? $this->getUser()->getPartner() : $user->getPartner(),
             'partner_locked' => $this->isPartnerAdmin(),
-        ]);
-    }
+        ];
 
+        return $name === null
+            ? $this->createForm(UserType::class, $user, $options)
+            : $this->formFactory->createNamed($name, UserType::class, $user, $options);
+    }
     /** @return array<string, string> */
     private function availableRoles(): array
     {
@@ -192,6 +239,29 @@ final class AdminUserController extends AbstractController
         return $user instanceof User && $user->isGlobalAdmin();
     }
 
+    private function canViewUser(User $target): bool
+    {
+        if ($target->getId() === $this->getUser()?->getId()) {
+            return true;
+        }
+
+        $roles = $target->getRoles();
+        if (array_intersect($roles, [User::ROLE_SUPER_ADMIN, User::ROLE_ADMIN]) !== []) {
+            return false;
+        }
+
+        if ($this->isPartnerAdmin()) {
+            $actorPartnerId = $this->getUser()?->getPartner()?->getId();
+            return $actorPartnerId !== null && $target->getPartner()?->getId() === $actorPartnerId;
+        }
+
+        if ($this->isGranted('ROLE_ACCOUNT_ADMIN')) {
+            return !in_array(User::ROLE_ACCOUNT_ADMIN, $roles, true);
+        }
+
+        return false;
+    }
+
     private function canManageUser(User $target): bool
     {
         if ($target->getId() === $this->getUser()?->getId()) {
@@ -204,7 +274,7 @@ final class AdminUserController extends AbstractController
         if ($this->isGlobalAdmin()) {
             return true;
         }
-        if (array_intersect($targetRoles, [User::ROLE_ADMIN, User::ROLE_ACCOUNT_ADMIN, User::ROLE_PARTNER_ADMIN])) {
+        if (array_intersect($targetRoles, [User::ROLE_ADMIN, User::ROLE_ACCOUNT_ADMIN, User::ROLE_PARTNER_ADMIN, User::ROLE_FIELD_AGENT])) {
             return false;
         }
         if ($this->isPartnerAdmin()) {

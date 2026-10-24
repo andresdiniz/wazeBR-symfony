@@ -17,6 +17,29 @@ export function initAdminUser(doc = globalThis.document) {
     doc.__adminUserInit = true;
 
     bindRoleToggle(doc);
+    bindInlineEditors(doc);
+}
+
+function bindInlineEditors(doc) {
+    doc.querySelectorAll('[data-user-edit-toggle]').forEach((button) => {
+        const panel = doc.getElementById(button.dataset.userEditToggle);
+        if (!panel) return;
+
+        const sync = () => {
+            button.setAttribute('aria-expanded', String(panel.open));
+            button.textContent = panel.open ? 'Fechar edição' : 'Editar aqui';
+        };
+
+        button.addEventListener('click', () => {
+            panel.open = !panel.open;
+            sync();
+            if (panel.open) {
+                panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        });
+        panel.addEventListener('toggle', sync);
+        sync();
+    });
 }
 
 function bindRoleToggle(doc) {
