@@ -19,6 +19,7 @@ nelmio_security:
             script-src:
                 - 'self'
                 - 'strict-dynamic'
+                - 'sha256-NgIIXtUYqeFz8pc52tSmIvzI4lOTDAMun9JVGSfR0os='
                 - 'https://cdn.jsdelivr.net'
                 - 'https://cdnjs.cloudflare.com'
                 - 'https://unpkg.com'
