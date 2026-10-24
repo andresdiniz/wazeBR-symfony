@@ -32,7 +32,9 @@ framework:
         partner_feed_api:
             policy: token_bucket
             limit: 1
-            rate: ['1 minute']
+            rate:
+                interval: '1 minute'
+                amount: 1
 
 when@test:
     framework:
