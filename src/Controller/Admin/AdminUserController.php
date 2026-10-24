@@ -195,23 +195,22 @@ final class AdminUserController extends AbstractController
         $roles = $this->availableRoles();
         $profileLocked = $user->getId() !== null && $user->getId() === $this->getUser()?->getId();
         $roleValues = array_values($roles);
-        if ($profileLocked) {
-            foreach ($user->getRoles() as $currentRole) {
-                if (!in_array($currentRole, $roleValues, true)) {
-                    $roles['Seu perfil atual (bloqueado)'] = $currentRole;
-                    $roleValues[] = $currentRole;
-                }
-            }
+        $currentRole = $user->getRoles()[0] ?? User::ROLE_VIEWER;
+        $rolesLocked = $profileLocked || !in_array($currentRole, $roleValues, true);
+        if ($rolesLocked && !in_array($currentRole, $roleValues, true)) {
+            $roles['Perfil atual (sem permissão para trocar)'] = $currentRole;
+            $roleValues[] = $currentRole;
         }
         $selectedRoles = array_values(array_intersect($user->getRoles(), $roleValues));
-        $selectedRole = $selectedRoles[0] ?? User::ROLE_VIEWER;
+        $selectedRole = $rolesLocked ? $currentRole : ($selectedRoles[0] ?? User::ROLE_VIEWER);
         $options = [
             'require_password' => $requirePassword,
             'available_roles' => $roles,
             'roles_data' => $selectedRole,
             'partner_data' => $this->isPartnerAdmin() ? $this->getUser()->getPartner() : $user->getPartner(),
             'partner_locked' => $this->isPartnerAdmin(),
-            'profile_locked' => $user->getId() !== null && $user->getId() === $this->getUser()?->getId(),
+            'profile_locked' => $profileLocked,
+            'roles_locked' => $rolesLocked,
         ];
 
         return $name === null
@@ -272,13 +271,15 @@ final class AdminUserController extends AbstractController
         }
 
         $roles = $target->getRoles();
-        if (array_intersect($roles, [User::ROLE_SUPER_ADMIN, User::ROLE_ADMIN]) !== []) {
-            return false;
-        }
-
+        // Partner admins can manage every account attached to their partner,
+        // including accounts with elevated partner-scoped roles.
         if ($this->isPartnerAdmin()) {
             $actorPartnerId = $this->getUser()?->getPartner()?->getId();
             return $actorPartnerId !== null && $target->getPartner()?->getId() === $actorPartnerId;
+        }
+
+        if (array_intersect($roles, [User::ROLE_SUPER_ADMIN, User::ROLE_ADMIN]) !== []) {
+            return false;
         }
 
         if ($this->isGranted('ROLE_ACCOUNT_ADMIN')) {
@@ -294,6 +295,10 @@ final class AdminUserController extends AbstractController
             return true;
         }
         $targetRoles = $target->getRoles();
+        if ($this->isPartnerAdmin()) {
+            $actorPartner = $this->getUser()?->getPartner();
+            return $actorPartner !== null && $target->getPartner()?->getId() === $actorPartner->getId();
+        }
         if (in_array(User::ROLE_SUPER_ADMIN, $targetRoles, true) && !$this->isSuperAdmin()) {
             return false;
         }
@@ -302,10 +307,6 @@ final class AdminUserController extends AbstractController
         }
         if (array_intersect($targetRoles, [User::ROLE_ADMIN, User::ROLE_ACCOUNT_ADMIN, User::ROLE_PARTNER_ADMIN, User::ROLE_FIELD_AGENT])) {
             return false;
-        }
-        if ($this->isPartnerAdmin()) {
-            $actorPartner = $this->getUser()?->getPartner();
-            return $actorPartner !== null && $target->getPartner()?->getId() === $actorPartner->getId();
         }
 
         return true;

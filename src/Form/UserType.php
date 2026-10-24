@@ -57,7 +57,7 @@ final class UserType extends AbstractType
                 'multiple' => false,
                 'expanded' => true,
                 'required' => true,
-                'disabled' => $options['profile_locked'],
+                'disabled' => $options['roles_locked'],
                 'mapped' => false,
                 'attr' => ['class' => 'admin-role-picker'],
                 'help' => 'Escolha apenas o perfil necessário para as funções deste usuário.',
@@ -100,6 +100,7 @@ final class UserType extends AbstractType
             'partner_data' => null,
             'partner_locked' => false,
             'profile_locked' => false,
+            'roles_locked' => false,
         ]);
         $resolver->setAllowedTypes('require_password', 'bool');
         $resolver->setAllowedTypes('available_roles', 'array');
@@ -107,5 +108,6 @@ final class UserType extends AbstractType
         $resolver->setAllowedTypes('partner_data', ['null', Partner::class]);
         $resolver->setAllowedTypes('partner_locked', 'bool');
         $resolver->setAllowedTypes('profile_locked', 'bool');
+        $resolver->setAllowedTypes('roles_locked', 'bool');
     }
 }
