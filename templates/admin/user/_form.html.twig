@@ -1,0 +1,48 @@
+<div class="admin-page admin-user-editor" data-admin-user>
+    <header class="admin-page__header">
+        <div class="admin-page__heading">
+            <div class="admin-breadcrumb"><a href="{{ path('admin_users_index') }}">Usuários</a><span aria-hidden="true">/</span><span>{{ is_new ? 'Novo usuário' : 'Editar usuário' }}</span></div>
+            <h1 class="admin-page__title">{{ is_new ? 'Criar usuário' : 'Editar usuário' }}</h1>
+            <p class="admin-page__subtitle">Configure os dados da conta e escolha o acesso adequado para as tarefas desta pessoa.</p>
+        </div>
+        <a href="{{ path('admin_users_index') }}" class="admin-btn admin-btn--ghost">← Voltar para usuários</a>
+    </header>
+
+    <div class="admin-user-editor__notice">
+        <strong>Como funciona o acesso</strong>
+        <p>O perfil define quais áreas o usuário pode abrir. Perfis de parceiro, operador e agente de via precisam de um parceiro vinculado.</p>
+    </div>
+
+    {{ form_start(form, {attr: {class: 'admin-user-editor__form'}}) }}
+        {{ form_errors(form) }}
+        <section class="admin-user-editor__section" aria-labelledby="user-data-title">
+            <div class="admin-user-editor__section-heading"><span>01</span><div><h2 id="user-data-title">Dados da conta</h2><p>Informações usadas para identificar e contatar o usuário.</p></div></div>
+            <div class="admin-user-editor__fields admin-user-editor__fields--two">
+                {{ form_row(form.name) }}
+                {{ form_row(form.email) }}
+                {{ form_row(form.phone) }}
+            </div>
+        </section>
+
+        <section class="admin-user-editor__section" aria-labelledby="user-access-title">
+            <div class="admin-user-editor__section-heading"><span>02</span><div><h2 id="user-access-title">Acesso e parceiro</h2><p>Selecione um perfil permitido para sua conta e vincule o parceiro quando necessário.</p></div></div>
+            <div class="admin-user-editor__fields">
+                <div class="admin-user-editor__role-field">{{ form_row(form.roles) }}</div>
+                <div data-partner-field>{{ form_row(form.partner) }}</div>
+            </div>
+        </section>
+
+        <section class="admin-user-editor__section" aria-labelledby="user-security-title">
+            <div class="admin-user-editor__section-heading"><span>03</span><div><h2 id="user-security-title">Senha e situação</h2><p>{{ is_new ? 'Crie uma senha segura com pelo menos 8 caracteres, incluindo letras e números.' : 'Deixe os campos de senha vazios para manter a senha atual.' }}</p></div></div>
+            <div class="admin-user-editor__fields admin-user-editor__fields--two admin-user-editor__password">
+                {{ form_row(form.plainPassword) }}
+                <div class="admin-user-editor__active">{{ form_row(form.isActive) }}</div>
+            </div>
+        </section>
+
+        <footer class="admin-user-editor__actions">
+            <a href="{{ path('admin_users_index') }}" class="admin-btn admin-btn--ghost">Cancelar</a>
+            <button type="submit" class="admin-btn admin-btn--primary">{{ is_new ? 'Criar usuário' : 'Salvar alterações' }}</button>
+        </footer>
+    {{ form_end(form) }}
+</div>

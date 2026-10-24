@@ -3,33 +3,5 @@
 {% block title %}Novo usuário — Administração{% endblock %}
 
 {% block content %}
-<div class="admin-page">
-    <header class="admin-page__header">
-        <div class="admin-page__heading">
-            <div class="admin-breadcrumb"><a href="{{ path('admin_users_index') }}">Usuários</a><span aria-hidden="true">/</span><span>Novo usuário</span></div>
-            <h1 class="admin-page__title">Novo usuário</h1>
-            <p class="admin-page__subtitle">O perfil define o que a pessoa pode consultar e administrar.</p>
-        </div>
-        <a href="{{ path('admin_users_index') }}" class="admin-btn admin-btn--ghost">← Voltar</a>
-    </header>
-
-    {{ form_start(form, {attr: {class: 'admin-form'}}) }}
-    {{ form_errors(form) }}
-    <section class="admin-card">
-        <div class="admin-form__grid admin-user-form__grid">
-            <div class="form-group">{{ form_row(form.name) }}</div>
-            <div class="form-group">{{ form_row(form.email) }}</div>
-            <div class="form-group">{{ form_row(form.phone) }}</div>
-            <div class="form-group">{{ form_row(form.partner) }}</div>
-            <div class="form-group admin-user-form__roles">{{ form_row(form.roles) }}</div>
-            <div class="form-group admin-user-form__password">{{ form_row(form.plainPassword) }}</div>
-            <div class="form-group admin-user-form__active">{{ form_row(form.isActive) }}</div>
-        </div>
-    </section>
-    <div class="admin-form__actions">
-        <a href="{{ path('admin_users_index') }}" class="admin-btn admin-btn--ghost">Cancelar</a>
-        <button type="submit" class="admin-btn admin-btn--primary">Criar usuário</button>
-    </div>
-    {{ form_end(form) }}
-</div>
+    {{ include('admin/user/_form.html.twig', {form: form, is_new: true}) }}
 {% endblock %}

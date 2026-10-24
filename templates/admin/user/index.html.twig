@@ -77,7 +77,9 @@
 
                     {% if can_edit_this_user %}
                         {% set inline_form = inline_forms[user.id] %}
-                        <details class="admin-user-edit-panel" id="{{ 'admin-user-edit-' ~ user.id }}" {% if submitted_user_id == user.id %}open{% endif %}>
+                        <div class="admin-user-card__actions">
+                            <a href="{{ path('admin_users_edit', {id: user.id}) }}" class="admin-btn admin-btn--primary">Editar usuário</a>
+                            <details class="admin-user-edit-panel" id="{{ 'admin-user-edit-' ~ user.id }}" {% if submitted_user_id == user.id %}open{% endif %}>
                             <summary>Editar este usuário</summary>
                             {{ form_start(inline_form, {'attr': {'class': 'admin-inline-form'}}) }}
                                 {{ form_errors(inline_form) }}
@@ -85,7 +87,7 @@
                                     {{ form_row(inline_form.name) }}
                                     {{ form_row(inline_form.email) }}
                                     {{ form_row(inline_form.phone) }}
-                                    {{ form_row(inline_form.partner) }}
+                                    <div data-partner-field>{{ form_row(inline_form.partner) }}</div>
                                 </div>
                                 <div class="admin-inline-form__section">{{ form_row(inline_form.roles) }}</div>
                                 <div class="admin-inline-form__grid admin-inline-form__grid--secondary">
@@ -98,13 +100,18 @@
                                 </div>
                             {{ form_end(inline_form) }}
                         </details>
-                        <form method="post" action="{{ path('admin_users_toggle', {id: user.id}) }}" class="admin-user-card__status-form">
-                            <input type="hidden" name="_token" value="{{ csrf_token('admin_user_toggle_' ~ user.id) }}">
-                            <button type="submit" class="admin-action">{{ user.isActive ? 'Desativar conta' : 'Reativar conta' }}</button>
-                        </form>
-                    {% elseif user.id == app.user.id %}
-                        <p class="admin-user-card__permission">Esta é sua conta. A edição fica disponível no menu do administrador.</p>
+                        {% if user.id != app.user.id %}
+                            <form method="post" action="{{ path('admin_users_toggle', {id: user.id}) }}" class="admin-user-card__status-form">
+                                <input type="hidden" name="_token" value="{{ csrf_token('admin_user_toggle_' ~ user.id) }}">
+                                <button type="submit" class="admin-action">{{ user.isActive ? 'Desativar conta' : 'Reativar conta' }}</button>
+                            </form>
+                        {% else %}
+                            <p class="admin-user-card__permission">Seu perfil e status ficam protegidos contra alterações nesta tela.</p>
+                        {% endif %}
+                        </div>
+
                     {% else %}
+
                         <p class="admin-user-card__permission">Visualização permitida; seu perfil não pode alterar esta conta.</p>
                     {% endif %}
                 </article>

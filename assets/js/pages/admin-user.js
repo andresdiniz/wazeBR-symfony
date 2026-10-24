@@ -9,7 +9,7 @@
  * Disparado pelo registry quando existe [data-admin-user].
  */
 
-const DEFAULT_REQUIRING = ['ROLE_PARTNER_ADMIN', 'ROLE_OPERATOR'];
+const DEFAULT_REQUIRING = ['ROLE_PARTNER_ADMIN', 'ROLE_OPERATOR', 'ROLE_FIELD_AGENT'];
 
 export function initAdminUser(doc = globalThis.document) {
     if (!doc) return;
@@ -43,33 +43,26 @@ function bindInlineEditors(doc) {
 }
 
 function bindRoleToggle(doc) {
-    const form         = doc.querySelector('[data-admin-user] form');
-    const roleSelect   = doc.querySelector('[data-role-select]');
-    const partnerField = doc.querySelector('[data-partner-field]');
-    const partnerInput = doc.querySelector('[data-partner-select]');
+    doc.querySelectorAll('[data-admin-user] form').forEach((form) => {
+        const roleInputs = Array.from(form.querySelectorAll('input[type="radio"]'))
+            .filter((input) => input.name.endsWith('[roles]'));
+        const partnerField = form.querySelector('[data-partner-field]');
+        const partnerInput = form.querySelector('[data-partner-select]');
 
-    if (!roleSelect || !partnerField || !partnerInput) return;
+        if (!roleInputs.length || !partnerField || !partnerInput) return;
 
-    // Permite override via atributo no <form>
-    const configured = form?.dataset.rolesRequiringPartner;
-    const requiring  = configured
-        ? configured.split(',').map((r) => r.trim()).filter(Boolean)
-        : DEFAULT_REQUIRING;
+        const update = () => {
+            const selectedRole = roleInputs.find((input) => input.checked)?.value;
+            const requiresPartner = DEFAULT_REQUIRING.includes(selectedRole);
+            const isGlobalRole = ['ROLE_ADMIN', 'ROLE_SUPER_ADMIN'].includes(selectedRole);
 
-    const update = () => {
-        const role     = roleSelect.value;
-        const required = requiring.includes(role);
+            partnerField.hidden = isGlobalRole;
+            partnerInput.required = requiresPartner;
+            if (isGlobalRole) partnerInput.value = '';
+        };
 
-        partnerField.hidden = !required;
-        partnerInput.required = required;
-
-        if (!required) {
-            partnerInput.value = '';
-        }
-    };
-
-    roleSelect.addEventListener('change', update);
-    update();
+        roleInputs.forEach((input) => input.addEventListener('change', update));
+        update();
+    });
 }
-
 export default initAdminUser;

@@ -193,7 +193,16 @@ final class AdminUserController extends AbstractController
     private function createUserForm(User $user, bool $requirePassword, ?string $name = null): FormInterface
     {
         $roles = $this->availableRoles();
+        $profileLocked = $user->getId() !== null && $user->getId() === $this->getUser()?->getId();
         $roleValues = array_values($roles);
+        if ($profileLocked) {
+            foreach ($user->getRoles() as $currentRole) {
+                if (!in_array($currentRole, $roleValues, true)) {
+                    $roles['Seu perfil atual (bloqueado)'] = $currentRole;
+                    $roleValues[] = $currentRole;
+                }
+            }
+        }
         $selectedRoles = array_values(array_intersect($user->getRoles(), $roleValues));
         $selectedRole = $selectedRoles[0] ?? User::ROLE_VIEWER;
         $options = [
@@ -202,6 +211,7 @@ final class AdminUserController extends AbstractController
             'roles_data' => $selectedRole,
             'partner_data' => $this->isPartnerAdmin() ? $this->getUser()->getPartner() : $user->getPartner(),
             'partner_locked' => $this->isPartnerAdmin(),
+            'profile_locked' => $user->getId() !== null && $user->getId() === $this->getUser()?->getId(),
         ];
 
         return $name === null
@@ -281,7 +291,7 @@ final class AdminUserController extends AbstractController
     private function canManageUser(User $target): bool
     {
         if ($target->getId() === $this->getUser()?->getId()) {
-            return false;
+            return true;
         }
         $targetRoles = $target->getRoles();
         if (in_array(User::ROLE_SUPER_ADMIN, $targetRoles, true) && !$this->isSuperAdmin()) {

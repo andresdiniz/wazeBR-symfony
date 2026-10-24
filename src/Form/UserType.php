@@ -46,8 +46,8 @@ final class UserType extends AbstractType
                 'required' => false,
                 'mapped' => false,
                 'data' => $options['partner_data'],
-                'disabled' => $options['partner_locked'],
-                'attr' => ['class' => 'form-select'],
+                'disabled' => $options['partner_locked'] || $options['profile_locked'],
+                'attr' => ['class' => 'form-select', 'data-partner-select' => ''],
                 'help' => 'Os perfis de parceiro, operador e agente de via precisam de vínculo com parceiro.',
             ])
             ->add('roles', ChoiceType::class, [
@@ -57,6 +57,7 @@ final class UserType extends AbstractType
                 'multiple' => false,
                 'expanded' => true,
                 'required' => true,
+                'disabled' => $options['profile_locked'],
                 'mapped' => false,
                 'attr' => ['class' => 'admin-role-picker'],
                 'help' => 'Escolha apenas o perfil necessário para as funções deste usuário.',
@@ -64,6 +65,7 @@ final class UserType extends AbstractType
             ->add('isActive', CheckboxType::class, [
                 'label' => 'Conta ativa',
                 'required' => false,
+                'disabled' => $options['profile_locked'],
             ]);
 
         $builder->add('plainPassword', RepeatedType::class, [
@@ -97,11 +99,13 @@ final class UserType extends AbstractType
             'roles_data' => User::ROLE_VIEWER,
             'partner_data' => null,
             'partner_locked' => false,
+            'profile_locked' => false,
         ]);
         $resolver->setAllowedTypes('require_password', 'bool');
         $resolver->setAllowedTypes('available_roles', 'array');
         $resolver->setAllowedTypes('roles_data', 'string');
         $resolver->setAllowedTypes('partner_data', ['null', Partner::class]);
         $resolver->setAllowedTypes('partner_locked', 'bool');
+        $resolver->setAllowedTypes('profile_locked', 'bool');
     }
 }
