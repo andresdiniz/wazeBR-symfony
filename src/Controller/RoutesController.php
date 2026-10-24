@@ -63,7 +63,7 @@ final class RoutesController extends AbstractController
 
     // ─── Detalhe da rota ──────────────────────────────────────────────────────
 
-    #[Route('/{id}', name: 'show', requirements: ['id' => '\d+'], methods: ['GET'])]
+    #[Route('/{id}', name: 'show', requirements: ['id' => '\\d+'], methods: ['GET'])]
     public function show(
         int $id,
         RouteDetailRepository $repository,
@@ -75,10 +75,6 @@ final class RoutesController extends AbstractController
 
         $userId = (int) $this->scope->user()->getId();
 
-        // As chaves de $detail são exatamente as variáveis do template
-        // (route, current, stats, heatmap, timeline, byHour, byDow, jamDistribution,
-        //  topSubRoutes, irregularities, nearbyAlerts, occurrences, routePolyline,
-        //  subRoutesPolyline).
         return $this->render('routes/show.html.twig', $detail + [
             'partner'        => $partner,
             'isFavorite'     => $favorites->isFavorite($userId, $id),
@@ -99,7 +95,7 @@ final class RoutesController extends AbstractController
      *
      * Tipo desconhecido → 400.
      */
-    #[Route('/{id}/export.csv', name: 'export_csv', requirements: ['id' => '\d+'], methods: ['GET'])]
+    #[Route('/{id}/export.csv', name: 'export_csv', requirements: ['id' => '\\d+'], methods: ['GET'])]
     public function exportCsv(
         int $id,
         Request $request,
@@ -130,15 +126,15 @@ final class RoutesController extends AbstractController
      *   ?days=30   janela (1–365, padrão 30)
      *   ?sep=,     separador: `;` (padrão, Excel pt-BR) ou `,` (pandas / tidyverse)
      */
-    #[Route('/{id}/export/historico.csv', name: 'export_historico_csv', requirements: ['id' => '\d+'], methods: ['GET'])]
+    #[Route('/{id}/export/historico.csv', name: 'export_historico_csv', requirements: ['id' => '\\d+'], methods: ['GET'])]
     public function exportHistoricoCsv(
         int $id,
         Request $request,
         RouteDetailRepository $repository,
         RouteCsvExporter $exporter,
     ): StreamedResponse {
-        $days = max(1, min(365, (int) $request->query->get('days', 30)));
-        $sep  = (string) $request->query->get('sep', ';') === ',' ? ',' : ';';
+        $days = $this->validateDays($request->query->get('days', '30'));
+        $sep  = $this->validateSep($request->query->get('sep', ';'));
 
         $historico = $repository->getHistorico($this->resolvePartnerScope(), $id, $days)
             ?? throw $this->createNotFoundException('Rota não encontrada.');
@@ -177,20 +173,20 @@ final class RoutesController extends AbstractController
         Connection $connection,
     ): Response {
         $partner = $this->resolvePartnerScope();
-        $aId = (int) $request->query->get('a', 0);
-        $bId = (int) $request->query->get('b', 0);
-
-        $allRoutes = $this->getRoutesList($connection, $partner);
+        $aId = $this->validateRouteId($request->query->get('a', '0'));
+        $bId = $this->validateRouteId($request->query->get('b', '0'));
 
         if ($aId <= 0 || $bId <= 0 || $aId === $bId) {
             return $this->render('routes/compare.html.twig', [
-                'routes'    => $allRoutes,
+                'routes'    => $this->getRoutesList($connection, $partner),
                 'compare'   => null,
                 'aId'       => $aId,
                 'bId'       => $bId,
                 'partner'   => $partner,
             ]);
         }
+
+        $allRoutes = $this->getRoutesList($connection, $partner);
 
         $compare = $repository->compare($partner, $aId, $bId);
         if ($compare === null) {
@@ -261,5 +257,34 @@ final class RoutesController extends AbstractController
             return $out;
         }
         return $value;
+    }
+
+    // ─── Validação de parâmetros ──────────────────────────────────────────────
+
+    private function validateDays(mixed $value): int
+    {
+        $days = (int) $value;
+        if ($days < 1 || $days > 365) {
+            throw new BadRequestHttpException('Parâmetro days deve estar entre 1 e 365.');
+        }
+        return $days;
+    }
+
+    private function validateSep(mixed $value): string
+    {
+        $sep = (string) $value;
+        if ($sep !== ',' && $sep !== ';') {
+            throw new BadRequestHttpException('Parâmetro sep deve ser "," ou ";".');
+        }
+        return $sep;
+    }
+
+    private function validateRouteId(mixed $value): int
+    {
+        $id = (int) $value;
+        if ($id < 0) {
+            throw new BadRequestHttpException('IDs de rota devem ser inteiros não negativos.');
+        }
+        return $id;
     }
 }
