@@ -64,8 +64,9 @@ final class MainSchedule implements ScheduleProviderInterface
 
             // ── Semáforos ───────────────────────────────────────────
             // Evite '1 seconds': use worker dedicado em produção.
-            ->add(RecurringMessage::every('5 seconds', new RunCommandMessage(
-                'app:traffic-light:poll --no-interaction'
-            )));
+            //->add(RecurringMessage::every('5 seconds', new RunCommandMessage(
+                //'app:traffic-light:poll --no-interaction'
+            //)))
+            ;
     }
 }
