@@ -17,6 +17,8 @@ use Symfony\Component\Lock\Store\FlockStore;
 #[AsCommand(name: 'app:tvt:evaluate-congestion-forecast', description: 'Capture future TVT forecasts or evaluate captured forecasts against observations.')]
 final class EvaluateCongestionForecastCommand extends Command
 {
+    private const BATCH_SIZE = 200;
+
     public function __construct(
         private readonly Connection $db,
         private readonly ForecastErrorExplainerService $explainer,
@@ -77,48 +79,75 @@ final class EvaluateCongestionForecastCommand extends Command
             $seconds = filter_var($input->getOption('tolerance-seconds'), FILTER_VALIDATE_FLOAT);
             $percent = filter_var($input->getOption('tolerance-percent'), FILTER_VALIDATE_FLOAT);
             if ($minSamples === false || $minSamples < 1 || $span === false || $span < 0 || $span > 1 || $seconds === false || $seconds < 0 || $percent === false || $percent < 0) { throw new \InvalidArgumentException('Invalid evaluation thresholds.'); }
-            $params = ['from' => $day->setTimezone($utc)->format('Y-m-d H:i:s'), 'to' => $day->modify('+1 day')->setTimezone($utc)->format('Y-m-d H:i:s')];
-            $sql = 'SELECT * FROM waze_tvt_forecast_audit WHERE target_start_at >= :from AND target_start_at < :to';
-            if ($route !== null) { $sql .= ' AND route_id = :route'; $params['route'] = (int) $route; }
-            $rows = $this->db->fetchAllAssociative($sql, $params);
-            $errors = []; $hits = 0; $missing = 0; $pending = 0;
-            foreach ($rows as $row) {
-                $start = new \DateTimeImmutable($row['target_start_at'], $utc);
-                $end = new \DateTimeImmutable($row['target_end_at'], $utc);
-                if ($end > $now) { ++$pending; continue; }
-                $actual = $this->db->fetchAssociative('SELECT AVG(time) AS actual, COUNT(*) AS samples, MIN(recorded_at) AS first_at, MAX(recorded_at) AS last_at FROM waze_tvt_route_snapshot WHERE route_id = :route AND recorded_at >= :start AND recorded_at < :end AND time IS NOT NULL AND time >= 0', ['route' => (int) $row['route_id'], 'start' => $row['target_start_at'], 'end' => $row['target_end_at']]);
-                $observedSpan = $actual['first_at'] === null ? 0 : (new \DateTimeImmutable($actual['last_at'], $utc))->getTimestamp() - (new \DateTimeImmutable($actual['first_at'], $utc))->getTimestamp();
-                $valid = (int) $actual['samples'] >= $minSamples && $actual['actual'] !== null && $observedSpan >= ($end->getTimestamp() - $start->getTimestamp()) * $span;
-                $error = $valid ? (float) $row['predicted_time'] - (float) $actual['actual'] : null;
-                $hit = $valid ? abs($error) <= max($seconds, (float) $actual['actual'] * $percent / 100) : null;
 
-                $explanation = null;
-                $causeType = null;
-                if ($valid && $hit === false) {
-                    $result = $this->explainer->explain((int) $row['route_id'], $start, $end, $error);
-                    $explanation = $result['explanation'];
-                    $causeType = $result['cause'];
+            $errors = []; $hits = 0; $missing = 0; $pending = 0; $total = 0;
+            $lastId = 0;
+
+            // Processa em lotes para reduzir pico de memória (especialmente em dev)
+            while (true) {
+                $params = [
+                    'from' => $day->setTimezone($utc)->format('Y-m-d H:i:s'),
+                    'to' => $day->modify('+1 day')->setTimezone($utc)->format('Y-m-d H:i:s'),
+                    'last_id' => $lastId,
+                    'batch' => self::BATCH_SIZE,
+                ];
+                $sql = 'SELECT * FROM waze_tvt_forecast_audit WHERE target_start_at >= :from AND target_start_at < :to AND id > :last_id';
+                if ($route !== null) { $sql .= ' AND route_id = :route'; $params['route'] = (int) $route; }
+                $sql .= ' ORDER BY id ASC LIMIT :batch';
+
+                $rows = $this->db->fetchAllAssociative($sql, $params);
+
+                if ($rows === []) {
+                    break;
                 }
 
-                $this->db->update('waze_tvt_forecast_audit', [
-                    'actual_time' => $actual['actual'],
-                    'actual_samples' => (int) $actual['samples'],
-                    'error_seconds' => $error,
-                    'within_tolerance' => $hit === null ? null : (int) $hit,
-                    'status' => $valid ? 'evaluated' : 'insufficient',
-                    'evaluated_at' => $now->format('Y-m-d H:i:s'),
-                    'error_explanation' => $explanation,
-                    'error_cause_type' => $causeType,
-                ], ['id' => (int) $row['id']]);
-                if (!$valid) { ++$missing; continue; }
-                $errors[] = $error;
-                if ($hit) { ++$hits; }
+                foreach ($rows as $row) {
+                    $lastId = (int) $row['id'];
+                    $total++;
+
+                    $start = new \DateTimeImmutable($row['target_start_at'], $utc);
+                    $end = new \DateTimeImmutable($row['target_end_at'], $utc);
+                    if ($end > $now) { ++$pending; continue; }
+                    $actual = $this->db->fetchAssociative('SELECT AVG(time) AS actual, COUNT(*) AS samples, MIN(recorded_at) AS first_at, MAX(recorded_at) AS last_at FROM waze_tvt_route_snapshot WHERE route_id = :route AND recorded_at >= :start AND recorded_at < :end AND time IS NOT NULL AND time >= 0', ['route' => (int) $row['route_id'], 'start' => $row['target_start_at'], 'end' => $row['target_end_at']]);
+                    $observedSpan = $actual['first_at'] === null ? 0 : (new \DateTimeImmutable($actual['last_at'], $utc))->getTimestamp() - (new \DateTimeImmutable($actual['first_at'], $utc))->getTimestamp();
+                    $valid = (int) $actual['samples'] >= $minSamples && $actual['actual'] !== null && $observedSpan >= ($end->getTimestamp() - $start->getTimestamp()) * $span;
+                    $error = $valid ? (float) $row['predicted_time'] - (float) $actual['actual'] : null;
+                    $hit = $valid ? abs($error) <= max($seconds, (float) $actual['actual'] * $percent / 100) : null;
+
+                    $explanation = null;
+                    $causeType = null;
+                    if ($valid && $hit === false) {
+                        $result = $this->explainer->explain((int) $row['route_id'], $start, $end, $error);
+                        $explanation = $result['explanation'];
+                        $causeType = $result['cause'];
+                    }
+
+                    $this->db->update('waze_tvt_forecast_audit', [
+                        'actual_time' => $actual['actual'],
+                        'actual_samples' => (int) $actual['samples'],
+                        'error_seconds' => $error,
+                        'within_tolerance' => $hit === null ? null : (int) $hit,
+                        'status' => $valid ? 'evaluated' : 'insufficient',
+                        'evaluated_at' => $now->format('Y-m-d H:i:s'),
+                        'error_explanation' => $explanation,
+                        'error_cause_type' => $causeType,
+                    ], ['id' => (int) $row['id']]);
+
+                    if (!$valid) { ++$missing; continue; }
+                    $errors[] = $error;
+                    if ($hit) { ++$hits; }
+                }
+
+                // Libera memória entre lotes
+                unset($rows);
+                gc_collect_cycles();
             }
+
             $n = count($errors);
             $io->title(sprintf('TVT forecast audit: %s (%s)', $date, $tz->getName()));
-            $io->table(['Metric', 'Value'], [['Captured emissions', count($rows)], ['Evaluated', $n], ['Insufficient observations', $missing], ['Not yet completed', $pending], ['MAE (s)', $n ? round(array_sum(array_map('abs', $errors)) / $n, 2) : 'N/A'], ['RMSE (s)', $n ? round(sqrt(array_sum(array_map(static fn(float $e): float => $e * $e, $errors)) / $n), 2) : 'N/A'], ['Bias predicted - actual (s)', $n ? round(array_sum($errors) / $n, 2) : 'N/A'], ['Within tolerance (%)', $n ? round(100 * $hits / $n, 2) : 'N/A']]);
-            $io->note(sprintf('Tolerance: max(%.2f seconds, %.2f%% of actual). Minimum %d samples; observation span >= %.0f%% of window. Negative bias means underestimated travel time. Metrics are per captured emission, not unique route/window.', $seconds, $percent, $minSamples, 100 * $span));
-            if (!$rows) { $io->warning('No captured emissions for this date. Run --capture before future target windows. This does not audit the independently calculated six-hour route endpoint.'); }
+            $io->table(['Metric', 'Value'], [['Captured emissions', $total], ['Evaluated', $n], ['Insufficient observations', $missing], ['Not yet completed', $pending], ['MAE (s)', $n ? round(array_sum(array_map('abs', $errors)) / $n, 2) : 'N/A'], ['RMSE (s)', $n ? round(sqrt(array_sum(array_map(static fn(float $e): float => $e * $e, $errors)) / $n), 2) : 'N/A'], ['Bias predicted - actual (s)', $n ? round(array_sum($errors) / $n, 2) : 'N/A'], ['Within tolerance (%)', $n ? round(100 * $hits / $n, 2) : 'N/A']]);
+            $io->note(sprintf('Tolerance: max(%.2f seconds, %.2f%% of actual). Minimum %d samples; observation span >= %.0f%% of window. Negative bias means underestimated travel time. Metrics are per captured emission, not unique route/window. Processed in batches of %d.', $seconds, $percent, $minSamples, 100 * $span, self::BATCH_SIZE));
+            if (!$total) { $io->warning('No captured emissions for this date. Run --capture before future target windows. This does not audit the independently calculated six-hour route endpoint.'); }
             return Command::SUCCESS;
         } catch (\Throwable $e) {
             $io->error($e->getMessage());
