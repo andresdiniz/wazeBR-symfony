@@ -8,8 +8,9 @@
  *   - Previsão                      próximas 6 h
  *   - Referência histórica          tempo "normal" do horário
  * + cartões de precisão do modelo (auditoria dos últimos 7 dias).
+ * + lista de erros de previsão com explicação (clima/alerta Waze).
  *
- * Fonte: GET /routes/{id}/forecast.json  (items, actual, pastForecasts, accuracy).
+ * Fonte: GET /routes/{id}/forecast.json  (items, actual, pastForecasts, accuracy, forecastErrors).
  */
 
 const COLORS = {
@@ -95,6 +96,11 @@ function createPanel(page) {
             Roxo: previsão para as próximas horas. Cinza: referência histórica.
             Horários sem amostras não são tratados como trânsito livre.
         </p>
+
+        <section class="rs-forecast__errors" data-forecast-errors hidden aria-label="Erros de previsão e causas">
+            <h3>Erros de previsão e causas</h3>
+            <div class="rs-forecast__errors-list" data-forecast-errors-list></div>
+        </section>
     `;
 
     return panel;
@@ -144,6 +150,59 @@ function renderAccuracy(panel, accuracy) {
     });
 
     box.hidden = false;
+}
+
+function renderForecastErrors(panel, errors) {
+    const section = panel.querySelector('[data-forecast-errors]');
+    const list = panel.querySelector('[data-forecast-errors-list]');
+    if (!section || !list) return;
+
+    list.replaceChildren();
+
+    if (!Array.isArray(errors) || errors.length === 0) {
+        section.hidden = true;
+        return;
+    }
+
+    const causeLabels = {
+        alerta_waze: 'Alerta Waze',
+        clima: 'Clima',
+        sem_causa_identificada: 'Sem causa identificada',
+        indisponivel: 'Indisponível',
+    };
+
+    errors.forEach((e) => {
+        const item = document.createElement('div');
+        item.className = 'rs-forecast__error';
+
+        const head = document.createElement('div');
+        head.className = 'rs-forecast__error-head';
+
+        const when = document.createElement('strong');
+        when.textContent = new Date(e.targetStartAt).toLocaleString('pt-BR', {
+            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+        });
+
+        const badge = document.createElement('span');
+        badge.className = 'rs-forecast__error-badge';
+        badge.textContent = causeLabels[e.causeType] ?? e.causeType ?? 'Erro';
+
+        head.append(when, badge);
+        item.append(head);
+
+        const err = document.createElement('span');
+        err.className = 'rs-forecast__error-value';
+        err.textContent = `Erro: ${signedSeconds(e.errorSeconds)}`;
+        item.append(err);
+
+        const explanation = document.createElement('p');
+        explanation.textContent = e.explanation || 'Sem explicação disponível para este erro.';
+        item.append(explanation);
+
+        list.append(item);
+    });
+
+    section.hidden = false;
 }
 
 function renderContext(panel, duration, signals) {
@@ -413,6 +472,7 @@ export async function init(root = document) {
 
         renderAccuracy(panel, data.accuracy ?? null);
         renderContext(panel, data.congestionDuration ?? null, data.nearbySignals ?? []);
+        renderForecastErrors(panel, data.forecastErrors ?? []);
         drawChart(panel, data, timeZone);
     } catch (error) {
         console.error('[WazeBR route-forecast]', error);
