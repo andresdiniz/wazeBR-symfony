@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace App\Scheduler;
 
-use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Console\Messenger\RunCommandMessage;
 use Symfony\Component\Scheduler\Attribute\AsSchedule;
 use Symfony\Component\Scheduler\RecurringMessage;
 use Symfony\Component\Scheduler\Schedule;
 use Symfony\Component\Scheduler\ScheduleProviderInterface;
+use Symfony\Contracts\Cache\CacheInterface;
 
 #[AsSchedule('default')]
 final class MainSchedule implements ScheduleProviderInterface
 {
     public function __construct(
-        private readonly CacheItemPoolInterface $cache,
+        private readonly CacheInterface $cache,
     ) {
     }
 
@@ -24,89 +24,48 @@ final class MainSchedule implements ScheduleProviderInterface
         return (new Schedule())
             ->stateful($this->cache)
 
-            // ── Partner Feed JSON (atualiza a cada minuto) ──────────────────
-            ->add(
-                RecurringMessage::every(
-                    '1 minute',
-                    new RunCommandMessage('app:partner-feed:update-json --no-interaction'),
-                ),
-            )
+            // ── Coleta de feeds ─────────────────────────────────────
+            ->add(RecurringMessage::every('1 minute', new RunCommandMessage(
+                'app:partner-feed:update-json --no-interaction'
+            )))
 
-            // ── Waze feed (alerts/jams) ─────────────────────────────────────
-            ->add(
-                RecurringMessage::every(
-                    '2 minutes',
-                    new RunCommandMessage('app:fetch-waze-feed --no-interaction'),
-                ),
-            )
+            ->add(RecurringMessage::every('2 minutes', new RunCommandMessage(
+                'app:fetch-waze-feed --no-interaction'
+            )))
 
-            // ── Waze TVT (rotas) ────────────────────────────────────────────
-            ->add(
-                RecurringMessage::every(
-                    '2 minutes',
-                    new RunCommandMessage('app:fetch:waze:tvt --no-interaction'),
-                ),
-            )
+            ->add(RecurringMessage::every('2 minutes', new RunCommandMessage(
+                'app:fetch:waze:tvt --no-interaction'
+            )))
 
-            // ── CEMADEN Hidro (nível do rio + chuva) ───────────────────────
-            ->add(
-                RecurringMessage::every(
-                    '10 minutes',
-                    new RunCommandMessage('app:fetch:cemaden:hidro --no-interaction'),
-                ),
-            )
+            ->add(RecurringMessage::every('10 minutes', new RunCommandMessage(
+                'app:fetch:cemaden:hidro --no-interaction'
+            )))
 
-            // ── CEMADEN Pluviométrico (chuva acumulada por estação) ────────
-            ->add(
-                RecurringMessage::every(
-                    '10 minutes',
-                    new RunCommandMessage('app:fetch:cemaden:pluviometric --no-interaction'),
-                ),
-            )
+            ->add(RecurringMessage::every('10 minutes', new RunCommandMessage(
+                'app:fetch:cemaden:pluviometric --no-interaction'
+            )))
 
-            // ── Clima (Open-Meteo) ─────────────────────────────────────────
-            ->add(
-                RecurringMessage::every(
-                    '5 minutes',
-                    new RunCommandMessage('app:weather:fetch-observations --no-interaction'),
-                ),
-            )
+            ->add(RecurringMessage::every('5 minutes', new RunCommandMessage(
+                'app:weather:fetch-observations --no-interaction'
+            )))
 
-            ->add(
-                RecurringMessage::every(
-                    '5 minutes',
-                    new RunCommandMessage(
-                        'app:tvt:evaluate-congestion-forecast --no-interaction'
-                    ),
-                ),
-            )
+            // ── Análise e previsão ──────────────────────────────────
+            ->add(RecurringMessage::every('5 minutes', new RunCommandMessage(
+                'app:tvt:evaluate-congestion-forecast --no-interaction'
+            )))
 
-            // ── Previsão: reprocessada a cada 5 min, em janelas de 15 min pelas próximas 6 h ───────
-            ->add(
-                RecurringMessage::every(
-                    '5 minutes',
-                    new RunCommandMessage(
-                        'app:tvt:refresh-congestion-forecast --slot=15 --slots-ahead=24 --no-interaction'
-                    ),
-                ),
-            )
+            ->add(RecurringMessage::every('15 minutes', new RunCommandMessage(
+                'app:tvt:refresh-congestion-forecast --slot=15 --slots-ahead=24 --no-interaction'
+            )))
 
-            // ── Auditoria: captura as previsões futuras disponíveis ───────
-            ->add(
-                RecurringMessage::every(
-                    '1 minute',
-                    new RunCommandMessage(
-                        'app:tvt:evaluate-congestion-forecast --capture --no-interaction'
-                    ),
-                ),
-            )
+            ->add(RecurringMessage::every('5 minutes', new RunCommandMessage(
+                'app:tvt:evaluate-congestion-forecast --capture --no-interaction'
+            )))
 
-            // ── Semáforos (leitura de todos os controladores ativos) ───────
-            ->add(
-                RecurringMessage::every(
-                    '1 seconds',
-                    new RunCommandMessage('app:traffic-light:poll --no-interaction'),
-                ),
-            );
+            // ── Semáforos ───────────────────────────────────────────
+            // Evite '1 seconds': use worker dedicado em produção.
+            ->add(RecurringMessage::every('5 seconds', new RunCommandMessage(
+                'app:traffic-light:poll --no-interaction'
+            )));
     }
 }
