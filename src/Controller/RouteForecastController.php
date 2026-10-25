@@ -30,7 +30,7 @@ final class RouteForecastController extends AbstractController
     #[Route(
         '',
         name: 'show',
-        requirements: ['id' => '\d+'],
+        requirements: ['id' => '\\d+'],
         methods: ['GET'],
     )]
     public function show(int $id): JsonResponse
@@ -187,6 +187,23 @@ final class RouteForecastController extends AbstractController
         $detail = $this->routeDetails->getRouteDetail($partner, $id);
         $nearbySignals = array_slice(array_values(array_filter($detail['nearbyAlerts'] ?? [], static fn (array $alert): bool => ($alert['isRecent'] ?? false) === true)), 0, 8);
 
+        // Erros de previsão recentes com explicação de causa
+        $forecastErrors = $this->connection->fetchAllAssociative(
+            "SELECT target_start_at, target_end_at, predicted_time, actual_time,\n                    error_seconds, within_tolerance, error_explanation, error_cause_type\n             FROM waze_tvt_forecast_audit\n             WHERE route_id = :route_id\n               AND status = 'evaluated'\n               AND error_seconds IS NOT NULL\n               AND within_tolerance = 0\n               AND target_start_at >= :since\n             ORDER BY target_start_at DESC\n             LIMIT 20",
+            ['route_id' => $id, 'since' => (new \DateTimeImmutable('-7 days', $utc))->format('Y-m-d H:i:s')],
+        );
+
+        $forecastErrors = array_map(static fn (array $r): array => [
+            'targetStartAt' => (new \DateTimeImmutable((string) $r['target_start_at'], $utc))->format(DATE_ATOM),
+            'targetEndAt' => (new \DateTimeImmutable((string) $r['target_end_at'], $utc))->format(DATE_ATOM),
+            'predictedTime' => round((float) $r['predicted_time'], 1),
+            'actualTime' => $r['actual_time'] !== null ? round((float) $r['actual_time'], 1) : null,
+            'errorSeconds' => round((float) $r['error_seconds'], 1),
+            'withinTolerance' => (bool) $r['within_tolerance'],
+            'explanation' => $r['error_explanation'],
+            'causeType' => $r['error_cause_type'],
+        ], $forecastErrors);
+
         $response = $this->json([
             'ok' => true,
             'routeId' => $id,
@@ -218,6 +235,10 @@ final class RouteForecastController extends AbstractController
             'pastForecasts' => $this->insights->pastForecasts($id, 6),
             'accuracy' => $this->insights->accuracy($id, 7),
             'congestionDuration' => $this->insights->congestionDuration($id, 30),
+
+            // ── Erros de previsão com explicação ────────────────────────
+            'forecastErrors' => $forecastErrors,
+
             'nearbySignals' => array_map(static fn (array $alert): array => [
                 'type' => $alert['typeLabel'] ?? $alert['type'] ?? 'Alerta',
                 'subtype' => $alert['subtype'] ?? null,

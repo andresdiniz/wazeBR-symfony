@@ -3,6 +3,7 @@
 declare(strict_types=1);
 namespace App\Command;
 
+use App\Service\ForecastErrorExplainerService;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -16,7 +17,13 @@ use Symfony\Component\Lock\Store\FlockStore;
 #[AsCommand(name: 'app:tvt:evaluate-congestion-forecast', description: 'Capture future TVT forecasts or evaluate captured forecasts against observations.')]
 final class EvaluateCongestionForecastCommand extends Command
 {
-    public function __construct(private readonly Connection $db) { parent::__construct(); }
+    public function __construct(
+        private readonly Connection $db,
+        private readonly ForecastErrorExplainerService $explainer,
+    ) {
+        parent::__construct();
+    }
+
     protected function configure(): void
     {
         $this->addOption('capture', null, InputOption::VALUE_NONE, 'Capture current forecasts BEFORE their target window; run frequently.')
@@ -29,6 +36,7 @@ final class EvaluateCongestionForecastCommand extends Command
             ->addOption('tolerance-seconds', null, InputOption::VALUE_REQUIRED, 'Absolute tolerance.', '10')
             ->addOption('tolerance-percent', null, InputOption::VALUE_REQUIRED, 'Relative tolerance in percent.', '15');
     }
+
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
@@ -83,7 +91,25 @@ final class EvaluateCongestionForecastCommand extends Command
                 $valid = (int) $actual['samples'] >= $minSamples && $actual['actual'] !== null && $observedSpan >= ($end->getTimestamp() - $start->getTimestamp()) * $span;
                 $error = $valid ? (float) $row['predicted_time'] - (float) $actual['actual'] : null;
                 $hit = $valid ? abs($error) <= max($seconds, (float) $actual['actual'] * $percent / 100) : null;
-                $this->db->update('waze_tvt_forecast_audit', ['actual_time' => $actual['actual'], 'actual_samples' => (int) $actual['samples'], 'error_seconds' => $error, 'within_tolerance' => $hit === null ? null : (int) $hit, 'status' => $valid ? 'evaluated' : 'insufficient', 'evaluated_at' => $now->format('Y-m-d H:i:s')], ['id' => (int) $row['id']]);
+
+                $explanation = null;
+                $causeType = null;
+                if ($valid && $hit === false) {
+                    $result = $this->explainer->explain((int) $row['route_id'], $start, $end, $error);
+                    $explanation = $result['explanation'];
+                    $causeType = $result['cause'];
+                }
+
+                $this->db->update('waze_tvt_forecast_audit', [
+                    'actual_time' => $actual['actual'],
+                    'actual_samples' => (int) $actual['samples'],
+                    'error_seconds' => $error,
+                    'within_tolerance' => $hit === null ? null : (int) $hit,
+                    'status' => $valid ? 'evaluated' : 'insufficient',
+                    'evaluated_at' => $now->format('Y-m-d H:i:s'),
+                    'error_explanation' => $explanation,
+                    'error_cause_type' => $causeType,
+                ], ['id' => (int) $row['id']]);
                 if (!$valid) { ++$missing; continue; }
                 $errors[] = $error;
                 if ($hit) { ++$hits; }
