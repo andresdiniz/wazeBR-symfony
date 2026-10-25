@@ -89,11 +89,11 @@ final class EvaluateCongestionForecastCommand extends Command
                     'from' => $day->setTimezone($utc)->format('Y-m-d H:i:s'),
                     'to' => $day->modify('+1 day')->setTimezone($utc)->format('Y-m-d H:i:s'),
                     'last_id' => $lastId,
-                    'batch' => self::BATCH_SIZE,
                 ];
                 $sql = 'SELECT * FROM waze_tvt_forecast_audit WHERE target_start_at >= :from AND target_start_at < :to AND id > :last_id';
                 if ($route !== null) { $sql .= ' AND route_id = :route'; $params['route'] = (int) $route; }
-                $sql .= ' ORDER BY id ASC LIMIT :batch';
+                // LIMIT deve ser literal inteiro (MariaDB/MySQL não aceita parâmetro nomeado em LIMIT)
+                $sql .= ' ORDER BY id ASC LIMIT ' . self::BATCH_SIZE;
 
                 $rows = $this->db->fetchAllAssociative($sql, $params);
 
