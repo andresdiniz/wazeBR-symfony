@@ -29,7 +29,8 @@ final class EvaluateCongestionForecastCommand extends Command
     protected function configure(): void
     {
         $this->addOption('capture', null, InputOption::VALUE_NONE, 'Capture current forecasts BEFORE their target window; run frequently.')
-            ->addOption('date', null, InputOption::VALUE_REQUIRED, 'Local target date YYYY-MM-DD; default yesterday.')
+            ->addOption('date', null, InputOption::VALUE_REQUIRED, 'Local target date YYYY-MM-DD (optional; overrides --hours).')
+            ->addOption('hours', null, InputOption::VALUE_REQUIRED, 'Evaluate only the last N hours (default 1). Use 0 with --date for full day.', '1')
             ->addOption('route', null, InputOption::VALUE_REQUIRED, 'Optional route ID.')
             ->addOption('timezone', null, InputOption::VALUE_REQUIRED, 'Reporting timezone.', 'America/Sao_Paulo')
             ->addOption('forecast-timezone', null, InputOption::VALUE_REQUIRED, 'Timezone of existing forecast_at values.', 'America/Sao_Paulo')
@@ -71,9 +72,26 @@ final class EvaluateCongestionForecastCommand extends Command
                 $io->success(sprintf('%d new forecast emissions captured. No historical backfill performed.', $count));
                 return Command::SUCCESS;
             }
-            $date = $input->getOption('date') ?? (new \DateTimeImmutable('yesterday', $tz))->format('Y-m-d');
-            $day = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $date, $tz);
-            if (!$day || $day->format('Y-m-d') !== $date) { throw new \InvalidArgumentException('Invalid date; use YYYY-MM-DD.'); }
+
+            // Determina a janela de avaliação: última hora (padrão) ou dia específico
+            $dateOption = $input->getOption('date');
+            $hoursOption = filter_var($input->getOption('hours'), FILTER_VALIDATE_INT);
+            if ($hoursOption === false || $hoursOption < 0) { throw new \InvalidArgumentException('Invalid hours; use a non-negative integer.'); }
+
+            if ($dateOption !== null) {
+                $day = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $dateOption, $tz);
+                if (!$day || $day->format('Y-m-d') !== $dateOption) { throw new \InvalidArgumentException('Invalid date; use YYYY-MM-DD.'); }
+                $windowFrom = $day->setTimezone($utc);
+                $windowTo = $day->modify('+1 day')->setTimezone($utc);
+                $label = $dateOption;
+            } else {
+                // Padrão: apenas a última hora (reduz drasticamente o consumo de memória)
+                $hours = max(1, $hoursOption);
+                $windowTo = $now;
+                $windowFrom = $now->modify(sprintf('-%d hours', $hours));
+                $label = sprintf('últimas %d hora(s)', $hours);
+            }
+
             $minSamples = filter_var($input->getOption('min-samples'), FILTER_VALIDATE_INT);
             $span = filter_var($input->getOption('min-span'), FILTER_VALIDATE_FLOAT);
             $seconds = filter_var($input->getOption('tolerance-seconds'), FILTER_VALIDATE_FLOAT);
@@ -86,8 +104,8 @@ final class EvaluateCongestionForecastCommand extends Command
             // Processa em lotes para reduzir pico de memória (especialmente em dev)
             while (true) {
                 $params = [
-                    'from' => $day->setTimezone($utc)->format('Y-m-d H:i:s'),
-                    'to' => $day->modify('+1 day')->setTimezone($utc)->format('Y-m-d H:i:s'),
+                    'from' => $windowFrom->format('Y-m-d H:i:s'),
+                    'to' => $windowTo->format('Y-m-d H:i:s'),
                     'last_id' => $lastId,
                 ];
                 $sql = 'SELECT * FROM waze_tvt_forecast_audit WHERE target_start_at >= :from AND target_start_at < :to AND id > :last_id';
@@ -144,10 +162,10 @@ final class EvaluateCongestionForecastCommand extends Command
             }
 
             $n = count($errors);
-            $io->title(sprintf('TVT forecast audit: %s (%s)', $date, $tz->getName()));
+            $io->title(sprintf('TVT forecast audit: %s (%s)', $label, $tz->getName()));
             $io->table(['Metric', 'Value'], [['Captured emissions', $total], ['Evaluated', $n], ['Insufficient observations', $missing], ['Not yet completed', $pending], ['MAE (s)', $n ? round(array_sum(array_map('abs', $errors)) / $n, 2) : 'N/A'], ['RMSE (s)', $n ? round(sqrt(array_sum(array_map(static fn(float $e): float => $e * $e, $errors)) / $n), 2) : 'N/A'], ['Bias predicted - actual (s)', $n ? round(array_sum($errors) / $n, 2) : 'N/A'], ['Within tolerance (%)', $n ? round(100 * $hits / $n, 2) : 'N/A']]);
-            $io->note(sprintf('Tolerance: max(%.2f seconds, %.2f%% of actual). Minimum %d samples; observation span >= %.0f%% of window. Negative bias means underestimated travel time. Metrics are per captured emission, not unique route/window. Processed in batches of %d.', $seconds, $percent, $minSamples, 100 * $span, self::BATCH_SIZE));
-            if (!$total) { $io->warning('No captured emissions for this date. Run --capture before future target windows. This does not audit the independently calculated six-hour route endpoint.'); }
+            $io->note(sprintf('Tolerance: max(%.2f seconds, %.2f%% of actual). Minimum %d samples; observation span >= %.0f%% of window. Negative bias means underestimated travel time. Processed in batches of %d. Window: %s.', $seconds, $percent, $minSamples, 100 * $span, self::BATCH_SIZE, $label));
+            if (!$total) { $io->warning('No captured emissions in this window. Run --capture before future target windows.'); }
             return Command::SUCCESS;
         } catch (\Throwable $e) {
             $io->error($e->getMessage());
