@@ -44,5 +44,13 @@ class WazeTvtForecastAudit
     private string $status = 'pending';
     #[ORM\Column(name: 'evaluated_at', type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $evaluatedAt = null;
+    #[ORM\Column(name: 'error_explanation', type: Types::TEXT, nullable: true)]
+    private ?string $errorExplanation = null;
+    #[ORM\Column(name: 'error_cause_type', length: 50, nullable: true)]
+    private ?string $errorCauseType = null;
     public function getId(): ?int { return $this->id; }
+    public function getErrorExplanation(): ?string { return $this->errorExplanation; }
+    public function setErrorExplanation(?string $v): static { $this->errorExplanation = $v; return $this; }
+    public function getErrorCauseType(): ?string { return $this->errorCauseType; }
+    public function setErrorCauseType(?string $v): static { $this->errorCauseType = $v; return $this; }
 }
