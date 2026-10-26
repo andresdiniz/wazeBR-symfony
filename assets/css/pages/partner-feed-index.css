@@ -232,3 +232,46 @@
     font-size: 0.875rem;
     margin: 0;
 }
+
+/* ─── Acessibilidade e estados ────────────────────────────────────────────── */
+
+.pf-btn:focus-visible {
+    outline: 2px solid var(--color-primary, #60a5fa);
+    outline-offset: 2px;
+}
+
+.pf-card {
+    transition: border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+}
+
+.pf-card:hover,
+.pf-card:focus-within {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+}
+
+.pf-card__name,
+.pf-card__location {
+    overflow-wrap: anywhere;
+}
+
+.pf-btn--icon[data-copied="true"] {
+    background: rgba(52, 211, 153, 0.12);
+}
+
+.pf-btn--icon[data-copied="error"] {
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.12);
+}
+
+@media (max-width: 480px) {
+    .pf-index { padding: 1rem; }
+    .pf-card__footer .pf-btn:not(.pf-btn--icon) { flex: 1 1 auto; justify-content: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pf-card,
+    .pf-btn { transition: none; }
+    .pf-card:hover,
+    .pf-card:focus-within { transform: none; }
+}

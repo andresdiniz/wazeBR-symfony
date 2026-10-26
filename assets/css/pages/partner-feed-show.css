@@ -295,3 +295,63 @@
 .pf-copy-btn[data-copied="true"] .pf-copy-btn__label-ok {
     display: inline;
 }
+
+/* ─── Prévia: ferramentas, resumo e realce do JSON ────────────────────────── */
+
+.pf-preview__tools {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    flex-wrap: wrap;
+}
+
+.pf-preview__meta {
+    font-size: 0.72rem;
+    color: var(--color-text-muted, #9ca3af);
+    font-variant-numeric: tabular-nums;
+}
+
+.pf-preview__meta[data-state="error"] { color: #f87171; font-weight: 600; }
+
+.pf-json__key { color: #7ee787; }
+.pf-json__string { color: #a5d6ff; }
+.pf-json__number { color: #ffa657; }
+.pf-json__bool { color: #d2a8ff; }
+.pf-json__null { color: #8b949e; font-style: italic; }
+
+.pf-preview__pre {
+    scrollbar-width: thin;
+    scrollbar-color: #30476a #0d1117;
+}
+
+.pf-preview__pre:focus-visible {
+    outline: 2px solid var(--color-primary, #60a5fa);
+    outline-offset: -2px;
+}
+
+.pf-copy-btn[data-copied="error"] {
+    color: #f87171;
+    border-color: rgba(248, 113, 113, 0.45);
+}
+
+.pf-copy-btn:focus-visible,
+.pf-show-btn:focus-visible,
+.pf-show__breadcrumb:focus-visible {
+    outline: 2px solid var(--color-primary, #60a5fa);
+    outline-offset: 2px;
+}
+
+.pf-show__actions { flex-wrap: wrap; }
+.pf-show__title,
+.pf-show__location { overflow-wrap: anywhere; }
+
+@media (max-width: 640px) {
+    .pf-show { padding: 1rem; }
+    .pf-show__header { flex-direction: column; align-items: stretch; }
+    .pf-show__actions .pf-show-btn { flex: 1 1 auto; justify-content: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pf-show-btn,
+    .pf-copy-btn { transition: none; }
+}

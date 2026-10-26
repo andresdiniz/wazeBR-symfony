@@ -1,46 +1,34 @@
 // assets/js/pages/partner-feed-index.js
 
-'use strict';
+import { copyText, flashButton } from '../core/clipboard.js';
 
 /**
- * Copia a URL do feed JSON de um parceiro e fornece feedback visual no botão.
+ * Copia a URL do feed JSON de um parceiro e dá feedback no botão.
+ * Delegação de evento: um único listener cobre todos os cards.
  */
-function initCopyFeedUrl(root = document) {
-    root.querySelectorAll('[data-copy-feed-url]').forEach((btn) => {
-        btn.addEventListener('click', async () => {
-            const url = btn.dataset.copyFeedUrl;
-            if (!url) return;
+function initCopyFeedUrl(page) {
+    page.addEventListener('click', async (event) => {
+        const btn = event.target.closest('[data-copy-feed-url]');
+        if (!btn || !page.contains(btn)) return;
 
-            try {
-                await navigator.clipboard.writeText(url);
-                btn.dataset.copied = 'true';
-                btn.setAttribute('aria-label', 'URL copiada!');
+        const url = btn.dataset.copyFeedUrl;
+        if (!url) return;
 
-                setTimeout(() => {
-                    delete btn.dataset.copied;
-                    btn.setAttribute('aria-label', 'Copiar URL do feed');
-                }, 2000);
-            } catch {
-                // Fallback para ambientes sem Clipboard API (HTTP sem HTTPS)
-                const tmp = document.createElement('textarea');
-                tmp.value = url;
-                tmp.style.cssText = 'position:absolute;left:-9999px;top:-9999px';
-                document.body.appendChild(tmp);
-                tmp.select();
-                document.execCommand('copy');
-                document.body.removeChild(tmp);
-
-                btn.dataset.copied = 'true';
-                btn.setAttribute('aria-label', 'URL copiada!');
-                setTimeout(() => {
-                    delete btn.dataset.copied;
-                    btn.setAttribute('aria-label', 'Copiar URL do feed');
-                }, 2000);
-            }
+        const ok = await copyText(url);
+        flashButton(btn, {
+            okLabel: 'URL copiada!',
+            idleLabel: 'Copiar URL do feed',
+            ok,
         });
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    initCopyFeedUrl();
-});
+export function init(root = document) {
+    const page = root.querySelector('[data-partner-feed-index]');
+    if (!page || page.dataset.pfIndexInit === '1') return;
+    page.dataset.pfIndexInit = '1';
+
+    initCopyFeedUrl(page);
+}
+
+export default init;

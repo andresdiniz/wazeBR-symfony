@@ -8,7 +8,10 @@ let map = null;
 let marker = null;
 let polylinePath = null;
 let polylinePoints = [];
-let isRoadClosedMode = false;
+let isRoadClosedMode = false;   // modo polyline (ROAD_CLOSED ou evento já salvo com 2+ pontos)
+let allSubtypeOptions = [];    // cópia das <option> de subtipo, para refiltrar por tipo
+
+const DESCRIPTION_MAX = 40;    // recomendação da spec CIFS do Waze
 
 // ── Configuração injetada pelo Twig via data-attributes ────────────────────
 
@@ -30,7 +33,7 @@ function getConfig(root) {
 
 // ── Toast de validação (substitui alert()) ─────────────────────────────────
 
-function showToast(message, duration = 3500) {
+function showToast(message, duration = 4000) {
     let toast = document.getElementById('pf-validation-toast');
     if (!toast) {
         toast = document.createElement('div');
@@ -48,8 +51,9 @@ function showToast(message, duration = 3500) {
             <line x1="12" y1="8" x2="12" y2="12"/>
             <line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
-        ${message}
+        <span></span>
     `;
+    toast.querySelector('span').textContent = message; // texto puro, sem HTML
 
     toast.classList.add('is-visible');
     clearTimeout(toast._hideTimer);
@@ -76,6 +80,8 @@ function initMap(root, config) {
     }).addTo(map);
 
     map.on('click', (e) => onMapClick(e, root, geoToken, geoRegion, partnerCode));
+    // Botão direito (ou toque longo) remove o último ponto da polyline
+    map.on('contextmenu', () => undoLastPoint(root));
 
     root.getElementById('pf-clear-map-btn')
         ?.addEventListener('click', () => clearMap(root, defaultLat, defaultLng, defaultZoom));
@@ -86,7 +92,7 @@ function initMap(root, config) {
 
         if (polylinePoints.length > 1) {
             isRoadClosedMode = true;
-            drawPolyline(root);
+            drawPolyline(root, true);
             updateCoordsDisplay(root);
             updateMapInstructions(root);
         } else {
@@ -116,7 +122,7 @@ function onMapClick(e, root, geoToken, geoRegion, partnerCode) {
     }
 }
 
-function drawPolyline(root) {
+function drawPolyline(root, fit = false) {
     if (polylinePath) map.removeLayer(polylinePath);
 
     if (polylinePoints.length > 0) {
@@ -126,13 +132,22 @@ function drawPolyline(root) {
             opacity: 0.9,
         }).addTo(map);
 
-        if (polylinePoints.length > 1) {
+        if (fit && polylinePoints.length > 1) {
             map.fitBounds(polylinePath.getBounds(), { padding: [50, 50] });
         }
     }
 
     const input = root.getElementById('pf-polyline-input');
     if (input) input.value = JSON.stringify(polylinePoints);
+}
+
+function undoLastPoint(root) {
+    if (!isRoadClosedMode || polylinePoints.length === 0) return;
+
+    polylinePoints.pop();
+    if (polylinePath) { map.removeLayer(polylinePath); polylinePath = null; }
+    drawPolyline(root);
+    updateCoordsDisplay(root);
 }
 
 function updateCoordsDisplay(root, lat = null, lng = null) {
@@ -265,26 +280,13 @@ function onTypeChange(root) {
     const typeSelect = root.getElementById('cifsType');
     if (!typeSelect) return;
 
-    const selectedType = typeSelect.value;
-    isRoadClosedMode = (selectedType === 'ROAD_CLOSED');
+    // ROAD_CLOSED sempre usa polyline. Outros tipos também aceitam polyline na spec,
+    // então um evento salvo com 2+ pontos mantém a geometria (antes era truncada
+    // para o 1º ponto ao abrir a edição).
+    isRoadClosedMode = typeSelect.value === 'ROAD_CLOSED' || polylinePoints.length > 1;
 
     updateMapInstructions(root);
     updateSubtypes(root);
-
-    // Se sair de ROAD_CLOSED com >1 ponto, mantém só o primeiro
-    if (!isRoadClosedMode && polylinePoints.length > 1) {
-        const first = polylinePoints[0];
-        polylinePoints = [first];
-
-        if (polylinePath) { map.removeLayer(polylinePath); polylinePath = null; }
-        if (marker)       { map.removeLayer(marker);       marker       = null; }
-
-        marker = L.marker([first[0], first[1]]).addTo(map);
-        updateCoordsDisplay(root, first[0], first[1]);
-
-        const input = root.getElementById('pf-polyline-input');
-        if (input) input.value = JSON.stringify(polylinePoints);
-    }
 }
 
 function updateMapInstructions(root) {
@@ -293,10 +295,10 @@ function updateMapInstructions(root) {
     if (!badge || !instructions) return;
 
     if (isRoadClosedMode) {
-        badge.textContent = '🚧 Via interditada (polyline)';
+        badge.textContent = '🚧 Trecho (polyline)';
         badge.classList.add('pf-map__mode-badge--road');
         badge.classList.remove('pf-map__mode-badge');
-        instructions.textContent = 'Clique no mapa para adicionar pontos. Mínimo 2 pontos.';
+        instructions.textContent = 'Clique para adicionar pontos na ordem do tráfego (mínimo 2). Botão direito remove o último.';
     } else {
         badge.textContent = '📍 Ponto único';
         badge.classList.add('pf-map__mode-badge');
@@ -310,36 +312,121 @@ function updateSubtypes(root) {
     const subtypeSelect = root.getElementById('cifsSubtype');
     if (!typeSelect || !subtypeSelect) return;
 
+    if (allSubtypeOptions.length === 0) {
+        allSubtypeOptions = Array.from(subtypeSelect.options).map((o) => ({
+            value: o.value, label: o.textContent.trim(),
+        }));
+    }
+
     const selectedType = typeSelect.value;
+    const current = subtypeSelect.value;
 
-    subtypeSelect.querySelectorAll('option').forEach((opt) => {
-        if (opt.value === '') {
-            opt.hidden = false;
-        } else {
-            opt.hidden = opt.dataset.type !== selectedType;
-        }
-    });
+    // Casa por prefixo do valor (ROAD_CLOSED_EVENT -> ROAD_CLOSED). O data-type do
+    // Twig usa só o 1º segmento ("ROAD"), o que escondia todos os subtipos de ROAD_CLOSED.
+    const allowed = allSubtypeOptions.filter(
+        (o) => o.value === '' || (selectedType !== '' && o.value.startsWith(selectedType + '_')),
+    );
 
-    subtypeSelect.value = '';
+    subtypeSelect.replaceChildren(...allowed.map((o) => {
+        const opt = document.createElement('option');
+        opt.value = o.value;
+        opt.textContent = o.label;
+        return opt;
+    }));
+
+    // Mantém o subtipo salvo se ele ainda vale para o tipo (antes era sempre zerado).
+    subtypeSelect.value = allowed.some((o) => o.value === current) ? current : '';
+    subtypeSelect.disabled = selectedType === 'CHIT_CHAT'; // a spec não define subtipos p/ CHIT_CHAT
 }
 
 // ── Validação do formulário ────────────────────────────────────────────────
+
+function setFieldError(root, id, message) {
+    const input = root.getElementById(id);
+    const field = input?.closest('.pf-field');
+    if (!field) return;
+
+    field.classList.toggle('pf-field--error', Boolean(message));
+    let msg = field.querySelector('.pf-field__error');
+    if (!message) { msg?.remove(); return; }
+    if (!msg) {
+        msg = document.createElement('div');
+        msg.className = 'pf-field__error';
+        msg.setAttribute('role', 'alert');
+        field.appendChild(msg);
+    }
+    msg.textContent = message;
+}
+
+function initFieldHelpers(root) {
+    // Contador da descrição (recomendação CIFS: até 40 caracteres, lida em voz alta no app)
+    const desc = root.getElementById('description');
+    if (desc) {
+        const counter = document.createElement('div');
+        counter.className = 'pf-counter';
+        counter.setAttribute('aria-live', 'polite');
+        desc.insertAdjacentElement('afterend', counter);
+        const update = () => {
+            const n = desc.value.trim().length;
+            counter.textContent = `${n}/${DESCRIPTION_MAX} caracteres (recomendado pelo Waze)`;
+            counter.classList.toggle('is-over', n > DESCRIPTION_MAX);
+        };
+        desc.addEventListener('input', update);
+        update();
+    }
+
+    // Fim não pode ser anterior ao início
+    const start = root.getElementById('startTime');
+    const end   = root.getElementById('endTime');
+    if (start && end) {
+        const sync = () => {
+            end.min = start.value || '';
+            setFieldError(root, 'endTime',
+                start.value && end.value && end.value <= start.value
+                    ? 'O fim deve ser depois do início.' : '');
+        };
+        start.addEventListener('change', sync);
+        end.addEventListener('change', sync);
+        sync();
+    }
+}
 
 function initFormValidation(root) {
     const form = root.getElementById('event-form');
     if (!form) return;
 
     form.addEventListener('submit', (e) => {
-        if (isRoadClosedMode) {
-            if (polylinePoints.length < 2) {
-                e.preventDefault();
-                showToast('Via interditada precisa de pelo menos 2 pontos no mapa.');
-            }
-        } else {
-            if (polylinePoints.length !== 1) {
-                e.preventDefault();
-                showToast('Selecione um local no mapa antes de salvar.');
-            }
+        const get = (id) => root.getElementById(id)?.value?.trim() ?? '';
+        const problems = [];
+
+        if (!get('cifsType')) problems.push(['cifsType', 'Selecione o tipo do evento.']);
+        else setFieldError(root, 'cifsType', '');
+
+        const streetBad = get('street') === '' || /^(Buscando|Endereço não|Erro ao)/.test(get('street'));
+        if (streetBad) problems.push(['street', 'Informe a rua (obrigatória no CIFS).']);
+        else setFieldError(root, 'street', '');
+
+        const start = get('startTime');
+        const end   = get('endTime');
+        if (start && end && end <= start) problems.push(['endTime', 'O fim deve ser depois do início.']);
+        if (get('cifsType') === 'ROAD_CLOSED' && !start) problems.push(['startTime', 'Interdição precisa de início.']);
+
+        let mapMessage = '';
+        if (isRoadClosedMode && polylinePoints.length < 2) {
+            mapMessage = 'Marque pelo menos 2 pontos no mapa.';
+        } else if (!isRoadClosedMode && polylinePoints.length < 1) {
+            mapMessage = 'Selecione um local no mapa antes de salvar.';
+        } else if (get('direction') === 'ONE_DIRECTION' && polylinePoints.length < 2) {
+            mapMessage = 'Para "Um sentido" marque 2+ pontos na ordem do tráfego.';
+        }
+
+        problems.forEach(([id, msg]) => setFieldError(root, id, msg));
+
+        const first = mapMessage || problems[0]?.[1];
+        if (first) {
+            e.preventDefault();
+            showToast(first);
+            if (!mapMessage) root.getElementById(problems[0][0])?.focus();
         }
     });
 }
@@ -360,6 +447,7 @@ export function init(root = document) {
     root.getElementById('cifsType')
         ?.addEventListener('change', () => onTypeChange(root));
 
+    initFieldHelpers(root);
     initFormValidation(root);
 }
 
