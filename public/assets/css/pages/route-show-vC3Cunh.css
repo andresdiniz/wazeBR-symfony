@@ -1,0 +1,61 @@
+/* Adição: estilos para erros de previsão com explicação */
+.rs-forecast__errors {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.rs-forecast__errors h3 {
+    font-size: 1rem;
+    margin: 0 0 12px;
+    color: #e2e8f0;
+}
+
+.rs-forecast__errors-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.rs-forecast__error {
+    padding: 12px 14px;
+    border-left: 3px solid #ef4444;
+    background: rgba(239, 68, 68, 0.08);
+    border-radius: 6px;
+}
+
+.rs-forecast__error-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.rs-forecast__error-head strong {
+    font-size: 0.9rem;
+    color: #e2e8f0;
+}
+
+.rs-forecast__error-badge {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    white-space: nowrap;
+}
+
+.rs-forecast__error-value {
+    display: block;
+    font-size: 0.85rem;
+    color: #94a3b8;
+    margin-bottom: 4px;
+}
+
+.rs-forecast__error p {
+    margin: 0;
+    font-size: 0.88rem;
+    color: #cbd5e1;
+    line-height: 1.4;
+}

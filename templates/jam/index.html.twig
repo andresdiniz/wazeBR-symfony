@@ -339,25 +339,17 @@
     </div>
 </div>
 {% endblock %}
-
 {% block javascripts %}
     {{ parent() }}
-    {# Leaflet do CDN com fallback para local (#12) #}
-    <script>
-        (function () {
-            var s = document.createElement('script');
-            s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-            s.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
-            s.crossOrigin = 'anonymous';
-            s.onerror = function () {
-                // fallback para vendor local
-                document.getElementById('leaflet-css-fallback').disabled = false;
-                var fb = document.createElement('script');
-                fb.src = '{{ asset('vendor/leaflet/leaflet.js') }}';
-                document.head.appendChild(fb);
-            };
-            document.head.appendChild(s);
-        })();
-    </script>
-    <script type="module" src="{{ asset('js/pages/jam.js') }}"></script>
+
+    <script
+        src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin="anonymous"
+    ></script>
+
+    <script
+        type="module"
+        src="{{ asset('js/pages/jam.js') }}"
+    ></script>
 {% endblock %}

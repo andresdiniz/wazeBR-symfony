@@ -105,9 +105,11 @@
        IMPORTMAP
        ============================================================ #}
 
-    {% block importmap %}
-        {{ importmap(['app']) }}
-    {% endblock %}
+       {% block importmap %}
+       {{ importmap(['app'], {
+           nonce: csp_nonce('script')
+       }) }}
+   {% endblock %}
 
 </head>
 
