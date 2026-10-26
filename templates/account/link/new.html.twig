@@ -1,0 +1,133 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Novo Link — {{ partner.name }}{% endblock %}
+
+{% macro error(errors, key) %}
+  {% if errors[key] is defined %}<span class="form-error">{{ errors[key] }}</span>{% endif %}
+{% endmacro %}
+{% import _self as f %}
+
+{% block content %}
+<div style="max-width:640px">
+
+  <nav aria-label="breadcrumb" style="margin-bottom:var(--space-4);font-size:var(--text-sm);color:var(--color-text-muted)">
+    <a href="{{ path('account_link_index') }}" style="color:var(--color-primary)">Links monitorados</a>
+    <span style="margin:0 var(--space-2)">›</span>
+    <span>Novo link</span>
+  </nav>
+
+  <div class="page-header">
+    <h1 class="page-title">Novo link monitorado</h1>
+  </div>
+
+  <form method="post" action="{{ path('account_link_new') }}" novalidate>
+
+    <div class="card" style="padding:var(--space-6);margin-bottom:var(--space-4)">
+
+      {# TIPO #}
+      <div class="form-group">
+        <label class="form-label">Tipo de link</label>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:var(--space-3)" id="typeGrid">
+          {% for type in types %}
+            {% set isSelected = (old.link_type ?? preType) == type.value %}
+            <label style="display:flex;align-items:center;gap:var(--space-3);border:1px solid {{ isSelected ? 'var(--color-primary)' : 'var(--color-border)' }};border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);cursor:pointer;background:{{ isSelected ? 'oklch(from var(--color-primary) l c h / .07)' : 'var(--color-surface)' }};transition:border-color 140ms,background 140ms" class="type-label">
+              <input type="radio" name="link_type" value="{{ type.value }}"
+                     {{ isSelected ? 'checked' : '' }}
+                     style="accent-color:var(--color-primary)">
+              <span style="font-size:var(--text-sm);font-weight:500">{{ type.label() }}</span>
+            </label>
+          {% endfor %}
+        </div>
+        {{ f.error(errors, 'link_type') }}
+      </div>
+
+      {# URL #}
+      <div class="form-group">
+        <label class="form-label" for="url">URL do feed</label>
+        <input class="form-control" type="url" id="url" name="url"
+               value="{{ old.url ?? '' }}" required
+               placeholder="https://" autocomplete="off">
+        <span class="form-hint">URL completa do feed ou endpoint da câmera.</span>
+        {{ f.error(errors, 'url') }}
+      </div>
+
+      {# LABEL #}
+      <div class="form-group">
+        <label class="form-label" for="label">Rótulo <span style="font-weight:400;color:var(--color-text-muted)">(opcional)</span></label>
+        <input class="form-control" type="text" id="label" name="label"
+               value="{{ old.label ?? '' }}" placeholder="Ex: Feed alertas Centro-SP">
+        <span class="form-hint">Nome amigável para identificar o link na listagem.</span>
+      </div>
+
+      {# FEED FORMAT — visível apenas para tipos Waze #}
+      <div class="form-group" id="feedFormatGroup">
+        <label class="form-label">Formato do feed</label>
+        <div style="display:flex;gap:var(--space-4)">
+          <label style="display:flex;align-items:center;gap:var(--space-2);cursor:pointer;font-size:var(--text-sm)">
+            <input type="radio" name="feed_format" value="1"
+                   {{ (old.feed_format ?? '1') == '1' ? 'checked' : '' }}
+                   style="accent-color:var(--color-primary)">
+            JSON PartnerHub (Alertas / Jams)
+          </label>
+          <label style="display:flex;align-items:center;gap:var(--space-2);cursor:pointer;font-size:var(--text-sm)">
+            <input type="radio" name="feed_format" value="2"
+                   {{ (old.feed_format ?? '') == '2' ? 'checked' : '' }}
+                   style="accent-color:var(--color-primary)">
+            TVT (Tempos de Viagem)
+          </label>
+        </div>
+      </div>
+
+      {# ATIVO #}
+      <div style="display:flex;align-items:center;gap:var(--space-3)">
+        <input type="checkbox" id="isActive" name="isActive" value="1"
+               {{ (old.isActive ?? true) ? 'checked' : '' }}
+               style="width:18px;height:18px;cursor:pointer;accent-color:var(--color-primary)">
+        <label for="isActive" class="form-label" style="margin:0;cursor:pointer">Ativar imediatamente</label>
+      </div>
+
+    </div>
+
+    <div style="display:flex;gap:var(--space-3)">
+      <button type="submit" class="btn btn-primary">Salvar link</button>
+      <a href="{{ path('account_link_index') }}" class="btn btn-ghost">Cancelar</a>
+    </div>
+
+  </form>
+</div>
+{% endblock %}
+
+{% block stylesheets %}
+<style>
+  .form-error { display:block;font-size:var(--text-xs);color:var(--color-error);margin-top:var(--space-1); }
+</style>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+(function(){
+  const wazeFeedTypes = ['waze_feed', 'waze_tvt'];
+  const fmtGroup = document.getElementById('feedFormatGroup');
+
+  function updateFeedFormat() {
+    const selected = document.querySelector('input[name="link_type"]:checked');
+    if (!selected) return;
+    fmtGroup.style.display = wazeFeedTypes.includes(selected.value) ? 'block' : 'none';
+  }
+
+  // Estilo visual ao clicar em tipo
+  document.querySelectorAll('.type-label').forEach(lbl => {
+    lbl.querySelector('input').addEventListener('change', () => {
+      document.querySelectorAll('.type-label').forEach(l => {
+        const checked = l.querySelector('input').checked;
+        l.style.borderColor = checked ? 'var(--color-primary)' : 'var(--color-border)';
+        l.style.background  = checked ? 'oklch(from var(--color-primary) l c h / .07)' : 'var(--color-surface)';
+      });
+      updateFeedFormat();
+    });
+  });
+
+  updateFeedFormat();
+})();
+</script>
+{% endblock %}

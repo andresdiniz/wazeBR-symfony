@@ -1,0 +1,182 @@
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}Rotas | wazeBR{% endblock %}
+
+{% block page_body_class %}admin-routes-page{% endblock %}
+
+{% block dashboard_page_title %}Rotas{% endblock %}
+
+{% block page_content %}
+    <div class="dashboard-content admin-routes-content">
+        <section class="dashboard-hero">
+            <div>
+                <p class="dashboard-hero-kicker">Administração</p>
+                <h2>Rotas monitoradas</h2>
+                <p>
+                    Consulte as rotas cadastradas e os dados TVT associados.
+                </p>
+            </div>
+
+            <div class="dashboard-hero-actions">
+                <span class="badge badge-primary">
+                    <i class="fa-solid fa-route" aria-hidden="true"></i>
+                    {{ routes|length }} rota(s)
+                </span>
+
+                <span class="badge badge-secondary">
+                    <i class="fa-solid fa-code-branch" aria-hidden="true"></i>
+                    {{ definitions|length }} definição(ões)
+                </span>
+            </div>
+        </section>
+
+        <section class="card dashboard-card">
+            <header class="card-header">
+                <div>
+                    <h3>Lista de rotas</h3>
+                    <p>
+                        Visualize origem, destino, tempo, extensão e status de cada rota.
+                    </p>
+                </div>
+            </header>
+
+            <div class="card-body">
+                {% if routes is not empty %}
+                    <div class="admin-table-wrapper">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Rota</th>
+                                    <th>Origem</th>
+                                    <th>Destino</th>
+                                    <th>Tempo</th>
+                                    <th>Extensão</th>
+                                    <th>Nível</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                {% for route in routes %}
+                                    <tr>
+                                        <td>
+                                            <span class="table-id">
+                                                #{{ route.id }}
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            <div class="table-main-cell">
+                                                <strong>
+                                                    {{ route.name|default('Rota #' ~ route.id) }}
+                                                </strong>
+
+                                                {% if route.type %}
+                                                    <small>{{ route.type }}</small>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <span class="table-location">
+                                                {{ route.fromName|default('Não informado') }}
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            <span class="table-location">
+                                                {{ route.toName|default('Não informado') }}
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            {% if route.time is not null %}
+                                                {{ (route.time / 60)|round }} min
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        </td>
+
+                                        <td>
+                                            {% if route.length is not null %}
+                                                {{ (route.length / 1000)|number_format(1, ',', '.') }} km
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        </td>
+
+                                        <td>
+                                            {% if route.jamLevel is not null %}
+                                                <span class="badge
+                                                    {% if route.jamLevel >= 4 %}
+                                                        badge-danger
+                                                    {% elseif route.jamLevel >= 2 %}
+                                                        badge-warning
+                                                    {% else %}
+                                                        badge-success
+                                                    {% endif %}
+                                                ">
+                                                    Nível {{ route.jamLevel }}
+                                                </span>
+                                            {% else %}
+                                                <span class="badge badge-muted">Sem dados</span>
+                                            {% endif %}
+                                        </td>
+
+                                        <td>
+                                            {% if route.isActive %}
+                                                <span class="badge badge-success">
+                                                    <i class="fa-solid fa-check" aria-hidden="true"></i>
+                                                    Ativa
+                                                </span>
+                                            {% else %}
+                                                <span class="badge badge-muted">
+                                                    Inativa
+                                                </span>
+                                            {% endif %}
+                                        </td>
+
+                                        <td class="admin-table-actions">
+                                            <a
+                                                href="{{ path('admin_routes_show', { id: route.id }) }}"
+                                                class="btn btn-primary btn-sm"
+                                            >
+                                                <i class="fa-solid fa-eye" aria-hidden="true"></i>
+                                                Ver
+                                            </a>
+
+                                            <form
+                                                method="post"
+                                                action="{{ path('admin_routes_sync', { id: route.id }) }}"
+                                                class="inline-form"
+                                            >
+                                                <button
+                                                    type="submit"
+                                                    class="btn btn-ghost btn-sm"
+                                                    title="Sincronizar dados TVT"
+                                                >
+                                                    <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <span class="empty-state-icon">
+                            <i class="fa-solid fa-route" aria-hidden="true"></i>
+                        </span>
+
+                        <h3>Nenhuma rota cadastrada</h3>
+                        <p>Não foram encontradas rotas no banco de dados.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+{% endblock %}

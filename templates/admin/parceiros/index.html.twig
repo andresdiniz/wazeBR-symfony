@@ -1,0 +1,84 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Parceiros — Admin{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:var(--space-4)">
+  <div>
+    <h1 class="page-title">Parceiros</h1>
+    <p class="page-subtitle">Gerencie órgãos públicos e concessionárias cadastrados na plataforma.</p>
+  </div>
+  <a href="{{ path('admin_partner_new') }}" class="btn btn-primary">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Novo parceiro
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Todos os parceiros</span>
+    <span class="badge badge-gray">{{ partners|length }} cadastrado{{ partners|length != 1 ? 's' }}</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Slug</th>
+          <th>E-mail</th>
+          <th style="text-align:center">Usuários</th>
+          <th style="text-align:center">Status</th>
+          <th style="text-align:center">Criado em</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for partner in partners %}
+        <tr>
+          <td>
+            <a href="{{ path('admin_partner_show', {id: partner.id}) }}" style="font-weight:600;color:var(--color-primary)">
+              {{ partner.name }}
+            </a>
+          </td>
+          <td><code style="font-size:var(--text-xs);background:var(--color-surface-offset);padding:2px 6px;border-radius:var(--radius-sm)">{{ partner.slug }}</code></td>
+          <td style="color:var(--color-text-muted)">{{ partner.email }}</td>
+          <td style="text-align:center">{{ partner.users|length }}</td>
+          <td style="text-align:center">
+            {% if partner.isActive %}
+              <span class="badge badge-green">Ativo</span>
+            {% else %}
+              <span class="badge badge-gray">Inativo</span>
+            {% endif %}
+          </td>
+          <td style="text-align:center;color:var(--color-text-muted)">
+            <time data-utc="{{ partner.createdAt|date('c') }}" data-fmt="date">{{ partner.createdAt|date('d/m/Y') }}</time>
+          </td>
+          <td style="text-align:right;white-space:nowrap">
+            <a href="{{ path('admin_partner_switch', {id: partner.id}) }}" class="btn btn-ghost btn-sm" title="Visualizar dashboard deste parceiro">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </a>
+            <a href="{{ path('admin_partner_show', {id: partner.id}) }}" class="btn btn-ghost btn-sm" title="Ver detalhes">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </a>
+            <a href="{{ path('admin_partner_edit', {id: partner.id}) }}" class="btn btn-ghost btn-sm" title="Editar">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </a>
+          </td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="7">
+            <div class="empty">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 12h4"/><path d="M10 8h4"/><path d="M14 21v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></svg>
+              <h3>Nenhum parceiro cadastrado</h3>
+              <p>Cadastre o primeiro órgão público ou concessionária para começar.</p>
+              <a href="{{ path('admin_partner_new') }}" class="btn btn-primary">Criar primeiro parceiro</a>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

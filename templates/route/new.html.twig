@@ -1,0 +1,35 @@
+{% extends 'base.html.twig' %}
+{% block title %}Nova Rota{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex;align-items:center;gap:var(--space-4)">
+  <a href="{{ path('route_admin_index') }}" class="icon-btn"><i data-lucide="arrow-left"></i></a>
+  <div>
+    <h1 class="page-title">Nova rota</h1>
+    <p class="page-subtitle">Preencha os dados para criar uma rota monitorada</p>
+  </div>
+</div>
+
+<div class="card" style="max-width:640px">
+  <div class="card-body">
+    <form method="post">
+      <div class="form-group">
+        <label class="form-label" for="name">Nome *</label>
+        <input class="form-input" type="text" id="name" name="name" required placeholder="Ex.: Centro → Barreiro">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="description">Descrição</label>
+        <input class="form-input" type="text" id="description" name="description" placeholder="Descrição opcional">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="coordinates">Coordenadas (JSON)</label>
+        <textarea class="form-input" id="coordinates" name="coordinates" rows="3" placeholder='[[lng,lat],[lng,lat]]'></textarea>
+      </div>
+      <div style="display:flex;gap:var(--space-3)">
+        <button type="submit" class="btn btn-primary">Criar rota</button>
+        <a href="{{ path('route_admin_index') }}" class="btn btn-ghost">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

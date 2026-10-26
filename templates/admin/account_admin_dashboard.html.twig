@@ -1,0 +1,159 @@
+{% extends 'admin/dashboard_base.html.twig' %}
+
+{% block title %}Account Admin{% endblock %}
+
+{% block user_role %}Administrador de Conta{% endblock %}
+
+{% block page_title %}Dashboard - Account Admin{% endblock %}
+
+{% block sidebar_menu %}
+<ul class="nav-list">
+    <li class="nav-item">
+        <a href="{{ path('app_account_admin_dashboard') }}" class="nav-link active">
+            <i class="fas fa-home"></i>
+            <span>Dashboard</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a href="#" class="nav-link">
+            <i class="fas fa-users"></i>
+            <span>Usu\u00e1rios</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a href="#" class="nav-link">
+            <i class="fas fa-chart-line"></i>
+            <span>Relat\u00f3rios</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a href="#" class="nav-link">
+            <i class="fas fa-cog"></i>
+            <span>Configura\u00e7\u00f5es</span>
+        </a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-content">
+    {# Stats Grid #}
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon blue">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-info">
+                <h3>1,234</h3>
+                <p>Usu\u00e1rios Ativos</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon green">
+                <i class="fas fa-car"></i>
+            </div>
+            <div class="stat-info">
+                <h3>5,678</h3>
+                <p>Ve\u00edculos Monitorados</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon orange">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="stat-info">
+                <h3>89</h3>
+                <p>Alertas Hoje</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon purple">
+                <i class="fas fa-chart-bar"></i>
+            </div>
+            <div class="stat-info">
+                <h3>94%</h3>
+                <p>Precis\u00e3o</p>
+            </div>
+        </div>
+    </div>
+
+    {# Recent Activity #}
+    <div class="content-grid">
+        <div class="card">
+            <div class="card-header">
+                <h3>Atividade Recente</h3>
+                <a href="#" class="view-all">Ver tudo</a>
+            </div>
+            <div class="card-body">
+                <ul class="activity-list">
+                    <li class="activity-item">
+                        <div class="activity-icon blue">
+                            <i class="fas fa-user-plus"></i>
+                        </div>
+                        <div class="activity-info">
+                            <p><strong>Novo usu\u00e1rio cadastrado</strong></p>
+                            <span class="activity-time">H\u00e1 5 minutos</span>
+                        </div>
+                    </li>
+                    <li class="activity-item">
+                        <div class="activity-icon orange">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="activity-info">
+                            <p><strong>Alerta de tr\u00e2nsito registrado</strong></p>
+                            <span class="activity-time">H\u00e1 15 minutos</span>
+                        </div>
+                    </li>
+                    <li class="activity-item">
+                        <div class="activity-icon green">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="activity-info">
+                            <p><strong>Relat\u00f3rio gerado com sucesso</strong></p>
+                            <span class="activity-time">H\u00e1 1 hora</span>
+                        </div>
+                    </li>
+                    <li class="activity-item">
+                        <div class="activity-icon purple">
+                            <i class="fas fa-sync"></i>
+                        </div>
+                        <div class="activity-info">
+                            <p><strong>Dados sincronizados</strong></p>
+                            <span class="activity-time">H\u00e1 2 horas</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>Quick Actions</h3>
+            </div>
+            <div class="card-body">
+                <div class="quick-actions">
+                    <a href="#" class="quick-action-btn">
+                        <i class="fas fa-user-plus"></i>
+                        <span>Adicionar Usu\u00e1rio</span>
+                    </a>
+                    <a href="#" class="quick-action-btn">
+                        <i class="fas fa-file-export"></i>
+                        <span>Exportar Relat\u00f3rio</span>
+                    </a>
+                    <a href="#" class="quick-action-btn">
+                        <i class="fas fa-bell"></i>
+                        <span>Enviar Alerta</span>
+                    </a>
+                    <a href="#" class="quick-action-btn">
+                        <i class="fas fa-cog"></i>
+                        <span>Configura\u00e7\u00f5es</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

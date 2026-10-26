@@ -1,0 +1,81 @@
+{#
+  KPIs de qualidade dos alertas (confiança, rating, engajamento).
+  Inclua na dashboard: {% include 'dashboard/_alert_quality.html.twig' %}
+  Variáveis: alertQualityByType, topEngagedAlerts, kpis.alertLinkedToJamPct, kpis.alertOnHighwayPct
+#}
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-star-half me-1"></i> Qualidade dos Alertas
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+
+            {# KPIs rápidos #}
+            <div class="col-12">
+                <div class="row row-cols-2 row-cols-md-3 g-2">
+                    <div class="col">
+                        <div class="border rounded p-2 text-center">
+                            <div class="fs-4 fw-bold text-primary">{{ kpis.alertLinkedToJamPct }}%</div>
+                            <div class="text-muted small">Alertas ligados a jams</div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="border rounded p-2 text-center">
+                            <div class="fs-4 fw-bold text-info">{{ kpis.alertOnHighwayPct }}%</div>
+                            <div class="text-muted small">Em vias expressas</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {# Qualidade por tipo #}
+            {% if alertQualityByType %}
+            <div class="col-md-7">
+                <h6 class="text-muted mb-2">Confiança Média por Tipo (24h)</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>Tipo</th><th class="text-end">Confiança</th><th class="text-end">Reliability</th><th class="text-end">Rating</th></tr></thead>
+                        <tbody>
+                        {% for row in alertQualityByType %}
+                        <tr>
+                            <td>{{ typesMap[row.type] ?? row.type }}</td>
+                            <td class="text-end">
+                                <div class="progress" style="height:6px;min-width:60px">
+                                    <div class="progress-bar bg-success" style="width:{{ (row.avg_confidence / 10 * 100)|round }}%"></div>
+                                </div>
+                                <small>{{ row.avg_confidence }}/10</small>
+                            </td>
+                            <td class="text-end text-muted small">{{ row.avg_reliability }}/10</td>
+                            <td class="text-end text-muted small">{{ row.avg_rating }}/10</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            {# Top alertas engajados #}
+            {% if topEngagedAlerts %}
+            <div class="col-md-5">
+                <h6 class="text-muted mb-2">Mais Engajados (7 dias)</h6>
+                <ul class="list-group list-group-flush">
+                {% for alert in topEngagedAlerts %}
+                    <li class="list-group-item px-0 py-1">
+                        <div class="d-flex justify-content-between">
+                            <span class="small fw-semibold">{{ typesMap[alert.type] ?? alert.type }}</span>
+                            <span class="text-muted small">
+                                <i class="bi bi-hand-thumbs-up"></i> {{ alert.nThumbsUp }}
+                                <i class="bi bi-chat ms-1"></i> {{ alert.nComments }}
+                            </span>
+                        </div>
+                        <div class="text-muted" style="font-size:.75rem">{{ alert.street ?? 'Via não informada' }}, {{ alert.city ?? '' }}</div>
+                    </li>
+                {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>

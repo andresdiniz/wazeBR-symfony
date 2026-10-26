@@ -1,0 +1,233 @@
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}Execuções da rota | wazeBR{% endblock %}
+
+{% block page_body_class %}admin-routes-executions-page{% endblock %}
+
+{% block dashboard_page_title %}Execuções da rota{% endblock %}
+
+{% block page_content %}
+    {% set routeName = route.name|default('Rota #' ~ route.id) %}
+    {% set routeWazeId = route.wazeId|default(null) %}
+    {% set selectedLimit = app.request.query.get('limit', '50') %}
+
+    <div class="dashboard-content admin-routes-content">
+        <section class="dashboard-hero">
+            <div>
+                <a
+                    href="{{ path('admin_routes_show', { id: route.id }) }}"
+                    class="dashboard-back-link"
+                >
+                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                    Voltar para detalhes
+                </a>
+
+                <p class="dashboard-hero-kicker">Histórico TVT</p>
+                <h2>{{ routeName }}</h2>
+
+                <p>
+                    Waze ID:
+                    <code class="external-id">
+                        {{ routeWazeId|default('Não informado') }}
+                    </code>
+                </p>
+            </div>
+
+            <form method="get" class="dashboard-limit-form">
+                <label for="executions-limit">Limite</label>
+
+                <select
+                    id="executions-limit"
+                    name="limit"
+                    class="form-control"
+                    onchange="this.form.submit()"
+                >
+                    <option value="20" {{ selectedLimit == '20' ? 'selected' : '' }}>
+                        20 registros
+                    </option>
+
+                    <option value="50" {{ selectedLimit == '50' ? 'selected' : '' }}>
+                        50 registros
+                    </option>
+
+                    <option value="100" {{ selectedLimit == '100' ? 'selected' : '' }}>
+                        100 registros
+                    </option>
+                </select>
+            </form>
+        </section>
+
+        <section class="stats-grid admin-route-stats">
+            <article class="stat-card">
+                <div class="stat-icon blue">
+                    <i class="fa-solid fa-play" aria-hidden="true"></i>
+                </div>
+
+                <div class="stat-info">
+                    <span>Execuções carregadas</span>
+                    <strong>{{ executions|length }}</strong>
+                    <small>Limite: {{ selectedLimit }}</small>
+                </div>
+            </article>
+
+            <article class="stat-card">
+                <div class="stat-icon orange">
+                    <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                </div>
+
+                <div class="stat-info">
+                    <span>Congestionamentos</span>
+                    <strong>{{ executions|reduce((total, item) => total + item.trafficJams, 0) }}</strong>
+                    <small>Total no conjunto carregado</small>
+                </div>
+            </article>
+
+            <article class="stat-card">
+                <div class="stat-icon purple">
+                    <i class="fa-solid fa-ban" aria-hidden="true"></i>
+                </div>
+
+                <div class="stat-info">
+                    <span>Irregularidades</span>
+                    <strong>{{ executions|reduce((total, item) => total + item.irregularities, 0) }}</strong>
+                    <small>Total no conjunto carregado</small>
+                </div>
+            </article>
+
+            <article class="stat-card">
+                <div class="stat-icon green">
+                    <i class="fa-solid fa-gauge-high" aria-hidden="true"></i>
+                </div>
+
+                <div class="stat-info">
+                    <span>Velocidade média</span>
+                    <strong>
+                        {% set speeds = executions|filter(item => item.avgSpeed is not null)|map(item => item.avgSpeed)|reduce((total, item) => total + item, 0) %}
+                        {% set speedCount = executions|filter(item => item.avgSpeed is not null)|length %}
+
+                        {% if speedCount > 0 %}
+                            {{ (speeds / speedCount)|number_format(1, ',', '.') }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </strong>
+                    <small>km/h</small>
+                </div>
+            </article>
+        </section>
+
+        <section class="card dashboard-card">
+            <header class="card-header">
+                <div>
+                    <h3>Histórico de execuções</h3>
+                    <p>
+                        Dados retornados por WazeTvtRouteExecution.
+                    </p>
+                </div>
+            </header>
+
+            <div class="card-body">
+                {% if executions is not empty %}
+                    <div class="admin-table-wrapper">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Timestamp</th>
+                                    <th>Duração</th>
+                                    <th>Distância</th>
+                                    <th>Velocidade média</th>
+                                    <th>Congestionamentos</th>
+                                    <th>Irregularidades</th>
+                                    <th>Criada em</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                {% for execution in executions %}
+                                    <tr>
+                                        <td>#{{ execution.id }}</td>
+
+                                        <td>
+                                            {% if execution.timestamp %}
+                                                {{ execution.timestamp|date('d/m/Y H:i:s') }}
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        </td>
+
+                                        <td>
+                                            {% if execution.duration is not null %}
+                                                {{ (execution.duration / 60)|round }} min
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        </td>
+
+                                        <td>
+                                            {% if execution.length is not null %}
+                                                {{ (execution.length / 1000)|number_format(2, ',', '.') }} km
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        </td>
+
+                                        <td>
+                                            {% if execution.avgSpeed is not null %}
+                                                {{ execution.avgSpeed|number_format(1, ',', '.') }} km/h
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        </td>
+
+                                        <td>
+                                            <span class="badge
+                                                {{ execution.trafficJams > 0 ? 'badge-warning' : 'badge-success' }}"
+                                            >
+                                                {{ execution.trafficJams }}
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            <span class="badge
+                                                {{ execution.irregularities > 0 ? 'badge-danger' : 'badge-success' }}"
+                                            >
+                                                {{ execution.irregularities }}
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            {% if execution.createdAt %}
+                                                {{ execution.createdAt|date('d/m/Y H:i') }}
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="execution-coordinates-note">
+                        <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                        <span>
+                            As coordenadas detalhadas estão disponíveis em
+                            <code>execution.coords</code> e na coleção
+                            <code>execution.coordsDetails</code>.
+                        </span>
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <span class="empty-state-icon">
+                            <i class="fa-solid fa-play" aria-hidden="true"></i>
+                        </span>
+
+                        <h3>Nenhuma execução encontrada</h3>
+                        <p>Não há execuções registradas para esta rota.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+{% endblock %}

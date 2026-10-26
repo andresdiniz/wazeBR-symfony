@@ -1,0 +1,105 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Logs de Erro — {{ partner.name }}{% endblock %}
+
+{% block content %}
+<div style="max-width:var(--content-wide)">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-4);margin-bottom:var(--space-8)">
+    <div>
+      <h1 class="page-title" style="margin-bottom:var(--space-1)">Logs de erro de agendamentos</h1>
+      <p style="font-size:var(--text-sm);color:var(--color-text-muted)">{{ partner.name }}</p>
+    </div>
+    <a href="{{ path('account_settings') }}" class="btn btn-ghost btn-sm">⚙ Configurações</a>
+  </div>
+
+  {% if logs is empty %}
+    <div style="text-align:center;padding:var(--space-20) var(--space-8);color:var(--color-text-muted)">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto var(--space-4);color:var(--color-success)"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      <p style="font-size:var(--text-base);font-weight:500;color:var(--color-text);margin-bottom:var(--space-2)">Nenhum erro registrado</p>
+      <p style="max-width:36ch;margin-inline:auto">Todos os agendamentos de coleta estão funcionando corretamente.</p>
+    </div>
+
+  {% else %}
+
+    <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-4)">
+      {{ total }} erro{{ total != 1 ? 's' : '' }} encontrado{{ total != 1 ? 's' : '' }}
+      {% if totalPages > 1 %} — página {{ page }} de {{ totalPages }}{% endif %}
+    </p>
+
+    <div class="card" style="overflow:hidden;padding:0">
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:var(--color-surface-offset);font-size:var(--text-xs);font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-muted)">
+            <th style="padding:var(--space-3) var(--space-4);text-align:left">Data/Hora</th>
+            <th style="padding:var(--space-3) var(--space-4);text-align:left">Ação</th>
+            <th style="padding:var(--space-3) var(--space-4);text-align:left">Descrição</th>
+            <th style="padding:var(--space-3) var(--space-4);text-align:left">Link</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in logs %}
+            <tr style="border-top:1px solid var(--color-divider);font-size:var(--text-sm)">
+
+              <td style="padding:var(--space-3) var(--space-4);white-space:nowrap;color:var(--color-text-muted);font-size:var(--text-xs)">
+                {{ log.createdAt|date('d/m/Y') }}<br>
+                <span style="font-size:var(--text-xs)">{{ log.createdAt|date('H:i:s') }}</span>
+              </td>
+
+              <td style="padding:var(--space-3) var(--space-4);white-space:nowrap">
+                <span style="background:oklch(from var(--color-error) l c h / .1);color:var(--color-error);border-radius:var(--radius-sm);padding:2px 8px;font-size:var(--text-xs);font-weight:600">
+                  {{ log.action }}
+                </span>
+              </td>
+
+              <td style="padding:var(--space-3) var(--space-4);max-width:360px">
+                <span title="{{ log.description }}">{{ log.description|default('—') }}</span>
+              </td>
+
+              <td style="padding:var(--space-3) var(--space-4);font-size:var(--text-xs);color:var(--color-text-muted)">
+                {% if log.context and log.context.label is defined %}
+                  <span style="display:block;font-weight:500;color:var(--color-text)">{{ log.context.label }}</span>
+                {% endif %}
+                {% if log.context and log.context.url is defined %}
+                  <span style="word-break:break-all">{{ log.context.url|length > 60 ? log.context.url|slice(0,60) ~ '…' : log.context.url }}</span>
+                {% endif %}
+              </td>
+
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {# Paginação #}
+    {% if totalPages > 1 %}
+      <div style="display:flex;gap:var(--space-2);justify-content:center;margin-top:var(--space-6);flex-wrap:wrap">
+        {% if page > 1 %}
+          <a href="{{ path('account_logs', {page: page - 1}) }}" class="btn btn-ghost btn-sm">← Anterior</a>
+        {% endif %}
+
+        {% for p in 1..totalPages %}
+          {% if p == page %}
+            <span class="btn btn-primary btn-sm" style="cursor:default">{{ p }}</span>
+          {% elseif p == 1 or p == totalPages or (p >= page - 2 and p <= page + 2) %}
+            <a href="{{ path('account_logs', {page: p}) }}" class="btn btn-ghost btn-sm">{{ p }}</a>
+          {% elseif p == page - 3 or p == page + 3 %}
+            <span style="align-self:center;color:var(--color-text-muted);font-size:var(--text-xs)">…</span>
+          {% endif %}
+        {% endfor %}
+
+        {% if page < totalPages %}
+          <a href="{{ path('account_logs', {page: page + 1}) }}" class="btn btn-ghost btn-sm">Próxima →</a>
+        {% endif %}
+      </div>
+    {% endif %}
+
+  {% endif %}
+
+  <div style="margin-top:var(--space-6);display:flex;gap:var(--space-3);flex-wrap:wrap">
+    <a href="{{ path('account_link_index') }}" class="btn btn-ghost btn-sm">← Meus Links</a>
+    <a href="{{ path('account_settings') }}" class="btn btn-ghost btn-sm">⚙ Configurações</a>
+  </div>
+
+</div>
+{% endblock %}

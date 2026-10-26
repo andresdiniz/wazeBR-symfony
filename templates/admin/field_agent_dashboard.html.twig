@@ -1,0 +1,166 @@
+{% extends 'admin/dashboard_base.html.twig' %}
+
+{% block title %}Field Agent{% endblock %}
+
+{% block user_role %}Agente de Campo{% endblock %}
+
+{% block page_title %}Dashboard - Field Agent{% endblock %}
+
+{% block sidebar_menu %}
+<ul class="nav-list">
+    <li class="nav-item">
+        <a href="{{ path('app_field_agent_dashboard') }}" class="nav-link active">
+            <i class="fas fa-home"></i>
+            <span>Dashboard</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a href="#" class="nav-link">
+            <i class="fas fa-map-marker-alt"></i>
+            <span>Minhas Rotas</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a href="#" class="nav-link">
+            <i class="fas fa-clipboard-list"></i>
+            <span>Relat\u00f3rios</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a href="#" class="nav-link">
+            <i class="fas fa-camera"></i>
+            <span>Registrar</span>
+        </a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-content">
+    {# Stats Grid #}
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon blue">
+                <i class="fas fa-route"></i>
+            </div>
+            <div class="stat-info">
+                <h3>12</h3>
+                <p>Rotas Hoje</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon green">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-info">
+                <h3>8</h3>
+                <p>Conclu\u00eddas</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon orange">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <div class="stat-info">
+                <h3>4</h3>
+                <p>Pendentes</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon purple">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-info">
+                <h3>6.5h</h3>
+                <p>Tempo em Campo</p>
+            </div>
+        </div>
+    </div>
+
+    {# Field Agent Tasks #}
+    <div class="content-grid">
+        <div class="card large">
+            <div class="card-header">
+                <h3>Minhas Tarefas</h3>
+                <div class="task-filters">
+                    <button class="filter-btn active">Todas</button>
+                    <button class="filter-btn">Pendentes</button>
+                    <button class="filter-btn">Conclu\u00eddas</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <ul class="task-list">
+                    <li class="task-item pending">
+                        <div class="task-checkbox">
+                            <input type="checkbox" id="task1">
+                        </div>
+                        <div class="task-info">
+                            <p><strong>Verificar tr\u00e2nsito - Av. Paulista</strong></p>
+                            <span class="task-location"><i class="fas fa-map-marker-alt"></i> S\u00e3o Paulo, SP</span>
+                        </div>
+                        <div class="task-meta">
+                            <span class="task-priority high">Alta</span>
+                            <span class="task-time">14:00</span>
+                        </div>
+                    </li>
+                    <li class="task-item pending">
+                        <div class="task-checkbox">
+                            <input type="checkbox" id="task2">
+                        </div>
+                        <div class="task-info">
+                            <p><strong>Monitorar obra - Rua Oscar Freire</strong></p>
+                            <span class="task-location"><i class="fas fa-map-marker-alt"></i> S\u00e3o Paulo, SP</span>
+                        </div>
+                        <div class="task-meta">
+                            <span class="task-priority medium">M\u00e9dia</span>
+                            <span class="task-time">15:30</span>
+                        </div>
+                    </li>
+                    <li class="task-item completed">
+                        <div class="task-checkbox">
+                            <input type="checkbox" id="task3" checked>
+                        </div>
+                        <div class="task-info">
+                            <p><strong>Relat\u00f3rio de acidente - Marginal</strong></p>
+                            <span class="task-location"><i class="fas fa-map-marker-alt"></i> S\u00e3o Paulo, SP</span>
+                        </div>
+                        <div class="task-meta">
+                            <span class="task-priority high">Alta</span>
+                            <span class="task-time">Conclu\u00eddo</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>A\u00e7\u00f5es R\u00e1pidas</h3>
+            </div>
+            <div class="card-body">
+                <div class="quick-actions">
+                    <a href="#" class="quick-action-btn">
+                        <i class="fas fa-camera"></i>
+                        <span>Registrar Foto</span>
+                    </a>
+                    <a href="#" class="quick-action-btn">
+                        <i class="fas fa-video"></i>
+                        <span>Registrar V\u00eddeo</span>
+                    </a>
+                    <a href="#" class="quick-action-btn">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>Reportar Incidente</span>
+                    </a>
+                    <a href="#" class="quick-action-btn">
+                        <i class="fas fa-map"></i>
+                        <span>Ver Mapa</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,175 @@
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}{{ title }} | wazeBR{% endblock %}
+
+{% block page_body_class %}admin-users-form-page{% endblock %}
+
+{% block dashboard_page_title %}{{ title }}{% endblock %}
+
+{% block page_content %}
+    <div class="dashboard-content admin-users-form-content">
+        {# ── Breadcrumbs ────────────────────────────────────── #}
+        <nav class="breadcrumbs" aria-label="Breadcrumbs">
+            <ol class="breadcrumbs-list">
+                <li class="breadcrumbs-item">
+                    <a href="{{ path('app_account_admin_dashboard') }}">
+                        <i class="fa-solid fa-house" aria-hidden="true"></i>
+                        Admin
+                    </a>
+                </li>
+
+                <li class="breadcrumbs-item">
+                    <a href="{{ path('admin_user_index') }}">
+                        Usuários
+                    </a>
+                </li>
+
+                <li class="breadcrumbs-item" aria-current="page">
+                    {{ title }}
+                </li>
+            </ol>
+        </nav>
+
+        {# ── Flash Messages ─────────────────────────────────── #}
+        {% for type, messages in app.flashes %}
+            {% for message in messages %}
+                <div class="flash-message flash-{{ type }}">
+                    <i class="fa-solid {% if type == 'success' %}fa-check-circle{% elseif type == 'error' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %}" aria-hidden="true"></i>
+                    <span>{{ message }}</span>
+                </div>
+            {% endfor %}
+        {% endfor %}
+
+        {# ── Formulário ─────────────────────────────────────── #}
+        <section class="card dashboard-card">
+            <header class="card-header">
+                <div>
+                    <h3>{{ title }}</h3>
+                    <p>
+                        {{ user.id ? 'Edite as informações do usuário.' : 'Preencha os dados para criar um novo usuário.' }}
+                    </p>
+                </div>
+            </header>
+
+            <div class="card-body">
+                <form method="post" class="user-form">
+                    <div class="form-grid">
+                        {# Nome #}
+                        <div class="form-group">
+                            <label for="name">Nome *</label>
+                            <input
+                                type="text"
+                                id="name"
+                                name="name"
+                                class="form-control {{ errors.name is defined ? 'is-invalid' : '' }}"
+                                value="{{ formData.name }}"
+                                required
+                                autofocus
+                            />
+                            {% if errors.name is defined %}
+                                <span class="form-error">{{ errors.name }}</span>
+                            {% endif %}
+                        </div>
+
+                        {# Email #}
+                        <div class="form-group">
+                            <label for="email">Email *</label>
+                            <input
+                                type="email"
+                                id="email"
+                                name="email"
+                                class="form-control {{ errors.email is defined ? 'is-invalid' : '' }}"
+                                value="{{ formData.email }}"
+                                required
+                            />
+                            {% if errors.email is defined %}
+                                <span class="form-error">{{ errors.email }}</span>
+                            {% endif %}
+                        </div>
+
+                        {# Senha #}
+                        <div class="form-group">
+                            <label for="password">
+                                Senha {{ user.id ? '(deixe em branco para manter a atual)' : '*' }}
+                            </label>
+                            <input
+                                type="password"
+                                id="password"
+                                name="password"
+                                class="form-control {{ errors.password is defined ? 'is-invalid' : '' }}"
+                                placeholder="{{ user.id ? 'Mantenha em branco para não alterar' : 'Mínimo 6 caracteres' }}"
+                            />
+                            {% if errors.password is defined %}
+                                <span class="form-error">{{ errors.password }}</span>
+                            {% endif %}
+                        </div>
+
+                        {# Roles #}
+                        <div class="form-group">
+                            <label>Perfis de Acesso</label>
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input
+                                        type="checkbox"
+                                        name="roles[ROLE_USER]"
+                                        value="ROLE_USER"
+                                        {{ 'ROLE_USER' in formData.roles ? 'checked' : '' }}
+                                    />
+                                    <span>Usuário (ROLE_USER)</span>
+                                </label>
+
+                                <label class="checkbox-label">
+                                    <input
+                                        type="checkbox"
+                                        name="roles[ROLE_ADMIN]"
+                                        value="ROLE_ADMIN"
+                                        {{ 'ROLE_ADMIN' in formData.roles ? 'checked' : '' }}
+                                    />
+                                    <span>Administrador (ROLE_ADMIN)</span>
+                                </label>
+
+                                <label class="checkbox-label">
+                                    <input
+                                        type="checkbox"
+                                        name="roles[ROLE_ACCOUNT_ADMIN]"
+                                        value="ROLE_ACCOUNT_ADMIN"
+                                        {{ 'ROLE_ACCOUNT_ADMIN' in formData.roles ? 'checked' : '' }}
+                                    />
+                                    <span>Admin de Conta (ROLE_ACCOUNT_ADMIN)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        {# Status #}
+                        <div class="form-group">
+                            <label>Status</label>
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input
+                                        type="checkbox"
+                                        name="enabled"
+                                        value="1"
+                                        {{ formData.enabled ? 'checked' : '' }}
+                                    />
+                                    <span>Usuário ativo</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <a href="{{ path('admin_user_index') }}" class="btn btn-ghost">
+                            <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                            Cancelar
+                        </a>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-save" aria-hidden="true"></i>
+                            {{ user.id ? 'Salvar Alterações' : 'Criar Usuário' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+    </div>
+{% endblock %}

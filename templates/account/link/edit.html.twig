@@ -1,0 +1,142 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Editar link — {{ partner.name }}{% endblock %}
+
+{% macro error(errors, key) %}
+  {% if errors[key] is defined %}<span class="form-error">{{ errors[key] }}</span>{% endif %}
+{% endmacro %}
+{% import _self as f %}
+
+{% block content %}
+<div style="max-width:640px">
+
+  <nav aria-label="breadcrumb" style="margin-bottom:var(--space-4);font-size:var(--text-sm);color:var(--color-text-muted)">
+    <a href="{{ path('account_link_index') }}" style="color:var(--color-primary)">Links monitorados</a>
+    <span style="margin:0 var(--space-2)">›</span>
+    <span>Editar</span>
+  </nav>
+
+  <div class="page-header" style="margin-bottom:var(--space-6)">
+    <h1 class="page-title">Editar link</h1>
+    <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-top:var(--space-1)">
+      Criado em {{ link.createdAt|date('d/m/Y') }}
+      {% if link.lastCollectedAt %} · Última coleta: {{ link.lastCollectedAt|date('d/m/Y H:i') }}{% endif %}
+    </p>
+  </div>
+
+  <form method="post" action="{{ path('account_link_edit', {id: link.id}) }}" novalidate>
+
+    <div class="card" style="padding:var(--space-6);margin-bottom:var(--space-4)">
+
+      {# TIPO #}
+      <div class="form-group">
+        <label class="form-label">Tipo de link</label>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:var(--space-3)">
+          {% for type in types %}
+            {% set isSelected = link.linkType.value == type.value %}
+            <label style="display:flex;align-items:center;gap:var(--space-3);border:1px solid {{ isSelected ? 'var(--color-primary)' : 'var(--color-border)' }};border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);cursor:pointer;background:{{ isSelected ? 'oklch(from var(--color-primary) l c h / .07)' : 'var(--color-surface)' }};transition:border-color 140ms,background 140ms" class="type-label">
+              <input type="radio" name="link_type" value="{{ type.value }}"
+                     {{ isSelected ? 'checked' : '' }}
+                     style="accent-color:var(--color-primary)">
+              <span style="font-size:var(--text-sm);font-weight:500">{{ type.label() }}</span>
+            </label>
+          {% endfor %}
+        </div>
+        {{ f.error(errors, 'link_type') }}
+      </div>
+
+      {# URL #}
+      <div class="form-group">
+        <label class="form-label" for="url">URL do feed</label>
+        <input class="form-control" type="url" id="url" name="url"
+               value="{{ link.url }}" required autocomplete="off">
+        {{ f.error(errors, 'url') }}
+      </div>
+
+      {# LABEL #}
+      <div class="form-group">
+        <label class="form-label" for="label">Rótulo <span style="font-weight:400;color:var(--color-text-muted)">(opcional)</span></label>
+        <input class="form-control" type="text" id="label" name="label"
+               value="{{ link.label ?? '' }}">
+      </div>
+
+      {# FEED FORMAT #}
+      <div class="form-group" id="feedFormatGroup">
+        <label class="form-label">Formato do feed</label>
+        <div style="display:flex;gap:var(--space-4)">
+          <label style="display:flex;align-items:center;gap:var(--space-2);cursor:pointer;font-size:var(--text-sm)">
+            <input type="radio" name="feed_format" value="1"
+                   {{ link.feedFormat == 1 ? 'checked' : '' }}
+                   style="accent-color:var(--color-primary)">
+            JSON PartnerHub (Alertas / Jams)
+          </label>
+          <label style="display:flex;align-items:center;gap:var(--space-2);cursor:pointer;font-size:var(--text-sm)">
+            <input type="radio" name="feed_format" value="2"
+                   {{ link.feedFormat == 2 ? 'checked' : '' }}
+                   style="accent-color:var(--color-primary)">
+            TVT (Tempos de Viagem)
+          </label>
+        </div>
+      </div>
+
+      {# ATIVO #}
+      <div style="display:flex;align-items:center;gap:var(--space-3)">
+        <input type="checkbox" id="isActive" name="isActive" value="1"
+               {{ link.isActive() ? 'checked' : '' }}
+               style="width:18px;height:18px;cursor:pointer;accent-color:var(--color-primary)">
+        <label for="isActive" class="form-label" style="margin:0;cursor:pointer">Link ativo</label>
+      </div>
+
+    </div>
+
+    <div style="display:flex;gap:var(--space-3);align-items:center">
+      <button type="submit" class="btn btn-primary">Salvar alterações</button>
+      <a href="{{ path('account_link_index') }}" class="btn btn-ghost">Cancelar</a>
+      <span style="flex:1"></span>
+      <form method="post" action="{{ path('account_link_delete', {id: link.id}) }}"
+            onsubmit="return confirm('Remover este link permanentemente?')" style="margin:0">
+        <input type="hidden" name="_token" value="{{ csrf_token('delete_link_' ~ link.id) }}">
+        <button type="submit" class="btn btn-ghost" style="color:var(--color-error);font-size:var(--text-sm)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          Remover link
+        </button>
+      </form>
+    </div>
+
+  </form>
+</div>
+{% endblock %}
+
+{% block stylesheets %}
+<style>
+  .form-error { display:block;font-size:var(--text-xs);color:var(--color-error);margin-top:var(--space-1); }
+</style>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+(function(){
+  const wazeFeedTypes = ['waze_feed', 'waze_tvt'];
+  const fmtGroup = document.getElementById('feedFormatGroup');
+
+  function updateFeedFormat() {
+    const selected = document.querySelector('input[name="link_type"]:checked');
+    if (!selected) return;
+    fmtGroup.style.display = wazeFeedTypes.includes(selected.value) ? 'block' : 'none';
+  }
+
+  document.querySelectorAll('.type-label').forEach(lbl => {
+    lbl.querySelector('input').addEventListener('change', () => {
+      document.querySelectorAll('.type-label').forEach(l => {
+        const checked = l.querySelector('input').checked;
+        l.style.borderColor = checked ? 'var(--color-primary)' : 'var(--color-border)';
+        l.style.background  = checked ? 'oklch(from var(--color-primary) l c h / .07)' : 'var(--color-surface)';
+      });
+      updateFeedFormat();
+    });
+  });
+
+  updateFeedFormat();
+})();
+</script>
+{% endblock %}

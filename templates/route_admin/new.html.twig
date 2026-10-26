@@ -1,0 +1,16 @@
+{% extends 'base.html.twig' %}
+{% block title %}Nova Rota{% endblock %}
+{% block content %}
+<div class="page-header">
+  <a href="{{ path('route_admin_index') }}" class="btn btn-ghost">&larr; Voltar</a>
+  <h1>Nova Rota</h1>
+</div>
+<div class="form-card">
+  {{ form_start(form) }}
+  {{ form_row(form.name) }}
+  {{ form_row(form.description) }}
+  {{ form_row(form.isActive) }}
+  <button type="submit" class="btn btn-primary">Salvar</button>
+  {{ form_end(form) }}
+</div>
+{% endblock %}

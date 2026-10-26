@@ -1,0 +1,35 @@
+{% extends 'base.html.twig' %}
+{% block title %}Nova Cidade{% endblock %}
+{% block content %}
+<div class="page-header" style="display:flex;align-items:center;gap:var(--space-4)">
+  <a href="{{ path('admin_city_index') }}" class="btn btn-ghost btn-sm">
+    <i data-lucide="arrow-left" style="width:14px;height:14px"></i> Voltar
+  </a>
+  <h1 class="page-title">Nova Cidade</h1>
+</div>
+<div class="card" style="max-width:520px">
+  <div style="padding:var(--space-6)">
+    <form method="post">
+      <div class="form-group">
+        <label class="form-label" for="name">Nome da Cidade</label>
+        <input class="form-control" id="name" name="name" required placeholder="ex: Belo Horizonte">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="state">Estado (UF)</label>
+        <input class="form-control" id="state" name="state" maxlength="2" required placeholder="MG">
+        <span class="form-hint">Sigla de 2 letras</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="partner_id">Parceiro</label>
+        <select class="form-control" id="partner_id" name="partner_id" required>
+          <option value="">Selecione…</option>
+          {% for p in partners %}
+            <option value="{{ p.id }}">{{ p.name }} ({{ p.slug }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%">Criar Cidade</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

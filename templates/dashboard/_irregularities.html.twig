@@ -1,0 +1,81 @@
+{#
+  Painel de Irregularidades.
+  Inclua na dashboard: {% include 'dashboard/_irregularities.html.twig' %}
+  Variáveis necessárias: irregSpeedLoss, irregDelayByStreet, irregSeverityCity, irregWorsening, irregRecentList
+#}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-speedometer2 me-1"></i> Irregularidades de Tráfego</span>
+        <span class="badge bg-warning text-dark">{{ irregRecentList|length }} recentes</span>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+
+            {# Top vias com perda de velocidade #}
+            <div class="col-md-6">
+                <h6 class="text-muted mb-2"><i class="bi bi-arrow-down-circle me-1"></i>Maior Perda de Velocidade (24h)</h6>
+                {% if irregSpeedLoss %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead><tr><th>Via</th><th class="text-end">Perda %</th><th class="text-end">Severidade</th></tr></thead>
+                        <tbody>
+                        {% for row in irregSpeedLoss %}
+                        <tr>
+                            <td class="text-truncate" style="max-width:160px">{{ row.street }}</td>
+                            <td class="text-end">
+                                <span class="badge {{ row.loss_pct > 50 ? 'bg-danger' : (row.loss_pct > 25 ? 'bg-warning text-dark' : 'bg-secondary') }}">
+                                    {{ row.loss_pct }}%
+                                </span>
+                            </td>
+                            <td class="text-end">{{ row.avg_severity }}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted small">Sem dados de irregularidade.</p>
+                {% endif %}
+            </div>
+
+            {# Atraso acumulado por via #}
+            <div class="col-md-6">
+                <h6 class="text-muted mb-2"><i class="bi bi-clock-history me-1"></i>Atraso Acumulado por Via (24h)</h6>
+                {% if irregDelayByStreet %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead><tr><th>Via</th><th class="text-end">Atraso (s)</th><th class="text-end">Ocorrências</th></tr></thead>
+                        <tbody>
+                        {% for row in irregDelayByStreet %}
+                        <tr>
+                            <td class="text-truncate" style="max-width:160px">{{ row.street }}</td>
+                            <td class="text-end fw-bold">{{ row.total_delay_s|number_format(0, ',', '.') }}</td>
+                            <td class="text-end text-muted">{{ row.occurrences }}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted small">Sem dados de atraso.</p>
+                {% endif %}
+            </div>
+
+            {# Piorando agora #}
+            {% if irregWorsening %}
+            <div class="col-12">
+                <h6 class="text-muted mb-2"><i class="bi bi-graph-up-arrow me-1 text-danger"></i>Piorando Agora</h6>
+                <div class="d-flex flex-wrap gap-2">
+                {% for irr in irregWorsening %}
+                    <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle px-2 py-1">
+                        {% if irr.street %}{{ irr.street }}{% else %}ID {{ irr.id }}{% endif %}
+                        &mdash; sev. {{ irr.severity }}
+                    </span>
+                {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>

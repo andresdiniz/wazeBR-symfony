@@ -1,0 +1,153 @@
+{% extends 'admin/dashboard_base.html.twig' %}
+
+{% block title %}Partner Admin{% endblock %}
+
+{% block user_role %}Admin Partner{% endblock %}
+
+{% block page_title %}Dashboard - Partner{% endblock %}
+
+{% block sidebar_menu %}
+<ul class="nav-list">
+    <li class="nav-item">
+        <a href="{{ path('app_partner_dashboard') }}" class="nav-link active">
+            <i class="fas fa-home"></i>
+            <span>Dashboard</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a href="#" class="nav-link">
+            <i class="fas fa-handshake"></i>
+            <span>Parcerias</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a href="#" class="nav-link">
+            <i class="fas fa-chart-pie"></i>
+            <span>Relat\u00f3rios</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a href="#" class="nav-link">
+            <i class="fas fa-file-invoice-dollar"></i>
+            <span>Faturamento</span>
+        </a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-content">
+    {# Stats Grid #}
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon blue">
+                <i class="fas fa-handshake"></i>
+            </div>
+            <div class="stat-info">
+                <h3>45</h3>
+                <p>Parcerias Ativas</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon green">
+                <i class="fas fa-dollar-sign"></i>
+            </div>
+            <div class="stat-info">
+                <h3>R$ 125K</h3>
+                <p>Receita Mensal</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon orange">
+                <i class="fas fa-project-diagram"></i>
+            </div>
+            <div class="stat-info">
+                <h3>12</h3>
+                <p>Projetos em Andamento</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon purple">
+                <i class="fas fa-smile"></i>
+            </div>
+            <div class="stat-info">
+                <h3>98%</h3>
+                <p>Satisfa\u00e7\u00e3o</p>
+            </div>
+        </div>
+    </div>
+
+    {# Partner Stats #}
+    <div class="content-grid">
+        <div class="card large">
+            <div class="card-header">
+                <h3>Performance de Parcerias</h3>
+                <select class="filter-select">
+                    <option>\u00daltimos 30 dias</option>
+                    <option>\u00daltimos 90 dias</option>
+                    <option>Este ano</option>
+                </select>
+            </div>
+            <div class="card-body">
+                <div class="chart-placeholder">
+                    <i class="fas fa-chart-line"></i>
+                    <p>Gr\u00e1fico de performance das parcerias</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>Parcerias Recentes</h3>
+                <a href="#" class="view-all">Ver todas</a>
+            </div>
+            <div class="card-body">
+                <ul class="partner-list">
+                    <li class="partner-item">
+                        <div class="partner-logo">
+                            <i class="fas fa-building"></i>
+                        </div>
+                        <div class="partner-info">
+                            <p><strong>Prefeitura de SP</strong></p>
+                            <span class="partner-status active">Ativo</span>
+                        </div>
+                        <div class="partner-value">
+                            <strong>R$ 45K</strong>
+                            <span>/m\u00eas</span>
+                        </div>
+                    </li>
+                    <li class="partner-item">
+                        <div class="partner-logo">
+                            <i class="fas fa-bus"></i>
+                        </div>
+                        <div class="partner-info">
+                            <p><strong>TransBrasil</strong></p>
+                            <span class="partner-status active">Ativo</span>
+                        </div>
+                        <div class="partner-value">
+                            <strong>R$ 32K</strong>
+                            <span>/m\u00eas</span>
+                        </div>
+                    </li>
+                    <li class="partner-item">
+                        <div class="partner-logo">
+                            <i class="fas fa-truck"></i>
+                        </div>
+                        <div class="partner-info">
+                            <p><strong>Log\u00edstica Express</strong></p>
+                            <span class="partner-status pending">Pendente</span>
+                        </div>
+                        <div class="partner-value">
+                            <strong>R$ 28K</strong>
+                            <span>/m\u00eas</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

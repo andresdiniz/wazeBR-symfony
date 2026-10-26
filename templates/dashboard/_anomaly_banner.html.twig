@@ -1,0 +1,13 @@
+{# Exibir no topo do dashboard quando kpis.anomalyDetected == true #}
+{% if kpis.anomalyDetected %}
+<div class="alert alert-warning alert-dismissible d-flex align-items-center gap-2 mb-3" role="alert" id="anomaly-banner">
+    <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+    <div>
+        <strong>Atividade anormal detectada!</strong>
+        {{ kpis.alerts1h }} alertas na última hora
+        &mdash; {{ kpis.anomalyRatio }}× a média das 6h anteriores
+        (média: {{ kpis.avg6hPerHour }} alertas/h).
+    </div>
+    <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Fechar"></button>
+</div>
+{% endif %}

@@ -1,0 +1,132 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+    {{ station.nome }}
+{% endblock %}
+
+{% block header_title %}
+    <i class="bi bi-droplet"></i>
+    Detalhes da estação
+{% endblock %}
+
+{% block body %}
+<div class="container-fluid py-4">
+    <div class="mb-4">
+        <a
+            href="{{ path('app_cemaden_rainfall') }}"
+            class="btn btn-outline-secondary btn-sm"
+        >
+            <i class="bi bi-arrow-left"></i>
+            Voltar para Quantidade de Chuva
+        </a>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-droplet"></i>
+                    {{ station.nome }}
+                </h5>
+
+                <span class="badge bg-light text-primary">
+                    {{ station.codEstacao }}
+                </span>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-12 col-md-4">
+                    <small class="text-muted d-block">MUNICÍPIO</small>
+                    <span>
+                        <i class="bi bi-geo-alt"></i>
+                        {{ station.municipio }}
+                    </span>
+                </div>
+
+                <div class="col-12 col-md-4">
+                    <small class="text-muted d-block">UF</small>
+                    <span>{{ station.uf }}</span>
+                </div>
+
+                <div class="col-12 col-md-4">
+                    <small class="text-muted d-block">STATUS</small>
+                    {% if station.active %}
+                        <span class="badge bg-success">
+                            <i class="bi bi-check-circle"></i>
+                            Ativa
+                        </span>
+                    {% else %}
+                        <span class="badge bg-secondary">
+                            <i class="bi bi-pause-circle"></i>
+                            Inativa
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-cloud-rain"></i>
+                Últimas medições de chuva
+            </h5>
+        </div>
+
+        <div class="card-body p-0">
+            {% if recentRain is not empty %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Data da medição</th>
+                                <th class="text-end">Chuva acumulada</th>
+                                <th class="text-center">Nível de alerta</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for reading in recentRain %}
+                                <tr>
+                                    <td>
+                                        <i class="bi bi-clock"></i>
+                                        {{ reading.measuredAt|date('d/m/Y H:i') }}
+                                    </td>
+
+                                    <td class="text-end">
+                                        {% if reading.accumulatedRain is not null %}
+                                            <strong>
+                                                {{ reading.accumulatedRain|number_format(2, ',', '.') }} mm
+                                            </strong>
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+
+                                    <td class="text-center">
+                                        {% if reading.alertLevel %}
+                                            <span class="badge bg-info">
+                                                {{ reading.alertLevel|capitalize }}
+                                            </span>
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="p-4 text-center text-muted">
+                    <i class="bi bi-inbox"></i>
+                    Nenhuma medição de chuva registrada para esta estação.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

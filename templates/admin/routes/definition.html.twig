@@ -1,0 +1,251 @@
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}Definição TVT | wazeBR{% endblock %}
+
+{% block page_body_class %}admin-routes-definition-page{% endblock %}
+
+{% block dashboard_page_title %}Definição TVT{% endblock %}
+
+{% block page_content %}
+    <div class="dashboard-content admin-routes-content">
+        <section class="dashboard-hero">
+            <div>
+                <a
+                    href="{{ path('admin_routes_index') }}"
+                    class="dashboard-back-link"
+                >
+                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                    Voltar para rotas
+                </a>
+
+                <p class="dashboard-hero-kicker">Integração TVT</p>
+                <h2>{{ definition.name|default('Definição sem nome') }}</h2>
+                <p>
+                    Detalhes da definição associada ao route ID
+                    <code class="external-id">{{ definition.routeId }}</code>.
+                </p>
+            </div>
+        </section>
+
+        <section class="stats-grid admin-route-stats">
+            <article class="stat-card">
+                <div class="stat-icon blue">
+                    <i class="fa-solid fa-hashtag" aria-hidden="true"></i>
+                </div>
+
+                <div class="stat-info">
+                    <span>ID interno</span>
+                    <strong>#{{ definition.id }}</strong>
+                    <small>Identificador da definição</small>
+                </div>
+            </article>
+
+            <article class="stat-card">
+                <div class="stat-icon purple">
+                    <i class="fa-solid fa-route" aria-hidden="true"></i>
+                </div>
+
+                <div class="stat-info">
+                    <span>Route ID</span>
+                    <strong>TVT</strong>
+                    <small>{{ definition.routeId }}</small>
+                </div>
+            </article>
+
+            <article class="stat-card">
+                <div class="stat-icon green">
+                    <i class="fa-solid fa-calendar-plus" aria-hidden="true"></i>
+                </div>
+
+                <div class="stat-info">
+                    <span>Criada em</span>
+                    <strong>
+                        {% if definition.createdAt %}
+                            {{ definition.createdAt|date('d/m/Y') }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </strong>
+                    <small>
+                        {% if definition.createdAt %}
+                            {{ definition.createdAt|date('H:i') }}
+                        {% endif %}
+                    </small>
+                </div>
+            </article>
+
+            <article class="stat-card">
+                <div class="stat-icon orange">
+                    <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+                </div>
+
+                <div class="stat-info">
+                    <span>Atualizada em</span>
+                    <strong>
+                        {% if definition.updatedAt %}
+                            {{ definition.updatedAt|date('d/m/Y') }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </strong>
+                    <small>
+                        {% if definition.updatedAt %}
+                            {{ definition.updatedAt|date('H:i') }}
+                        {% endif %}
+                    </small>
+                </div>
+            </article>
+        </section>
+
+        <section class="dashboard-grid">
+            <article class="card dashboard-card">
+                <header class="card-header">
+                    <div>
+                        <h3>Dados da definição</h3>
+                        <p>Campos da entidade WazeTvtRouteDefinition.</p>
+                    </div>
+                </header>
+
+                <div class="card-body">
+                    <dl class="details-list details-list-single">
+                        <div>
+                            <dt>ID</dt>
+                            <dd>#{{ definition.id }}</dd>
+                        </div>
+
+                        <div>
+                            <dt>Route ID</dt>
+                            <dd>
+                                <code class="external-id">{{ definition.routeId }}</code>
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt>Nome</dt>
+                            <dd>{{ definition.name|default('Não informado') }}</dd>
+                        </div>
+
+                        <div>
+                            <dt>Bounding box</dt>
+                            <dd>
+                                {% if definition.bbox %}
+                                    <code class="route-data-block">{{ definition.bbox }}</code>
+                                {% else %}
+                                    <span class="text-muted">Não informado</span>
+                                {% endif %}
+                            </dd>
+                        </div>
+                    </dl>
+                </div>
+            </article>
+
+            <article class="card dashboard-card">
+                <header class="card-header">
+                    <div>
+                        <h3>Linha da rota</h3>
+                        <p>Geometria armazenada na definição TVT.</p>
+                    </div>
+                </header>
+
+                <div class="card-body">
+                    {% if definition.line %}
+                        <pre class="route-data-block route-line-data">{{ definition.line }}</pre>
+                    {% else %}
+                        <div class="empty-state">
+                            <span class="empty-state-icon">
+                                <i class="fa-solid fa-draw-polygon" aria-hidden="true"></i>
+                            </span>
+
+                            <h3>Sem geometria</h3>
+                            <p>A definição não possui linha geográfica armazenada.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </article>
+        </section>
+
+        <section class="card dashboard-card">
+            <header class="card-header">
+                <div>
+                    <h3>Execuções vinculadas</h3>
+                    <p>
+                        Total carregado pela associação da definição:
+                        {{ definition.executions|length }}
+                    </p>
+                </div>
+            </header>
+
+            <div class="card-body">
+                {% if definition.executions is not empty %}
+                    <div class="admin-table-wrapper">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Data</th>
+                                    <th>Duração</th>
+                                    <th>Distância</th>
+                                    <th>Velocidade média</th>
+                                    <th>Congestionamentos</th>
+                                    <th>Irregularidades</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                {% for execution in definition.executions %}
+                                    <tr>
+                                        <td>#{{ execution.id }}</td>
+
+                                        <td>
+                                            {% if execution.timestamp %}
+                                                {{ execution.timestamp|date('d/m/Y H:i') }}
+                                            {% else %}
+                                                {{ execution.createdAt|date('d/m/Y H:i') }}
+                                            {% endif %}
+                                        </td>
+
+                                        <td>
+                                            {% if execution.duration is not null %}
+                                                {{ (execution.duration / 60)|round }} min
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        </td>
+
+                                        <td>
+                                            {% if execution.length is not null %}
+                                                {{ (execution.length / 1000)|number_format(1, ',', '.') }} km
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        </td>
+
+                                        <td>
+                                            {% if execution.avgSpeed is not null %}
+                                                {{ execution.avgSpeed|number_format(1, ',', '.') }} km/h
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        </td>
+
+                                        <td>{{ execution.trafficJams }}</td>
+                                        <td>{{ execution.irregularities }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <span class="empty-state-icon">
+                            <i class="fa-solid fa-play" aria-hidden="true"></i>
+                        </span>
+
+                        <h3>Sem execuções vinculadas</h3>
+                        <p>Não existem execuções associadas a esta definição.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+{% endblock %}
