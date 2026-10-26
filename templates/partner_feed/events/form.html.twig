@@ -1,7 +1,8 @@
 {# templates/partner_feed/events/form.html.twig #}
 {% extends 'layouts/dashboard.html.twig' %}
 
-{% block title %}{{ event ? 'Editar Evento' : 'Novo Evento' }} — {{ partner.name }}{% endblock %}
+{% block meta_robots %}noindex, nofollow{% endblock %}
+{% block title %}{{ event and event.id ? 'Editar Evento' : 'Novo Evento' }} — {{ partner.name }}{% endblock %}
 
 {% block stylesheets %}
     {{ parent() }}
@@ -39,7 +40,7 @@
 
     {# ── Cabeçalho ──────────────────────────────────────────────── #}
     <header class="pf-form__header">
-        <h1 class="pf-form__title">{{ event ? 'Editar Evento' : 'Novo Evento' }}</h1>
+        <h1 class="pf-form__title">{{ event and event.id ? 'Editar Evento' : 'Novo Evento' }}</h1>
         <p class="pf-form__meta">
             Parceiro: <strong>{{ partner.name }}</strong>
             {% if partner.city %}
@@ -92,12 +93,12 @@
         <div class="pf-form-card">
             <form method="POST"
                   id="event-form"
-                  action="{{ event
+                  action="{{ event and event.id
                       ? path('partner_feed_event_update', {code: partner.code, id: event.id})
                       : path('partner_feed_event_create', {code: partner.code}) }}"
                   novalidate>
 
-                <input type="hidden" name="_token" value="{{ csrf_token(event ? ('partner_feed_event_update_' ~ event.id) : ('partner_feed_event_create_' ~ partner.id)) }}">
+                <input type="hidden" name="_token" value="{{ csrf_token(event and event.id ? ('partner_feed_event_update_' ~ event.id) : ('partner_feed_event_create_' ~ partner.id)) }}">
                 <input type="hidden" name="polyline" id="pf-polyline-input"
                        value="{{ event and event.polyline ? event.polyline|json_encode|e('html_attr') : '' }}">
 
@@ -200,7 +201,7 @@
                     {# Ações #}
                     <div class="pf-form__actions">
                         <button type="submit" class="pf-btn pf-btn--primary">
-                            {{ event ? 'Atualizar evento' : 'Criar evento' }}
+                            {{ event and event.id ? 'Atualizar evento' : 'Criar evento' }}
                         </button>
                         <a href="{{ path('partner_feed_event_list', {code: partner.code}) }}"
                            class="pf-btn pf-btn--secondary">

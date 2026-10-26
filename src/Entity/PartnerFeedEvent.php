@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\CifsTypeEnum;
 use App\Repository\PartnerFeedEventRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -114,14 +115,23 @@ class PartnerFeedEvent
         $this->updateTime = new \DateTimeImmutable();
     }
 
+    /** @return array<string, string> subtype => rótulo, só os permitidos para o tipo (fonte: CifsTypeEnum). */
     public static function getSubtypesForType(string $type): array
     {
-        return array_filter(self::SUBTYPES, fn (string $key): bool => str_starts_with($key, $type . '_'), ARRAY_FILTER_USE_KEY);
+        $enum = CifsTypeEnum::tryFrom($type);
+        if ($enum === null) {
+            return [];
+        }
+
+        return array_intersect_key(self::SUBTYPES, array_flip($enum->allowedSubtypes()));
     }
 
+    /** Subtype vazio é aceito; caso contrário precisa constar na lista oficial do tipo. */
     public static function isValidSubtype(string $type, ?string $subtype): bool
     {
-        return $subtype === null || $subtype === '' || str_starts_with($subtype, $type . '_');
+        $enum = CifsTypeEnum::tryFrom($type);
+
+        return $enum !== null && $enum->isValidSubtype($subtype);
     }
 
     public function getId(): ?int { return $this->id; }
@@ -162,28 +172,48 @@ class PartnerFeedEvent
     public function getUpdatedByUserId(): ?int { return $this->updatedByUserId; }
     public function setUpdatedByUserId(?int $value): self { $this->updatedByUserId = $value; return $this; }
 
+    /** Polyline CIFS: pares "lat lon" separados por espaço, 6 casas decimais, ponto como separador. */
     public function toCifsPolyline(): string
     {
         $parts = [];
         foreach ($this->polyline as $point) {
             if (is_array($point) && isset($point[0], $point[1])) {
-                $parts[] = sprintf('%.6f %.6f', (float) $point[0], (float) $point[1]);
+                // %F (e não %f) => independe do locale
+                $parts[] = sprintf('%.6F %.6F', (float) $point[0], (float) $point[1]);
             }
         }
         return implode(' ', $parts);
     }
 
-    public function toCifsArray(): array
+    /**
+     * Incidente no formato CIFS (somente campos da especificação do Waze).
+     * Datas em ISO8601 com segundos e offset (yyyy-MM-dd'T'HH:mm:ssP).
+     * Campos vazios são omitidos. O horário é convertido para $timezone
+     * (o banco/kernel trabalham em UTC).
+     *
+     * @return array<string, string>
+     */
+    public function toCifsArray(string $timezone = 'America/Sao_Paulo'): array
     {
-        $format = static fn (?\DateTimeInterface $date): ?string => $date?->format('Y-m-d\TH:i:sP');
-        return [
-            'id' => $this->uuid, 'creationtime' => $format($this->creationTime),
-            'updatetime' => $format($this->updateTime), 'type' => $this->cifsType,
-            'subtype' => $this->cifsSubtype, 'street' => $this->street,
-            'description' => $this->description, 'city' => $this->city,
-            'polyline' => $this->toCifsPolyline(), 'direction' => $this->direction,
-            'starttime' => $format($this->startTime), 'endtime' => $format($this->endTime),
-            'reference' => $this->reference,
+        $tz = new \DateTimeZone($timezone);
+        $format = static fn (?\DateTimeInterface $date): ?string => $date === null
+            ? null
+            : \DateTimeImmutable::createFromInterface($date)->setTimezone($tz)->format('Y-m-d\\TH:i:sP');
+
+        $description = trim((string) preg_replace('/\s+/u', ' ', (string) $this->description));
+
+        $incident = [
+            'id' => $this->uuid,
+            'type' => $this->cifsType,
+            'subtype' => $this->cifsSubtype,
+            'street' => trim((string) $this->street),
+            'polyline' => $this->toCifsPolyline(),
+            'direction' => $this->direction,
+            'starttime' => $format($this->startTime),
+            'endtime' => $format($this->endTime),
+            'description' => $description,
         ];
+
+        return array_filter($incident, static fn (?string $v): bool => $v !== null && $v !== '');
     }
 }

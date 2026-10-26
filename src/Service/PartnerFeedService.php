@@ -5,33 +5,35 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\Partner;
-use App\Repository\PartnerFeedEventRepository;
 
+/**
+ * Fachada fina sobre o CifsFeedBuilder: mantém a API usada por controller,
+ * templates e comando, mas o payload vem de um único lugar.
+ */
 final class PartnerFeedService
 {
-    private const TIMEZONE = 'America/Sao_Paulo';
-
     public function __construct(
-        private readonly PartnerFeedEventRepository $eventRepository,
+        private readonly CifsFeedBuilder $feedBuilder,
     ) {}
 
+    /** @return array{incidents: list<array<string, string>>} */
     public function buildFeed(Partner $partner): array
     {
-        $events = $this->eventRepository->findActiveByPartner($partner);
-
-        return [
-            'incidents' => array_map(
-                static fn ($event): array => $event->toCifsArray(),
-                $events,
-            ),
-        ];
+        return $this->feedBuilder->buildJsonPayload($partner);
     }
 
-    public function buildJson(Partner $partner): string
+    public function buildJson(Partner $partner, bool $pretty = true): string
     {
-        return json_encode(
-            $this->buildFeed($partner),
-            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR,
-        );
+        $flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR;
+        if ($pretty) {
+            $flags |= JSON_PRETTY_PRINT;
+        }
+
+        return json_encode($this->buildFeed($partner), $flags);
+    }
+
+    public function buildXml(Partner $partner): string
+    {
+        return $this->feedBuilder->buildXmlPayload($partner);
     }
 }

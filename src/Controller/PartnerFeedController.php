@@ -8,6 +8,7 @@ use App\Entity\Partner;
 use App\Entity\PartnerFeedEvent;
 use App\Repository\PartnerFeedEventRepository;
 use App\Repository\PartnerRepository;
+use App\Service\CifsEventValidator;
 use App\Service\PartnerFeedService;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\DBAL\Connection;
@@ -29,38 +30,54 @@ final class PartnerFeedController extends AbstractController
         private readonly PartnerFeedService $feedService,
         private readonly EntityManagerInterface $em,
         private readonly Connection $connection,
+        private readonly CifsEventValidator $validator,
+        #[Autowire('%env(APP_TIMEZONE)%')]
+        private readonly string $appTimezone,
         #[Autowire(service: 'monolog.logger.audit')]
         private readonly LoggerInterface $auditLogger,
     ) {}
 
     #[Route('/{code}.json', name: 'json', methods: ['GET'])]
-    public function jsonFeed(string $code): JsonResponse
+    public function jsonFeed(string $code, Request $request): Response
     {
         $partner = $this->getPartnerOr404($code);
-        $json = $this->feedService->buildJson($partner);
-        return new JsonResponse(json_decode($json, true, 512, JSON_THROW_ON_ERROR), Response::HTTP_OK, [
-            'Cache-Control' => 'no-store, no-cache, must-revalidate',
-            'Pragma' => 'no-cache',
+        $json = $this->feedService->buildJson($partner, false);
+
+        $response = new Response($json, Response::HTTP_OK, [
+            'Content-Type' => 'application/json; charset=utf-8',
+            'X-Robots-Tag' => 'noindex, nofollow',
         ]);
+        // Revalida a cada request (o Waze sempre vê o estado atual) mas permite 304 barato.
+        $response->headers->set('Cache-Control', 'public, no-cache');
+        $response->setEtag(md5($json));
+        $response->isNotModified($request);
+
+        return $response;
     }
 
     #[Route('/', name: 'index', methods: ['GET'])]
     public function index(): Response
     {
-        return $this->render('partner_feed/index.html.twig', [
+        $response = $this->render('partner_feed/index.html.twig', [
             'partners' => $this->partnerRepository->findBy(['isActive' => true], ['name' => 'ASC']),
         ]);
+        $response->headers->set('X-Robots-Tag', 'noindex, nofollow');
+
+        return $response;
     }
 
     #[Route('/{code}', name: 'show', methods: ['GET'])]
     public function show(string $code): Response
     {
         $partner = $this->getPartnerOr404($code);
-        return $this->render('partner_feed/show.html.twig', [
+        $response = $this->render('partner_feed/show.html.twig', [
             'partner' => $partner,
             'feedJson' => $this->feedService->buildJson($partner),
             'incidents' => $this->feedService->buildFeed($partner)['incidents'],
         ]);
+        $response->headers->set('X-Robots-Tag', 'noindex, nofollow');
+
+        return $response;
     }
 
     #[Route('/{code}/events', name: 'event_list', methods: ['GET'])]
@@ -110,9 +127,13 @@ final class PartnerFeedController extends AbstractController
         if ($user !== null && method_exists($user, 'getId')) {
             $event->setCreatedByUserId($user->getId());
         }
-        $this->hydrateFromRequest($event, $request);
+        $parseErrors = $this->hydrateFromRequest($event, $request);
+        if ($response = $this->rejectIfInvalid($partner, $event, $parseErrors)) {
+            return $response;
+        }
         $this->em->persist($event);
         $this->em->flush();
+        $this->flashWarnings($event);
         $this->logEventAction('created', $partner, (int) $event->getId());
         $this->addFlash('success', sprintf('Evento #%s criado.', $event->getUuid() ?? $event->getId()));
         return $this->redirectToRoute('partner_feed_event_list', ['code' => $code]);
@@ -142,12 +163,16 @@ final class PartnerFeedController extends AbstractController
             throw $this->createAccessDeniedException('Token CSRF inválido.');
         }
         $event = $this->getEventOr404($id, $partner);
-        $this->hydrateFromRequest($event, $request);
+        $parseErrors = $this->hydrateFromRequest($event, $request);
+        if ($response = $this->rejectIfInvalid($partner, $event, $parseErrors)) {
+            return $response;
+        }
         $user = $this->getUser();
         if ($user !== null && method_exists($user, 'getId')) {
             $event->setUpdatedByUserId($user->getId());
         }
         $this->em->flush();
+        $this->flashWarnings($event);
         $this->logEventAction('updated', $partner, $id);
         $this->addFlash('success', 'Evento atualizado.');
         return $this->redirectToRoute('partner_feed_event_list', ['code' => $code]);
@@ -234,22 +259,95 @@ final class PartnerFeedController extends AbstractController
         }
     }
 
-    private function hydrateFromRequest(PartnerFeedEvent $event, Request $request): void
+    /**
+     * Se o evento não cumpre a spec CIFS, NÃO grava: devolve o formulário (422)
+     * com o que o usuário digitou e a lista de erros.
+     *
+     * @param string[] $parseErrors
+     */
+    private function rejectIfInvalid(Partner $partner, PartnerFeedEvent $event, array $parseErrors): ?Response
     {
+        $errors = array_merge($parseErrors, $this->validator->validate($event)['errors']);
+        if ($errors === []) {
+            return null;
+        }
+
+        foreach ($errors as $error) {
+            $this->addFlash('error', $error);
+        }
+
+        return $this->render('partner_feed/events/form.html.twig', [
+            'partner' => $partner,
+            'event' => $event,
+            'types' => PartnerFeedEvent::TYPES,
+            'subtypes' => PartnerFeedEvent::SUBTYPES,
+        ], new Response('', Response::HTTP_UNPROCESSABLE_ENTITY));
+    }
+
+    private function flashWarnings(PartnerFeedEvent $event): void
+    {
+        foreach ($this->validator->validate($event)['warnings'] as $warning) {
+            $this->addFlash('warning', $warning);
+        }
+    }
+
+    /**
+     * O <input type="datetime-local"> manda horário local SEM fuso. Interpreta em
+     * APP_TIMEZONE e guarda em UTC (o kernel e o banco trabalham em UTC).
+     */
+    private function parseLocalDateTime(string $value): ?\DateTimeImmutable
+    {
+        try {
+            $local = new \DateTimeImmutable(trim($value), new \DateTimeZone($this->appTimezone));
+        } catch (\Exception) {
+            return null;
+        }
+
+        return $local->setTimezone(new \DateTimeZone('UTC'));
+    }
+
+    /** @return string[] erros de leitura dos campos (a validação CIFS roda depois) */
+    private function hydrateFromRequest(PartnerFeedEvent $event, Request $request): array
+    {
+        $errors = [];
         $r = $request->request;
-        if ($r->has('cifsType') && $r->get('cifsType') !== '') $event->setCifsType((string) $r->get('cifsType'));
-        if ($r->has('cifsSubtype')) $event->setCifsSubtype($r->get('cifsSubtype') !== '' ? (string) $r->get('cifsSubtype') : null);
-        if ($r->has('street')) $event->setStreet((string) $r->get('street'));
+        if ($r->has('cifsType') && $r->get('cifsType') !== '') $event->setCifsType(trim((string) $r->get('cifsType')));
+        if ($r->has('cifsSubtype')) $event->setCifsSubtype($r->get('cifsSubtype') !== '' ? trim((string) $r->get('cifsSubtype')) : null);
+        if ($r->has('street')) $event->setStreet(trim((string) $r->get('street')));
         if ($r->has('reference')) $event->setReference($r->get('reference') !== '' ? (string) $r->get('reference') : null);
-        if ($r->has('description')) $event->setDescription($r->get('description') !== '' ? (string) $r->get('description') : null);
+        if ($r->has('description')) $event->setDescription($r->get('description') !== '' ? trim((string) $r->get('description')) : null);
         if ($r->has('city')) $event->setCity($r->get('city') !== '' ? (string) $r->get('city') : null);
-        if ($r->has('polyline')) {
+        if ($r->has('polyline') && trim((string) $r->get('polyline')) !== '') {
             $polyline = json_decode((string) $r->get('polyline'), true);
-            if (is_array($polyline)) $event->setPolyline($polyline);
+            if (is_array($polyline)) {
+                $event->setPolyline(array_values($polyline));
+            } else {
+                $errors[] = 'Polyline ilegível: marque os pontos no mapa novamente.';
+            }
         }
         if ($r->has('direction') && $r->get('direction') !== '') $event->setDirection((string) $r->get('direction'));
-        if ($r->has('startTime') && $r->get('startTime') !== '') $event->setStartTime(new \DateTimeImmutable((string) $r->get('startTime')));
-        if ($r->has('endTime')) $event->setEndTime($r->get('endTime') !== '' ? new \DateTimeImmutable((string) $r->get('endTime')) : null);
+        if ($r->has('startTime') && $r->get('startTime') !== '') {
+            $start = $this->parseLocalDateTime((string) $r->get('startTime'));
+            if ($start === null) {
+                $errors[] = 'Data de início inválida.';
+            } else {
+                $event->setStartTime($start);
+            }
+        }
+        if ($r->has('endTime')) {
+            if ($r->get('endTime') === '') {
+                $event->setEndTime(null);
+            } else {
+                $end = $this->parseLocalDateTime((string) $r->get('endTime'));
+                if ($end === null) {
+                    $errors[] = 'Data de fim inválida.';
+                } else {
+                    $event->setEndTime($end);
+                }
+            }
+        }
         if ($r->has('isActive')) $event->setIsActive(filter_var($r->get('isActive'), FILTER_VALIDATE_BOOLEAN));
+
+        return $errors;
     }
 }
