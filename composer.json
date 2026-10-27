@@ -6,7 +6,7 @@
     "minimum-stability": "stable",
     "prefer-stable": true,
     "require": {
-        "php": ">=8.5.12",
+        "php": "^8.5",
         "ext-json": "*",
         "ext-simplexml": "*",
         "amphp/http-client": "5",

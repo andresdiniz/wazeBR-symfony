@@ -8,7 +8,7 @@ use App\Entity\Partner;
 use App\Repository\PartnerRepository;
 use App\Service\CifsFeedBuilder;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -33,7 +33,7 @@ final class CifsFeedController extends AbstractController
     }
 
     #[Route('/waze/{code}.json', name: 'json', methods: ['GET'])]
-    public function jsonFeed(string $code, Request $request): Response
+    public function jsonFeed(string $code): JsonResponse
     {
         $partner = $this->findActivePartner($code);
         if (!$partner) {
@@ -43,31 +43,30 @@ final class CifsFeedController extends AbstractController
             );
         }
 
-        $body = json_encode(
-            $this->feedBuilder->buildJsonPayload($partner),
-            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
-        );
+        $response = new JsonResponse($this->feedBuilder->buildJsonPayload($partner), Response::HTTP_OK);
+        $response->headers->set('Content-Type', 'application/json; charset=utf-8');
+        $this->disableCache($response);
 
-        return $this->finalize(new Response($body), 'application/json; charset=utf-8', $request);
+        return $response;
     }
 
     #[Route('/waze/{code}.xml', name: 'xml', methods: ['GET'])]
-    public function xmlFeed(string $code, Request $request): Response
+    public function xmlFeed(string $code): Response
     {
         $partner = $this->findActivePartner($code);
         if (!$partner) {
             return new Response(
                 '<error>Parceiro nao encontrado ou inativo</error>',
                 Response::HTTP_NOT_FOUND,
-                ['Content-Type' => 'application/xml; charset=utf-8']
+                ['Content-Type' => 'application/xml']
             );
         }
 
-        return $this->finalize(
-            new Response($this->feedBuilder->buildXmlPayload($partner)),
-            'application/xml; charset=utf-8',
-            $request
-        );
+        $response = new Response($this->feedBuilder->buildXmlPayload($partner), Response::HTTP_OK);
+        $response->headers->set('Content-Type', 'application/xml; charset=utf-8');
+        $this->disableCache($response);
+
+        return $response;
     }
 
     private function findActivePartner(string $code): ?Partner
@@ -82,14 +81,10 @@ final class CifsFeedController extends AbstractController
         return $partner;
     }
 
-    private function finalize(Response $response, string $contentType, Request $request): Response
+    private function disableCache(Response $response): void
     {
-        $response->headers->set('Content-Type', $contentType);
-        $response->headers->set('X-Robots-Tag', 'noindex, nofollow');
-        $response->headers->set('Cache-Control', 'public, no-cache');
-        $response->setEtag(md5((string) $response->getContent()));
-        $response->isNotModified($request);
-
-        return $response;
+        $response->headers->set('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+        $response->headers->set('Pragma', 'no-cache');
+        $response->headers->set('Expires', '0');
     }
 }

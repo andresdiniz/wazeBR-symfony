@@ -1,12 +1,6 @@
 {% extends 'layouts/dashboard.html.twig' %}
 
-{% block meta_robots %}noindex, nofollow{% endblock %}
 {% block title %}Eventos — {{ partner.name }}{% endblock %}
-
-{% block stylesheets %}
-    {{ parent() }}
-    <link rel="stylesheet" href="{{ asset('css/pages/partner-feed-list.css') }}">
-{% endblock %}
 
 {% block content %}
     <section class="partner-events-page" data-partner-events-list>
@@ -174,9 +168,4 @@
             </div>
         </div>
     </section>
-{% endblock %}
-
-{% block javascripts %}
-    {{ parent() }}
-    <script src="{{ asset('js/pages/partner-feed-list.js') }}" defer></script>
 {% endblock %}

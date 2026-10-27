@@ -1,0 +1,11 @@
+The <info>%command.name%</info> command generates crud controller with templates for selected entity.
+
+<info>php %command.full_name% BlogPost</info>
+
+If the argument is missing, the command will ask for the entity class name interactively.
+
+The controller class is asked for too, and defaults to the entity name plus
+<comment>Controller</comment>. Pass it up front to skip that question, which is what you want in
+a script or when the terminal is not interactive:
+
+<info>php %command.full_name% BlogPost --controller-class=BlogPostAdminController --no-interaction</info>

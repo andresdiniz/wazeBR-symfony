@@ -33,29 +33,6 @@ final class PartnerFeedEventRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    /**
-     * Eventos que podem entrar no feed publicado: ativos, ainda não encerrados
-     * e com início até $horizon (o Waze aceita incidentes/interdições planejados,
-     * então eventos futuros próximos entram no feed antes do início).
-     *
-     * @return PartnerFeedEvent[]
-     */
-    public function findPublishableByPartner(Partner $partner, \DateTimeImmutable $now, \DateTimeImmutable $horizon): array
-    {
-        return $this->createQueryBuilder('e')
-            ->where('e.partner = :partner')
-            ->andWhere('e.isActive = :active')
-            ->andWhere('e.startTime IS NULL OR e.startTime <= :horizon')
-            ->andWhere('e.endTime IS NULL OR e.endTime >= :now')
-            ->setParameter('partner', $partner)
-            ->setParameter('active', true)
-            ->setParameter('horizon', $horizon)
-            ->setParameter('now', $now)
-            ->orderBy('e.id', 'ASC')
-            ->getQuery()
-            ->getResult();
-    }
-
     /** @return PartnerFeedEvent[] */
     public function findByPartnerPaginated(Partner $partner, int $page = 1, int $limit = 25): array
     {

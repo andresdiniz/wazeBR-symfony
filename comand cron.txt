@@ -1,0 +1,1 @@
+/usr/bin/php /home/USER/domains/DOMINIO/public_html/bin/console messenger:consume scheduler_default --time-limit=55 --memory-limit=128M --no-interaction >> /home/USER/domains/DOMINIO/public_html/var/log/messenger.log 2>&1

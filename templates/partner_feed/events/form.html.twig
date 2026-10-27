@@ -1,118 +1,222 @@
+{# templates/partner_feed/events/form.html.twig #}
 {% extends 'layouts/dashboard.html.twig' %}
-{% block meta_robots %}noindex, nofollow{% endblock %}
-{% block title %}{{ event and event.id ? 'Editar Evento' : 'Novo Evento' }} — {{ partner.name }}{% endblock %}
+
+{% block title %}{{ event ? 'Editar Evento' : 'Novo Evento' }} — {{ partner.name }}{% endblock %}
+
 {% block stylesheets %}
     {{ parent() }}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous" />
     <link rel="stylesheet" href="{{ asset('css/pages/partner-feed-form.css') }}">
 {% endblock %}
+
 {% block content %}
-<div class="pf-form" data-partner-feed-form data-form-config
+
+{#
+    data-form-config: configuração injetada via data-attributes para o JS
+    Isso evita variáveis globais no <script> inline e mantém o JS sem Twig.
+#}
+<div class="pf-form" data-partner-feed-form
+    data-form-config
     data-partner-code="{{ partner.code }}"
     data-default-lat="{{ partner.city ? '-20.6597' : '-14.2350' }}"
     data-default-lng="{{ partner.city ? '-43.8081' : '-51.9253' }}"
     data-default-zoom="13"
     data-geo-token="{{ partner.reverseGeocodingToken|default('') }}"
     data-geo-region="{{ partner.geoRegion|default('ROW') }}"
-    data-existing-polyline="{{ event and event.polyline ? event.polyline|json_encode|e('html_attr') : '' }}">
-    <a href="{{ path('partner_feed_event_list', {code: partner.code}) }}" class="pf-form__breadcrumb">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+    data-existing-polyline="{{ event and event.polyline ? event.polyline|json_encode|e('html_attr') : '' }}"
+>
+
+    {# ── Breadcrumb ─────────────────────────────────────────────── #}
+    <a href="{{ path('partner_feed_event_list', {code: partner.code}) }}"
+       class="pf-form__breadcrumb">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <path d="M19 12H5M12 5l-7 7 7 7"/>
+        </svg>
         Lista de eventos
     </a>
+
+    {# ── Cabeçalho ──────────────────────────────────────────────── #}
     <header class="pf-form__header">
-        <h1 class="pf-form__title">{{ event and event.id ? 'Editar Evento' : 'Novo Evento' }}</h1>
-        <p class="pf-form__meta">Parceiro: <strong>{{ partner.name }}</strong>
-            {% if partner.city %}&nbsp;·&nbsp; {{ partner.city }}{% if partner.state %}, {{ partner.state }}{% endif %}{% endif %}
+        <h1 class="pf-form__title">{{ event ? 'Editar Evento' : 'Novo Evento' }}</h1>
+        <p class="pf-form__meta">
+            Parceiro: <strong>{{ partner.name }}</strong>
+            {% if partner.city %}
+                &nbsp;·&nbsp; {{ partner.city }}{% if partner.state %}, {{ partner.state }}{% endif %}
+            {% endif %}
         </p>
     </header>
+
+    {# ── Layout: mapa + formulário ───────────────────────────────── #}
     <div class="pf-form__layout">
+
+        {# ── Coluna: mapa ────────────────────────────────────────── #}
         <div class="pf-form-card">
+
             <div class="pf-map__instructions">
                 <span class="pf-map__mode-badge" id="pf-map-mode-badge">📍 Ponto único</span>
                 <span id="pf-map-instructions">Clique no mapa para marcar o local exato do evento.</span>
             </div>
+
             <div id="pf-map" role="application" aria-label="Mapa para seleção de localização"></div>
+
             <div class="pf-map__footer">
-                <div class="pf-coords" id="pf-coords-display" aria-live="polite">Lat: —&nbsp; Lng: —</div>
+                <div class="pf-coords" id="pf-coords-display" aria-live="polite">
+                    Lat: —&nbsp; Lng: —
+                </div>
+
                 {% if event and event.polyline|length > 0 %}
                     <div class="pf-polyline-info">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M3 12h4l3-9 4 18 3-9h4"/>
+                        </svg>
                         {{ event.polyline|length }} ponto(s) na polyline
                     </div>
                 {% endif %}
+
                 <button type="button" class="pf-btn pf-btn--danger-ghost" id="pf-clear-map-btn">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                        <path d="M10 11v6M14 11v6"/>
+                    </svg>
                     Limpar mapa
                 </button>
             </div>
         </div>
+
+        {# ── Coluna: formulário ──────────────────────────────────── #}
         <div class="pf-form-card">
-            <form method="POST" id="event-form" action="{{ event and event.id ? path('partner_feed_event_update', {code: partner.code, id: event.id}) : path('partner_feed_event_create', {code: partner.code}) }}" novalidate>
-                <input type="hidden" name="_token" value="{{ csrf_token(event and event.id ? ('partner_feed_event_update_' ~ event.id) : ('partner_feed_event_create_' ~ partner.id)) }}">
-                <input type="hidden" name="polyline" id="pf-polyline-input" value="{{ event and event.polyline ? event.polyline|json_encode|e('html_attr') : '' }}">
+            <form method="POST"
+                  id="event-form"
+                  action="{{ event
+                      ? path('partner_feed_event_update', {code: partner.code, id: event.id})
+                      : path('partner_feed_event_create', {code: partner.code}) }}"
+                  novalidate>
+
+                <input type="hidden" name="_token" value="{{ csrf_token(event ? ('partner_feed_event_update_' ~ event.id) : ('partner_feed_event_create_' ~ partner.id)) }}">
+                <input type="hidden" name="polyline" id="pf-polyline-input"
+                       value="{{ event and event.polyline ? event.polyline|json_encode|e('html_attr') : '' }}">
+
                 <div class="pf-form__body">
+
+                    {# Tipo #}
                     <div class="pf-field">
-                        <label class="pf-label" for="cifsType">Tipo <span class="pf-label__required" aria-label="obrigatório">*</span></label>
+                        <label class="pf-label" for="cifsType">
+                            Tipo <span class="pf-label__required" aria-label="obrigatório">*</span>
+                        </label>
                         <select name="cifsType" id="cifsType" class="pf-select" required>
                             <option value="">Selecione o tipo…</option>
                             {% for value, label in types %}
-                                <option value="{{ value }}" {{ event and event.cifsType == value ? 'selected' : '' }}>{{ label }}</option>
+                                <option value="{{ value }}"
+                                    {{ event and event.cifsType == value ? 'selected' : '' }}>
+                                    {{ label }}
+                                </option>
                             {% endfor %}
                         </select>
                     </div>
+
+                    {# Subtipo #}
                     <div class="pf-field">
                         <label class="pf-label" for="cifsSubtype">Subtipo</label>
                         <select name="cifsSubtype" id="cifsSubtype" class="pf-select">
                             <option value="">Selecione o subtipo…</option>
                             {% for value, label in subtypes %}
-                                <option value="{{ value }}" data-type="{{ value|split('_')|first }}" {{ event and event.cifsSubtype == value ? 'selected' : '' }}>{{ label }}</option>
+                                <option value="{{ value }}"
+                                        data-type="{{ value|split('_')|first }}"
+                                        {{ event and event.cifsSubtype == value ? 'selected' : '' }}>
+                                    {{ label }}
+                                </option>
                             {% endfor %}
                         </select>
                     </div>
+
+                    {# Rua #}
                     <div class="pf-field">
-                        <label class="pf-label" for="street">Rua <span class="pf-label__required" aria-label="obrigatório">*</span></label>
-                        <input type="text" name="street" id="street" class="pf-input" required value="{{ event ? event.street : '' }}" placeholder="Preenchido automaticamente pelo mapa">
+                        <label class="pf-label" for="street">
+                            Rua <span class="pf-label__required" aria-label="obrigatório">*</span>
+                        </label>
+                        <input type="text" name="street" id="street" class="pf-input" required
+                               value="{{ event ? event.street : '' }}"
+                               placeholder="Preenchido automaticamente pelo mapa">
                     </div>
+
+                    {# Referência #}
                     <div class="pf-field">
                         <label class="pf-label" for="reference">Referência</label>
-                        <input type="text" name="reference" id="reference" class="pf-input" value="{{ event ? event.reference : '' }}" placeholder="Ponto de referência ou bairro">
+                        <input type="text" name="reference" id="reference" class="pf-input"
+                               value="{{ event ? event.reference : '' }}"
+                               placeholder="Ponto de referência ou bairro">
                     </div>
+
+                    {# Descrição #}
                     <div class="pf-field">
                         <label class="pf-label" for="description">Descrição</label>
-                        <textarea name="description" id="description" class="pf-textarea" rows="3" placeholder="Descrição do evento (opcional)">{{ event ? event.description : '' }}</textarea>
+                        <textarea name="description" id="description" class="pf-textarea"
+                                  rows="3" placeholder="Descrição do evento (opcional)">{{ event ? event.description : '' }}</textarea>
                     </div>
+
+                    {# Datas #}
                     <div class="pf-field-row">
                         <div class="pf-field">
                             <label class="pf-label" for="startTime">Início</label>
-                            <input type="datetime-local" name="startTime" id="startTime" class="pf-input" value="{{ event and event.startTime ? event.startTime|date('Y-m-d\\TH:i') : '' }}">
+                            <input type="datetime-local" name="startTime" id="startTime" class="pf-input"
+                                   value="{{ event and event.startTime ? event.startTime|date('Y-m-d\\TH:i') : '' }}">
                         </div>
                         <div class="pf-field">
                             <label class="pf-label" for="endTime">Fim</label>
-                            <input type="datetime-local" name="endTime" id="endTime" class="pf-input" value="{{ event and event.endTime ? event.endTime|date('Y-m-d\\TH:i') : '' }}">
+                            <input type="datetime-local" name="endTime" id="endTime" class="pf-input"
+                                   value="{{ event and event.endTime ? event.endTime|date('Y-m-d\\TH:i') : '' }}">
                         </div>
                     </div>
+
+                    {# Direção #}
                     <div class="pf-field">
                         <label class="pf-label" for="direction">Direção do tráfego</label>
                         <select name="direction" id="direction" class="pf-select">
-                            <option value="BOTH_DIRECTIONS" {{ not event or event.direction == 'BOTH_DIRECTIONS' ? 'selected' : '' }}>Ambos os sentidos</option>
-                            <option value="ONE_DIRECTION" {{ event and event.direction == 'ONE_DIRECTION' ? 'selected' : '' }}>Um sentido</option>
+                            <option value="BOTH_DIRECTIONS"
+                                {{ not event or event.direction == 'BOTH_DIRECTIONS' ? 'selected' : '' }}>
+                                Ambos os sentidos
+                            </option>
+                            <option value="ONE_DIRECTION"
+                                {{ event and event.direction == 'ONE_DIRECTION' ? 'selected' : '' }}>
+                                Um sentido
+                            </option>
                         </select>
                     </div>
+
+                    {# Ativo #}
                     <div class="pf-field">
-                        <label class="pf-checkbox-label"><input type="checkbox" name="isActive" value="1" {{ not event or event.isActive ? 'checked' : '' }}> Evento ativo</label>
+                        <label class="pf-checkbox-label">
+                            <input type="checkbox" name="isActive" value="1"
+                                {{ not event or event.isActive ? 'checked' : '' }}>
+                            Evento ativo
+                        </label>
                     </div>
+
+                    {# Ações #}
                     <div class="pf-form__actions">
-                        <button type="submit" class="pf-btn pf-btn--primary">{{ event and event.id ? 'Atualizar evento' : 'Criar evento' }}</button>
-                        <a href="{{ path('partner_feed_event_list', {code: partner.code}) }}" class="pf-btn pf-btn--secondary">Cancelar</a>
+                        <button type="submit" class="pf-btn pf-btn--primary">
+                            {{ event ? 'Atualizar evento' : 'Criar evento' }}
+                        </button>
+                        <a href="{{ path('partner_feed_event_list', {code: partner.code}) }}"
+                           class="pf-btn pf-btn--secondary">
+                            Cancelar
+                        </a>
                     </div>
-                </div>
+
+                </div>{# /.pf-form__body #}
             </form>
         </div>
-    </div>
-</div>
+
+    </div>{# /.pf-form__layout #}
+</div>{# /.pf-form #}
 {% endblock %}
+
 {% block javascripts %}
     {{ parent() }}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGkVgiIyIWLLlTSXzWQzxuSg4DiQUCpauz/EWjgk5TYQqX/kvn9pG1NpYfqg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    {# O modulo do formulario e importado e inicializado por assets/js/app.js. #}
 {% endblock %}

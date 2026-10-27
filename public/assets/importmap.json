@@ -1,1 +1,214 @@
-[]
+{
+    "js-app-init": {
+        "path": "\/assets\/js\/core\/app-init-uYDWdEU.js",
+        "type": "js"
+    },
+    "\/assets\/js\/core\/csrf.js": {
+        "path": "\/assets\/js\/core\/csrf-pccFzle.js",
+        "type": "js"
+    },
+    "\/assets\/js\/core\/dom.js": {
+        "path": "\/assets\/js\/core\/dom-8DDsUoW.js",
+        "type": "js"
+    },
+    "\/assets\/js\/core\/http-client.js": {
+        "path": "\/assets\/js\/core\/http-client-RQhmgQO.js",
+        "type": "js"
+    },
+    "\/assets\/js\/core\/modal.js": {
+        "path": "\/assets\/js\/core\/modal-rdjQPOm.js",
+        "type": "js"
+    },
+    "\/assets\/js\/core\/notifications.js": {
+        "path": "\/assets\/js\/core\/notifications-OIx-3qx.js",
+        "type": "js"
+    },
+    "\/assets\/js\/core\/theme.js": {
+        "path": "\/assets\/js\/core\/theme-m9qJJIp.js",
+        "type": "js"
+    },
+    "\/assets\/js\/layout\/base-layout.js": {
+        "path": "\/assets\/js\/layout\/base-layout-UEb3CVS.js",
+        "type": "js"
+    },
+    "\/assets\/js\/layout\/footer.js": {
+        "path": "\/assets\/js\/layout\/footer-qqkdF8Q.js",
+        "type": "js"
+    },
+    "\/assets\/js\/layout\/header.js": {
+        "path": "\/assets\/js\/layout\/header-ljOV120.js",
+        "type": "js"
+    },
+    "\/assets\/js\/layout\/sidebar.js": {
+        "path": "\/assets\/js\/layout\/sidebar-q4uRzfC.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/accordions.js": {
+        "path": "\/assets\/js\/components\/accordions-aZSBcZX.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/charts.js": {
+        "path": "\/assets\/js\/components\/charts-srcvQnu.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/expand-buttons.js": {
+        "path": "\/assets\/js\/components\/expand-buttons-MbrThaU.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/filters.js": {
+        "path": "\/assets\/js\/components\/filters-Nto1E_W.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/map.js": {
+        "path": "\/assets\/js\/components\/map-NQReF_k.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/menus.js": {
+        "path": "\/assets\/js\/components\/menus-mIPfJOG.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/notifications.js": {
+        "path": "\/assets\/js\/components\/notifications-IoBE6IC.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/pagination.js": {
+        "path": "\/assets\/js\/components\/pagination-9oCo03U.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/table.js": {
+        "path": "\/assets\/js\/components\/table-E865E4j.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/dashboard.js": {
+        "path": "\/assets\/js\/pages\/dashboard-qVMvKFT.js",
+        "type": "js"
+    },
+    "app": {
+        "path": "\/assets\/js\/app-hq42vhb.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/buttons.js": {
+        "path": "\/assets\/js\/components\/buttons-KGjY30d.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/forms.js": {
+        "path": "\/assets\/js\/components\/forms-Ykuonst.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/alerts.js": {
+        "path": "\/assets\/js\/components\/alerts-E6detBf.js",
+        "type": "js"
+    },
+    "\/assets\/js\/components\/modals.js": {
+        "path": "\/assets\/js\/components\/modals-FQ2mX-D.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/cifs.js": {
+        "path": "\/assets\/js\/pages\/cifs-OcfcM0F.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/routes.js": {
+        "path": "\/assets\/js\/pages\/routes-O9ciLHJ.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/route-show.js": {
+        "path": "\/assets\/js\/pages\/route-show-lI3tVCj.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/route-live.js": {
+        "path": "\/assets\/js\/pages\/route-live-PTI0R0y.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/route-forecast.js": {
+        "path": "\/assets\/js\/pages\/route-forecast-SPZVqcP.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/route-compare.js": {
+        "path": "\/assets\/js\/pages\/route-compare-MzAeCtD.js",
+        "type": "js"
+    },
+    "\/assets\/js\/layout\/consent.js": {
+        "path": "\/assets\/js\/layout\/consent-QKVRuPA.js",
+        "type": "js"
+    },
+    "\/assets\/js\/layout\/analytics.js": {
+        "path": "\/assets\/js\/layout\/analytics-w0-038O.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/weather-index.js": {
+        "path": "\/assets\/js\/pages\/weather-index-ruwsir8.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/weather-show.js": {
+        "path": "\/assets\/js\/pages\/weather-show-drgndgA.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/weather-analysis.js": {
+        "path": "\/assets\/js\/pages\/weather-analysis-lK2FKHY.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/tv.js": {
+        "path": "\/assets\/js\/pages\/tv-XydJRQX.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/admin-partner.js": {
+        "path": "\/assets\/js\/pages\/admin-partner-2LpX9e5.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/admin-user.js": {
+        "path": "\/assets\/js\/pages\/admin-user-dTgIQWD.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/jam.js": {
+        "path": "\/assets\/js\/pages\/jam-MiMJdB8.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/jam-show.js": {
+        "path": "\/assets\/js\/pages\/jam-show-9mAh6eM.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/jam-history.js": {
+        "path": "\/assets\/js\/pages\/jam-history-Bt3qBHz.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/partner-feed-index.js": {
+        "path": "\/assets\/js\/pages\/partner-feed-index-HELQ5i2.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/partner-feed-show.js": {
+        "path": "\/assets\/js\/pages\/partner-feed-show-4xCMN6A.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/partner-feed-form.js": {
+        "path": "\/assets\/js\/pages\/partner-feed-form-LPSbqeR.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/partner-feed-events-list.js": {
+        "path": "\/assets\/js\/pages\/partner-feed-events-list-vctASFz.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/traffic-light-list.js": {
+        "path": "\/assets\/js\/pages\/traffic-light-list--yWKsmP.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/traffic-light-form.js": {
+        "path": "\/assets\/js\/pages\/traffic-light-form-rMsr9pu.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/traffic-light-show.js": {
+        "path": "\/assets\/js\/pages\/traffic-light-show-cRRkGRe.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/traffic-light-dashboard.js": {
+        "path": "\/assets\/js\/pages\/traffic-light-dashboard-FSzejrY.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/traffic-light-control.js": {
+        "path": "\/assets\/js\/pages\/traffic-light-control-gbL2ODS.js",
+        "type": "js"
+    },
+    "dashboard": {
+        "path": "\/assets\/js\/pages\/dashboard-qVMvKFT.js",
+        "type": "js"
+    }
+}
