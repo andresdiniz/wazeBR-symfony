@@ -1,0 +1,37 @@
+# Adicionar em config/services.yaml (dentro do bloco services:)
+# ─────────────────────────────────────────────────────────────────────────────
+# Mapeia os parâmetros do briefing.yaml para os services.
+# O autowiring cuida do resto — só precisamos injetar os valores escalares
+# e a lista de parceiros que não são resolvíveis automaticamente.
+
+services:
+
+    App\Service\AiNarrativeService:
+        arguments:
+            $geminiApiKey: '%env(GEMINI_API_KEY)%'
+            $geminiModel:  '%env(default:gemini-1.5-flash-latest:GEMINI_MODEL)%'
+
+    App\Service\BriefingSchedulerService:
+        arguments:
+            $parceiros: '%briefing.parceiros_ativos%'   # injetado pelo CompilerPass abaixo
+            $strategy:  '%briefing.strategy%'
+
+    App\Command\WazeDailyBriefingCommand:
+        arguments:
+            $dashboardBaseUrl: '%env(APP_URL)%'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Adicionar em config/packages/briefing.yaml (parâmetros globais):
+#
+# parameters:
+#     briefing.strategy: '%briefing.strategy%'
+#     briefing.parceiros_ativos: []   # populado via DI Extension ou diretamente:
+
+# Alternativa simples — sem Extension, apenas parâmetros diretos:
+parameters:
+    briefing.strategy: 'always'
+    briefing.parceiros_ativos:
+        - { cidade: 'Conselheiro Lafaiete', nome: 'Prefeitura de C. Lafaiete',
+            email: ['gestao@conselheirolafaiete.mg.gov.br'], ativo: true }
+        # Repetir os outros parceiros do briefing.yaml aqui,
+        # ou criar uma DI Extension para ler o YAML automaticamente.

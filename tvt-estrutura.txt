@@ -1,0 +1,444 @@
+<?php
+
+namespace App\Entity;
+
+use App\Repository\WazeTvtRouteRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
+use Doctrine\DBAL\Types\Types;
+use Doctrine\ORM\Mapping as ORM;
+
+#[ORM\Entity(repositoryClass: WazeTvtRouteRepository::class)]
+#[ORM\Table(name: 'waze_tvt_route')]
+#[ORM\Index(columns: ['partner_id', 'waze_feed_id', 'external_route_id'], name: 'IDX_WAZE_TVT_ROUTE_EXTERNAL')]
+#[ORM\UniqueConstraint(name: 'UQ_WAZE_TVT_ROUTE', columns: ['waze_feed_id', 'external_route_id'])]
+class WazeTvtRoute
+{
+    #[ORM\Id]
+    #[ORM\GeneratedValue]
+    #[ORM\Column(type: 'bigint')]
+    private ?int $id = null;
+
+    #[ORM\ManyToOne(targetEntity: Partner::class)]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Partner $partner = null;
+
+    #[ORM\ManyToOne(targetEntity: WazeFeed::class, inversedBy: 'wazeTvtRoutes')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?WazeFeed $wazeFeed = null;
+
+    #[ORM\Column(length: 80)]
+    private string $externalRouteId = '';
+
+    #[ORM\Column(length: 80, nullable: true)]
+    private ?string $externalUuid = null;
+
+    #[ORM\Column(length: 200, nullable: true)]
+    private ?string $label = null;
+
+    #[ORM\Column]
+    private bool $isActive = true;
+
+    #[ORM\ManyToOne(targetEntity: WazeTvtRouteDefinition::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?WazeTvtRouteDefinition $currentDefinition = null;
+
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    private \DateTimeInterface $firstSeenAt;
+
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    private \DateTimeInterface $lastSeenAt;
+
+    #[ORM\OneToMany(targetEntity: WazeTvtRouteDefinition::class, mappedBy: 'wazeTvtRoute')]
+    private Collection $definitions;
+
+    #[ORM\OneToMany(targetEntity: WazeTvtRouteHistory::class, mappedBy: 'wazeTvtRoute')]
+    private Collection $history;
+
+    public function __construct()
+    {
+        $this->definitions = new ArrayCollection();
+        $this->history = new ArrayCollection();
+        $this->firstSeenAt = new \DateTime();
+        $this->lastSeenAt = new \DateTime();
+    }
+
+    public function getId(): ?int { return $this->id; }
+
+    public function getPartner(): ?Partner { return $this->partner; }
+    public function setPartner(?Partner $partner): static { $this->partner = $partner; return $this; }
+
+    public function getWazeFeed(): ?WazeFeed { return $this->wazeFeed; }
+    public function setWazeFeed(?WazeFeed $wazeFeed): static { $this->wazeFeed = $wazeFeed; return $this; }
+
+    public function getExternalRouteId(): string { return $this->externalRouteId; }
+    public function setExternalRouteId(string $externalRouteId): static { $this->externalRouteId = $externalRouteId; return $this; }
+
+    public function getExternalUuid(): ?string { return $this->externalUuid; }
+    public function setExternalUuid(?string $externalUuid): static { $this->externalUuid = $externalUuid; return $this; }
+
+    public function getLabel(): ?string { return $this->label; }
+    public function setLabel(?string $label): static { $this->label = $label; return $this; }
+
+    public function isActive(): bool { return $this->isActive; }
+    public function setIsActive(bool $isActive): static { $this->isActive = $isActive; return $this; }
+
+    public function getCurrentDefinition(): ?WazeTvtRouteDefinition { return $this->currentDefinition; }
+    public function setCurrentDefinition(?WazeTvtRouteDefinition $currentDefinition): static { $this->currentDefinition = $currentDefinition; return $this; }
+
+    public function getFirstSeenAt(): \DateTimeInterface { return $this->firstSeenAt; }
+    public function setFirstSeenAt(\DateTimeInterface $firstSeenAt): static { $this->firstSeenAt = $firstSeenAt; return $this; }
+
+    public function getLastSeenAt(): \DateTimeInterface { return $this->lastSeenAt; }
+    public function setLastSeenAt(\DateTimeInterface $lastSeenAt): static { $this->lastSeenAt = $lastSeenAt; return $this; }
+
+    public function getDefinitions(): Collection { return $this->definitions; }
+    public function getHistory(): Collection { return $this->history; }
+}
+<?php
+
+namespace App\Entity;
+
+use App\Repository\WazeTvtRouteDefinitionRepository;
+use Doctrine\DBAL\Types\Types;
+use Doctrine\ORM\Mapping as ORM;
+
+#[ORM\Entity(repositoryClass: WazeTvtRouteDefinitionRepository::class)]
+#[ORM\Table(name: 'waze_tvt_route_definition')]
+#[ORM\Index(columns: ['waze_tvt_route_id', 'is_current'], name: 'IDX_WAZE_TVT_DEF_CURRENT')]
+#[ORM\UniqueConstraint(name: 'UQ_WAZE_TVT_DEF_HASH', columns: ['waze_tvt_route_id', 'definition_hash'])]
+class WazeTvtRouteDefinition
+{
+    #[ORM\Id]
+    #[ORM\GeneratedValue]
+    #[ORM\Column(type: 'bigint')]
+    private ?int $id = null;
+
+    #[ORM\ManyToOne(targetEntity: WazeTvtRoute::class, inversedBy: 'definitions')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?WazeTvtRoute $wazeTvtRoute = null;
+
+    #[ORM\Column]
+    private int $versionNumber = 1;
+
+    #[ORM\Column(length: 64)]
+    private string $definitionHash = '';
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $name = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $originName = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $destinationName = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $distanceMeters = null;
+
+    #[ORM\Column(type: Types::JSON)]
+    private array $geometry = [];
+
+    #[ORM\Column(length: 64)]
+    private string $geometryHash = '';
+
+    #[ORM\Column(nullable: true)]
+    private ?int $segmentCount = null;
+
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $metadata = null;
+
+    #[ORM\Column]
+    private bool $isCurrent = true;
+
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    private \DateTimeInterface $validFrom;
+
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $validUntil = null;
+
+    public function __construct()
+    {
+        $this->validFrom = new \DateTime();
+    }
+
+    public function getId(): ?int { return $this->id; }
+
+    public function getWazeTvtRoute(): ?WazeTvtRoute { return $this->wazeTvtRoute; }
+    public function setWazeTvtRoute(?WazeTvtRoute $wazeTvtRoute): static { $this->wazeTvtRoute = $wazeTvtRoute; return $this; }
+
+    public function getVersionNumber(): int { return $this->versionNumber; }
+    public function setVersionNumber(int $versionNumber): static { $this->versionNumber = $versionNumber; return $this; }
+
+    public function getDefinitionHash(): string { return $this->definitionHash; }
+    public function setDefinitionHash(string $definitionHash): static { $this->definitionHash = $definitionHash; return $this; }
+
+    public function getName(): ?string { return $this->name; }
+    public function setName(?string $name): static { $this->name = $name; return $this; }
+
+    public function getOriginName(): ?string { return $this->originName; }
+    public function setOriginName(?string $originName): static { $this->originName = $originName; return $this; }
+
+    public function getDestinationName(): ?string { return $this->destinationName; }
+    public function setDestinationName(?string $destinationName): static { $this->destinationName = $destinationName; return $this; }
+
+    public function getDistanceMeters(): ?int { return $this->distanceMeters; }
+    public function setDistanceMeters(?int $distanceMeters): static { $this->distanceMeters = $distanceMeters; return $this; }
+
+    public function getGeometry(): array { return $this->geometry; }
+    public function setGeometry(array $geometry): static { $this->geometry = $geometry; return $this; }
+
+    public function getGeometryHash(): string { return $this->geometryHash; }
+    public function setGeometryHash(string $geometryHash): static { $this->geometryHash = $geometryHash; return $this; }
+
+    public function getSegmentCount(): ?int { return $this->segmentCount; }
+    public function setSegmentCount(?int $segmentCount): static { $this->segmentCount = $segmentCount; return $this; }
+
+    public function getMetadata(): ?array { return $this->metadata; }
+    public function setMetadata(?array $metadata): static { $this->metadata = $metadata; return $this; }
+
+    public function isCurrent(): bool { return $this->isCurrent; }
+    public function setIsCurrent(bool $isCurrent): static { $this->isCurrent = $isCurrent; return $this; }
+
+    public function getValidFrom(): \DateTimeInterface { return $this->validFrom; }
+    public function setValidFrom(\DateTimeInterface $validFrom): static { $this->validFrom = $validFrom; return $this; }
+
+    public function getValidUntil(): ?\DateTimeInterface { return $this->validUntil; }
+    public function setValidUntil(?\DateTimeInterface $validUntil): static { $this->validUntil = $validUntil; return $this; }
+}
+<?php
+
+namespace App\Entity;
+
+use App\Repository\WazeTvtRouteHistoryRepository;
+use Doctrine\DBAL\Types\Types;
+use Doctrine\ORM\Mapping as ORM;
+
+#[ORM\Entity(repositoryClass: WazeTvtRouteHistoryRepository::class)]
+#[ORM\Table(name: 'waze_tvt_route_history')]
+#[ORM\Index(columns: ['waze_tvt_route_id', 'observed_at'], name: 'IDX_WAZE_TVT_HISTORY_ROUTE')]
+#[ORM\Index(columns: ['waze_feed_collection_id'], name: 'IDX_WAZE_TVT_HISTORY_COLLECTION')]
+class WazeTvtRouteHistory
+{
+    #[ORM\Id]
+    #[ORM\GeneratedValue]
+    #[ORM\Column(type: 'bigint')]
+    private ?int $id = null;
+
+    #[ORM\ManyToOne(targetEntity: WazeTvtRoute::class, inversedBy: 'history')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?WazeTvtRoute $wazeTvtRoute = null;
+
+    #[ORM\ManyToOne(targetEntity: WazeTvtRouteDefinition::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?WazeTvtRouteDefinition $wazeTvtRouteDefinition = null;
+
+    #[ORM\ManyToOne(targetEntity: WazeFeedCollection::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?WazeFeedCollection $wazeFeedCollection = null;
+
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    private \DateTimeInterface $observedAt;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $travelTimeSeconds = null;
+
+    #[ORM\Column(type: 'decimal', precision: 10, scale: 2, nullable: true)]
+    private ?string $travelTimeMinutes = null;
+
+    #[ORM\Column(type: 'decimal', precision: 8, scale: 2, nullable: true)]
+    private ?string $speedKmh = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $delaySeconds = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $lengthMeters = null;
+
+    #[ORM\Column(length: 40, nullable: true)]
+    private ?string $status = null;
+
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $rawMetrics = null;
+
+    public function __construct()
+    {
+        $this->observedAt = new \DateTime();
+    }
+
+    public function getId(): ?int { return $this->id; }
+
+    public function getWazeTvtRoute(): ?WazeTvtRoute { return $this->wazeTvtRoute; }
+    public function setWazeTvtRoute(?WazeTvtRoute $wazeTvtRoute): static { $this->wazeTvtRoute = $wazeTvtRoute; return $this; }
+
+    public function getWazeTvtRouteDefinition(): ?WazeTvtRouteDefinition { return $this->wazeTvtRouteDefinition; }
+    public function setWazeTvtRouteDefinition(?WazeTvtRouteDefinition $d): static { $this->wazeTvtRouteDefinition = $d; return $this; }
+
+    public function getWazeFeedCollection(): ?WazeFeedCollection { return $this->wazeFeedCollection; }
+    public function setWazeFeedCollection(?WazeFeedCollection $wazeFeedCollection): static { $this->wazeFeedCollection = $wazeFeedCollection; return $this; }
+
+    public function getObservedAt(): \DateTimeInterface { return $this->observedAt; }
+    public function setObservedAt(\DateTimeInterface $observedAt): static { $this->observedAt = $observedAt; return $this; }
+
+    public function getTravelTimeSeconds(): ?int { return $this->travelTimeSeconds; }
+    public function setTravelTimeSeconds(?int $travelTimeSeconds): static { $this->travelTimeSeconds = $travelTimeSeconds; return $this; }
+
+    public function getTravelTimeMinutes(): ?string { return $this->travelTimeMinutes; }
+    public function setTravelTimeMinutes(?string $travelTimeMinutes): static { $this->travelTimeMinutes = $travelTimeMinutes; return $this; }
+
+    public function getSpeedKmh(): ?string { return $this->speedKmh; }
+    public function setSpeedKmh(?string $speedKmh): static { $this->speedKmh = $speedKmh; return $this; }
+
+    public function getDelaySeconds(): ?int { return $this->delaySeconds; }
+    public function setDelaySeconds(?int $delaySeconds): static { $this->delaySeconds = $delaySeconds; return $this; }
+
+    public function getLengthMeters(): ?int { return $this->lengthMeters; }
+    public function setLengthMeters(?int $lengthMeters): static { $this->lengthMeters = $lengthMeters; return $this; }
+
+    public function getStatus(): ?string { return $this->status; }
+    public function setStatus(?string $status): static { $this->status = $status; return $this; }
+
+    public function getRawMetrics(): ?array { return $this->rawMetrics; }
+    public function setRawMetrics(?array $rawMetrics): static { $this->rawMetrics = $rawMetrics; return $this; }
+}
+<?php
+
+namespace App\Repository;
+
+use App\Entity\WazeTvtRoute;
+use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\Persistence\ManagerRegistry;
+
+class WazeTvtRouteRepository extends ServiceEntityRepository
+{
+    public function __construct(ManagerRegistry $registry)
+    {
+        parent::__construct($registry, WazeTvtRoute::class);
+    }
+
+    public function findOneByExternalRouteId(string $externalRouteId): ?WazeTvtRoute
+    {
+        return $this->createQueryBuilder('r')
+            ->where('r.externalRouteId = :externalRouteId')
+            ->setParameter('externalRouteId', $externalRouteId)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    public function findOneByFeedAndExternalRouteId(int $feedId, string $externalRouteId): ?WazeTvtRoute
+    {
+        return $this->createQueryBuilder('r')
+            ->join('r.wazeFeed', 'f')
+            ->where('f.id = :feedId')
+            ->andWhere('r.externalRouteId = :externalRouteId')
+            ->setParameter('feedId', $feedId)
+            ->setParameter('externalRouteId', $externalRouteId)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    public function findActiveByFeed(int $feedId): array
+    {
+        return $this->createQueryBuilder('r')
+            ->join('r.wazeFeed', 'f')
+            ->where('f.id = :feedId')
+            ->andWhere('r.isActive = :active')
+            ->setParameter('feedId', $feedId)
+            ->setParameter('active', true)
+            ->getQuery()
+            ->getResult();
+    }
+}
+<?php
+
+namespace App\Repository;
+
+use App\Entity\WazeTvtRouteDefinition;
+use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\Persistence\ManagerRegistry;
+
+class WazeTvtRouteDefinitionRepository extends ServiceEntityRepository
+{
+    public function __construct(ManagerRegistry $registry)
+    {
+        parent::__construct($registry, WazeTvtRouteDefinition::class);
+    }
+
+    public function findOneByRouteAndHash(int $routeId, string $definitionHash): ?WazeTvtRouteDefinition
+    {
+        return $this->createQueryBuilder('d')
+            ->join('d.wazeTvtRoute', 'r')
+            ->where('r.id = :routeId')
+            ->andWhere('d.definitionHash = :hash')
+            ->setParameter('routeId', $routeId)
+            ->setParameter('hash', $definitionHash)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    public function findCurrentByRoute(int $routeId): ?WazeTvtRouteDefinition
+    {
+        return $this->createQueryBuilder('d')
+            ->join('d.wazeTvtRoute', 'r')
+            ->where('r.id = :routeId')
+            ->andWhere('d.isCurrent = :current')
+            ->setParameter('routeId', $routeId)
+            ->setParameter('current', true)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    public function getNextVersionNumber(int $routeId): int
+    {
+        $result = $this->createQueryBuilder('d')
+            ->select('MAX(d.versionNumber)')
+            ->join('d.wazeTvtRoute', 'r')
+            ->where('r.id = :routeId')
+            ->setParameter('routeId', $routeId)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return ($result ?? 0) + 1;
+    }
+}
+<?php
+
+namespace App\Repository;
+
+use App\Entity\WazeTvtRouteHistory;
+use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\Persistence\ManagerRegistry;
+
+class WazeTvtRouteHistoryRepository extends ServiceEntityRepository
+{
+    public function __construct(ManagerRegistry $registry)
+    {
+        parent::__construct($registry, WazeTvtRouteHistory::class);
+    }
+
+    public function findRecentByRoute(int $routeId, int $limit = 50): array
+    {
+        return $this->createQueryBuilder('h')
+            ->join('h.wazeTvtRoute', 'r')
+            ->where('r.id = :routeId')
+            ->setParameter('routeId', $routeId)
+            ->orderBy('h.observedAt', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function findByRouteInPeriod(int $routeId, \DateTimeInterface $from, \DateTimeInterface $to): array
+    {
+        return $this->createQueryBuilder('h')
+            ->join('h.wazeTvtRoute', 'r')
+            ->where('r.id = :routeId')
+            ->andWhere('h.observedAt BETWEEN :from AND :to')
+            ->setParameter('routeId', $routeId)
+            ->setParameter('from', $from)
+            ->setParameter('to', $to)
+            ->orderBy('h.observedAt', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+}

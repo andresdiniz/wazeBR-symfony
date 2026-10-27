@@ -1,0 +1,78 @@
+# === Roteamento Symfony ===
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [QSA,L]
+
+# === Headers de Segurança HTTP ===
+<IfModule mod_headers.c>
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "no-referrer-when-downgrade"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()"
+    Header always set X-XSS-Protection "1; mode=block"
+    # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    Header always unset X-Powered-By
+    Header always unset Server
+</IfModule>
+
+# === Compressão (mod_deflate) ===
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css
+    AddOutputFilterByType DEFLATE application/javascript application/json
+    AddOutputFilterByType DEFLATE image/svg+xml application/xml
+    AddOutputFilterByType DEFLATE font/woff2 font/woff application/font-woff2
+    # Não comprime o que já está comprimido
+    SetEnvIfNoCase Request_URI \.(gz|br|zip|png|jpg|jpeg|gif|ico|webp)$ no-gzip dont-vary
+</IfModule>
+
+# === Cache de assets com fingerprint (AssetMapper) ===
+# Arquivos com hash no nome são imutáveis — cache eterno
+<IfModule mod_headers.c>
+    <FilesMatch "\.[a-f0-9]{8,}\.(css|js|woff2?|ttf|otf|eot)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+        Header unset ETag
+        Header unset Last-Modified
+    </FilesMatch>
+
+    # Imagens com fingerprint também
+    <FilesMatch "\.[a-f0-9]{8,}\.(png|jpg|jpeg|gif|webp|svg|ico)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+        Header unset ETag
+        Header unset Last-Modified
+    </FilesMatch>
+
+    # Assets sem fingerprint (ex: favicon.ico, robots.txt) — cache curto
+    <FilesMatch "\.(ico|txt|xml)$">
+        Header set Cache-Control "public, max-age=86400"
+    </FilesMatch>
+
+    # HTML e JSON nunca cacheados no browser
+    <FilesMatch "\.(html|json)$">
+        Header set Cache-Control "no-store, no-cache, must-revalidate"
+    </FilesMatch>
+</IfModule>
+
+# === Desabilita ETags para estáticos com fingerprint ===
+<IfModule mod_expires.c>
+    ExpiresActive On
+    # Fallback via mod_expires caso mod_headers não esteja disponível
+    ExpiresByType text/css                  "access plus 1 year"
+    ExpiresByType application/javascript    "access plus 1 year"
+    ExpiresByType font/woff2                "access plus 1 year"
+    ExpiresByType image/png                 "access plus 1 year"
+    ExpiresByType image/jpeg                "access plus 1 year"
+    ExpiresByType image/svg+xml             "access plus 1 year"
+    ExpiresByType image/x-icon              "access plus 1 day"
+</IfModule>
+
+# === Bloqueia acesso direto a arquivos sensíveis ===
+<FilesMatch "(\.env|\.env\.local|\.env\.prod|composer\.json|composer\.lock|symfony\.lock|\.gitignore|phpunit\.dist\.xml)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
