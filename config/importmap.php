@@ -3,7 +3,7 @@
 return [
     'app' => [
         'path' => './assets/js/app.js',
-        'entrypoint' => false,
+        'entrypoint' => true,
     ],
     'app-init' => [
         'path' => './assets/js/core/app-init.js',
