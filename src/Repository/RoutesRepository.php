@@ -18,8 +18,94 @@ final class RoutesRepository
     {
     }
 
-    /** @return array{routes:list<array>,stats:array,map:array} */
+    /** Compatibility entry point: callers outside the controller do not use cache. */
     public function getRoutesDashboard(?Partner $partner, array $filters = []): array
+    {
+        return $this->assembleDashboard(
+            $this->getRoutesStructure($partner),
+            $this->getLatestMetrics($partner),
+            $filters,
+        );
+    }
+
+    /** Structure only. Never store current travel times in this result. */
+    public function getRoutesStructure(?Partner $partner): array
+    {
+        $params = [];
+        $scope = '';
+        if ($partner !== null) {
+            $scope = ' AND r.partner_id = :pid';
+            $params['pid'] = $partner->getId();
+        }
+        $rows = $this->connection->fetchAllAssociative(
+            'SELECT r.id, r.name AS route_name, r.from_name, r.to_name, r.geometry
+             FROM waze_tvt_route r
+             WHERE r.is_active = 1' . $scope . ' ORDER BY r.id',
+            $params,
+        );
+        $routes = [];
+        foreach ($rows as $row) {
+            $id = (int) $row['id'];
+            $row['line'] = $this->normalizeLine($row['geometry']);
+            unset($row['geometry']);
+            $routes[$id] = $row;
+        }
+        $ids = array_keys($routes);
+
+        return [
+            'routes' => $routes,
+            'subroutes' => $this->loadSubRoutesGrouped($partner, $ids),
+            'irregularities' => $this->loadIrregularitiesGrouped($partner, $ids),
+        ];
+    }
+
+    /** Fresh metrics and active-route scope. No geometry is read here. */
+    public function getLatestMetrics(?Partner $partner): array
+    {
+        $routes = $this->loadRoutesWithLatestSnapshot($partner);
+        $ids = array_map(static fn (array $r): int => (int) $r['id'], $routes);
+        return [
+            'routes' => $routes,
+            'subroutes' => $this->loadSubRouteMetrics($partner, $ids),
+        ];
+    }
+
+    private function loadSubRouteMetrics(?Partner $partner, array $routeIds): array
+    {
+        if ($routeIds === []) return [];
+        $params = ['ids' => $routeIds];
+        $scope = '';
+        if ($partner !== null) {
+            $scope = ' AND sr.partner_id = :pid';
+            $params['pid'] = $partner->getId();
+        }
+        $rows = $this->connection->executeQuery(
+            'SELECT sr.id, sr.time, sr.historic_time, sr.jam_level
+             FROM waze_tvt_sub_route sr
+             INNER JOIN waze_tvt_route r ON r.id = sr.route_id
+             WHERE sr.is_active = 1 AND r.is_active = 1
+               AND sr.partner_id = r.partner_id
+               AND sr.route_id IN (:ids)' . $scope,
+            $params,
+            ['ids' => ArrayParameterType::INTEGER],
+        )->fetchAllAssociative();
+        $out = [];
+        foreach ($rows as $row) {
+            $current = $row['time'] !== null ? (float) $row['time'] : null;
+            $historic = $row['historic_time'] !== null ? (float) $row['historic_time'] : null;
+            $out[(int) $row['id']] = [
+                'time' => $current,
+                'historicTime' => $historic,
+                'delaySeconds' => $current !== null && $historic !== null
+                    ? max(0, (int) round($current - $historic)) : null,
+                'jamLevel' => $row['jam_level'] !== null ? (int) $row['jam_level'] : null,
+            ];
+        }
+        return $out;
+    }
+
+    /** @return array{routes:list<array>,stats:array,map:array} */
+    public function assembleDashboard(array $structure, array $metrics, array $filters = []): array
     {
         $filters = [
             'query' => trim((string) ($filters['query'] ?? '')),
@@ -28,11 +114,28 @@ final class RoutesRepository
                 : 'all',
         ];
 
-        $routesRaw = $this->loadRoutesWithLatestSnapshot($partner);
-        $routeIds  = array_map(static fn ($r) => (int) $r['id'], $routesRaw);
+        $routesRaw = [];
+        $subRoutesByRoute = [];
+        $irregsByRoute = $structure['irregularities'] ?? [];
 
-        $subRoutesByRoute = $this->loadSubRoutesGrouped($partner, $routeIds);
-        $irregsByRoute    = $this->loadIrregularitiesGrouped($partner, $routeIds);
+        // Only currently active, authorized routes from the fresh query may appear.
+        foreach ($metrics['routes'] ?? [] as $row) {
+            $id = (int) $row['id'];
+            $static = $structure['routes'][$id] ?? null;
+            if ($static === null) continue;
+            $row['geometry'] = $static['line'] !== [];
+            $row['cached_line'] = $static['line'];
+            $row['route_name'] = $static['route_name'];
+            $row['from_name'] = $static['from_name'];
+            $row['to_name'] = $static['to_name'];
+            $routesRaw[] = $row;
+
+            foreach ($structure['subroutes'][$id] ?? [] as $sub) {
+                $live = $metrics['subroutes'][(int) $sub['id']] ?? null;
+                if ($live === null) continue;
+                $subRoutesByRoute[$id][] = array_merge($sub, $live);
+            }
+        }
 
         $routes   = [];
         $segments = [];
@@ -117,7 +220,7 @@ final class RoutesRepository
                     ];
                 }
             } elseif (!empty($row['geometry'])) {
-                $line = $this->normalizeLine($row['geometry']);
+                $line = $row['cached_line'];
                 if ($line !== []) {
                     $segments[] = [
                         'routeId'      => $id,
@@ -246,7 +349,6 @@ SELECT
     r.name                AS route_name,
     r.from_name,
     r.to_name,
-    r.geometry,
     r.last_seen_at        AS route_last_seen_at,
     s.name                AS snapshot_name,
     s.city                AS snapshot_city,
@@ -260,6 +362,7 @@ LEFT JOIN waze_tvt_route_snapshot s
     ON s.id = (
         SELECT latest.id FROM waze_tvt_route_snapshot latest
         WHERE latest.route_id = r.id
+          AND latest.partner_id = r.partner_id
         ORDER BY latest.recorded_at DESC, latest.id DESC
         LIMIT 1
     )
@@ -301,10 +404,9 @@ SELECT
     sr.from_name,
     sr.to_name,
     sr.line,
-    sr.bbox,
-    sr.time,
-    sr.historic_time,
-    sr.jam_level
+    NULL AS time,
+    NULL AS historic_time,
+    NULL AS jam_level
 FROM waze_tvt_sub_route sr
 WHERE sr.is_active = 1
   AND sr.route_id IN (:ids)

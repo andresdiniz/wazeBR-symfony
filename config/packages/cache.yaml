@@ -1,7 +1,6 @@
 framework:
     cache:
         pools:
-            # Cache específico pra TV — TTL curto, dados voláteis
             tv.cache:
                 adapter: cache.adapter.filesystem
                 default_lifetime: 60
@@ -12,8 +11,5 @@ framework:
                 default_lifetime: 600
 
 services:
-    # Faz o autowire do TagAwareCacheInterface resolver para o pool tv.cache
     Symfony\Contracts\Cache\TagAwareCacheInterface:
         alias: tv.cache
-
-

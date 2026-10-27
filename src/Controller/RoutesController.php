@@ -12,6 +12,9 @@ use App\Repository\RoutesRepository;
 use App\Service\PartnerScopeResolver;
 use App\Service\RouteCsvExporter;
 use Doctrine\DBAL\Connection;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Contracts\Cache\CacheInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -26,8 +29,11 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('IS_AUTHENTICATED_FULLY')]
 final class RoutesController extends AbstractController
 {
-    public function __construct(private readonly PartnerScopeResolver $scope)
-    {
+    public function __construct(
+        private readonly PartnerScopeResolver $scope,
+        #[Autowire(service: 'routes.structure.cache')]
+        private readonly CacheInterface $routesStructureCache,
+    ) {
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
@@ -35,15 +41,17 @@ final class RoutesController extends AbstractController
     {
         $partner = $this->resolvePartnerScope();
         $filters = $this->extractFilters($request);
-        $payload = $repository->getRoutesDashboard($partner, $filters);
+        $payload = $this->loadDashboardPayload($repository, $partner, $filters);
 
-        return $this->render('routes/index.html.twig', [
+        $response = $this->render('routes/index.html.twig', [
             'routes'  => $payload['routes'],
             'stats'   => $payload['stats'],
             'map'     => $payload['map'],
             'filters' => $filters,
             'partner' => $partner,
         ]);
+        $response->headers->set('Cache-Control', 'private, no-store');
+        return $response;
     }
 
     #[Route('/api/data', name: 'api_data', methods: ['GET'])]
@@ -51,14 +59,16 @@ final class RoutesController extends AbstractController
     {
         $partner = $this->resolvePartnerScope();
         $filters = $this->extractFilters($request);
-        $payload = $repository->getRoutesDashboard($partner, $filters);
+        $payload = $this->loadDashboardPayload($repository, $partner, $filters);
 
-        return $this->json([
+        $response = $this->json([
             'ok'           => true,
             'generated_at' => (new \DateTimeImmutable())->format(DATE_ATOM),
             'filters'      => $filters,
             'data'         => $this->normalizeDatesForJson($payload),
         ]);
+        $response->headers->set('Cache-Control', 'private, no-store');
+        return $response;
     }
 
     // ─── Detalhe da rota ──────────────────────────────────────────────────────
@@ -229,6 +239,35 @@ final class RoutesController extends AbstractController
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+
+    private function loadDashboardPayload(
+        RoutesRepository $repository,
+        ?Partner $partner,
+        array $filters,
+    ): array {
+        // Scope resolution is performed for every request before cache lookup.
+        $scopeKey = $partner !== null
+            ? 'partner_' . $partner->getId()
+            : 'authorized_global';
+        $entry = $this->routesStructureCache->get(
+            'routes_structure_v1_' . $scopeKey,
+            function (ItemInterface $item) use ($repository, $partner): array {
+                $item->expiresAfter(600);
+                return [
+                    'loadedAt' => (new \DateTimeImmutable())->format(DATE_ATOM),
+                    'data' => $repository->getRoutesStructure($partner),
+                ];
+            },
+            0.0,
+        );
+
+        // Never cache current times, percentages or active-route eligibility.
+        $metrics = $repository->getLatestMetrics($partner);
+        return $repository->assembleDashboard($entry['data'], $metrics, $filters) + [
+            'structureLoadedAt' => $entry['loadedAt'],
+            'metricsLoadedAt' => (new \DateTimeImmutable())->format(DATE_ATOM),
+        ];
+    }
 
     private function resolvePartnerScope(): ?Partner
     {
