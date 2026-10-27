@@ -318,7 +318,6 @@ final class TvController extends AbstractController
         $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $ct = (string) curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
         $err = (string) curl_error($ch);
-        curl_close($ch);
 
         if (($code === 404 || $code === 503) && $attempt < self::CAMERA_RETRIES) {
             usleep(self::CAMERA_RETRY_DELAY_US);

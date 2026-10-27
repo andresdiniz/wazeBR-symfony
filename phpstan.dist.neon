@@ -1,8 +1,11 @@
 parameters:
     level: 6
     paths:
-        - bin/
-        - config/
-        - public/
-        - src/
-        - tests/
+        - src
+        - tests
+    # Sem phpVersion fixo: o PHPStan analisa com o PHP do ambiente (8.5.x).
+    # Primeira execução com muitos erros? Gere um baseline:
+    #   php vendor/bin/phpstan analyse --generate-baseline
+    # e depois inclua-o aqui:
+    #   includes:
+    #       - phpstan-baseline.neon

@@ -20,7 +20,6 @@ final class ModbusTcpConnectorTest extends TestCase
     public function testFrameReadHoldingRegisters(): void
     {
         $method = new \ReflectionMethod(ModbusTcpConnector::class, 'frameReadHoldingRegisters');
-        $method->setAccessible(true);
 
         $frame = $method->invoke($this->connector, 0x0001, 1, 0x0000, 16);
 
@@ -37,7 +36,6 @@ final class ModbusTcpConnectorTest extends TestCase
     public function testFrameWriteSingleRegister(): void
     {
         $method = new \ReflectionMethod(ModbusTcpConnector::class, 'frameWriteSingleRegister');
-        $method->setAccessible(true);
 
         $frame = $method->invoke($this->connector, 0x0002, 1, 0x0011, 2);
 

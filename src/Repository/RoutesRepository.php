@@ -259,7 +259,7 @@ FROM waze_tvt_route r
 LEFT JOIN waze_tvt_route_snapshot s
     ON s.id = (
         SELECT latest.id FROM waze_tvt_route_snapshot latest
-        WHERE latest.waze_route_id = r.route_id
+        WHERE latest.route_id = r.id
         ORDER BY latest.recorded_at DESC, latest.id DESC
         LIMIT 1
     )

@@ -6,11 +6,15 @@ on:
   pull_request:
     branches: [ main ]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   tests:
-    name: Tests & Quality
+    name: Tests & Quality (PHP 8.5)
     runs-on: ubuntu-latest
-    
+
     services:
       mysql:
         image: mysql:8.0
@@ -32,10 +36,19 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
-          extensions: mbstring, intl, mysql, pdo_mysql
+          php-version: '8.5'
+          extensions: mbstring, intl, curl, simplexml, json, mysql, pdo_mysql, pdo_sqlite, sqlite3
           tools: composer:v2
           coverage: none
+
+      - name: PHP version
+        run: php -v
+
+      - name: Validate composer.json and lock
+        run: composer validate --no-check-publish
+
+      - name: Check platform requirements (PHP >= 8.5.12 e extensões)
+        run: composer check-platform-reqs --lock
 
       - name: Cache Composer dependencies
         uses: actions/cache@v4
@@ -44,18 +57,16 @@ jobs:
           key: ${{ runner.os }}-php-${{ hashFiles('composer.lock') }}
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Lint PHP syntax (PHP 8.5)
+        run: |
+          find src tests config public -name '*.php' -print0 \
+            | xargs -0 -n1 -P4 php -l > /tmp/php-lint.log 2>&1 \
+            || { grep -v '^No syntax errors' /tmp/php-lint.log; exit 1; }
 
       - name: Run PHPUnit
         run: php bin/phpunit --colors=always
 
       - name: Run PHPStan
-        run: php vendor/bin/phpstan analyse --no-progress
-
-      - name: Run Psalm (optional)
-        run: php vendor/bin/psalm --show-info=false || true
-        continue-on-error: true
-
-      - name: Check coding standards
-        run: php vendor/bin/php-cs-fixer fix --dry-run --diff || true
-        continue-on-error: true
+        run: php vendor/bin/phpstan analyse --no-progress --memory-limit=512M

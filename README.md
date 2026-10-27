@@ -1,186 +1,96 @@
-# wazeBR Symfony
+# WazeBR
 
-Monitoramento de trã¡¡fego e mobilidade urbana em tempo real utilizando Symfony PHP.
+Plataforma de monitoramento de trânsito e alertas hidrológicos para a comunidade brasileira do Waze, construída com **Symfony 7.4** e **PHP 8.5**.
 
-## ãá¡¡ Funcionalidades
+## Funcionalidades
 
-- **Monitoramento em Tempo Real**: Acompanhamento contã¡¡nuo de trã¡¡fego e incidentes
-- **Mapas Interativos**: Visualizaçı¡Ì£o georreferenciada de dados
-- **Alertas Inteligentes**: Notificaçı¡Ìµes automã¡¡ticas de incidentes
-- **API RESTful**: Integraçı¡Ì£o com sistemas externos
-- **Dashboard Analã¡¡tico**: Relatã¡¡rios e mÃ©tricas de desempenho
+- **Feeds de parceiros Waze**: coleta de alertas e congestionamentos (Partner Feed) e de tempos de viagem (TVT)
+- **Previsão de congestionamento** a partir dos dados TVT
+- **CEMADEN**: coleta de dados hidrológicos e pluviométricos
+- **Semáforos**: integração via Modbus TCP, NTCIP e SensorThings
+- **Painel do operador** com mapa ao vivo (Leaflet) e atualização em tempo real (Mercure)
+- **Notificações e relatórios** por e-mail
+- **Agendamento** de coletas com Symfony Scheduler, executado via Supervisor
 
-## ãá¡¡ Requisitos
+## Requisitos
 
-- PHP 8.2+
-- Symfony 7.x
-- MySQL 8.0+ ou MariaDB 10.5+
-- Composer
-- Node.js e NPM (para assets)
+- PHP **8.5.12 ou superior** (exigido pelo `composer.json`)
+- Extensões PHP: `json`, `simplexml`, `mbstring`, `intl`, `curl`, `pdo_mysql`
+- MariaDB 10.4+ ou MySQL 8.0+ (produção: MariaDB 10.4.32)
+- Composer 2
 
-## ãá¡¡ Instalaçı¡Ì£o
+## Instalação
 
 ```bash
-# Clonar repositã¡¡rio
 git clone https://github.com/andresdiniz/wazeBR-symfony.git
 cd wazeBR-symfony
 
-# Instalar dependãªªncias PHP
 composer install
 
-# Instalar dependãªªncias Node (opcional, para build de assets)
-npm install
+# Variáveis de ambiente (segredos reais vão em .env.local)
+cp .env.example .env
 
-# Configurar variã¡¡veis de ambiente
-cp .env .env.local
-# Editar .env.local com suas configuraçı¡Ìµes de banco de dados
-
-# Criar banco de dados
 php bin/console doctrine:database:create
-
-# Executar migrations
 php bin/console doctrine:migrations:migrate
 
-# (Opcional) Carregar dados de exemplo
-php bin/console doctrine:fixtures:load
-
-# Iniciar servidor de desenvolvimento
 symfony server:start
-# ou
-php -S localhost:8000 -t public
+# ou: php -S localhost:8000 -t public
 ```
 
-## ãá¡¡ Estrutura do Projeto
+Atalho: `make setup` instala, cria o banco, roda as migrations e carrega as fixtures. Rode `make help` para ver todos os alvos.
 
-```
-wazeBR-symfony/
-ã¡¡ã¡¡config/              # Configuraçı¡Ìµes do Symfony
-ã¡¡ã¡¡src/
-ã¡¡ã¡¡ã¡¡ã¡¡Controller/     # Controladores (HomeController, etc.)
-ã¡¡ã¡¡ã¡¡ã¡¡Entity/         # Entidades Doctrine
-ã¡¡ã¡¡ã¡¡ã¡¡Repository/     # Repositã¡¡rios
-ã¡¡ã¡¡ã¡¡ã¡¡Service/        # Serviços de negã¡¡cio
-ã¡¡ã¡¡ã¡¡ã¡¡Command/        # Comandos CLI (imports, jobs)
-ã¡¡ã¡¡templates/           # Templates Twig
-ã¡¡ã¡¡ã¡¡ã¡¡home/           # Template da home page
-ã¡¡ã¡¡assets/              # Assets (CSS, JS, imagens)
-ã¡¡ã¡¡ã¡¡ã¡¡css/            # Folhas de estilo
-ã¡¡ã¡¡ã¡¡ã¡¡js/             # JavaScript
-ã¡¡ã¡¡public/              # Web root
-ã¡¡ã¡¡var/                 # Cache, logs, dados temporã¡¡rios
-ã¡¡ã¡¡import.php           # Modelo de importaçı¡Ì£o de dados
-```
+## Variáveis de ambiente
 
-## ãá¡¡ Rotas Principais
+Veja `.env.example`. As principais:
 
-| Rota | Nome | Descriçı¡Ì£o |
-|------|------|------------|
-| `/` | `home` | Pã¡¡gina inicial pãººblica |
-| `/login` | `app_login` | Login de usuários |
-| `/dashboard` | `dashboard` | Dashboard principal |
-| `/api/traffic` | `api_traffic` | API de trã¡¡fego |
+`APP_ENV`, `APP_SECRET`, `DATABASE_URL`, `MESSENGER_TRANSPORT_DSN`, `MAILER_DSN`, `SENDER_EMAIL`, `APP_NAME`, `WAZEBR_NOTIFICATIONS_WORKER_URL`, `WAZEBR_NOTIFICATIONS_WEBHOOK_TOKEN`, `CRON_TOKEN`, `SCHEDULER_LOG_LEVEL`, `CRON_PHP_BINARY`
 
-## ãá¡¡ Comandos Disponã¡¡veis
+O `DATABASE_URL` deve informar a versão do servidor, por exemplo:
+`mysql://usuario:senha@127.0.0.1:3306/wazebr?serverVersion=mariadb-10.4.32&charset=utf8mb4`
+
+## Comandos
 
 ```bash
-# Importar dados de trã¡¡fego
-php bin/console app:import:traffic
-
-# Importar dados de congestionamentos
-php bin/console app:import:jams
-
-# Limpar cache
-php bin/console cache:clear
-
-# Verificar rotas
-php bin/console debug:router
+php bin/console app:fetch-partner-feeds              # feeds de parceiros
+php bin/console app:fetch-waze-feed                  # feed Waze
+php bin/console app:fetch:waze:tvt                   # tempos de viagem (TVT)
+php bin/console app:fetch:cemaden:hidro              # CEMADEN hidrológico
+php bin/console app:fetch:cemaden:pluviometric       # CEMADEN pluviométrico
+php bin/console app:weather:fetch-observations       # observações meteorológicas
+php bin/console app:tvt:refresh-congestion-forecast  # atualiza previsão de congestionamento
+php bin/console app:tvt:evaluate-congestion-forecast # avalia a previsão
+php bin/console app:routes:rollup-hourly             # consolida rotas por hora
+php bin/console app:partner-feed:expire              # expira itens antigos dos feeds
+php bin/console app:traffic-light:poll               # consulta semáforos
+php bin/console app:create:user                      # cria usuário
+php bin/console app:create:partner-user              # cria usuário parceiro
 ```
 
-## ãá¡¡ Variã¡¡veis de Ambiente
+O agendamento fica em `src/Scheduler/MainSchedule.php`; as configurações do Supervisor estão em `supervisor/`.
 
-Edite `.env.local`:
-
-```env
-DATABASE_URL="mysql://user:password@127.0.0.1:3306/wazebr?serverVersion=8.0"
-WAZE_API_URL="https://api.waze.com"
-WAZE_API_KEY="sua-api-key-aqui"
-MAILER_DSN="smtp://localhost:25"
-```
-
-## ãá¡¡ Desenvolvimento
-
-### Criar novo controller
+## Qualidade e testes
 
 ```bash
-php bin/console make:controller
+make test      # PHPUnit (usa SQLite, ver .env.test)
+make phpstan   # análise estática, nível 6
+make lint      # YAML, Twig e container
+make qa        # lint + PHPStan + testes
 ```
 
-### Criar nova entidade
+O CI (`.github/workflows/ci.yml`) roda em PHP 8.5: valida o `composer.json`, checa os requisitos de plataforma, faz o lint de sintaxe, e executa PHPUnit e PHPStan.
 
-```bash
-php bin/console make:entity
-```
+## Deploy
 
-### Criar comando CLI
+O workflow `.github/workflows/cd.yml` roda a cada push na `main`: confere se o servidor tem PHP 8.5.12+, envia os arquivos por FTP (Hostinger) e executa as migrations e o aquecimento de cache por SSH.
 
-```bash
-php bin/console make:command
-```
+## Observação sobre Docker
 
-## ãá¡¡ Testes
+O `compose.yaml` ainda é o gerado pelo Symfony Flex (PostgreSQL, Mercure e Mailpit). O banco usado pelo projeto é MariaDB/MySQL, então ajuste o serviço de banco antes de usá-lo.
 
-```bash
-# Executar testes
-php bin/phpunit
+## Licença
 
-# Com coverage
-php bin/phpunit --coverage-html var/coverage
-```
+MIT. Veja [LICENSE](LICENSE).
 
-## ãá¡¡ Deploy
+## Contato
 
-### Shared Hosting
-
-1. Upload de todos os arquivos exceto `vendor/` e `node_modules/`
-2. Executar `composer install --no-dev --optimize-autoloader`
-3. Configurar `.env.local` com dados de produçı¡Ì£o
-4. Executar migrations
-5. Configurar permissíµµes em `var/` e `public/`
-
-### Docker (recomendado)
-
-```bash
-docker-compose up -d
-```
-
-## ãá¡¡ Tecnologias
-
-- **Backend**: Symfony 7, PHP 8.2+, Doctrine ORM
-- **Frontend**: Twig, CSS3, JavaScript ES6+
-- **Banco de Dados**: MySQL 8.0+
-- **API**: RESTful com autenticaçı¡Ì£o JWT
-- **Ferramentas**: Composer, NPM, Git
-
-## ãá¡¡ Licenã§§a
-
-MIT License - ver arquivo [LICENSE](LICENSE)
-
-## ãá¡¡ Contribuiçı¡Ì£o
-
-1. Fork o projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
-
-## ãá¡¡ Contato
-
-Andréªª Diniz - [@andresdiniz](https://github.com/andresdiniz)
-
-Projeto: [https://github.com/andresdiniz/wazeBR-symfony](https://github.com/andresdiniz/wazeBR-symfony)
-
-## ãá¡¡ Agradecimentos
-
-- Waze API
-- Symfony Community
-- Todos os contribuidores
+André Diniz — [@andresdiniz](https://github.com/andresdiniz)

@@ -105,12 +105,13 @@
        IMPORTMAP
        ============================================================ #}
 
-       {% block importmap %}
-       {{ importmap(['app'], {
-           nonce: csp_nonce('script')
-       }) }}
-   {% endblock %}
-
+    {% block importmap %}
+        {% if app.environment == 'dev' %}
+            {{ importmap(['app']) }}
+        {% else %}
+            {% include 'partials/importmap_csp.html.twig' %}
+        {% endif %}
+    {% endblock %}
 </head>
 
 

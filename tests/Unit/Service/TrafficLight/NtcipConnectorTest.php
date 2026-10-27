@@ -24,7 +24,6 @@ final class NtcipConnectorTest extends TestCase
     public function testOctetStringToBitArray(string $input, array $expected): void
     {
         $method = new \ReflectionMethod(NtcipConnector::class, 'octetStringToBitArray');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->connector, $input);
         $result = array_filter($result);
