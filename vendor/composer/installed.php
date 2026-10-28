@@ -3,7 +3,7 @@
         'name' => 'andresdiniz/waze-br',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '43a4e7b8825f0ad606e077842155e128b6bb07b1',
+        'reference' => '857830d8bf1acf7724bba15d4c0f0f1a94f2b6cf',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -130,7 +130,7 @@
         'andresdiniz/waze-br' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '43a4e7b8825f0ad606e077842155e128b6bb07b1',
+            'reference' => '857830d8bf1acf7724bba15d4c0f0f1a94f2b6cf',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -1454,6 +1454,15 @@
             'aliases' => array(),
             'dev_requirement' => false,
         ),
+        'symfony/translation' => array(
+            'pretty_version' => 'v7.4.22',
+            'version' => '7.4.22.0',
+            'reference' => 'a892cd1807bfaf0a10690359c47fdf95b162ef22',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../symfony/translation',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
         'symfony/translation-contracts' => array(
             'pretty_version' => 'v3.7.1',
             'version' => '3.7.1.0',
@@ -1462,6 +1471,12 @@
             'install_path' => __DIR__ . '/../symfony/translation-contracts',
             'aliases' => array(),
             'dev_requirement' => false,
+        ),
+        'symfony/translation-implementation' => array(
+            'dev_requirement' => false,
+            'provided' => array(
+                0 => '2.3|3.0',
+            ),
         ),
         'symfony/twig-bridge' => array(
             'pretty_version' => 'v7.4.19',

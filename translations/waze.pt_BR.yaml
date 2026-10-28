@@ -69,5 +69,5 @@ jam_level:
   5: Parado
 
 jam_blocking:
-  true:  Bloqueada
-  false: Livre
+  'true': Bloqueada
+  'false': Livre
