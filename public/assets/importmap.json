@@ -36,7 +36,7 @@
         "type": "js"
     },
     "\/assets\/js\/layout\/header.js": {
-        "path": "\/assets\/js\/layout\/header-ljOV120.js",
+        "path": "\/assets\/js\/layout\/header-nHoPyyX.js",
         "type": "js"
     },
     "\/assets\/js\/layout\/sidebar.js": {
@@ -120,7 +120,7 @@
         "type": "js"
     },
     "\/assets\/js\/pages\/route-forecast.js": {
-        "path": "\/assets\/js\/pages\/route-forecast-SPZVqcP.js",
+        "path": "\/assets\/js\/pages\/route-forecast-Qx4wKa7.js",
         "type": "js"
     },
     "\/assets\/js\/pages\/route-compare.js": {
@@ -172,23 +172,19 @@
         "type": "js"
     },
     "\/assets\/js\/pages\/partner-feed-index.js": {
-        "path": "\/assets\/js\/pages\/partner-feed-index-AtgaYO6.js",
-        "type": "js"
-    },
-    "\/assets\/js\/core\/clipboard.js": {
-        "path": "\/assets\/js\/core\/clipboard-mGiWFWZ.js",
+        "path": "\/assets\/js\/pages\/partner-feed-index-HELQ5i2.js",
         "type": "js"
     },
     "\/assets\/js\/pages\/partner-feed-show.js": {
-        "path": "\/assets\/js\/pages\/partner-feed-show-3yLxHAP.js",
+        "path": "\/assets\/js\/pages\/partner-feed-show-4xCMN6A.js",
         "type": "js"
     },
     "\/assets\/js\/pages\/partner-feed-form.js": {
-        "path": "\/assets\/js\/pages\/partner-feed-form-EcBkNbn.js",
+        "path": "\/assets\/js\/pages\/partner-feed-form-LPSbqeR.js",
         "type": "js"
     },
     "\/assets\/js\/pages\/partner-feed-events-list.js": {
-        "path": "\/assets\/js\/pages\/partner-feed-events-list-g2rXsUH.js",
+        "path": "\/assets\/js\/pages\/partner-feed-events-list-vctASFz.js",
         "type": "js"
     },
     "\/assets\/js\/pages\/traffic-light-list.js": {
