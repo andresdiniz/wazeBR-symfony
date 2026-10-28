@@ -1,3 +1,5 @@
+import { rsT, rsLabel, RS_LOCALE } from './route-show-i18n.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.querySelector('[data-chart="route-recent"]');
 
@@ -14,8 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!hasData) {
         canvas.closest('.rs-chart-wrap').innerHTML = `
             <div class="rs-empty">
-                <strong>Sem leituras nas últimas 6 horas</strong>
-                <small>Os dados aparecerão quando novas coletas forem registradas.</small>
+                <strong>${rsT("Sem leituras nas últimas 6 horas")}</strong>
+                <small>${rsT("Os dados aparecerão quando novas coletas forem registradas.")}</small>
             </div>
         `;
         return;
@@ -26,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
         data: {
             labels,
             datasets: [{
-                label: 'Tempo (min)',
+                label: rsT("Tempo (min)"),
                 data: values,
                 borderColor: '#2563eb',
                 backgroundColor: 'rgba(37, 99, 235, .12)',
@@ -66,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     beginAtZero: false,
                     title: {
                         display: true,
-                        text: 'Tempo (min)',
+                        text: rsT("Tempo (min)"),
                     },
                 },
             },

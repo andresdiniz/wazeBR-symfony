@@ -1,6 +1,6 @@
 {% extends 'layouts/dashboard.html.twig' %}
 
-{% block title %}Alertas ao vivo | wazeBR{% endblock %}
+{% block title %}{{ 'Alertas ao vivo'|trans({}, 'alerts_ui') }} | wazeBR{% endblock %}
 {% block stylesheets %}
     {{ parent() }}
     <link rel="stylesheet" href="{{ asset('css/pages/alerts.css') }}">
@@ -8,9 +8,10 @@
 
 {% block page_body_class %}alerts-live-page{% endblock %}
 
-{% block dashboard_page_title %}Alertas ao vivo{% endblock %}
+{% block dashboard_page_title %}{{ 'Alertas ao vivo'|trans({}, 'alerts_ui') }}{% endblock %}
 
 {% block page_content %}
+<div data-alerts-i18n="{{ alerts_i18n()|json_encode|e('html_attr') }}" hidden></div>
     <div class="dashboard-content alerts-live-content">
         {# ── Hero ────────────────────────────────────────────── #}
         <section class="dashboard-hero">
@@ -20,21 +21,21 @@
                     class="dashboard-back-link"
                 >
                     <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
-                    Voltar para alertas
+                    {{ 'Voltar para alertas'|trans({}, 'alerts_ui') }}
                 </a>
 
-                <p class="dashboard-hero-kicker">Monitoramento em tempo real</p>
-                <h2>Alertas ao vivo</h2>
+                <p class="dashboard-hero-kicker">{{ 'Monitoramento em tempo real'|trans({}, 'alerts_ui') }}</p>
+                <h2>{{ 'Alertas ao vivo'|trans({}, 'alerts_ui') }}</h2>
                 <p>
-                    Últimos alertas coletados do feed do Waze para o parceiro
-                    <strong>{{ partner.name|default('Parceiro') }}</strong>.
+                    {{ 'Últimos alertas coletados do feed do Waze para o parceiro'|trans({}, 'alerts_ui') }}
+                    <strong>{{ partner.name|default(('Parceiro'|trans({}, 'alerts_ui'))) }}</strong>.
                 </p>
             </div>
 
             <div class="dashboard-hero-actions">
                 <span class="badge badge-primary">
                     <i class="fa-solid fa-broadcast-tower" aria-hidden="true"></i>
-                    {{ total }} alerta(s)
+                    {{ total }} {{ 'alerta(s)'|trans({}, 'alerts_ui') }}
                 </span>
 
                 <a
@@ -42,7 +43,7 @@
                     class="btn btn-ghost"
                 >
                     <i class="fa-solid fa-list" aria-hidden="true"></i>
-                    Ver todos
+                    {{ 'Ver todos'|trans({}, 'alerts_ui') }}
                 </a>
             </div>
         </section>
@@ -51,9 +52,9 @@
         <section class="card dashboard-card">
             <header class="card-header">
                 <div>
-                    <h3>Últimos alertas</h3>
+                    <h3>{{ 'Últimos alertas'|trans({}, 'alerts_ui') }}</h3>
                     <p>
-                        Exibindo os {{ total }} alertas mais recentes.
+                        {{ 'Exibindo os'|trans({}, 'alerts_ui') }} {{ total }} {{ 'alertas mais recentes.'|trans({}, 'alerts_ui') }}
                     </p>
                 </div>
             </header>
@@ -67,12 +68,12 @@
                                     <div class="alert-live-type">
                                         <span class="badge badge-primary">
                                             <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
-                                            {{ typesMap[alert.type]|default(alert.type) }}
+                                            {{ alerts_label(alert.type) }}
                                         </span>
 
                                         {% if alert.subtype %}
                                             <small class="text-muted">
-                                                {{ typesMap[alert.type ~ '|' ~ alert.subtype]|default(alert.subtype) }}
+                                                {{ alerts_label(alert.subtype) }}
                                             </small>
                                         {% endif %}
                                     </div>
@@ -80,7 +81,7 @@
                                     <div class="alert-live-meta">
                                         <span class="alert-live-time">
                                             <i class="fa-regular fa-clock" aria-hidden="true"></i>
-                                            {{ alert.pubDate|date('d/m/Y H:i') }}
+                                            {{ alerts_date(alert.pubDate, true) }}
                                         </span>
 
                                         {% if alert.confidence is not null %}
@@ -93,7 +94,7 @@
                                                     badge-danger
                                                 {% endif %}
                                             ">
-                                                Confiança {{ alert.confidence }}
+                                                {{ 'Confiança'|trans({}, 'alerts_ui') }} {{ alert.confidence }}
                                             </span>
                                         {% endif %}
                                     </div>
@@ -103,10 +104,10 @@
                                     <div class="alert-live-location">
                                         <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
                                         <strong>
-                                            {{ alert.street|default('Localização não informada') }}
+                                            {{ alert.street|default(('Localização não informada'|trans({}, 'alerts_ui'))) }}
                                         </strong>
                                         <small>
-                                            {{ alert.city|default('Cidade não informada') }}
+                                            {{ alert.city|default(('Cidade não informada'|trans({}, 'alerts_ui'))) }}
                                             {% if alert.country %}
                                                 · {{ alert.country }}
                                             {% endif %}
@@ -150,7 +151,7 @@
                                         class="btn btn-primary btn-sm"
                                     >
                                         <i class="fa-solid fa-eye" aria-hidden="true"></i>
-                                        Ver detalhes
+                                        {{ 'Ver detalhes'|trans({}, 'alerts_ui') }}
                                     </a>
                                 </div>
                             </article>
@@ -162,9 +163,9 @@
                             <i class="fa-solid fa-broadcast-tower" aria-hidden="true"></i>
                         </span>
 
-                        <h3>Nenhum alerta ao vivo</h3>
+                        <h3>{{ 'Nenhum alerta ao vivo'|trans({}, 'alerts_ui') }}</h3>
                         <p>
-                            Não há alertas recentes para este parceiro no momento.
+                            {{ 'Não há alertas recentes para este parceiro no momento.'|trans({}, 'alerts_ui') }}
                         </p>
 
                         <a
@@ -172,7 +173,7 @@
                             class="btn btn-primary"
                         >
                             <i class="fa-solid fa-list" aria-hidden="true"></i>
-                            Ver lista completa
+                            {{ 'Ver lista completa'|trans({}, 'alerts_ui') }}
                         </a>
                     </div>
                 {% endif %}

@@ -1,3 +1,22 @@
+const ROUTES_LOCALE = document.documentElement.lang || 'pt-BR';
+const ROUTES_MESSAGES = (() => {
+    try { return JSON.parse(document.querySelector('[data-routes-i18n]')?.dataset.routesI18n || '{}'); }
+    catch { return {}; }
+})();
+function rt(message, parameters = {}) {
+    let text = Object.hasOwn(ROUTES_MESSAGES, message) ? ROUTES_MESSAGES[message] : message;
+    for (const [key, value] of Object.entries(parameters)) text = text.replaceAll(key, String(value));
+    return text;
+}
+function routeLabel(value, fallback = '—') {
+    if (value == null || value === '') return fallback;
+    const text = String(value);
+    for (const key of [text, `code.${text}`, `level.${text}`]) {
+        if (Object.hasOwn(ROUTES_MESSAGES, key)) return ROUTES_MESSAGES[key];
+    }
+    return text;
+}
+
 /**
  * pages/route-report.js — relatório imprimível da rota.
  *
@@ -23,7 +42,7 @@ function setPrintBusy(busy) {
     printButtons.forEach((button) => {
         button.dataset.label ??= button.textContent;
         button.disabled = busy;
-        button.textContent = busy ? 'Preparando mapa…' : button.dataset.label;
+        button.textContent = busy ? rt("Preparando mapa…") : button.dataset.label;
     });
 }
 
@@ -64,7 +83,7 @@ function initMap() {
         if (success) {
             wrap.classList.add('is-live');
             const credit = document.querySelector('[data-report-map-credit]');
-            if (credit) credit.textContent = 'Mapa: © colaboradores do OpenStreetMap.';
+            if (credit) credit.textContent = rt("Mapa: © colaboradores do OpenStreetMap.");
         } else {
             try { map?.remove(); } catch { /* noop */ }
             container.replaceChildren();

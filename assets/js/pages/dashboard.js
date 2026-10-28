@@ -77,8 +77,21 @@ function safeJson(str, fallback = []) {
   try { return JSON.parse(str); } catch { return fallback; }
 }
 
-const nfBR = new Intl.NumberFormat('pt-BR');
-const nf1 = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+const LOCALE = document.documentElement.lang || 'pt-BR';
+const dashboardMessages = safeJson(document.querySelector('[data-dashboard]')?.dataset.dashboardI18n || '{}', {});
+function t(message) {
+  return Object.hasOwn(dashboardMessages, message) ? dashboardMessages[message] : message;
+}
+function dashboardLabel(value, fallback = '—') {
+  if (value == null || value === '') return fallback;
+  const text = String(value);
+  const key = `code.${text}`;
+  return Object.hasOwn(dashboardMessages, key) ? dashboardMessages[key] : t(text);
+}
+
+const nfBR = new Intl.NumberFormat(LOCALE);
+const nf1 = new Intl.NumberFormat(LOCALE, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 const fmt = {
   int: (v) => nfBR.format(Number(v) || 0),
@@ -86,7 +99,7 @@ const fmt = {
   date: (iso) => {
     if (!iso) return '—';
     try {
-      return new Date(iso).toLocaleString('pt-BR', {
+      return new Date(iso).toLocaleString(LOCALE, {
         day: '2-digit', month: '2-digit', year: 'numeric',
         hour: '2-digit', minute: '2-digit',
         timeZone: 'America/Sao_Paulo',
@@ -96,7 +109,7 @@ const fmt = {
   time: (iso) => {
     if (!iso) return '—';
     try {
-      return new Date(iso).toLocaleString('pt-BR', {
+      return new Date(iso).toLocaleString(LOCALE, {
         hour: '2-digit', minute: '2-digit',
         timeZone: 'America/Sao_Paulo',
       });
@@ -106,12 +119,12 @@ const fmt = {
     if (!iso) return '—';
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '—';
-    return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    return new Intl.DateTimeFormat(LOCALE, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }).format(d);
   },
 };
 
 const rtf = typeof Intl !== 'undefined' && Intl.RelativeTimeFormat
-  ? new Intl.RelativeTimeFormat('pt-BR', { numeric: 'auto' })
+  ? new Intl.RelativeTimeFormat(LOCALE, { numeric: 'auto' })
   : null;
 
 function timeAgo(dateStr) {
@@ -119,7 +132,7 @@ function timeAgo(dateStr) {
   const d = new Date(dateStr);
   if (Number.isNaN(d.getTime())) return '';
   const diffMin = Math.round((d.getTime() - Date.now()) / 60_000);
-  if (!rtf) return d.toLocaleString('pt-BR');
+  if (!rtf) return d.toLocaleString(LOCALE);
   if (Math.abs(diffMin) < 60) return rtf.format(diffMin, 'minute');
   const diffH = Math.round(diffMin / 60);
   if (Math.abs(diffH) < 24) return rtf.format(diffH, 'hour');
@@ -177,10 +190,10 @@ const CHART_CONFIGS = {
     data: {
       labels: data.map((p) => p.hour),
       datasets: [
-        { label: 'Alertas', data: data.map((p) => Number(p.alerts) || 0),
+        { label: t("Alertas"), data: data.map((p) => Number(p.alerts) || 0),
           borderColor: COLORS.blue, backgroundColor: 'rgba(37,99,235,.15)',
           fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2 },
-        { label: 'Jams', data: data.map((p) => Number(p.jams) || 0),
+        { label: t("Jams"), data: data.map((p) => Number(p.jams) || 0),
           borderColor: COLORS.orange, backgroundColor: 'rgba(234,88,12,.10)',
           fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2 },
       ],
@@ -191,7 +204,7 @@ const CHART_CONFIGS = {
   'alerts-by-type': (data) => ({
     type: 'doughnut',
     data: {
-      labels: data.map((p) => p.label),
+      labels: data.map((p) => dashboardLabel(p.label)),
       datasets: [{
         data: data.map((p) => Number(p.total) || 0),
         backgroundColor: data.map((_, i) => PALETTE[i % PALETTE.length]),
@@ -206,14 +219,14 @@ const CHART_CONFIGS = {
     },
   }),
 
-  'alerts-by-city': (data) => barHorizontal(data, 'Alertas', 'rgba(37,99,235,.75)'),
-  'alerts-by-street': (data) => barHorizontal(data, 'Alertas', 'rgba(124,58,237,.75)'),
+  'alerts-by-city': (data) => barHorizontal(data, t("Alertas"), 'rgba(37,99,235,.75)'),
+  'alerts-by-street': (data) => barHorizontal(data, t("Alertas"), 'rgba(124,58,237,.75)'),
 
   'jams-by-level': (data) => ({
     type: 'bar',
     data: {
-      labels: data.map((p) => p.label),
-      datasets: [{ label: 'Jams', data: data.map((p) => Number(p.total) || 0),
+      labels: data.map((p) => dashboardLabel(`jam_${p.level ?? String(p.label).match(/\d+/)?.[0] ?? ''}`, p.label)),
+      datasets: [{ label: t("Jams"), data: data.map((p) => Number(p.total) || 0),
         backgroundColor: 'rgba(234,88,12,.75)', borderRadius: 6 }],
     },
     options: { ...BASE_OPTIONS, plugins: { legend: { display: false } } },
@@ -222,15 +235,15 @@ const CHART_CONFIGS = {
   'weather-trend': (data) => ({
     type: 'line',
     data: {
-      labels: data.map((p) => (p.time || '').slice(11, 16)),
+      labels: data.map((p) => fmt.time(p.time)),
       datasets: [
-        { label: 'Temp (°C)', data: data.map((p) => p.temperature),
+        { label: t("Temp (°C)"), data: data.map((p) => p.temperature),
           borderColor: COLORS.red, backgroundColor: 'rgba(220,38,38,.12)',
           tension: 0.35, pointRadius: 0, borderWidth: 2, yAxisID: 'y' },
-        { label: 'Umidade (%)', data: data.map((p) => p.humidity),
+        { label: t("Umidade (%)"), data: data.map((p) => p.humidity),
           borderColor: COLORS.blue, backgroundColor: 'rgba(37,99,235,.10)',
           tension: 0.35, pointRadius: 0, borderWidth: 2, yAxisID: 'y1' },
-        { label: 'Chuva (mm)', data: data.map((p) => p.precipitation),
+        { label: t("Chuva (mm)"), data: data.map((p) => p.precipitation),
           borderColor: COLORS.green, backgroundColor: 'rgba(22,163,74,.15)',
           tension: 0.35, pointRadius: 0, borderWidth: 2, yAxisID: 'y2' },
       ],
@@ -249,15 +262,15 @@ const CHART_CONFIGS = {
   'hydro-trend': (data) => ({
     type: 'line',
     data: {
-      labels: data.map((p) => (p.time || '').slice(5, 16)),
+      labels: data.map((p) => fmt.shortDate(p.time)),
       datasets: [
-        { label: 'Nível do rio (m)', data: data.map((p) => p.avg_level),
+        { label: t("Nível do rio (m)"), data: data.map((p) => p.avg_level),
           borderColor: COLORS.cyan, backgroundColor: 'rgba(8,145,178,.15)',
           fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2 },
-        { label: 'Cota de atenção', data: data.map((p) => p.cota_atencao),
+        { label: t("Cota de atenção"), data: data.map((p) => p.cota_atencao),
           borderColor: COLORS.orange, borderDash: [6, 4],
           pointRadius: 0, borderWidth: 1.5, fill: false },
-        { label: 'Cota de alerta', data: data.map((p) => p.cota_alerta),
+        { label: t("Cota de alerta"), data: data.map((p) => p.cota_alerta),
           borderColor: COLORS.red, borderDash: [6, 4],
           pointRadius: 0, borderWidth: 1.5, fill: false },
       ],
@@ -266,7 +279,7 @@ const CHART_CONFIGS = {
       ...BASE_OPTIONS,
       scales: {
         x: { grid: { display: false } },
-        y: { grid: { color: getDashboardChartTheme().grid }, title: { display: true, text: 'metros' } },
+        y: { grid: { color: getDashboardChartTheme().grid }, title: { display: true, text: t("metros") } },
       },
     },
   }),
@@ -274,9 +287,9 @@ const CHART_CONFIGS = {
   'pluvio-hourly': (data) => ({
     type: 'bar',
     data: {
-      labels: data.map((p) => (p.time || '').slice(11, 16)),
+      labels: data.map((p) => fmt.time(p.time)),
       datasets: [{
-        label: 'Chuva (mm)',
+        label: t("Chuva (mm)"),
         data: data.map((p) => Number(p.rain) || 0),
         backgroundColor: data.map((p) => Number(p.rain) > 0
           ? 'rgba(37,99,235,.75)' : 'rgba(148,163,184,.35)'),
@@ -294,9 +307,9 @@ const CHART_CONFIGS = {
           callbacks: {
             label: (ctx) => {
               const v = ctx.parsed.y;
-              if (!v) return 'Sem chuva';
+              if (!v) return t("Sem chuva");
               const wet = data[ctx.dataIndex]?.wet_stations || 0;
-              return `Chuva: ${Number(v).toFixed(1)} mm · ${wet} ponto(s)`;
+              return `${t("Chuva")}: ${fmt.mm(v)} mm · ${wet} ${t("ponto(s)")}`;
             },
           },
         },
@@ -492,8 +505,8 @@ function populateMap(container) {
       radius: 6, color, weight: 1, fillColor: color, fillOpacity: 0.75,
     }).bindPopup(popup({
       color,
-      title: a.type || 'Alerta',
-      subtitle: a.subtype,
+      title: dashboardLabel(a.type, t("Alerta")),
+      subtitle: dashboardLabel(a.subtype),
       body: `${escapeHtml(a.street || '')}${a.street && a.city ? ' — ' : ''}${escapeHtml(a.city || '')}`,
       footer: timeAgo(a.when),
     })).addTo(map.layers.alerts);
@@ -506,9 +519,9 @@ function populateMap(container) {
     L.polyline(j.path, { color, weight: 5, opacity: 0.85, dashArray })
       .bindPopup(popup({
         color,
-        title: `Congestionamento — nível ${j.level}`,
+        title: `${t("Congestionamento — nível")} ${j.level}`,
         subtitle: `${j.street || ''}${j.city ? ' — ' + j.city : ''}`,
-        body: `Atraso: <strong>${fmt.int(j.delay || 0)}s</strong><br>Extensão: ${((j.length || 0) / 1000).toFixed(1)} km`,
+        body: `${t("Atraso")}: <strong>${fmt.int(j.delay || 0)}s</strong><br>${t("Extensão")}: ${fmt.mm((j.length || 0) / 1000)} km`,
       })).addTo(map.layers.jams);
   });
 
@@ -516,13 +529,13 @@ function populateMap(container) {
     if (!Number.isFinite(c.lat) || !Number.isFinite(c.lng)) return;
     const camUrl = safeUrl(c.url);
     const body = camUrl
-      ? `<a href="${escapeHtml(camUrl)}" target="_blank" rel="noopener noreferrer">Abrir stream ↗</a>`
+      ? `<a href="${escapeHtml(camUrl)}" target="_blank" rel="noopener noreferrer">${t("Abrir stream ↗")}</a>`
       : (c.url ? '<em>URL inválida</em>' : '');
     L.circleMarker([c.lat, c.lng], {
       radius: 5, color: COLORS.purple, weight: 1, fillColor: COLORS.purple, fillOpacity: 0.85,
     }).bindPopup(popup({
       color: COLORS.purple,
-      title: c.name || 'Câmera',
+      title: c.name || t("Câmera"),
       subtitle: `${c.city || ''}${c.state ? ' / ' + c.state : ''}`,
       body,
     })).addTo(map.layers.cameras);
@@ -534,7 +547,7 @@ function populateMap(container) {
       radius: 5, color: COLORS.green, weight: 1, fillColor: COLORS.green, fillOpacity: 0.8,
     }).bindPopup(popup({
       color: COLORS.green,
-      title: w.name || 'Estação',
+      title: w.name || t("Estação"),
       subtitle: `${w.city || ''} · ${w.provider || ''}`,
     })).addTo(map.layers.weather);
   });
@@ -548,9 +561,9 @@ function populateMap(container) {
       radius: r24 > 0 ? 6 : 4, color: '#0f766e', weight: 1, fillColor: color, fillOpacity: 0.85,
     }).bindPopup(popup({
       color,
-      title: s.name || 'Estação CEMADEM',
-      subtitle: `${s.city || ''}${s.state ? ' / ' + s.state : ''} · ${s.type || ''}`,
-      body: `Chuva 1h: <strong>${r1.toFixed(1)} mm</strong><br>Chuva 24h: <strong>${r24.toFixed(1)} mm</strong>`,
+      title: s.name || t("Estação CEMADEM"),
+      subtitle: `${s.city || ''}${s.state ? ' / ' + s.state : ''} · ${dashboardLabel(s.type, '')}`,
+      body: `${t("Chuva 1h")}: <strong>${fmt.mm(r1)} mm</strong><br>${t("Chuva 24h")}: <strong>${fmt.mm(r24)} mm</strong>`,
       footer: timeAgo(s.lastReading),
     })).addTo(map.layers.stations);
   });
@@ -581,7 +594,7 @@ function apiBase(root) {
 function currentFilters() {
   const form = document.querySelector('[data-filter-form]');
   if (!form) return {};
-  const out = {};
+  const out = { _locale: document.documentElement.dataset.locale || 'pt_BR' };
   new FormData(form).forEach((v, k) => {
     const val = String(v).trim();
     if (val) out[k] = val;
@@ -609,7 +622,7 @@ function makeController() {
 
 async function fetchFullPayload(root, filters) {
   const base = apiBase(root);
-  const qs = new URLSearchParams(filters).toString();
+  const qs = new URLSearchParams({ ...filters, _locale: document.documentElement.dataset.locale || 'pt_BR' }).toString();
   const controller = makeController();
   const sig = controller.signal;
 
@@ -682,15 +695,15 @@ function renderKPIs(root, kpis, totals) {
   };
 
   if (totals) {
-    setTrend('alerts_active', `${totals.alerts_active ?? 0} ativos`);
-    setTrend('jams_active', `${totals.jams_active ?? 0} ativos`,
+    setTrend('alerts_active', `${totals.alerts_active ?? 0} ${t("ativos")}`);
+    setTrend('jams_active', `${totals.jams_active ?? 0} ${t("ativos")}`,
       (totals.jams_active ?? 0) > 10 ? 'is-warning' : '');
   }
   if (kpis.routes_delayed !== undefined) {
-    setTrend('routes_delayed', `${kpis.routes_delayed} atrasadas`, kpis.routes_delayed > 0 ? 'is-warning' : '');
+    setTrend('routes_delayed', `${kpis.routes_delayed} ${t("atrasadas")}`, kpis.routes_delayed > 0 ? 'is-warning' : '');
   }
   if (kpis.hydro_at_risk !== undefined) {
-    setTrend('hydro_at_risk', `${kpis.hydro_at_risk} em atenção`, kpis.hydro_at_risk > 0 ? 'is-warning' : '');
+    setTrend('hydro_at_risk', `${kpis.hydro_at_risk} ${t("em atenção")}`, kpis.hydro_at_risk > 0 ? 'is-warning' : '');
   }
   if (kpis.pluvio_rain_24h !== undefined) {
     setTrend('pluvio_rain_24h', `${fmt.mm(kpis.pluvio_rain_24h)} mm · 24h`,
@@ -703,16 +716,16 @@ function renderRecentAlerts(root, alerts) {
   if (!list) return;
 
   list.innerHTML = !alerts?.length
-    ? emptyState('Nenhum alerta recente', 'Ajuste os filtros ou verifique as fontes.')
+    ? emptyState(t("Nenhum alerta recente"), t("Ajuste os filtros ou verifique as fontes."))
     : alerts.map((a) => html`
         <div class="dashboard-data-row">
           <span class="dashboard-row-icon row-orange" aria-hidden="true">⚠</span>
           <div>
-            <strong>${a.typeLabel || a.type || 'Alerta'}</strong>
-            <small>#${a.id} · ${a.subtype || '—'} · ${a.city || 'Local não informado'}${a.street ? ' · ' + a.street : ''}</small>
+            <strong>${dashboardLabel(a.type || a.typeLabel, t("Alerta"))}</strong>
+            <small>#${a.id} · ${dashboardLabel(a.subtype)} · ${a.city || t("Local não informado")}${a.street ? ' · ' + a.street : ''}</small>
           </div>
           <time>${fmt.shortDate(a.pubDateTime)}</time>
-          <span class="dashboard-severity">Confiança ${a.confidence ?? 0}</span>
+          <span class="dashboard-severity">${t("Confiança")} ${a.confidence ?? 0}</span>
         </div>
       `).join('');
 
@@ -724,18 +737,18 @@ function renderRecentJams(root, jams) {
   if (!list) return;
 
   list.innerHTML = !jams?.length
-    ? emptyState('Nenhum congestionamento', 'Não há ocorrências viárias no período.')
+    ? emptyState(t("Nenhum congestionamento"), t("Não há ocorrências viárias no período."))
     : jams.map((j) => {
-        const speed = j.speedKmh != null ? `${Number(j.speedKmh).toFixed(1)} km/h` : '';
-        const len = j.length ? `${(j.length / 1000).toFixed(1)} km` : '';
+        const speed = j.speedKmh != null ? `${fmt.mm(j.speedKmh)} km/h` : '';
+        const len = j.length ? `${fmt.mm(j.length / 1000)} km` : '';
         return html`
           <div class="dashboard-data-row">
             <span class="dashboard-row-icon row-orange" aria-hidden="true">≋</span>
             <div>
-              <strong>${j.street || 'Via não informada'}</strong>
+              <strong>${j.street || t("Via não informada")}</strong>
               <small>${j.city || '—'}${speed ? ' · ' + speed : ''}${len ? ' · ' + len : ''}</small>
             </div>
-            <span class="dashboard-severity dashboard-jam-level-${j.level}">Nível ${j.level}</span>
+            <span class="dashboard-severity dashboard-jam-level-${j.level}">${t("Nível")} ${j.level} · ${dashboardLabel(`jam_${j.level}`)}</span>
           </div>
         `;
       }).join('');
@@ -748,7 +761,7 @@ function renderRecentRoutes(root, routes) {
   if (!list) return;
 
   if (!routes?.length) {
-    list.innerHTML = emptyState('Nenhuma rota encontrada', 'Sem snapshots vinculados às rotas.');
+    list.innerHTML = emptyState(t("Nenhuma rota encontrada"), t("Sem snapshots vinculados às rotas."));
   } else {
     list.innerHTML = routes.map((r) => {
       const lvl = r.delay_level?.level || 'none';
@@ -758,17 +771,17 @@ function renderRecentRoutes(root, routes) {
 
       let badge;
       if (r.delay_seconds > 0) badge = `+${r.delay_seconds}s <small>(${ratio}%)</small>`;
-      else if (r.jam_level != null) badge = `Nível ${r.jam_level}`;
-      else badge = 'No prazo';
+      else if (r.jam_level != null) badge = `${t("Nível")} ${r.jam_level}`;
+      else badge = t("No prazo");
 
       return html`
         <div class="dashboard-data-row">
           <span class="dashboard-row-icon ${icon}" aria-hidden="true">→</span>
           <div>
-            <strong>${r.name || 'Rota'}</strong>
+            <strong>${r.name || t("Rota")}</strong>
             <small>
               ${r.from_name && r.to_name ? `${r.from_name} → ${r.to_name} · ` : ''}
-              Atual ${r.time ?? '—'}s · Hist. ${r.historic_time ?? '—'}s
+              ${t("Atual")} ${r.time ?? '—'}s · ${t("Hist.")} ${r.historic_time ?? '—'}s
             </small>
           </div>
           <span class="dashboard-severity delay-badge delay-badge--${lvl}">${raw(badge)}</span>
@@ -785,13 +798,14 @@ function renderRecentWeather(root, weather) {
   if (!list) return;
 
   if (!weather?.length) {
-    list.innerHTML = emptyState('Sem leituras climáticas', 'Cadastre uma localização meteorológica.');
+    list.innerHTML = emptyState(t("Sem leituras climáticas"), t("Cadastre uma localização meteorológica."));
     return;
   }
 
   list.innerHTML = weather.map((obs) => {
     const detail = [
-      obs.temperature != null ? `${Number(obs.temperature).toFixed(1)}°C` : null,
+      (obs.weatherCode ?? obs.weather_code) != null ? dashboardLabel(`weather_${obs.weatherCode ?? obs.weather_code}`) : null,
+      obs.temperature != null ? `${fmt.mm(obs.temperature)}°C` : null,
       obs.humidity != null ? `${obs.humidity}%` : null,
     ].filter(Boolean).join(' · ');
 
@@ -799,7 +813,7 @@ function renderRecentWeather(root, weather) {
       <div class="dashboard-data-row">
         <span class="dashboard-row-icon row-green" aria-hidden="true">☁</span>
         <div>
-          <strong>${obs.locationName || 'Estação'}</strong>
+          <strong>${obs.locationName || t("Estação")}</strong>
           <small>${obs.city || '—'} · ${fmt.shortDate(obs.observedAt)}</small>
         </div>
         <span class="dashboard-severity">${detail}</span>
@@ -846,17 +860,17 @@ function renderHydro(root, hydro) {
 
   picker.innerHTML = html`
     <div class="dashboard-station-picker-head">
-      <strong>Rios monitorados</strong>
-      <small>${list.length} estações</small>
+      <strong>${t("Rios monitorados")}</strong>
+      <small>${list.length} ${t("estações")}</small>
     </div>
     <button type="button" class="hydro-station-btn hydro-station-btn--all ${active('all')}" data-hydro-select="all">
-      <span class="hydro-station-btn-name">Todas as estações</span>
-      <small>Média agregada</small>
+      <span class="hydro-station-btn-name">${t("Todas as estações")}</span>
+      <small>${t("Média agregada")}</small>
     </button>
     ${list.map((st) => html`
       <button type="button"
               class="hydro-station-btn hydro-station-btn--${st.risk || 'unknown'} ${active(st.id)}"
-              data-hydro-select="${st.id}">
+              data-hydro-select="${st.id}" title="${dashboardLabel(st.risk)}">
         <span class="hydro-station-btn-name">${st.name}</span>
         <small>${st.city || '—'}${st.state ? '/' + st.state : ''}</small>
         <span class="hydro-station-btn-level">${st.level != null ? fmt.mm(st.level) + ' m' : '—'}</span>
@@ -896,15 +910,15 @@ function renderPluvio(root, pluvio) {
 
   picker.innerHTML = html`
     <div class="dashboard-station-picker-head">
-      <strong>Chuva por estação · 24h</strong>
-      <small>${stations.length} pontos</small>
+      <strong>${t("Chuva por estação · 24h")}</strong>
+      <small>${stations.length} ${t("pontos")}</small>
     </div>
     <button type="button" class="hydro-station-btn hydro-station-btn--all ${active('all')}" data-pluvio-select="all">
-      <span class="hydro-station-btn-name">Todas as estações</span>
-      <small>Média agregada</small>
+      <span class="hydro-station-btn-name">${t("Todas as estações")}</span>
+      <small>${t("Média agregada")}</small>
     </button>
     ${stations.length === 0
-      ? raw(emptyState('Sem leituras de chuva', 'Cadastre um pluviômetro ou estação hidro com dados de chuva.'))
+      ? raw(emptyState(t("Sem leituras de chuva"), t("Cadastre um pluviômetro ou estação hidro com dados de chuva.")))
       : stations.map((st) => {
           const pct = peak > 0 ? Math.min(100, (st.rain24h / peak) * 100) : 0;
           return html`
@@ -915,7 +929,7 @@ function renderPluvio(root, pluvio) {
               <span class="hydro-station-btn-name">
                 ${st.stationName}
                 <span class="pluvio-source-badge pluvio-source-badge--${st.source}">
-                  ${st.source === 'hydro' ? 'Hidro' : 'Auto'}
+                  ${st.source === 'hydro' ? t("Hidro") : t("Auto")}
                 </span>
               </span>
               <small>${st.city || '—'}${st.state ? '/' + st.state : ''}</small>
@@ -1035,6 +1049,7 @@ function initFilters(root = document) {
   const pushUrl = (params) => {
     const url = new URL(window.location.href);
     url.search = '';
+    url.searchParams.set('_locale', document.documentElement.dataset.locale || 'pt_BR');
     Object.entries(params).forEach(([k, v]) => v && url.searchParams.set(k, v));
     history.pushState({ filters: params }, '', url.toString());
   };
@@ -1043,7 +1058,7 @@ function initFilters(root = document) {
     if (state.isRefreshing) return;
     state.isRefreshing = true;
     setLoading(true);
-    setFeedback('Aplicando filtros...');
+    setFeedback(t("Aplicando filtros..."));
 
     try {
       const { data, failures } = await fetchFullPayload(root, params);
@@ -1054,14 +1069,14 @@ function initFilters(root = document) {
       state.lastRefreshAt = Date.now();
 
       if (failures.length) {
-        setFeedback(`Filtros aplicados · ${failures.length} fonte(s) com falha (${failures.join(', ')})`, true);
+        setFeedback(`${t("Filtros aplicados")} · ${failures.length} ${t("fonte(s) com falha")} (${failures.join(', ')})`, true);
       } else {
-        setFeedback(`Filtros aplicados · ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`);
+        setFeedback(`${t("Filtros aplicados")} · ${new Date().toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' })}`);
       }
     } catch (err) {
       setFeedback(err.name === 'AbortError'
-        ? 'A requisição demorou demais. Tente novamente.'
-        : 'Falha ao aplicar filtros: ' + err.message, true);
+        ? t("A requisição demorou demais. Tente novamente.")
+        : t("Falha ao aplicar filtros: ") + err.message, true);
     } finally {
       state.isRefreshing = false;
       setLoading(false);
@@ -1129,7 +1144,7 @@ async function refreshSummary(root) {
       }
       state.lastRefreshAt = Date.now();
       const ts = root.querySelector('[data-auto-refresh-ts]');
-      if (ts) ts.textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      if (ts) ts.textContent = new Date().toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
     }
   } catch (err) {
     if (err.name !== 'AbortError') console.warn('[dashboard] auto-refresh:', err.message);
@@ -1206,18 +1221,18 @@ function showShortcutsHelp() {
   backdrop.setAttribute('data-shortcuts-help', '');
   backdrop.setAttribute('role', 'dialog');
   backdrop.setAttribute('aria-modal', 'true');
-  backdrop.setAttribute('aria-label', 'Atalhos de teclado');
+  backdrop.setAttribute('aria-label', t("Atalhos de teclado"));
 
   backdrop.innerHTML = html`
     <div class="dashboard-dialog">
-      <h3>Atalhos de teclado</h3>
+      <h3>${t("Atalhos de teclado")}</h3>
       <table>
-        <tr><td><kbd>R</kbd></td><td>Atualizar dados</td></tr>
-        <tr><td><kbd>F</kbd> / <kbd>/</kbd></td><td>Ir para busca</td></tr>
-        <tr><td><kbd>Esc</kbd></td><td>Limpar filtros</td></tr>
-        <tr><td><kbd>?</kbd></td><td>Mostrar ajuda</td></tr>
+        <tr><td><kbd>R</kbd></td><td>${t("Atualizar dados")}</td></tr>
+        <tr><td><kbd>F</kbd> / <kbd>/</kbd></td><td>${t("Ir para busca")}</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>${t("Limpar filtros")}</td></tr>
+        <tr><td><kbd>?</kbd></td><td>${t("Mostrar ajuda")}</td></tr>
       </table>
-      <button type="button" class="dashboard-button is-primary">Fechar</button>
+      <button type="button" class="dashboard-button is-primary">${t("Fechar")}</button>
     </div>
   `;
 

@@ -1,3 +1,22 @@
+const ROUTES_LOCALE = document.documentElement.lang || 'pt-BR';
+const ROUTES_MESSAGES = (() => {
+    try { return JSON.parse(document.querySelector('[data-routes-i18n]')?.dataset.routesI18n || '{}'); }
+    catch { return {}; }
+})();
+function rt(message, parameters = {}) {
+    let text = Object.hasOwn(ROUTES_MESSAGES, message) ? ROUTES_MESSAGES[message] : message;
+    for (const [key, value] of Object.entries(parameters)) text = text.replaceAll(key, String(value));
+    return text;
+}
+function routeLabel(value, fallback = '—') {
+    if (value == null || value === '') return fallback;
+    const text = String(value);
+    for (const key of [text, `code.${text}`, `level.${text}`]) {
+        if (Object.hasOwn(ROUTES_MESSAGES, key)) return ROUTES_MESSAGES[key];
+    }
+    return text;
+}
+
 /**
  * pages/routes.js — Página /routes
  */
@@ -144,11 +163,11 @@ function drawIrregularities(items) {
 
         marker.bindPopup(`
             <div class="routes-popup">
-                <strong>${escapeHtml(irr.type || 'Irregularidade')}</strong>
-                ${irr.subtype ? `<small>${escapeHtml(irr.subtype)}</small>` : ''}
-                ${irr.street ? `<div class="routes-popup-row"><span>Via</span><span>${escapeHtml(irr.street)}</span></div>` : ''}
-                ${irr.city ? `<div class="routes-popup-row"><span>Cidade</span><span>${escapeHtml(irr.city)}</span></div>` : ''}
-                ${irr.severity ? `<div class="routes-popup-row"><span>Severidade</span><span>${escapeHtml(irr.severity)}</span></div>` : ''}
+                <strong>${escapeHtml(irr.type || rt("Irregularidade"))}</strong>
+                ${irr.subtype ? `<small>${escapeHtml(routeLabel(irr.subtype))}</small>` : ''}
+                ${irr.street ? `<div class="routes-popup-row"><span>${rt("Via")}</span><span>${escapeHtml(irr.street)}</span></div>` : ''}
+                ${irr.city ? `<div class="routes-popup-row"><span>${rt("Cidade")}</span><span>${escapeHtml(irr.city)}</span></div>` : ''}
+                ${irr.severity ? `<div class="routes-popup-row"><span>${rt("Severidade")}</span><span>${escapeHtml(irr.severity)}</span></div>` : ''}
             </div>
         `);
 
@@ -166,7 +185,7 @@ function drawIrregularities(items) {
 function buildSegmentPopup(seg) {
     const isSubRoute = seg.source === 'subroute';
 
-    const fmtDelay = (s) => (s != null && s > 0) ? `+${s}s` : 'no prazo';
+    const fmtDelay = (s) => (s != null && s > 0) ? `+${s}s` : rt("no prazo");
     const fmtRatio = (r) => (r != null ? `${Math.round(r * 100)}%` : '—');
     const fmtLevel = (lbl, lvl) => escapeHtml(lbl || lvl || '—');
 
@@ -175,7 +194,7 @@ function buildSegmentPopup(seg) {
     const segTime    = seg.time          != null ? `${Math.round(seg.time)}s`          : '—';
     const segHist    = seg.historicTime  != null ? `${Math.round(seg.historicTime)}s`  : '—';
     const segLevel   = fmtLevel(seg.delayLabel, seg.delayLevel);
-    const segJam     = seg.jamLevel != null ? `Nível ${seg.jamLevel}` : '—';
+    const segJam     = seg.jamLevel != null ? `${rt("Nível")} ${seg.jamLevel}` : '—';
     const segTrecho  = (seg.from && seg.to)
         ? `${escapeHtml(seg.from)} → ${escapeHtml(seg.to)}`
         : '';
@@ -193,13 +212,13 @@ function buildSegmentPopup(seg) {
     if (!isSubRoute) {
         return `
             <div class="routes-popup">
-                <strong>${escapeHtml(seg.routeName || 'Rota')}</strong>
+                <strong>${escapeHtml(seg.routeName || rt("Rota"))}</strong>
                 ${routeTrecho ? `<small>${routeTrecho}</small>` : ''}
-                <div class="routes-popup-row"><span>Atraso</span><span>${routeDelay}</span></div>
-                <div class="routes-popup-row"><span>Vs. histórico</span><span>${routeRatio}</span></div>
-                <div class="routes-popup-row"><span>Tempo atual</span><span>${routeTime}</span></div>
-                <div class="routes-popup-row"><span>Histórico</span><span>${routeHist}</span></div>
-                <div class="routes-popup-row"><span>Nível</span><span class="routes-popup-level routes-popup-level--${escapeHtml(seg.routeDelayLevel || 'none')}">${routeLevel}</span></div>
+                <div class="routes-popup-row"><span>${rt("Atraso")}</span><span>${routeDelay}</span></div>
+                <div class="routes-popup-row"><span>${rt("Vs. histórico")}</span><span>${routeRatio}</span></div>
+                <div class="routes-popup-row"><span>${rt("Tempo atual")}</span><span>${routeTime}</span></div>
+                <div class="routes-popup-row"><span>${rt("Histórico")}</span><span>${routeHist}</span></div>
+                <div class="routes-popup-row"><span>${rt("Nível")}</span><span class="routes-popup-level routes-popup-level--${escapeHtml(seg.routeDelayLevel || 'none')}">${routeLevel}</span></div>
             </div>
         `;
     }
@@ -207,27 +226,27 @@ function buildSegmentPopup(seg) {
     // Rota com sub-rotas: mostra trecho + rota completa
     return `
         <div class="routes-popup">
-            <strong>${escapeHtml(seg.routeName || 'Rota')}</strong>
+            <strong>${escapeHtml(seg.routeName || rt("Rota"))}</strong>
             ${routeTrecho ? `<small>${routeTrecho}</small>` : ''}
 
             <div class="routes-popup-section">
                 <span class="routes-popup-section-label">Este trecho</span>
                 ${segTrecho ? `<small class="routes-popup-trecho">${segTrecho}</small>` : ''}
-                <div class="routes-popup-row"><span>Atraso</span><span>${segDelay}</span></div>
-                <div class="routes-popup-row"><span>Vs. histórico</span><span>${segRatio}</span></div>
-                <div class="routes-popup-row"><span>Tempo atual</span><span>${segTime}</span></div>
-                <div class="routes-popup-row"><span>Histórico</span><span>${segHist}</span></div>
+                <div class="routes-popup-row"><span>${rt("Atraso")}</span><span>${segDelay}</span></div>
+                <div class="routes-popup-row"><span>${rt("Vs. histórico")}</span><span>${segRatio}</span></div>
+                <div class="routes-popup-row"><span>${rt("Tempo atual")}</span><span>${segTime}</span></div>
+                <div class="routes-popup-row"><span>${rt("Histórico")}</span><span>${segHist}</span></div>
                 ${seg.jamLevel != null ? `<div class="routes-popup-row"><span>Jam</span><span>${segJam}</span></div>` : ''}
-                <div class="routes-popup-row"><span>Nível</span><span class="routes-popup-level routes-popup-level--${escapeHtml(seg.delayLevel || 'none')}">${segLevel}</span></div>
+                <div class="routes-popup-row"><span>${rt("Nível")}</span><span class="routes-popup-level routes-popup-level--${escapeHtml(seg.delayLevel || 'none')}">${segLevel}</span></div>
             </div>
 
             <div class="routes-popup-section routes-popup-section--route">
-                <span class="routes-popup-section-label">Rota completa</span>
-                <div class="routes-popup-row"><span>Atraso</span><span>${routeDelay}</span></div>
-                <div class="routes-popup-row"><span>Vs. histórico</span><span>${routeRatio}</span></div>
-                <div class="routes-popup-row"><span>Tempo atual</span><span>${routeTime}</span></div>
-                <div class="routes-popup-row"><span>Histórico</span><span>${routeHist}</span></div>
-                <div class="routes-popup-row"><span>Nível</span><span class="routes-popup-level routes-popup-level--${escapeHtml(seg.routeDelayLevel || 'none')}">${routeLevel}</span></div>
+                <span class="routes-popup-section-label">${rt("Rota")} completa</span>
+                <div class="routes-popup-row"><span>${rt("Atraso")}</span><span>${routeDelay}</span></div>
+                <div class="routes-popup-row"><span>${rt("Vs. histórico")}</span><span>${routeRatio}</span></div>
+                <div class="routes-popup-row"><span>${rt("Tempo atual")}</span><span>${routeTime}</span></div>
+                <div class="routes-popup-row"><span>${rt("Histórico")}</span><span>${routeHist}</span></div>
+                <div class="routes-popup-row"><span>${rt("Nível")}</span><span class="routes-popup-level routes-popup-level--${escapeHtml(seg.routeDelayLevel || 'none')}">${routeLevel}</span></div>
             </div>
         </div>
     `;
@@ -315,7 +334,7 @@ function initFilters(root) {
         });
 
         if (counter) {
-            counter.textContent = `${visible} rota${visible !== 1 ? 's' : ''}`;
+            counter.textContent = `${visible} ${rt("rota")}${visible !== 1 ? 's' : ''}`;
         }
 
         polylinesByRoute.forEach((bucket, routeId) => {
@@ -411,7 +430,7 @@ function initClock(root) {
     if (!clock || clock.dataset.routesClockInit === '1') return;
     clock.dataset.routesClockInit = '1';
 
-    const fmt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    const fmt = new Intl.DateTimeFormat(ROUTES_LOCALE, { dateStyle: 'short', timeStyle: 'short' });
     const tick = () => { clock.textContent = fmt.format(new Date()); };
     tick();
     setInterval(tick, 30_000);

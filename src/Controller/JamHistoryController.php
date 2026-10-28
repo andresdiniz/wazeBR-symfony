@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\Partner;
+use Symfony\Contracts\Translation\TranslatorInterface;
 use App\Entity\User;
 use App\Repository\JamHistoryRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -18,6 +19,7 @@ use Symfony\Component\Routing\Attribute\Route;
 final class JamHistoryController extends AbstractController
 {
     public function __construct(
+        private readonly TranslatorInterface $translator,
         private readonly JamHistoryRepository $repository,
     ) {
     }
@@ -85,7 +87,9 @@ final class JamHistoryController extends AbstractController
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
 
-            fputcsv($out, [
+            fputcsv($out, array_map(
+                fn (string $label): string => $this->translator->trans($label, [], 'jams_ui'),
+                [
                 'ID', 'UUID', 'Status',
                 'Nível', 'Nível (label)',
                 'Atraso (s)', 'Atraso (min)',
@@ -96,7 +100,8 @@ final class JamHistoryController extends AbstractController
                 'Pontos da linha',
                 'Coletado em', 'Visto pela última vez',
                 'Ativo',
-            ], ';');
+            ],
+            ), ';');
 
             foreach ($rows as $r) {
                 $level   = (int) $r['level'];
@@ -113,9 +118,9 @@ final class JamHistoryController extends AbstractController
                 fputcsv($out, [
                     $r['id'],
                     $r['uuid'],
-                    $status,
+                    $this->translator->trans($status, [], 'jams_ui'),
                     $level,
-                    $this->labelLevel($level),
+                    $this->translator->trans($this->labelLevel($level), [], 'jams_ui'),
                     $delay >= 0 ? $delay : '',
                     $delay >= 0 ? round($delay / 60, 1) : '',
                     $r['speed_kmh'],
@@ -128,7 +133,7 @@ final class JamHistoryController extends AbstractController
                     $r['line_points'],
                     $r['collected_at'],
                     $r['last_seen_at'],
-                    ((bool) $r['is_active']) ? 'sim' : 'não',
+                    $this->translator->trans(((bool) $r['is_active']) ? 'sim' : 'não', [], 'jams_ui'),
                 ], ';');
             }
 

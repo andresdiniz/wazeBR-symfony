@@ -1,3 +1,18 @@
+const ALERT_LOCALE = document.documentElement.lang || 'pt-BR';
+const ALERT_MESSAGES = (() => {
+    try { return JSON.parse(document.querySelector('[data-alerts-i18n]')?.dataset.alertsI18n || '{}'); }
+    catch { return {}; }
+})();
+function at(message) {
+    return Object.hasOwn(ALERT_MESSAGES, message) ? ALERT_MESSAGES[message] : message;
+}
+function alertLabel(value, fallback = '—') {
+    if (value == null || value === '') return fallback;
+    const text = String(value);
+    const key = `code.${text}`;
+    return Object.hasOwn(ALERT_MESSAGES, key) ? ALERT_MESSAGES[key] : at(text);
+}
+
 /**
  * pages/alerts.js — Dashboard de alertas.
  * - Mapa "Ao vivo": Leaflet + MarkerCluster com polling a cada 45s.
@@ -59,17 +74,17 @@ function buildShowUrl(alertId) {
 
 const SP_TZ = 'America/Sao_Paulo';
 
-const FMT_FULL = new Intl.DateTimeFormat('pt-BR', {
+const FMT_FULL = new Intl.DateTimeFormat(ALERT_LOCALE, {
     timeZone: SP_TZ, day: '2-digit', month: '2-digit',
     hour: '2-digit', minute: '2-digit',
 });
-const FMT_TIME = new Intl.DateTimeFormat('pt-BR', {
+const FMT_TIME = new Intl.DateTimeFormat(ALERT_LOCALE, {
     timeZone: SP_TZ, hour: '2-digit', minute: '2-digit',
 });
-const FMT_DATE = new Intl.DateTimeFormat('pt-BR', {
+const FMT_DATE = new Intl.DateTimeFormat(ALERT_LOCALE, {
     timeZone: SP_TZ, day: '2-digit', month: '2-digit',
 });
-const FMT_FULL_SEC = new Intl.DateTimeFormat('pt-BR', {
+const FMT_FULL_SEC = new Intl.DateTimeFormat(ALERT_LOCALE, {
     timeZone: SP_TZ, day: '2-digit', month: '2-digit',
     hour: '2-digit', minute: '2-digit', second: '2-digit',
 });
@@ -129,7 +144,7 @@ function collectFilters(form) {
 }
 
 function filtersToQuery(filters) {
-    const sp = new URLSearchParams();
+    const sp = new URLSearchParams({ _locale: document.documentElement.dataset.locale || 'pt_BR' });
     Object.entries(filters).forEach(([k, v]) => sp.set(k, v));
     return sp.toString();
 }
@@ -142,7 +157,7 @@ function initClock(root) {
     const el = root.querySelector('[data-live-clock]');
     if (!el) return;
     const tick = () => {
-        el.textContent = new Intl.DateTimeFormat('pt-BR', {
+        el.textContent = new Intl.DateTimeFormat(ALERT_LOCALE, {
             timeZone: SP_TZ, hour: '2-digit', minute: '2-digit',
         }).format(new Date());
     };
@@ -172,9 +187,9 @@ function renderCharts(root) {
     // Por tipo — doughnut
     root.querySelectorAll('[data-chart="by-type"]').forEach((canvas) => {
         const points = safeJson(canvas.dataset.chartData, []);
-        const labels = points.map((p) => p.label);
+        const labels = points.map((p) => alertLabel(p.label));
         const data   = points.map((p) => Number(p.total) || 0);
-        const bg     = labels.map((l) => typeColor(l) || PALETTE[0]);
+        const bg     = points.map((p) => typeColor(p.label) || PALETTE[0]);
 
         mountChart('byType', canvas, {
             type: 'doughnut',
@@ -195,7 +210,7 @@ function renderCharts(root) {
             data: {
                 labels: points.map((p) => p.hour),
                 datasets: [{
-                    label: 'Alertas',
+                    label: at("Alertas"),
                     data: points.map((p) => Number(p.total) || 0),
                     backgroundColor: 'rgba(37,99,235,.75)',
                     borderRadius: 5,
@@ -215,9 +230,9 @@ function renderCharts(root) {
         mountChart('byDay', canvas, {
             type: 'line',
             data: {
-                labels: points.map((p) => (p.day || '').slice(5)),
+                labels: points.map((p) => p.day ? fmtSp(`${p.day}T12:00:00Z`, 'date') : '—'),
                 datasets: [{
-                    label: 'Alertas',
+                    label: at("Alertas"),
                     data: points.map((p) => Number(p.total) || 0),
                     borderColor: COLORS.purple,
                     backgroundColor: 'rgba(124,58,237,.15)',
@@ -243,7 +258,7 @@ function renderCharts(root) {
             data: {
                 labels: points.map((p) => p.label),
                 datasets: [{
-                    label: 'Alertas',
+                    label: at("Alertas"),
                     data: points.map((p) => Number(p.total) || 0),
                     backgroundColor: 'rgba(22,163,74,.75)',
                     borderRadius: 6,
@@ -264,9 +279,9 @@ function renderCharts(root) {
         mountChart('bySubtype', canvas, {
             type: 'bar',
             data: {
-                labels: points.map((p) => p.label),
+                labels: points.map((p) => alertLabel(p.label)),
                 datasets: [{
-                    label: 'Ocorrências',
+                    label: at("Ocorrências"),
                     data: points.map((p) => Number(p.total) || 0),
                     backgroundColor: 'rgba(234,88,12,.75)',
                     borderRadius: 6,
@@ -344,8 +359,8 @@ function initMap(root) {
             if (precision) precision.hidden = view !== 'history';
             const hint = root.querySelector('[data-map-hint]');
             if (hint) hint.textContent = view === 'live'
-                ? 'Clique em um agrupamento para expandir'
-                : 'Círculos maiores = mais alertas naquela célula';
+                ? at("Clique em um agrupamento para expandir")
+                : at("Círculos maiores = mais alertas naquela célula");
 
             if (view === 'live') {
                 if (mapState.map.hasLayer(mapState.historyLayer)) mapState.map.removeLayer(mapState.historyLayer);
@@ -392,16 +407,16 @@ function renderLiveMarkers() {
 
         m.bindPopup(`
             <div class="alerts-popup">
-                <strong style="color:${color}">${escapeHtml(a.type || 'Alerta')}</strong>
-                ${a.subtype ? `<br><small>${escapeHtml(a.subtype)}</small>` : ''}
+                <strong style="color:${color}">${escapeHtml(alertLabel(a.type, at("Alerta")))}</strong>
+                ${a.subtype ? `<br><small>${escapeHtml(alertLabel(a.subtype))}</small>` : ''}
                 <hr>
                 ${a.street ? `${escapeHtml(a.street)}<br>` : ''}
                 ${a.city ? `<small>${escapeHtml(a.city)}</small><br>` : ''}
-                <small>Confiança: ${a.confidence}%</small><br>
-                <small>Coletado: ${fmtSp(a.when)}</small><br>
-                <small>Publicado: ${fmtFromMs(a.pubMillis)}</small>
+                <small>${at("Confiança")}: ${a.confidence}%</small><br>
+                <small>${at("Coletado")}: ${fmtSp(a.when)}</small><br>
+                <small>${at("Publicado")}: ${fmtFromMs(a.pubMillis)}</small>
                 <hr>
-                <a class="alerts-popup-link" href="${buildShowUrl(a.id)}">Ver detalhes →</a>
+                <a class="alerts-popup-link" href="${buildShowUrl(a.id)}">${at("Ver detalhes")} →</a>
             </div>
         `);
 
@@ -435,11 +450,11 @@ function renderHistoryClusters() {
 
         circle.bindPopup(`
             <div class="alerts-popup">
-                <strong>${c.total} alerta${c.total > 1 ? 's' : ''}</strong><br>
-                <small>Tipo predominante: ${escapeHtml(c.type || '—')}</small><br>
-                <small>Primeiro: ${fmtSp(c.firstSeen)}</small><br>
-                <small>Último: ${fmtSp(c.lastSeen)}</small>
-                ${c.exampleId ? `<hr><a class="alerts-popup-link" href="${buildShowUrl(c.exampleId)}">Ver exemplo →</a>` : ''}
+                <strong>${c.total} ${at("alerta")}${c.total > 1 ? 's' : ''}</strong><br>
+                <small>${at("Tipo predominante")}: ${escapeHtml(alertLabel(c.type))}</small><br>
+                <small>${at("Primeiro")}: ${fmtSp(c.firstSeen)}</small><br>
+                <small>${at("Último")}: ${fmtSp(c.lastSeen)}</small>
+                ${c.exampleId ? `<hr><a class="alerts-popup-link" href="${buildShowUrl(c.exampleId)}">${at("Ver exemplo")} →</a>` : ''}
             </div>
         `);
 
@@ -500,8 +515,8 @@ async function fetchLive(root) {
     const stats = json.stats || {};
     setText(root, '[data-kpi="active"]', stats.active ?? '—');
     setText(root, '[data-kpi="total"]', stats.total ?? '—');
-    setText(root, '[data-kpi="top_type"]', stats.top_type ?? '—');
-    setText(root, '[data-kpi="recent"]', `${stats.recent ?? 0} na última hora`);
+    setText(root, '[data-kpi="top_type"]', alertLabel(stats.top_type));
+    setText(root, '[data-kpi="recent"]', `${stats.recent ?? 0} ${at("na última hora")}`);
     setText(root, '[data-kpi="last_seen"]', stats.last_seen ? fmtSp(stats.last_seen) : '—');
 
     // Map
@@ -583,7 +598,7 @@ function initTable(root) {
                 tr.hidden = !show;
                 if (show) visible++;
             });
-            if (count) count.textContent = `${visible} registros visíveis`;
+            if (count) count.textContent = `${visible} ${at("registros visíveis")}`;
         });
     }
 
@@ -592,7 +607,7 @@ function initTable(root) {
 
         more.addEventListener('click', async () => {
             more.disabled = true;
-            more.textContent = 'Carregando...';
+            more.textContent = at("Carregando...");
 
             const endpoint = root.dataset.endpointList;
             const filters  = safeJson(root.dataset.currentFilters, {});
@@ -605,7 +620,7 @@ function initTable(root) {
                 const rows = json.rows || [];
 
                 if (rows.length === 0) {
-                    more.textContent = 'Sem mais registros';
+                    more.textContent = at("Sem mais registros");
                     more.disabled = true;
                     return;
                 }
@@ -614,31 +629,31 @@ function initTable(root) {
                 body.insertAdjacentHTML('beforeend', html);
                 offset += rows.length;
 
-                if (count) count.textContent = `${offset} registros exibidos`;
+                if (count) count.textContent = `${offset} ${at("registros exibidos")}`;
                 more.disabled = false;
-                more.textContent = 'Carregar mais';
+                more.textContent = at("Carregar mais");
             } catch (err) {
                 console.error('[alerts] load more failed', err);
                 more.disabled = false;
-                more.textContent = 'Tentar novamente';
+                more.textContent = at("Tentar novamente");
             }
         });
     }
 }
 
 function rowHtml(a) {
-    const search = escapeHtml([a.type, a.subtype, a.city, a.street, a.uuid].join(' ').toLowerCase());
+    const search = escapeHtml([a.type, a.subtype, alertLabel(a.type), alertLabel(a.subtype), a.city, a.street, a.uuid].join(' ').toLowerCase());
     const typeLc = escapeHtml((a.type || '').toLowerCase());
     const when   = fmtSp(a.when);
-    const state  = a.isActive ? 'Ativo' : 'Encerrado';
+    const state  = a.isActive ? at("Ativo") : at("Encerrado");
     const stateClass = a.isActive ? 'is-active' : 'is-off';
     const showUrl = buildShowUrl(a.id);
 
     return `
         <tr data-search-text="${search}">
             <td><a class="alerts-row-link" href="${showUrl}">${a.id}</a></td>
-            <td><span class="alerts-badge type-${typeLc}">${escapeHtml(a.type || '—')}</span></td>
-            <td>${escapeHtml(a.subtype || '—')}</td>
+            <td><span class="alerts-badge type-${typeLc}">${escapeHtml(alertLabel(a.type))}</span></td>
+            <td>${escapeHtml(alertLabel(a.subtype))}</td>
             <td>${escapeHtml(a.city || '—')}</td>
             <td>${escapeHtml(a.street || '—')}</td>
             <td>

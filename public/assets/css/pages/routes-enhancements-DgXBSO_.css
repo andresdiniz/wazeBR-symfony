@@ -1,0 +1,37 @@
+/* Routes UI refinements — no changes to data/JS hooks. */
+.routes-page { --rt-bg:var(--background,var(--theme-bg,#f5f7fb)); --rt-surface:var(--surface,var(--theme-surface,#fff)); --rt-soft:var(--surface-soft,#f8fafc); --rt-text:var(--text,#0f172a); --rt-muted:var(--text-muted,#64748b); --rt-line:var(--border,#e2e8f0); }
+.rs-page { --rs-bg:var(--background,var(--theme-bg,#f5f7fb)); --rs-surface:var(--surface,var(--theme-surface,#fff)); --rs-soft:var(--surface-soft,#f1f5f9); --rs-text:var(--text,#0f172a); --rs-muted:var(--text-muted,#64748b); --rs-line:var(--border,#e2e8f0); }
+:is(.routes-page,.rs-page) { min-inline-size:0; padding-block:clamp(16px,2vw,28px) 48px; }
+:is(.routes-container,.rs-container) { max-inline-size:min(1600px,100%); padding-inline:clamp(12px,2vw,28px); margin-inline:auto; }
+:is(.routes-page,.rs-page) :is(h1,h2,h3) { text-wrap:balance; overflow-wrap:anywhere; }
+:is(.routes-page,.rs-page) h1 { font-size:clamp(1.45rem,2.4vw,2.15rem); letter-spacing:-.025em; line-height:1.2; }
+:is(.routes-page,.rs-page) :is(button,input,select,textarea) { font:inherit; }
+:is(.routes-page,.rs-page) :is(button,.routes-button,.rs-button) { min-block-size:42px; }
+:is(.routes-page,.rs-page) :is(button,a,input,select,textarea,[tabindex]):focus-visible { outline:3px solid var(--primary,#2563eb); outline-offset:3px; }
+:is(.routes-page,.rs-page) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]),select) { min-block-size:44px; max-inline-size:100%; border-radius:10px; }
+:is(.routes-page,.rs-page) :is(button:disabled,input:disabled,select:disabled) { opacity:.58; cursor:not-allowed; }
+:is(.routes-panel,.routes-filter-panel,.rs-panel) { border-radius:16px; min-inline-size:0; box-shadow:0 3px 20px rgb(15 23 42 / .045); }
+:is(.routes-panel-header,.rs-panel__header) { flex-wrap:wrap; row-gap:10px; align-items:flex-start; }
+:is(.routes-header-tools,.rs-header__aside,.routes-filter-actions,.rs-recent__controls) { flex-wrap:wrap; gap:8px; }
+:is(.routes-stat,.rs-kpi,.rs-kpi__value) { font-variant-numeric:tabular-nums; }
+:is(.rs-kpi__hint,.rs-panel__hint) { line-height:1.55; }
+:is(.routes-card,.rs-subroute,.rs-occ) { overflow-wrap:anywhere; }
+:is(.routes-map,.rs-map) { min-block-size:300px; border-radius:12px; isolation:isolate; }
+.rs-subroute__map { min-block-size:130px; }
+.rs-heatmap-scroll { overflow-x:auto; overscroll-behavior-inline:contain; scrollbar-width:thin; }
+:is(.rs-export__dropdown,.rs-share__panel) { max-inline-size:min(420px,calc(100vw - 24px)); }
+.rs-export__item { white-space:normal; }
+.rs-export__item small { line-height:1.5; }
+.rs-share__result input { min-inline-size:0; }
+.rs-forecast__chips { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-block:16px; }
+.rs-forecast__chip { display:grid; gap:6px; padding:14px; border:1px solid var(--rs-line); border-radius:12px; background:var(--rs-soft); }
+.rs-forecast__chip span { color:var(--rs-muted); font-size:.8rem; line-height:1.45; }
+.rs-forecast__chip strong { font-size:1.2rem; font-variant-numeric:tabular-nums; }
+.rs-forecast__errors-list { display:grid; gap:10px; }
+.rs-forecast__error { padding:14px; border:1px solid var(--rs-line); border-inline-start:3px solid var(--rs-amber,#f59e0b); border-radius:10px; }
+.rs-forecast__error p { line-height:1.6; margin-block:6px; }
+@media(min-width:1100px) { .routes-filter-panel { position:sticky; top:calc(var(--header-h,64px) + 8px); z-index:10; background:var(--rt-surface); } }
+@media(max-width:900px) { :is(.routes-layout,.rs-two-col) { grid-template-columns:minmax(0,1fr); } :is(.rs-header,.routes-page-header) { flex-wrap:wrap; gap:16px; } .rs-header__aside { inline-size:100%; justify-content:flex-start; } }
+@media(max-width:600px) { :is(.routes-stats-grid,.rs-kpis) { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; } .routes-filter-form { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; } :is(.routes-filter-field,.routes-filter-field--grow) { min-inline-size:0; inline-size:100%; } :is(.routes-filter-actions,.routes-header-tools) { inline-size:100%; } .rs-recent__controls { display:flex; flex-wrap:wrap; } .rs-recent__controls input[type=range] { flex:1 1 100%; inline-size:100%; } }
+@media(max-width:360px) { :is(.routes-stats-grid,.rs-kpis) { grid-template-columns:minmax(0,1fr); } }
+@media(prefers-reduced-motion:reduce) { :is(.routes-page,.rs-page) * { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }

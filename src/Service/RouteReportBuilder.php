@@ -13,6 +13,8 @@ namespace App\Service;
  */
 final class RouteReportBuilder
 {
+    public function __construct(private readonly RouteUiTranslator $ui) {}
+
     private const MAP_W = 640;
     private const MAP_H = 340;
     private const MAP_PAD = 18;
@@ -34,7 +36,7 @@ final class RouteReportBuilder
             'heatmap'  => $this->heatmap($detail['heatmap'] ?? []),
             'timeline' => $this->timeline($detail['timeline'] ?? [], $detail['stats']['avgDelay7d'] ?? null),
             'byHour'   => $this->barChart($detail['byHour'] ?? [], static fn (array $p): string => sprintf('%02d', $p['hour']), 460, 3),
-            'byDow'    => $this->barChart($detail['byDow'] ?? [], static fn (array $p): string => self::DOW[$p['dow']] ?? '?', 300, 1),
+            'byDow'    => $this->barChart($detail['byDow'] ?? [], fn (array $p): string => $this->ui->text(self::DOW[$p['dow']]) ?? '?', 300, 1),
             'subRoutes' => array_slice($detail['topSubRoutes'] ?? [], 0, 8),
             'occurrences' => array_slice($detail['occurrences'] ?? [], 0, 12),
         ];
@@ -51,31 +53,31 @@ final class RouteReportBuilder
 
         $path = '';
         if (!empty($route['from']) && !empty($route['to'])) {
-            $path = sprintf(' (de %s para %s', $route['from'], $route['to']);
+            $path = sprintf($this->ui->text(' (de %s para %s'), $route['from'], $route['to']);
             $path .= !empty($route['lengthMeters']) ? sprintf(', %s km)', $this->num($route['lengthMeters'] / 1000, 1)) : ')';
         } elseif (!empty($route['lengthMeters'])) {
             $path = sprintf(' (%s km)', $this->num($route['lengthMeters'] / 1000, 1));
         }
 
         $out[] = sprintf(
-            'A rota “%s”%s está com índice de saúde %d%% (%s) nos últimos 7 dias.',
+            $this->ui->text('A rota “%s”%s está com índice de saúde %d%% (%s) nos últimos 7 dias.'),
             $route['name'],
             $path,
             $stats['health'],
-            mb_strtolower((string) $stats['healthLabel'])
+            mb_strtolower($this->ui->label($stats['healthLabel']))
         );
 
         if ($stats['avgRatio7d'] !== null) {
             $pct = (int) round($stats['avgRatio7d'] * 100);
             $out[] = $pct > 0
-                ? sprintf('O tempo de percurso ficou, em média, %d%% acima do histórico (%s s por viagem).', $pct, $this->signed($stats['avgDelay7d']))
-                : 'O tempo de percurso ficou em linha com o histórico.';
+                ? sprintf($this->ui->text('O tempo de percurso ficou, em média, %d%% acima do histórico (%s s por viagem).'), $pct, $this->signed($stats['avgDelay7d']))
+                : $this->ui->text('O tempo de percurso ficou em linha com o histórico.');
         }
 
         if (!empty($stats['worstHour']) && $stats['worstHour']['avgRatio'] > 0) {
             $w = $stats['worstHour'];
             $out[] = sprintf(
-                'O pior horário é %02dh, com %d%% acima do histórico (%s s em média).',
+                $this->ui->text('O pior horário é %02dh, com %d%% acima do histórico (%s s em média).'),
                 $w['hour'],
                 (int) round($w['avgRatio'] * 100),
                 $this->signed($w['avgDelay'])
@@ -84,9 +86,9 @@ final class RouteReportBuilder
 
         if (!empty($stats['worstDow']) && $stats['worstDow']['avgRatio'] > 0) {
             $w = $stats['worstDow'];
-            $line = sprintf('O dia mais crítico é %s (%d%% acima do histórico)', self::DOW_FULL[$w['dow']] ?? '?', (int) round($w['avgRatio'] * 100));
+            $line = sprintf($this->ui->text('O dia mais crítico é %s (%d%% acima do histórico)'), $this->ui->text(self::DOW_FULL[$w['dow']]) ?? '?', (int) round($w['avgRatio'] * 100));
             if (!empty($stats['bestDow']) && $stats['bestDow']['dow'] !== $w['dow']) {
-                $line .= sprintf(' e o mais tranquilo é %s', self::DOW_FULL[$stats['bestDow']['dow']] ?? '?');
+                $line .= sprintf($this->ui->text(' e o mais tranquilo é %s'), $this->ui->text(self::DOW_FULL[$stats['bestDow']['dow']]) ?? '?');
             }
             $out[] = $line . '.';
         }
@@ -175,7 +177,7 @@ final class RouteReportBuilder
             $subItems[] = [
                 'pts'   => $line,
                 'color' => $this->ratioColor($ratio) ?? '#64748b',
-                'title' => ($names[$id] ?? 'Trecho') . ($ratio !== null ? sprintf(' · %d%% vs histórico', (int) round($ratio * 100)) : ''),
+                'title' => ($names[$id] ?? $this->ui->text('Trecho')) . ($ratio !== null ? sprintf($this->ui->text(' · %d%% vs histórico'), (int) round($ratio * 100)) : ''),
             ];
         }
 
@@ -187,7 +189,7 @@ final class RouteReportBuilder
                 continue;
             }
             $color = self::ALERT_COLORS[strtoupper((string) $a['type'])] ?? '#64748b';
-            $label = (string) ($a['typeLabel'] ?: ($a['type'] ?: 'Alerta'));
+            $label = $this->ui->label($a['type'] ?: $a['typeLabel'], $this->ui->text('Alerta'));
             $alerts[] = ['lat' => (float) $a['lat'], 'lng' => (float) $a['lng'], 'color' => $color, 'title' => $label . ($a['street'] ? ' — ' . $a['street'] : '')];
             $legend[$label] = ['label' => $label, 'color' => $color, 'count' => ($legend[$label]['count'] ?? 0) + 1];
         }
@@ -197,10 +199,10 @@ final class RouteReportBuilder
             if (!isset($i['lat'], $i['lng']) || $i['lat'] === null) {
                 continue;
             }
-            $irr[] = ['lat' => (float) $i['lat'], 'lng' => (float) $i['lng'], 'color' => self::IRREGULARITY_COLOR, 'title' => (string) ($i['type'] ?: 'Irregularidade')];
+            $irr[] = ['lat' => (float) $i['lat'], 'lng' => (float) $i['lng'], 'color' => self::IRREGULARITY_COLOR, 'title' => $this->ui->label($i['type'], $this->ui->text('Irregularidade'))];
         }
         if ($irr !== []) {
-            $legend['Irregularidade'] = ['label' => 'Irregularidade', 'color' => self::IRREGULARITY_COLOR, 'count' => count($irr)];
+            $legend['Irregularidade'] = ['label' => $this->ui->text('Irregularidade'), 'color' => self::IRREGULARITY_COLOR, 'count' => count($irr)];
         }
 
         // ── esquema SVG (reserva) ──
@@ -311,10 +313,10 @@ final class RouteReportBuilder
                 $ok = $c !== null && $c['count'] >= 2 && $c['avgRatio'] !== null;
                 $row[] = [
                     'color' => $ok ? $this->ratioColor((float) $c['avgRatio']) : null,
-                    'title' => sprintf('%s %02dh', self::DOW[$dow], $h) . ($ok ? sprintf(' · %d%%', (int) round($c['avgRatio'] * 100)) : ' · sem amostras'),
+                    'title' => sprintf('%s %02dh', $this->ui->text(self::DOW[$dow]), $h) . ($ok ? sprintf(' · %d%%', (int) round($c['avgRatio'] * 100)) : $this->ui->text(' · sem amostras')),
                 ];
             }
-            $rows[] = ['label' => self::DOW[$dow], 'cells' => $row];
+            $rows[] = ['label' => $this->ui->text(self::DOW[$dow]), 'cells' => $row];
         }
 
         return $rows;
@@ -422,7 +424,7 @@ final class RouteReportBuilder
                 'line'  => $d > $t0 ? $x($d) : null,
                 'cx'    => round(($x($from) + $x($to)) / 2, 1),
                 'width' => $x($to) - $x($from),
-                'label' => self::DOW_SHORT_LOWER[$dow - 1] . ' ' . gmdate('d/m', $d),
+                'label' => $this->ui->text(self::DOW_SHORT_LOWER[$dow - 1]) . ' ' . gmdate($this->ui->datePattern(), $d),
                 'weekend' => $dow >= 6,
             ];
             if ($dow >= 6) {
@@ -518,7 +520,7 @@ final class RouteReportBuilder
                 'color'  => $ok ? ($this->ratioColor((float) $p['avgRatio']) ?? '#cbd5e1') : '#cbd5e1',
                 'label'  => $i % $labelEvery === 0 ? $label($p) : null,
                 'cx'     => round($padL + $i * $slot + $slot / 2, 1),
-                'title'  => $label($p) . ($ok ? sprintf(' · %s s · %d%% vs histórico', $this->signed($p['avgDelay']), (int) round($p['avgRatio'] * 100)) : ' · sem amostras'),
+                'title'  => $label($p) . ($ok ? sprintf($this->ui->text(' · %s s · %d%% vs histórico'), $this->signed($p['avgDelay']), (int) round($p['avgRatio'] * 100)) : $this->ui->text(' · sem amostras')),
             ];
         }
 

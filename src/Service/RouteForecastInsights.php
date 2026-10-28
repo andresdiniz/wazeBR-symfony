@@ -7,7 +7,7 @@ final class RouteForecastInsights
 {
     public const SLOT_MINUTES = 15;
     private readonly \DateTimeZone $tz;
-    public function __construct(private readonly Connection $connection, #[Autowire('%env(APP_TIMEZONE)%')] string $displayTimezone = 'America/Sao_Paulo')
+    public function __construct(private readonly Connection $connection, private readonly ForecastExplanationTranslator $explanationTranslator, #[Autowire('%env(APP_TIMEZONE)%')] string $displayTimezone = 'America/Sao_Paulo')
     {
         try { $this->tz = new \DateTimeZone($displayTimezone ?: 'America/Sao_Paulo'); } catch (\Throwable) { $this->tz = new \DateTimeZone('America/Sao_Paulo'); }
     }
@@ -30,7 +30,7 @@ final class RouteForecastInsights
         foreach ($rows as $r) {
             $key = $r['target_start_at'] . '/' . $r['target_end_at'];
             if (isset($best[$key])) continue;
-            $best[$key] = ['at' => (new \DateTimeImmutable($r['target_start_at'], $utc))->format(DATE_ATOM), 'targetStartAt' => (new \DateTimeImmutable($r['target_start_at'], $utc))->format(DATE_ATOM), 'targetEndAt' => (new \DateTimeImmutable($r['target_end_at'], $utc))->format(DATE_ATOM), 'issuedAt' => (new \DateTimeImmutable($r['issued_at'], $utc))->format(DATE_ATOM), 'predicted' => (float) $r['predicted_time'], 'predictedTime' => (float) $r['predicted_time'], 'actual' => (float) $r['actual_time'], 'actualTime' => (float) $r['actual_time'], 'horizonMinutes' => (float) $r['horizon_minutes'], 'errorSeconds' => (float) $r['predicted_time'] - (float) $r['actual_time'], 'withinTolerance' => $r['within_tolerance'] === null ? null : (bool) $r['within_tolerance'], 'explanation' => $r['error_explanation'], 'causeType' => $r['error_cause_type']];
+            $best[$key] = ['at' => (new \DateTimeImmutable($r['target_start_at'], $utc))->format(DATE_ATOM), 'targetStartAt' => (new \DateTimeImmutable($r['target_start_at'], $utc))->format(DATE_ATOM), 'targetEndAt' => (new \DateTimeImmutable($r['target_end_at'], $utc))->format(DATE_ATOM), 'issuedAt' => (new \DateTimeImmutable($r['issued_at'], $utc))->format(DATE_ATOM), 'predicted' => (float) $r['predicted_time'], 'predictedTime' => (float) $r['predicted_time'], 'actual' => (float) $r['actual_time'], 'actualTime' => (float) $r['actual_time'], 'horizonMinutes' => (float) $r['horizon_minutes'], 'errorSeconds' => (float) $r['predicted_time'] - (float) $r['actual_time'], 'withinTolerance' => $r['within_tolerance'] === null ? null : (bool) $r['within_tolerance'], 'explanation' => $this->explanationTranslator->translate($r['error_explanation']), 'explanationOriginal' => $r['error_explanation'], 'causeType' => $r['error_cause_type']];
         }
         return array_values($best);
     }

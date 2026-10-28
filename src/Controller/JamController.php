@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\Partner;
+use Symfony\Contracts\Translation\TranslatorInterface;
 use App\Entity\User;
 use App\Repository\JamRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -23,6 +24,7 @@ final class JamController extends AbstractController
     private const CACHE_TTL = 120;
 
     public function __construct(
+        private readonly TranslatorInterface $translator,
         private readonly TagAwareCacheInterface $tvCache,
         private readonly JamRepository $jamRepository,   // #6 — injetado, não mais via container
     ) {
@@ -58,7 +60,7 @@ final class JamController extends AbstractController
         $jam     = $repository->findJamById($id, $partner);
 
         if ($jam === null) {
-            throw new NotFoundHttpException('Congestionamento não encontrado.');
+            throw new NotFoundHttpException($this->translator->trans('Congestionamento não encontrado.', [], 'jams_ui'));
         }
 
         $nearbyAlerts = $repository->findNearbyAlertsForJam($jam, 30, 300);
@@ -145,13 +147,16 @@ final class JamController extends AbstractController
             // BOM UTF-8 para Excel
             fwrite($out, "\xEF\xBB\xBF");
 
-            fputcsv($out, [
+            fputcsv($out, array_map(
+                fn (string $label): string => $this->translator->trans($label, [], 'jams_ui'),
+                [
                 'ID', 'UUID', 'Status', 'Nível', 'Nível (label)',
                 'Atraso (s)', 'Atraso (min)', 'Velocidade (km/h)',
                 'Extensão (m)', 'Extensão (km)',
                 'Rua', 'Cidade', 'País', 'Pontos da linha',
                 'Coletado em', 'Visto pela última vez', 'Idade (min)',
-            ], ';');
+            ],
+            ), ';');
 
             $now = time();
 
@@ -173,9 +178,9 @@ final class JamController extends AbstractController
                 fputcsv($out, [
                     $r['id'],
                     $r['uuid'],
-                    $status,
+                    $this->translator->trans($status, [], 'jams_ui'),
                     $level,
-                    $this->labelLevel($level),
+                    $this->translator->trans($this->labelLevel($level), [], 'jams_ui'),
                     $delay >= 0 ? $delay : '',
                     $delay >= 0 ? round($delay / 60, 1) : '',
                     $r['speed_kmh'],

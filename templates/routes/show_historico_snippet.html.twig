@@ -12,15 +12,15 @@
 #}
 
 <hr style="border:none;border-top:1px solid var(--rs-line);margin:6px 0 4px;">
-<p class="rs-export__label">Histórico bruto para análise externa</p>
+<p class="rs-export__label">{{ 'Histórico bruto para análise externa'|trans({}, 'routes_ui') }}</p>
 
 <a class="rs-export__item"
    href="{{ exportHistBase }}?days=30"
    download>
     <span class="rs-export__item-icon">🗂️</span>
     <span>
-        <strong>Histórico 30 dias</strong>
-        <small>Linha a linha · velocidade, tempos, jam · BRT</small>
+        <strong>{{ 'Histórico 30 dias'|trans({}, 'routes_ui') }}</strong>
+        <small>{{ 'Linha a linha · velocidade, tempos, jam'|trans({}, 'routes_ui') }} · BRT</small>
     </span>
 </a>
 
@@ -29,8 +29,8 @@
    download>
     <span class="rs-export__item-icon">📦</span>
     <span>
-        <strong>Histórico 90 dias</strong>
-        <small>Linha a linha · velocidade, tempos, jam · BRT</small>
+        <strong>{{ 'Histórico 90 dias'|trans({}, 'routes_ui') }}</strong>
+        <small>{{ 'Linha a linha · velocidade, tempos, jam'|trans({}, 'routes_ui') }} · BRT</small>
     </span>
 </a>
 
@@ -39,8 +39,8 @@
    download>
     <span class="rs-export__item-icon">🗄️</span>
     <span>
-        <strong>Histórico 1 ano</strong>
-        <small>Todos os snapshots disponíveis · máx 50.000 linhas</small>
+        <strong>{{ 'Histórico 1 ano'|trans({}, 'routes_ui') }}</strong>
+        <small>{{ 'Todos os snapshots disponíveis · máx 50.000 linhas'|trans({}, 'routes_ui') }}</small>
     </span>
 </a>
 
@@ -49,7 +49,7 @@
    download>
     <span class="rs-export__item-icon">🐍</span>
     <span>
-        <strong>Histórico 90 dias (Python/R)</strong>
-        <small>Separador vírgula · pandas / tidyverse / Excel EN</small>
+        <strong>{{ 'Histórico 90 dias (Python/R)'|trans({}, 'routes_ui') }}</strong>
+        <small>{{ 'Separador vírgula · pandas / tidyverse'|trans({}, 'routes_ui') }} / Excel EN</small>
     </span>
 </a>

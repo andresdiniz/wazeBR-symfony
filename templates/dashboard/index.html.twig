@@ -1,6 +1,6 @@
 {% extends 'layouts/dashboard.html.twig' %}
 
-{% block title %}Dashboard | WazeBR{% endblock %}
+{% block title %}{{ 'Dashboard '|trans({}, 'dashboard_ui') }}| WazeBR{% endblock %}
 
 {% block stylesheets %}
     {{ parent() }}
@@ -30,6 +30,7 @@
 
 <div class="dashboard-page"
      data-dashboard
+     data-dashboard-i18n="{{ dashboard_i18n()|json_encode|e('html_attr') }}"
      data-api-endpoint="{{ path('dashboard_api_data') }}"
      data-partner-id="{{ partner ? partner.id : '' }}">
 
@@ -40,85 +41,85 @@
     <div class="dashboard-commandbar-inner">
 <header class="dashboard-page-header">
             <div>
-                <span class="dashboard-eyebrow"><i></i> Centro operacional</span>
-                <h1>Visão geral da mobilidade</h1>
+                <span class="dashboard-eyebrow"><i></i> {{ 'Centro operacional'|trans({}, 'dashboard_ui') }}</span>
+                <h1>{{ 'Visão geral da mobilidade'|trans({}, 'dashboard_ui') }}</h1>
                 <p>
-                    Trânsito, alertas, rotas, clima, rios, chuvas e câmeras em um só lugar.
+                    {{ 'Trânsito, alertas, rotas, clima, rios, chuvas e câmeras em um só lugar.'|trans({}, 'dashboard_ui') }}
                     {% if partner %} — <strong>{{ partner.name }}</strong>{% endif %}
                 </p>
             </div>
             <div class="dashboard-header-tools">
                 <span class="dashboard-last-update">
-                    <i></i> Atualizado
-                    <time data-dashboard-clock>{{ stats.updated_at|app_date('d/m H:i') }}</time>
+                    <i></i> {{ 'Atualizado'|trans({}, 'dashboard_ui') }}
+                    <time data-dashboard-clock>{{ dashboard_date(stats.updated_at) }}</time>
                     <span aria-hidden="true">·</span>
-                    <span>auto: <time data-auto-refresh-ts>—</time></span>
+                    <span>{{ 'Autoatualização'|trans({}, 'dashboard_ui') }}: <time data-auto-refresh-ts>—</time></span>
                 </span>
-                <button type="button" class="dashboard-button" data-action="refresh-dashboard" aria-label="Recarregar dados">
-                    <span>↻</span> Atualizar
+                <button type="button" class="dashboard-button" data-action="refresh-dashboard" aria-label="{{ 'Recarregar dados'|trans({}, 'dashboard_ui') }}">
+                    <span>↻</span> {{ 'Atualizar'|trans({}, 'dashboard_ui') }}
                 </button>
             </div>
         </header>
 
         {# ── Filtros ────────────────────────────────────────────────── #}
-        <section class="dashboard-filter-panel" aria-label="Filtros do dashboard">
+        <section class="dashboard-filter-panel" aria-label="{{ 'Filtros do dashboard'|trans({}, 'dashboard_ui') }}">
             <div class="dashboard-filter-heading">
                 <div>
-                    <span class="dashboard-panel-kicker">Explorar dados</span>
-                    <h2>Filtros e navegação</h2>
+                    <span class="dashboard-panel-kicker">{{ 'Explorar dados'|trans({}, 'dashboard_ui') }}</span>
+                    <h2>{{ 'Filtros e navegação'|trans({}, 'dashboard_ui') }}</h2>
                 </div>
-                <button type="button" class="dashboard-button is-link" data-action="clear-filters">Limpar filtros</button>
+                <button type="button" class="dashboard-button is-link" data-action="clear-filters">{{ 'Limpar filtros'|trans({}, 'dashboard_ui') }}</button>
             </div>
 
             <form class="dashboard-filter-form" data-filter-form>
                 <label class="dashboard-filter-field">
-                    <span>Período</span>
+                    <span>{{ 'Período'|trans({}, 'dashboard_ui') }}</span>
                     <select name="period" data-filter="period">
-                        <option value="all"   {{ filters.period == 'all'   ? 'selected' }}>Todos os registros</option>
-                        <option value="today" {{ filters.period == 'today' ? 'selected' }}>Hoje</option>
-                        <option value="week"  {{ filters.period == 'week'  ? 'selected' }}>Últimos 7 dias</option>
-                        <option value="month" {{ filters.period == 'month' ? 'selected' }}>Últimos 30 dias</option>
-                        <option value="year"  {{ filters.period == 'year'  ? 'selected' }}>Últimos 12 meses</option>
+                        <option value="all"   {{ filters.period == 'all'   ? 'selected' }}>{{ 'Todos os registros'|trans({}, 'dashboard_ui') }}</option>
+                        <option value="today" {{ filters.period == 'today' ? 'selected' }}>{{ 'Hoje'|trans({}, 'dashboard_ui') }}</option>
+                        <option value="week"  {{ filters.period == 'week'  ? 'selected' }}>{{ 'Últimos 7 dias'|trans({}, 'dashboard_ui') }}</option>
+                        <option value="month" {{ filters.period == 'month' ? 'selected' }}>{{ 'Últimos 30 dias'|trans({}, 'dashboard_ui') }}</option>
+                        <option value="year"  {{ filters.period == 'year'  ? 'selected' }}>{{ 'Últimos 12 meses'|trans({}, 'dashboard_ui') }}</option>
                     </select>
                 </label>
 
                 <label class="dashboard-filter-field">
-                    <span>Tipo</span>
+                    <span>{{ 'Tipo'|trans({}, 'dashboard_ui') }}</span>
                     <select name="type" data-filter="type">
-                        <option value="all"     {{ filters.type == 'all'     ? 'selected' }}>Todos</option>
-                        <option value="alerts"  {{ filters.type == 'alerts'  ? 'selected' }}>Alertas</option>
-                        <option value="jams"    {{ filters.type == 'jams'    ? 'selected' }}>Congestionamentos</option>
-                        <option value="weather" {{ filters.type == 'weather' ? 'selected' }}>Clima</option>
-                        <option value="routes"  {{ filters.type == 'routes'  ? 'selected' }}>Rotas</option>
-                        <option value="hydro"   {{ filters.type == 'hydro'   ? 'selected' }}>Hidrologia</option>
-                        <option value="pluvio"  {{ filters.type == 'pluvio'  ? 'selected' }}>Pluviometria</option>
+                        <option value="all"     {{ filters.type == 'all'     ? 'selected' }}>{{ 'Todos'|trans({}, 'dashboard_ui') }}</option>
+                        <option value="alerts"  {{ filters.type == 'alerts'  ? 'selected' }}>{{ 'Alertas'|trans({}, 'dashboard_ui') }}</option>
+                        <option value="jams"    {{ filters.type == 'jams'    ? 'selected' }}>{{ 'Congestionamentos'|trans({}, 'dashboard_ui') }}</option>
+                        <option value="weather" {{ filters.type == 'weather' ? 'selected' }}>{{ 'Clima'|trans({}, 'dashboard_ui') }}</option>
+                        <option value="routes"  {{ filters.type == 'routes'  ? 'selected' }}>{{ 'Rotas'|trans({}, 'dashboard_ui') }}</option>
+                        <option value="hydro"   {{ filters.type == 'hydro'   ? 'selected' }}>{{ 'Hidrologia'|trans({}, 'dashboard_ui') }}</option>
+                        <option value="pluvio"  {{ filters.type == 'pluvio'  ? 'selected' }}>{{ 'Pluviometria'|trans({}, 'dashboard_ui') }}</option>
                     </select>
                 </label>
 
                 <label class="dashboard-filter-field dashboard-filter-field--grow">
-                    <span>Buscar</span>
+                    <span>{{ 'Buscar'|trans({}, 'dashboard_ui') }}</span>
                     <input type="search" name="query" data-filter="query"
                            value="{{ filters.query }}"
-                           placeholder="Tipo, rua, cidade, uuid..." autocomplete="off">
+                           placeholder="{{ 'Tipo, rua, cidade, uuid...'|trans({}, 'dashboard_ui') }}" autocomplete="off">
                 </label>
 
                 <label class="dashboard-filter-field">
-                    <span>Cidade</span>
+                    <span>{{ 'Cidade'|trans({}, 'dashboard_ui') }}</span>
                     <input type="text" name="city" data-filter="city"
                            value="{{ filters.city }}"
-                           placeholder="Ex.: Conselheiro Lafaiete" autocomplete="off">
+                           placeholder="{{ 'Ex.: Conselheiro Lafaiete'|trans({}, 'dashboard_ui') }}" autocomplete="off">
                 </label>
 
                 <label class="dashboard-filter-field dashboard-filter-field--grow">
-                    <span>Excluir vias (regex, uma por linha)</span>
+                    <span>{{ 'Excluir vias (regex, uma por linha)'|trans({}, 'dashboard_ui') }}</span>
                     <textarea name="exclude_streets" data-filter="exclude_streets"
                               rows="2"
-                              placeholder="Ex.: ^BR-|^MG-|anel viário">{{ filters.exclude_streets }}</textarea>
+                              placeholder="Ex.: ^BR-|^MG-">{{ filters.exclude_streets }}</textarea>
                 </label>
 
                 <div class="dashboard-filter-actions">
-                    <button type="submit" class="dashboard-button is-primary" data-action="apply-filters">Aplicar</button>
-                    <button type="button" class="dashboard-button" data-action="clear-filters">Limpar</button>
+                    <button type="submit" class="dashboard-button is-primary" data-action="apply-filters">{{ 'Aplicar'|trans({}, 'dashboard_ui') }}</button>
+                    <button type="button" class="dashboard-button" data-action="clear-filters">{{ 'Limpar'|trans({}, 'dashboard_ui') }}</button>
                 </div>
             </form>
 
@@ -128,17 +129,17 @@
 </header>
 
         {# ── KPIs ───────────────────────────────────────────────────── #}
-        <section class="dashboard-kpi-grid" aria-label="Indicadores principais">
+        <section class="dashboard-kpi-grid" aria-label="{{ 'Indicadores principais'|trans({}, 'dashboard_ui') }}">
             <article class="dashboard-kpi-card kpi-blue">
                 <div class="dashboard-kpi-top">
                     <span class="dashboard-kpi-icon" aria-hidden="true">⚠</span>
-                    <span class="dashboard-kpi-trend" data-kpi-trend="alerts_active">{{ totals.alerts_active|default(0) }} ativos</span>
+                    <span class="dashboard-kpi-trend" data-kpi-trend="alerts_active">{{ totals.alerts_active|default(0) }} {{ 'ativos'|trans({}, 'dashboard_ui') }}</span>
                 </div>
                 <strong class="dashboard-kpi-value"
         data-count-value="{{ kpis.alerts|default(0) }}"
         aria-live="polite"
         aria-atomic="true">{{ kpis.alerts|default(0) }}</strong>
-                <span class="dashboard-kpi-label">Alertas registrados</span>
+                <span class="dashboard-kpi-label">{{ 'Alertas registrados'|trans({}, 'dashboard_ui') }}</span>
                 <div class="dashboard-kpi-footer"><span>Waze Partner Feed</span><span aria-hidden="true">→</span></div>
             </article>
 
@@ -146,23 +147,23 @@
                 <div class="dashboard-kpi-top">
                     <span class="dashboard-kpi-icon" aria-hidden="true">≋</span>
                     <span class="dashboard-kpi-trend {{ totals.jams_active|default(0) > 10 ? 'is-warning' }}"
-                          data-kpi-trend="jams_active">{{ totals.jams_active|default(0) }} ativos</span>
+                          data-kpi-trend="jams_active">{{ totals.jams_active|default(0) }} {{ 'ativos'|trans({}, 'dashboard_ui') }}</span>
                 </div>
                 <strong class="dashboard-kpi-value" data-count-value="{{ kpis.jams|default(0) }}">{{ kpis.jams|default(0) }}</strong>
-                <span class="dashboard-kpi-label">Congestionamentos</span>
-                <div class="dashboard-kpi-footer"><span>Atraso médio {{ totals.jams_avg_delay|default(0)|round(0) }}s</span><span aria-hidden="true">→</span></div>
+                <span class="dashboard-kpi-label">{{ 'Congestionamentos'|trans({}, 'dashboard_ui') }}</span>
+                <div class="dashboard-kpi-footer"><span>{{ 'Atraso médio'|trans({}, 'dashboard_ui') }} {{ totals.jams_avg_delay|default(0)|round(0) }}s</span><span aria-hidden="true">→</span></div>
             </article>
 
             <article class="dashboard-kpi-card kpi-gold">
                 <div class="dashboard-kpi-top">
                     <span class="dashboard-kpi-icon" aria-hidden="true">⇉</span>
                     <span class="dashboard-kpi-trend {{ kpis.routes_delayed|default(0) > 0 ? 'is-warning' }}"
-                          data-kpi-trend="routes_delayed">{{ kpis.routes_delayed|default(0) }} atrasadas</span>
+                          data-kpi-trend="routes_delayed">{{ kpis.routes_delayed|default(0) }} {{ 'atrasadas'|trans({}, 'dashboard_ui') }}</span>
                 </div>
                 <strong class="dashboard-kpi-value" data-count-value="{{ kpis.routes_total|default(0) }}">{{ kpis.routes_total|default(0) }}</strong>
-                <span class="dashboard-kpi-label">Rotas TVT monitoradas</span>
+                <span class="dashboard-kpi-label">{{ 'Rotas TVT monitoradas'|trans({}, 'dashboard_ui') }}</span>
                 <div class="dashboard-kpi-footer">
-                    <span>{{ kpis.routes_severe|default(0) }} críticas/altas</span>
+                    <span>{{ kpis.routes_severe|default(0) }} {{ 'críticas/altas'|trans({}, 'dashboard_ui') }}</span>
                     <span aria-hidden="true">→</span>
                 </div>
             </article>
@@ -170,44 +171,44 @@
             <article class="dashboard-kpi-card kpi-green">
                 <div class="dashboard-kpi-top">
                     <span class="dashboard-kpi-icon" aria-hidden="true">☁</span>
-                    <span class="dashboard-kpi-trend is-positive">Monitorado</span>
+                    <span class="dashboard-kpi-trend is-positive">{{ 'Monitorado'|trans({}, 'dashboard_ui') }}</span>
                 </div>
                 <strong class="dashboard-kpi-value" data-count-value="{{ kpis.weather|default(0) }}">{{ kpis.weather|default(0) }}</strong>
-                <span class="dashboard-kpi-label">Observações climáticas</span>
+                <span class="dashboard-kpi-label">{{ 'Observações climáticas'|trans({}, 'dashboard_ui') }}</span>
                 <div class="dashboard-kpi-footer"><span>Open-Meteo</span><span aria-hidden="true">→</span></div>
             </article>
 
             <article class="dashboard-kpi-card kpi-purple">
                 <div class="dashboard-kpi-top">
                     <span class="dashboard-kpi-icon" aria-hidden="true">◎</span>
-                    <span class="dashboard-kpi-trend is-positive">Conectado</span>
+                    <span class="dashboard-kpi-trend is-positive">{{ 'Conectado'|trans({}, 'dashboard_ui') }}</span>
                 </div>
                 <strong class="dashboard-kpi-value" data-count-value="{{ kpis.cameras|default(0) }}">{{ kpis.cameras|default(0) }}</strong>
-                <span class="dashboard-kpi-label">Câmeras parceiras</span>
-                <div class="dashboard-kpi-footer"><span>{{ kpis.partners|default(0) }} parceiros · {{ kpis.users|default(0) }} usuários</span><span aria-hidden="true">→</span></div>
+                <span class="dashboard-kpi-label">{{ 'Câmeras parceiras'|trans({}, 'dashboard_ui') }}</span>
+                <div class="dashboard-kpi-footer"><span>{{ kpis.partners|default(0) }} {{ 'parceiros'|trans({}, 'dashboard_ui') }} · {{ kpis.users|default(0) }} {{ 'usuários'|trans({}, 'dashboard_ui') }}</span><span aria-hidden="true">→</span></div>
             </article>
 
             <article class="dashboard-kpi-card kpi-cyan">
                 <div class="dashboard-kpi-top">
                     <span class="dashboard-kpi-icon" aria-hidden="true">≈</span>
                     <span class="dashboard-kpi-trend {{ kpis.hydro_at_risk|default(0) > 0 ? 'is-warning' }}"
-                          data-kpi-trend="hydro_at_risk">{{ kpis.hydro_at_risk|default(0) }} em atenção</span>
+                          data-kpi-trend="hydro_at_risk">{{ kpis.hydro_at_risk|default(0) }} {{ 'em atenção'|trans({}, 'dashboard_ui') }}</span>
                 </div>
                 <strong class="dashboard-kpi-value" data-count-value="{{ kpis.hydro_stations|default(0) }}">{{ kpis.hydro_stations|default(0) }}</strong>
-                <span class="dashboard-kpi-label">Rios monitorados</span>
-                <div class="dashboard-kpi-footer"><span>CEMADEN Hidro</span><span aria-hidden="true">→</span></div>
+                <span class="dashboard-kpi-label">{{ 'Rios monitorados'|trans({}, 'dashboard_ui') }}</span>
+                <div class="dashboard-kpi-footer"><span>CEMADEN {{ 'Hidro'|trans({}, 'dashboard_ui') }}</span><span aria-hidden="true">→</span></div>
             </article>
 
             <article class="dashboard-kpi-card kpi-rain">
                 <div class="dashboard-kpi-top">
                     <span class="dashboard-kpi-icon" aria-hidden="true">☔</span>
                     <span class="dashboard-kpi-trend {{ kpis.pluvio_rain_24h|default(0) > 0 ? 'is-positive' }}"
-                          data-kpi-trend="pluvio_rain_24h">{{ kpis.pluvio_rain_24h|default(0)|number_format(1, ',', '.') }} mm · 24h</span>
+                          data-kpi-trend="pluvio_rain_24h">{{ kpis.pluvio_rain_24h|default(0)|number_format(1, app.request.locale == 'en' ? '.' : ',', app.request.locale == 'en' ? ',' : '.') }} mm · 24h</span>
                 </div>
                 <strong class="dashboard-kpi-value" data-count-value="{{ kpis.pluvio_stations|default(0) }}">{{ kpis.pluvio_stations|default(0) }}</strong>
-                <span class="dashboard-kpi-label">Pontos de chuva</span>
+                <span class="dashboard-kpi-label">{{ 'Pontos de chuva'|trans({}, 'dashboard_ui') }}</span>
                 <div class="dashboard-kpi-footer">
-                    <span>Pico {{ kpis.pluvio_peak_24h|default(0)|number_format(1, ',', '.') }} mm/h</span>
+                    <span>{{ 'Pico'|trans({}, 'dashboard_ui') }} {{ kpis.pluvio_peak_24h|default(0)|number_format(1, app.request.locale == 'en' ? '.' : ',', app.request.locale == 'en' ? ',' : '.') }} mm/h</span>
                     <span aria-hidden="true">→</span>
                 </div>
             </article>
@@ -218,15 +219,15 @@
         <section class="dashboard-panel dashboard-map-panel">
             <header class="dashboard-panel-header">
                 <div>
-                    <span class="dashboard-panel-kicker">Geolocalização</span>
-                    <h2>Mapa operacional</h2>
+                    <span class="dashboard-panel-kicker">{{ 'Geolocalização'|trans({}, 'dashboard_ui') }}</span>
+                    <h2>{{ 'Mapa operacional'|trans({}, 'dashboard_ui') }}</h2>
                 </div>
-                <div class="dashboard-map-legend" aria-label="Legenda do mapa">
-                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="alerts">⚠ Alertas</button>
-                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="jams">≋ Jams</button>
-                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="cameras">◎ Câmeras</button>
-                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="weather">☁ Clima</button>
-                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="stations">☔ Chuva</button>
+                <div class="dashboard-map-legend" aria-label="{{ 'Legenda do mapa'|trans({}, 'dashboard_ui') }}">
+                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="alerts">⚠ {{ 'Alertas'|trans({}, 'dashboard_ui') }}</button>
+                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="jams">≋ {{ 'Jams'|trans({}, 'dashboard_ui') }}</button>
+                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="cameras">◎ {{ 'Câmeras'|trans({}, 'dashboard_ui') }}</button>
+                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="weather">☁ {{ 'Clima'|trans({}, 'dashboard_ui') }}</button>
+                    <button type="button" class="dashboard-map-toggle is-active" data-layer-toggle="stations">☔ {{ 'Chuva'|trans({}, 'dashboard_ui') }}</button>
                 </div>
             </header>
             <div class="dashboard-map"
@@ -241,23 +242,23 @@
     <aside class="dashboard-context-rail">
         <section class="dashboard-panel dashboard-context-panel">
             <header class="dashboard-panel-header">
-                <div><span class="dashboard-panel-kicker">Riscos</span><h2>Situação agora</h2></div>
+                <div><span class="dashboard-panel-kicker">{{ 'Riscos'|trans({}, 'dashboard_ui') }}</span><h2>{{ 'Situação agora'|trans({}, 'dashboard_ui') }}</h2></div>
             </header>
             <div class="dashboard-context-list">
                 <div class="dashboard-context-item {{ (hydroStats.risk.overflow|default(0) + hydroStats.risk.alert|default(0)) > 0 ? 'is-danger' }}">
-                    <span>Rios em alerta/transbordo</span>
+                    <span>{{ 'Rios em alerta/transbordo'|trans({}, 'dashboard_ui') }}</span>
                     <strong>{{ hydroStats.risk.overflow|default(0) + hydroStats.risk.alert|default(0) }}</strong>
                 </div>
                 <div class="dashboard-context-item {{ hydroStats.risk.attention|default(0) > 0 ? 'is-warning' }}">
-                    <span>Rios em atenção</span>
+                    <span>{{ 'Rios em atenção'|trans({}, 'dashboard_ui') }}</span>
                     <strong>{{ hydroStats.risk.attention|default(0) }}</strong>
                 </div>
                 <div class="dashboard-context-item {{ kpis.pluvio_rain_24h|default(0) > 0 ? 'is-info' }}">
-                    <span>Chuva acumulada 24h</span>
-                    <strong>{{ kpis.pluvio_rain_24h|default(0)|number_format(1, ',', '.') }} mm</strong>
+                    <span>{{ 'Chuva acumulada 24h'|trans({}, 'dashboard_ui') }}</span>
+                    <strong>{{ kpis.pluvio_rain_24h|default(0)|number_format(1, app.request.locale == 'en' ? '.' : ',', app.request.locale == 'en' ? ',' : '.') }} mm</strong>
                 </div>
                 <div class="dashboard-context-item {{ kpis.routes_delayed|default(0) > 0 ? 'is-warning' }}">
-                    <span>Rotas atrasadas</span>
+                    <span>{{ 'Rotas atrasadas'|trans({}, 'dashboard_ui') }}</span>
                     <strong>{{ kpis.routes_delayed|default(0) }}</strong>
                 </div>
             </div>
@@ -265,7 +266,7 @@
 
         <section class="dashboard-panel dashboard-context-panel">
             <header class="dashboard-panel-header">
-                <div><span class="dashboard-panel-kicker">Coletas</span><h2>Última execução</h2></div>
+                <div><span class="dashboard-panel-kicker">{{ 'Coletas'|trans({}, 'dashboard_ui') }}</span><h2>{{ 'Última execução'|trans({}, 'dashboard_ui') }}</h2></div>
             </header>
             <div class="dashboard-context-list">
                 {% for label, key in {
@@ -278,8 +279,8 @@
                     'Câmeras': 'cameras'
                 } %}
                     <div class="dashboard-context-item">
-                        <span>{{ label }}</span>
-                        <strong>{{ fetch[key] ? fetch[key]|date('d/m H:i') : '—' }}</strong>
+                        <span>{{ label|trans({}, 'dashboard_ui') }}</span>
+                        <strong>{{ fetch[key] ? dashboard_date(fetch[key]) : '—' }}</strong>
                     </div>
                 {% endfor %}
             </div>
@@ -293,8 +294,8 @@
             <section class="dashboard-panel">
                 <header class="dashboard-panel-header">
                     <div>
-                        <span class="dashboard-panel-kicker">Indicadores</span>
-                        <h2>Atividade por hora</h2>
+                        <span class="dashboard-panel-kicker">{{ 'Indicadores'|trans({}, 'dashboard_ui') }}</span>
+                        <h2>{{ 'Atividade por hora'|trans({}, 'dashboard_ui') }}</h2>
                     </div>
                     <span class="dashboard-panel-period">0h – 23h</span>
                 </header>
@@ -307,8 +308,8 @@
             <section class="dashboard-panel">
                 <header class="dashboard-panel-header">
                     <div>
-                        <span class="dashboard-panel-kicker">Composição</span>
-                        <h2>Alertas por tipo</h2>
+                        <span class="dashboard-panel-kicker">{{ 'Composição'|trans({}, 'dashboard_ui') }}</span>
+                        <h2>{{ 'Alertas por tipo'|trans({}, 'dashboard_ui') }}</h2>
                     </div>
                 </header>
                 <div class="dashboard-chart-wrap">
@@ -323,8 +324,8 @@
             <section class="dashboard-panel">
                 <header class="dashboard-panel-header">
                     <div>
-                        <span class="dashboard-panel-kicker">Top ruas</span>
-                        <h2>Concentração de alertas</h2>
+                        <span class="dashboard-panel-kicker">{{ 'Top ruas'|trans({}, 'dashboard_ui') }}</span>
+                        <h2>{{ 'Concentração de alertas'|trans({}, 'dashboard_ui') }}</h2>
                     </div>
                 </header>
                 <div class="dashboard-chart-wrap dashboard-chart-wrap--tall">
@@ -336,8 +337,8 @@
             <section class="dashboard-panel">
                 <header class="dashboard-panel-header">
                     <div>
-                        <span class="dashboard-panel-kicker">Congestionamentos</span>
-                        <h2>Distribuição por nível</h2>
+                        <span class="dashboard-panel-kicker">{{ 'Congestionamentos'|trans({}, 'dashboard_ui') }}</span>
+                        <h2>{{ 'Distribuição por nível'|trans({}, 'dashboard_ui') }}</h2>
                     </div>
                 </header>
                 <div class="dashboard-chart-wrap dashboard-chart-wrap--tall">
@@ -349,8 +350,8 @@
             <section class="dashboard-panel">
                 <header class="dashboard-panel-header">
                     <div>
-                        <span class="dashboard-panel-kicker">Clima</span>
-                        <h2>Tendência meteorológica</h2>
+                        <span class="dashboard-panel-kicker">{{ 'Clima'|trans({}, 'dashboard_ui') }}</span>
+                        <h2>{{ 'Tendência meteorológica'|trans({}, 'dashboard_ui') }}</h2>
                     </div>
                 </header>
                 <div class="dashboard-chart-wrap dashboard-chart-wrap--tall">
@@ -367,33 +368,33 @@
                  data-hydro-trend-by-station='{{ hydro.trend_by_station|default({})|json_encode|e('html_attr') }}'>
             <header class="dashboard-panel-header">
                 <div>
-                    <span class="dashboard-panel-kicker">Recursos hídricos</span>
-                    <h2>Nível dos rios</h2>
+                    <span class="dashboard-panel-kicker">{{ 'Recursos hídricos'|trans({}, 'dashboard_ui') }}</span>
+                    <h2>{{ 'Nível dos rios'|trans({}, 'dashboard_ui') }}</h2>
                 </div>
                 <span class="dashboard-panel-period">
                     {% if hydroStats.last_fetch %}
-                        Última coleta {{ hydroStats.last_fetch|app_date('d/m H:i') }}
+                        {{ 'Última coleta'|trans({}, 'dashboard_ui') }} {{ dashboard_date(hydroStats.last_fetch) }}
                     {% else %}
-                        Sem coletas ainda
+                        {{ 'Sem coletas ainda'|trans({}, 'dashboard_ui') }}
                     {% endif %}
                 </span>
             </header>
 
             <div class="dashboard-hydro-strip">
                 <div class="hydro-stat">
-                    <span class="hydro-stat-label">Estações</span>
+                    <span class="hydro-stat-label">{{ 'Estações'|trans({}, 'dashboard_ui') }}</span>
                     <strong data-hydro-stat="stations">{{ hydroStats.stations|default(0) }}</strong>
                 </div>
                 <div class="hydro-stat {{ (hydroStats.risk.overflow|default(0) + hydroStats.risk.alert|default(0)) > 0 ? 'is-danger' }}">
-                    <span class="hydro-stat-label">Alerta / transbordo</span>
+                    <span class="hydro-stat-label">{{ 'Alerta / transbordo'|trans({}, 'dashboard_ui') }}</span>
                     <strong data-hydro-stat="alert">{{ hydroStats.risk.overflow|default(0) + hydroStats.risk.alert|default(0) }}</strong>
                 </div>
                 <div class="hydro-stat {{ hydroStats.risk.attention|default(0) > 0 ? 'is-warning' }}">
-                    <span class="hydro-stat-label">Em atenção</span>
+                    <span class="hydro-stat-label">{{ 'Em atenção'|trans({}, 'dashboard_ui') }}</span>
                     <strong data-hydro-stat="attention">{{ hydroStats.risk.attention|default(0) }}</strong>
                 </div>
                 <div class="hydro-stat is-normal">
-                    <span class="hydro-stat-label">Normal</span>
+                    <span class="hydro-stat-label">{{ 'Normal'|trans({}, 'dashboard_ui') }}</span>
                     <strong data-hydro-stat="normal">{{ hydroStats.risk.normal|default(0) }}</strong>
                 </div>
             </div>
@@ -407,26 +408,26 @@
                 {% if hydroList|length > 1 %}
                     <aside class="dashboard-station-picker" data-hydro-picker>
                         <div class="dashboard-station-picker-head">
-                            <strong>Rios monitorados</strong>
-                            <small>{{ hydroList|length }} estações</small>
+                            <strong>{{ 'Rios monitorados'|trans({}, 'dashboard_ui') }}</strong>
+                            <small>{{ hydroList|length }} {{ 'estações'|trans({}, 'dashboard_ui') }}</small>
                         </div>
                         <button type="button"
                                 class="hydro-station-btn is-active hydro-station-btn--all"
                                 data-hydro-select="all">
-                            <span class="hydro-station-btn-name">Todas as estações</span>
-                            <small>Média agregada</small>
+                            <span class="hydro-station-btn-name">{{ 'Todas as estações'|trans({}, 'dashboard_ui') }}</span>
+                            <small>{{ 'Média agregada'|trans({}, 'dashboard_ui') }}</small>
                         </button>
                         {% for st in hydroList %}
                             <button type="button"
                                     class="hydro-station-btn {{ _self.riskClass(st.risk) }}"
                                     data-hydro-select="{{ st.id }}"
                                     data-station-level="{{ st.level is not null ? st.level : '' }}"
-                                    data-station-risk="{{ st.risk }}">
+                                    data-station-risk="{{ st.risk }}" title="{{ dashboard_label(st.risk) }}">
                                 <span class="hydro-station-btn-name">{{ st.name }}</span>
                                 <small>{{ st.city|default('—') }}{% if st.state %}/{{ st.state }}{% endif %}</small>
                                 <span class="hydro-station-btn-level">
                                     {% if st.level is not null %}
-                                        {{ st.level|number_format(2, ',', '.') }} m
+                                        {{ st.level|number_format(2, app.request.locale == 'en' ? '.' : ',', app.request.locale == 'en' ? ',' : '.') }} m
                                     {% else %}
                                         —
                                     {% endif %}
@@ -445,34 +446,34 @@
                  data-pluvio-hourly-by-station='{{ pluvio.hourly_by_station|default({})|json_encode|e('html_attr') }}'>
             <header class="dashboard-panel-header">
                 <div>
-                    <span class="dashboard-panel-kicker">Precipitação</span>
-                    <h2>Chuva por hora e por estação</h2>
+                    <span class="dashboard-panel-kicker">{{ 'Precipitação'|trans({}, 'dashboard_ui') }}</span>
+                    <h2>{{ 'Chuva por hora e por estação'|trans({}, 'dashboard_ui') }}</h2>
                 </div>
                 <span class="dashboard-panel-period">
                     {% if pluvioStats.last_reading %}
-                        Última leitura {{ pluvioStats.last_reading|app_date('d/m H:i') }}
+                        {{ 'Última leitura'|trans({}, 'dashboard_ui') }} {{ dashboard_date(pluvioStats.last_reading) }}
                     {% else %}
-                        Sem leituras
+                        {{ 'Sem leituras'|trans({}, 'dashboard_ui') }}
                     {% endif %}
                 </span>
             </header>
 
             <div class="dashboard-hydro-strip">
                 <div class="hydro-stat">
-                    <span class="hydro-stat-label">Pontos de medição</span>
+                    <span class="hydro-stat-label">{{ 'Pontos de medição'|trans({}, 'dashboard_ui') }}</span>
                     <strong data-pluvio-stat="stations">{{ pluvioStats.stations|default(0) }}</strong>
                 </div>
                 <div class="hydro-stat {{ pluvioStats.rain_1h|default(0) > 0 ? 'is-warning' }}">
-                    <span class="hydro-stat-label">Última hora</span>
-                    <strong data-pluvio-stat="rain_1h">{{ pluvioStats.rain_1h|default(0)|number_format(1, ',', '.') }}<small style="font-size:11px;font-weight:600;color:var(--dash-muted);margin-left:4px">mm</small></strong>
+                    <span class="hydro-stat-label">{{ 'Última hora'|trans({}, 'dashboard_ui') }}</span>
+                    <strong data-pluvio-stat="rain_1h">{{ pluvioStats.rain_1h|default(0)|number_format(1, app.request.locale == 'en' ? '.' : ',', app.request.locale == 'en' ? ',' : '.') }}<small style="font-size:11px;font-weight:600;color:var(--dash-muted);margin-left:4px">mm</small></strong>
                 </div>
                 <div class="hydro-stat {{ pluvioStats.rain_24h|default(0) > 0 ? 'is-normal' : '' }}">
-                    <span class="hydro-stat-label">Últimas 24h</span>
-                    <strong data-pluvio-stat="rain_24h">{{ pluvioStats.rain_24h|default(0)|number_format(1, ',', '.') }}<small style="font-size:11px;font-weight:600;color:var(--dash-muted);margin-left:4px">mm</small></strong>
+                    <span class="hydro-stat-label">{{ 'Últimas 24h'|trans({}, 'dashboard_ui') }}</span>
+                    <strong data-pluvio-stat="rain_24h">{{ pluvioStats.rain_24h|default(0)|number_format(1, app.request.locale == 'en' ? '.' : ',', app.request.locale == 'en' ? ',' : '.') }}<small style="font-size:11px;font-weight:600;color:var(--dash-muted);margin-left:4px">mm</small></strong>
                 </div>
                 <div class="hydro-stat">
-                    <span class="hydro-stat-label">Pico / 24h</span>
-                    <strong data-pluvio-stat="peak_24h">{{ pluvioStats.peak_24h|default(0)|number_format(1, ',', '.') }}<small style="font-size:11px;font-weight:600;color:var(--dash-muted);margin-left:4px">mm/h</small></strong>
+                    <span class="hydro-stat-label">{{ 'Pico / 24h'|trans({}, 'dashboard_ui') }}</span>
+                    <strong data-pluvio-stat="peak_24h">{{ pluvioStats.peak_24h|default(0)|number_format(1, app.request.locale == 'en' ? '.' : ',', app.request.locale == 'en' ? ',' : '.') }}<small style="font-size:11px;font-weight:600;color:var(--dash-muted);margin-left:4px">mm/h</small></strong>
                 </div>
             </div>
 
@@ -484,14 +485,14 @@
 
                 <aside class="dashboard-station-picker" data-pluvio-picker>
                     <div class="dashboard-station-picker-head">
-                        <strong>Chuva por estação · 24h</strong>
-                        <small>{{ pluvio.stations|default([])|length }} pontos</small>
+                        <strong>{{ 'Chuva por estação · 24h'|trans({}, 'dashboard_ui') }}</strong>
+                        <small>{{ pluvio.stations|default([])|length }} {{ 'pontos'|trans({}, 'dashboard_ui') }}</small>
                     </div>
                     <button type="button"
                             class="hydro-station-btn is-active hydro-station-btn--all"
                             data-pluvio-select="all">
-                        <span class="hydro-station-btn-name">Todas as estações</span>
-                        <small>Média agregada</small>
+                        <span class="hydro-station-btn-name">{{ 'Todas as estações'|trans({}, 'dashboard_ui') }}</span>
+                        <small>{{ 'Média agregada'|trans({}, 'dashboard_ui') }}</small>
                     </button>
                     {% for s in pluvio.stations|default([]) %}
                         {% set pct = pluvioStats.peak_24h > 0
@@ -505,22 +506,22 @@
                             <span class="hydro-station-btn-name">
                                 {{ s.stationName }}
                                 <span class="pluvio-source-badge pluvio-source-badge--{{ s.source }}">
-                                    {{ s.source == 'hydro' ? 'Hidro' : 'Auto' }}
+                                    {{ s.source == 'hydro' ? ('Hidro'|trans({}, 'dashboard_ui')) : ('Auto'|trans({}, 'dashboard_ui')) }}
                                 </span>
                             </span>
                             <small>
                                 {{ s.city|default('—') }}{% if s.state %}/{{ s.state }}{% endif %}
-                                {% if s.lastReading %} · {{ s.lastReading|app_date('d/m H:i') }}{% endif %}
+                                {% if s.lastReading %} · {{ dashboard_date(s.lastReading) }}{% endif %}
                             </small>
                             <span class="hydro-station-btn-level">
-                                {{ s.rain24h|number_format(1, ',', '.') }} mm
+                                {{ s.rain24h|number_format(1, app.request.locale == 'en' ? '.' : ',', app.request.locale == 'en' ? ',' : '.') }} mm
                             </span>
                         </button>
                     {% else %}
                         <div class="dashboard-empty">
                             <span aria-hidden="true">✓</span>
-                            <strong>Sem leituras de chuva</strong>
-                            <small>Cadastre um pluviômetro ou estação hidro com dados de chuva.</small>
+                            <strong>{{ 'Sem leituras de chuva'|trans({}, 'dashboard_ui') }}</strong>
+                            <small>{{ 'Cadastre um pluviômetro ou estação hidro com dados de chuva.'|trans({}, 'dashboard_ui') }}</small>
                         </div>
                     {% endfor %}
                 </aside>
@@ -533,7 +534,7 @@
         <div class="dashboard-content-grid">
             <section class="dashboard-panel data-section" data-section="alerts">
                 <header class="dashboard-panel-header">
-                    <div><span class="dashboard-panel-kicker">Tempo real</span><h2>Alertas recentes</h2></div>
+                    <div><span class="dashboard-panel-kicker">{{ 'Tempo real'|trans({}, 'dashboard_ui') }}</span><h2>{{ 'Alertas recentes'|trans({}, 'dashboard_ui') }}</h2></div>
                     <span class="dashboard-panel-count {{ stats.recent.alerts|length > 0 ? 'is-orange' }}"
                           data-count="recent-alerts">{{ stats.recent.alerts|length }}</span>
                 </header>
@@ -542,21 +543,21 @@
                         <div class="dashboard-data-row">
                             <span class="dashboard-row-icon row-orange" aria-hidden="true">⚠</span>
                             <div>
-                                <strong>{{ alert.typeLabel }}</strong>
-                                <small>#{{ alert.id }} · {{ alert.subtype|default('—') }} · {{ alert.city|default('Local não informado') }}{% if alert.street %} · {{ alert.street }}{% endif %}</small>
+                                <strong>{{ dashboard_label(alert.type|default(alert.typeLabel)) }}</strong>
+                                <small>#{{ alert.id }} · {{ dashboard_label(alert.subtype|default('—')) }} · {{ alert.city|default(('Local não informado'|trans({}, 'dashboard_ui'))) }}{% if alert.street %} · {{ alert.street }}{% endif %}</small>
                             </div>
-                            <time datetime="{{ alert.pubDateTime }}">{{ alert.pubDateTime ? alert.pubDateTime|date('d/m H:i') : '—' }}</time>
-                            <span class="dashboard-severity">Confiança {{ alert.confidence }}</span>
+                            <time datetime="{{ alert.pubDateTime }}">{{ alert.pubDateTime ? dashboard_date(alert.pubDateTime) : '—' }}</time>
+                            <span class="dashboard-severity">{{ 'Confiança'|trans({}, 'dashboard_ui') }} {{ alert.confidence }}</span>
                         </div>
                     {% else %}
-                        <div class="dashboard-empty"><span aria-hidden="true">✓</span><strong>Nenhum alerta recente</strong><small>Ajuste os filtros ou verifique as fontes.</small></div>
+                        <div class="dashboard-empty"><span aria-hidden="true">✓</span><strong>{{ 'Nenhum alerta recente'|trans({}, 'dashboard_ui') }}</strong><small>{{ 'Ajuste os filtros ou verifique as fontes.'|trans({}, 'dashboard_ui') }}</small></div>
                     {% endfor %}
                 </div>
             </section>
 
             <section class="dashboard-panel data-section" data-section="jams">
                 <header class="dashboard-panel-header">
-                    <div><span class="dashboard-panel-kicker">Trânsito</span><h2>Congestionamentos</h2></div>
+                    <div><span class="dashboard-panel-kicker">{{ 'Trânsito'|trans({}, 'dashboard_ui') }}</span><h2>{{ 'Congestionamentos'|trans({}, 'dashboard_ui') }}</h2></div>
                     <span class="dashboard-panel-count {{ stats.recent.jams|length > 0 ? 'is-orange' }}"
                           data-count="recent-jams">{{ stats.recent.jams|length }}</span>
                 </header>
@@ -565,24 +566,24 @@
                         <div class="dashboard-data-row">
                             <span class="dashboard-row-icon row-orange" aria-hidden="true">≋</span>
                             <div>
-                                <strong>{{ jam.street|default('Via não informada') }}</strong>
+                                <strong>{{ jam.street|default(('Via não informada'|trans({}, 'dashboard_ui'))) }}</strong>
                                 <small>
                                     {{ jam.city|default('—') }}
                                     {% if jam.speedKmh is not null %} · {{ jam.speedKmh|round(1) }} km/h{% endif %}
                                     {% if jam.length %} · {{ (jam.length / 1000)|round(1) }} km{% endif %}
                                 </small>
                             </div>
-                            <span class="dashboard-severity dashboard-jam-level-{{ jam.level }}">Nível {{ jam.level }}</span>
+                            <span class="dashboard-severity dashboard-jam-level-{{ jam.level }}">{{ 'Nível'|trans({}, 'dashboard_ui') }} {{ jam.level }} · {{ dashboard_label('jam_' ~ jam.level) }}</span>
                         </div>
                     {% else %}
-                        <div class="dashboard-empty"><span aria-hidden="true">✓</span><strong>Nenhum congestionamento</strong><small>Não há ocorrências viárias no período.</small></div>
+                        <div class="dashboard-empty"><span aria-hidden="true">✓</span><strong>{{ 'Nenhum congestionamento'|trans({}, 'dashboard_ui') }}</strong><small>{{ 'Não há ocorrências viárias no período.'|trans({}, 'dashboard_ui') }}</small></div>
                     {% endfor %}
                 </div>
             </section>
 
             <section class="dashboard-panel data-section" data-section="routes">
                 <header class="dashboard-panel-header">
-                    <div><span class="dashboard-panel-kicker">Rotas TVT</span><h2>Maior atraso por rota</h2></div>
+                    <div><span class="dashboard-panel-kicker">{{ 'Rotas TVT'|trans({}, 'dashboard_ui') }}</span><h2>{{ 'Maior atraso por rota'|trans({}, 'dashboard_ui') }}</h2></div>
                     <span class="dashboard-panel-count {{ stats.recent.routes|length > 0 ? 'is-orange' }}"
                           data-count="recent-routes">{{ stats.recent.routes|length }}</span>
                 </header>
@@ -594,7 +595,7 @@
                                 <strong>{{ route.name }}</strong>
                                 <small>
                                     {% if route.from_name and route.to_name %}{{ route.from_name }} → {{ route.to_name }} · {% endif %}
-                                    Atual {{ route.time|default('—') }}s · Hist. {{ route.historic_time|default('—') }}s
+                                    {{ 'Atual'|trans({}, 'dashboard_ui') }} {{ route.time|default('—') }}s · {{ 'Hist.'|trans({}, 'dashboard_ui') }} {{ route.historic_time|default('—') }}s
                                 </small>
                             </div>
                             <span class="dashboard-severity delay-badge delay-badge--{{ route.delay_level.level }}">
@@ -602,14 +603,14 @@
                                     +{{ route.delay_seconds }}s
                                     <small>({{ (route.delay_ratio * 100)|round(0) }}%)</small>
                                 {% elseif route.jam_level is not null %}
-                                    Nível {{ route.jam_level }}
+                                    {{ 'Nível'|trans({}, 'dashboard_ui') }} {{ route.jam_level }}
                                 {% else %}
-                                    No prazo
+                                    {{ 'No prazo'|trans({}, 'dashboard_ui') }}
                                 {% endif %}
                             </span>
                         </div>
                     {% else %}
-                        <div class="dashboard-empty"><span aria-hidden="true">✓</span><strong>Nenhuma rota encontrada</strong><small>Sem snapshots vinculados às rotas.</small></div>
+                        <div class="dashboard-empty"><span aria-hidden="true">✓</span><strong>{{ 'Nenhuma rota encontrada'|trans({}, 'dashboard_ui') }}</strong><small>{{ 'Sem snapshots vinculados às rotas.'|trans({}, 'dashboard_ui') }}</small></div>
                     {% endfor %}
                 </div>
             </section>
@@ -619,8 +620,8 @@
         <div class="dashboard-bottom-grid">
             <section class="dashboard-panel">
                 <header class="dashboard-panel-header">
-                    <div><span class="dashboard-panel-kicker">Status</span><h2>Saúde da operação</h2></div>
-                    <span class="dashboard-health-badge"><i></i> Online</span>
+                    <div><span class="dashboard-panel-kicker">{{ 'Status'|trans({}, 'dashboard_ui') }}</span><h2>{{ 'Saúde da operação'|trans({}, 'dashboard_ui') }}</h2></div>
+                    <span class="dashboard-health-badge"><i></i> {{ 'Online'|trans({}, 'dashboard_ui') }}</span>
                 </header>
                 <div class="dashboard-health-score">
                     <div class="dashboard-health-ring" style="--health-score:{{ health }}"
@@ -629,80 +630,81 @@
                     </div>
                     <div>
                         <strong>
-                            {% if health >= 80 %}Operação estável
-                            {% elseif health >= 60 %}Atenção recomendada
-                            {% else %}Operação crítica{% endif %}
+                            {% if health >= 80 %}{{ 'Operação estável'|trans({}, 'dashboard_ui') }}
+                            {% elseif health >= 60 %}{{ 'Atenção recomendada'|trans({}, 'dashboard_ui') }}
+                            {% else %}{{ 'Operação crítica'|trans({}, 'dashboard_ui') }}{% endif %}
                         </strong>
                         <p>
-                            {% if health >= 80 %}Fontes de dados disponíveis e monitoradas.
-                            {% elseif health >= 60 %}Algumas rotas com atraso ou volume elevado.
-                            {% else %}Alto volume de alertas, congestionamentos ou rios em alerta.{% endif %}
+                            {% if health >= 80 %}{{ 'Fontes de dados disponíveis e monitoradas.'|trans({}, 'dashboard_ui') }}
+                            {% elseif health >= 60 %}{{ 'Algumas rotas com atraso ou volume elevado.'|trans({}, 'dashboard_ui') }}
+                            {% else %}{{ 'Alto volume de alertas, congestionamentos ou rios em alerta.'|trans({}, 'dashboard_ui') }}{% endif %}
                         </p>
                     </div>
                 </div>
                 <div class="dashboard-health-list">
-                    <div><span><i class="health-green"></i> Alertas ativos</span><strong>{{ totals.alerts_active|default(0) }}</strong></div>
-                    <div><span><i class="health-{{ totals.jams_active|default(0) > 10 ? 'orange' : 'blue' }}"></i> Jams ativos</span><strong>{{ totals.jams_active|default(0) }}</strong></div>
-                    <div><span><i class="health-gray"></i> Rotas com snapshot</span><strong>{{ stats.recent.routes|length }}</strong></div>
-                    <div><span><i class="health-{{ hydroStats.at_risk|default(0) > 0 ? 'orange' : 'gray' }}"></i> Rios em atenção</span><strong>{{ hydroStats.at_risk|default(0) }}</strong></div>
+                    <div><span><i class="health-green"></i> {{ 'Alertas ativos'|trans({}, 'dashboard_ui') }}</span><strong>{{ totals.alerts_active|default(0) }}</strong></div>
+                    <div><span><i class="health-{{ totals.jams_active|default(0) > 10 ? 'orange' : 'blue' }}"></i> {{ 'Jams ativos'|trans({}, 'dashboard_ui') }}</span><strong>{{ totals.jams_active|default(0) }}</strong></div>
+                    <div><span><i class="health-gray"></i> {{ 'Rotas com snapshot'|trans({}, 'dashboard_ui') }}</span><strong>{{ stats.recent.routes|length }}</strong></div>
+                    <div><span><i class="health-{{ hydroStats.at_risk|default(0) > 0 ? 'orange' : 'gray' }}"></i> {{ 'Rios em atenção'|trans({}, 'dashboard_ui') }}</span><strong>{{ hydroStats.at_risk|default(0) }}</strong></div>
                 </div>
             </section>
 
             <section class="dashboard-panel">
                 <header class="dashboard-panel-header">
-                    <div><span class="dashboard-panel-kicker">Coletas</span><h2>Última execução por fonte</h2></div>
+                    <div><span class="dashboard-panel-kicker">{{ 'Coletas'|trans({}, 'dashboard_ui') }}</span><h2>{{ 'Última execução por fonte'|trans({}, 'dashboard_ui') }}</h2></div>
                 </header>
                 <div class="dashboard-fetch-list" data-fetch-list>
                     <div>
-                        <span>Waze Alerts</span>
-                        <strong data-fetch="waze_alerts">{{ fetch.waze_alerts ? fetch.waze_alerts|date('d/m/Y H:i') : '—' }}</strong>
+                        <span>{{ 'Waze Alerts'|trans({}, 'dashboard_ui') }}</span>
+                        <strong data-fetch="waze_alerts">{{ fetch.waze_alerts ? dashboard_date(fetch.waze_alerts, true) : '—' }}</strong>
                     </div>
                     <div>
-                        <span>Waze Jams</span>
-                        <strong data-fetch="waze_jams">{{ fetch.waze_jams ? fetch.waze_jams|date('d/m/Y H:i') : '—' }}</strong>
+                        <span>{{ 'Waze Jams'|trans({}, 'dashboard_ui') }}</span>
+                        <strong data-fetch="waze_jams">{{ fetch.waze_jams ? dashboard_date(fetch.waze_jams, true) : '—' }}</strong>
                     </div>
                     <div>
-                        <span>Waze TVT (rotas)</span>
-                        <strong data-fetch="waze_tvt">{{ fetch.waze_tvt ? fetch.waze_tvt|date('d/m/Y H:i') : '—' }}</strong>
+                        <span>{{ 'Waze TVT (rotas)'|trans({}, 'dashboard_ui') }}</span>
+                        <strong data-fetch="waze_tvt">{{ fetch.waze_tvt ? dashboard_date(fetch.waze_tvt, true) : '—' }}</strong>
                     </div>
                     <div>
-                        <span>Clima (Open-Meteo)</span>
-                        <strong data-fetch="weather">{{ fetch.weather ? fetch.weather|date('d/m/Y H:i') : '—' }}</strong>
+                        <span>{{ 'Clima (Open-Meteo)'|trans({}, 'dashboard_ui') }}</span>
+                        <strong data-fetch="weather">{{ fetch.weather ? dashboard_date(fetch.weather, true) : '—' }}</strong>
                     </div>
                     <div>
-                        <span>CEMADEN Hidro</span>
-                        <strong data-fetch="cemaden_hydro">{{ fetch.cemaden_hydro ? fetch.cemaden_hydro|date('d/m/Y H:i') : '—' }}</strong>
+                        <span>CEMADEN {{ 'Hidro'|trans({}, 'dashboard_ui') }}</span>
+                        <strong data-fetch="cemaden_hydro">{{ fetch.cemaden_hydro ? dashboard_date(fetch.cemaden_hydro, true) : '—' }}</strong>
                     </div>
                     <div>
-                        <span>CEMADEN Chuva</span>
-                        <strong data-fetch="cemaden_pluvio">{{ fetch.cemaden_pluvio ? fetch.cemaden_pluvio|date('d/m/Y H:i') : '—' }}</strong>
+                        <span>{{ 'CEMADEN Chuva'|trans({}, 'dashboard_ui') }}</span>
+                        <strong data-fetch="cemaden_pluvio">{{ fetch.cemaden_pluvio ? dashboard_date(fetch.cemaden_pluvio, true) : '—' }}</strong>
                     </div>
                     <div>
-                        <span>Câmeras parceiras</span>
-                        <strong data-fetch="cameras">{{ fetch.cameras ? fetch.cameras|date('d/m/Y H:i') : '—' }}</strong>
+                        <span>{{ 'Câmeras parceiras'|trans({}, 'dashboard_ui') }}</span>
+                        <strong data-fetch="cameras">{{ fetch.cameras ? dashboard_date(fetch.cameras, true) : '—' }}</strong>
                     </div>
                 </div>
             </section>
 
             <section class="dashboard-panel">
                 <header class="dashboard-panel-header">
-                    <div><span class="dashboard-panel-kicker">Clima</span><h2>Leituras recentes</h2></div>
+                    <div><span class="dashboard-panel-kicker">{{ 'Clima'|trans({}, 'dashboard_ui') }}</span><h2>{{ 'Leituras recentes'|trans({}, 'dashboard_ui') }}</h2></div>
                 </header>
                 <div class="dashboard-data-list" data-list="weather">
                     {% for obs in stats.recent.weather %}
                         <div class="dashboard-data-row">
                             <span class="dashboard-row-icon row-green" aria-hidden="true">☁</span>
                             <div>
-                                <strong>{{ obs.locationName|default('Estação') }}</strong>
-                                <small>{{ obs.city|default('—') }} · {{ obs.observedAt ? obs.observedAt|date('d/m H:i') : '' }}</small>
+                                <strong>{{ obs.locationName|default(('Estação'|trans({}, 'dashboard_ui'))) }}</strong>
+                                <small>{{ obs.city|default('—') }} · {{ obs.observedAt ? dashboard_date(obs.observedAt) : '' }}</small>
                             </div>
                             <span class="dashboard-severity">
+                                {% if obs.weatherCode|default(obs.weather_code|default(null)) is not null %}{{ dashboard_label('weather_' ~ obs.weatherCode|default(obs.weather_code|default(''))) }} · {% endif %}
                                 {% if obs.temperature is not null %}{{ obs.temperature|round(1) }}°C{% endif %}
                                 {% if obs.humidity is not null %} · {{ obs.humidity }}%{% endif %}
                             </span>
                         </div>
                     {% else %}
-                        <div class="dashboard-empty"><span aria-hidden="true">✓</span><strong>Sem leituras climáticas</strong><small>Cadastre uma localização meteorológica.</small></div>
+                        <div class="dashboard-empty"><span aria-hidden="true">✓</span><strong>{{ 'Sem leituras climáticas'|trans({}, 'dashboard_ui') }}</strong><small>{{ 'Cadastre uma localização meteorológica.'|trans({}, 'dashboard_ui') }}</small></div>
                     {% endfor %}
                 </div>
             </section>
@@ -710,24 +712,24 @@
 
         <section class="dashboard-panel">
             <header class="dashboard-panel-header">
-                <div><span class="dashboard-panel-kicker">Integrações</span><h2>Fontes de dados</h2></div>
+                <div><span class="dashboard-panel-kicker">{{ 'Integrações'|trans({}, 'dashboard_ui') }}</span><h2>{{ 'Fontes de dados'|trans({}, 'dashboard_ui') }}</h2></div>
             </header>
             <div class="dashboard-source-list">
-                <div><span>Waze Alerts</span><strong class="dashboard-status {{ totals.alerts > 0 ? 'is-active' }}">{{ totals.alerts > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
-                <div><span>Waze Jams</span><strong class="dashboard-status {{ totals.jams > 0 ? 'is-active' }}">{{ totals.jams > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
-                <div><span>Clima (Open-Meteo)</span><strong class="dashboard-status {{ totals.weather > 0 ? 'is-active' }}">{{ totals.weather > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
-                <div><span>CEMADEN Hidro</span><strong class="dashboard-status {{ kpis.hydro_stations|default(0) > 0 ? 'is-active' }}">{{ kpis.hydro_stations|default(0) > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
-                <div><span>CEMADEN Chuva</span><strong class="dashboard-status {{ kpis.pluvio_stations|default(0) > 0 ? 'is-active' }}">{{ kpis.pluvio_stations|default(0) > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
-                <div><span>Câmeras parceiras</span><strong class="dashboard-status {{ totals.cameras > 0 ? 'is-active' }}">{{ totals.cameras > 0 ? 'Ativo' : 'Sem dados' }}</strong></div>
+                <div><span>{{ 'Waze Alerts'|trans({}, 'dashboard_ui') }}</span><strong class="dashboard-status {{ totals.alerts > 0 ? 'is-active' }}">{{ totals.alerts > 0 ? ('Ativo'|trans({}, 'dashboard_ui')) : ('Sem dados'|trans({}, 'dashboard_ui')) }}</strong></div>
+                <div><span>{{ 'Waze Jams'|trans({}, 'dashboard_ui') }}</span><strong class="dashboard-status {{ totals.jams > 0 ? 'is-active' }}">{{ totals.jams > 0 ? ('Ativo'|trans({}, 'dashboard_ui')) : ('Sem dados'|trans({}, 'dashboard_ui')) }}</strong></div>
+                <div><span>{{ 'Clima (Open-Meteo)'|trans({}, 'dashboard_ui') }}</span><strong class="dashboard-status {{ totals.weather > 0 ? 'is-active' }}">{{ totals.weather > 0 ? ('Ativo'|trans({}, 'dashboard_ui')) : ('Sem dados'|trans({}, 'dashboard_ui')) }}</strong></div>
+                <div><span>CEMADEN {{ 'Hidro'|trans({}, 'dashboard_ui') }}</span><strong class="dashboard-status {{ kpis.hydro_stations|default(0) > 0 ? 'is-active' }}">{{ kpis.hydro_stations|default(0) > 0 ? ('Ativo'|trans({}, 'dashboard_ui')) : ('Sem dados'|trans({}, 'dashboard_ui')) }}</strong></div>
+                <div><span>{{ 'CEMADEN Chuva'|trans({}, 'dashboard_ui') }}</span><strong class="dashboard-status {{ kpis.pluvio_stations|default(0) > 0 ? 'is-active' }}">{{ kpis.pluvio_stations|default(0) > 0 ? ('Ativo'|trans({}, 'dashboard_ui')) : ('Sem dados'|trans({}, 'dashboard_ui')) }}</strong></div>
+                <div><span>{{ 'Câmeras parceiras'|trans({}, 'dashboard_ui') }}</span><strong class="dashboard-status {{ totals.cameras > 0 ? 'is-active' }}">{{ totals.cameras > 0 ? ('Ativo'|trans({}, 'dashboard_ui')) : ('Sem dados'|trans({}, 'dashboard_ui')) }}</strong></div>
             </div>
         </section>
 
 
 <footer class="dashboard-statusbar">
-    <div class="dashboard-statusbar-item"><span>Saúde</span><strong>{{ health }}%</strong></div>
-    <div class="dashboard-statusbar-item"><span>Alertas ativos</span><strong>{{ totals.alerts_active|default(0) }}</strong></div>
-    <div class="dashboard-statusbar-item"><span>Jams ativos</span><strong>{{ totals.jams_active|default(0) }}</strong></div>
-    <div class="dashboard-statusbar-item"><span>Atualizado</span><strong>{{ stats.updated_at|app_date('H:i') }}</strong></div>
+    <div class="dashboard-statusbar-item"><span>{{ 'Saúde'|trans({}, 'dashboard_ui') }}</span><strong>{{ health }}%</strong></div>
+    <div class="dashboard-statusbar-item"><span>{{ 'Alertas ativos'|trans({}, 'dashboard_ui') }}</span><strong>{{ totals.alerts_active|default(0) }}</strong></div>
+    <div class="dashboard-statusbar-item"><span>{{ 'Jams ativos'|trans({}, 'dashboard_ui') }}</span><strong>{{ totals.jams_active|default(0) }}</strong></div>
+    <div class="dashboard-statusbar-item"><span>{{ 'Atualizado'|trans({}, 'dashboard_ui') }}</span><strong>{{ stats.updated_at|app_date('H:i') }}</strong></div>
 </footer>
 
     </div>

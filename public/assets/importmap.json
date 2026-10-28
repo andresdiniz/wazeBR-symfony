@@ -80,7 +80,7 @@
         "type": "js"
     },
     "\/assets\/js\/pages\/dashboard.js": {
-        "path": "\/assets\/js\/pages\/dashboard-qVMvKFT.js",
+        "path": "\/assets\/js\/pages\/dashboard-N6TYqQ-.js",
         "type": "js"
     },
     "app": {
@@ -108,23 +108,27 @@
         "type": "js"
     },
     "\/assets\/js\/pages\/routes.js": {
-        "path": "\/assets\/js\/pages\/routes-O9ciLHJ.js",
+        "path": "\/assets\/js\/pages\/routes-5dYQ6-K.js",
         "type": "js"
     },
     "\/assets\/js\/pages\/route-show.js": {
-        "path": "\/assets\/js\/pages\/route-show-lI3tVCj.js",
+        "path": "\/assets\/js\/pages\/route-show-wSp7LGI.js",
+        "type": "js"
+    },
+    "\/assets\/js\/pages\/route-show-i18n.js": {
+        "path": "\/assets\/js\/pages\/route-show-i18n-oyow6cG.js",
         "type": "js"
     },
     "\/assets\/js\/pages\/route-live.js": {
-        "path": "\/assets\/js\/pages\/route-live-PTI0R0y.js",
+        "path": "\/assets\/js\/pages\/route-live-y9CmfMZ.js",
         "type": "js"
     },
     "\/assets\/js\/pages\/route-forecast.js": {
-        "path": "\/assets\/js\/pages\/route-forecast-Qx4wKa7.js",
+        "path": "\/assets\/js\/pages\/route-forecast-ZCeRr-j.js",
         "type": "js"
     },
     "\/assets\/js\/pages\/route-compare.js": {
-        "path": "\/assets\/js\/pages\/route-compare-MzAeCtD.js",
+        "path": "\/assets\/js\/pages\/route-compare-k2YIo1S.js",
         "type": "js"
     },
     "\/assets\/js\/layout\/consent.js": {
@@ -160,15 +164,15 @@
         "type": "js"
     },
     "\/assets\/js\/pages\/jam.js": {
-        "path": "\/assets\/js\/pages\/jam-MiMJdB8.js",
+        "path": "\/assets\/js\/pages\/jam-BOhM1dT.js",
         "type": "js"
     },
     "\/assets\/js\/pages\/jam-show.js": {
-        "path": "\/assets\/js\/pages\/jam-show-9mAh6eM.js",
+        "path": "\/assets\/js\/pages\/jam-show-_5JiB9X.js",
         "type": "js"
     },
     "\/assets\/js\/pages\/jam-history.js": {
-        "path": "\/assets\/js\/pages\/jam-history-Bt3qBHz.js",
+        "path": "\/assets\/js\/pages\/jam-history-uE_1jqP.js",
         "type": "js"
     },
     "\/assets\/js\/pages\/partner-feed-index.js": {
@@ -208,7 +212,7 @@
         "type": "js"
     },
     "dashboard": {
-        "path": "\/assets\/js\/pages\/dashboard-qVMvKFT.js",
+        "path": "\/assets\/js\/pages\/dashboard-N6TYqQ-.js",
         "type": "js"
     }
 }

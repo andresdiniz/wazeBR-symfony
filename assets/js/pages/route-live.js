@@ -1,3 +1,5 @@
+import { rsT, rsLabel, RS_LOCALE } from './route-show-i18n.js';
+
 /**
  * pages/route-live.js — atualização ao vivo da página /routes/{id}.
  *
@@ -92,8 +94,8 @@ export async function initRouteLive(page, { knownAlertIds = new Set(), onNewAler
             setLevel(els.time, current.level ?? 'good');
             if (els.timeHint) {
                 els.timeHint.textContent = current.historicTime != null
-                    ? `normal: ${Math.round(current.historicTime)}s`
-                    : 'sem tempo histórico';
+                    ? `${rsT("normal:")} ${Math.round(current.historicTime)}s`
+                    : rsT("sem tempo histórico");
             }
         }
 
@@ -102,7 +104,7 @@ export async function initRouteLive(page, { knownAlertIds = new Set(), onNewAler
             setLevel(els.delay, current.level ?? 'good');
             if (els.delayHint) {
                 els.delayHint.textContent = current.delayRatio != null
-                    ? `${Math.round(current.delayRatio * 100)}% acima do histórico`
+                    ? `${Math.round(current.delayRatio * 100)}${rsT("% acima do histórico")}`
                     : '';
             }
         }
@@ -111,7 +113,7 @@ export async function initRouteLive(page, { knownAlertIds = new Set(), onNewAler
             const date = new Date(current.recordedAt);
             if (!Number.isNaN(date.getTime())) {
                 els.updated.dateTime = current.recordedAt;
-                els.updated.textContent = date.toLocaleTimeString('pt-BR', {
+                els.updated.textContent = date.toLocaleTimeString(RS_LOCALE, {
                     timeZone, hour: '2-digit', minute: '2-digit',
                 });
             }
@@ -129,7 +131,7 @@ export async function initRouteLive(page, { knownAlertIds = new Set(), onNewAler
         fresh.forEach((a) => {
             knownAlertIds.add(a.id);
             const where = a.street ? ` — ${a.street}` : '';
-            state.newAlertLabels.unshift(`${a.typeLabel || a.type || 'Alerta'}${where}`);
+            state.newAlertLabels.unshift(`${rsLabel(a.type || a.typeLabel, rsT("Alerta"))}${where}`);
         });
         state.newAlertCount += fresh.length;
 
@@ -143,8 +145,8 @@ export async function initRouteLive(page, { knownAlertIds = new Set(), onNewAler
         els.alerts.replaceChildren();
         const strong = document.createElement('strong');
         strong.textContent = state.newAlertCount === 1
-            ? '1 novo alerta perto do traçado'
-            : `${state.newAlertCount} novos alertas perto do traçado`;
+            ? rsT("1 novo alerta perto do traçado")
+            : rsT('ui.new_alerts', {'%count%': state.newAlertCount});
         const span = document.createElement('span');
         span.textContent = ` ${shown}${extra}`;
         els.alerts.append(strong, span);
@@ -168,7 +170,7 @@ export async function initRouteLive(page, { knownAlertIds = new Set(), onNewAler
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
             const data = await response.json();
-            if (!data.ok) throw new Error('resposta inválida');
+            if (!data.ok) throw new Error(rsT("resposta inválida"));
 
             applyCurrent(data.current);
             applyNewAlerts(data.newAlerts ?? []);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\User;
+use Symfony\Contracts\Translation\TranslatorInterface;
 use App\Repository\WazeAlertRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -15,6 +16,10 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class AlertController extends AbstractController
 {
+    public function __construct(private readonly TranslatorInterface $translator)
+    {
+    }
+
     #[Route('/alerts', name: 'alert_index', methods: ['GET'])]
     public function index(Request $request, WazeAlertRepository $repository): Response
     {
@@ -68,7 +73,7 @@ final class AlertController extends AbstractController
         $alert   = $repository->findOneScoped($id, $partner);
 
         if ($alert === null) {
-            throw $this->createNotFoundException('Alerta não encontrado.');
+            throw $this->createNotFoundException($this->translator->trans('Alerta não encontrado.', [], 'alerts_ui'));
         }
 
         return $this->render('alert/show.html.twig', [
@@ -158,10 +163,13 @@ final class AlertController extends AbstractController
         $response = new StreamedResponse(function () use ($rows) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, [
-                'ID','UUID','Tipo','Subtipo','Cidade','Rua','Confiança','Confiabilidade',
-                'Ativo','Latitude','Longitude','Publicado (ms)','Coletado em (UTC)','Coletado em (SP)',
-            ], ';');
+            fputcsv($out, array_map(
+                fn (string $label): string => $this->translator->trans($label, [], 'alerts_ui'),
+                [
+                    'ID','UUID','Tipo','Subtipo','Cidade','Rua','Confiança','Confiabilidade',
+                    'Ativo','Latitude','Longitude','Publicado (ms)','Coletado em (UTC)','Coletado em (SP)',
+                ],
+            ), ';');
 
             foreach ($rows as $r) {
                 fputcsv($out, [

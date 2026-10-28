@@ -1,3 +1,21 @@
+const JAM_LOCALE = document.documentElement.lang || 'pt-BR';
+const JAM_MESSAGES = (() => {
+    try { return JSON.parse(document.querySelector('[data-jams-i18n]')?.dataset.jamsI18n || '{}'); }
+    catch { return {}; }
+})();
+function jt(message, parameters = {}) {
+    let value = Object.hasOwn(JAM_MESSAGES, message) ? JAM_MESSAGES[message] : message;
+    for (const [key, replacement] of Object.entries(parameters)) value = value.replaceAll(key, String(replacement));
+    return value;
+}
+function jamLabel(value, fallback = '—') {
+    if (value == null || value === '') return fallback;
+    const text = String(value);
+    if (Object.hasOwn(JAM_MESSAGES, text)) return JAM_MESSAGES[text];
+    const key = `code.${text}`;
+    return Object.hasOwn(JAM_MESSAGES, key) ? JAM_MESSAGES[key] : text;
+}
+
 /**
  * pages/jam.js — Página /jams (theme-aware)
  *
@@ -75,7 +93,7 @@ function escapeHtml(str) {
 
 function fmtNum(n, digits = 0) {
     if (n === null || n === undefined) return '—';
-    return new Intl.NumberFormat('pt-BR', {
+    return new Intl.NumberFormat(JAM_LOCALE, {
         minimumFractionDigits: digits,
         maximumFractionDigits: digits,
     }).format(n);
@@ -83,13 +101,13 @@ function fmtNum(n, digits = 0) {
 
 function fmtRelative(iso) {
     if (!iso) return '—';
-    try {
-        const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
-        if (s < 60)  return `há ${s}s`;
-        const m = Math.floor(s / 60);
-        if (m < 60) return `há ${m} min`;
-        return `há ${Math.floor(m / 60)}h`;
-    } catch { return '—'; }
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return '—';
+    const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+    const rtf = new Intl.RelativeTimeFormat(JAM_LOCALE, { numeric: 'always' });
+    if (seconds < 60) return rtf.format(-seconds, 'second');
+    if (seconds < 3600) return rtf.format(-Math.floor(seconds / 60), 'minute');
+    return rtf.format(-Math.floor(seconds / 3600), 'hour');
 }
 
 function fmtClock(iso) {
@@ -97,7 +115,7 @@ function fmtClock(iso) {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '—';
     try {
-        return new Intl.DateTimeFormat('pt-BR', {
+        return new Intl.DateTimeFormat(JAM_LOCALE, {
             hour: '2-digit', minute: '2-digit', hour12: false,
             timeZone: state.timezone,
         }).format(d);
@@ -128,7 +146,7 @@ function installLiveClock() {
     const el = $('[data-jam-live-clock]');
     if (!el) return;
 
-    const fmt = new Intl.DateTimeFormat('pt-BR', {
+    const fmt = new Intl.DateTimeFormat(JAM_LOCALE, {
         hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
         timeZone: state.timezone,
     });
@@ -155,6 +173,7 @@ function readFilters() {
 
 function applyFilterToUrl(filters) {
     const url = new URL(window.location.href);
+    url.searchParams.set('_locale', document.documentElement.dataset.locale || 'pt_BR');
     Object.entries(filters).forEach(([k, v]) => {
         if (v === '' || v == null) url.searchParams.delete(k);
         else url.searchParams.set(k, v);
@@ -164,6 +183,7 @@ function applyFilterToUrl(filters) {
     const exportLink = $('[data-jam-export]');
     if (exportLink && state.exportEndpoint) {
         const exp = new URL(state.exportEndpoint, window.location.origin);
+    exp.searchParams.set('_locale', document.documentElement.dataset.locale || 'pt_BR');
         Object.entries(filters).forEach(([k, v]) => {
             if (v !== '' && v != null) exp.searchParams.set(k, v);
         });
@@ -173,6 +193,7 @@ function applyFilterToUrl(filters) {
 
 function restoreFiltersFromUrl() {
     const url = new URL(window.location.href);
+    url.searchParams.set('_locale', document.documentElement.dataset.locale || 'pt_BR');
     url.searchParams.forEach((value, key) => {
         const el = document.querySelector(`[data-jam-filter="${key}"]`);
         if (!el) return;
@@ -308,7 +329,7 @@ function initMap() {
                     container.innerHTML = `
                         <div style="display:flex;align-items:center;justify-content:center;
                                     height:100%;color:var(--jam-text-muted);font-size:13px;gap:8px">
-                            ⚠ Não foi possível carregar o mapa. Verifique sua conexão.
+                            ⚠ ${escapeHtml(jt("Não foi possível carregar o mapa. Verifique sua conexão."))}
                         </div>`;
                 }
             }
@@ -372,29 +393,29 @@ function renderMap(mapData) {
         });
 
         const delayLabel = (j.delay === -1 || j.delay == null)
-            ? 'sem medição'
+            ? jt("sem medição")
             : `${Math.round(j.delay / 60)} min`;
 
         let flag = '';
         if (j.isBlocked && j.isStale)
-            flag = `<br><span style="color:${BLOCKED_STALE_COLOR};font-weight:800">⚠ INTERDIÇÃO ANTIGA</span>`;
+            flag = `<br><span style="color:${BLOCKED_STALE_COLOR};font-weight:800">⚠ ${escapeHtml(jt("INTERDIÇÃO ANTIGA"))}</span>`;
         else if (j.isBlocked)
-            flag = `<br><span style="color:#dc2626;font-weight:800">🚫 INTERDIÇÃO TOTAL</span>`;
+            flag = `<br><span style="color:#dc2626;font-weight:800">🚫 ${escapeHtml(jt("INTERDIÇÃO TOTAL"))}</span>`;
 
         const alertsBadge = j.nearbyAlerts > 0
             ? `<br><span style="display:inline-block;margin-top:6px;padding:2px 8px;border-radius:999px;
                                background:rgba(124,58,237,.14);color:#7c3aed;font-weight:800;font-size:11px">
-                🔔 ${j.nearbyAlerts} alerta${j.nearbyAlerts > 1 ? 's' : ''} próximo${j.nearbyAlerts > 1 ? 's' : ''}
+                🔔 ${escapeHtml(jt(Number(j.nearbyAlerts) === 1 ? 'nearby_one' : 'nearby_many', {'%count%': j.nearbyAlerts}))}
                </span>`
             : '';
 
         poly.bindPopup(`
             <div style="font-family:inherit;font-size:12px;line-height:1.45;min-width:220px">
-                <strong style="display:block;font-size:13px;margin-bottom:3px">${escapeHtml(j.street || 'Via')}</strong>
+                <strong style="display:block;font-size:13px;margin-bottom:3px">${escapeHtml(j.street || jt("Via"))}</strong>
                 <small style="display:block;color:#64748b;margin-bottom:6px">${escapeHtml(j.city || '')}</small>
-                <div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#64748b">Nível</span><strong>${j.level}</strong></div>
-                <div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#64748b">Atraso</span><strong>${delayLabel}</strong></div>
-                <div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#64748b">Extensão</span><strong>${Math.round(j.length / 100) / 10} km</strong></div>
+                <div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#64748b">${escapeHtml(jt("Nível"))}</span><strong>${j.level}</strong></div>
+                <div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#64748b">${escapeHtml(jt("Atraso"))}</span><strong>${delayLabel}</strong></div>
+                <div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#64748b">${escapeHtml(jt("Extensão"))}</span><strong>${Math.round(j.length / 100) / 10} km</strong></div>
                 ${flag}${alertsBadge}
                 <hr style="border:none;border-top:1px dashed #e2e8f0;margin:8px 0">
                 <a href="${buildShowUrl(j.id)}" style="color:#7c3aed;font-weight:800;text-decoration:none">
@@ -404,7 +425,7 @@ function renderMap(mapData) {
         `, { maxWidth: 320 });
 
         poly.bindTooltip(
-            `<strong>${escapeHtml(j.street || 'Via')}</strong> · Nível ${j.level}${j.nearbyAlerts ? ` · 🔔 ${j.nearbyAlerts}` : ''}`,
+            `<strong>${escapeHtml(j.street || jt("Via"))}</strong> · ${escapeHtml(jt("Nível"))} ${j.level}${j.nearbyAlerts ? ` · 🔔 ${j.nearbyAlerts}` : ''}`,
             { sticky: true, direction: 'top' }
         );
 
@@ -419,14 +440,14 @@ function renderMap(mapData) {
                 fillColor: ALERT_PIN_COLOR, fillOpacity: 0.95,
             }).bindPopup(`
                 <div style="font-family:inherit;font-size:12px;line-height:1.4;min-width:180px">
-                    <strong style="display:block;font-size:12.5px">🔔 ${escapeHtml(a.type || 'Alerta')}</strong>
-                    ${a.subtype ? `<small style="display:block;color:#64748b">${escapeHtml(a.subtype)}</small>` : ''}
+                    <strong style="display:block;font-size:12.5px">🔔 ${escapeHtml(a.type || jt("Alerta"))}</strong>
+                    ${a.subtype ? `<small style="display:block;color:#64748b">${escapeHtml(jamLabel(a.subtype))}</small>` : ''}
                     ${a.street  ? `<div style="margin-top:4px">${escapeHtml(a.street)}</div>` : ''}
                     <div style="display:flex;justify-content:space-between;padding:2px 0;margin-top:4px">
-                        <span style="color:#64748b">Distância</span><strong>${a.distanceMeters} m</strong>
+                        <span style="color:#64748b">${escapeHtml(jt("Distância"))}</span><strong>${a.distanceMeters} m</strong>
                     </div>
                     <div style="display:flex;justify-content:space-between;padding:2px 0">
-                        <span style="color:#64748b">Δ Tempo</span>
+                        <span style="color:#64748b">${escapeHtml(jt("Δ Tempo"))}</span>
                         <strong>${a.timeOffsetMinutes > 0 ? '+' : ''}${a.timeOffsetMinutes} min</strong>
                     </div>
                 </div>
@@ -467,8 +488,8 @@ function renderKPIs(summary) {
     setText('[data-jam-kpi="blockedActive"]', fmtNum(s.blockedActive ?? 0));
     setText('[data-jam-kpi="blockedStale"]',  fmtNum(s.blockedStale ?? 0));
     setText('[data-jam-kpi="avgDelay"]',      `${fmtNum(s.avgDelay ?? 0)}s`);
-    setText('[data-jam-kpi="maxDelay"]',      `Máximo ${fmtNum(s.maxDelay ?? 0)}s`);
-    setText('[data-jam-kpi="level4plus"]',    `${level4plus} em nível 4+`);
+    setText('[data-jam-kpi="maxDelay"]',      `${escapeHtml(jt("Máximo"))} ${fmtNum(s.maxDelay ?? 0)}s`);
+    setText('[data-jam-kpi="level4plus"]',    `${level4plus} ${escapeHtml(jt("em nível 4+"))}`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -481,7 +502,7 @@ function renderLevels(byLevel) {
 
     const levels  = byLevel || {};
     const max     = Math.max(1, ...Object.values(levels).map((v) => Number(v) || 0));
-    const labels  = { 1: '1 · Baixo', 2: '2 · Moderado', 3: '3 · Alto', 4: '4 · Muito alto', 5: '5 · Parado' };
+    const labels  = { 1: ("1 \u00b7 " + jt("Baixo")), 2: ("2 \u00b7 " + jt("Moderado")), 3: ("3 \u00b7 " + jt("Alto")), 4: ("4 \u00b7 " + jt("Muito alto")), 5: ("5 \u00b7 " + jt("Parado")) };
 
     el.innerHTML = [1, 2, 3, 4, 5].map((lvl) => {
         const count = Number(levels[lvl] ?? 0);
@@ -502,7 +523,7 @@ function renderHourly(byHour) {
     if (!el) return;
 
     if (!Array.isArray(byHour) || byHour.length === 0) {
-        el.innerHTML = '<div class="jam-empty">Sem dados</div>';
+        el.innerHTML = ('<div class="jam-empty">' + escapeHtml(jt("Sem dados")) + '</div>');
         return;
     }
 
@@ -519,7 +540,7 @@ function renderHourly(byHour) {
     }).join('');
 
     const hint = $('[data-jam-hourly-window]');
-    if (hint) hint.textContent = `últimas ${byHour.length}h`;
+    if (hint) hint.textContent = `${escapeHtml(jt("últimas"))} ${byHour.length}h`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -527,8 +548,8 @@ function renderHourly(byHour) {
 // ─────────────────────────────────────────────────────────────────────────
 
 function levelCell(j) {
-    if (j.isBlocked && j.isStale) return `<span class="jam-table__stale-badge">⚠ ANTIGA</span>`;
-    if (j.isBlocked)              return `<span class="jam-table__blocked-badge">🚫 INTERDIÇÃO</span>`;
+    if (j.isBlocked && j.isStale) return `<span class="jam-table__stale-badge">⚠ ${escapeHtml(jt("ANTIGA"))}</span>`;
+    if (j.isBlocked)              return `<span class="jam-table__blocked-badge">🚫 ${escapeHtml(jt("INTERDIÇÃO"))}</span>`;
     return `<span class="jam-table__level jam-table__level--${j.level}">${j.level}</span>`;
 }
 
@@ -566,8 +587,8 @@ function renderTable(tableKey) {
         'top-jams':       $('[data-jam-table]'),
     };
     const emptyMsgMap = {
-        'blocked-active': 'Nenhuma interdição ativa no momento.',
-        'blocked-stale':  'Sem interdições antigas.',
+        'blocked-active': jt("Nenhuma interdição ativa no momento."),
+        'blocked-stale':  jt("Sem interdições antigas."),
         'top-jams':       null,   // usa empty state contextual (#4)
     };
 
@@ -599,20 +620,20 @@ function renderTable(tableKey) {
             const filters  = readFilters();
             const active   = Object.entries(filters)
                 .filter(([, v]) => v !== '' && v !== '0' && v !== null && v !== undefined && v !== false)
-                .map(([k]) => k.replace('_', ' '));
+                .map(([k]) => jamLabel(`filter.${k}`, k.replaceAll('_', ' ')));
             const hint     = active.length > 0
-                ? `<br><small style="font-size:11px">Filtros ativos: ${escapeHtml(active.join(', '))}</small>
+                ? `<br><small style="font-size:11px">${escapeHtml(jt("Filtros ativos"))}: ${escapeHtml(active.join(', '))}</small>
                    <br><button type="button"
                                style="margin-top:8px;font:inherit;font-size:12px;font-weight:700;
                                       color:var(--jam-primary);background:none;border:none;cursor:pointer"
                                onclick="document.querySelectorAll('[data-action=clear-filters]')[0]?.click()">
-                       ↩ Limpar filtros
+                       ↩ ${escapeHtml(jt("Limpar filtros"))}
                    </button>`
                 : '';
             tbody.innerHTML = `
                 <tr>
                     <td colspan="7" class="jam-empty">
-                        Sem congestionamentos com os filtros atuais.${hint}
+                        ${escapeHtml(jt("Sem congestionamentos com os filtros atuais."))}${hint}
                     </td>
                 </tr>`;
         }
@@ -634,7 +655,7 @@ function renderTable(tableKey) {
                 <td class="is-num">${alertsBadgeCell(j)}</td>
                 <td>
                     ${timeCell(j)}
-                    <a class="jam-row-link" href="${url}" aria-label="Detalhes">→</a>
+                    <a class="jam-row-link" href="${url}" aria-label="${escapeHtml(jt("Detalhes"))}">→</a>
                 </td>
             </tr>`;
     }).join('');
@@ -689,8 +710,8 @@ function rankItem(r, idx, kind) {
     if (Number(r.blockedStale) > 0) marks += `<span class="mark-stale">⚠ ${r.blockedStale}</span> · `;
 
     const foot = marks + (kind === 'streets'
-        ? (r.maxDelay > 0 ? `máx ${r.maxDelay}s` : '—')
-        : (r.avgDelay > 0 ? `média ${r.avgDelay}s` : '—'));
+        ? (r.maxDelay > 0 ? `${escapeHtml(jt("máx"))} ${r.maxDelay}s` : '—')
+        : (r.avgDelay > 0 ? `${escapeHtml(jt("média"))} ${r.avgDelay}s` : '—'));
 
     const name = kind === 'streets'
         ? `${escapeHtml(r.street)}<span class="jam-rank__city">${escapeHtml(r.city)}</span>`
@@ -712,7 +733,7 @@ function renderRankStreets(rows) {
     if (!el) return;
     el.innerHTML = Array.isArray(rows) && rows.length > 0
         ? rows.map((r, i) => rankItem(r, i, 'streets')).join('')
-        : '<li class="jam-empty">Sem dados</li>';
+        : ('<li class="jam-empty">' + escapeHtml(jt("Sem dados")) + '</li>');
 }
 
 function renderRankCities(rows) {
@@ -720,7 +741,7 @@ function renderRankCities(rows) {
     if (!el) return;
     el.innerHTML = Array.isArray(rows) && rows.length > 0
         ? rows.map((r, i) => rankItem(r, i, 'cities')).join('')
-        : '<li class="jam-empty">Sem dados</li>';
+        : ('<li class="jam-empty">' + escapeHtml(jt("Sem dados")) + '</li>');
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -734,6 +755,7 @@ async function fetchAndRender() {
     applyFilterToUrl(filters);
 
     const url = new URL(state.endpoint, window.location.origin);
+    url.searchParams.set('_locale', document.documentElement.dataset.locale || 'pt_BR');
     Object.entries(filters).forEach(([k, v]) => {
         if (v !== '' && v != null) url.searchParams.set(k, v);
     });
@@ -747,7 +769,7 @@ async function fetchAndRender() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const json = await res.json();
-        if (!json?.data) throw new Error('Payload inválido');
+        if (!json?.data) throw new Error(jt("Payload inválido"));
 
         const data = json.data;
         state.lastData = data;

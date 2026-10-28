@@ -1,3 +1,21 @@
+const JAM_LOCALE = document.documentElement.lang || 'pt-BR';
+const JAM_MESSAGES = (() => {
+    try { return JSON.parse(document.querySelector('[data-jams-i18n]')?.dataset.jamsI18n || '{}'); }
+    catch { return {}; }
+})();
+function jt(message, parameters = {}) {
+    let value = Object.hasOwn(JAM_MESSAGES, message) ? JAM_MESSAGES[message] : message;
+    for (const [key, replacement] of Object.entries(parameters)) value = value.replaceAll(key, String(replacement));
+    return value;
+}
+function jamLabel(value, fallback = '—') {
+    if (value == null || value === '') return fallback;
+    const text = String(value);
+    if (Object.hasOwn(JAM_MESSAGES, text)) return JAM_MESSAGES[text];
+    const key = `code.${text}`;
+    return Object.hasOwn(JAM_MESSAGES, key) ? JAM_MESSAGES[key] : text;
+}
+
 /**
  * pages/jam-history.js — /jams/historico
  *
@@ -40,7 +58,7 @@ function escapeHtml(str) {
 
 function fmtNum(n, digits = 0) {
     if (n === null || n === undefined || Number.isNaN(n)) return '—';
-    return new Intl.NumberFormat('pt-BR', {
+    return new Intl.NumberFormat(JAM_LOCALE, {
         minimumFractionDigits: digits,
         maximumFractionDigits: digits,
     }).format(n);
@@ -59,7 +77,7 @@ function fmtDateTime(iso) {
     if (!iso) return '—';
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '—';
-    return new Intl.DateTimeFormat('pt-BR', {
+    return new Intl.DateTimeFormat(JAM_LOCALE, {
         day: '2-digit', month: '2-digit',
         hour: '2-digit', minute: '2-digit',
         hour12: false, timeZone: state.timezone,
@@ -70,7 +88,7 @@ function fmtDateShort(iso) {
     if (!iso) return '—';
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '—';
-    return new Intl.DateTimeFormat('pt-BR', {
+    return new Intl.DateTimeFormat(JAM_LOCALE, {
         day: '2-digit', month: '2-digit',
         timeZone: state.timezone,
     }).format(d);
@@ -108,6 +126,7 @@ function readFilters() {
 
 function applyFilterToUrl(filters) {
     const url = new URL(window.location.href);
+    url.searchParams.set('_locale', document.documentElement.dataset.locale || 'pt_BR');
     Object.entries(filters).forEach(([k, v]) => {
         if (v === '' || v == null) url.searchParams.delete(k);
         else url.searchParams.set(k, v);
@@ -117,6 +136,7 @@ function applyFilterToUrl(filters) {
     const exportLink = $('[data-jh-export]');
     if (exportLink && state.exportEndpoint) {
         const exp = new URL(state.exportEndpoint, window.location.origin);
+    exp.searchParams.set('_locale', document.documentElement.dataset.locale || 'pt_BR');
         Object.entries(filters).forEach(([k, v]) => {
             if (v !== '' && v != null) exp.searchParams.set(k, v);
         });
@@ -126,6 +146,7 @@ function applyFilterToUrl(filters) {
 
 function restoreFiltersFromUrl() {
     const url = new URL(window.location.href);
+    url.searchParams.set('_locale', document.documentElement.dataset.locale || 'pt_BR');
     url.searchParams.forEach((value, key) => {
         const el = document.querySelector(`[data-jh-filter="${key}"]`);
         if (!el) return;
@@ -238,14 +259,14 @@ function renderKpis(summary) {
 
     const prevRange = summary.prevRange || {};
     setText('[data-jh-prev-range]',
-        prevRange.from ? `vs ${fmtDateShort(prevRange.from)} → ${fmtDateShort(prevRange.to)}` : '');
+        prevRange.from ? `${escapeHtml(jt("vs"))} ${fmtDateShort(prevRange.from)} → ${fmtDateShort(prevRange.to)}` : '');
 
     setText('[data-jh-kpi-foot="total"]',
         `${fmtNum(cur.distinctCities ?? 0)} cidades · ${fmtNum(cur.distinctStreets ?? 0)} ruas`);
 
     const stale = cur.blockedStale ?? 0;
     setText('[data-jh-kpi-foot="blocked"]',
-        stale > 0 ? `${fmtNum(stale)} antigas` : 'Todas ativas');
+        stale > 0 ? `${fmtNum(stale)} antigas` : jt("Todas ativas"));
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -257,7 +278,7 @@ function renderTimeline(timeline) {
     if (!wrap) return;
 
     if (!Array.isArray(timeline) || timeline.length === 0) {
-        wrap.innerHTML = '<div class="jh-empty">Sem dados no período</div>';
+        wrap.innerHTML = ('<div class="jh-empty">' + escapeHtml(jt("Sem dados no período")) + '</div>');
         return;
     }
 
@@ -302,7 +323,7 @@ function renderTimeline(timeline) {
     }
 
     wrap.innerHTML = `
-        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Timeline de jams e alertas">
+        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${escapeHtml(jt("Timeline de jams e alertas"))}">
             ${gridLines}
             ${yLabels}
             ${xLabels}
@@ -314,8 +335,8 @@ function renderTimeline(timeline) {
             `).join('')}
         </svg>
         <div class="legend">
-            <span><i class="lg-jams"></i> Jams</span>
-            <span><i class="lg-alerts"></i> Alertas Waze</span>
+            <span><i class="lg-jams"></i> ${escapeHtml(jt("Jams"))}</span>
+            <span><i class="lg-alerts"></i> ${escapeHtml(jt("Alertas Waze"))}</span>
         </div>
     `;
 }
@@ -351,7 +372,7 @@ function renderByDow(dows) {
         const pct = Math.round((d.count / max) * 100);
         return `
             <div class="jh-bar">
-                <span class="jh-bar__label">${d.label}</span>
+                <span class="jh-bar__label">${escapeHtml(jt(d.label))}</span>
                 <div class="jh-bar__track">
                     <span class="jh-bar__fill" style="width:${pct}%"></span>
                 </div>
@@ -385,7 +406,7 @@ function renderByStatus(statuses) {
 
     const total = statuses.reduce((s, x) => s + x.count, 0);
     if (total === 0) {
-        el.innerHTML = '<div class="jh-empty">Sem dados</div>';
+        el.innerHTML = ('<div class="jh-empty">' + escapeHtml(jt("Sem dados")) + '</div>');
         return;
     }
 
@@ -396,22 +417,22 @@ function renderByStatus(statuses) {
     const pct = (n) => ((n / total) * 100).toFixed(1);
 
     el.innerHTML = `
-        <div class="jh-stacked" role="img" aria-label="Distribuição por status">
+        <div class="jh-stacked" role="img" aria-label="${escapeHtml(jt("Distribuição por status"))}">
             <span class="st-normal" style="width:${pct(normal)}%"></span>
             <span class="st-active" style="width:${pct(active)}%"></span>
             <span class="st-stale"  style="width:${pct(stale)}%"></span>
         </div>
         <div class="jh-stacked-legend">
-            <span><i class="l-normal"></i> Congestionamento · ${fmtNum(normal)} (${pct(normal)}%)</span>
-            <span><i class="l-active"></i> Interdição ativa · ${fmtNum(active)} (${pct(active)}%)</span>
-            <span><i class="l-stale"></i> Interdição antiga · ${fmtNum(stale)} (${pct(stale)}%)</span>
+            <span><i class="l-normal"></i> ${escapeHtml(jt("Congestionamento"))} · ${fmtNum(normal)} (${pct(normal)}%)</span>
+            <span><i class="l-active"></i> ${escapeHtml(jt("Interdição ativa"))} · ${fmtNum(active)} (${pct(active)}%)</span>
+            <span><i class="l-stale"></i> ${escapeHtml(jt("Interdição antiga"))} · ${fmtNum(stale)} (${pct(stale)}%)</span>
         </div>`;
 }
 
 function renderRank(el, items, kind) {
     if (!el) return;
     if (!Array.isArray(items) || items.length === 0) {
-        el.innerHTML = '<li class="jh-empty">Sem dados</li>';
+        el.innerHTML = ('<li class="jh-empty">' + escapeHtml(jt("Sem dados")) + '</li>');
         return;
     }
 
@@ -422,7 +443,7 @@ function renderRank(el, items, kind) {
 
         const foot = kind === 'cities'
             ? (r.blocked > 0 ? `🚫 ${r.blocked} · ${r.avgDelay}s` : `${r.avgDelay}s`)
-            : (r.blocked > 0 ? `🚫 ${r.blocked} · máx ${r.maxDelay}s` : `máx ${r.maxDelay}s`);
+            : (r.blocked > 0 ? `🚫 ${r.blocked} · ${escapeHtml(jt("máx"))} ${r.maxDelay}s` : `${escapeHtml(jt("máx"))} ${r.maxDelay}s`);
 
         return `
             <li>
@@ -445,7 +466,7 @@ function renderCorrelation(corr) {
     if (!el) return;
 
     if (!corr || corr.sampled === 0) {
-        el.innerHTML = '<div class="jh-empty">Sem amostra para correlação</div>';
+        el.innerHTML = ('<div class="jh-empty">' + escapeHtml(jt("Sem amostra para correlação")) + '</div>');
         return;
     }
 
@@ -454,7 +475,7 @@ function renderCorrelation(corr) {
         const pct = Math.round((t.count / max) * 100);
         return `
             <div class="jh-bar">
-                <span class="jh-bar__label" title="${escapeHtml(t.label)}">${escapeHtml(t.label).slice(0, 8)}</span>
+                <span class="jh-bar__label" title="${escapeHtml(jamLabel(t.label))}">${escapeHtml(jamLabel(t.label)).slice(0, 8)}</span>
                 <div class="jh-bar__track">
                     <span class="jh-bar__fill is-accent" style="width:${pct}%"></span>
                 </div>
@@ -475,17 +496,17 @@ function renderCorrelation(corr) {
     el.innerHTML = `
         <div class="jh-correlation-summary">
             <div class="jh-correlation-metric">
-                <small>Amostra</small>
+                <small>${escapeHtml(jt("Amostra"))}</small>
                 <strong>${fmtNum(corr.sampled)}</strong>
-                <em>jams de nível 3+</em>
+                <em>${escapeHtml(jt("jams de nível 3+"))}</em>
             </div>
             <div class="jh-correlation-metric">
-                <small>Com alertas</small>
+                <small>${escapeHtml(jt("Com alertas"))}</small>
                 <strong>${fmtNum(corr.withAlerts)}</strong>
                 <em>${fmtNum(corr.withAlertsPct, 1)}% do total</em>
             </div>
             <div class="jh-correlation-metric">
-                <small>Distância média</small>
+                <small>${escapeHtml(jt("Distância média"))}</small>
                 <strong>${fmtNum(corr.avgDistanceM)}m</strong>
                 <em>Δ ${fmtNum(corr.avgTimeOffsetM)}min</em>
             </div>
@@ -493,20 +514,20 @@ function renderCorrelation(corr) {
 
         <div class="jh-panel__head" style="margin-top:12px">
             <div>
-                <span class="jh-kicker">Tipos de alerta</span>
-                <h2>Tipos correlacionados</h2>
+                <span class="jh-kicker">${escapeHtml(jt("Tipos de alerta"))}</span>
+                <h2>${escapeHtml(jt("Tipos correlacionados"))}</h2>
             </div>
         </div>
-        <div class="jh-correlation-types">${typesHtml || '<div class="jh-empty">Sem alertas correlacionados</div>'}</div>
+        <div class="jh-correlation-types">${typesHtml || ('<div class="jh-empty">' + escapeHtml(jt("Sem alertas correlacionados")) + '</div>')}</div>
 
         <div class="jh-panel__head" style="margin-top:12px">
             <div>
-                <span class="jh-kicker">Top 5</span>
-                <h2>Jams com mais alertas</h2>
+                <span class="jh-kicker">${escapeHtml(jt("Top 5"))}</span>
+                <h2>${escapeHtml(jt("Jams com mais alertas"))}</h2>
             </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px">
-            ${topHtml || '<div class="jh-empty">Sem correlação forte no período</div>'}
+            ${topHtml || ('<div class="jh-empty">' + escapeHtml(jt("Sem correlação forte no período")) + '</div>')}
         </div>
     `;
 
@@ -529,8 +550,8 @@ function sortedRows() {
 }
 
 function levelCell(j) {
-    if (j.isBlocked && j.isStale) return `<span class="jh-table__level jh-table__level--5" title="Interdição antiga">⚠</span>`;
-    if (j.isBlocked)              return `<span class="jh-table__level jh-table__level--5" title="Interdição ativa">🚫</span>`;
+    if (j.isBlocked && j.isStale) return `<span class="jh-table__level jh-table__level--5" title="${escapeHtml(jt("Interdição antiga"))}">⚠</span>`;
+    if (j.isBlocked)              return `<span class="jh-table__level jh-table__level--5" title="${escapeHtml(jt("Interdição ativa"))}">🚫</span>`;
     return `<span class="jh-table__level jh-table__level--${j.level}">${j.level}</span>`;
 }
 
@@ -563,9 +584,9 @@ function renderTable() {
     if (all.length === 0) {
         tbody.innerHTML = `
             <tr><td colspan="8" class="jh-empty">
-                Sem registros no período selecionado.
+                ${escapeHtml(jt("Sem registros no período selecionado."))}
                 <span class="jh-empty__hint">
-                    <small>Tente ampliar o intervalo de datas ou limpar filtros.</small>
+                    <small>${escapeHtml(jt("Tente ampliar o intervalo de datas ou limpar filtros."))}</small>
                 </span>
             </td></tr>`;
         return;
@@ -654,6 +675,7 @@ async function fetchAndRender() {
     applyFilterToUrl(filters);
 
     const url = new URL(state.endpoint, window.location.origin);
+    url.searchParams.set('_locale', document.documentElement.dataset.locale || 'pt_BR');
     Object.entries(filters).forEach(([k, v]) => {
         if (v !== '' && v != null) url.searchParams.set(k, v);
     });
@@ -670,7 +692,7 @@ async function fetchAndRender() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const json = await res.json();
-        if (!json?.data) throw new Error('Payload inválido');
+        if (!json?.data) throw new Error(jt("Payload inválido"));
 
         const data = json.data;
         state.timelineBucket = data.period?.bucket || 'day';

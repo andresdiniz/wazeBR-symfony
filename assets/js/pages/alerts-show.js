@@ -1,3 +1,18 @@
+const ALERT_LOCALE = document.documentElement.lang || 'pt-BR';
+const ALERT_MESSAGES = (() => {
+    try { return JSON.parse(document.querySelector('[data-alerts-i18n]')?.dataset.alertsI18n || '{}'); }
+    catch { return {}; }
+})();
+function at(message) {
+    return Object.hasOwn(ALERT_MESSAGES, message) ? ALERT_MESSAGES[message] : message;
+}
+function alertLabel(value, fallback = '—') {
+    if (value == null || value === '') return fallback;
+    const text = String(value);
+    const key = `code.${text}`;
+    return Object.hasOwn(ALERT_MESSAGES, key) ? ALERT_MESSAGES[key] : at(text);
+}
+
 /**
  * pages/alerts-show.js
  * Página de detalhes de um alerta:
@@ -38,7 +53,7 @@ function fmtSp(value) {
     const d = value instanceof Date ? value : new Date(value);
     if (Number.isNaN(d.getTime())) return '—';
 
-    return new Intl.DateTimeFormat('pt-BR', {
+    return new Intl.DateTimeFormat(ALERT_LOCALE, {
         timeZone: 'America/Sao_Paulo',
         day: '2-digit', month: '2-digit',
         hour: '2-digit', minute: '2-digit',
@@ -78,10 +93,10 @@ function initShowMap(page) {
         fillOpacity: 0.85,
     })
         .bindPopup(`
-            <strong>${escapeHtml(alert.type || 'Alerta')}</strong><br>
-            <small>${escapeHtml(alert.subtype || '')}</small><br>
+            <strong>${escapeHtml(alertLabel(alert.type, at("Alerta")))}</strong><br>
+            <small>${escapeHtml(alertLabel(alert.subtype, ''))}</small><br>
             ${escapeHtml(alert.street || '')}${alert.street && alert.city ? ' — ' : ''}${escapeHtml(alert.city || '')}<br>
-            <small>Coletado: ${escapeHtml(fmtSp(alert.when))}</small>
+            <small>${at("Coletado")}: ${escapeHtml(fmtSp(alert.when))}</small>
         `)
         .addTo(map)
         .openPopup();

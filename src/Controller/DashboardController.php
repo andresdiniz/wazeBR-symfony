@@ -137,6 +137,7 @@ final class DashboardController extends AbstractController
 
         $payload = [
             'ok'           => true,
+            'locale'       => $request->getLocale(),
             'generated_at' => (new \DateTimeImmutable())->format(DATE_ATOM),
             'filters'      => $filters,
             'data'         => $this->normalizeDatesForJson($data),
@@ -149,6 +150,8 @@ final class DashboardController extends AbstractController
 
         $response = new Response($json, 200, [
             'Content-Type'           => 'application/json; charset=UTF-8',
+            'Content-Language'       => str_replace('_', '-', $request->getLocale()),
+            'Vary'                   => 'Cookie',
             'ETag'                   => '"' . md5($json) . '"',
             'Cache-Control'          => 'private, must-revalidate, max-age=0',
             'X-Response-Time'        => sprintf('%.1f', (microtime(true) - $start) * 1000),

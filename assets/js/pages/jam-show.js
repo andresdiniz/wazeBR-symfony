@@ -1,3 +1,21 @@
+const JAM_LOCALE = document.documentElement.lang || 'pt-BR';
+const JAM_MESSAGES = (() => {
+    try { return JSON.parse(document.querySelector('[data-jams-i18n]')?.dataset.jamsI18n || '{}'); }
+    catch { return {}; }
+})();
+function jt(message, parameters = {}) {
+    let value = Object.hasOwn(JAM_MESSAGES, message) ? JAM_MESSAGES[message] : message;
+    for (const [key, replacement] of Object.entries(parameters)) value = value.replaceAll(key, String(replacement));
+    return value;
+}
+function jamLabel(value, fallback = '—') {
+    if (value == null || value === '') return fallback;
+    const text = String(value);
+    if (Object.hasOwn(JAM_MESSAGES, text)) return JAM_MESSAGES[text];
+    const key = `code.${text}`;
+    return Object.hasOwn(JAM_MESSAGES, key) ? JAM_MESSAGES[key] : text;
+}
+
 /**
  * pages/jam-show.js — Detalhes + impacto de um jam
  *
@@ -70,8 +88,8 @@ function initMap(root, attempt = 0) {
                             height:100%;flex-direction:column;gap:8px;
                             color:var(--js-text-muted,#64748b);font-size:13px">
                     <span style="font-size:24px">🗺️</span>
-                    Não foi possível carregar o mapa.
-                    <small>Verifique sua conexão e recarregue a página.</small>
+                    ${escapeHtml(jt("Não foi possível carregar o mapa."))}
+                    <small>${escapeHtml(jt("Verifique sua conexão e recarregue a página."))}</small>
                 </div>`;
         }
         return;
@@ -109,12 +127,12 @@ function initMap(root, attempt = 0) {
     L.circleMarker(jam.path[0], {
         radius: 6, color: '#fff', weight: 2,
         fillColor: '#16a34a', fillOpacity: 1,
-    }).bindTooltip('Início', { direction: 'top' }).addTo(map);
+    }).bindTooltip(jt("Início"), { direction: 'top' }).addTo(map);
 
     L.circleMarker(jam.path[jam.path.length - 1], {
         radius: 6, color: '#fff', weight: 2,
         fillColor: '#dc2626', fillOpacity: 1,
-    }).bindTooltip('Fim', { direction: 'top' }).addTo(map);
+    }).bindTooltip(jt("Fim"), { direction: 'top' }).addTo(map);
 
     // Alertas próximos
     alerts.forEach((a) => {
@@ -125,17 +143,17 @@ function initMap(root, attempt = 0) {
         }).bindPopup(`
             <div style="font:inherit;font-size:12px;min-width:180px">
                 <strong style="display:block;font-size:13px">
-                    ${escapeHtml(a.typeLabel || a.type || 'Alerta')}
+                    ${escapeHtml(jamLabel(a.type || a.typeLabel, jt("Alerta")))}
                 </strong>
-                ${a.subtype ? `<small style="display:block;color:#64748b">${escapeHtml(a.subtype)}</small>` : ''}
+                ${a.subtype ? `<small style="display:block;color:#64748b">${escapeHtml(jamLabel(a.subtype))}</small>` : ''}
                 ${a.street  ? `<div style="margin-top:4px">${escapeHtml(a.street)}</div>` : ''}
                 ${a.city    ? `<div style="color:#64748b">${escapeHtml(a.city)}</div>` : ''}
                 <div style="display:flex;justify-content:space-between;padding:2px 0;margin-top:6px">
-                    <span style="color:#64748b">Distância</span>
+                    <span style="color:#64748b">${escapeHtml(jt("Distância"))}</span>
                     <strong>${a.distanceMeters} m</strong>
                 </div>
                 <div style="display:flex;justify-content:space-between;padding:2px 0">
-                    <span style="color:#64748b">Δ Tempo</span>
+                    <span style="color:#64748b">${escapeHtml(jt("Δ Tempo"))}</span>
                     <strong>${a.timeOffsetMinutes > 0 ? '+' : ''}${a.timeOffsetMinutes} min</strong>
                 </div>
             </div>
@@ -161,7 +179,7 @@ function renderTypeBreakdown(root, alerts) {
     if (!el) return;
 
     if (!Array.isArray(alerts) || alerts.length === 0) {
-        el.innerHTML = '<div class="jam-show-empty"><strong>Nenhum alerta próximo</strong></div>';
+        el.innerHTML = ('<div class="jam-show-empty"><strong>' + escapeHtml(jt("Nenhum alerta próximo")) + '</strong></div>');
         return;
     }
 
@@ -178,7 +196,7 @@ function renderTypeBreakdown(root, alerts) {
         const pct = Math.round((n / max) * 100);
         return `
             <div class="jam-show-type">
-                <span class="jam-show-type__label">${escapeHtml(type)}</span>
+                <span class="jam-show-type__label">${escapeHtml(jamLabel(type))}</span>
                 <div class="jam-show-type__bar">
                     <span class="jam-show-type__fill" style="width:${pct}%"></span>
                 </div>

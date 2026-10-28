@@ -1,6 +1,6 @@
 {% extends 'layouts/dashboard.html.twig' %}
 
-{% block title %}Alertas | WazeBR{% endblock %}
+{% block title %}{{ 'Alertas'|trans({}, 'alerts_ui') }} | WazeBR{% endblock %}
 
 {% block stylesheets %}
     {{ parent() }}
@@ -11,6 +11,7 @@
 {% endblock %}
 
 {% block content %}
+<div data-alerts-i18n="{{ alerts_i18n()|json_encode|e('html_attr') }}" hidden></div>
 {% set total = stats.total|default(0) %}
 {% set active = stats.active|default(0) %}
 {% set lastSeen = stats.last_seen %}
@@ -30,23 +31,23 @@
         {# ── Header ──────────────────────────────────────────────── #}
         <header class="alerts-header">
             <div>
-                <span class="alerts-eyebrow"><i></i> Central de alertas</span>
-                <h1>Alertas Waze{% if partner %} — {{ partner.name }}{% endif %}</h1>
+                <span class="alerts-eyebrow"><i></i> {{ 'Central de alertas'|trans({}, 'alerts_ui') }}</span>
+                <h1>{{ 'Alertas Waze'|trans({}, 'alerts_ui') }}{% if partner %} — {{ partner.name }}{% endif %}</h1>
                 <p>
-                    Monitoramento em tempo real, análise histórica com agrupamento por proximidade,
+                    {{ 'Monitoramento em tempo real'|trans({}, 'alerts_ui') }}, análise histórica com agrupamento por proximidade,
                     filtros avançados e exportação.
                 </p>
             </div>
             <div class="alerts-header-tools">
                 <span class="alerts-live-badge" data-live-badge>
-                    <i></i> Ao vivo · <span data-live-clock>--:--</span>
+                    <i></i> {{ 'Ao vivo'|trans({}, 'alerts_ui') }} · <span data-live-clock>--:--</span>
                 </span>
                 <button type="button" class="alerts-button" data-action="refresh">
-                    <span>↻</span> Atualizar
+                    <span>↻</span> {{ 'Atualizar'|trans({}, 'alerts_ui') }}
                 </button>
                 <a class="alerts-button is-primary" data-export-link
                    href="{{ path('alert_export', filters|filter(v => v is not empty)) }}">
-                    ⇩ Exportar CSV
+                    ⇩ {{ 'Exportar CSV'|trans({}, 'alerts_ui') }}
                 </a>
             </div>
         </header>
@@ -56,27 +57,27 @@
             <article class="alerts-kpi-card kpi-blue">
                 <span class="kpi-icon" aria-hidden="true">⚠</span>
                 <strong class="kpi-value" data-kpi="active">{{ active }}</strong>
-                <span class="kpi-label">Alertas ativos</span>
-                <small class="kpi-foot" data-kpi="recent">{{ stats.recent|default(0) }} na última hora</small>
+                <span class="kpi-label">{{ 'Alertas ativos'|trans({}, 'alerts_ui') }}</span>
+                <small class="kpi-foot" data-kpi="recent">{{ stats.recent|default(0) }} {{ 'na última hora'|trans({}, 'alerts_ui') }}</small>
             </article>
             <article class="alerts-kpi-card kpi-purple">
                 <span class="kpi-icon" aria-hidden="true">∑</span>
                 <strong class="kpi-value" data-kpi="total">{{ total }}</strong>
-                <span class="kpi-label">Total no período</span>
-                <small class="kpi-foot">Aplicando filtros atuais</small>
+                <span class="kpi-label">{{ 'Total no período'|trans({}, 'alerts_ui') }}</span>
+                <small class="kpi-foot">{{ 'Aplicando filtros atuais'|trans({}, 'alerts_ui') }}</small>
             </article>
             <article class="alerts-kpi-card kpi-green">
                 <span class="kpi-icon" aria-hidden="true">◈</span>
-                <strong class="kpi-value kpi-value--sm" data-kpi="top_type">{{ stats.top_type|default('—') }}</strong>
-                <span class="kpi-label">Tipo mais frequente</span>
-                <small class="kpi-foot">Confiança média {{ stats.avg_confidence|default(0)|round(1) }}%</small>
+                <strong class="kpi-value kpi-value--sm" data-kpi="top_type">{{ alerts_label(stats.top_type|default(null)) }}</strong>
+                <span class="kpi-label">{{ 'Tipo mais frequente'|trans({}, 'alerts_ui') }}</span>
+                <small class="kpi-foot">{{ 'Confiança média'|trans({}, 'alerts_ui') }} {{ stats.avg_confidence|default(0)|round(1) }}%</small>
             </article>
             <article class="alerts-kpi-card kpi-orange">
                 <span class="kpi-icon" aria-hidden="true">⏱</span>
                 <strong class="kpi-value kpi-value--sm" data-kpi="last_seen">
-                    {{ lastSeen ? lastSeen|date('d/m H:i', 'America/Sao_Paulo') : '—' }}
+                    {{ lastSeen ? alerts_date(lastSeen) : '—' }}
                 </strong>
-                <span class="kpi-label">Último alerta recebido</span>
+                <span class="kpi-label">{{ 'Último alerta recebido'|trans({}, 'alerts_ui') }}</span>
                 <small class="kpi-foot">{{ active > 0 ? 'Monitorando ativamente' : 'Sem alertas ativos' }}</small>
             </article>
         </section>
@@ -85,48 +86,48 @@
         <section class="alerts-filter-panel">
             <header class="alerts-filter-head">
                 <div>
-                    <span class="alerts-kicker">Filtros</span>
-                    <h2>Refinar consulta</h2>
+                    <span class="alerts-kicker">{{ 'Filtros'|trans({}, 'alerts_ui') }}</span>
+                    <h2>{{ 'Refinar consulta'|trans({}, 'alerts_ui') }}</h2>
                 </div>
-                <button type="button" class="alerts-button is-link" data-action="clear-filters">Limpar</button>
+                <button type="button" class="alerts-button is-link" data-action="clear-filters">{{ 'Limpar'|trans({}, 'alerts_ui') }}</button>
             </header>
 
             <form class="alerts-filter-form" data-filter-form>
                 <label class="alerts-field">
-                    <span>Período</span>
+                    <span>{{ 'Período'|trans({}, 'alerts_ui') }}</span>
                     <select name="period">
-                        <option value="all"   {{ filters.period == 'all'   ? 'selected' }}>Todos</option>
-                        <option value="today" {{ filters.period == 'today' ? 'selected' }}>Hoje</option>
-                        <option value="week"  {{ filters.period == 'week'  ? 'selected' }}>Últimos 7 dias</option>
-                        <option value="month" {{ filters.period == 'month' ? 'selected' }}>Últimos 30 dias</option>
-                        <option value="year"  {{ filters.period == 'year'  ? 'selected' }}>Últimos 12 meses</option>
+                        <option value="all"   {{ filters.period == 'all'   ? 'selected' }}>{{ 'Todos'|trans({}, 'alerts_ui') }}</option>
+                        <option value="today" {{ filters.period == 'today' ? 'selected' }}>{{ 'Hoje'|trans({}, 'alerts_ui') }}</option>
+                        <option value="week"  {{ filters.period == 'week'  ? 'selected' }}>{{ 'Últimos 7 dias'|trans({}, 'alerts_ui') }}</option>
+                        <option value="month" {{ filters.period == 'month' ? 'selected' }}>{{ 'Últimos 30 dias'|trans({}, 'alerts_ui') }}</option>
+                        <option value="year"  {{ filters.period == 'year'  ? 'selected' }}>{{ 'Últimos 12 meses'|trans({}, 'alerts_ui') }}</option>
                     </select>
                 </label>
 
                 <label class="alerts-field">
-                    <span>Tipo</span>
+                    <span>{{ 'Tipo'|trans({}, 'alerts_ui') }}</span>
                     <select name="type" data-filter-type>
-                        <option value="">Todos</option>
+                        <option value="">{{ 'Todos'|trans({}, 'alerts_ui') }}</option>
                         {% for t in filter_options.types %}
-                            <option value="{{ t }}" {{ filters.type == t ? 'selected' }}>{{ t }}</option>
+                            <option value="{{ t }}" {{ filters.type == t ? 'selected' }}>{{ alerts_label(t) }}</option>
                         {% endfor %}
                     </select>
                 </label>
 
                 <label class="alerts-field">
-                    <span>Subtipo</span>
+                    <span>{{ 'Subtipo'|trans({}, 'alerts_ui') }}</span>
                     <select name="subtype">
-                        <option value="">Todos</option>
+                        <option value="">{{ 'Todos'|trans({}, 'alerts_ui') }}</option>
                         {% for s in filter_options.subtypes %}
-                            <option value="{{ s }}" {{ filters.subtype == s ? 'selected' }}>{{ s }}</option>
+                            <option value="{{ s }}" {{ filters.subtype == s ? 'selected' }}>{{ alerts_label(s) }}</option>
                         {% endfor %}
                     </select>
                 </label>
 
                 <label class="alerts-field">
-                    <span>Cidade</span>
+                    <span>{{ 'Cidade'|trans({}, 'alerts_ui') }}</span>
                     <select name="city">
-                        <option value="">Todas</option>
+                        <option value="">{{ 'Todas'|trans({}, 'alerts_ui') }}</option>
                         {% for city, n in filter_options.cities %}
                             <option value="{{ city }}" {{ filters.city == city ? 'selected' }}>{{ city }} ({{ n }})</option>
                         {% endfor %}
@@ -134,7 +135,7 @@
                 </label>
 
                 <label class="alerts-field">
-                    <span>Confiança mínima</span>
+                    <span>{{ 'Confiança mínima'|trans({}, 'alerts_ui') }}</span>
                     <select name="min_confidence">
                         {% for v in [0, 40, 60, 80, 90] %}
                             <option value="{{ v }}" {{ filters.min_confidence == v ? 'selected' }}>
@@ -145,19 +146,19 @@
                 </label>
 
                 <label class="alerts-field alerts-field--grow">
-                    <span>Buscar</span>
+                    <span>{{ 'Buscar'|trans({}, 'alerts_ui') }}</span>
                     <input type="search" name="query" value="{{ filters.query }}"
-                           placeholder="UUID, tipo, rua, cidade...">
+                           placeholder="{{ 'UUID, tipo, rua, cidade...'|trans({}, 'alerts_ui') }}">
                 </label>
 
                 <label class="alerts-toggle">
                     <input type="checkbox" name="active" value="1" {{ filters.active ? 'checked' }}>
-                    <span>Somente ativos</span>
+                    <span>{{ 'Somente ativos'|trans({}, 'alerts_ui') }}</span>
                 </label>
 
                 <div class="alerts-filter-actions">
-                    <button type="submit" class="alerts-button is-primary" data-action="apply">Aplicar</button>
-                    <button type="button" class="alerts-button" data-action="clear-filters">Limpar</button>
+                    <button type="submit" class="alerts-button is-primary" data-action="apply">{{ 'Aplicar'|trans({}, 'alerts_ui') }}</button>
+                    <button type="button" class="alerts-button" data-action="clear-filters">{{ 'Limpar'|trans({}, 'alerts_ui') }}</button>
                 </div>
             </form>
         </section>
@@ -167,18 +168,18 @@
             <section class="alerts-panel alerts-panel--map">
                 <header class="alerts-panel-head">
                     <div>
-                        <span class="alerts-kicker">Geolocalização</span>
-                        <h2>Mapa de alertas</h2>
+                        <span class="alerts-kicker">{{ 'Geolocalização'|trans({}, 'alerts_ui') }}</span>
+                        <h2>{{ 'Mapa de alertas'|trans({}, 'alerts_ui') }}</h2>
                     </div>
                     <div class="alerts-map-tabs" role="tablist">
-                        <button type="button" class="alerts-tab is-active" data-map-view="live" role="tab">Ao vivo</button>
-                        <button type="button" class="alerts-tab" data-map-view="history" role="tab">Histórico</button>
+                        <button type="button" class="alerts-tab is-active" data-map-view="live" role="tab">{{ 'Ao vivo'|trans({}, 'alerts_ui') }}</button>
+                        <button type="button" class="alerts-tab" data-map-view="history" role="tab">{{ 'Histórico'|trans({}, 'alerts_ui') }}</button>
                     </div>
                     <select class="alerts-select" data-history-precision hidden>
-                        <option value="1">Grid ~11 km</option>
-                        <option value="2" selected>Grid ~1,1 km</option>
-                        <option value="3">Grid ~110 m</option>
-                        <option value="4">Grid ~11 m</option>
+                        <option value="1">{{ 'Grid ~11 km'|trans({}, 'alerts_ui') }}</option>
+                        <option value="2" selected>{{ 'Grid ~1,1 km'|trans({}, 'alerts_ui') }}</option>
+                        <option value="3">{{ 'Grid ~110 m'|trans({}, 'alerts_ui') }}</option>
+                        <option value="4">{{ 'Grid ~11 m'|trans({}, 'alerts_ui') }}</option>
                     </select>
                 </header>
 
@@ -188,12 +189,12 @@
                      data-clusters='{{ map.clusters|json_encode|e('html_attr') }}'></div>
 
                 <div class="alerts-map-legend">
-                    <span><i class="lg-red"></i> Acidente</span>
-                    <span><i class="lg-orange"></i> Perigo</span>
-                    <span><i class="lg-dark"></i> Via fechada</span>
-                    <span><i class="lg-blue"></i> Polícia</span>
-                    <span><i class="lg-cyan"></i> Clima</span>
-                    <span class="lg-hint" data-map-hint>Clique em um agrupamento para expandir</span>
+                    <span><i class="lg-red"></i> {{ 'Acidente'|trans({}, 'alerts_ui') }}</span>
+                    <span><i class="lg-orange"></i> {{ 'Perigo'|trans({}, 'alerts_ui') }}</span>
+                    <span><i class="lg-dark"></i> {{ 'Via fechada'|trans({}, 'alerts_ui') }}</span>
+                    <span><i class="lg-blue"></i> {{ 'Polícia'|trans({}, 'alerts_ui') }}</span>
+                    <span><i class="lg-cyan"></i> {{ 'Clima'|trans({}, 'alerts_ui') }}</span>
+                    <span class="lg-hint" data-map-hint>{{ 'Clique em um agrupamento para expandir'|trans({}, 'alerts_ui') }}</span>
                 </div>
             </section>
 
@@ -201,8 +202,8 @@
                 <section class="alerts-panel">
                     <header class="alerts-panel-head">
                         <div>
-                            <span class="alerts-kicker">Composição</span>
-                            <h2>Por tipo</h2>
+                            <span class="alerts-kicker">{{ 'Composição'|trans({}, 'alerts_ui') }}</span>
+                            <h2>{{ 'Por tipo'|trans({}, 'alerts_ui') }}</h2>
                         </div>
                     </header>
                     <div class="alerts-chart alerts-chart--doughnut">
@@ -214,8 +215,8 @@
                 <section class="alerts-panel">
                     <header class="alerts-panel-head">
                         <div>
-                            <span class="alerts-kicker">Temporal</span>
-                            <h2>Por hora do dia</h2>
+                            <span class="alerts-kicker">{{ 'Temporal'|trans({}, 'alerts_ui') }}</span>
+                            <h2>{{ 'Por hora do dia'|trans({}, 'alerts_ui') }}</h2>
                         </div>
                     </header>
                     <div class="alerts-chart">
@@ -230,7 +231,7 @@
         <div class="alerts-main-grid">
             <section class="alerts-panel">
                 <header class="alerts-panel-head">
-                    <div><span class="alerts-kicker">Tendência</span><h2>Alertas por dia (14d)</h2></div>
+                    <div><span class="alerts-kicker">{{ 'Tendência'|trans({}, 'alerts_ui') }}</span><h2>{{ 'Alertas por dia (14d)'|trans({}, 'alerts_ui') }}</h2></div>
                 </header>
                 <div class="alerts-chart alerts-chart--tall">
                     <canvas data-chart="by-day"
@@ -240,7 +241,7 @@
 
             <section class="alerts-panel">
                 <header class="alerts-panel-head">
-                    <div><span class="alerts-kicker">Top</span><h2>Cidades com mais alertas</h2></div>
+                    <div><span class="alerts-kicker">{{ 'Top'|trans({}, 'alerts_ui') }}</span><h2>{{ 'Cidades com mais alertas'|trans({}, 'alerts_ui') }}</h2></div>
                 </header>
                 <div class="alerts-chart alerts-chart--tall">
                     <canvas data-chart="by-city"
@@ -252,7 +253,7 @@
         <div class="alerts-main-grid alerts-main-grid--single">
             <section class="alerts-panel">
                 <header class="alerts-panel-head">
-                    <div><span class="alerts-kicker">Subtipos</span><h2>Distribuição por subtipo</h2></div>
+                    <div><span class="alerts-kicker">{{ 'Subtipos'|trans({}, 'alerts_ui') }}</span><h2>{{ 'Distribuição por subtipo'|trans({}, 'alerts_ui') }}</h2></div>
                 </header>
                 <div class="alerts-chart">
                     <canvas data-chart="by-subtype"
@@ -265,15 +266,15 @@
         <section class="alerts-panel alerts-table-panel">
             <header class="alerts-panel-head">
                 <div>
-                    <span class="alerts-kicker">Registros</span>
-                    <h2>Alertas recentes</h2>
+                    <span class="alerts-kicker">{{ 'Registros'|trans({}, 'alerts_ui') }}</span>
+                    <h2>{{ 'Alertas recentes'|trans({}, 'alerts_ui') }}</h2>
                 </div>
                 <div class="alerts-table-actions">
                     <input type="search" class="alerts-input" data-table-search
-                           placeholder="Filtrar nesta tabela..." autocomplete="off">
+                           placeholder="{{ 'Filtrar nesta tabela...'|trans({}, 'alerts_ui') }}" autocomplete="off">
                     <a class="alerts-button is-link" data-export-link
                        href="{{ path('alert_export', filters|filter(v => v is not empty)) }}">
-                        ⇩ Exportar CSV
+                        ⇩ {{ 'Exportar CSV'|trans({}, 'alerts_ui') }}
                     </a>
                 </div>
             </header>
@@ -283,23 +284,23 @@
                     <thead>
                         <tr>
                             <th>#</th>
-                            <th>Tipo</th>
-                            <th>Subtipo</th>
-                            <th>Cidade</th>
-                            <th>Rua</th>
-                            <th>Confiança</th>
-                            <th>Status</th>
-                            <th>Quando</th>
+                            <th>{{ 'Tipo'|trans({}, 'alerts_ui') }}</th>
+                            <th>{{ 'Subtipo'|trans({}, 'alerts_ui') }}</th>
+                            <th>{{ 'Cidade'|trans({}, 'alerts_ui') }}</th>
+                            <th>{{ 'Rua'|trans({}, 'alerts_ui') }}</th>
+                            <th>{{ 'Confiança'|trans({}, 'alerts_ui') }}</th>
+                            <th>{{ 'Status'|trans({}, 'alerts_ui') }}</th>
+                            <th>{{ 'Quando'|trans({}, 'alerts_ui') }}</th>
                         </tr>
                     </thead>
                     <tbody data-table-body>
                         {% for a in recent %}
-                            <tr data-search-text="{{ (a.type ~ ' ' ~ a.subtype ~ ' ' ~ a.city ~ ' ' ~ a.street ~ ' ' ~ a.uuid)|lower }}">
+                            <tr data-search-text="{{ (a.type ~ ' ' ~ a.subtype ~ ' ' ~ alerts_label(a.type) ~ ' ' ~ alerts_label(a.subtype) ~ ' ' ~ a.city ~ ' ' ~ a.street ~ ' ' ~ a.uuid)|lower }}">
                                 <td>
                                     <a class="alerts-row-link" href="{{ path('alert_show', { id: a.id }) }}">{{ a.id }}</a>
                                 </td>
-                                <td><span class="alerts-badge type-{{ a.type|lower }}">{{ a.type }}</span></td>
-                                <td>{{ a.subtype|default('—') }}</td>
+                                <td><span class="alerts-badge type-{{ a.type|lower }}">{{ alerts_label(a.type) }}</span></td>
+                                <td>{{ alerts_label(a.subtype) }}</td>
                                 <td>{{ a.city|default('—') }}</td>
                                 <td>{{ a.street|default('—') }}</td>
                                 <td>
@@ -310,25 +311,25 @@
                                 </td>
                                 <td>
                                     <span class="alerts-state {{ a.isActive ? 'is-active' : 'is-off' }}">
-                                        {{ a.isActive ? 'Ativo' : 'Encerrado' }}
+                                        {{ a.isActive ? ('Ativo'|trans({}, 'alerts_ui')) : ('Encerrado'|trans({}, 'alerts_ui')) }}
                                     </span>
                                 </td>
                                 <td>
                                     <time datetime="{{ a.when }}">
-                                        {{ a.when ? a.when|date('d/m H:i', 'America/Sao_Paulo') : '—' }}
+                                        {{ a.when ? alerts_date(a.when) : '—' }}
                                     </time>
                                 </td>
                             </tr>
                         {% else %}
-                            <tr><td colspan="8" class="alerts-empty">Nenhum alerta corresponde aos filtros.</td></tr>
+                            <tr><td colspan="8" class="alerts-empty">{{ 'Nenhum alerta corresponde aos filtros.'|trans({}, 'alerts_ui') }}</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
 
             <div class="alerts-table-footer">
-                <button type="button" class="alerts-button" data-action="load-more">Carregar mais</button>
-                <span class="alerts-hint" data-table-count>{{ recent|length }} registros exibidos</span>
+                <button type="button" class="alerts-button" data-action="load-more">{{ 'Carregar mais'|trans({}, 'alerts_ui') }}</button>
+                <span class="alerts-hint" data-table-count>{{ recent|length }} {{ 'registros exibidos'|trans({}, 'alerts_ui') }}</span>
             </div>
         </section>
 

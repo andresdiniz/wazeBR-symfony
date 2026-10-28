@@ -1,0 +1,4 @@
+{
+  "above_no_signal": "Previsión %seconds% s por encima de lo medido. No se encontró ninguna señal relevante en los datos consultados; esto no confirma la ausencia de incidentes. Contexto asociado, no una causa comprobada.",
+  "below_no_signal": "Previsión %seconds% s por debajo de lo medido. No se encontró ninguna señal relevante en los datos consultados; esto no confirma la ausencia de incidentes. Contexto asociado, no una causa comprobada."
+}

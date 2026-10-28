@@ -1,6 +1,6 @@
 {% extends 'layouts/dashboard.html.twig' %}
 
-{% block title %}{{ route.name }} | Rotas | WazeBR{% endblock %}
+{% block title %}{{ route.name }} | {{ 'Rotas'|trans({}, 'route_show') }} | WazeBR{% endblock %}
 
 {% block stylesheets %}
     {{ parent() }}
@@ -9,6 +9,12 @@
 {% endblock %}
 
 {% block content %}
+{% set _rs_ui = {} %}
+{% for _rs_key in ['Rotas', 'Análise de rota', 'Navegação', 'Rota desativada', 'Desativada em', 'Os dados abaixo são históricos e não são mais atualizados.', 'Dados desatualizados', 'A última leitura foi há', 'Os indicadores “atuais” podem não refletir o trânsito agora.', 'Sem descrição de trajeto', 'atualizado às', 'Recebendo atualizações em tempo real', 'ao vivo', 'Adicionar aos favoritos', 'Remover dos favoritos', 'Relatório', 'Compartilhar', 'Link para enviar (sem login)', 'Validade do link', '1 dia', '7 dias', '30 dias', 'Gerar link', 'Copiar', 'Link do relatório', 'Quem tiver o link vê o relatório desta rota até a validade.', 'Exportar', 'Exportar dados desta rota', 'Exportar como CSV', 'Evolução do atraso', 'Timeline · últimos 7 dias', 'Média por hora', 'Padrão horário · 30 dias', 'Média por dia da semana', 'Padrão semanal · 30 dias', 'Ocorrências', 'Alertas Waze + irregularidades TVT', 'Trechos problemáticos', 'Sub-rotas com métricas', 'Histórico bruto para análise externa', 'Histórico 30 dias', 'Histórico 90 dias', 'Histórico 1 ano', 'Histórico 90 dias (Python/R)', 'Linha a linha · velocidade, tempos, jam', 'Máx. 50.000 linhas', 'Separador vírgula · pandas / tidyverse', 'Indicadores', 'Tempo atual', 'normal:', 'sem tempo histórico', 'Sem leitura recente', 'Atraso atual', '% acima do histórico', 'Média 24h', '% vs histórico', 'vs histórico', 'Sem dados nas últimas 24h', 'Média 7 dias', 'Sem dados nos últimos 7 dias', 'Pior hora do dia', 'Amostra insuficiente', 'Pior dia', 'Amostras', 'Últimos 30 dias', 'Traçado e ocorrências', 'Mapa da rota', 'Traçado', 'Trecho', 'Alertas Waze', 'Irregularidades TVT', 'Mapa da rota com alertas e irregularidades', 'Sem traçado geográfico', 'Esta rota não possui geometria cadastrada.', 'Últimas', 'horas · cor = % vs histórico', 'Trânsito na rota nas últimas', 'Normal', 'Muito lento', 'Sem leituras nas últimas', 'Quando houver novos snapshots, o mapa aparece aqui.', 'Mapa do trânsito nas últimas', 'horas', '▶ Reproduzir', '⏸ Pausar', 'Reproduzir', 'Momento das últimas', 'Média', 'Arraste o controle (ou use', ') para ver a evolução. Cada trecho é pintado pela', 'razão entre o tempo medido e o histórico naquele momento. Os pontos são alertas e irregularidades', 'registrados no período.', 'Os snapshots não trazem dados por trecho: a rota inteira é pintada.', 'Padrão semanal · baseado em % vs histórico', 'Mapa de calor · dia da semana × hora', 'Sem atraso', 'Muito atraso', 'Mapa de calor do atraso médio por dia da semana e hora', 'Cada célula mostra a', 'razão', 'entre tempo atual e histórico naquela hora/dia.', 'Uma rota de 180s com +2s de atraso fica verde (1.1%); uma rota de 20s com +2s fica amarela (10%).', 'Células vazias não têm amostras suficientes.', 'Últimos 7 dias', 'Atraso (s)', 'Alertas', 'Evolução horária do atraso nos últimos 7 dias', 'As linhas verticais tracejadas marcam as horas com alertas Waze registrados perto do traçado.', 'Cruze visualmente com os picos de atraso.', 'Média por hora do dia', 'Atraso médio por hora do dia', 'Atraso médio por dia da semana', 'Distribuição de congestionamento', 'Distribuição dos níveis de congestionamento', 'Estado atual · ordenados por % vs histórico', 'Trechos mais problemáticos', 'agora', 'normais', 'Jam nível', 'Mini-mapa do trecho', 'Sem sub-rotas cadastradas', 'Esta rota não tem trechos detalhados.', 'Últimos 7 dias · até 60 m do traçado', 'Ocorrências na rota', 'Irregularidades', 'Waze Alertas', 'Nenhuma ocorrência recente', 'Nada foi registrado nesta rota nos últimos 7 dias.', 'm do traçado', 'Distância', 'Quando', 'Alerta', 'Sem amostras suficientes', 'Sem congestionamento', 'Baixo', 'Moderado', 'Alto', 'Muito alto', 'Parado', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom', 'Atraso médio (s)', 'Não foi possível gerar o link. Tente novamente.', 'Válido até', 'Sem leituras nas últimas 6 horas', 'Os dados aparecerão quando novas coletas forem registradas.', 'Tempo (min)', 'resposta inválida', '1 novo alerta perto do traçado', 'gráficos', 'mapa das últimas horas', 'mapa principal', 'menu de compartilhar', 'menu de exportação', 'Previsao ao lado do real', 'Carregando previsoes…', 'Chart.js indisponivel', 'Contexto associado, nao causa comprovada. Esta lista nao representa todos os alertas Waze proximos.', 'Contexto indisponivel.', 'Dentro da tolerancia', 'Diferencas da previsao e contexto', 'Erro absoluto medio', 'Irregularidades TVT recentes na rota', 'Janelas avaliadas', 'Leitura atual ausente ou antiga: nao e possivel confirmar lentidao agora.', 'Nao foi possivel concluir a exibicao da previsao. Tente recarregar.', 'Previsao futura', 'Previsao passada: horizonte exibido no tooltip', 'Real (medido)', 'Referencia historica', 'Resposta invalida', 'Sem auditoria suficiente para medir precisao.', 'Sem lentidao confirmada na ultima leitura.', 'Tempo medido, previsoes e lacunas de coleta', 'Uma emissao por janela, com antecedencia mais proxima de 60 min. MAE nao e intervalo de previsao.', 'Vies: previsto − medido', 'Horizonte', 'janelas', 'Amostras observadas', 'Antecedencia passada', 'Emissao', 'antecedencia', 'Previsto', 'medido', 'diferenca', 'Lentidao observada ha pelo menos', 'Restante tipico estimado', 'nao e garantia de termino.', 'Nenhum desvio fora da tolerancia entre as janelas selecionadas; isso nao comprova cobertura completa.', 'ui.forecast_available', 'ui.new_alerts', 'level.none', 'Leve', 'level.light', 'level.moderate', 'level.heavy', 'Crítico', 'level.severe', 'level.good', 'code.ACCIDENT', 'Acidente', 'code.HAZARD', 'Perigo na via', 'code.JAM', 'Congestionamento', 'code.ROAD_CLOSED', 'Via fechada', 'code.POLICE', 'Polícia / Radar', 'code.WEATHERHAZARD', 'Risco climático', 'code.CONSTRUCTION', 'Obra', 'code.ACCIDENT_MAJOR', 'Acidente grave', 'code.ACCIDENT_MINOR', 'Acidente leve', 'code.HAZARD_ON_ROAD_POTHOLE', 'Buraco na pista', 'code.HAZARD_ON_ROAD_POTHOLES', 'Buracos na pista', 'code.HAZARD_ON_ROAD_OBJECT', 'Objeto na pista', 'code.HAZARD_ON_ROAD_CAR_STOPPED', 'Veículo parado na pista', 'code.HAZARD_ON_ROAD_CONSTRUCTION', 'Obra na pista', 'code.HAZARD_ON_ROAD_TRAFFIC_LIGHT_FAULT', 'Semáforo com defeito', 'code.HAZARD_WEATHER_FLOOD', 'Alagamento', 'code.HAZARD_WEATHER_FOG', 'Neblina', 'code.HAZARD_WEATHER_HEAVY_RAIN', 'Chuva intensa', 'code.JAM_HEAVY_TRAFFIC', 'Tráfego intenso', 'code.JAM_LIGHT_TRAFFIC', 'Tráfego leve', 'code.JAM_MODERATE_TRAFFIC', 'Tráfego moderado', 'code.JAM_STAND_STILL_TRAFFIC', 'Trânsito parado', 'code.ROAD_CLOSED_CONSTRUCTION', 'Fechamento por obra', 'code.ROAD_CLOSED_EVENT', 'Fechamento por evento', 'code.ROAD_CLOSED_HAZARD', 'Fechamento por perigo', 'code.POLICE_VISIBLE', 'Polícia visível', 'code.POLICE_HIDING', 'Radar oculto', 'Saudável', 'Atenção', 'Crítica'] %}
+{% set _rs_ui = _rs_ui|merge({(_rs_key): _rs_key|trans({}, 'route_show')}) %}
+{% endfor %}
+<script type="application/json" data-route-show-i18n>{{ _rs_ui|json_encode(constant('JSON_HEX_TAG') b-or constant('JSON_HEX_AMP') b-or constant('JSON_HEX_APOS') b-or constant('JSON_HEX_QUOT') b-or constant('JSON_UNESCAPED_UNICODE'))|raw }}</script>
+
 {# ── Valores normalizados (seguros com strict_variables) ───────────────── #}
 {% set cur = {
     name: null, city: null, state: null, time: null, historicTime: null,
@@ -16,7 +22,7 @@
     recordedAt: null, ageMinutes: null, isStale: false
 }|merge(current ?? {}) %}
 
-{% set DOW_SHORT = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'] %}
+{% set DOW_SHORT = [('Seg'|trans({}, 'route_show')), ('Ter'|trans({}, 'route_show')), ('Qua'|trans({}, 'route_show')), ('Qui'|trans({}, 'route_show')), ('Sex'|trans({}, 'route_show')), ('Sáb'|trans({}, 'route_show')), ('Dom'|trans({}, 'route_show'))] %}
 {% set exportBase     = path('routes_export_csv', {id: route.id}) %}
 {% set exportHistBase = path('routes_export_historico_csv', {id: route.id}) %}
 
@@ -44,6 +50,8 @@
 
 <div class="rs-page"
      data-route-show
+     data-route-show-i18n-version="2"
+     data-route-show-locale="{{ app.request.locale }}"
      data-route-id="{{ route.id }}"
      data-timezone="{{ app_timezone }}"
      data-live-stream="{{ path('routes_live_stream') }}"
@@ -57,8 +65,8 @@
     <div class="rs-container">
 
         {# ── Breadcrumb ──────────────────────────────────────────── #}
-        <nav class="rs-breadcrumb" aria-label="Navegação">
-            <a href="{{ path('routes_index') }}">Rotas</a>
+        <nav class="rs-breadcrumb" aria-label="{{ 'Navegação'|trans({}, 'route_show') }}">
+            <a href="{{ path('routes_index') }}">{{ 'Rotas'|trans({}, 'route_show') }}</a>
             <span aria-hidden="true">/</span>
             <span aria-current="page">{{ route.name }}</span>
         </nav>
@@ -66,18 +74,18 @@
         {# ── Avisos de estado ────────────────────────────────────── #}
         {% if not route.isActive %}
             <div class="rs-notice rs-notice--bad" role="status">
-                <strong>Rota desativada</strong>
+                <strong>{{ 'Rota desativada'|trans({}, 'route_show') }}</strong>
                 <span>
-                    {% if route.deactivatedAt %}Desativada em {{ route.deactivatedAt|date('d/m/Y H:i') }}. {% endif %}
-                    Os dados abaixo são históricos e não são mais atualizados.
+                    {% if route.deactivatedAt %}{{ 'Desativada em'|trans({}, 'route_show') }} {{ route.deactivatedAt|date(app.request.locale == 'en' ? 'm/d/Y H:i' : 'd/m/Y H:i') }}. {% endif %}
+                    {{ 'Os dados abaixo são históricos e não são mais atualizados.'|trans({}, 'route_show') }}
                 </span>
             </div>
         {% elseif cur.isStale %}
             <div class="rs-notice rs-notice--warn" role="status" data-live-stale>
-                <strong>Dados desatualizados</strong>
+                <strong>{{ 'Dados desatualizados'|trans({}, 'route_show') }}</strong>
                 <span>
-                    A última leitura foi há {{ cur.ageMinutes >= 60 ? (cur.ageMinutes // 60) ~ ' h' : cur.ageMinutes ~ ' min' }}
-                    ({{ cur.recordedAt|date('d/m H:i') }}). Os indicadores “atuais” podem não refletir o trânsito agora.
+                    {{ 'A última leitura foi há'|trans({}, 'route_show') }} {{ cur.ageMinutes >= 60 ? (cur.ageMinutes // 60) ~ ' h' : cur.ageMinutes ~ ' min' }}
+                    ({{ cur.recordedAt|date(app.request.locale == 'en' ? 'm/d H:i' : 'd/m H:i') }}). {{ 'Os indicadores “atuais” podem não refletir o trânsito agora.'|trans({}, 'route_show') }}
                 </span>
             </div>
         {% endif %}
@@ -85,7 +93,7 @@
         {# ── Header ──────────────────────────────────────────────── #}
         <header class="rs-header">
             <div class="rs-header__main">
-                <span class="rs-eyebrow"><i></i> Análise de rota</span>
+                <span class="rs-eyebrow"><i></i> {{ 'Análise de rota'|trans({}, 'route_show') }}</span>
                 <h1>{{ route.name }}</h1>
                 <p class="rs-header__path">
                     {% if route.from and route.to %}
@@ -95,18 +103,18 @@
                     {% elseif route.to %}
                         {{ route.to }}
                     {% else %}
-                        Sem descrição de trajeto
+                        {{ 'Sem descrição de trajeto'|trans({}, 'route_show') }}
                     {% endif %}
                     {% if route.lengthMeters %}
-                        · {{ (route.lengthMeters / 1000)|number_format(1, ',', '.') }} km
+                        · {{ (route.lengthMeters / 1000)|number_format(1, app.request.locale == 'en' ? '.' : ',', app.request.locale == 'en' ? ',' : '.') }} km
                     {% endif %}
                     {% if cur.city %}
                         · {{ cur.city }}{% if cur.state %}/{{ cur.state }}{% endif %}
                     {% endif %}
                     {% if cur.recordedAt %}
-                        · atualizado às <time data-live-updated datetime="{{ cur.recordedAt }}">{{ cur.recordedAt|date('H:i') }}</time>
+                        · {{ 'atualizado às'|trans({}, 'route_show') }} <time data-live-updated datetime="{{ cur.recordedAt }}">{{ cur.recordedAt|date('H:i') }}</time>
                     {% endif %}
-                    <span class="rs-live" data-live-badge hidden title="Recebendo atualizações em tempo real">● ao vivo</span>
+                    <span class="rs-live" data-live-badge hidden title="{{ 'Recebendo atualizações em tempo real'|trans({}, 'route_show') }}">● {{ 'ao vivo'|trans({}, 'route_show') }}</span>
                 </p>
             </div>
 
@@ -117,9 +125,9 @@
                     <input type="hidden" name="_token" value="{{ csrf_token('route_favorite_' ~ route.id) }}">
                     <button type="submit" class="rs-iconbtn" data-favorite-toggle
                             aria-pressed="{{ isFavorite ? 'true' : 'false' }}"
-                            title="{{ isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos' }}">
+                            title="{{ isFavorite ? ('Remover dos favoritos'|trans({}, 'route_show')) : ('Adicionar aos favoritos'|trans({}, 'route_show')) }}">
                         <span aria-hidden="true" data-favorite-icon>{{ isFavorite ? '★' : '☆' }}</span>
-                        <span class="rs-sr">{{ isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos' }}</span>
+                        <span class="rs-sr">{{ isFavorite ? ('Remover dos favoritos'|trans({}, 'route_show')) : ('Adicionar aos favoritos'|trans({}, 'route_show')) }}</span>
                     </button>
                 </form>
 
@@ -130,33 +138,33 @@
                          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M4 1.5h5.5L13 5v9.5H4z"/><path d="M9.5 1.5V5H13M6 8.5h5M6 11h5"/>
                     </svg>
-                    Relatório
+                    {{ 'Relatório'|trans({}, 'route_show') }}
                 </a>
 
                 {# ── Compartilhar: link público com validade ──────── #}
                 <div class="rs-export rs-share" data-share-menu>
                     <button class="rs-export__btn" type="button" data-share-toggle
                             aria-haspopup="true" aria-expanded="false">
-                        Compartilhar
+                        {{ 'Compartilhar'|trans({}, 'route_show') }}
                         <svg class="rs-export__caret" width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true"><path d="M2 3.5l3 3 3-3"/></svg>
                     </button>
                     <div class="rs-export__dropdown rs-share__panel" data-share-panel hidden>
-                        <p class="rs-export__label">Link para enviar (sem login)</p>
+                        <p class="rs-export__label">{{ 'Link para enviar (sem login)'|trans({}, 'route_show') }}</p>
                         <div class="rs-share__row">
-                            <label class="rs-sr" for="rs-share-days">Validade do link</label>
+                            <label class="rs-sr" for="rs-share-days">{{ 'Validade do link'|trans({}, 'route_show') }}</label>
                             <select id="rs-share-days" data-share-days>
-                                <option value="1">1 dia</option>
-                                <option value="7" selected>7 dias</option>
-                                <option value="30">30 dias</option>
+                                <option value="1">{{ '1 dia'|trans({}, 'route_show') }}</option>
+                                <option value="7" selected>{{ '7 dias'|trans({}, 'route_show') }}</option>
+                                <option value="30">{{ '30 dias'|trans({}, 'route_show') }}</option>
                             </select>
-                            <button type="button" class="rs-recent__btn" data-share-generate>Gerar link</button>
+                            <button type="button" class="rs-recent__btn" data-share-generate>{{ 'Gerar link'|trans({}, 'route_show') }}</button>
                         </div>
                         <div class="rs-share__result" data-share-result hidden>
-                            <input type="text" readonly data-share-link aria-label="Link do relatório">
-                            <button type="button" class="rs-recent__btn" data-share-copy>Copiar</button>
+                            <input type="text" readonly data-share-link aria-label="{{ 'Link do relatório'|trans({}, 'route_show') }}">
+                            <button type="button" class="rs-recent__btn" data-share-copy>{{ 'Copiar'|trans({}, 'route_show') }}</button>
                             <small data-share-expires></small>
                         </div>
-                        <p class="rs-share__warn">Quem tiver o link vê o relatório desta rota até a validade.</p>
+                        <p class="rs-share__warn">{{ 'Quem tiver o link vê o relatório desta rota até a validade.'|trans({}, 'route_show') }}</p>
                     </div>
                 </div>
 
@@ -164,13 +172,13 @@
                 <div class="rs-export" data-export-menu>
                     <button class="rs-export__btn" type="button" data-export-toggle
                             aria-haspopup="true" aria-expanded="false"
-                            aria-label="Exportar dados desta rota">
+                            aria-label="{{ 'Exportar dados desta rota'|trans({}, 'route_show') }}">
                         <svg width="14" height="14" viewBox="0 0 16 16" fill="none"
                              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                              aria-hidden="true">
                             <path d="M8 1v9M4 7l4 4 4-4M2 13h12"/>
                         </svg>
-                        Exportar
+                        {{ 'Exportar'|trans({}, 'route_show') }}
                         <svg class="rs-export__caret" width="10" height="10" viewBox="0 0 10 10"
                              fill="currentColor" aria-hidden="true">
                             <path d="M2 3.5l3 3 3-3"/>
@@ -178,47 +186,47 @@
                     </button>
 
                     <div class="rs-export__dropdown" data-export-dropdown hidden>
-                        <p class="rs-export__label">Exportar como CSV</p>
+                        <p class="rs-export__label">{{ 'Exportar como CSV'|trans({}, 'route_show') }}</p>
 
                         <a class="rs-export__item" href="{{ exportBase }}?type=timeline" download>
                             <span class="rs-export__item-icon" aria-hidden="true">📈</span>
-                            <span><strong>Evolução do atraso</strong><small>Timeline · últimos 7 dias</small></span>
+                            <span><strong>{{ 'Evolução do atraso'|trans({}, 'route_show') }}</strong><small>{{ 'Timeline · últimos 7 dias'|trans({}, 'route_show') }}</small></span>
                         </a>
                         <a class="rs-export__item" href="{{ exportBase }}?type=by_hour" download>
                             <span class="rs-export__item-icon" aria-hidden="true">🕐</span>
-                            <span><strong>Média por hora</strong><small>Padrão horário · 30 dias</small></span>
+                            <span><strong>{{ 'Média por hora'|trans({}, 'route_show') }}</strong><small>{{ 'Padrão horário · 30 dias'|trans({}, 'route_show') }}</small></span>
                         </a>
                         <a class="rs-export__item" href="{{ exportBase }}?type=by_dow" download>
                             <span class="rs-export__item-icon" aria-hidden="true">📅</span>
-                            <span><strong>Média por dia da semana</strong><small>Padrão semanal · 30 dias</small></span>
+                            <span><strong>{{ 'Média por dia da semana'|trans({}, 'route_show') }}</strong><small>{{ 'Padrão semanal · 30 dias'|trans({}, 'route_show') }}</small></span>
                         </a>
                         <a class="rs-export__item" href="{{ exportBase }}?type=occurrences" download>
                             <span class="rs-export__item-icon" aria-hidden="true">⚠️</span>
-                            <span><strong>Ocorrências</strong><small>Alertas Waze + irregularidades TVT</small></span>
+                            <span><strong>{{ 'Ocorrências'|trans({}, 'route_show') }}</strong><small>{{ 'Alertas Waze + irregularidades TVT'|trans({}, 'route_show') }}</small></span>
                         </a>
                         <a class="rs-export__item" href="{{ exportBase }}?type=subroutes" download>
                             <span class="rs-export__item-icon" aria-hidden="true">🔀</span>
-                            <span><strong>Trechos problemáticos</strong><small>Sub-rotas com métricas</small></span>
+                            <span><strong>{{ 'Trechos problemáticos'|trans({}, 'route_show') }}</strong><small>{{ 'Sub-rotas com métricas'|trans({}, 'route_show') }}</small></span>
                         </a>
 
                         <hr class="rs-export__sep">
-                        <p class="rs-export__label">Histórico bruto para análise externa</p>
+                        <p class="rs-export__label">{{ 'Histórico bruto para análise externa'|trans({}, 'route_show') }}</p>
 
                         <a class="rs-export__item" href="{{ exportHistBase }}?days=30" download>
                             <span class="rs-export__item-icon" aria-hidden="true">🗂️</span>
-                            <span><strong>Histórico 30 dias</strong><small>Linha a linha · velocidade, tempos, jam</small></span>
+                            <span><strong>{{ 'Histórico 30 dias'|trans({}, 'route_show') }}</strong><small>{{ 'Linha a linha · velocidade, tempos, jam'|trans({}, 'route_show') }}</small></span>
                         </a>
                         <a class="rs-export__item" href="{{ exportHistBase }}?days=90" download>
                             <span class="rs-export__item-icon" aria-hidden="true">📦</span>
-                            <span><strong>Histórico 90 dias</strong><small>Linha a linha · velocidade, tempos, jam</small></span>
+                            <span><strong>{{ 'Histórico 90 dias'|trans({}, 'route_show') }}</strong><small>{{ 'Linha a linha · velocidade, tempos, jam'|trans({}, 'route_show') }}</small></span>
                         </a>
                         <a class="rs-export__item" href="{{ exportHistBase }}?days=365" download>
                             <span class="rs-export__item-icon" aria-hidden="true">🗄️</span>
-                            <span><strong>Histórico 1 ano</strong><small>Máx. 50.000 linhas</small></span>
+                            <span><strong>{{ 'Histórico 1 ano'|trans({}, 'route_show') }}</strong><small>{{ 'Máx. 50.000 linhas'|trans({}, 'route_show') }}</small></span>
                         </a>
                         <a class="rs-export__item rs-export__item--python" href="{{ exportHistBase }}?days=90&amp;sep=," download>
                             <span class="rs-export__item-icon" aria-hidden="true">🐍</span>
-                            <span><strong>Histórico 90 dias (Python/R)</strong><small>Separador vírgula · pandas / tidyverse</small></span>
+                            <span><strong>{{ 'Histórico 90 dias (Python/R)'|trans({}, 'route_show') }}</strong><small>{{ 'Separador vírgula · pandas / tidyverse'|trans({}, 'route_show') }}</small></span>
                         </a>
                     </div>
                 </div>
@@ -226,7 +234,7 @@
                 {# ── Health ─────────────────────────────────────── #}
                 <div class="rs-health rs-health--{{ stats.healthLevel }}">
                     <span class="rs-health__value">{{ stats.health }}<small>%</small></span>
-                    <span class="rs-health__label">{{ stats.healthLabel }}</span>
+                    <span class="rs-health__label">{{ stats.healthLabel|trans({}, 'route_show') }}</span>
                 </div>
             </div>
         </header>
@@ -235,62 +243,62 @@
         <div class="rs-notice rs-notice--live" data-live-alerts role="status" aria-live="polite" hidden></div>
 
         {# ── KPIs ─────────────────────────────────────────────────── #}
-        <section class="rs-kpis" aria-label="Indicadores">
+        <section class="rs-kpis" aria-label="{{ 'Indicadores'|trans({}, 'route_show') }}">
             <article class="rs-kpi">
-                <span class="rs-kpi__label">Tempo atual</span>
+                <span class="rs-kpi__label">{{ 'Tempo atual'|trans({}, 'route_show') }}</span>
                 {% if cur.time is not null %}
                     {% set t = cur.time|round(0) %}
                     <strong class="rs-kpi__value rs-kpi__value--{{ cur.level ?? 'good' }}" data-live-kpi="time">
                         {% if t >= 60 %}{{ (t // 60)|round(0, 'floor') }}<small>min</small> {{ '%02d'|format(t % 60) }}<small>s</small>{% else %}{{ t }}<small>s</small>{% endif %}
                     </strong>
                     <span class="rs-kpi__hint" data-live-kpi="time-hint">
-                        {% if cur.historicTime is not null %}normal: {{ cur.historicTime|round(0) }}s{% else %}sem tempo histórico{% endif %}
+                        {% if cur.historicTime is not null %}{{ 'normal:'|trans({}, 'route_show') }} {{ cur.historicTime|round(0) }}s{% else %}{{ 'sem tempo histórico'|trans({}, 'route_show') }}{% endif %}
                     </span>
                 {% else %}
                     <strong class="rs-kpi__value" data-live-kpi="time">—</strong>
-                    <span class="rs-kpi__hint" data-live-kpi="time-hint">Sem leitura recente</span>
+                    <span class="rs-kpi__hint" data-live-kpi="time-hint">{{ 'Sem leitura recente'|trans({}, 'route_show') }}</span>
                 {% endif %}
             </article>
 
             <article class="rs-kpi">
-                <span class="rs-kpi__label">Atraso atual</span>
+                <span class="rs-kpi__label">{{ 'Atraso atual'|trans({}, 'route_show') }}</span>
                 {% if cur.delaySeconds is not null %}
                     <strong class="rs-kpi__value rs-kpi__value--{{ cur.level ?? 'good' }}" data-live-kpi="delay">
                         +{{ cur.delaySeconds }}<small>s</small>
                     </strong>
                     <span class="rs-kpi__hint" data-live-kpi="delay-hint">
-                        {% if cur.delayRatio is not null %}{{ (cur.delayRatio * 100)|round(0) }}% acima do histórico{% endif %}
+                        {% if cur.delayRatio is not null %}{{ (cur.delayRatio * 100)|round(0) }}{{ '% acima do histórico'|trans({}, 'route_show') }}{% endif %}
                     </span>
                 {% else %}
                     <strong class="rs-kpi__value" data-live-kpi="delay">—</strong>
-                    <span class="rs-kpi__hint" data-live-kpi="delay-hint">Sem leitura recente</span>
+                    <span class="rs-kpi__hint" data-live-kpi="delay-hint">{{ 'Sem leitura recente'|trans({}, 'route_show') }}</span>
                 {% endif %}
             </article>
 
             <article class="rs-kpi">
-                <span class="rs-kpi__label">Média 24h</span>
+                <span class="rs-kpi__label">{{ 'Média 24h'|trans({}, 'route_show') }}</span>
                 {% if stats.avgDelay24h is not null %}
                     <strong class="rs-kpi__value">{{ stats.avgDelay24h >= 0 ? '+' : '−' }}{{ stats.avgDelay24h|abs|round(0) }}<small>s</small></strong>
-                    <span class="rs-kpi__hint">{{ ((stats.avgRatio24h ?? 0) * 100)|round(0) }}% vs histórico</span>
+                    <span class="rs-kpi__hint">{{ ((stats.avgRatio24h ?? 0) * 100)|round(0) }}{{ '% vs histórico'|trans({}, 'route_show') }}</span>
                 {% else %}
                     <strong class="rs-kpi__value">—</strong>
-                    <span class="rs-kpi__hint">Sem dados nas últimas 24h</span>
+                    <span class="rs-kpi__hint">{{ 'Sem dados nas últimas 24h'|trans({}, 'route_show') }}</span>
                 {% endif %}
             </article>
 
             <article class="rs-kpi">
-                <span class="rs-kpi__label">Média 7 dias</span>
+                <span class="rs-kpi__label">{{ 'Média 7 dias'|trans({}, 'route_show') }}</span>
                 {% if stats.avgDelay7d is not null %}
                     <strong class="rs-kpi__value">{{ stats.avgDelay7d >= 0 ? '+' : '−' }}{{ stats.avgDelay7d|abs|round(0) }}<small>s</small></strong>
-                    <span class="rs-kpi__hint">{{ ((stats.avgRatio7d ?? 0) * 100)|round(0) }}% vs histórico</span>
+                    <span class="rs-kpi__hint">{{ ((stats.avgRatio7d ?? 0) * 100)|round(0) }}{{ '% vs histórico'|trans({}, 'route_show') }}</span>
                 {% else %}
                     <strong class="rs-kpi__value">—</strong>
-                    <span class="rs-kpi__hint">Sem dados nos últimos 7 dias</span>
+                    <span class="rs-kpi__hint">{{ 'Sem dados nos últimos 7 dias'|trans({}, 'route_show') }}</span>
                 {% endif %}
             </article>
 
             <article class="rs-kpi">
-                <span class="rs-kpi__label">Pior hora do dia</span>
+                <span class="rs-kpi__label">{{ 'Pior hora do dia'|trans({}, 'route_show') }}</span>
                 {% if stats.worstHour %}
                     <strong class="rs-kpi__value">{{ '%02d'|format(stats.worstHour.hour) }}<small>h</small></strong>
                     <span class="rs-kpi__hint">
@@ -298,12 +306,12 @@
                     </span>
                 {% else %}
                     <strong class="rs-kpi__value">—</strong>
-                    <span class="rs-kpi__hint">Amostra insuficiente</span>
+                    <span class="rs-kpi__hint">{{ 'Amostra insuficiente'|trans({}, 'route_show') }}</span>
                 {% endif %}
             </article>
 
             <article class="rs-kpi">
-                <span class="rs-kpi__label">Pior dia</span>
+                <span class="rs-kpi__label">{{ 'Pior dia'|trans({}, 'route_show') }}</span>
                 {% if stats.worstDow %}
                     <strong class="rs-kpi__value">{{ DOW_SHORT[stats.worstDow.dow] }}</strong>
                     <span class="rs-kpi__hint">
@@ -311,14 +319,14 @@
                     </span>
                 {% else %}
                     <strong class="rs-kpi__value">—</strong>
-                    <span class="rs-kpi__hint">Amostra insuficiente</span>
+                    <span class="rs-kpi__hint">{{ 'Amostra insuficiente'|trans({}, 'route_show') }}</span>
                 {% endif %}
             </article>
 
             <article class="rs-kpi">
-                <span class="rs-kpi__label">Amostras</span>
-                <strong class="rs-kpi__value">{{ stats.sampleCount30d|number_format(0, ',', '.') }}</strong>
-                <span class="rs-kpi__hint">Últimos 30 dias</span>
+                <span class="rs-kpi__label">{{ 'Amostras'|trans({}, 'route_show') }}</span>
+                <strong class="rs-kpi__value">{{ stats.sampleCount30d|number_format(0, app.request.locale == 'en' ? '.' : ',', app.request.locale == 'en' ? ',' : '.') }}</strong>
+                <span class="rs-kpi__hint">{{ 'Últimos 30 dias'|trans({}, 'route_show') }}</span>
             </article>
         </section>
 
@@ -326,20 +334,20 @@
         <section class="rs-panel rs-map-panel" aria-labelledby="rs-map-title">
             <header class="rs-panel__header">
                 <div>
-                    <span class="rs-panel__kicker">Traçado e ocorrências</span>
-                    <h2 id="rs-map-title">Mapa da rota</h2>
+                    <span class="rs-panel__kicker">{{ 'Traçado e ocorrências'|trans({}, 'route_show') }}</span>
+                    <h2 id="rs-map-title">{{ 'Mapa da rota'|trans({}, 'route_show') }}</h2>
                 </div>
                 <div class="rs-panel__legend rs-panel__legend--map">
-                    <span><i class="rs-legend-line"></i>Traçado</span>
-                    <span><i class="rs-legend-line rs-legend-line--sub"></i>Trecho</span>
-                    <span><i class="rs-legend-dot rs-legend-dot--alert"></i>Alertas Waze</span>
-                    <span><i class="rs-legend-dot rs-legend-dot--irr"></i>Irregularidades TVT</span>
+                    <span><i class="rs-legend-line"></i>{{ 'Traçado'|trans({}, 'route_show') }}</span>
+                    <span><i class="rs-legend-line rs-legend-line--sub"></i>{{ 'Trecho'|trans({}, 'route_show') }}</span>
+                    <span><i class="rs-legend-dot rs-legend-dot--alert"></i>{{ 'Alertas Waze'|trans({}, 'route_show') }}</span>
+                    <span><i class="rs-legend-dot rs-legend-dot--irr"></i>{{ 'Irregularidades TVT'|trans({}, 'route_show') }}</span>
                 </div>
             </header>
-            <div class="rs-map" data-rs-map role="region" aria-label="Mapa da rota com alertas e irregularidades">
+            <div class="rs-map" data-rs-map role="region" aria-label="{{ 'Mapa da rota com alertas e irregularidades'|trans({}, 'route_show') }}">
                 <div class="rs-map__fallback" data-rs-map-fallback hidden>
-                    <strong>Sem traçado geográfico</strong>
-                    <small>Esta rota não possui geometria cadastrada.</small>
+                    <strong>{{ 'Sem traçado geográfico'|trans({}, 'route_show') }}</strong>
+                    <small>{{ 'Esta rota não possui geometria cadastrada.'|trans({}, 'route_show') }}</small>
                 </div>
             </div>
         </section>
@@ -348,39 +356,39 @@
         <section class="rs-panel rs-recent" aria-labelledby="rs-recent-title">
             <header class="rs-panel__header">
                 <div>
-                    <span class="rs-panel__kicker">Últimas {{ recentWindow.hours }} horas · cor = % vs histórico</span>
-                    <h2 id="rs-recent-title">Trânsito na rota nas últimas {{ recentWindow.hours }}h</h2>
+                    <span class="rs-panel__kicker">{{ 'Últimas'|trans({}, 'route_show') }} {{ recentWindow.hours }} {{ 'horas · cor = % vs histórico'|trans({}, 'route_show') }}</span>
+                    <h2 id="rs-recent-title">{{ 'Trânsito na rota nas últimas'|trans({}, 'route_show') }} {{ recentWindow.hours }}h</h2>
                 </div>
                 <div class="rs-legend">
-                    <span class="rs-legend__label">Normal</span>
+                    <span class="rs-legend__label">{{ 'Normal'|trans({}, 'route_show') }}</span>
                     <span class="rs-legend__gradient"></span>
-                    <span class="rs-legend__label">Muito lento</span>
+                    <span class="rs-legend__label">{{ 'Muito lento'|trans({}, 'route_show') }}</span>
                 </div>
             </header>
 
             {% if recentWindow.frames is empty %}
                 <div class="rs-empty">
-                    <strong>Sem leituras nas últimas {{ recentWindow.hours }}h</strong>
-                    <small>Quando houver novos snapshots, o mapa aparece aqui.</small>
+                    <strong>{{ 'Sem leituras nas últimas'|trans({}, 'route_show') }} {{ recentWindow.hours }}h</strong>
+                    <small>{{ 'Quando houver novos snapshots, o mapa aparece aqui.'|trans({}, 'route_show') }}</small>
                 </div>
             {% else %}
                 <div class="rs-map rs-map--recent" data-recent-map role="region"
-                     aria-label="Mapa do trânsito nas últimas {{ recentWindow.hours }} horas"></div>
+                     aria-label="{{ 'Mapa do trânsito nas últimas'|trans({}, 'route_show') }} {{ recentWindow.hours }} {{ 'horas'|trans({}, 'route_show') }}"></div>
 
                 <div class="rs-recent__controls">
-                    <button type="button" class="rs-recent__btn" data-recent-play aria-pressed="false">▶ Reproduzir</button>
+                    <button type="button" class="rs-recent__btn" data-recent-play aria-pressed="false">{{ '▶ Reproduzir'|trans({}, 'route_show') }}</button>
                     <input type="range" class="rs-recent__slider" data-recent-slider
                            min="0" max="{{ recentWindow.frames|length - 1 }}" step="1"
-                           value="{{ recentWindow.frames|length - 1 }}" aria-label="Momento das últimas {{ recentWindow.hours }} horas">
+                           value="{{ recentWindow.frames|length - 1 }}" aria-label="{{ 'Momento das últimas'|trans({}, 'route_show') }} {{ recentWindow.hours }} {{ 'horas'|trans({}, 'route_show') }}">
                     <output class="rs-recent__time" data-recent-time aria-live="polite">—</output>
-                    <button type="button" class="rs-recent__btn" data-recent-avg aria-pressed="false">Média {{ recentWindow.hours }}h</button>
+                    <button type="button" class="rs-recent__btn" data-recent-avg aria-pressed="false">{{ 'Média'|trans({}, 'route_show') }} {{ recentWindow.hours }}h</button>
                 </div>
 
                 <p class="rs-panel__hint">
-                    Arraste o controle (ou use <strong>Reproduzir</strong>) para ver a evolução. Cada trecho é pintado pela
-                    razão entre o tempo medido e o histórico naquele momento. Os pontos são alertas e irregularidades
-                    registrados no período.
-                    {% if not recentWindow.hasSubData %}Os snapshots não trazem dados por trecho: a rota inteira é pintada.{% endif %}
+                    {{ 'Arraste o controle (ou use'|trans({}, 'route_show') }} <strong>{{ 'Reproduzir'|trans({}, 'route_show') }}</strong>{{ ') para ver a evolução. Cada trecho é pintado pela'|trans({}, 'route_show') }}
+                    {{ 'razão entre o tempo medido e o histórico naquele momento. Os pontos são alertas e irregularidades'|trans({}, 'route_show') }}
+                    {{ 'registrados no período.'|trans({}, 'route_show') }}
+                    {% if not recentWindow.hasSubData %}{{ 'Os snapshots não trazem dados por trecho: a rota inteira é pintada.'|trans({}, 'route_show') }}{% endif %}
                 </p>
             {% endif %}
         </section>
@@ -389,25 +397,25 @@
         <section class="rs-panel rs-heatmap-panel" aria-labelledby="rs-heatmap-title">
             <header class="rs-panel__header">
                 <div>
-                    <span class="rs-panel__kicker">Padrão semanal · baseado em % vs histórico</span>
-                    <h2 id="rs-heatmap-title">Mapa de calor · dia da semana × hora</h2>
+                    <span class="rs-panel__kicker">{{ 'Padrão semanal · baseado em % vs histórico'|trans({}, 'route_show') }}</span>
+                    <h2 id="rs-heatmap-title">{{ 'Mapa de calor · dia da semana × hora'|trans({}, 'route_show') }}</h2>
                 </div>
                 <div class="rs-legend">
-                    <span class="rs-legend__label">Sem atraso</span>
+                    <span class="rs-legend__label">{{ 'Sem atraso'|trans({}, 'route_show') }}</span>
                     <span class="rs-legend__gradient"></span>
-                    <span class="rs-legend__label">Muito atraso</span>
+                    <span class="rs-legend__label">{{ 'Muito atraso'|trans({}, 'route_show') }}</span>
                 </div>
             </header>
 
             <div class="rs-heatmap-scroll">
                 <div class="rs-heatmap" data-heatmap role="img"
-                     aria-label="Mapa de calor do atraso médio por dia da semana e hora"></div>
+                     aria-label="{{ 'Mapa de calor do atraso médio por dia da semana e hora'|trans({}, 'route_show') }}"></div>
             </div>
 
             <p class="rs-panel__hint">
-                Cada célula mostra a <strong>razão</strong> entre tempo atual e histórico naquela hora/dia.
-                Uma rota de 180s com +2s de atraso fica verde (1.1%); uma rota de 20s com +2s fica amarela (10%).
-                Células vazias não têm amostras suficientes.
+                {{ 'Cada célula mostra a'|trans({}, 'route_show') }} <strong>{{ 'razão'|trans({}, 'route_show') }}</strong> {{ 'entre tempo atual e histórico naquela hora/dia.'|trans({}, 'route_show') }}
+                {{ 'Uma rota de 180s com +2s de atraso fica verde (1.1%); uma rota de 20s com +2s fica amarela (10%).'|trans({}, 'route_show') }}
+                {{ 'Células vazias não têm amostras suficientes.'|trans({}, 'route_show') }}
             </p>
         </section>
 
@@ -415,22 +423,22 @@
         <section class="rs-panel" aria-labelledby="rs-timeline-title">
             <header class="rs-panel__header">
                 <div>
-                    <span class="rs-panel__kicker">Últimos 7 dias</span>
-                    <h2 id="rs-timeline-title">Evolução do atraso</h2>
+                    <span class="rs-panel__kicker">{{ 'Últimos 7 dias'|trans({}, 'route_show') }}</span>
+                    <h2 id="rs-timeline-title">{{ 'Evolução do atraso'|trans({}, 'route_show') }}</h2>
                 </div>
                 <div class="rs-panel__legend">
-                    <span><i class="rs-dot rs-dot--blue"></i>Atraso (s)</span>
-                    <span><i class="rs-dot rs-dot--red"></i>% vs histórico</span>
-                    <span><i class="rs-dot rs-dot--alert"></i>Alertas</span>
+                    <span><i class="rs-dot rs-dot--blue"></i>{{ 'Atraso (s)'|trans({}, 'route_show') }}</span>
+                    <span><i class="rs-dot rs-dot--red"></i>{{ '% vs histórico'|trans({}, 'route_show') }}</span>
+                    <span><i class="rs-dot rs-dot--alert"></i>{{ 'Alertas'|trans({}, 'route_show') }}</span>
                 </div>
             </header>
             <div class="rs-chart-wrap rs-chart-wrap--tall">
                 <canvas data-chart="route-timeline" role="img"
-                        aria-label="Evolução horária do atraso nos últimos 7 dias"></canvas>
+                        aria-label="{{ 'Evolução horária do atraso nos últimos 7 dias'|trans({}, 'route_show') }}"></canvas>
             </div>
             <p class="rs-panel__hint">
-                As linhas verticais tracejadas marcam as horas com alertas Waze registrados perto do traçado.
-                Cruze visualmente com os picos de atraso.
+                {{ 'As linhas verticais tracejadas marcam as horas com alertas Waze registrados perto do traçado.'|trans({}, 'route_show') }}
+                {{ 'Cruze visualmente com os picos de atraso.'|trans({}, 'route_show') }}
             </p>
         </section>
 
@@ -439,24 +447,24 @@
             <section class="rs-panel" aria-labelledby="rs-hour-title">
                 <header class="rs-panel__header">
                     <div>
-                        <span class="rs-panel__kicker">Últimos 30 dias</span>
-                        <h2 id="rs-hour-title">Média por hora do dia</h2>
+                        <span class="rs-panel__kicker">{{ 'Últimos 30 dias'|trans({}, 'route_show') }}</span>
+                        <h2 id="rs-hour-title">{{ 'Média por hora do dia'|trans({}, 'route_show') }}</h2>
                     </div>
                 </header>
                 <div class="rs-chart-wrap">
-                    <canvas data-chart="route-by-hour" role="img" aria-label="Atraso médio por hora do dia"></canvas>
+                    <canvas data-chart="route-by-hour" role="img" aria-label="{{ 'Atraso médio por hora do dia'|trans({}, 'route_show') }}"></canvas>
                 </div>
             </section>
 
             <section class="rs-panel" aria-labelledby="rs-dow-title">
                 <header class="rs-panel__header">
                     <div>
-                        <span class="rs-panel__kicker">Últimos 30 dias</span>
-                        <h2 id="rs-dow-title">Média por dia da semana</h2>
+                        <span class="rs-panel__kicker">{{ 'Últimos 30 dias'|trans({}, 'route_show') }}</span>
+                        <h2 id="rs-dow-title">{{ 'Média por dia da semana'|trans({}, 'route_show') }}</h2>
                     </div>
                 </header>
                 <div class="rs-chart-wrap">
-                    <canvas data-chart="route-by-dow" role="img" aria-label="Atraso médio por dia da semana"></canvas>
+                    <canvas data-chart="route-by-dow" role="img" aria-label="{{ 'Atraso médio por dia da semana'|trans({}, 'route_show') }}"></canvas>
                 </div>
             </section>
         </div>
@@ -467,20 +475,20 @@
             <section class="rs-panel" aria-labelledby="rs-jam-title">
                 <header class="rs-panel__header">
                     <div>
-                        <span class="rs-panel__kicker">Últimos 30 dias</span>
-                        <h2 id="rs-jam-title">Distribuição de congestionamento</h2>
+                        <span class="rs-panel__kicker">{{ 'Últimos 30 dias'|trans({}, 'route_show') }}</span>
+                        <h2 id="rs-jam-title">{{ 'Distribuição de congestionamento'|trans({}, 'route_show') }}</h2>
                     </div>
                 </header>
                 <div class="rs-chart-wrap">
-                    <canvas data-chart="route-jam-dist" role="img" aria-label="Distribuição dos níveis de congestionamento"></canvas>
+                    <canvas data-chart="route-jam-dist" role="img" aria-label="{{ 'Distribuição dos níveis de congestionamento'|trans({}, 'route_show') }}"></canvas>
                 </div>
             </section>
 
             <section class="rs-panel" aria-labelledby="rs-sub-title">
                 <header class="rs-panel__header">
                     <div>
-                        <span class="rs-panel__kicker">Estado atual · ordenados por % vs histórico</span>
-                        <h2 id="rs-sub-title">Trechos mais problemáticos</h2>
+                        <span class="rs-panel__kicker">{{ 'Estado atual · ordenados por % vs histórico'|trans({}, 'route_show') }}</span>
+                        <h2 id="rs-sub-title">{{ 'Trechos mais problemáticos'|trans({}, 'route_show') }}</h2>
                     </div>
                     <span class="rs-panel__count">{{ topSubRoutes|length }}</span>
                 </header>
@@ -508,29 +516,29 @@
                                 <div class="rs-subroute__meta">
                                     <span class="rs-subroute__meta-item"><em>+{{ sub.delaySeconds ?? 0 }}s</em></span>
                                     {% if sub.time is not null %}
-                                        <span class="rs-subroute__meta-item"><em>agora {{ sub.time|round(0) }}s</em></span>
+                                        <span class="rs-subroute__meta-item"><em>{{ 'agora'|trans({}, 'route_show') }} {{ sub.time|round(0) }}s</em></span>
                                     {% endif %}
                                     {% if sub.historicTime is not null %}
-                                        <span class="rs-subroute__meta-item"><em>{{ sub.historicTime|round(0) }}s normais</em></span>
+                                        <span class="rs-subroute__meta-item"><em>{{ sub.historicTime|round(0) }}s {{ 'normais'|trans({}, 'route_show') }}</em></span>
                                     {% endif %}
                                     {% if sub.jamLevel is not null and sub.jamLevel > 0 %}
-                                        <span class="rs-subroute__meta-item rs-subroute__meta-item--jam">Jam nível {{ sub.jamLevel }}</span>
+                                        <span class="rs-subroute__meta-item rs-subroute__meta-item--jam">{{ 'Jam nível'|trans({}, 'route_show') }} {{ sub.jamLevel }}</span>
                                     {% endif %}
                                     {% if sub.lengthMeters %}
-                                        <span class="rs-subroute__meta-item">{{ (sub.lengthMeters / 1000)|number_format(2, ',', '.') }} km</span>
+                                        <span class="rs-subroute__meta-item">{{ (sub.lengthMeters / 1000)|number_format(2, app.request.locale == 'en' ? '.' : ',', app.request.locale == 'en' ? ',' : '.') }} km</span>
                                     {% endif %}
                                 </div>
                             </div>
 
                             <div class="rs-subroute__map-wrap">
                                 <div class="rs-subroute__map" data-subroute-map data-subroute-id="{{ sub.id }}"
-                                     aria-label="Mini-mapa do trecho {{ sub.name }}"></div>
+                                     aria-label="{{ 'Mini-mapa do trecho'|trans({}, 'route_show') }} {{ sub.name }}"></div>
                             </div>
                         </div>
                     {% else %}
                         <div class="rs-empty">
-                            <strong>Sem sub-rotas cadastradas</strong>
-                            <small>Esta rota não tem trechos detalhados.</small>
+                            <strong>{{ 'Sem sub-rotas cadastradas'|trans({}, 'route_show') }}</strong>
+                            <small>{{ 'Esta rota não tem trechos detalhados.'|trans({}, 'route_show') }}</small>
                         </div>
                     {% endfor %}
                 </div>
@@ -542,20 +550,20 @@
         <section class="rs-panel" aria-labelledby="rs-occ-title">
             <header class="rs-panel__header">
                 <div>
-                    <span class="rs-panel__kicker">Últimos 7 dias · até 60 m do traçado</span>
-                    <h2 id="rs-occ-title">Ocorrências na rota</h2>
+                    <span class="rs-panel__kicker">{{ 'Últimos 7 dias · até 60 m do traçado'|trans({}, 'route_show') }}</span>
+                    <h2 id="rs-occ-title">{{ 'Ocorrências na rota'|trans({}, 'route_show') }}</h2>
                 </div>
                 <div class="rs-panel__legend">
-                    <span><i class="rs-dot rs-dot--purple"></i>Irregularidades ({{ irregularities|length }})</span>
-                    <span><i class="rs-dot rs-dot--waze"></i>Waze Alertas ({{ nearbyAlerts|length }})</span>
+                    <span><i class="rs-dot rs-dot--purple"></i>{{ 'Irregularidades'|trans({}, 'route_show') }} ({{ irregularities|length }})</span>
+                    <span><i class="rs-dot rs-dot--waze"></i>{{ 'Waze Alertas'|trans({}, 'route_show') }} ({{ nearbyAlerts|length }})</span>
                 </div>
             </header>
 
             {% if occurrences is empty %}
                 <div class="rs-empty">
                     <span aria-hidden="true">✓</span>
-                    <strong>Nenhuma ocorrência recente</strong>
-                    <small>Nada foi registrado nesta rota nos últimos 7 dias.</small>
+                    <strong>{{ 'Nenhuma ocorrência recente'|trans({}, 'route_show') }}</strong>
+                    <small>{{ 'Nada foi registrado nesta rota nos últimos 7 dias.'|trans({}, 'route_show') }}</small>
                 </div>
             {% else %}
                 <div class="rs-occurrences">
@@ -564,19 +572,19 @@
                         <div class="rs-occ rs-occ--{{ isWaze ? 'waze' : 'tvt' }}">
                             <span class="rs-occ__icon" aria-hidden="true">{{ o.icon }}</span>
                             <div class="rs-occ__body">
-                                <strong>{{ o.type }}</strong>
-                                {% if o.subtype %}<em>{{ o.subtype }}</em>{% endif %}
+                                <strong>{{ _rs_ui['code.' ~ o.type]|default(_rs_ui['level.' ~ o.type]|default(o.type|trans({}, 'route_show'))) }}</strong>
+                                {% if o.subtype %}<em>{{ _rs_ui['code.' ~ o.subtype]|default(_rs_ui['level.' ~ o.subtype]|default(o.subtype|trans({}, 'route_show'))) }}</em>{% endif %}
                                 <small>
-                                    {% set parts = [o.street, o.city, o.severity]|filter(p => p) %}
+                                    {% set parts = [o.street, o.city, _rs_ui['level.' ~ o.severity]|default(o.severity|trans({}, 'route_show'))]|filter(p => p) %}
                                     {{ parts|join(' · ') }}
                                     {% if isWaze and o.distanceMeters is not null %}
-                                        <span class="rs-occ__dist">{{ o.distanceMeters }} m do traçado</span>
+                                        <span class="rs-occ__dist">{{ o.distanceMeters }} {{ 'm do traçado'|trans({}, 'route_show') }}</span>
                                     {% endif %}
                                 </small>
                             </div>
                             <div class="rs-occ__meta">
                                 {% if o.at %}
-                                    <time datetime="{{ o.at }}">{{ o.at|date('d/m H:i') }}</time>
+                                    <time datetime="{{ o.at }}">{{ o.at|date(app.request.locale == 'en' ? 'm/d H:i' : 'd/m H:i') }}</time>
                                 {% else %}
                                     <time>—</time>
                                 {% endif %}

@@ -1,0 +1,4 @@
+{
+  "above_no_signal": "Forecast %seconds% s above the measured value. No relevant signal was found in the data queried; this does not confirm the absence of incidents. Associated context, not a proven cause.",
+  "below_no_signal": "Forecast %seconds% s below the measured value. No relevant signal was found in the data queried; this does not confirm the absence of incidents. Associated context, not a proven cause."
+}

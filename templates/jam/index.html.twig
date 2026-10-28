@@ -1,6 +1,6 @@
 {% extends 'layouts/dashboard.html.twig' %}
 
-{% block title %}Congestionamentos | WazeBR{% endblock %}
+{% block title %}{{ 'Congestionamentos'|trans({}, 'jams_ui') }} | WazeBR{% endblock %}
 
 {% block stylesheets %}
     {{ parent() }}
@@ -12,6 +12,7 @@
 {% endblock %}
 
 {% block content %}
+<div data-jams-i18n="{{ jams_i18n()|json_encode|e('html_attr') }}" hidden></div>
 {% set total         = stats.total|default(0) %}
 {% set blockedActive = stats.blockedActive|default(0) %}
 {% set blockedStale  = stats.blockedStale|default(0) %}
@@ -30,32 +31,32 @@
         {# ── Header ──────────────────────────────────────────────── #}
         <header class="jam-header">
             <div>
-                <span class="jam-eyebrow"><i></i> Central de congestionamentos</span>
-                <h1>Jams Waze{% if partner %} — {{ partner.name }}{% endif %}</h1>
+                <span class="jam-eyebrow"><i></i> {{ 'Central de congestionamentos'|trans({}, 'jams_ui') }}</span>
+                <h1>{{ 'Jams Waze'|trans({}, 'jams_ui') }}{% if partner %} — {{ partner.name }}{% endif %}</h1>
                 <p>
-                    Monitoramento de lentidão em tempo real, com separação entre
-                    <strong>interdições ativas</strong>, <strong>interdições antigas</strong> e
-                    congestionamentos comuns. Filtros, mapa e exportação.
+                    {{ 'Monitoramento de lentidão em tempo real, com separação entre'|trans({}, 'jams_ui') }}
+                    <strong>{{ 'interdições ativas'|trans({}, 'jams_ui') }}</strong>, <strong>{{ 'interdições antigas'|trans({}, 'jams_ui') }}</strong> e
+                    congestionamentos comuns. {{ 'Filtros'|trans({}, 'jams_ui') }}, mapa e exportação.
                 </p>
             </div>
             <div class="jam-header-tools">
                 <span class="jam-live-badge" data-jam-live-badge>
-                    <i></i> Ao vivo · <span data-jam-live-clock>--:--:--</span>
+                    <i></i> {{ 'Ao vivo'|trans({}, 'jams_ui') }} · <span data-jam-live-clock>--:--:--</span>
                 </span>
 
                 {# ─── NOVO: link para o histórico ──────────────────── #}
                 <a class="jam-button"
                    href="{{ path('jam_history_index', filters|filter(v => v is not empty and v is not same as(false))) }}"
-                   title="Ver análise histórica e correlação com alertas">
-                    <span>📊</span> Histórico
+                   title="{{ 'Ver análise histórica e correlação com alertas'|trans({}, 'jams_ui') }}">
+                    <span>📊</span> {{ 'Histórico'|trans({}, 'jams_ui') }}
                 </a>
 
                 <button type="button" class="jam-button" data-action="refresh">
-                    <span>↻</span> Atualizar
+                    <span>↻</span> {{ 'Atualizar'|trans({}, 'jams_ui') }}
                 </button>
                 <a class="jam-button is-primary" data-jam-export
                    href="{{ path('jam_export', filters|filter(v => v is not empty)) }}">
-                    ⇩ Exportar CSV
+                    ⇩ {{ 'Exportar CSV'|trans({}, 'jams_ui') }}
                 </a>
             </div>
         </header>
@@ -65,22 +66,22 @@
             <article class="jam-kpi-card kpi-blue">
                 <span class="kpi-icon" aria-hidden="true">≋</span>
                 <strong class="kpi-value" data-jam-kpi="total">{{ total }}</strong>
-                <span class="kpi-label">Congestionamentos ativos</span>
-                <small class="kpi-foot" data-jam-kpi="level4plus">{{ level4plus }} em nível 4+</small>
+                <span class="kpi-label">{{ 'Congestionamentos ativos'|trans({}, 'jams_ui') }}</span>
+                <small class="kpi-foot" data-jam-kpi="level4plus">{{ level4plus }} {{ 'em nível 4+'|trans({}, 'jams_ui') }}</small>
             </article>
 
             <article class="jam-kpi-card kpi-red">
                 <span class="kpi-icon" aria-hidden="true">🚫</span>
                 <strong class="kpi-value" data-jam-kpi="blockedActive">{{ blockedActive }}</strong>
-                <span class="kpi-label">Interdições ativas</span>
-                <small class="kpi-foot">Vias bloqueadas agora</small>
+                <span class="kpi-label">{{ 'Interdições ativas'|trans({}, 'jams_ui') }}</span>
+                <small class="kpi-foot">{{ 'Vias bloqueadas agora'|trans({}, 'jams_ui') }}</small>
             </article>
 
             <article class="jam-kpi-card kpi-orange">
                 <span class="kpi-icon" aria-hidden="true">⚠</span>
                 <strong class="kpi-value" data-jam-kpi="blockedStale">{{ blockedStale }}</strong>
-                <span class="kpi-label">Interdições antigas</span>
-                <small class="kpi-foot">Sem atualização há mais de 15 min</small>
+                <span class="kpi-label">{{ 'Interdições antigas'|trans({}, 'jams_ui') }}</span>
+                <small class="kpi-foot">{{ 'Sem atualização há mais de 15 min'|trans({}, 'jams_ui') }}</small>
             </article>
 
             <article class="jam-kpi-card kpi-green">
@@ -88,9 +89,9 @@
                 <strong class="kpi-value kpi-value--sm" data-jam-kpi="avgDelay">
                     {{ stats.avgDelay|default(0) }}s
                 </strong>
-                <span class="kpi-label">Atraso médio</span>
+                <span class="kpi-label">{{ 'Atraso médio'|trans({}, 'jams_ui') }}</span>
                 <small class="kpi-foot" data-jam-kpi="maxDelay">
-                    Máximo {{ stats.maxDelay|default(0) }}s
+                    {{ 'Máximo'|trans({}, 'jams_ui') }} {{ stats.maxDelay|default(0) }}s
                 </small>
             </article>
         </section>
@@ -99,29 +100,29 @@
         <section class="jam-filter-panel">
             <header class="jam-filter-head">
                 <div>
-                    <span class="jam-kicker">Filtros</span>
-                    <h2>Refinar consulta</h2>
+                    <span class="jam-kicker">{{ 'Filtros'|trans({}, 'jams_ui') }}</span>
+                    <h2>{{ 'Refinar consulta'|trans({}, 'jams_ui') }}</h2>
                 </div>
-                <button type="button" class="jam-button is-link" data-action="clear-filters">Limpar</button>
+                <button type="button" class="jam-button is-link" data-action="clear-filters">{{ 'Limpar'|trans({}, 'jams_ui') }}</button>
             </header>
 
             <form class="jam-filter-form" data-jam-filter-form>
                 <label class="jam-field">
-                    <span>Nível mínimo</span>
+                    <span>{{ 'Nível mínimo'|trans({}, 'jams_ui') }}</span>
                     <select name="level_min" data-jam-filter="level_min">
-                        <option value="0" {{ filters.level_min == 0 ? 'selected' }}>Todos</option>
-                        <option value="1" {{ filters.level_min == 1 ? 'selected' }}>≥ 1 Baixo</option>
-                        <option value="2" {{ filters.level_min == 2 ? 'selected' }}>≥ 2 Moderado</option>
-                        <option value="3" {{ filters.level_min == 3 ? 'selected' }}>≥ 3 Alto</option>
-                        <option value="4" {{ filters.level_min == 4 ? 'selected' }}>≥ 4 Muito alto</option>
-                        <option value="5" {{ filters.level_min == 5 ? 'selected' }}>5 Parado</option>
+                        <option value="0" {{ filters.level_min == 0 ? 'selected' }}>{{ 'Todos'|trans({}, 'jams_ui') }}</option>
+                        <option value="1" {{ filters.level_min == 1 ? 'selected' }}>≥ 1 {{ 'Baixo'|trans({}, 'jams_ui') }}</option>
+                        <option value="2" {{ filters.level_min == 2 ? 'selected' }}>≥ 2 {{ 'Moderado'|trans({}, 'jams_ui') }}</option>
+                        <option value="3" {{ filters.level_min == 3 ? 'selected' }}>≥ 3 {{ 'Alto'|trans({}, 'jams_ui') }}</option>
+                        <option value="4" {{ filters.level_min == 4 ? 'selected' }}>≥ 4 {{ 'Muito alto'|trans({}, 'jams_ui') }}</option>
+                        <option value="5" {{ filters.level_min == 5 ? 'selected' }}>5 {{ 'Parado'|trans({}, 'jams_ui') }}</option>
                     </select>
                 </label>
 
                 <label class="jam-field">
-                    <span>Cidade</span>
+                    <span>{{ 'Cidade'|trans({}, 'jams_ui') }}</span>
                     <select name="city" data-jam-filter="city">
-                        <option value="">Todas</option>
+                        <option value="">{{ 'Todas'|trans({}, 'jams_ui') }}</option>
                         {% for city, n in filter_options.cities %}
                             <option value="{{ city }}" {{ filters.city == city ? 'selected' }}>
                                 {{ city }} ({{ n }})
@@ -131,14 +132,14 @@
                 </label>
 
                 <label class="jam-field jam-field--grow">
-                    <span>Rua</span>
+                    <span>{{ 'Rua'|trans({}, 'jams_ui') }}</span>
                     <input type="search" name="street" data-jam-filter="street"
                            value="{{ filters.street }}"
-                           placeholder="Buscar por rua..." autocomplete="off">
+                           placeholder="{{ 'Buscar por rua...'|trans({}, 'jams_ui') }}" autocomplete="off">
                 </label>
 
                 <label class="jam-field">
-                    <span>Janela</span>
+                    <span>{{ 'Janela'|trans({}, 'jams_ui') }}</span>
                     <select name="window_hours" data-jam-filter="window_hours">
                         <option value="1"  {{ filters.window_hours == 1  ? 'selected' }}>1h</option>
                         <option value="2"  {{ filters.window_hours == 2  ? 'selected' }}>2h</option>
@@ -152,19 +153,19 @@
                     <input type="checkbox" name="only_blocked" value="1"
                            data-jam-filter="only_blocked"
                            {{ filters.only_blocked ? 'checked' }}>
-                    <span>🚫 Apenas interdições</span>
+                    <span>🚫 {{ 'Apenas interdições'|trans({}, 'jams_ui') }}</span>
                 </label>
 
                 <label class="jam-toggle">
                     <input type="checkbox" name="hide_stale" value="1"
                            data-jam-filter="hide_stale"
                            {{ filters.hide_stale ? 'checked' }}>
-                    <span>Ocultar antigas</span>
+                    <span>{{ 'Ocultar antigas'|trans({}, 'jams_ui') }}</span>
                 </label>
 
                 <div class="jam-filter-actions">
-                    <button type="submit" class="jam-button is-primary" data-action="apply">Aplicar</button>
-                    <button type="button" class="jam-button" data-action="clear-filters">Limpar</button>
+                    <button type="submit" class="jam-button is-primary" data-action="apply">{{ 'Aplicar'|trans({}, 'jams_ui') }}</button>
+                    <button type="button" class="jam-button" data-action="clear-filters">{{ 'Limpar'|trans({}, 'jams_ui') }}</button>
                 </div>
             </form>
         </section>
@@ -174,20 +175,20 @@
             <section class="jam-panel jam-panel--map">
                 <header class="jam-panel-head">
                     <div>
-                        <span class="jam-kicker">Geolocalização</span>
-                        <h2>Mapa de congestionamentos</h2>
+                        <span class="jam-kicker">{{ 'Geolocalização'|trans({}, 'jams_ui') }}</span>
+                        <h2>{{ 'Mapa de congestionamentos'|trans({}, 'jams_ui') }}</h2>
                     </div>
                 </header>
 
-                <div class="jam-map" data-jam-map aria-label="Mapa de congestionamentos"></div>
+                <div class="jam-map" data-jam-map aria-label="{{ 'Mapa de congestionamentos'|trans({}, 'jams_ui') }}"></div>
 
                 <div class="jam-map-legend">
                     <span><i class="lg-green"></i>1-2</span>
                     <span><i class="lg-orange"></i>3</span>
                     <span><i class="lg-red"></i>4</span>
-                    <span><i class="lg-dark"></i>🚫 Interdição</span>
-                    <span><i class="lg-stale"></i>⚠ Antiga</span>
-                    <span><i class="lg-alert"></i>🔔 Alertas</span>
+                    <span><i class="lg-dark"></i>🚫 {{ 'Interdição'|trans({}, 'jams_ui') }}</span>
+                    <span><i class="lg-stale"></i>⚠ {{ 'Antiga'|trans({}, 'jams_ui') }}</span>
+                    <span><i class="lg-alert"></i>🔔 {{ 'Alertas'|trans({}, 'jams_ui') }}</span>
                     <span class="lg-hint" data-jam-map-hint>—</span>
                 </div>
             </section>
@@ -196,8 +197,8 @@
                 <section class="jam-panel">
                     <header class="jam-panel-head">
                         <div>
-                            <span class="jam-kicker">Composição</span>
-                            <h2>Distribuição por nível</h2>
+                            <span class="jam-kicker">{{ 'Composição'|trans({}, 'jams_ui') }}</span>
+                            <h2>{{ 'Distribuição por nível'|trans({}, 'jams_ui') }}</h2>
                         </div>
                     </header>
                     <div class="jam-levels" data-jam-levels></div>
@@ -206,8 +207,8 @@
                 <section class="jam-panel">
                     <header class="jam-panel-head">
                         <div>
-                            <span class="jam-kicker">Temporal</span>
-                            <h2>Volume por hora</h2>
+                            <span class="jam-kicker">{{ 'Temporal'|trans({}, 'jams_ui') }}</span>
+                            <h2>{{ 'Volume por hora'|trans({}, 'jams_ui') }}</h2>
                         </div>
                         <span class="jam-card-hint" data-jam-hourly-window>—</span>
                     </header>
@@ -220,8 +221,8 @@
         <section class="jam-panel jam-panel--blocked" data-jam-blocked-active-panel>
             <header class="jam-panel-head">
                 <div>
-                    <span class="jam-kicker jam-kicker--alert">Atenção imediata</span>
-                    <h2>🚫 Interdições ativas</h2>
+                    <span class="jam-kicker jam-kicker--alert">{{ 'Atenção imediata'|trans({}, 'jams_ui') }}</span>
+                    <h2>🚫 {{ 'Interdições ativas'|trans({}, 'jams_ui') }}</h2>
                 </div>
                 <span class="jam-count-badge is-red" data-jam-count="blocked-active">0</span>
             </header>
@@ -230,22 +231,22 @@
                 <table class="jam-table jam-table--blocked">
                     <thead>
                         <tr>
-                            <th data-sortable="level">Nível <span class="jam-sort-icon"></span></th>
-                            <th>Rua / Cidade</th>
-                            <th class="is-num" data-sortable="delay">Atraso <span class="jam-sort-icon"></span></th>
-                            <th class="is-num" data-sortable="speed">Vel. <span class="jam-sort-icon"></span></th>
-                            <th class="is-num" data-sortable="length">Ext. <span class="jam-sort-icon"></span></th>
+                            <th data-sortable="level">{{ 'Nível'|trans({}, 'jams_ui') }} <span class="jam-sort-icon"></span></th>
+                            <th>{{ 'Rua / Cidade'|trans({}, 'jams_ui') }}</th>
+                            <th class="is-num" data-sortable="delay">{{ 'Atraso'|trans({}, 'jams_ui') }} <span class="jam-sort-icon"></span></th>
+                            <th class="is-num" data-sortable="speed">{{ 'Vel.'|trans({}, 'jams_ui') }} <span class="jam-sort-icon"></span></th>
+                            <th class="is-num" data-sortable="length">{{ 'Ext.'|trans({}, 'jams_ui') }} <span class="jam-sort-icon"></span></th>
                             <th class="is-num" data-sortable="nearbyAlerts">🔔 <span class="jam-sort-icon"></span></th>
-                            <th>Visto</th>
+                            <th>{{ 'Visto'|trans({}, 'jams_ui') }}</th>
                         </tr>
                     </thead>
                     <tbody data-jam-table-blocked-active>
-                        <tr><td colspan="7" class="jam-empty">Nenhuma interdição ativa no momento.</td></tr>
+                        <tr><td colspan="7" class="jam-empty">{{ 'Nenhuma interdição ativa no momento.'|trans({}, 'jams_ui') }}</td></tr>
                     </tbody>
                 </table>
             </div>
             <div class="jam-load-more" data-jam-load-more="blocked-active" style="display:none">
-                <button type="button" class="jam-button">Carregar mais</button>
+                <button type="button" class="jam-button">{{ 'Carregar mais'|trans({}, 'jams_ui') }}</button>
             </div>
         </section>
 
@@ -253,8 +254,8 @@
         <section class="jam-panel jam-panel--stale" data-jam-blocked-stale-panel>
             <header class="jam-panel-head">
                 <div>
-                    <span class="jam-kicker jam-kicker--warn">Verificar / limpar</span>
-                    <h2>⚠ Interdições antigas</h2>
+                    <span class="jam-kicker jam-kicker--warn">{{ 'Verificar / limpar'|trans({}, 'jams_ui') }}</span>
+                    <h2>⚠ {{ 'Interdições antigas'|trans({}, 'jams_ui') }}</h2>
                 </div>
                 <span class="jam-count-badge is-orange" data-jam-count="blocked-stale">0</span>
             </header>
@@ -263,22 +264,22 @@
                 <table class="jam-table jam-table--stale">
                     <thead>
                         <tr>
-                            <th data-sortable="level">Nível <span class="jam-sort-icon"></span></th>
-                            <th>Rua / Cidade</th>
-                            <th class="is-num" data-sortable="delay">Atraso <span class="jam-sort-icon"></span></th>
-                            <th class="is-num" data-sortable="speed">Vel. <span class="jam-sort-icon"></span></th>
-                            <th class="is-num" data-sortable="length">Ext. <span class="jam-sort-icon"></span></th>
+                            <th data-sortable="level">{{ 'Nível'|trans({}, 'jams_ui') }} <span class="jam-sort-icon"></span></th>
+                            <th>{{ 'Rua / Cidade'|trans({}, 'jams_ui') }}</th>
+                            <th class="is-num" data-sortable="delay">{{ 'Atraso'|trans({}, 'jams_ui') }} <span class="jam-sort-icon"></span></th>
+                            <th class="is-num" data-sortable="speed">{{ 'Vel.'|trans({}, 'jams_ui') }} <span class="jam-sort-icon"></span></th>
+                            <th class="is-num" data-sortable="length">{{ 'Ext.'|trans({}, 'jams_ui') }} <span class="jam-sort-icon"></span></th>
                             <th class="is-num" data-sortable="nearbyAlerts">🔔 <span class="jam-sort-icon"></span></th>
-                            <th>Visto</th>
+                            <th>{{ 'Visto'|trans({}, 'jams_ui') }}</th>
                         </tr>
                     </thead>
                     <tbody data-jam-table-blocked-stale>
-                        <tr><td colspan="7" class="jam-empty">Sem interdições antigas.</td></tr>
+                        <tr><td colspan="7" class="jam-empty">{{ 'Sem interdições antigas.'|trans({}, 'jams_ui') }}</td></tr>
                     </tbody>
                 </table>
             </div>
             <div class="jam-load-more" data-jam-load-more="blocked-stale" style="display:none">
-                <button type="button" class="jam-button">Carregar mais</button>
+                <button type="button" class="jam-button">{{ 'Carregar mais'|trans({}, 'jams_ui') }}</button>
             </div>
         </section>
 
@@ -287,8 +288,8 @@
             <section class="jam-panel jam-panel--table">
                 <header class="jam-panel-head">
                     <div>
-                        <span class="jam-kicker">Registros</span>
-                        <h2>Demais congestionamentos</h2>
+                        <span class="jam-kicker">{{ 'Registros'|trans({}, 'jams_ui') }}</span>
+                        <h2>{{ 'Demais congestionamentos'|trans({}, 'jams_ui') }}</h2>
                     </div>
                     <span class="jam-count-badge" data-jam-count="top-jams">0</span>
                 </header>
@@ -296,41 +297,41 @@
                     <table class="jam-table">
                         <thead>
                             <tr>
-                                <th data-sortable="level">Nível <span class="jam-sort-icon"></span></th>
-                                <th>Rua / Cidade</th>
-                                <th class="is-num" data-sortable="delay">Atraso <span class="jam-sort-icon"></span></th>
-                                <th class="is-num" data-sortable="speed">Vel. <span class="jam-sort-icon"></span></th>
-                                <th class="is-num" data-sortable="length">Ext. <span class="jam-sort-icon"></span></th>
+                                <th data-sortable="level">{{ 'Nível'|trans({}, 'jams_ui') }} <span class="jam-sort-icon"></span></th>
+                                <th>{{ 'Rua / Cidade'|trans({}, 'jams_ui') }}</th>
+                                <th class="is-num" data-sortable="delay">{{ 'Atraso'|trans({}, 'jams_ui') }} <span class="jam-sort-icon"></span></th>
+                                <th class="is-num" data-sortable="speed">{{ 'Vel.'|trans({}, 'jams_ui') }} <span class="jam-sort-icon"></span></th>
+                                <th class="is-num" data-sortable="length">{{ 'Ext.'|trans({}, 'jams_ui') }} <span class="jam-sort-icon"></span></th>
                                 <th class="is-num" data-sortable="nearbyAlerts">🔔 <span class="jam-sort-icon"></span></th>
-                                <th>Quando</th>
+                                <th>{{ 'Quando'|trans({}, 'jams_ui') }}</th>
                             </tr>
                         </thead>
                         <tbody data-jam-table>
-                            <tr><td colspan="7" class="jam-empty">Sem dados</td></tr>
+                            <tr><td colspan="7" class="jam-empty">{{ 'Sem dados'|trans({}, 'jams_ui') }}</td></tr>
                         </tbody>
                     </table>
                 </div>
                 <div class="jam-load-more" data-jam-load-more="top-jams" style="display:none">
-                    <button type="button" class="jam-button">Carregar mais</button>
+                    <button type="button" class="jam-button">{{ 'Carregar mais'|trans({}, 'jams_ui') }}</button>
                 </div>
             </section>
 
             <aside class="jam-side">
                 <section class="jam-panel">
                     <header class="jam-panel-head">
-                        <div><span class="jam-kicker">Top</span><h2>Ruas mais afetadas</h2></div>
+                        <div><span class="jam-kicker">{{ 'Top'|trans({}, 'jams_ui') }}</span><h2>{{ 'Ruas mais afetadas'|trans({}, 'jams_ui') }}</h2></div>
                     </header>
                     <ul class="jam-rank" data-jam-rank-streets>
-                        <li class="jam-empty">Sem dados</li>
+                        <li class="jam-empty">{{ 'Sem dados'|trans({}, 'jams_ui') }}</li>
                     </ul>
                 </section>
 
                 <section class="jam-panel">
                     <header class="jam-panel-head">
-                        <div><span class="jam-kicker">Top</span><h2>Cidades</h2></div>
+                        <div><span class="jam-kicker">{{ 'Top'|trans({}, 'jams_ui') }}</span><h2>{{ 'Cidades'|trans({}, 'jams_ui') }}</h2></div>
                     </header>
                     <ul class="jam-rank" data-jam-rank-cities>
-                        <li class="jam-empty">Sem dados</li>
+                        <li class="jam-empty">{{ 'Sem dados'|trans({}, 'jams_ui') }}</li>
                     </ul>
                 </section>
             </aside>

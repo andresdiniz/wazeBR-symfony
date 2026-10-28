@@ -1,3 +1,5 @@
+import { rsT, rsLabel, RS_LOCALE } from './route-show-i18n.js';
+
 /**
  * pages/route-show.js — Página /routes/{id}
  *
@@ -25,9 +27,9 @@ const COLORS = {
     muted: 'rgba(148, 163, 184, .35)',
 };
 
-const DOW_LABELS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+const DOW_LABELS = [rsT("Seg"), rsT("Ter"), rsT("Qua"), rsT("Qui"), rsT("Sex"), rsT("Sáb"), rsT("Dom")];
 
-const JAM_LABELS = ['Sem congestionamento', 'Baixo', 'Moderado', 'Alto', 'Muito alto', 'Parado'];
+const JAM_LABELS = [rsT("Sem congestionamento"), rsT("Baixo"), rsT("Moderado"), rsT("Alto"), rsT("Muito alto"), rsT("Parado")];
 const JAM_COLORS = ['#16a34a', '#84cc16', '#f59e0b', '#f97316', '#ea580c', '#dc2626'];
 
 const ALERT_COLORS = {
@@ -183,7 +185,7 @@ function formatDateTime(iso, timeZone) {
     const date = new Date(iso);
     if (Number.isNaN(date.getTime())) return '—';
 
-    return date.toLocaleString('pt-BR', {
+    return date.toLocaleString(RS_LOCALE, {
         timeZone,
         day: '2-digit',
         month: '2-digit',
@@ -256,7 +258,7 @@ function renderHeatmap(page) {
 
             const title = [
                 label,
-                `Ratio: ${fmtRatio(cell.avgRatio)} vs histórico`,
+                `Ratio: ${fmtRatio(cell.avgRatio)} ${rsT("vs histórico")}`,
                 cell.avgDelay !== null ? `Atraso médio: ${fmtSignedSeconds(cell.avgDelay)}` : null,
                 `${cell.count} amostra${cell.count !== 1 ? 's' : ''}`,
             ]
@@ -287,12 +289,12 @@ function alertPopup(alert, timeZone) {
 
     return `
         <div class="rs-popup">
-            <strong>${escapeHtml(alert.typeLabel || alert.type || 'Alerta')}</strong>
-            ${alert.subtype ? `<small>${escapeHtml(alert.subtype)}</small>` : ''}
+            <strong>${escapeHtml(alert.typeLabel || alert.type || rsT("Alerta"))}</strong>
+            ${alert.subtype ? `<small>${escapeHtml(rsLabel(alert.subtype))}</small>` : ''}
             ${alert.street ? row('Via', escapeHtml(alert.street)) : ''}
             ${alert.city ? row('Cidade', escapeHtml(alert.city)) : ''}
-            ${row('Distância', `${escapeHtml(alert.distanceMeters)} m`)}
-            ${alert.pubDateTime ? row('Quando', formatDateTime(alert.pubDateTime, timeZone)) : ''}
+            ${row(rsT("Distância"), `${escapeHtml(alert.distanceMeters)} m`)}
+            ${alert.pubDateTime ? row(rsT("Quando"), formatDateTime(alert.pubDateTime, timeZone)) : ''}
         </div>`;
 }
 
@@ -303,10 +305,10 @@ function irregularityPopup(irr, timeZone) {
     return `
         <div class="rs-popup">
             <strong>${escapeHtml(irr.type || 'Irregularidade')}</strong>
-            ${irr.subtype ? `<small>${escapeHtml(irr.subtype)}</small>` : ''}
+            ${irr.subtype ? `<small>${escapeHtml(rsLabel(irr.subtype))}</small>` : ''}
             ${irr.street ? row('Via', escapeHtml(irr.street)) : ''}
             ${irr.severity ? row('Severidade', escapeHtml(irr.severity)) : ''}
-            ${irr.reportedAt ? row('Quando', formatDateTime(irr.reportedAt, timeZone)) : ''}
+            ${irr.reportedAt ? row(rsT("Quando"), formatDateTime(irr.reportedAt, timeZone)) : ''}
         </div>`;
 }
 
@@ -540,7 +542,7 @@ function buildRecentMap(page, container, win) {
             }).addTo(map);
 
             layer.bindTooltip(
-                () => `${escapeHtml(subNames[`s${id}`] ?? 'Trecho')} · ${fmtRatio(layer._rsRatio)}`,
+                () => `${escapeHtml(subNames[`s${id}`] ?? rsT("Trecho"))} · ${fmtRatio(layer._rsRatio)}`,
                 { sticky: true }
             );
             subLayers.set(id, layer);
@@ -610,7 +612,7 @@ function buildRecentMap(page, container, win) {
 
         if (timeLabel) {
             timeLabel.textContent = averageMode
-                ? `Média ${win.hours}h`
+                ? `${rsT("Média")} ${win.hours}h`
                 : formatDateTime(frame.at, timeZone).replace(',', '');
         }
         if (slider) slider.value = String(index);
@@ -621,7 +623,7 @@ function buildRecentMap(page, container, win) {
         if (timer) clearInterval(timer);
         timer = null;
         if (playBtn) {
-            playBtn.textContent = '▶ Reproduzir';
+            playBtn.textContent = rsT("▶ Reproduzir");
             playBtn.setAttribute('aria-pressed', 'false');
         }
     }
@@ -632,7 +634,7 @@ function buildRecentMap(page, container, win) {
         render();
 
         if (playBtn) {
-            playBtn.textContent = '⏸ Pausar';
+            playBtn.textContent = rsT("⏸ Pausar");
             playBtn.setAttribute('aria-pressed', 'true');
         }
 
@@ -724,7 +726,7 @@ function barConfig(points, labelOf) {
         data: {
             labels: points.map(labelOf),
             datasets: [{
-                label: 'Atraso médio (s)',
+                label: rsT("Atraso médio (s)"),
                 data: delays,
                 backgroundColor: ratios.map((ratio, i) => (insufficient(i) ? COLORS.muted : ratioToColor(ratio))),
                 borderRadius: 4,
@@ -740,9 +742,9 @@ function barConfig(points, labelOf) {
                     callbacks: {
                         label(context) {
                             const i = context.dataIndex;
-                            if (insufficient(i)) return 'Sem amostras suficientes';
+                            if (insufficient(i)) return rsT("Sem amostras suficientes");
 
-                            return `${fmtSignedSeconds(delays[i])} · ${fmtRatio(ratios[i])} vs histórico · ${counts[i]} amostras`;
+                            return `${fmtSignedSeconds(delays[i])} · ${fmtRatio(ratios[i])} ${rsT("vs histórico")} · ${counts[i]} amostras`;
                         },
                     },
                 },
@@ -766,7 +768,7 @@ function timelineConfig(points, alertLineIndices) {
             labels,
             datasets: [
                 {
-                    label: 'Atraso (s)',
+                    label: rsT("Atraso (s)"),
                     data: points.map((p) => p.avgDelay),
                     borderColor: COLORS.blue,
                     backgroundColor: 'rgba(37,99,235,.10)',
@@ -777,7 +779,7 @@ function timelineConfig(points, alertLineIndices) {
                     yAxisID: 'y',
                 },
                 {
-                    label: '% vs histórico',
+                    label: rsT("% vs histórico"),
                     data: points.map((p) => (p.avgRatio !== null ? p.avgRatio * 100 : null)),
                     borderColor: COLORS.red,
                     backgroundColor: 'rgba(220,38,38,.08)',
@@ -967,7 +969,7 @@ function initFavorite(page) {
             if (!response.ok || !data.ok) throw new Error(`HTTP ${response.status}`);
 
             button.setAttribute('aria-pressed', data.favorited ? 'true' : 'false');
-            const label = data.favorited ? 'Remover dos favoritos' : 'Adicionar aos favoritos';
+            const label = data.favorited ? rsT("Remover dos favoritos") : rsT("Adicionar aos favoritos");
             button.title = label;
             const icon = button.querySelector('[data-favorite-icon]');
             if (icon) icon.textContent = data.favorited ? '★' : '☆';
@@ -1013,7 +1015,7 @@ function initShareMenu(page) {
             link.value = data.url;
             result.hidden = false;
             if (expires) {
-                expires.textContent = `Válido até ${formatDateTime(data.expiresAt, timezoneOf(page))}`;
+                expires.textContent = `${rsT("Válido até")} ${formatDateTime(data.expiresAt, timezoneOf(page))}`;
             }
             link.focus();
             link.select();
@@ -1021,7 +1023,7 @@ function initShareMenu(page) {
             console.warn('[WazeBR route-show] gerar link falhou', error);
             result.hidden = false;
             link.value = '';
-            if (expires) expires.textContent = 'Não foi possível gerar o link. Tente novamente.';
+            if (expires) expires.textContent = rsT("Não foi possível gerar o link. Tente novamente.");
         } finally {
             generate.disabled = false;
         }
@@ -1094,16 +1096,16 @@ export function initRouteShow(root = document) {
     bootstrapped = true;
 
     // Controles de interface primeiro: nada que dependa de Leaflet/Chart.js pode impedi-los.
-    step('menu de exportação', () => initExportMenu(page));
-    step('menu de compartilhar', () => initShareMenu(page));
+    step(rsT("menu de exportação"), () => initExportMenu(page));
+    step(rsT("menu de compartilhar"), () => initShareMenu(page));
     step('favoritar', () => initFavorite(page));
 
     step('heatmap', () => renderHeatmap(page));
-    step('gráficos', () => initCharts(page));
-    step('mapa principal', () => initMainMap(page));
-    step('mapa das últimas horas', () => initRecentMap(page));
+    step(rsT("gráficos"), () => initCharts(page));
+    step(rsT("mapa principal"), () => initMainMap(page));
+    step(rsT("mapa das últimas horas"), () => initRecentMap(page));
     step('mini-mapas', () => initSubRouteMaps(page));
-    step('ao vivo', () => initLive(page));
+    step(rsT("ao vivo"), () => initLive(page));
 }
 
 export default initRouteShow;

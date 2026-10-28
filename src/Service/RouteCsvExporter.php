@@ -24,6 +24,7 @@ final class RouteCsvExporter
     private readonly \DateTimeZone $tz;
 
     public function __construct(
+        private readonly RouteUiTranslator $ui,
         #[Autowire('%env(APP_TIMEZONE)%')]
         string $displayTimezone = 'America/Sao_Paulo',
     ) {
@@ -76,11 +77,11 @@ final class RouteCsvExporter
         $sep = $separator === ',' ? ',' : ';';
 
         $this->bom($out);
-        $this->meta($out, $historico['route'], sprintf('Últimos %d dias', $historico['days']), $sep);
+        $this->meta($out, $historico['route'], sprintf($this->ui->text('Últimos %d dias'), $historico['days']), $sep);
 
         $this->row($out, [
-            'Data/Hora', 'Tempo (s)', 'Tempo histórico (s)', 'Atraso (s)',
-            'Atraso (%)', 'Velocidade (km/h)', 'Nível de jam', 'Cidade', 'UF',
+            $this->ui->text('Data/Hora'), $this->ui->text('Tempo (s)'), $this->ui->text('Tempo histórico (s)'), $this->ui->text('Atraso (s)'),
+            $this->ui->text('Atraso (%)'), $this->ui->text('Velocidade (km/h)'), $this->ui->text('Nível de jam'), $this->ui->text('Cidade'), $this->ui->text('UF'),
         ], $sep);
 
         foreach ($historico['rows'] as $r) {
@@ -103,8 +104,8 @@ final class RouteCsvExporter
     /** @param resource $out */
     private function timeline($out, array $detail): void
     {
-        $this->meta($out, $detail['route'], 'Últimos 7 dias');
-        $this->row($out, ['Data/Hora', 'Atraso médio (s)', '% vs histórico', 'Amostras']);
+        $this->meta($out, $detail['route'], $this->ui->text('Últimos 7 dias'));
+        $this->row($out, [$this->ui->text('Data/Hora'), $this->ui->text('Atraso médio (s)'), $this->ui->text('% vs histórico'), $this->ui->text('Amostras')]);
 
         foreach ($detail['timeline'] ?? [] as $p) {
             // `time` já está no fuso de exibição — só reformatar, sem converter de novo.
@@ -126,8 +127,8 @@ final class RouteCsvExporter
     /** @param resource $out */
     private function byHour($out, array $detail): void
     {
-        $this->meta($out, $detail['route'], 'Últimos 30 dias');
-        $this->row($out, ['Hora', 'Atraso médio (s)', '% vs histórico', 'Amostras']);
+        $this->meta($out, $detail['route'], $this->ui->text('Últimos 30 dias'));
+        $this->row($out, [$this->ui->text('Hora'), $this->ui->text('Atraso médio (s)'), $this->ui->text('% vs histórico'), $this->ui->text('Amostras')]);
 
         foreach ($detail['byHour'] ?? [] as $p) {
             $this->row($out, [
@@ -142,13 +143,13 @@ final class RouteCsvExporter
     /** @param resource $out */
     private function byDow($out, array $detail): void
     {
-        $this->meta($out, $detail['route'], 'Últimos 30 dias');
-        $this->row($out, ['Dia da semana', 'Atraso médio (s)', '% vs histórico', 'Amostras']);
+        $this->meta($out, $detail['route'], $this->ui->text('Últimos 30 dias'));
+        $this->row($out, [$this->ui->text('Dia da semana'), $this->ui->text('Atraso médio (s)'), $this->ui->text('% vs histórico'), $this->ui->text('Amostras')]);
 
         foreach ($detail['byDow'] ?? [] as $p) {
             $dow = (int) $p['dow'];
             $this->row($out, [
-                self::DOW_LABELS[$dow] ?? "Dia {$dow}",
+                $this->ui->text(self::DOW_LABELS[$dow]) ?? "Dia {$dow}",
                 $this->num($p['avgDelay'] ?? null, 1),
                 $this->pct($p['avgRatio'] ?? null),
                 $p['count'] ?? '',
@@ -159,10 +160,10 @@ final class RouteCsvExporter
     /** @param resource $out */
     private function occurrences($out, array $detail): void
     {
-        $this->meta($out, $detail['route'], 'Últimos 7 dias · até 60 m do traçado');
+        $this->meta($out, $detail['route'], $this->ui->text('Últimos 7 dias · até 60 m do traçado'));
         $this->row($out, [
-            'Fonte', 'Tipo', 'Subtipo', 'Via', 'Cidade',
-            'Severidade', 'Distância do traçado (m)', 'Data/Hora',
+            $this->ui->text('Fonte'), $this->ui->text('Tipo'), $this->ui->text('Subtipo'), $this->ui->text('Via'), $this->ui->text('Cidade'),
+            $this->ui->text('Severidade'), $this->ui->text('Distância do traçado (m)'), $this->ui->text('Data/Hora'),
         ]);
 
         foreach ($detail['occurrences'] ?? [] as $o) {
@@ -182,10 +183,10 @@ final class RouteCsvExporter
     /** @param resource $out */
     private function subRoutes($out, array $detail): void
     {
-        $this->meta($out, $detail['route'], 'Estado atual');
+        $this->meta($out, $detail['route'], $this->ui->text('Estado atual'));
         $this->row($out, [
-            'Trecho', 'De', 'Até', 'Atraso (s)', '% vs histórico',
-            'Tempo histórico (s)', 'Nível de jam', 'Extensão (km)',
+            $this->ui->text('Trecho'), $this->ui->text('De'), $this->ui->text('Até'), $this->ui->text('Atraso (s)'), $this->ui->text('% vs histórico'),
+            $this->ui->text('Tempo histórico (s)'), $this->ui->text('Nível de jam'), $this->ui->text('Extensão (km)'),
         ]);
 
         foreach ($detail['topSubRoutes'] ?? [] as $s) {
@@ -213,9 +214,9 @@ final class RouteCsvExporter
     /** @param resource $out */
     private function meta($out, array $route, string $period, string $sep = ';'): void
     {
-        $this->row($out, ['# Rota', $route['name'] ?? ''], $sep);
-        $this->row($out, ['# Período', $period], $sep);
-        $this->row($out, ['# Gerado em', (new \DateTimeImmutable('now', $this->tz))->format('d/m/Y H:i')], $sep);
+        $this->row($out, [$this->ui->text('# Rota'), $route['name'] ?? ''], $sep);
+        $this->row($out, [$this->ui->text('# Período'), $period], $sep);
+        $this->row($out, [$this->ui->text('# Gerado em'), (new \DateTimeImmutable('now', $this->tz))->format('d/m/Y H:i')], $sep);
         $this->row($out, [], $sep);
     }
 

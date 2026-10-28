@@ -1,6 +1,6 @@
 {% extends 'layouts/dashboard.html.twig' %}
 
-{% block title %}{{ alert.typeLabel }} · Alerta #{{ alert.id }} | WazeBR{% endblock %}
+{% block title %}{{ alerts_label(alert.type) }} · {{ 'Alerta'|trans({}, 'alerts_ui') }} #{{ alert.id }} | WazeBR{% endblock %}
 
 {% block stylesheets %}
     {{ parent() }}
@@ -9,6 +9,7 @@
 {% endblock %}
 
 {% block content %}
+<div data-alerts-i18n="{{ alerts_i18n()|json_encode|e('html_attr') }}" hidden></div>
     {% set alertJson = {
         'id':         alert.id,
         'type':       alert.type,
@@ -28,9 +29,9 @@
 
         <div class="alert-show-container">
 
-            <nav class="alert-show-breadcrumb" aria-label="Navegação">
+            <nav class="alert-show-breadcrumb" aria-label="{{ 'Navegação'|trans({}, 'alerts_ui') }}">
                 <a href="{{ path('alert_index') }}" class="alert-show-back">
-                    <span aria-hidden="true">←</span> Voltar para alertas
+                    <span aria-hidden="true">←</span> {{ 'Voltar para alertas'|trans({}, 'alerts_ui') }}
                 </a>
             </nav>
 
@@ -38,16 +39,16 @@
                 <div>
                     <div class="alert-show-header-top">
                         <span class="alert-show-badge alert-show-badge--{{ alert.type|lower }}">
-                            {{ alert.typeLabel }}
+                            {{ alerts_label(alert.type) }}
                         </span>
                         <span class="alert-show-status alert-show-status--{{ alert.isActive ? 'active' : 'inactive' }}">
-                            {{ alert.isActive ? 'Ativo' : 'Encerrado' }}
+                            {{ alert.isActive ? ('Ativo'|trans({}, 'alerts_ui')) : ('Encerrado'|trans({}, 'alerts_ui')) }}
                         </span>
                         <span class="alert-show-id">#{{ alert.id }}</span>
                     </div>
-                    <h1>{{ alert.subtypeLabel|default(alert.subtype|default('Alerta Waze')) }}</h1>
+                    <h1>{{ alerts_label(alert.subtype, 'Alerta Waze'|trans({}, 'alerts_ui')) }}</h1>
                     <p class="alert-show-subtitle">
-                        {{ alert.street|default('Rua não informada') }}
+                        {{ alert.street|default(('Rua não informada'|trans({}, 'alerts_ui'))) }}
                         {% if alert.city %} · {{ alert.city }}{% endif %}
                         {% if alert.country %} · {{ alert.country }}{% endif %}
                     </p>
@@ -57,12 +58,12 @@
                         <a class="alert-show-button is-primary"
                            target="_blank" rel="noopener"
                            href="https://www.waze.com/pt-BR/live-map/?lat={{ alert.latitude }}&lng={{ alert.longitude }}&zoom=17">
-                            ↗ Ver no Waze
+                            ↗ {{ 'Ver no Waze'|trans({}, 'alerts_ui') }}
                         </a>
                         <a class="alert-show-button"
                            target="_blank" rel="noopener"
                            href="https://www.openstreetmap.org/?mlat={{ alert.latitude }}&mlon={{ alert.longitude }}#map=17/{{ alert.latitude }}/{{ alert.longitude }}">
-                            ↗ OpenStreetMap
+                            ↗ {{ 'OpenStreetMap'|trans({}, 'alerts_ui') }}
                         </a>
                     {% endif %}
                 </div>
@@ -74,8 +75,8 @@
                 <section class="alert-show-panel alert-show-map-panel">
                     <header class="alert-show-panel-header">
                         <div>
-                            <span class="alert-show-kicker">Localização</span>
-                            <h2>Onde foi registrado</h2>
+                            <span class="alert-show-kicker">{{ 'Localização'|trans({}, 'alerts_ui') }}</span>
+                            <h2>{{ 'Onde foi registrado'|trans({}, 'alerts_ui') }}</h2>
                         </div>
                         <span class="alert-show-coords">
                             {{ alert.latitude|default('—') }}, {{ alert.longitude|default('—') }}
@@ -88,22 +89,22 @@
                 <aside class="alert-show-panel alert-show-details">
                     <header class="alert-show-panel-header">
                         <div>
-                            <span class="alert-show-kicker">Dados</span>
-                            <h2>Detalhes do alerta</h2>
+                            <span class="alert-show-kicker">{{ 'Dados'|trans({}, 'alerts_ui') }}</span>
+                            <h2>{{ 'Detalhes do alerta'|trans({}, 'alerts_ui') }}</h2>
                         </div>
                     </header>
 
                     <dl class="alert-show-list">
-                        <div><dt>Tipo</dt>        <dd>{{ alert.type|default('—') }}</dd></div>
-                        <div><dt>Subtipo</dt>     <dd>{{ alert.subtype|default('—') }}</dd></div>
-                        <div><dt>Confiança</dt>   <dd>{{ alert.confidence }}</dd></div>
-                        <div><dt>Confiabilidade</dt><dd>{{ alert.reliability }}</dd></div>
-                        <div><dt>Rating do report</dt><dd>{{ alert.reportRating }}</dd></div>
-                        <div><dt>Thumbs up</dt>   <dd>{{ alert.nThumbsUp }}</dd></div>
-                        <div><dt>Road type</dt>   <dd>{{ alert.roadType }}</dd></div>
-                        <div><dt>Magvar</dt>      <dd>{{ alert.magvar }}°</dd></div>
-                        <div><dt>Reportado por município</dt><dd>{{ alert.reportByMunicipalityUser ? 'Sim' : 'Não' }}</dd></div>
-                        <div><dt>País</dt>        <dd>{{ alert.country|default('—') }}</dd></div>
+                        <div><dt>{{ 'Tipo'|trans({}, 'alerts_ui') }}</dt>        <dd>{{ alerts_label(alert.type) }}</dd></div>
+                        <div><dt>{{ 'Subtipo'|trans({}, 'alerts_ui') }}</dt>     <dd>{{ alerts_label(alert.subtype) }}</dd></div>
+                        <div><dt>{{ 'Confiança'|trans({}, 'alerts_ui') }}</dt>   <dd>{{ alert.confidence }}</dd></div>
+                        <div><dt>{{ 'Confiabilidade'|trans({}, 'alerts_ui') }}</dt><dd>{{ alert.reliability }}</dd></div>
+                        <div><dt>{{ 'Rating do report'|trans({}, 'alerts_ui') }}</dt><dd>{{ alert.reportRating }}</dd></div>
+                        <div><dt>{{ 'Thumbs up'|trans({}, 'alerts_ui') }}</dt>   <dd>{{ alert.nThumbsUp }}</dd></div>
+                        <div><dt>{{ 'Road type'|trans({}, 'alerts_ui') }}</dt>   <dd>{{ alert.roadType }}</dd></div>
+                        <div><dt>{{ 'Magvar'|trans({}, 'alerts_ui') }}</dt>      <dd>{{ alert.magvar }}°</dd></div>
+                        <div><dt>{{ 'Reportado por município'|trans({}, 'alerts_ui') }}</dt><dd>{{ alert.reportByMunicipalityUser ? ('Sim'|trans({}, 'alerts_ui')) : ('Não'|trans({}, 'alerts_ui')) }}</dd></div>
+                        <div><dt>{{ 'País'|trans({}, 'alerts_ui') }}</dt>        <dd>{{ alert.country|default('—') }}</dd></div>
                     </dl>
                 </aside>
 
@@ -111,43 +112,43 @@
                 <section class="alert-show-panel">
                     <header class="alert-show-panel-header">
                         <div>
-                            <span class="alert-show-kicker">Linha do tempo</span>
-                            <h2>Quando aconteceu</h2>
+                            <span class="alert-show-kicker">{{ 'Linha do tempo'|trans({}, 'alerts_ui') }}</span>
+                            <h2>{{ 'Quando aconteceu'|trans({}, 'alerts_ui') }}</h2>
                         </div>
                     </header>
 
                     <dl class="alert-show-list">
                         <div>
-                            <dt>Publicado pela Waze</dt>
+                            <dt>{{ 'Publicado pela Waze'|trans({}, 'alerts_ui') }}</dt>
                             <dd>
                                 {% if alert.pubDateTime %}
-                                    {{ alert.pubDateTime|date('d/m/Y H:i:s') }}
-                                    <small>{{ alert.pubMillis }} ms (epoch)</small>
+                                    {{ alerts_date(alert.pubDateTime, true, true) }}
+                                    <small>{{ alert.pubMillis }} {{ 'ms (epoch)'|trans({}, 'alerts_ui') }}</small>
                                 {% else %}—{% endif %}
                             </dd>
                         </div>
                         <div>
-                            <dt>Coletado em (Horario de São Paulo)</dt>
+                            <dt>{{ 'Coletado em (Horario de São Paulo)'|trans({}, 'alerts_ui') }}</dt>
                             <dd>
                                 {% if alert.collectedAt %}
-                                    {{ alert.collectedAt|date('d/m/Y H:i:s') }}
+                                    {{ alerts_date(alert.collectedAt, true, true) }}
                                     <small>{{ alert.collectedAt|date('c', 'America/Sao_Paulo') }}</small>
                                 {% else %}—{% endif %}
                             </dd>
                         </div>
                         <div>
-                            <dt>Última vez visto (Horario de São Paulo)</dt>
+                            <dt>{{ 'Última vez visto (Horario de São Paulo)'|trans({}, 'alerts_ui') }}</dt>
                             <dd>
                                 {% if alert.lastSeenAt %}
-                                    {{ alert.lastSeenAt|date('d/m/Y H:i:s') }}
+                                    {{ alerts_date(alert.lastSeenAt, true, true) }}
                                 {% else %}—{% endif %}
                             </dd>
                         </div>
                         <div>
-                            <dt>Desativado em (Horario de São Paulo)</dt>
+                            <dt>{{ 'Desativado em (Horario de São Paulo)'|trans({}, 'alerts_ui') }}</dt>
                             <dd>
                                 {% if alert.deactivatedAt %}
-                                    {{ alert.deactivatedAt|date('d/m/Y H:i:s') }}
+                                    {{ alerts_date(alert.deactivatedAt, true, true) }}
                                 {% else %}—{% endif %}
                             </dd>
                         </div>
@@ -158,16 +159,16 @@
                 <section class="alert-show-panel">
                     <header class="alert-show-panel-header">
                         <div>
-                            <span class="alert-show-kicker">Endereço</span>
-                            <h2>Local textual</h2>
+                            <span class="alert-show-kicker">{{ 'Endereço'|trans({}, 'alerts_ui') }}</span>
+                            <h2>{{ 'Local textual'|trans({}, 'alerts_ui') }}</h2>
                         </div>
                     </header>
 
                     <dl class="alert-show-list">
-                        <div><dt>Rua</dt>      <dd>{{ alert.street|default('—') }}</dd></div>
-                        <div><dt>Cidade</dt>   <dd>{{ alert.city|default('—') }}</dd></div>
-                        <div><dt>Latitude</dt> <dd>{{ alert.latitude|default('—') }}</dd></div>
-                        <div><dt>Longitude</dt><dd>{{ alert.longitude|default('—') }}</dd></div>
+                        <div><dt>{{ 'Rua'|trans({}, 'alerts_ui') }}</dt>      <dd>{{ alert.street|default('—') }}</dd></div>
+                        <div><dt>{{ 'Cidade'|trans({}, 'alerts_ui') }}</dt>   <dd>{{ alert.city|default('—') }}</dd></div>
+                        <div><dt>{{ 'Latitude'|trans({}, 'alerts_ui') }}</dt> <dd>{{ alert.latitude|default('—') }}</dd></div>
+                        <div><dt>{{ 'Longitude'|trans({}, 'alerts_ui') }}</dt><dd>{{ alert.longitude|default('—') }}</dd></div>
                     </dl>
                 </section>
 
@@ -175,18 +176,18 @@
                 <section class="alert-show-panel">
                     <header class="alert-show-panel-header">
                         <div>
-                            <span class="alert-show-kicker">Identificadores</span>
-                            <h2>Chaves internas</h2>
+                            <span class="alert-show-kicker">{{ 'Identificadores'|trans({}, 'alerts_ui') }}</span>
+                            <h2>{{ 'Chaves internas'|trans({}, 'alerts_ui') }}</h2>
                         </div>
                     </header>
 
                     <dl class="alert-show-list">
                         <div>
-                            <dt>UUID</dt>
+                            <dt>{{ 'UUID'|trans({}, 'alerts_ui') }}</dt>
                             <dd class="alert-show-mono">{{ alert.uuid|default('—') }}</dd>
                         </div>
                         <div>
-                            <dt>Partner</dt>
+                            <dt>{{ 'Partner'|trans({}, 'alerts_ui') }}</dt>
                             <dd>{{ alert.partner ? alert.partner.name : '—' }}</dd>
                         </div>
                     </dl>
@@ -196,8 +197,8 @@
                     <section class="alert-show-panel alert-show-panel--wide">
                         <header class="alert-show-panel-header">
                             <div>
-                                <span class="alert-show-kicker">Descrição</span>
-                                <h2>Report enviado pela Waze</h2>
+                                <span class="alert-show-kicker">{{ 'Descrição'|trans({}, 'alerts_ui') }}</span>
+                                <h2>{{ 'Report enviado pela Waze'|trans({}, 'alerts_ui') }}</h2>
                             </div>
                         </header>
                         <p class="alert-show-description">{{ alert.reportDescription }}</p>
