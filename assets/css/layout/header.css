@@ -252,6 +252,7 @@
 
   /* ─── Icon button ──────────────────────────────────────────────────── */
   .app-header__action-wrap,
+  .app-header__language-wrap,
   .app-header__user-wrap { position: relative; }
 
   .app-header__icon-button {
@@ -292,6 +293,52 @@
     font-style: normal;
     font-weight: 800;
     line-height: 1;
+  }
+
+  /* ─── Language selector ────────────────────────────────────────────── */
+  .app-header__language-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .app-header__language-flag {
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  .app-header__language-menu {
+    width: 210px;
+    padding: 6px;
+    z-index: 1200;
+  }
+
+  .app-header__language-option {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 10px;
+    border-radius: var(--radius-xs);
+    color: var(--text-muted);
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background var(--hd-transition), color var(--hd-transition);
+  }
+
+  .app-header__language-option:hover,
+  .app-header__language-option:focus-visible {
+    background: var(--surface-soft);
+    color: var(--text);
+  }
+
+  .app-header__language-option.is-active {
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
+
+  .app-header__language-button[aria-expanded="true"] .app-header__chevron {
+    transform: rotate(180deg);
   }
 
   /* ─── Theme control ────────────────────────────────────────────────── */

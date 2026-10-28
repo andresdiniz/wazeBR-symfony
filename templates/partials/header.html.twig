@@ -10,6 +10,8 @@
     *   data-header-notifications-toggle
     *   data-header-notifications
     *   data-header-notifications-read
+    *   data-header-language-toggle
+    *   data-header-language-menu
     *   data-header-user-toggle
     *   data-header-user-menu
     #}
@@ -39,32 +41,20 @@
        : 'W'
    %}
 
-   {% set _notifications = header_notifications|default([
-       {
-           title: 'Monitoramento atualizado',
-           message: 'Novos registros disponíveis.',
-           time: 'Agora',
-           tone: 'orange',
-           unread: true
-       },
-       {
-           title: 'Rotas processadas',
-           message: 'Snapshots recentes importados.',
-           time: 'Há 5 min',
-           tone: 'blue',
-           unread: true
-       },
-       {
-           title: 'Sistema online',
-           message: 'Serviços principais respondendo.',
-           time: 'Hoje',
-           tone: 'green',
-           unread: false
-       }
-   ]) %}
+   {% set _user_partner = _user and _user.partner is defined ? _user.partner : null %}
+
+   {% set _notifications = header_notifications|default([]) %}
+
+   {% if _user_partner %}
+       {% set _notifications = _notifications
+           |filter(notification => notification.partner is defined and notification.partner.id == _user_partner.id)
+       %}
+   {% elseif not _user %}
+       {% set _notifications = [] %}
+   {% endif %}
 
    {% set _unread_count = _notifications
-       |filter(n => n.unread|default(false))
+       |filter(notification => notification.unread|default(false))
        |length
    %}
 
@@ -396,6 +386,70 @@
 
                        </div>
 
+                   </div>
+
+
+                   {# --------------------------------------------------------
+                      Idioma
+                      -------------------------------------------------------- #}
+
+                   <div class="app-header__language-wrap">
+                       <button
+                           type="button"
+                           class="app-header__icon-button app-header__language-button"
+                           data-header-language-toggle
+                           aria-expanded="false"
+                           aria-haspopup="menu"
+                           aria-controls="header-language-menu"
+                           aria-label="Selecionar idioma"
+                       >
+                           <span
+                               class="app-header__language-flag"
+                               data-header-language-flag
+                               aria-hidden="true"
+                           >🇧🇷</span>
+
+                           <span class="app-header__chevron" aria-hidden="true">⌄</span>
+                       </button>
+
+                       <div
+                           class="app-header__dropdown app-header__language-menu"
+                           id="header-language-menu"
+                           data-header-language-menu
+                           role="menu"
+                           aria-label="Idioma"
+                           hidden
+                       >
+                           <a
+                               href="#"
+                               role="menuitem"
+                               class="app-header__language-option"
+                               data-language-option="pt_BR"
+                           >
+                               <span class="app-header__language-flag" aria-hidden="true">🇧🇷</span>
+                               Português (Brasil)
+                           </a>
+
+                           <a
+                               href="#"
+                               role="menuitem"
+                               class="app-header__language-option"
+                               data-language-option="en"
+                           >
+                               <span class="app-header__language-flag" aria-hidden="true">🇺🇸</span>
+                               English
+                           </a>
+
+                           <a
+                               href="#"
+                               role="menuitem"
+                               class="app-header__language-option"
+                               data-language-option="es"
+                           >
+                               <span class="app-header__language-flag" aria-hidden="true">🇪🇸</span>
+                               Español
+                           </a>
+                       </div>
                    </div>
 
 

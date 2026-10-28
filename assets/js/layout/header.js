@@ -1,8 +1,9 @@
 /**
- * layout/header.js — v2
+ * layout/header.js — v3
  *
  * Header global com:
- *  - Notificações (dropdown)
+ *  - Notificações do parceiro do usuário (dropdown)
+ *  - Seletor de idioma PT-BR / EN / ES
  *  - Menu do usuário
  *  - Busca (Ctrl/Cmd+K)
  *  - Tema (system/light/dark) via color-scheme
@@ -14,7 +15,13 @@
 'use strict';
 
 const THEME_KEY = 'wazebr-theme';
+const LOCALE_KEY = 'wazebr-locale';
 const THEMES = ['system', 'light', 'dark'];
+const LOCALES = {
+  pt_BR: { flag: '🇧🇷', htmlLang: 'pt-BR' },
+  en: { flag: '🇺🇸', htmlLang: 'en' },
+  es: { flag: '🇪🇸', htmlLang: 'es' },
+};
 const TRANSITION_MS = 220;
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -30,6 +37,7 @@ export function initHeader(doc = globalThis.document) {
 
   initTheme(header, doc);
   initNotifications(header, doc);
+  initLanguageMenu(header, doc);
   initUserMenu(header, doc);
   initAdminMenu(header, doc);
   initMobileNav(header, doc);
@@ -189,6 +197,7 @@ function createDropdown({ trigger, dropdown, onOpen, onClose, doc }) {
 // ─────────────────────────────────────────────────────────────────────────
 
 let notificationsApi = null;
+let languageMenuApi = null;
 let userMenuApi = null;
 let adminMenuApi = null;
 
@@ -204,7 +213,7 @@ function initNotifications(header, doc) {
     trigger: btn,
     dropdown,
     doc,
-    onOpen: () => userMenuApi?.close(),
+    onOpen: () => { languageMenuApi?.close(); userMenuApi?.close(); adminMenuApi?.close(); },
   });
 
   readBtn?.addEventListener('click', (e) => {
@@ -224,6 +233,73 @@ function initNotifications(header, doc) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Idioma
+// ─────────────────────────────────────────────────────────────────────────
+
+function readLocale() {
+  try {
+    const value = localStorage.getItem(LOCALE_KEY);
+    return LOCALES[value] ? value : 'pt_BR';
+  } catch { return 'pt_BR'; }
+}
+
+function applyLocale(locale, doc) {
+  const config = LOCALES[locale] || LOCALES.pt_BR;
+  const flag = header_language_flag(doc);
+
+  doc.documentElement.lang = config.htmlLang;
+
+  if (flag) flag.textContent = config.flag;
+
+  doc.querySelectorAll('[data-language-option]').forEach((option) => {
+    option.classList.toggle('is-active', option.dataset.languageOption === locale);
+  });
+}
+
+function header_language_flag(doc) {
+  return doc.querySelector('[data-header-language-flag]');
+}
+
+function initLanguageMenu(header, doc) {
+  const btn = header.querySelector('[data-header-language-toggle]');
+  const dropdown = header.querySelector('[data-header-language-menu]');
+
+  if (!btn || !dropdown) return;
+
+  languageMenuApi = createDropdown({
+    trigger: btn,
+    dropdown,
+    doc,
+    onOpen: () => { notificationsApi?.close(); userMenuApi?.close(); adminMenuApi?.close(); },
+  });
+
+  applyLocale(readLocale(), doc);
+
+  dropdown.querySelectorAll('[data-language-option]').forEach((option) => {
+    option.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const locale = option.dataset.languageOption;
+      if (!LOCALES[locale]) return;
+
+      try { localStorage.setItem(LOCALE_KEY, locale); } catch { /* noop */ }
+
+      applyLocale(locale, doc);
+      languageMenuApi?.close();
+
+      // Recarrega a página para o backend aplicar a locale selecionada.
+      window.location.reload();
+    });
+  });
+
+  window.addEventListener('storage', (event) => {
+    if (event.key !== LOCALE_KEY || !LOCALES[event.newValue]) return;
+    applyLocale(event.newValue, doc);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // User menu
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -236,7 +312,7 @@ function initUserMenu(header, doc) {
     trigger: btn,
     dropdown,
     doc,
-    onOpen: () => { notificationsApi?.close(); adminMenuApi?.close(); },
+    onOpen: () => { notificationsApi?.close(); languageMenuApi?.close(); adminMenuApi?.close(); },
   });
 }
 
@@ -249,7 +325,7 @@ function initAdminMenu(header, doc) {
     trigger: btn,
     dropdown,
     doc,
-    onOpen: () => { notificationsApi?.close(); userMenuApi?.close(); },
+    onOpen: () => { notificationsApi?.close(); languageMenuApi?.close(); userMenuApi?.close(); },
   });
 }
 
@@ -266,6 +342,7 @@ function initMobileNav(header, doc) {
     e.stopPropagation();
 
     notificationsApi?.close();
+    languageMenuApi?.close();
     userMenuApi?.close();
     adminMenuApi?.close();
 
@@ -321,6 +398,7 @@ function initGlobalClose(header, doc) {
   doc.addEventListener('click', (e) => {
     if (!header.contains(e.target)) {
       notificationsApi?.close();
+      languageMenuApi?.close();
       userMenuApi?.close();
       adminMenuApi?.close();
     }
@@ -339,6 +417,7 @@ function initGlobalClose(header, doc) {
     if (e.key !== 'Escape') return;
 
     if (notificationsApi?.isOpen()) { notificationsApi.close(true); return; }
+    if (languageMenuApi?.isOpen())  { languageMenuApi.close(true);  return; }
     if (userMenuApi?.isOpen())      { userMenuApi.close(true);      return; }
     if (adminMenuApi?.isOpen())     { adminMenuApi.close(true);     return; }
   });
