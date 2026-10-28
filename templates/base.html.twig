@@ -1,88 +1,29 @@
 <!DOCTYPE html>
-<html lang="pt-BR" data-theme="system">
+<html lang="{{ app.request.locale|replace({'_': '-'}) }}" data-locale="{{ app.request.locale }}" data-theme="system">
 
 <head>
     <meta charset="UTF-8">
     <meta name="referrer" content="no-referrer-when-downgrade">
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
-    >
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <meta name="color-scheme" content="light dark">
+    <meta name="description" content="{% block meta_description %}Plataforma WazeBR{% endblock %}">
+    <meta name="robots" content="{% block meta_robots %}index, follow{% endblock %}">
 
-    <meta
-        name="color-scheme"
-        content="light dark"
-    >
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+    <link rel="alternate icon" href="{{ asset('favicon.ico') }}">
+    <link rel="manifest" href="{{ asset('site.webmanifest') }}" ignore-path>
+    <meta name="theme-color" content="#33ccff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#1e293b" media="(prefers-color-scheme: dark)">
 
-    <meta
-        name="description"
-        content="{% block meta_description %}Plataforma WazeBR{% endblock %}"
-    >
-
-    <meta
-        name="robots"
-        content="{% block meta_robots %}index, follow{% endblock %}"
-    >
-
-    {# ============================================================
-       FAVICON / PWA
-       ============================================================ #}
-
-    <link
-        rel="icon"
-        type="image/svg+xml"
-        href="{{ asset('favicon.svg') }}"
-    >
-
-    <link
-        rel="alternate icon"
-        href="{{ asset('favicon.ico') }}"
-    >
-
-    <link
-        rel="manifest"
-        href="{{ asset('site.webmanifest') }}"
-        ignore-path
-    >
-
-    <meta
-        name="theme-color"
-        content="#33ccff"
-        media="(prefers-color-scheme: light)"
-    >
-
-    <meta
-        name="theme-color"
-        content="#1e293b"
-        media="(prefers-color-scheme: dark)"
-    >
-
-
-    {# ============================================================
-       TITLE
-       ============================================================ #}
-
-    <title>
-        {% block title %}WazeBR{% endblock %}
-    </title>
-
-
-    {# ============================================================
-       ANTI-FOUC — TEMA
-       ============================================================ #}
+    <title>{% block title %}WazeBR{% endblock %}</title>
 
     <script>
         (function () {
             try {
-                var theme =
-                    localStorage.getItem('wazebr-theme') || 'system';
-
-                if (
-                    ['system', 'light', 'dark'].indexOf(theme) < 0
-                ) {
+                var theme = localStorage.getItem('wazebr-theme') || 'system';
+                if (['system', 'light', 'dark'].indexOf(theme) < 0) {
                     theme = 'system';
                 }
-
                 document.documentElement.dataset.theme = theme;
             } catch (e) {
                 document.documentElement.dataset.theme = 'system';
@@ -92,18 +33,12 @@
 
     {% include 'partials/analytics.html.twig' %}
 
-    {# ============================================================
-       STYLESHEETS
-       ============================================================ #}
-
     {% block stylesheets %}
-       <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+        <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     {% endblock %}
 
-
-    {# ============================================================
-       IMPORTMAP
-       ============================================================ #}
+    {# A deferred classic script also runs on login pages without the header module. #}
+    <script src="{{ asset('js/layout/locale-bridge.js') }}" defer></script>
 
     {% block importmap %}
         {% if app.environment == 'dev' %}
@@ -114,80 +49,26 @@
     {% endblock %}
 </head>
 
-
-<body
-    class="{% block body_class %}bg-background text-foreground min-h-screen flex flex-col font-sans antialiased{% endblock %}"
->
-
-    {# ============================================================
-       HEADER GLOBAL
-       ============================================================ #}
-
-    {% block header %}
-    {% endblock %}
-
-
-    {# ============================================================
-       FLASH MESSAGES
-       ============================================================ #}
+<body class="{% block body_class %}bg-background text-foreground min-h-screen flex flex-col font-sans antialiased{% endblock %}">
+    {% block header %}{% endblock %}
 
     {% block flash_messages %}
-
         {% if app.flashes|length > 0 %}
-
-            <aside
-                aria-label="Notificações"
-                class="container mx-auto px-4 mt-4 space-y-2"
-            >
-
+            <aside aria-label="{{ 'header.notifications'|trans }}" class="container mx-auto px-4 mt-4 space-y-2">
                 {% for type, messages in app.flashes %}
-
                     {% for message in messages %}
-
-                        <div
-                            class="p-4 rounded-lg shadow-sm border alert alert-{{ type }}"
-                            role="alert"
-                        >
+                        <div class="p-4 rounded-lg shadow-sm border alert alert-{{ type }}" role="alert">
                             {{ message }}
                         </div>
-
                     {% endfor %}
-
                 {% endfor %}
-
             </aside>
-
         {% endif %}
-
     {% endblock %}
 
-
-    {# ============================================================
-       CONTEÚDO DA PÁGINA
-       ============================================================ #}
-
-    {% block body %}
-    {% endblock %}
-
-
-    {# ============================================================
-       FOOTER GLOBAL
-       ============================================================ #}
-
-    {% block footer %}
-    {% endblock %}
-
-
+    {% block body %}{% endblock %}
+    {% block footer %}{% endblock %}
     {% include 'partials/consent-banner.html.twig' %}
-
-
-    {# ============================================================
-       JAVASCRIPT
-       ============================================================ #}
-
-    {% block javascripts %}
-    {% endblock %}
-
+    {% block javascripts %}{% endblock %}
 </body>
-
 </html>
