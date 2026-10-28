@@ -1,139 +1,51 @@
-<footer
-    class="app-footer footer"
-    data-component="footer"
->
+<footer class="app-footer footer" data-component="footer">
     <div class="footer-inner">
-
-        {# ========================================================
-           MARCA
-           ======================================================== #}
         <div class="footer-brand-block">
-
-            <a
-                href="{{ path('dashboard') }}"
-                class="footer-brand"
-                aria-label="WazeBR - início"
-            >
-                <span
-                    class="footer-brand-mark"
-                    aria-hidden="true"
-                >
-                    W
-                </span>
-
+            <a href="{{ path('dashboard') }}" class="footer-brand" aria-label="WazeBR — {{ 'footer.home'|trans }}">
+                <span class="footer-brand-mark" aria-hidden="true">W</span>
                 <span class="footer-brand-content">
                     <strong>WazeBR</strong>
-                    <small>Monitoramento inteligente</small>
+                    <small>{{ 'footer.brand_tagline'|trans }}</small>
                 </span>
             </a>
 
-            <p class="footer-description">
-                Dados claros para decisões melhores no trânsito.
-            </p>
-
+            <p class="footer-description">{{ 'footer.description'|trans }}</p>
         </div>
 
-
-        {# ========================================================
-           NAVEGAÇÃO
-           ======================================================== #}
         <div class="footer-nav-block">
+            <span class="footer-section-label">{{ 'footer.navigation'|trans }}</span>
 
-            <span class="footer-section-label">
-                Navegação
-            </span>
-
-            <nav
-                class="footer-nav"
-                aria-label="Navegação do rodapé"
-            >
+            <nav class="footer-nav" aria-label="{{ 'footer.footer_navigation'|trans }}">
                 <ul class="footer-nav-list">
-
-                    <li>
-                        <a
-                            href="{{ path('dashboard') }}"
-                            class="footer-link"
-                        >
-                            Início
-                        </a>
-                    </li>
-
-                    <li>
-                        <a
-                            href="#"
-                            class="footer-link"
-                        >
-                            Sobre
-                        </a>
-                    </li>
-
-                    <li>
-                        <a
-                            href="#"
-                            class="footer-link"
-                        >
-                            Contato
-                        </a>
-                    </li>
-
+                    <li><a href="{{ path('dashboard') }}" class="footer-link">{{ 'footer.home'|trans }}</a></li>
+                    <li><a href="#" class="footer-link">{{ 'footer.about'|trans }}</a></li>
+                    <li><a href="#" class="footer-link">{{ 'footer.contact'|trans }}</a></li>
                 </ul>
             </nav>
-
         </div>
 
-
-        {# ========================================================
-           STATUS / META
-           ======================================================== #}
         <div class="footer-meta">
-
-            <div
-                class="footer-system-status"
-                aria-label="Sistema operacional"
-            >
-                <span
-                    class="footer-system-status-dot"
-                    aria-hidden="true"
-                ></span>
-
-                <span>
-                    Sistema operacional
-                </span>
+            <div class="footer-system-status" aria-label="{{ 'footer.system_operational'|trans }}">
+                <span class="footer-system-status-dot" aria-hidden="true"></span>
+                <span>{{ 'footer.system_operational'|trans }}</span>
             </div>
 
             <p class="footer-copyright">
                 &copy;
-                <span data-current-year>
-                    {{ "now"|date("Y") }}
-                </span>
+                <span data-current-year>{{ "now"|date("Y") }}</span>
                 WazeBR.
-                Todos os direitos reservados.
+                {{ 'footer.rights_reserved'|trans }}
             </p>
 
-            <span class="footer-version">
-                Centro operacional
-            </span>
-
+            <span class="footer-version">{{ 'footer.operations_center'|trans }}</span>
         </div>
-
     </div>
 
-
-    {# ========================================================
-       BARRA INFERIOR
-       ======================================================== #}
     <div class="footer-bottom">
         <div class="footer-bottom-inner">
-
             <span class="footer-bottom-line"></span>
-
-            <span class="footer-bottom-text">
-                Monitoramento de trânsito em tempo real
-            </span>
-
+            <span class="footer-bottom-text">{{ 'footer.realtime_monitoring'|trans }}</span>
             <span class="footer-bottom-line"></span>
-
         </div>
     </div>
-
 </footer>

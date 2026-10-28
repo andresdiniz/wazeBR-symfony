@@ -1,412 +1,153 @@
-{# ============================================================
-    SIDEBAR — WazeBR Centro Operacional
-    ============================================================ #}
-
-
 {% set current_route = app.request.attributes.get('_route') %}
 {% set sidebar_admin_context = current_route starts with 'admin_user' or current_route starts with 'admin_partner' or current_route starts with 'admin_overview' %}
 {% set sidebar_collapsed = app.request.cookies.get('wazebr_sidebar_collapsed') == '1' %}
 
-
-<aside
-    id="app-sidebar"
-    class="app-sidebar sidebar{% if sidebar_collapsed %} is-collapsed{% endif %}"
-    data-component="sidebar"
-    data-sidebar
-    aria-label="Navegação principal"
->
+<aside id="app-sidebar" class="app-sidebar sidebar{% if sidebar_collapsed %} is-collapsed{% endif %}" data-component="sidebar" data-sidebar aria-label="{{ 'sidebar.main_navigation'|trans }}">
     <div class="sidebar-inner">
-
-
-        {# --------------------------------------------------------
-           CABEÇALHO
-           -------------------------------------------------------- #}
         <div class="sidebar-heading">
-
-
             <div class="sidebar-heading-content">
-                <span class="sidebar-heading-icon" aria-hidden="true">
-                    <span></span>
-                </span>
-
-
+                <span class="sidebar-heading-icon" aria-hidden="true"><span></span></span>
                 <span class="sidebar-heading-label">
-                    {{ sidebar_admin_context ? 'Administração' : 'Menu principal' }}
+                    {{ sidebar_admin_context ? 'sidebar.administration'|trans : 'sidebar.main_menu'|trans }}
                 </span>
             </div>
 
-
-            <button
-                type="button"
-                class="sidebar-collapse-button"
-                data-action="toggle-sidebar-collapse"
-                data-sidebar-collapse
-                aria-label="Recolher menu lateral"
-                aria-expanded="{{ sidebar_collapsed ? 'false' : 'true' }}"
-                aria-controls="app-sidebar"
-            >
-                <span
-                    class="sidebar-collapse-icon"
-                    aria-hidden="true"
-                >‹</span>
+            <button type="button" class="sidebar-collapse-button" data-action="toggle-sidebar-collapse" data-sidebar-collapse aria-label="{{ 'sidebar.collapse_sidebar'|trans }}" aria-expanded="{{ sidebar_collapsed ? 'false' : 'true' }}" aria-controls="app-sidebar">
+                <span class="sidebar-collapse-icon" aria-hidden="true">‹</span>
             </button>
         </div>
 
-
-
-        {# --------------------------------------------------------
-           NAVEGAÇÃO
-           -------------------------------------------------------- #}
         {% if not sidebar_admin_context %}
-
-        <nav
-            class="sidebar-nav"
-            data-sidebar-navigation
-            aria-label="Menu principal"
-        >
-
-
-            {# Dashboard #}
-            <a
-                href="{{ path('dashboard') }}"
-                class="sidebar-link{% if current_route == 'dashboard' %} is-active{% endif %}"
-                data-sidebar-link
-                title="Dashboard"
-                {% if current_route == 'dashboard' %}aria-current="page"{% endif %}
-            >
+        <nav class="sidebar-nav" data-sidebar-navigation aria-label="{{ 'sidebar.main_menu'|trans }}">
+            <a href="{{ path('dashboard') }}" class="sidebar-link{% if current_route == 'dashboard' %} is-active{% endif %}" data-sidebar-link title="{{ 'sidebar.dashboard'|trans }}" {% if current_route == 'dashboard' %}aria-current="page"{% endif %}>
                 <span class="sidebar-link-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                        <path d="M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-16v5h6V4h-6Z"/>
-                    </svg>
+                    <svg viewBox="0 0 24 24" focusable="false"><path d="M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-16v5h6V4h-6Z"/></svg>
                 </span>
-
-
-                <span class="sidebar-link-label">
-                    Dashboard
-                </span>
-
-
-                {% if current_route == 'dashboard' %}
-                    <span class="sidebar-active-indicator" aria-hidden="true"></span>
-                {% endif %}
+                <span class="sidebar-link-label">{{ 'sidebar.dashboard'|trans }}</span>
+                {% if current_route == 'dashboard' %}<span class="sidebar-active-indicator" aria-hidden="true"></span>{% endif %}
             </a>
 
-
-
-            {# Alertas #}
-            <a
-                href="{{ path('alert_index') }}"
-                class="sidebar-link{% if current_route starts with 'app_alerts' %} is-active{% endif %}"
-                data-sidebar-link
-                title="Alertas"
-                {% if current_route starts with 'app_alerts' %}aria-current="page"{% endif %}
-            >
+            <a href="{{ path('alert_index') }}" class="sidebar-link{% if current_route starts with 'app_alerts' %} is-active{% endif %}" data-sidebar-link title="{{ 'sidebar.alerts'|trans }}" {% if current_route starts with 'app_alerts' %}aria-current="page"{% endif %}>
                 <span class="sidebar-link-icon sidebar-link-icon--alert" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                        <path d="M12 3a7 7 0 0 0-7 7v4l-2 3h18l-2-3v-4a7 7 0 0 0-7-7Zm0 18a3 3 0 0 0 2.83-2H9.17A3 3 0 0 0 12 21Z"/>
-                    </svg>
+                    <svg viewBox="0 0 24 24" focusable="false"><path d="M12 3a7 7 0 0 0-7 7v4l-2 3h18l-2-3v-4a7 7 0 0 0-7-7Zm0 18a3 3 0 0 0 2.83-2H9.17A3 3 0 0 0 12 21Z"/></svg>
                 </span>
-
-
-                <span class="sidebar-link-label">
-                    Alertas
-                </span>
-
-
+                <span class="sidebar-link-label">{{ 'sidebar.alerts'|trans }}</span>
                 {% if sidebar_alert_count is defined and sidebar_alert_count > 0 %}
-                    <span class="sidebar-link-badge">
-                        {{ sidebar_alert_count > 99 ? '99+' : sidebar_alert_count }}
-                    </span>
+                    <span class="sidebar-link-badge">{{ sidebar_alert_count > 99 ? '99+' : sidebar_alert_count }}</span>
                 {% endif %}
-
-
-                {% if current_route starts with 'app_alerts' %}
-                    <span class="sidebar-active-indicator" aria-hidden="true"></span>
-                {% endif %}
+                {% if current_route starts with 'app_alerts' %}<span class="sidebar-active-indicator" aria-hidden="true"></span>{% endif %}
             </a>
 
-
-
-            {# Congestionamentos #}
-            <a
-                href="{{ path('jam_index') }}"
-                class="sidebar-link{% if current_route starts with 'app_jams' %} is-active{% endif %}"
-                data-sidebar-link
-                title="Congestionamentos"
-                {% if current_route starts with 'app_jams' %}aria-current="page"{% endif %}
-            >
+            <a href="{{ path('jam_index') }}" class="sidebar-link{% if current_route starts with 'app_jams' %} is-active{% endif %}" data-sidebar-link title="{{ 'sidebar.jams'|trans }}" {% if current_route starts with 'app_jams' %}aria-current="page"{% endif %}>
                 <span class="sidebar-link-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                        <path d="M5 7h14M3 12h18M5 17h14"/>
-                    </svg>
+                    <svg viewBox="0 0 24 24" focusable="false"><path d="M5 7h14M3 12h18M5 17h14"/></svg>
                 </span>
-
-
-                <span class="sidebar-link-label">
-                    Congestionamentos
-                </span>
-
-
-                {% if current_route starts with 'app_jams' %}
-                    <span class="sidebar-active-indicator" aria-hidden="true"></span>
-                {% endif %}
+                <span class="sidebar-link-label">{{ 'sidebar.jams'|trans }}</span>
+                {% if current_route starts with 'app_jams' %}<span class="sidebar-active-indicator" aria-hidden="true"></span>{% endif %}
             </a>
 
-
-            {# Rotas #}
-            <a
-                href="{{ path('routes_index') }}"
-                class="sidebar-link{% if current_route starts with 'app_routes' %} is-active{% endif %}"
-                data-sidebar-link
-                title="Rotas"
-                {% if current_route starts with 'app_routes' %}aria-current="page"{% endif %}
-            >
+            <a href="{{ path('routes_index') }}" class="sidebar-link{% if current_route starts with 'app_routes' %} is-active{% endif %}" data-sidebar-link title="{{ 'sidebar.routes'|trans }}" {% if current_route starts with 'app_routes' %}aria-current="page"{% endif %}>
                 <span class="sidebar-link-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                        <path d="M6 5c4 0 4 3 8 3s4-3 4-3M6 19c4 0 4-3 8-3s4 3 4 3M6 5v14"/>
-                    </svg>
+                    <svg viewBox="0 0 24 24" focusable="false"><path d="M6 5c4 0 4 3 8 3s4-3 4-3M6 19c4 0 4-3 8-3s4 3 4 3M6 5v14"/></svg>
                 </span>
-
-
-                <span class="sidebar-link-label">
-                    Rotas
-                </span>
-
-
-                {% if current_route starts with 'app_routes' %}
-                    <span class="sidebar-active-indicator" aria-hidden="true"></span>
-                {% endif %}
+                <span class="sidebar-link-label">{{ 'sidebar.routes'|trans }}</span>
+                {% if current_route starts with 'app_routes' %}<span class="sidebar-active-indicator" aria-hidden="true"></span>{% endif %}
             </a>
 
-
-
-            {# Feed CIFS Waze (envia dados das cidades/parceiros para o Waze) #}
-            <a
-                href="{{ path('partner_feed_index') }}"
-                class="sidebar-link{% if current_route starts with 'partner_feed' or current_route starts with 'partner_event' or current_route starts with 'app_cifs_feed' %} is-active{% endif %}"
-                data-sidebar-link
-                title="Feed CIFS Waze — dados que o Waze consome"
-                {% if current_route starts with 'partner_feed' or current_route starts with 'partner_event' or current_route starts with 'app_cifs_feed' %}aria-current="page"{% endif %}
-            >
+            <a href="{{ path('partner_feed_index') }}" class="sidebar-link{% if current_route starts with 'partner_feed' or current_route starts with 'partner_event' or current_route starts with 'app_cifs_feed' %} is-active{% endif %}" data-sidebar-link title="{{ 'sidebar.cifs_feed_title'|trans }}" {% if current_route starts with 'partner_feed' or current_route starts with 'partner_event' or current_route starts with 'app_cifs_feed' %}aria-current="page"{% endif %}>
                 <span class="sidebar-link-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                        <path d="M12 3 2 8l10 5 10-5-10-5Zm-8 9 8 4 8-4M4 15l8 4 8-4"/>
-                    </svg>
+                    <svg viewBox="0 0 24 24" focusable="false"><path d="M12 3 2 8l10 5 10-5-10-5Zm-8 9 8 4 8-4M4 15l8 4 8-4"/></svg>
                 </span>
-
-
-                <span class="sidebar-link-label">
-                    Feed CIFS Waze
-                </span>
-
-
-                {% if current_route starts with 'partner_feed' or current_route starts with 'partner_event' or current_route starts with 'app_cifs_feed' %}
-                    <span class="sidebar-active-indicator" aria-hidden="true"></span>
-                {% endif %}
+                <span class="sidebar-link-label">{{ 'sidebar.cifs_feed'|trans }}</span>
+                {% if current_route starts with 'partner_feed' or current_route starts with 'partner_event' or current_route starts with 'app_cifs_feed' %}<span class="sidebar-active-indicator" aria-hidden="true"></span>{% endif %}
             </a>
 
-
-
-            {# Clima #}
-            <a
-                href="{{ path('weather_index') }}"
-                class="sidebar-link{% if current_route starts with 'weather_' %} is-active{% endif %}"
-                data-sidebar-link
-                title="Clima"
-                {% if current_route starts with 'weather_' %}aria-current="page"{% endif %}
-            >
+            <a href="{{ path('weather_index') }}" class="sidebar-link{% if current_route starts with 'weather_' %} is-active{% endif %}" data-sidebar-link title="{{ 'sidebar.weather'|trans }}" {% if current_route starts with 'weather_' %}aria-current="page"{% endif %}>
                 <span class="sidebar-link-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                        <path d="M6 15a4 4 0 0 1 .5-7.97A5.5 5.5 0 0 1 17 8.5a3.5 3.5 0 0 1 1 6.5H6Z"/>
-                    </svg>
+                    <svg viewBox="0 0 24 24" focusable="false"><path d="M6 15a4 4 0 0 1 .5-7.97A5.5 5.5 0 0 1 17 8.5a3.5 3.5 0 0 1 1 6.5H6Z"/></svg>
                 </span>
-
-
-                <span class="sidebar-link-label">
-                    Clima
-                </span>
-
-
-                {% if current_route starts with 'weather_' %}
-                    <span class="sidebar-active-indicator" aria-hidden="true"></span>
-                {% endif %}
+                <span class="sidebar-link-label">{{ 'sidebar.weather'|trans }}</span>
+                {% if current_route starts with 'weather_' %}<span class="sidebar-active-indicator" aria-hidden="true"></span>{% endif %}
             </a>
 
-
-
-            {# TV / Wallboard #}
-            <a
-                href="{{ path('tv_index') }}"
-                class="sidebar-link sidebar-link--tv{% if current_route starts with 'tv_' %} is-active{% endif %}"
-                data-sidebar-link
-                target="_blank"
-                rel="noopener"
-                title="TV Operacional — abre em nova aba"
-                {% if current_route starts with 'tv_' %}aria-current="page"{% endif %}
-            >
+            <a href="{{ path('tv_index') }}" class="sidebar-link sidebar-link--tv{% if current_route starts with 'tv_' %} is-active{% endif %}" data-sidebar-link target="_blank" rel="noopener" title="{{ 'sidebar.operational_tv_title'|trans }}" {% if current_route starts with 'tv_' %}aria-current="page"{% endif %}>
                 <span class="sidebar-link-icon sidebar-link-icon--tv" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                        <rect x="2.5" y="4.5" width="19" height="13" rx="2"/>
-                        <circle cx="17.5" cy="8.5" r="1.3" class="tv-live-dot"/>
-                        <path d="M9 21h6M12 17.5V21"/>
-                    </svg>
+                    <svg viewBox="0 0 24 24" focusable="false"><rect x="2.5" y="4.5" width="19" height="13" rx="2"/><circle cx="17.5" cy="8.5" r="1.3" class="tv-live-dot"/><path d="M9 21h6M12 17.5V21"/></svg>
                 </span>
-
-
-                <span class="sidebar-link-label">
-                    TV Operacional
-                </span>
-
-
-                {% if current_route starts with 'tv_' %}
-                    <span class="sidebar-active-indicator" aria-hidden="true"></span>
-                {% endif %}
+                <span class="sidebar-link-label">{{ 'sidebar.operational_tv'|trans }}</span>
+                {% if current_route starts with 'tv_' %}<span class="sidebar-active-indicator" aria-hidden="true"></span>{% endif %}
             </a>
-
-
-
-
-
         </nav>
         {% endif %}
-
-
 
         {% if sidebar_admin_context %}
             <div class="sidebar-section-divider" aria-hidden="true">
                 <span></span>
-                <span class="sidebar-section-divider-label">Administração</span>
+                <span class="sidebar-section-divider-label">{{ 'sidebar.administration'|trans }}</span>
             </div>
 
-            <nav class="sidebar-nav sidebar-nav--admin" aria-label="Menu administrativo">
+            <nav class="sidebar-nav sidebar-nav--admin" aria-label="{{ 'sidebar.admin_navigation'|trans }}">
                 {% if is_granted('ROLE_ACCOUNT_ADMIN') or is_granted('ROLE_PARTNER_ADMIN') %}
-                    <a
-                        href="{{ path('admin_users_index') }}"
-                        class="sidebar-link{% if current_route starts with 'admin_user' %} is-active{% endif %}"
-                        data-sidebar-link
-                        title="Usuários"
-                        {% if current_route starts with 'admin_user' %}aria-current="page"{% endif %}
-                    >
+                    <a href="{{ path('admin_users_index') }}" class="sidebar-link{% if current_route starts with 'admin_user' %} is-active{% endif %}" data-sidebar-link title="{{ 'sidebar.users'|trans }}" {% if current_route starts with 'admin_user' %}aria-current="page"{% endif %}>
                         <span class="sidebar-link-icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" focusable="false">
-                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm9-3v6M21 11h-6"/>
-                            </svg>
+                            <svg viewBox="0 0 24 24" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm9-3v6M21 11h-6"/></svg>
                         </span>
-                        <span class="sidebar-link-label">Usuários</span>
-                        {% if current_route starts with 'admin_user' %}
-                            <span class="sidebar-active-indicator" aria-hidden="true"></span>
-                        {% endif %}
+                        <span class="sidebar-link-label">{{ 'sidebar.users'|trans }}</span>
+                        {% if current_route starts with 'admin_user' %}<span class="sidebar-active-indicator" aria-hidden="true"></span>{% endif %}
                     </a>
                 {% endif %}
 
                 {% if is_granted('ROLE_PARTNER_ADMIN') and app.user.partner %}
-                    <a href="{{ path('admin_partner_data_index', {id: app.user.partner.id}) }}" class="sidebar-link{% if current_route starts with 'admin_partner_data' %} is-active{% endif %}" data-sidebar-link title="Dados do parceiro" {% if current_route starts with 'admin_partner_data' %}aria-current="page"{% endif %}>
+                    <a href="{{ path('admin_partner_data_index', {id: app.user.partner.id}) }}" class="sidebar-link{% if current_route starts with 'admin_partner_data' %} is-active{% endif %}" data-sidebar-link title="{{ 'sidebar.partner_data'|trans }}" {% if current_route starts with 'admin_partner_data' %}aria-current="page"{% endif %}>
                         <span class="sidebar-link-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8m0-12.8L5.6 18.4"/></svg></span>
-                        <span class="sidebar-link-label">Dados do parceiro</span>
+                        <span class="sidebar-link-label">{{ 'sidebar.partner_data'|trans }}</span>
                         {% if current_route starts with 'admin_partner_data' %}<span class="sidebar-active-indicator" aria-hidden="true"></span>{% endif %}
                     </a>
                 {% endif %}
+
                 {% if is_granted('ROLE_ADMIN') and app.user.partner is null %}
-                    <a
-                        href="{{ path('admin_partner_index') }}"
-                        class="sidebar-link{% if current_route starts with 'admin_partner' %} is-active{% endif %}"
-                        data-sidebar-link
-                        title="Parceiros"
-                        {% if current_route starts with 'admin_partner' %}aria-current="page"{% endif %}
-                    >
+                    <a href="{{ path('admin_partner_index') }}" class="sidebar-link{% if current_route starts with 'admin_partner' %} is-active{% endif %}" data-sidebar-link title="{{ 'sidebar.partners'|trans }}" {% if current_route starts with 'admin_partner' %}aria-current="page"{% endif %}>
                         <span class="sidebar-link-icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" focusable="false">
-                                <path d="M3 20V9l9-6 9 6v11a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z"/>
-                            </svg>
+                            <svg viewBox="0 0 24 24" focusable="false"><path d="M3 20V9l9-6 9 6v11a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z"/></svg>
                         </span>
-                        <span class="sidebar-link-label">Parceiros</span>
-                        {% if current_route starts with 'admin_partner' %}
-                            <span class="sidebar-active-indicator" aria-hidden="true"></span>
-                        {% endif %}
+                        <span class="sidebar-link-label">{{ 'sidebar.partners'|trans }}</span>
+                        {% if current_route starts with 'admin_partner' %}<span class="sidebar-active-indicator" aria-hidden="true"></span>{% endif %}
                     </a>
 
-                    <a
-                        href="{{ path('traffic_light_list') }}"
-                        class="sidebar-link{% if current_route starts with 'traffic_light' %} is-active{% endif %}"
-                        data-sidebar-link
-                        title="Semáforos"
-                    >
+                    <a href="{{ path('traffic_light_list') }}" class="sidebar-link{% if current_route starts with 'traffic_light' %} is-active{% endif %}" data-sidebar-link title="{{ 'sidebar.traffic_lights'|trans }}">
                         <span class="sidebar-link-icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" focusable="false">
-                                <rect x="8" y="2.5" width="8" height="19" rx="2"/>
-                                <circle cx="12" cy="7" r="1.4"/>
-                                <circle cx="12" cy="12" r="1.4"/>
-                                <circle cx="12" cy="17" r="1.4"/>
-                            </svg>
+                            <svg viewBox="0 0 24 24" focusable="false"><rect x="8" y="2.5" width="8" height="19" rx="2"/><circle cx="12" cy="7" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="17" r="1.4"/></svg>
                         </span>
-                        <span class="sidebar-link-label">Semáforos</span>
+                        <span class="sidebar-link-label">{{ 'sidebar.traffic_lights'|trans }}</span>
                     </a>
                 {% endif %}
             </nav>
         {% elseif is_granted('ROLE_ADMIN') and app.user.partner is null %}
             <div class="sidebar-section-divider" aria-hidden="true">
                 <span></span>
-                <span class="sidebar-section-divider-label">Administração</span>
+                <span class="sidebar-section-divider-label">{{ 'sidebar.administration'|trans }}</span>
             </div>
-            <nav class="sidebar-nav sidebar-nav--admin" aria-label="Menu administrativo">
-                <a
-                    href="{{ path('traffic_light_list') }}"
-                    class="sidebar-link{% if current_route starts with 'traffic_light' %} is-active{% endif %}"
-                    data-sidebar-link
-                    title="Semáforos — controladores de tráfego"
-                    {% if current_route starts with 'traffic_light' %}aria-current="page"{% endif %}
-                >
+            <nav class="sidebar-nav sidebar-nav--admin" aria-label="{{ 'sidebar.admin_navigation'|trans }}">
+                <a href="{{ path('traffic_light_list') }}" class="sidebar-link{% if current_route starts with 'traffic_light' %} is-active{% endif %}" data-sidebar-link title="{{ 'sidebar.traffic_lights_title'|trans }}" {% if current_route starts with 'traffic_light' %}aria-current="page"{% endif %}>
                     <span class="sidebar-link-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" focusable="false">
-                            <rect x="8" y="2.5" width="8" height="19" rx="2"/>
-                            <circle cx="12" cy="7" r="1.4"/>
-                            <circle cx="12" cy="12" r="1.4"/>
-                            <circle cx="12" cy="17" r="1.4"/>
-                        </svg>
+                        <svg viewBox="0 0 24 24" focusable="false"><rect x="8" y="2.5" width="8" height="19" rx="2"/><circle cx="12" cy="7" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="17" r="1.4"/></svg>
                     </span>
-                    <span class="sidebar-link-label">Semáforos</span>
-                    {% if current_route starts with 'traffic_light' %}
-                        <span class="sidebar-active-indicator" aria-hidden="true"></span>
-                    {% endif %}
+                    <span class="sidebar-link-label">{{ 'sidebar.traffic_lights'|trans }}</span>
+                    {% if current_route starts with 'traffic_light' %}<span class="sidebar-active-indicator" aria-hidden="true"></span>{% endif %}
                 </a>
             </nav>
         {% endif %}
-        {# --------------------------------------------------------
-           ÁREA INFERIOR
-           -------------------------------------------------------- #}
+
         <div class="sidebar-spacer"></div>
 
-
-
-        {# --------------------------------------------------------
-           STATUS
-           -------------------------------------------------------- #}
-        <div
-            class="sidebar-status"
-            data-sidebar-status
-            aria-label="Status do sistema"
-        >
-            <span
-                class="sidebar-status-indicator"
-                aria-hidden="true"
-            ></span>
-
-
+        <div class="sidebar-status" data-sidebar-status aria-label="{{ 'sidebar.system_status'|trans }}">
+            <span class="sidebar-status-indicator" aria-hidden="true"></span>
             <div class="sidebar-status-content">
-                <strong>Sistema online</strong>
-                <span>Monitoramento ativo</span>
+                <strong>{{ 'sidebar.system_online'|trans }}</strong>
+                <span>{{ 'sidebar.active_monitoring'|trans }}</span>
             </div>
         </div>
-
-
     </div>
 </aside>
 
-
-
-{# Overlay para dispositivos móveis #}
-<div
-    class="sidebar-overlay"
-    data-sidebar-overlay
-    hidden
-></div>
+<div class="sidebar-overlay" data-sidebar-overlay hidden></div>

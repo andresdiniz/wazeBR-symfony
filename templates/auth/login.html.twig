@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Login — WazeBR{% endblock %}
+{% block title %}{{ 'login.title'|trans }}{% endblock %}
 
 {% block stylesheets %}
     <link rel="stylesheet" href="{{ asset('css/auth.css') }}">
@@ -12,11 +12,8 @@
 
 {% block body %}
 <div class="auth-page">
-
-    {# ── Lado esquerdo — formulário ───────────────────────────── #}
     <div class="auth-left">
         <div class="auth-container">
-
             <a href="{{ path('app_landing') }}" class="auth-brand">
                 <div class="auth-brand-mark">
                     <i class="bi bi-signpost-2-fill"></i>
@@ -25,8 +22,8 @@
             </a>
 
             <div class="auth-heading">
-                <h1>Bem-vindo de volta</h1>
-                <p>Acesse sua conta para monitorar o trânsito em tempo real.</p>
+                <h1>{{ 'login.welcome'|trans }}</h1>
+                <p>{{ 'login.subtitle'|trans }}</p>
             </div>
 
             {% if error %}
@@ -43,42 +40,22 @@
                 <div class="auth-field">
                     <label for="username">
                         <i class="bi bi-envelope"></i>
-                        Email
+                        {{ 'login.email'|trans }}
                     </label>
-                    <input
-                        type="email"
-                        id="username"
-                        name="_username"
-                        value="{{ last_username }}"
-                        class="auth-input"
-                        autocomplete="email"
-                        placeholder="seu@email.com"
-                        required
-                        autofocus
-                    >
+                    <input type="email" id="username" name="_username" value="{{ last_username }}" class="auth-input" autocomplete="email" placeholder="{{ 'login.email_placeholder'|trans }}" required autofocus>
                 </div>
 
                 <div class="auth-field">
                     <div class="auth-field-row">
                         <label for="password">
                             <i class="bi bi-lock"></i>
-                            Senha
+                            {{ 'login.password'|trans }}
                         </label>
-                        <a href="{{ path('app_forgot_password_request') }}" class="auth-field-link">
-                            Esqueceu a senha?
-                            </a>
+                        <a href="{{ path('app_forgot_password_request') }}" class="auth-field-link">{{ 'login.forgot_password'|trans }}</a>
                     </div>
                     <div class="auth-input-wrap">
-                        <input
-                            type="password"
-                            id="password"
-                            name="_password"
-                            class="auth-input"
-                            autocomplete="current-password"
-                            placeholder="Sua senha"
-                            required
-                        >
-                        <button type="button" class="auth-toggle-pw" data-target="password" aria-label="Mostrar senha">
+                        <input type="password" id="password" name="_password" class="auth-input" autocomplete="current-password" placeholder="{{ 'login.password_placeholder'|trans }}" required>
+                        <button type="button" class="auth-toggle-pw" data-target="password" aria-label="{{ 'login.show_password'|trans }}">
                             <i class="bi bi-eye"></i>
                         </button>
                     </div>
@@ -88,12 +65,12 @@
                     <label class="auth-checkbox-label">
                         <input type="checkbox" name="_remember_me" id="remember_me">
                         <span class="auth-checkbox-box"></span>
-                        Manter conectado
+                        {{ 'login.remember_me'|trans }}
                     </label>
                 </div>
 
                 <button type="submit" class="auth-btn auth-btn-primary" id="loginSubmit">
-                    <span>Entrar</span>
+                    <span>{{ 'login.submit'|trans }}</span>
                     <i class="bi bi-arrow-right"></i>
                 </button>
             </form>
@@ -101,17 +78,14 @@
             <div class="auth-footer-link">
                 <a href="{{ path('app_landing') }}">
                     <i class="bi bi-arrow-left"></i>
-                    Voltar ao início
+                    {{ 'login.back_home'|trans }}
                 </a>
             </div>
-
         </div>
     </div>
 
-    {# ── Lado direito — visual ────────────────────────────────── #}
     <div class="auth-right">
         <div class="auth-visual">
-
             <div class="auth-right-orb auth-right-orb-1" aria-hidden="true"></div>
             <div class="auth-right-orb auth-right-orb-2" aria-hidden="true"></div>
 
@@ -119,46 +93,44 @@
                 <div class="auth-visual-logo">
                     <i class="bi bi-signpost-2-fill"></i>
                 </div>
-                <h2>Monitoramento inteligente de trânsito</h2>
-                <p>Dados em tempo real para decisões mais rápidas e operações mais eficientes.</p>
+                <h2>{{ 'login.visual_title'|trans }}</h2>
+                <p>{{ 'login.visual_subtitle'|trans }}</p>
 
                 <ul class="auth-features">
                     <li>
                         <span class="auth-feature-icon"><i class="bi bi-broadcast"></i></span>
-                        Atualizações em tempo real
+                        {{ 'login.feature_realtime'|trans }}
                     </li>
                     <li>
                         <span class="auth-feature-icon"><i class="bi bi-exclamation-triangle"></i></span>
-                        Alertas e ocorrências
+                        {{ 'login.feature_alerts'|trans }}
                     </li>
                     <li>
                         <span class="auth-feature-icon"><i class="bi bi-car-front"></i></span>
-                        Monitoramento de congestionamentos
+                        {{ 'login.feature_jams'|trans }}
                     </li>
                     <li>
                         <span class="auth-feature-icon"><i class="bi bi-signpost-2"></i></span>
-                        Gestão de rotas TVT
+                        {{ 'login.feature_tvt'|trans }}
                     </li>
                 </ul>
 
                 <div class="auth-visual-stats">
                     <div class="auth-stat">
                         <strong>35+</strong>
-                        <span>Alertas/dia</span>
+                        <span>{{ 'login.stat_alerts'|trans }}</span>
                     </div>
                     <div class="auth-stat">
                         <strong>100%</strong>
-                        <span>Online</span>
+                        <span>{{ 'login.stat_online'|trans }}</span>
                     </div>
                     <div class="auth-stat">
                         <strong>24h</strong>
-                        <span>Monitoramento</span>
+                        <span>{{ 'login.stat_monitoring'|trans }}</span>
                     </div>
                 </div>
             </div>
-
         </div>
     </div>
-
 </div>
 {% endblock %}
