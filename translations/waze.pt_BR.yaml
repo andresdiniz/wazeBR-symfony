@@ -42,6 +42,10 @@ alert_subtype:
   hazard_weather_hurricane:    Furacão
   hazard_weather_monsoon:      Monção
   hazard_weather_tornado:      Tornado
+  hazard_weather_wind:         Vento forte
+  hazard_on_road_pothole:      Buraco na pista
+
+
   # JAM
   jam_heavy_traffic:           Tráfego intenso
   jam_light_traffic:           Tráfego leve
