@@ -70,7 +70,10 @@
                 <span class="kpi-icon" aria-hidden="true">◈</span>
                 <strong class="kpi-value kpi-value--sm" data-kpi="top_type">{{ alerts_label(stats.top_type|default(null)) }}</strong>
                 <span class="kpi-label">{{ 'Tipo mais frequente'|trans({}, 'alerts_ui') }}</span>
-                <small class="kpi-foot">{{ 'Confiança média'|trans({}, 'alerts_ui') }} {{ stats.avg_confidence|default(0)|round(1) }}%</small>
+                <small class="kpi-foot">
+                    {{ 'Confiança média'|trans({}, 'alerts_ui') }}
+                    <span data-kpi="avg-confidence">{{ stats.avg_confidence is not null ? ((stats.avg_confidence * 20)|round ~ '%') : '—' }}</span>
+                </small>
             </article>
             <article class="alerts-kpi-card kpi-orange">
                 <span class="kpi-icon" aria-hidden="true">⏱</span>
@@ -137,9 +140,9 @@
                 <label class="alerts-field">
                     <span>{{ 'Confiança mínima'|trans({}, 'alerts_ui') }}</span>
                     <select name="min_confidence">
-                        {% for v in [0, 40, 60, 80, 90] %}
+                        {% for v in [0, 2, 3, 4, 5] %}
                             <option value="{{ v }}" {{ filters.min_confidence == v ? 'selected' }}>
-                                {{ v == 0 ? 'Qualquer' : '≥ ' ~ v ~ '%' }}
+                                {{ v == 0 ? 'Qualquer' : '≥ ' ~ v ~ ' (' ~ (v * 20) ~ '%)' }}
                             </option>
                         {% endfor %}
                     </select>
@@ -305,8 +308,8 @@
                                 <td>{{ a.street|default('—') }}</td>
                                 <td>
                                     <span class="alerts-conf">
-                                        <span class="alerts-conf-bar" style="--v:{{ a.confidence }}"></span>
-                                        {{ a.confidence }}%
+                                        <span class="alerts-conf-bar" style="--v:{{ a.confidence * 20 }}"></span>
+                                        {{ a.confidence }}/5 · {{ a.confidence * 20 }}%
                                     </span>
                                 </td>
                                 <td>

@@ -133,6 +133,12 @@ function typeColor(type) {
     return TYPE_COLOR[(type || '').toUpperCase()] || COLORS.blue;
 }
 
+function confidencePercent(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return null;
+    return Math.max(0, Math.min(100, Math.round(n * 20)));
+}
+
 function collectFilters(form) {
     const out = {};
     new FormData(form).forEach((v, k) => {
@@ -412,7 +418,7 @@ function renderLiveMarkers() {
                 <hr>
                 ${a.street ? `${escapeHtml(a.street)}<br>` : ''}
                 ${a.city ? `<small>${escapeHtml(a.city)}</small><br>` : ''}
-                <small>${at("Confiança")}: ${a.confidence}%</small><br>
+                <small>${at("Confiança")}: ${a.confidence}/5 (${confidencePercent(a.confidence) ?? '—'}%)</small><br>
                 <small>${at("Coletado")}: ${fmtSp(a.when)}</small><br>
                 <small>${at("Publicado")}: ${fmtFromMs(a.pubMillis)}</small>
                 <hr>
@@ -518,6 +524,15 @@ async function fetchLive(root) {
     setText(root, '[data-kpi="top_type"]', alertLabel(stats.top_type));
     setText(root, '[data-kpi="recent"]', `${stats.recent ?? 0} ${at("na última hora")}`);
     setText(root, '[data-kpi="last_seen"]', stats.last_seen ? fmtSp(stats.last_seen) : '—');
+
+    const avgConfidence = stats.avg_confidence;
+    setText(
+        root,
+        '[data-kpi="avg-confidence"]',
+        avgConfidence === null || avgConfidence === undefined
+            ? '—'
+            : `${confidencePercent(avgConfidence)}%`,
+    );
 
     // Map
     mapState.liveData = json.map?.live || [];
@@ -648,6 +663,7 @@ function rowHtml(a) {
     const state  = a.isActive ? at("Ativo") : at("Encerrado");
     const stateClass = a.isActive ? 'is-active' : 'is-off';
     const showUrl = buildShowUrl(a.id);
+    const confidence = confidencePercent(a.confidence);
 
     return `
         <tr data-search-text="${search}">
@@ -658,8 +674,8 @@ function rowHtml(a) {
             <td>${escapeHtml(a.street || '—')}</td>
             <td>
                 <span class="alerts-conf">
-                    <span class="alerts-conf-bar" style="--v:${a.confidence}"></span>
-                    ${a.confidence}%
+                    <span class="alerts-conf-bar" style="--v:${confidence ?? 0}"></span>
+                    ${a.confidence ?? '—'}/5 · ${confidence ?? '—'}%
                 </span>
             </td>
             <td><span class="alerts-state ${stateClass}">${state}</span></td>

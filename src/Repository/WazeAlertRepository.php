@@ -455,7 +455,7 @@ final class WazeAlertRepository extends ServiceEntityRepository
             'subtype'        => trim((string) ($raw['subtype'] ?? '')) ?: null,
             'city'           => trim((string) ($raw['city'] ?? '')) ?: null,
             'query'          => trim((string) ($raw['query'] ?? '')),
-            'min_confidence' => max(0, min(100, (int) ($raw['min_confidence'] ?? 0))),
+            'min_confidence' => max(0, min(5, (int) ($raw['min_confidence'] ?? 0))),
             'active'         => (bool) ($raw['active'] ?? false),
         ];
     }

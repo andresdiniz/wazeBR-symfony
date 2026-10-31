@@ -86,15 +86,15 @@
 
                                         {% if alert.confidence is not null %}
                                             <span class="badge
-                                                {% if alert.confidence >= 7 %}
+                                                {% if alert.confidence >= 4 %}
                                                     badge-success
-                                                {% elseif alert.confidence >= 4 %}
+                                                {% elseif alert.confidence >= 3 %}
                                                     badge-warning
                                                 {% else %}
                                                     badge-danger
                                                 {% endif %}
                                             ">
-                                                {{ 'Confiança'|trans({}, 'alerts_ui') }} {{ alert.confidence }}
+                                                {{ 'Confiança'|trans({}, 'alerts_ui') }} {{ alert.confidence }}/5
                                             </span>
                                         {% endif %}
                                     </div>

@@ -97,7 +97,7 @@
                     <dl class="alert-show-list">
                         <div><dt>{{ 'Tipo'|trans({}, 'alerts_ui') }}</dt>        <dd>{{ alerts_label(alert.type) }}</dd></div>
                         <div><dt>{{ 'Subtipo'|trans({}, 'alerts_ui') }}</dt>     <dd>{{ alerts_label(alert.subtype) }}</dd></div>
-                        <div><dt>{{ 'Confiança'|trans({}, 'alerts_ui') }}</dt>   <dd>{{ alert.confidence }}</dd></div>
+                        <div><dt>{{ 'Confiança'|trans({}, 'alerts_ui') }}</dt>   <dd>{{ alert.confidence }}/5 · {{ alert.confidence * 20 }}%</dd></div>
                         <div><dt>{{ 'Confiabilidade'|trans({}, 'alerts_ui') }}</dt><dd>{{ alert.reliability }}</dd></div>
                         <div><dt>{{ 'Rating do report'|trans({}, 'alerts_ui') }}</dt><dd>{{ alert.reportRating }}</dd></div>
                         <div><dt>{{ 'Thumbs up'|trans({}, 'alerts_ui') }}</dt>   <dd>{{ alert.nThumbsUp }}</dd></div>
