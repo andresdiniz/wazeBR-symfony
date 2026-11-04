@@ -58,30 +58,54 @@ function showToast(message, duration = 3500) {
 }
 
 function syncPolylineInput(root) {
-    const input = field(root, 'pf-polyline-input');
-    if (input) input.value = JSON.stringify(polylinePoints);
+    const form = field(root, 'event-form');
+    if (!form) return;
+    let input = field(root, 'pf-polyline-input');
+    if (!input) {
+        input = document.createElement('input');
+        input.id = 'pf-polyline-input';
+        form.appendChild(input);
+    }
+    input.type = 'hidden';
+    input.name = 'polyline';
+    input.disabled = false;
+    if (input.form !== form) input.setAttribute('form', form.id);
+    input.value = JSON.stringify(polylinePoints);
 }
 
 function renderGeometry(root, fit = false) {
-    if (marker) map.removeLayer(marker);
-    if (polylinePath) map.removeLayer(polylinePath);
-    marker = null;
-    polylinePath = null;
-    if (polylinePoints.length) {
-        if (isRoadClosedMode) {
-            polylinePath = L.polyline(polylinePoints, {
-                color: '#ef4444', weight: 5, opacity: 0.9,
-            }).addTo(map);
-            if (fit && polylinePoints.length > 1) {
-                map.fitBounds(polylinePath.getBounds(), { padding: [50, 50] });
-            }
-        } else {
-            marker = L.marker(polylinePoints[0]).addTo(map);
-            if (fit) map.setView(polylinePoints[0], map.getZoom());
-        }
-    }
+    // Form data must not depend on successful Leaflet rendering.
     syncPolylineInput(root);
     updateCoordsDisplay(root);
+    if (!map) return;
+    try {
+        if (marker) map.removeLayer(marker);
+        if (polylinePath) map.removeLayer(polylinePath);
+        marker = null;
+        polylinePath = null;
+        if (polylinePoints.length) {
+            if (isRoadClosedMode) {
+                polylinePath = L.polyline(polylinePoints, {
+                    color: '#ef4444', weight: 5, opacity: 0.9,
+                }).addTo(map);
+                if (fit && polylinePoints.length > 1) {
+                    map.fitBounds(polylinePath.getBounds(), { padding: [50, 50] });
+                }
+            } else {
+                marker = L.circleMarker(polylinePoints[0], {
+                    radius: 9,
+                    color: '#ffffff',
+                    weight: 3,
+                    fillColor: '#0868d8',
+                    fillOpacity: 1,
+                }).addTo(map);
+                if (fit) map.setView(polylinePoints[0], map.getZoom());
+            }
+        }
+    } catch (error) {
+        console.error('[pf-form] Falha ao desenhar geometria:', error);
+        showToast('O ponto foi selecionado, mas não foi possível desenhá-lo no mapa.');
+    }
 }
 
 function updateCoordsDisplay(root) {
@@ -237,7 +261,7 @@ function onTypeChange(root) {
     if (!isRoadClosedMode && polylinePoints.length > 1) polylinePoints = [polylinePoints[0]];
     updateMapInstructions(root);
     updateSubtypes(root);
-    if (map) renderGeometry(root);
+    renderGeometry(root);
 }
 
 function clearMap(root, config) {
@@ -267,14 +291,13 @@ function initMap(root, config) {
         const lat = Number(event.latlng.lat);
         const lng = Number(event.latlng.lng);
         if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return;
-        if (isRoadClosedMode) {
-            cancelReverseGeocode(root);
-            polylinePoints.push([lat, lng]);
-        } else {
-            polylinePoints = [[lat, lng]];
-            reverseGeocode(lat, lng, root, config);
-        }
+        cancelReverseGeocode(root);
+        if (isRoadClosedMode) polylinePoints.push([lat, lng]);
+        else polylinePoints = [[lat, lng]];
+        syncPolylineInput(root);
+        updateCoordsDisplay(root);
         renderGeometry(root);
+        if (!isRoadClosedMode) reverseGeocode(lat, lng, root, config);
     });
     field(root, 'pf-clear-map-btn')?.addEventListener('click', () => clearMap(root, config));
 }
@@ -282,6 +305,9 @@ function initMap(root, config) {
 function initFormValidation(root) {
     const form = field(root, 'event-form');
     if (!form) return;
+    form.addEventListener('formdata', event => {
+        event.formData.set('polyline', JSON.stringify(polylinePoints));
+    });
     form.addEventListener('submit', event => {
         syncPolylineInput(root);
         cancelReverseGeocode(root);
