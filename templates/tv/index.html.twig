@@ -5,6 +5,7 @@
 {% block stylesheets %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous" />
     <link rel="stylesheet" href="{{ asset('css/pages/tv.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/pages/tv-priority.css') }}">
 {% endblock %}
 
 {% block body_class %}tv-body{% endblock %}
@@ -67,19 +68,29 @@
 
     <main class="tv-body">
         <aside class="tv-col tv-col--left">
-            <section class="tv-card tv-card--priority">
+            <section class="tv-card tv-card--priority" data-tv-priority-card data-priority-state="normal">
                 <header class="tv-card__head">
                     <span class="tv-card__icon">🎯</span>
                     <span class="tv-card__title">Prioridade agora</span>
+                    <span class="tv-card__badge" data-tv-priority-badge>Normal</span>
                 </header>
 
-                <div class="tv-card__sub" data-tv-last-critical hidden>
-                    <span class="tv-card__sub-dot"></span>
-                    <span data-tv-last-critical-text>—</span>
-                </div>
+                <div class="tv-priority">
+                    <div class="tv-priority__empty" data-tv-priority-empty>
+                        <strong>Sem incidentes críticos</strong>
+                        <span>Monitorando alertas, congestionamentos, clima e rotas.</span>
+                    </div>
 
-                <div class="tv-card__hint" data-tv-priority-hint>
-                    Monitorando a rede operacional
+                    <div class="tv-priority__incident" data-tv-priority-incident hidden>
+                        <div class="tv-priority__title" data-tv-priority-title>—</div>
+                        <div class="tv-priority__meta" data-tv-priority-meta>—</div>
+                        <div class="tv-priority__action" data-tv-priority-action>—</div>
+                    </div>
+
+                    <div class="tv-card__sub" data-tv-last-critical hidden>
+                        <span class="tv-card__sub-dot"></span>
+                        <span data-tv-last-critical-text>—</span>
+                    </div>
                 </div>
             </section>
 
