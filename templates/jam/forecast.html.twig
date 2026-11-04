@@ -1,0 +1,39 @@
+{% extends 'layouts/dashboard.html.twig' %}
+{% block title %}Previsão de duração dos jams | WazeBR{% endblock %}
+{% block stylesheets %}
+{{ parent() }}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<style>
+.jf{padding:24px;max-width:1600px;margin:auto}.jf header{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}.jf h1{font-size:26px}.jf-note{padding:16px;border:1px solid #64748b;border-radius:10px;margin:16px 0}.jf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}.jf-card{border:1px solid #64748b;border-left:4px solid #3b82f6;border-radius:12px;padding:18px}.jf-card h2{font-size:18px}.jf-metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}.jf-metrics span{display:block;font-size:12px;opacity:.8}.jf-estimate{font-size:20px;margin:12px 0}.jf-muted{font-size:13px;opacity:.85}.jf-map{height:350px;border-radius:12px;margin:18px 0}.jf-badge{display:inline-block;padding:4px 8px;border:1px solid #64748b;border-radius:20px;font-size:12px}
+</style>
+{% endblock %}
+{% block content %}
+<section class="jf">
+<header><div><h1>Previsão de duração dos jams</h1><p>Acompanhamento geográfico e sobrevivência condicional · experimental</p></div><nav><a href="{{ path('jam_index') }}">Voltar aos jams</a> · <a href="{{ path('jam_forecast_index') }}">Atualizar</a></nav></header>
+<div class="jf-note">Estimamos a duração restante até a desativação observada no feed, não a liberação da via nem a normalização confirmada. A idade começa no monitoramento deste módulo. Coordenadas, sentido aproximado, velocidade inicial, horário e tipo de via selecionam episódios comparáveis. A tendência atual é informativa e não altera artificialmente a previsão.</div>
+{% for error in errors %}<p role="alert">{{ error }}</p>{% endfor %}
+{% if items is empty %}<div class="jf-note">Nenhum acompanhamento disponível. Execute <code>php bin/console app:jams:forecast</code> periodicamente. A primeira execução começa a formar o histórico, sem inventar previsões.</div>{% else %}
+<p>{{ items|length }} registros acompanhados. Recarregue a página para ler a última execução do comando.</p>
+<div class="jf-map" data-jam-duration-map data-items="{{ items|json_encode|e('html_attr') }}"></div>
+<div class="jf-grid">
+{% for item in items %}
+<article class="jf-card"><span class="jf-badge">{{ item.status }}</span><h2>{{ item.street ?: 'Via não informada' }}</h2><p>{{ item.city }} · nível {{ item.level }} · parceiro {{ item.partner_id }}</p>
+<div class="jf-metrics"><div><span>Velocidade</span>{{ item.speed|number_format(1, ',', '.') }} km/h</div><div><span>Extensão</span>{{ (item.length / 1000)|number_format(2, ',', '.') }} km</div><div><span>Atraso</span>{{ item.delay >= 0 ? (item.delay / 60)|number_format(1, ',', '.') ~ ' min' : 'Indisponível' }}</div><div><span>Idade monitorada</span>{{ (item.age / 60)|round }} min</div></div>
+<p>{{ item.trend }}</p>
+{% if item.prediction and item.prediction.median is not null %}
+<div class="jf-estimate">Mediana restante: {{ (item.prediction.median / 60)|round }} min</div>
+<p>Horário central estimado: {{ (item.last + item.prediction.median)|date('d/m H:i', 'America/Sao_Paulo') }}</p>
+<p>Quartis históricos condicionais: {{ item.prediction.lower is not null ? (item.prediction.lower / 60)|round ~ ' min' : 'Não estimável' }} – {{ item.prediction.upper is not null ? (item.prediction.upper / 60)|round ~ ' min' : 'Limite superior não estimável' }}.</p>
+<p class="jf-muted">Não é intervalo de confiança calibrado. {{ item.prediction.at_risk }} comparáveis ainda em risco; {{ item.prediction.events }} encerramentos observados.</p>
+{% else %}<p class="jf-estimate">Sem horário confiável</p>{% endif %}
+<p class="jf-muted">Fonte: {{ item.last ? item.last|date('d/m H:i', 'America/Sao_Paulo') : 'Sem horário' }} · cálculo: {{ item.generated_at|date('H:i', 'America/Sao_Paulo') }}</p>
+{% if item.lat is not null %}<p class="jf-muted">{{ item.lat|number_format(5, '.', '') }}, {{ item.lng|number_format(5, '.', '') }}</p>{% endif %}
+<a href="{{ path('jam_show', {id:item.jam_id}) }}">Detalhes do jam</a></article>
+{% endfor %}
+</div>{% endif %}
+</section>
+{% endblock %}
+{% block javascripts %}{{ parent() }}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module" src="{{ asset('js/pages/jam-duration.js') }}"></script>
+{% endblock %}
