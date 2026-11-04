@@ -50,7 +50,60 @@ final class HomeController extends AbstractController
             'recent' => $stats['recent'] ?? [],
             'hydro' => $stats['hydro'] ?? [],
             'pluvio' => $stats['pluvio'] ?? [],
-            'fetch_status' => $stats['fetch_status'] ?? [],
+            'fetch_status' => $this->normalizeFetchStatus($stats['fetch_status'] ?? []),
         ]);
+    }
+
+    /**
+     * Converte valores de status para representação segura em Twig.
+     *
+     * @param array<string, mixed> $fetchStatus
+     *
+     * @return array<string, string>
+     */
+    private function normalizeFetchStatus(array $fetchStatus): array
+    {
+        $normalized = [];
+
+        foreach ($fetchStatus as $source => $status) {
+            $normalized[(string) $source] = $this->stringifyStatus($status);
+        }
+
+        return $normalized;
+    }
+
+    private function stringifyStatus(mixed $status): string
+    {
+        if ($status instanceof \DateTimeInterface) {
+            return $status->format('d/m/Y H:i');
+        }
+
+        if (is_array($status)) {
+            $parts = [];
+
+            foreach ($status as $value) {
+                $text = $this->stringifyStatus($value);
+
+                if ('' !== $text) {
+                    $parts[] = $text;
+                }
+            }
+
+            return implode(' • ', $parts);
+        }
+
+        if (null === $status) {
+            return '—';
+        }
+
+        if (is_bool($status)) {
+            return $status ? 'OK' : 'Falha';
+        }
+
+        if (is_scalar($status)) {
+            return (string) $status;
+        }
+
+        return '';
     }
 }
