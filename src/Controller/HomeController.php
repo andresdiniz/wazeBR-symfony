@@ -4,24 +4,53 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Entity\User;
+use App\Repository\DashboardRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 final class HomeController extends AbstractController
 {
-    // src/Controller/HomeController.php
-#[Route('/', name: 'app_landing')]
-public function landing(): Response
-{
-    $response = $this->render('landing.html.twig');
+    #[Route('/', name: 'app_home', methods: ['GET'])]
+    public function index(DashboardRepository $dashboardRepository): Response
+    {
+        /** @var User|null $user */
+        $user = $this->getUser();
 
-    // Browser guarda 3660s, CDN/proxy 5min. Depois disso, revalida.
-    $response->setPublic();
-    $response->setMaxAge(3660);
-    $response->setSharedMaxAge(6000);
-    $response->headers->addCacheControlDirective('must-revalidate');
+        if (!$user instanceof User) {
+            $response = $this->render('landing.html.twig');
+            $response->setPublic();
+            $response->setMaxAge(3660);
+            $response->setSharedMaxAge(6000);
+            $response->headers->addCacheControlDirective('must-revalidate');
 
-    return $response;
-}
+            return $response;
+        }
+
+        $partner = $user->isGlobalAdmin() ? null : $user->getPartner();
+
+        $stats = $dashboardRepository->getDashboardStats($partner, [
+            'period' => 'today',
+            'type' => 'all',
+            'query' => '',
+            'city' => null,
+            'exclude_streets' => '',
+        ]);
+
+        return $this->render('home/command_center.html.twig', [
+            'user' => $user,
+            'partner' => $partner,
+            'stats' => $stats,
+            'totals' => $stats['totals'] ?? [],
+            'kpis' => $stats['kpis'] ?? [],
+            'health_score' => $stats['health_score'] ?? null,
+            'map_payload' => $stats['map'] ?? [],
+            'charts' => $stats['charts'] ?? [],
+            'recent' => $stats['recent'] ?? [],
+            'hydro' => $stats['hydro'] ?? [],
+            'pluvio' => $stats['pluvio'] ?? [],
+            'fetch_status' => $stats['fetch_status'] ?? [],
+        ]);
+    }
 }
