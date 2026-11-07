@@ -17,6 +17,9 @@ use App\Service\JamForecastInputPolicy;
 #[AsCommand(name: 'app:jams:forecast', description: 'Acompanha jams não interditados e estima duração observada no feed.') ]
 final class JamDurationForecastCommand extends Command
 {
+    private const RECENT_CLOSED_SECONDS = 3600;
+    private const MAX_ROWS_PER_PARTNER = 2000;
+
     public function __construct(private readonly Connection $db, private readonly LockFactory $locks, private readonly JamDurationModel $model, private readonly JamForecastInputPolicy $policy, #[Autowire('%kernel.project_dir%')] private readonly string $projectDir) { parent::__construct(); }
     protected function configure(): void
     {
@@ -37,8 +40,11 @@ final class JamDurationForecastCommand extends Command
             try{
                 $path=$directory.'/'.$pid.'.json';
                 $state=is_file($path)?json_decode((string)file_get_contents($path),true,512,JSON_THROW_ON_ERROR):['open'=>[],'history'=>[]];
-                $rows=$this->db->fetchAllAssociative('SELECT id, uuid, partner_id, street, city, road_type, speed_kmh, length, delay, level, line, blocking_alert_uuid, is_active, last_seen_at, deactivated_at FROM waze_jams WHERE partner_id=? AND (is_active=1 OR last_seen_at>=?) ORDER BY id LIMIT 10001',[$pid,gmdate('Y-m-d H:i:s',time()-86400*30)]);
-                if(count($rows)>10000)throw new \RuntimeException('Limite de 10000 registros excedido; nada foi publicado.');
+                $recentCutoff=gmdate('Y-m-d H:i:s',time()-self::RECENT_CLOSED_SECONDS);
+                $rows=$this->db->fetchAllAssociative('SELECT id, uuid, partner_id, street, city, road_type, speed_kmh, length, delay, level, line, blocking_alert_uuid, is_active, last_seen_at, deactivated_at FROM waze_jams WHERE partner_id=? AND (is_active=1 OR (is_active=0 AND deactivated_at>=?)) ORDER BY is_active DESC, last_seen_at DESC, id DESC LIMIT '.self::MAX_ROWS_PER_PARTNER,[$pid,$recentCutoff]);
+                if(count($rows)>=self::MAX_ROWS_PER_PARTNER){
+                    $output->writeln(sprintf('ATENÇÃO: parceiro %d atingiu o limite de %d registros por execução; alguns jams recentes podem ficar pendentes.', $pid, self::MAX_ROWS_PER_PARTNER));
+                }
                 [$state,$rows,$excluded]=$this->policy->prepare($state,$rows);
                 $unit=strtolower((string)$partner['fetch_frequency_unit']);
                 $seconds=max(1,(int)$partner['fetch_frequency'])*(in_array($unit,['h','hr','hrs','hour','hours','hora','horas'],true)?3600:(in_array($unit,['s','sec','secs','second','seconds','seg','segs','segundo','segundos'],true)?1:60));

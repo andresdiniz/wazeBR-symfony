@@ -33,6 +33,10 @@ services:
             $schedulerLogger: '@monolog.logger.scheduler'
         tags: ['kernel.event_subscriber']
 
+    App\Command\FetchWazeFeedCommand:
+        arguments:
+            $logger: '@monolog.logger.scheduler'
+
     App\Repository\TvRepository:
         arguments:
             $connection: '@doctrine.dbal.default_connection'
