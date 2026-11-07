@@ -25,4 +25,4 @@ class ForgotPasswordFormType extends AbstractType
                 ],
             ]);
     }
-}c
+}
