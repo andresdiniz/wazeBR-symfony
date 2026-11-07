@@ -39,6 +39,8 @@ final class WritableResourceStream implements WritableStream, ResourceStream
     /**
      * @param resource $stream Stream resource.
      * @param positive-int|null $chunkSize Chunk size per `fwrite()` operation.
+     *
+     * @psalm-suppress UnusedVariable
      */
     public function __construct($stream, ?int $chunkSize = null)
     {
@@ -133,11 +135,17 @@ final class WritableResourceStream implements WritableStream, ResourceStream
 
                         // Broken pipes between processes on macOS/FreeBSD do not detect EOF properly.
                         // fwrite() may write zero bytes on subsequent calls due to the buffer filling again.
+                        //
+                        // A TLS stream may continually return 0 from fwrite() while also setting $errorCode to 0.
+                        // Therefore, we must check the EOF flag to avoid enquing a closed, but writable, stream.
+                        // @see https://github.com/amphp/byte-stream/pull/116
                         /** @psalm-suppress TypeDoesNotContainType $errorCode may be set by error handler. */
-                        if ($written === 0 && $errorCode !== 0 && $firstWrite) {
+                        if ($written === 0 && ($errorCode !== 0 || \feof($resource)) && $firstWrite) {
                             $writable = false;
                             $suspension?->resume(static fn () => throw new StreamException(
-                                \sprintf('Failed to write to stream (%d): %s', $errorCode, $errorMessage)
+                                $errorCode !== 0
+                                    ? \sprintf('Failed to write to stream (%d): %s', $errorCode, $errorMessage)
+                                    : 'Failed to write to stream: the peer closed the connection'
                             ));
 
                             continue;
@@ -187,6 +195,7 @@ final class WritableResourceStream implements WritableStream, ResourceStream
      *
      * @throws ClosedException If the stream has already been closed.
      */
+    #[\Override]
     public function write(string $bytes): void
     {
         if (!$this->writable) {
@@ -252,6 +261,7 @@ final class WritableResourceStream implements WritableStream, ResourceStream
     /**
      * Closes the stream after all pending writes have been completed. Optionally writes a final data chunk before.
      */
+    #[\Override]
     public function end(): void
     {
         $this->writable = false;
@@ -261,6 +271,7 @@ final class WritableResourceStream implements WritableStream, ResourceStream
         }
     }
 
+    #[\Override]
     public function isWritable(): bool
     {
         return $this->writable;
@@ -269,6 +280,7 @@ final class WritableResourceStream implements WritableStream, ResourceStream
     /**
      * Closes the stream forcefully. Multiple `close()` calls are ignored.
      */
+    #[\Override]
     public function close(): void
     {
         if (\is_resource($this->resource) && \get_resource_type($this->resource) === 'stream') {
@@ -286,11 +298,13 @@ final class WritableResourceStream implements WritableStream, ResourceStream
         $this->free();
     }
 
+    #[\Override]
     public function isClosed(): bool
     {
         return $this->resource === null;
     }
 
+    #[\Override]
     public function onClose(\Closure $onClose): void
     {
         $this->onClose->getFuture()->finally($onClose);
@@ -299,6 +313,7 @@ final class WritableResourceStream implements WritableStream, ResourceStream
     /**
      * @return resource|object|null Stream resource or null if end() has been called or the stream closed.
      */
+    #[\Override]
     public function getResource()
     {
         return $this->resource;
@@ -327,6 +342,7 @@ final class WritableResourceStream implements WritableStream, ResourceStream
      *
      * @see EventLoop::reference()
      */
+    #[\Override]
     public function reference(): void
     {
         if (!$this->resource) {
@@ -341,6 +357,7 @@ final class WritableResourceStream implements WritableStream, ResourceStream
      *
      * @see EventLoop::unreference()
      */
+    #[\Override]
     public function unreference(): void
     {
         if (!$this->resource) {
@@ -365,7 +382,6 @@ final class WritableResourceStream implements WritableStream, ResourceStream
         if (!$this->writes->isEmpty()) {
             $exception = new ClosedException("The socket was closed before writing completed");
             do {
-                /** @var Suspension|null $suspension */
                 [, $suspension] = $this->writes->shift();
                 $suspension?->throw($exception);
             } while (!$this->writes->isEmpty());

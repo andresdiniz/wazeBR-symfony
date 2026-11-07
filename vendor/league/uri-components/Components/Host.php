@@ -24,7 +24,6 @@ use League\Uri\Exceptions\MissingFeature;
 use League\Uri\Exceptions\SyntaxError;
 use League\Uri\HostRecord;
 use League\Uri\HostType;
-use League\Uri\Idna\Converter as IdnConverter;
 use League\Uri\IPv4\Converter as IPv4Converter;
 use League\Uri\IPv4Normalizer;
 use League\Uri\StringCoercionMode;
@@ -36,13 +35,10 @@ use Uri\WhatWg\Url as WhatWgUrl;
 
 use function explode;
 use function filter_var;
-use function preg_replace_callback;
 use function rawurldecode;
 use function rawurlencode;
 use function rtrim;
 use function sprintf;
-use function strtolower;
-use function strtoupper;
 use function substr;
 
 use const FILTER_FLAG_IPV6;
@@ -170,15 +166,7 @@ final class Host extends Component implements IpHostInterface
 
     public function encoded(): ?string
     {
-        if (null === $this->value || '' === $this->value || HostType::RegisteredName !== $this->host->type) {
-            return $this->value;
-        }
-
-        return (string) preg_replace_callback(
-            '/%[0-9A-F]{2}/i',
-            fn (array $matches): string => strtoupper($matches[0]),
-            strtolower(rawurlencode(IdnConverter::toUnicode($this->value)->domain()))
-        );
+        return $this->host->percentEncoded();
     }
 
     public function getIpVersion(): ?string

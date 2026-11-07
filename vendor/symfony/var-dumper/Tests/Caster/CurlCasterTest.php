@@ -1,0 +1,39 @@
+<?php
+
+/*
+ * This file is part of the Symfony package.
+ *
+ * (c) Fabien Potencier <fabien@symfony.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+namespace Symfony\Component\VarDumper\Tests\Caster;
+
+use PHPUnit\Framework\Attributes\RequiresPhpExtension;
+use PHPUnit\Framework\TestCase;
+use Symfony\Component\VarDumper\Test\VarDumperTestTrait;
+
+#[RequiresPhpExtension('curl')]
+class CurlCasterTest extends TestCase
+{
+    use VarDumperTestTrait;
+
+    public function testCastCurl()
+    {
+        $ch = curl_init('http://example.com/');
+
+        $this->assertDumpMatchesFormat(
+            <<<'EODUMP'
+                CurlHandle {
+                  url: "http://example.com/"
+                  content_type: null
+                  http_code: 0
+                %A
+                }
+                EODUMP,
+            $ch
+        );
+    }
+}

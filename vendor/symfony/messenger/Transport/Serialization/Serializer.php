@@ -91,18 +91,15 @@ class Serializer implements SerializerInterface, MessageTypeAwareSerializerInter
 
     public function decode(array $encodedEnvelope): Envelope
     {
-        if (empty($encodedEnvelope['body']) || empty($encodedEnvelope['headers'])) {
+        if (!\is_string($encodedEnvelope['body'] ?? null) || '' === $encodedEnvelope['body'] || !($encodedEnvelope['headers'] ?? null)) {
             throw new MessageDecodingFailedException('Encoded envelope should have at least a "body" and some "headers", or maybe you should implement your own serializer.');
         }
 
-        if (empty($encodedEnvelope['headers']['type'])) {
+        if (!\is_string($encodedEnvelope['headers']['type'] ?? null) || '' === $encodedEnvelope['headers']['type']) {
             throw new MessageDecodingFailedException('Encoded envelope does not have a "type" header.');
         }
 
         $stamps = $this->decodeStamps($encodedEnvelope);
-        $stamps[] = $serializedMessageStamp = new SerializedMessageStamp($encodedEnvelope['body']);
-        self::$decoders ??= new \WeakMap();
-        self::$decoders[$serializedMessageStamp] = $this;
 
         $serializerStamp = $this->findFirstSerializerStamp($stamps);
 
@@ -117,12 +114,16 @@ class Serializer implements SerializerInterface, MessageTypeAwareSerializerInter
             throw new MessageDecodingFailedException('Could not decode message: '.$e->getMessage(), (int) $e->getCode(), $e);
         }
 
+        $stamps[] = $serializedMessageStamp = new SerializedMessageStamp($encodedEnvelope['body']);
+        self::$decoders ??= new \WeakMap();
+        self::$decoders[$serializedMessageStamp] = [$this, \WeakReference::create($message)];
+
         return new Envelope($message, $stamps);
     }
 
     public function getMessageType(array $encodedEnvelope): ?string
     {
-        return $encodedEnvelope['headers']['type'] ?? null;
+        return \is_string($type = $encodedEnvelope['headers']['type'] ?? null) ? $type : null;
     }
 
     public function encode(Envelope $envelope): array
@@ -136,9 +137,13 @@ class Serializer implements SerializerInterface, MessageTypeAwareSerializerInter
         /** @var SerializedMessageStamp|null $serializedMessageStamp */
         $serializedMessageStamp = $envelope->last(SerializedMessageStamp::class);
 
-        // the body can be reused only when it is what this serializer would produce
-        if ($serializedMessageStamp && ($decoder = self::$decoders[$serializedMessageStamp] ?? null) && [$decoder->serializer, $decoder->format, $decoder->context] !== [$this->serializer, $this->format, $this->context]) {
-            $serializedMessageStamp = null;
+        // the body can be reused only when it is what this serializer would produce for the decoded message
+        if ($serializedMessageStamp && ($decoded = self::$decoders[$serializedMessageStamp] ?? null)) {
+            [$decoder, $decodedMessage] = $decoded;
+
+            if ($decodedMessage->get() !== $envelope->getMessage() || [$decoder->serializer, $decoder->format, $decoder->context] !== [$this->serializer, $this->format, $this->context]) {
+                $serializedMessageStamp = null;
+            }
         }
 
         $envelope = $envelope->withoutStampsOfType(NonSendableStampInterface::class);

@@ -377,18 +377,18 @@ class ProfilerController
      */
     public function openAction(Request $request): Response
     {
+        $this->denyAccessIfProfilerDisabled();
+
         if (null === $this->baseDir) {
             throw new NotFoundHttpException('The base dir should be set.');
         }
 
-        $this->profiler?->disable();
-
-        $file = $request->query->get('file');
-        $line = $request->query->get('line');
+        $file = $request->query->getString('file');
+        $line = $request->query->getInt('line');
 
         $filename = $this->baseDir.\DIRECTORY_SEPARATOR.$file;
 
-        if (preg_match("'(^|[/\\\\])\.'", $file) || !is_readable($filename)) {
+        if ('' === $file || preg_match("'(^|[/\\\\])\.'", $file) || !is_file($filename) || !is_readable($filename)) {
             throw new NotFoundHttpException(\sprintf('The file "%s" cannot be opened.', $file));
         }
 

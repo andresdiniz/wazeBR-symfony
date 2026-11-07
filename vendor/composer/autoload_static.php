@@ -27,10 +27,10 @@ class ComposerStaticInit1ebe4e9647c194e0ae3c3e42dbc745df
         '4ee21bf8253a2272056aefb41f7f0116' => __DIR__ . '/..' . '/amphp/byte-stream/src/Internal/functions.php',
         '662a729f963d39afe703c9d9b7ab4a8c' => __DIR__ . '/..' . '/symfony/polyfill-php83/bootstrap.php',
         '2c2415ec15363ede1bff13a287462ba1' => __DIR__ . '/..' . '/symfony/polyfill-php86/bootstrap.php',
-        '2203a247e6fda86070a5e4e07aed533a' => __DIR__ . '/..' . '/symfony/clock/Resources/now.php',
         'f598d06aa772fa33d905e87be6398fb1' => __DIR__ . '/..' . '/symfony/polyfill-intl-idn/bootstrap.php',
         '107d0b55c0ad2d07d8643394552ac029' => __DIR__ . '/..' . '/amphp/process/src/functions.php',
         '445532134d762b3cbc25500cac266092' => __DIR__ . '/..' . '/daverandom/libdns/src/functions.php',
+        '2203a247e6fda86070a5e4e07aed533a' => __DIR__ . '/..' . '/symfony/clock/Resources/now.php',
         'f4c761ca07639428acc28ba36643243e' => __DIR__ . '/..' . '/amphp/dns/src/functions.php',
         '3d8ee50db78074a9235f0c2008c26b42' => __DIR__ . '/..' . '/amphp/http/src/functions.php',
         '40522f9f0eb7d4f191114e944ee6d064' => __DIR__ . '/..' . '/amphp/http/src/Internal/constants.php',
@@ -138,7 +138,6 @@ class ComposerStaticInit1ebe4e9647c194e0ae3c3e42dbc745df
             'Symfony\\Bridge\\PhpUnit\\' => 23,
             'Symfony\\Bridge\\Monolog\\' => 23,
             'Symfony\\Bridge\\Doctrine\\' => 24,
-            'SymfonyCasts\\Bundle\\ResetPassword\\' => 34,
             'StellaMaris\\Clock\\' => 18,
         ),
         'R' => 
@@ -545,10 +544,6 @@ class ComposerStaticInit1ebe4e9647c194e0ae3c3e42dbc745df
         'Symfony\\Bridge\\Doctrine\\' => 
         array (
             0 => __DIR__ . '/..' . '/symfony/doctrine-bridge',
-        ),
-        'SymfonyCasts\\Bundle\\ResetPassword\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/symfonycasts/reset-password-bundle/src',
         ),
         'StellaMaris\\Clock\\' => 
         array (

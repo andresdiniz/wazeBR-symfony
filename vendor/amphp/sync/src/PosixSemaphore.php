@@ -48,6 +48,11 @@ final class PosixSemaphore implements Semaphore
             throw new SyncException('Failed to create semaphore: ' . $errstr, $errno);
         });
 
+        $pid = \getmypid();
+        if ($pid === false) {
+            throw new SyncException('Failed to get the current process ID');
+        }
+
         try {
             do {
                 do {
@@ -55,7 +60,7 @@ final class PosixSemaphore implements Semaphore
                 } while (\msg_queue_exists($id));
 
                 if ($queue = \msg_get_queue($id, $permissions)) {
-                    $semaphore = new self($queue, $id, \getmypid());
+                    $semaphore = new self($queue, $id, $pid);
 
                     // Fill the semaphore with locks.
                     while (--$maxLocks >= 0) {
@@ -147,6 +152,7 @@ final class PosixSemaphore implements Semaphore
         }
     }
 
+    #[\Override]
     public function acquire(): Lock
     {
         do {
@@ -187,6 +193,7 @@ final class PosixSemaphore implements Semaphore
             return;
         }
 
+        /** @psalm-suppress UnusedFunctionCall */
         \msg_remove_queue($this->queue);
     }
 

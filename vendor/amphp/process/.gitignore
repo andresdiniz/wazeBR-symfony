@@ -1,0 +1,9 @@
+.php_cs.cache
+.phpunit.result.cache
+build
+coverage
+composer.lock
+phpunit.xml
+vendor
+.phpunit.result.cache
+composer-require-checker.phar

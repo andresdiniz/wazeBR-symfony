@@ -1,0 +1,199 @@
+<?php
+
+/*
+ * This file is part of the Symfony package.
+ *
+ * (c) Fabien Potencier <fabien@symfony.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+namespace Symfony\Component\HttpFoundation\Tests\Session\Storage\Handler;
+
+use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\TestCase;
+use Symfony\Component\Cache\Marshaller\MarshallerInterface;
+use Symfony\Component\HttpFoundation\Session\Storage\Handler\AbstractSessionHandler;
+use Symfony\Component\HttpFoundation\Session\Storage\Handler\MarshallingSessionHandler;
+
+/**
+ * @author Ahmed TAILOULOUTE <ahmed.tailouloute@gmail.com>
+ */
+class MarshallingSessionHandlerTest extends TestCase
+{
+    protected MockObject&\SessionHandlerInterface $handler;
+
+    protected function setUp(): void
+    {
+        $this->handler = $this->createMock(AbstractSessionHandler::class);
+    }
+
+    public function testCannotBeSerialized()
+    {
+        $this->expectException(\BadMethodCallException::class);
+        $this->expectExceptionMessage('Cannot serialize '.MarshallingSessionHandler::class);
+
+        $this->handler->expects($this->never())->method($this->anything());
+
+        serialize(new MarshallingSessionHandler($this->handler, $this->createStub(MarshallerInterface::class)));
+    }
+
+    public function testCannotBeUnserialized()
+    {
+        $this->expectException(\BadMethodCallException::class);
+        $this->expectExceptionMessage('Cannot unserialize '.MarshallingSessionHandler::class);
+
+        $this->handler->expects($this->never())->method($this->anything());
+
+        (new MarshallingSessionHandler($this->handler, $this->createStub(MarshallerInterface::class)))->__unserialize([]);
+    }
+
+    public function testOpen()
+    {
+        $marshallingSessionHandler = new MarshallingSessionHandler($this->handler, $this->createStub(MarshallerInterface::class));
+
+        $this->handler->expects($this->once())->method('open')
+            ->with('path', 'name')->willReturn(true);
+
+        $marshallingSessionHandler->open('path', 'name');
+    }
+
+    public function testClose()
+    {
+        $marshallingSessionHandler = new MarshallingSessionHandler($this->handler, $this->createStub(MarshallerInterface::class));
+
+        $this->handler->expects($this->once())->method('close')->willReturn(true);
+
+        $this->assertTrue($marshallingSessionHandler->close());
+    }
+
+    public function testDestroy()
+    {
+        $marshallingSessionHandler = new MarshallingSessionHandler($this->handler, $this->createStub(MarshallerInterface::class));
+
+        $this->handler->expects($this->once())->method('destroy')
+            ->with('session_id')->willReturn(true);
+
+        $marshallingSessionHandler->destroy('session_id');
+    }
+
+    public function testGc()
+    {
+        $marshallingSessionHandler = new MarshallingSessionHandler($this->handler, $this->createStub(MarshallerInterface::class));
+
+        $this->handler->expects($this->once())->method('gc')
+            ->with(4711)->willReturn(1);
+
+        $marshallingSessionHandler->gc(4711);
+    }
+
+    public function testRead()
+    {
+        $marshaller = $this->createMock(MarshallerInterface::class);
+        $marshallingSessionHandler = new MarshallingSessionHandler($this->handler, $marshaller);
+
+        $this->handler->expects($this->once())->method('read')->with('session_id')
+            ->willReturn('data');
+        $marshaller->expects($this->once())->method('unmarshall')->with('data')
+            ->willReturn('unmarshalled_data')
+        ;
+
+        $result = $marshallingSessionHandler->read('session_id');
+        $this->assertEquals('unmarshalled_data', $result);
+    }
+
+    public function testReadReturnsEmptyStringWhenUnmarshallingFails()
+    {
+        $marshaller = $this->createMock(MarshallerInterface::class);
+        $marshallingSessionHandler = new MarshallingSessionHandler($this->handler, $marshaller);
+
+        $this->handler->expects($this->once())->method('read')->with('session_id')
+            ->willReturn('data');
+        $marshaller->expects($this->once())->method('unmarshall')->with('data')
+            ->willThrowException(new \DomainException('Failed to decrypt value.'))
+        ;
+
+        $this->assertSame('', $marshallingSessionHandler->read('session_id'));
+    }
+
+    public function testReadFailure()
+    {
+        $marshaller = $this->createMock(MarshallerInterface::class);
+        $marshallingSessionHandler = new MarshallingSessionHandler($this->handler, $marshaller);
+
+        $this->handler->expects($this->once())->method('read')->with('session_id')
+            ->willReturn(false);
+        $marshaller->expects($this->never())->method('unmarshall');
+
+        $this->assertFalse($marshallingSessionHandler->read('session_id'));
+    }
+
+    public function testWrite()
+    {
+        $marshaller = $this->createMock(MarshallerInterface::class);
+        $marshallingSessionHandler = new MarshallingSessionHandler($this->handler, $marshaller);
+
+        $marshaller->expects($this->once())->method('marshall')
+            ->with(['data' => 'data'], [])
+            ->willReturn(['data' => 'marshalled_data']);
+
+        $this->handler->expects($this->once())->method('write')
+            ->with('session_id', 'marshalled_data')
+        ;
+
+        $marshallingSessionHandler->write('session_id', 'data');
+    }
+
+    public function testWriteDoesNotMarshallEmptyData()
+    {
+        $marshaller = $this->createMock(MarshallerInterface::class);
+        $marshallingSessionHandler = new MarshallingSessionHandler($this->handler, $marshaller);
+
+        $marshaller->expects($this->never())->method('marshall');
+
+        $this->handler->expects($this->once())->method('write')
+            ->with('session_id', '')
+            ->willReturn(true);
+
+        $this->assertTrue($marshallingSessionHandler->write('session_id', ''));
+    }
+
+    public function testWriteDoesNotMarshallIgbinaryEmptyData()
+    {
+        if (!\function_exists('igbinary_serialize')) {
+            $this->markTestSkipped('The "igbinary" extension is required.');
+        }
+
+        $marshaller = $this->createMock(MarshallerInterface::class);
+        $marshallingSessionHandler = new MarshallingSessionHandler($this->handler, $marshaller);
+
+        $marshaller->expects($this->never())->method('marshall');
+
+        $this->handler->expects($this->once())->method('write')
+            ->with('session_id', igbinary_serialize([]))
+            ->willReturn(true);
+
+        $this->assertTrue($marshallingSessionHandler->write('session_id', igbinary_serialize([])));
+    }
+
+    public function testValidateId()
+    {
+        $marshallingSessionHandler = new MarshallingSessionHandler($this->handler, $this->createStub(MarshallerInterface::class));
+
+        $this->handler->expects($this->once())->method('validateId')
+            ->with('session_id')->willReturn(true);
+
+        $marshallingSessionHandler->validateId('session_id');
+    }
+
+    public function testUpdateTimestamp()
+    {
+        $marshallingSessionHandler = new MarshallingSessionHandler($this->handler, $this->createStub(MarshallerInterface::class));
+
+        $this->handler->expects($this->once())->method('updateTimestamp')
+            ->with('session_id', 'data')->willReturn(true);
+
+        $marshallingSessionHandler->updateTimestamp('session_id', 'data');
+    }
+}

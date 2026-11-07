@@ -23,9 +23,14 @@ final class LocalParcel implements Parcel
     ) {
     }
 
+    #[\Override]
     public function synchronized(\Closure $closure): mixed
     {
-        $lock = $this->mutex->acquire();
+        try {
+            $lock = $this->mutex->acquire();
+        } catch (SyncException $exception) {
+            throw new ParcelException("Failed to acquire lock", previous: $exception);
+        }
 
         try {
             $this->value = $closure($this->value);
@@ -36,6 +41,7 @@ final class LocalParcel implements Parcel
         return $this->value;
     }
 
+    #[\Override]
     public function unwrap(): mixed
     {
         return $this->value;

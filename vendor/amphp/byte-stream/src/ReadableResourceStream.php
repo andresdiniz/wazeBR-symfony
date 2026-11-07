@@ -35,6 +35,7 @@ final class ReadableResourceStream implements ReadableStream, ResourceStream, \I
 
     private bool $readable = true;
 
+    /** @psalm-suppress UnusedProperty False-positive. */
     private int $chunkSize;
 
     private readonly bool $useSingleRead;
@@ -81,6 +82,7 @@ final class ReadableResourceStream implements ReadableStream, ResourceStream, \I
         $this->onClose = $onClose = new DeferredFuture;
 
         \stream_set_blocking($stream, false);
+        /** @psalm-suppress UnusedFunctionCall */
         \stream_set_read_buffer($stream, 0);
 
         // Ignore any errors raised while this handler is set. Errors will be checked through return values.
@@ -162,6 +164,7 @@ final class ReadableResourceStream implements ReadableStream, ResourceStream, \I
     /**
      * @param positive-int|null $limit
      */
+    #[\Override]
     public function read(?Cancellation $cancellation = null, ?int $limit = null): ?string
     {
         $limit ??= $this->defaultChunkSize;
@@ -179,6 +182,15 @@ final class ReadableResourceStream implements ReadableStream, ResourceStream, \I
         }
 
         \assert($this->resource !== null);
+
+        // On a TLS stream feof() calls SSL_peek(), which moves a record that has just arrived from the socket
+        // into the OpenSSL buffer. The socket is then no longer readable, so the watcher would never be invoked
+        // by drivers polling the descriptor (all except StreamSelectDriver, as stream_select() checks SSL_pending()).
+        if (\feof($this->resource)) {
+            $this->free();
+
+            return null;
+        }
 
         \set_error_handler(self::$errorHandler);
 
@@ -199,12 +211,6 @@ final class ReadableResourceStream implements ReadableStream, ResourceStream, \I
         );
 
         if ($data === '') {
-            if (\feof($this->resource)) {
-                $this->free();
-
-                return null;
-            }
-
             $this->chunkSize = $limit;
             EventLoop::enable($this->callbackId);
             $this->suspension = EventLoop::getSuspension();
@@ -231,6 +237,7 @@ final class ReadableResourceStream implements ReadableStream, ResourceStream, \I
         return $data;
     }
 
+    #[\Override]
     public function isReadable(): bool
     {
         return $this->readable;
@@ -239,6 +246,7 @@ final class ReadableResourceStream implements ReadableStream, ResourceStream, \I
     /**
      * Closes the stream forcefully. Multiple `close()` calls are ignored.
      */
+    #[\Override]
     public function close(): void
     {
         if (\is_resource($this->resource) && \get_resource_type($this->resource) === 'stream') {
@@ -258,11 +266,13 @@ final class ReadableResourceStream implements ReadableStream, ResourceStream, \I
         $this->free();
     }
 
+    #[\Override]
     public function isClosed(): bool
     {
         return $this->resource === null;
     }
 
+    #[\Override]
     public function onClose(\Closure $onClose): void
     {
         $this->onClose->getFuture()->finally($onClose);
@@ -271,6 +281,7 @@ final class ReadableResourceStream implements ReadableStream, ResourceStream, \I
     /**
      * @return resource|object|null The stream resource or null if the stream has closed.
      */
+    #[\Override]
     public function getResource()
     {
         return $this->resource;
@@ -294,6 +305,7 @@ final class ReadableResourceStream implements ReadableStream, ResourceStream, \I
      *
      * @see EventLoop::reference()
      */
+    #[\Override]
     public function reference(): void
     {
         if (!$this->resource) {
@@ -308,6 +320,7 @@ final class ReadableResourceStream implements ReadableStream, ResourceStream, \I
      *
      * @see EventLoop::unreference()
      */
+    #[\Override]
     public function unreference(): void
     {
         if (!$this->resource) {

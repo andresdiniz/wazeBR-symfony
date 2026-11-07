@@ -1,0 +1,441 @@
+<?php declare(strict_types=1);
+
+namespace Amp\Process\Test;
+
+use Amp\CancelledException;
+use Amp\Future;
+use Amp\PHPUnit\AsyncTestCase;
+use Amp\Process\Process;
+use Amp\Process\ProcessException;
+use Amp\TimeoutCancellation;
+use const Amp\Process\IS_WINDOWS;
+use function Amp\async;
+use function Amp\ByteStream\buffer;
+use function Amp\delay;
+
+class ProcessTest extends AsyncTestCase
+{
+    private const CMD_PROCESS = \DIRECTORY_SEPARATOR === "\\" ? "cmd /c echo foo" : "echo foo";
+    private const CMD_PROCESS_SLOW = \DIRECTORY_SEPARATOR === "\\" ? "cmd /c ping -n 3 127.0.0.1 > nul" : "sleep 2";
+    private const CMD_PROCESS_STDIN = (\DIRECTORY_SEPARATOR === "\\" ? 'php.exe "' : 'php "') . __DIR__ . DIRECTORY_SEPARATOR . 'bin' . DIRECTORY_SEPARATOR . 'worker.php"';
+    private const CMD_PROCESS_STDERR = \DIRECTORY_SEPARATOR === "\\" ? "cmd /c >&2 echo foo" : ">&2 echo foo";
+
+    public function testIsRunning(): void
+    {
+        $process = Process::start(\DIRECTORY_SEPARATOR === "\\" ? "cmd /c exit 42" : "exit 42");
+        $future = async(fn () => $process->join());
+
+        self::assertTrue($process->isRunning());
+
+        $future->await();
+
+        self::assertFalse($process->isRunning());
+    }
+
+    public function testExecuteResolvesToExitCode(): void
+    {
+        $process = Process::start(\DIRECTORY_SEPARATOR === "\\" ? "cmd /c exit 42" : "exit 42");
+
+        $code = $process->join();
+
+        self::assertSame(42, $code);
+        self::assertFalse($process->isRunning());
+    }
+
+    public function testCommandCanRun(): void
+    {
+        $process = Process::start(self::CMD_PROCESS);
+
+        self::assertSame(0, $process->join());
+    }
+
+    public function testProcessCanTerminate(): void
+    {
+        if (\DIRECTORY_SEPARATOR === "\\") {
+            self::markTestSkipped("Signals are not supported on Windows");
+        }
+
+        $process = Process::start(self::CMD_PROCESS_SLOW);
+        $process->signal(0);
+        self::assertSame(0, $process->join());
+    }
+
+    public function testGetWorkingDirectoryIsDefault(): void
+    {
+        $process = Process::start(self::CMD_PROCESS);
+        self::assertSame(\getcwd(), $process->getWorkingDirectory());
+        $process->join();
+    }
+
+    public function testGetWorkingDirectoryIsCustomized(): void
+    {
+        $process = Process::start(self::CMD_PROCESS, workingDirectory: __DIR__);
+        self::assertSame(__DIR__, $process->getWorkingDirectory());
+        $process->join();
+    }
+
+    public function testGetEnv(): void
+    {
+        $process = Process::start(self::CMD_PROCESS);
+        self::assertSame([], $process->getEnvironment());
+        $process->join();
+    }
+
+    public function testGetStdin(): void
+    {
+        $process = Process::start(self::CMD_PROCESS_STDIN);
+
+        $process->getStdin()->write('exit 5');
+        $process->getStdin()->end();
+
+        self::assertSame('.....', buffer($process->getStdout()));
+
+        $process->join();
+    }
+
+    public function testGetStdout(): void
+    {
+        $process = Process::start(self::CMD_PROCESS);
+
+        self::assertSame('foo' . \PHP_EOL, buffer($process->getStdout()));
+
+        $process->join();
+    }
+
+    public function testGetStderr(): void
+    {
+        $process = Process::start(self::CMD_PROCESS_STDERR);
+
+        self::assertSame('foo' . \PHP_EOL, buffer($process->getStderr()));
+
+        $process->join();
+    }
+
+    public function testProcessEnvIsValid(): void
+    {
+        $process = Process::start(self::CMD_PROCESS, environment: [
+            'test' => 'foobar',
+            'PATH' => \getenv('PATH'),
+            'SystemRoot' => \getenv('SystemRoot') ?: '', // required on Windows for process wrapper
+        ]);
+
+        self::assertSame('foobar', $process->getEnvironment()['test']);
+
+        $process->join();
+    }
+
+    public function testProcessEnvIsInvalid(): void
+    {
+        $this->expectException(\Error::class);
+
+        /** @noinspection PhpParamsInspection */
+        Process::start(self::CMD_PROCESS, environment: [
+            ['error_value'],
+        ]);
+    }
+
+    public function testKillImmediately(): void
+    {
+        $this->setTimeout(1);
+
+        $process = Process::start(self::CMD_PROCESS_SLOW);
+        $process->kill();
+
+        self::assertSame(IS_WINDOWS ? 1 : 137, $process->join());
+    }
+
+    /**
+     * @requires extension pcntl
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    public function testKillReapsShellWithPcntlWhileProcessIsRetained(): void
+    {
+        $process = Process::start(self::CMD_PROCESS_SLOW);
+        $process->kill();
+
+        // Keep Process reachable after kill; this is the state that previously left the shell unreaped.
+        $status = 0;
+        $remainingChildPid = \pcntl_waitpid(-1, $status);
+        $error = \pcntl_get_last_error();
+        $exitCode = $process->join();
+
+        self::assertSame(-1, $remainingChildPid);
+        self::assertSame(\PCNTL_ECHILD, $error);
+        self::assertSame(137, $exitCode);
+    }
+
+    public function testKillReapsShellWithoutPcntlWhileProcessIsRetained(): void
+    {
+        if (\DIRECTORY_SEPARATOR === "\\") {
+            self::markTestSkipped("Signals are not supported on Windows");
+        }
+
+        $code = \sprintf(
+            'require %s;'
+            . '$process = Amp\\Process\\Process::start("sleep 30");'
+            . '$handle = (new ReflectionProperty($process, "handle"))->getValue($process);'
+            . '$shellPid = (new ReflectionProperty($handle, "shellPid"))->getValue($handle);'
+            . '$process->kill();'
+            . 'exit(posix_kill($shellPid, 0) ? 1 : 0);',
+            \var_export(\dirname(__DIR__) . '/vendor/autoload.php', true),
+        );
+        $process = Process::start([
+            \PHP_BINARY,
+            '-d',
+            'disable_functions=pcntl_waitpid,pcntl_get_last_error',
+            '-r',
+            $code,
+        ]);
+
+        $exitCode = $process->join(new TimeoutCancellation(2));
+        $error = buffer($process->getStderr());
+
+        self::assertSame(0, $exitCode, $error);
+    }
+
+    /**
+     * @requires extension pcntl
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    public function testProcessDestructionReapsShell(): void
+    {
+        $process = Process::start(self::CMD_PROCESS_SLOW);
+        unset($process);
+
+        $status = 0;
+        self::assertSame(-1, \pcntl_waitpid(-1, $status, \WNOHANG));
+        self::assertSame(\PCNTL_ECHILD, \pcntl_get_last_error());
+    }
+
+    /**
+     * @requires extension pcntl
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    public function testCompletedProcessDestructionReapsShell(): void
+    {
+        $process = Process::start('exit 0');
+        self::assertSame(0, $process->join());
+        unset($process);
+
+        $status = 0;
+        self::assertSame(-1, \pcntl_waitpid(-1, $status, \WNOHANG));
+        self::assertSame(\PCNTL_ECHILD, \pcntl_get_last_error());
+    }
+
+    /**
+     * @requires extension pcntl
+     */
+    public function testShutdownDoesNotWaitForRunningProcess(): void
+    {
+        $code = \sprintf(
+            'require %s; $GLOBALS["process"] = Amp\\Process\\Process::start("sleep 30");',
+            \var_export(\dirname(__DIR__) . '/vendor/autoload.php', true),
+        );
+        $process = Process::start([\PHP_BINARY, '-r', $code]);
+
+        self::assertSame(0, $process->join(new TimeoutCancellation(2)));
+    }
+
+    /**
+     * @requires extension pcntl
+     */
+    public function testRunningHandleDestructionDoesNotWaitForProcess(): void
+    {
+        // Emulate handle destruction in a long-running PHP worker without depending on garbage collection order.
+        $code = \sprintf(
+            'require %s;'
+            . '$process = Amp\\Process\\Process::start("cat >/dev/null");'
+            . '$handle = (new ReflectionProperty($process, "handle"))->getValue($process);'
+            . '$handle->__destruct();',
+            \var_export(\dirname(__DIR__) . '/vendor/autoload.php', true),
+        );
+        $process = Process::start([\PHP_BINARY, '-r', $code]);
+
+        try {
+            self::assertSame(0, $process->join(new TimeoutCancellation(2)));
+        } finally {
+            $process->kill();
+        }
+    }
+
+    public function testKillThenReadStdout(): void
+    {
+        $this->setTimeout(1);
+
+        $process = Process::start(self::CMD_PROCESS_SLOW);
+        $process->kill();
+
+        self::assertNull($process->getStdout()->read());
+        self::assertSame(IS_WINDOWS ? 1 : 137, $process->join());
+    }
+
+    public function testCommand(): void
+    {
+        $process = Process::start(['cmd', '/c', 'echo', 'foo']);
+
+        if (IS_WINDOWS) {
+            self::assertSame('"cmd" "/c" "echo" "foo"', $process->getCommand());
+        } else {
+            self::assertSame("'cmd' '/c' 'echo' 'foo'", $process->getCommand());
+        }
+
+        $process->join();
+    }
+
+    public function testOptions(): void
+    {
+        $process = Process::start(self::CMD_PROCESS);
+        self::assertSame([], $process->getOptions());
+        $process->join();
+    }
+
+    public function getProcessCounts(): array
+    {
+        return \array_map(static function (int $count): array {
+            return [$count];
+        }, \range(2, 32, 2));
+    }
+
+    /**
+     * @dataProvider getProcessCounts
+     */
+    public function testSpawnMultipleProcesses(int $count): void
+    {
+        $processes = [];
+        for ($i = 0; $i < $count; ++$i) {
+            $command = \DIRECTORY_SEPARATOR === "\\" ? "cmd /c exit $i" : "exit $i";
+            $processes[] = Process::start(self::CMD_PROCESS_SLOW . " && " . $command);
+        }
+
+        $promises = [];
+        foreach ($processes as $process) {
+            $promises[] = async(fn () => $process->join());
+        }
+
+        self::assertEquals(\range(0, $count - 1), Future\await($promises));
+    }
+
+    public function testReadOutputAfterExit(): void
+    {
+        $process = Process::start(["php", __DIR__ . "/bin/worker.php"]);
+
+        $process->getStdin()->write("exit 2");
+        self::assertSame("..", $process->getStdout()->read());
+
+        self::assertSame(0, $process->join());
+    }
+
+    public function testReadOutputAfterExitWithLongOutput(): void
+    {
+        $process = Process::start(["php", __DIR__ . "/bin/worker.php"]);
+
+        $count = 128 * 1024 + 1;
+        $process->getStdin()->write("exit " . $count);
+        self::assertSame(\str_repeat(".", $count), buffer($process->getStdout()));
+
+        self::assertSame(0, $process->join());
+    }
+
+    public function testReadOutputAfterExitWithLongOutputDestructedProcess(): void
+    {
+        $process = Process::start(["php", __DIR__ . "/bin/worker.php"]);
+
+        $count = 128 * 1024 + 1;
+        $process->getStdin()->write("exit " . $count);
+        $stdout = $process->getStdout();
+
+        unset($process);
+
+        self::assertSame(\str_repeat(".", $count), buffer($stdout));
+    }
+
+    public function testKillPHPImmediately(): void
+    {
+        $socket = \stream_socket_server("tcp://127.0.0.1:10000");
+        self::assertNotFalse($socket);
+        $process = Process::start(["php", __DIR__ . "/bin/socket-worker.php"]);
+        $conn = \stream_socket_accept($socket);
+        self::assertSame('start', \fread($conn, 5));
+        $process->kill();
+        delay(0); // Tick event loop to send signal
+        self::assertEmpty(\fread($conn, 3));
+        $process->join();
+    }
+
+    /**
+     * @requires extension pcntl
+     */
+    public function testSignal(): void
+    {
+        $process = Process::start(["php", __DIR__ . "/bin/signal-process.php"]);
+        delay(0.1); // Give process time to set up single handler.
+        $process->signal(\SIGTERM);
+
+        self::assertSame(42, $process->join());
+    }
+
+    /**
+     * @requires extension posix
+     */
+    public function testSignalThrowsIfDeliveryFails(): void
+    {
+        $process = Process::start(self::CMD_PROCESS_SLOW);
+
+        try {
+            $this->expectException(ProcessException::class);
+            $this->expectExceptionMessage('Failed to send signal 9999');
+            $process->signal(9999);
+        } finally {
+            $process->kill();
+            $process->join();
+        }
+    }
+
+    /**
+     * @requires extension posix
+     */
+    public function testSignalIgnoresProcessThatAlreadyExited(): void
+    {
+        $process = Process::start('exit 0');
+
+        // Keep the event loop paused so Process status is not updated before the OS process exits.
+        $isRunning = true;
+        for ($attempt = 0; $attempt < 1000 && $isRunning; ++$attempt) {
+            $isRunning = \posix_kill($process->getPid(), 0);
+            \usleep(1000);
+        }
+
+        self::assertFalse($isRunning);
+        $process->signal(0);
+        self::assertSame(0, $process->join());
+    }
+
+    public function testCancellation(): void
+    {
+        $this->expectException(CancelledException::class);
+        Process::start(["php", __DIR__ . "/bin/worker.php"], cancellation: new TimeoutCancellation(0));
+    }
+
+    public function testDebugInfo(): void
+    {
+        $process = Process::start(["php", __DIR__ . "/bin/worker.php"], workingDirectory: __DIR__);
+
+        $debugInfo = $process->__debugInfo();
+
+        self::assertIsInt($debugInfo['pid']);
+        unset($debugInfo['pid']);
+
+        self::assertSame([
+            'command' => IS_WINDOWS
+                ? "\"php\" \"" . __DIR__ . "/bin/worker.php\""
+                : "'php' '" . __DIR__ . "/bin/worker.php'",
+            'workingDirectory' => __DIR__,
+            'environment' => [],
+            'options' => [],
+            'status' => 'running',
+        ], $debugInfo);
+    }
+}

@@ -1,0 +1,692 @@
+<?php
+
+/*
+ * This file is part of the Symfony package.
+ *
+ * (c) Fabien Potencier <fabien@symfony.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+namespace Symfony\Component\HttpFoundation\Tests;
+
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\TestCase;
+use Symfony\Component\HttpFoundation\Cookie;
+
+/**
+ * CookieTest.
+ *
+ * @author John Kary <john@johnkary.net>
+ * @author Hugo Hamon <hugo.hamon@sensio.com>
+ */
+#[Group('time-sensitive')]
+class CookieTest extends TestCase
+{
+    public static function namesWithSpecialCharacters()
+    {
+        return [
+            [',MyName'],
+            [';MyName'],
+            [' MyName'],
+            ["\tMyName"],
+            ["\rMyName"],
+            ["\nMyName"],
+            ["\013MyName"],
+            ["\014MyName"],
+        ];
+    }
+
+    #[DataProvider('namesWithSpecialCharacters')]
+    public function testInstantiationThrowsExceptionIfRawCookieNameContainsSpecialCharacters($name)
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        Cookie::create($name, null, 0, null, null, null, false, true);
+    }
+
+    #[DataProvider('namesWithSpecialCharacters')]
+    public function testWithRawThrowsExceptionIfCookieNameContainsSpecialCharacters($name)
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        Cookie::create($name)->withRaw();
+    }
+
+    #[DataProvider('namesWithSpecialCharacters')]
+    public function testInstantiationSucceedNonRawCookieNameContainsSpecialCharacters($name)
+    {
+        $this->assertInstanceOf(Cookie::class, Cookie::create($name));
+    }
+
+    public function testInstantiationThrowsExceptionIfCookieNameIsEmpty()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        Cookie::create('');
+    }
+
+    public function testInstantiationAcceptsZeroName()
+    {
+        $cookie = Cookie::create('0', 'value');
+
+        $this->assertSame('0', $cookie->getName());
+        $this->assertStringStartsWith('0=value;', (string) $cookie);
+    }
+
+    public function testFromStringAcceptsZeroName()
+    {
+        $cookie = Cookie::fromString('0=value');
+
+        $this->assertSame('0', $cookie->getName());
+        $this->assertStringStartsWith('0=value;', (string) $cookie);
+    }
+
+    public static function pathsAndDomainsWithSpecialCharacters()
+    {
+        return [
+            ['/p,q'],
+            ['/p;q'],
+            ['/p q'],
+            ["/p\tq"],
+            ["/p\rq"],
+            ["/p\nq"],
+            ["/p\013q"],
+            ["/p\014q"],
+            ['/p; SameSite=None; Secure'],
+            ['victim.com; secure'],
+        ];
+    }
+
+    #[DataProvider('pathsAndDomainsWithSpecialCharacters')]
+    public function testInstantiationThrowsExceptionIfPathContainsSpecialCharacters($path)
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        Cookie::create('MyCookie', 'MyValue', 0, $path);
+    }
+
+    #[DataProvider('pathsAndDomainsWithSpecialCharacters')]
+    public function testInstantiationThrowsExceptionIfDomainContainsSpecialCharacters($domain)
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        Cookie::create('MyCookie', 'MyValue', 0, '/', $domain);
+    }
+
+    #[DataProvider('pathsAndDomainsWithSpecialCharacters')]
+    public function testWithPathThrowsExceptionIfPathContainsSpecialCharacters($path)
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        Cookie::create('MyCookie')->withPath($path);
+    }
+
+    #[DataProvider('pathsAndDomainsWithSpecialCharacters')]
+    public function testWithDomainThrowsExceptionIfDomainContainsSpecialCharacters($domain)
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        Cookie::create('MyCookie')->withDomain($domain);
+    }
+
+    public function testFromStringEndsQuotedPathsAtTheNextSemicolon()
+    {
+        $cookie = Cookie::fromString('foo=bar; path="/p; SameSite=None"');
+
+        $this->assertSame('"/p', $cookie->getPath());
+        $this->assertNull($cookie->getSameSite());
+    }
+
+    public static function validPathsAndDomains()
+    {
+        return [
+            ['/'],
+            ['/foo'],
+            ['/foo/bar'],
+            ['/foo=bar'],
+            ['/foo%20bar'],
+            ['.myfoodomain.com'],
+            ['myfoodomain.com'],
+        ];
+    }
+
+    #[DataProvider('validPathsAndDomains')]
+    public function testOrdinaryPathsAndDomainsAreAccepted($value)
+    {
+        $cookie = Cookie::create('MyCookie', 'MyValue', 0, $value, $value);
+
+        $this->assertSame($value, $cookie->getPath());
+        $this->assertSame($value, $cookie->getDomain());
+
+        $cookie = Cookie::create('MyCookie')->withPath($value)->withDomain($value);
+
+        $this->assertSame($value, $cookie->getPath());
+        $this->assertSame($value, $cookie->getDomain());
+    }
+
+    public function testNullAndEmptyPathsAndDomainsAreAccepted()
+    {
+        $cookie = Cookie::create('MyCookie', 'MyValue', 0, null, null);
+
+        $this->assertSame('/', $cookie->getPath());
+        $this->assertNull($cookie->getDomain());
+
+        $cookie = Cookie::create('MyCookie', 'MyValue', 0, '', null)->withDomain(null);
+
+        $this->assertSame('/', $cookie->getPath());
+        $this->assertNull($cookie->getDomain());
+    }
+
+    public function testInvalidExpiration()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        Cookie::create('MyCookie', 'foo', 'bar');
+    }
+
+    public function testNegativeExpirationIsNotPossible()
+    {
+        $cookie = Cookie::create('foo', 'bar', -100);
+
+        $this->assertSame(0, $cookie->getExpiresTime());
+
+        $cookie = Cookie::create('foo', 'bar')->withExpires(-100);
+
+        $this->assertSame(0, $cookie->getExpiresTime());
+    }
+
+    public function testMinimalParameters()
+    {
+        $constructedCookie = new Cookie('foo');
+
+        $createdCookie = Cookie::create('foo');
+
+        $cookie = new Cookie('foo', null, 0, '/', null, null, true, false, 'lax');
+
+        $this->assertEquals($constructedCookie, $cookie);
+
+        $this->assertEquals($createdCookie, $cookie);
+    }
+
+    public function testGetValue()
+    {
+        $value = 'MyValue';
+        $cookie = Cookie::create('MyCookie', $value);
+
+        $this->assertSame($value, $cookie->getValue(), '->getValue() returns the proper value');
+    }
+
+    public function testGetPath()
+    {
+        $cookie = Cookie::create('foo', 'bar');
+
+        $this->assertSame('/', $cookie->getPath(), '->getPath() returns / as the default path');
+    }
+
+    public function testGetExpiresTime()
+    {
+        $cookie = Cookie::create('foo', 'bar');
+
+        $this->assertEquals(0, $cookie->getExpiresTime(), '->getExpiresTime() returns the default expire date');
+
+        $cookie = Cookie::create('foo', 'bar', $expire = time() + 3600);
+
+        $this->assertEquals($expire, $cookie->getExpiresTime(), '->getExpiresTime() returns the expire date');
+
+        $cookie = Cookie::create('foo')->withExpires($expire = time() + 3600);
+
+        $this->assertEquals($expire, $cookie->getExpiresTime(), '->getExpiresTime() returns the expire date');
+    }
+
+    public function testConstructorWithDateTime()
+    {
+        $expire = new \DateTime();
+        $cookie = Cookie::create('foo', 'bar', $expire);
+
+        $this->assertEquals($expire->format('U'), $cookie->getExpiresTime(), '->getExpiresTime() returns the expire date');
+
+        $cookie = Cookie::create('foo')->withExpires($expire);
+
+        $this->assertEquals($expire->format('U'), $cookie->getExpiresTime(), '->getExpiresTime() returns the expire date');
+    }
+
+    public function testConstructorWithDateTimeImmutable()
+    {
+        $expire = new \DateTimeImmutable();
+        $cookie = Cookie::create('foo', 'bar', $expire);
+
+        $this->assertEquals($expire->format('U'), $cookie->getExpiresTime(), '->getExpiresTime() returns the expire date');
+
+        $cookie = Cookie::create('foo')->withValue('bar')->withExpires($expire);
+
+        $this->assertEquals($expire->format('U'), $cookie->getExpiresTime(), '->getExpiresTime() returns the expire date');
+    }
+
+    public function testGetExpiresTimeWithStringValue()
+    {
+        $value = '+1 day';
+        $cookie = Cookie::create('foo', 'bar', $value);
+        $expire = strtotime($value);
+
+        $this->assertEqualsWithDelta($expire, $cookie->getExpiresTime(), 1, '->getExpiresTime() returns the expire date');
+
+        $cookie = Cookie::create('foo')->withValue('bar')->withExpires($value);
+
+        $this->assertEqualsWithDelta($expire, $cookie->getExpiresTime(), 1, '->getExpiresTime() returns the expire date');
+    }
+
+    public function testGetDomain()
+    {
+        $cookie = Cookie::create('foo', 'bar', 0, '/', '.myfoodomain.com');
+
+        $this->assertEquals('.myfoodomain.com', $cookie->getDomain(), '->getDomain() returns the domain name on which the cookie is valid');
+
+        $cookie = Cookie::create('foo')->withDomain('.mybardomain.com');
+
+        $this->assertEquals('.mybardomain.com', $cookie->getDomain(), '->getDomain() returns the domain name on which the cookie is valid');
+    }
+
+    public function testIsSecure()
+    {
+        $cookie = Cookie::create('foo', 'bar', 0, '/', '.myfoodomain.com', true);
+
+        $this->assertTrue($cookie->isSecure(), '->isSecure() returns whether the cookie is transmitted over HTTPS');
+
+        $cookie = Cookie::create('foo')->withSecure(true);
+
+        $this->assertTrue($cookie->isSecure(), '->isSecure() returns whether the cookie is transmitted over HTTPS');
+    }
+
+    public function testIsHttpOnly()
+    {
+        $cookie = Cookie::create('foo', 'bar', 0, '/', '.myfoodomain.com', false, true);
+
+        $this->assertTrue($cookie->isHttpOnly(), '->isHttpOnly() returns whether the cookie is only transmitted over HTTP');
+
+        $cookie = Cookie::create('foo')->withHttpOnly(true);
+
+        $this->assertTrue($cookie->isHttpOnly(), '->isHttpOnly() returns whether the cookie is only transmitted over HTTP');
+    }
+
+    public function testIsPartitioned()
+    {
+        $cookie = new Cookie('foo', 'bar', 0, '/', '.myfoodomain.com', true, true, false, 'Lax', true);
+
+        $this->assertTrue($cookie->isPartitioned());
+
+        $cookie = Cookie::create('foo')->withPartitioned(true);
+
+        $this->assertTrue($cookie->isPartitioned());
+    }
+
+    public function testCookieIsNotCleared()
+    {
+        $cookie = Cookie::create('foo', 'bar', time() + 3600 * 24);
+
+        $this->assertFalse($cookie->isCleared(), '->isCleared() returns false if the cookie did not expire yet');
+
+        $cookie = Cookie::create('foo')->withExpires(time() + 3600 * 24);
+
+        $this->assertFalse($cookie->isCleared(), '->isCleared() returns false if the cookie did not expire yet');
+    }
+
+    public function testCookieIsCleared()
+    {
+        $cookie = Cookie::create('foo', 'bar', time() - 20);
+
+        $this->assertTrue($cookie->isCleared(), '->isCleared() returns true if the cookie has expired');
+
+        $cookie = Cookie::create('foo')->withExpires(time() - 20);
+
+        $this->assertTrue($cookie->isCleared(), '->isCleared() returns true if the cookie has expired');
+
+        $cookie = Cookie::create('foo', 'bar');
+
+        $this->assertFalse($cookie->isCleared());
+
+        $cookie = Cookie::create('foo', 'bar');
+
+        $this->assertFalse($cookie->isCleared());
+
+        $cookie = Cookie::create('foo', 'bar', -1);
+
+        $this->assertFalse($cookie->isCleared());
+
+        $cookie = Cookie::create('foo')->withExpires(-1);
+
+        $this->assertFalse($cookie->isCleared());
+    }
+
+    public function testToString()
+    {
+        $expected = 'foo=bar; expires=Fri, 20 May 2011 15:25:52 GMT; Max-Age=0; path=/; domain=.myfoodomain.com; secure; httponly';
+        $cookie = Cookie::create('foo', 'bar', $expire = strtotime('Fri, 20 May 2011 15:25:52 GMT'), '/', '.myfoodomain.com', true, true, false, null);
+        $this->assertEquals($expected, (string) $cookie, '->__toString() returns string representation of the cookie');
+
+        $cookie = Cookie::create('foo')
+            ->withValue('bar')
+            ->withExpires(strtotime('Fri, 20 May 2011 15:25:52 GMT'))
+            ->withDomain('.myfoodomain.com')
+            ->withSecure(true)
+            ->withSameSite(null);
+        $this->assertEquals($expected, (string) $cookie, '->__toString() returns string representation of the cookie');
+
+        $expected = 'foo=bar%20with%20white%20spaces; expires=Fri, 20 May 2011 15:25:52 GMT; Max-Age=0; path=/; domain=.myfoodomain.com; secure; httponly';
+        $cookie = Cookie::create('foo', 'bar with white spaces', strtotime('Fri, 20 May 2011 15:25:52 GMT'), '/', '.myfoodomain.com', true, true, false, null);
+        $this->assertEquals($expected, (string) $cookie, '->__toString() encodes the value of the cookie according to RFC 3986 (white space = %20)');
+
+        $cookie = Cookie::create('foo')
+            ->withValue('bar with white spaces')
+            ->withExpires(strtotime('Fri, 20 May 2011 15:25:52 GMT'))
+            ->withDomain('.myfoodomain.com')
+            ->withSecure(true)
+            ->withSameSite(null);
+        $this->assertEquals($expected, (string) $cookie, '->__toString() encodes the value of the cookie according to RFC 3986 (white space = %20)');
+
+        $expected = 'foo=deleted; expires='.gmdate('D, d M Y H:i:s T', $expire = time() - 31536001).'; Max-Age=0; path=/admin/; domain=.myfoodomain.com; httponly';
+        $cookie = Cookie::create('foo', null, 1, '/admin/', '.myfoodomain.com', false, true, false, null);
+        $this->assertEquals($expected, (string) $cookie, '->__toString() returns string representation of a cleared cookie if value is NULL');
+
+        $cookie = Cookie::create('foo')
+            ->withExpires(1)
+            ->withPath('/admin/')
+            ->withDomain('.myfoodomain.com')
+            ->withSameSite(null);
+        $this->assertEquals($expected, (string) $cookie, '->__toString() returns string representation of a cleared cookie if value is NULL');
+
+        $expected = 'foo=deleted; expires='.gmdate('D, d M Y H:i:s T', $expire = time() - 31536001).'; Max-Age=0; path=/admin/; domain=.myfoodomain.com; secure; httponly; samesite=none; partitioned';
+        $cookie = new Cookie('foo', null, 1, '/admin/', '.myfoodomain.com', true, true, false, 'none', true);
+        $this->assertEquals($expected, (string) $cookie, '->__toString() returns string representation of a cleared cookie if value is NULL');
+
+        $cookie = Cookie::create('foo')
+            ->withExpires(1)
+            ->withPath('/admin/')
+            ->withDomain('.myfoodomain.com')
+            ->withSecure(true)
+            ->withHttpOnly(true)
+            ->withSameSite('none')
+            ->withPartitioned(true);
+        $this->assertEquals($expected, (string) $cookie, '->__toString() returns string representation of a cleared cookie if value is NULL');
+
+        $expected = 'foo=bar; path=/; httponly; samesite=lax';
+        $cookie = Cookie::create('foo', 'bar');
+        $this->assertEquals($expected, (string) $cookie);
+
+        $cookie = Cookie::create('foo')->withValue('bar');
+        $this->assertEquals($expected, (string) $cookie);
+    }
+
+    public function testRawCookie()
+    {
+        $cookie = Cookie::create('foo', 'b a r', 0, '/', null, false, false, false, null);
+        $this->assertFalse($cookie->isRaw());
+        $this->assertEquals('foo=b%20a%20r; path=/', (string) $cookie);
+
+        $cookie = Cookie::create('test')->withValue('t e s t')->withHttpOnly(false)->withSameSite(null);
+        $this->assertFalse($cookie->isRaw());
+        $this->assertEquals('test=t%20e%20s%20t; path=/', (string) $cookie);
+
+        $cookie = Cookie::create('foo', 'b+a+r', 0, '/', null, false, false, true, null);
+        $this->assertTrue($cookie->isRaw());
+        $this->assertEquals('foo=b+a+r; path=/', (string) $cookie);
+
+        $cookie = Cookie::create('foo')
+            ->withValue('t+e+s+t')
+            ->withHttpOnly(false)
+            ->withRaw(true)
+            ->withSameSite(null);
+        $this->assertTrue($cookie->isRaw());
+        $this->assertEquals('foo=t+e+s+t; path=/', (string) $cookie);
+    }
+
+    public function testGetMaxAge()
+    {
+        $cookie = Cookie::create('foo', 'bar');
+        $this->assertEquals(0, $cookie->getMaxAge());
+
+        $cookie = Cookie::create('foo', 'bar', $expire = time() + 100);
+        $this->assertEquals($expire - time(), $cookie->getMaxAge());
+
+        $cookie = Cookie::create('foo', 'bar', $expire = time() - 100);
+        $this->assertEquals(0, $cookie->getMaxAge());
+    }
+
+    public function testFromString()
+    {
+        $cookie = Cookie::fromString('foo=bar; expires=Fri, 20 May 2011 15:25:52 GMT; path=/; domain=.myfoodomain.com; secure; httponly');
+        $this->assertEquals(Cookie::create('foo', 'bar', strtotime('Fri, 20 May 2011 15:25:52 GMT'), '/', '.myfoodomain.com', true, true, true, null), $cookie);
+
+        $cookie = Cookie::fromString('foo=bar', true);
+        $this->assertEquals(Cookie::create('foo', 'bar', 0, '/', null, false, false, false, null), $cookie);
+
+        $cookie = Cookie::fromString('foo=bar=', true);
+        $this->assertEquals(Cookie::create('foo', 'bar=', 0, '/', null, false, false, false, null), $cookie);
+
+        $cookie = Cookie::fromString('foo', true);
+        $this->assertEquals(Cookie::create('foo', null, 0, '/', null, false, false, false, null), $cookie);
+
+        $cookie = Cookie::fromString('foo_cookie=foo=1&bar=2&baz=3; expires=Tue, 22 Sep 2020 06:27:09 GMT; path=/');
+        $this->assertEquals(Cookie::create('foo_cookie', 'foo=1&bar=2&baz=3', strtotime('Tue, 22 Sep 2020 06:27:09 GMT'), '/', null, false, false, true, null), $cookie);
+
+        $cookie = Cookie::fromString('foo_cookie=foo==; expires=Tue, 22 Sep 2020 06:27:09 GMT; path=/');
+        $this->assertEquals(Cookie::create('foo_cookie', 'foo==', strtotime('Tue, 22 Sep 2020 06:27:09 GMT'), '/', null, false, false, true, null), $cookie);
+
+        $cookie = Cookie::fromString('foo_cookie=foo==; expires=Tue, 22 Sep 2020 06:27:09 GMT; path=/; secure; httponly; samesite=none; partitioned');
+        $this->assertEquals(new Cookie('foo_cookie', 'foo==', strtotime('Tue, 22 Sep 2020 06:27:09 GMT'), '/', null, true, true, true, 'none', true), $cookie);
+    }
+
+    public function testFromStringWithHttpOnly()
+    {
+        $cookie = Cookie::fromString('foo=bar; expires=Fri, 20 May 2011 15:25:52 GMT; path=/; domain=.myfoodomain.com; secure; httponly');
+        $this->assertTrue($cookie->isHttpOnly());
+
+        $cookie = Cookie::fromString('foo=bar; expires=Fri, 20 May 2011 15:25:52 GMT; path=/; domain=.myfoodomain.com; secure');
+        $this->assertFalse($cookie->isHttpOnly());
+    }
+
+    public function testFromStringTreatsSecureAsFlag()
+    {
+        foreach (['0', 'false'] as $value) {
+            $this->assertTrue(Cookie::fromString('foo=bar; Secure='.$value)->isSecure());
+        }
+    }
+
+    public function testFromStringTreatsHttpOnlyAsFlag()
+    {
+        foreach (['0', 'false'] as $value) {
+            $this->assertTrue(Cookie::fromString('foo=bar; HttpOnly='.$value)->isHttpOnly());
+        }
+    }
+
+    public function testFromStringTreatsPartitionedAsFlag()
+    {
+        foreach (['0', 'false'] as $value) {
+            $this->assertTrue(Cookie::fromString('foo=bar; Partitioned='.$value)->isPartitioned());
+        }
+    }
+
+    #[DataProvider('quotedValues')]
+    public function testFromStringPreservesQuotes(string $header, bool $decode, string $value)
+    {
+        $cookie = Cookie::fromString($header, $decode);
+
+        $this->assertSame($value, $cookie->getValue());
+    }
+
+    public static function quotedValues(): array
+    {
+        return [
+            ['foo="bar"; path=/', false, '"bar"'],
+            ['foo="bar=baz"; path=/', false, '"bar=baz"'],
+            [' foo = "bar" ; path=/', false, '"bar"'],
+            ['foo="bar%20baz"; path=/', true, '"bar baz"'],
+        ];
+    }
+
+    public function testFromStringIgnoresQuotesWhenSplittingAttributes()
+    {
+        $cookie = Cookie::fromString('foo="a;b"; path=/x; secure; httponly');
+
+        $this->assertSame('"a', $cookie->getValue());
+        $this->assertSame('/x', $cookie->getPath());
+        $this->assertTrue($cookie->isSecure());
+        $this->assertTrue($cookie->isHttpOnly());
+    }
+
+    public function testFromStringKeepsQuotesInAttributeValues()
+    {
+        $cookie = Cookie::fromString('foo=bar; Path="/x"; Domain="example.com"; SameSite="Lax"; Max-Age="10"');
+
+        $this->assertSame('"/x"', $cookie->getPath());
+        $this->assertSame('"example.com"', $cookie->getDomain());
+        $this->assertNull($cookie->getSameSite());
+        $this->assertSame(0, $cookie->getExpiresTime());
+    }
+
+    public function testFromStringIgnoresQuotesInExpires()
+    {
+        $this->assertSame(strtotime('Fri, 20 May 2011 15:25:52 GMT'), Cookie::fromString('foo=bar; Expires="Fri, 20 May 2011 15:25:52 GMT"')->getExpiresTime());
+        $this->assertSame(1234567890, Cookie::fromString('foo=bar; Expires="1234567890"')->getExpiresTime());
+    }
+
+    public function testFromStringUsesTheDefaultPathForAPathWithoutValue()
+    {
+        $this->assertSame('/', Cookie::fromString('foo=bar; Path; Secure')->getPath());
+    }
+
+    public function testFromStringIgnoresInvalidExpires()
+    {
+        $cookie = Cookie::fromString('foo=bar; Expires=invalid; Secure; HttpOnly');
+
+        $this->assertSame(0, $cookie->getExpiresTime());
+        $this->assertTrue($cookie->isSecure());
+        $this->assertTrue($cookie->isHttpOnly());
+    }
+
+    public function testFromStringReadsTimestampExpires()
+    {
+        $expire = time() + 3600;
+
+        $this->assertSame($expire, Cookie::fromString('foo=bar; Expires='.$expire)->getExpiresTime());
+        $this->assertSame(1234567890, Cookie::fromString('foo=bar; Expires=1234567890')->getExpiresTime());
+        $this->assertSame(2000000000, Cookie::fromString('foo=bar; Expires=2000000000')->getExpiresTime());
+        $this->assertSame(0, Cookie::fromString('foo=bar; Expires=0')->getExpiresTime());
+    }
+
+    public function testFromStringIgnoresInvalidSameSite()
+    {
+        $cookie = Cookie::fromString('foo=bar; SameSite=future; Secure; HttpOnly');
+
+        $this->assertNull($cookie->getSameSite());
+        $this->assertTrue($cookie->isSecure());
+        $this->assertTrue($cookie->isHttpOnly());
+    }
+
+    #[DataProvider('rawAttributes')]
+    public function testFromStringIgnoresRawAttribute(bool $decode, string $raw)
+    {
+        $cookie = Cookie::fromString('foo=bar%20baz; raw='.$raw, $decode);
+
+        $this->assertSame(!$decode, $cookie->isRaw());
+        $this->assertStringStartsWith('foo=bar%20baz;', (string) $cookie);
+    }
+
+    public static function rawAttributes(): array
+    {
+        return [[false, '0'], [true, '1']];
+    }
+
+    public function testFromStringKeepsValidAttributesBeforeInvalidDuplicates()
+    {
+        $cookie = Cookie::fromString('foo=bar; Expires=Fri, 20 May 2011 15:25:52 GMT; Expires=invalid; SameSite=Lax; SameSite=future; Max-Age=123abc');
+
+        $this->assertSame(strtotime('Fri, 20 May 2011 15:25:52 GMT'), $cookie->getExpiresTime());
+        $this->assertSame(Cookie::SAMESITE_LAX, $cookie->getSameSite());
+    }
+
+    public function testFromStringHandlesOverflowingMaxAge()
+    {
+        $cookie = Cookie::fromString('foo=bar; Max-Age=9999999999999999999999999999999999999999');
+
+        $this->assertSame(\PHP_INT_MAX, $cookie->getExpiresTime());
+    }
+
+    #[DataProvider('nonPositiveMaxAges')]
+    public function testFromStringExpiresNonPositiveMaxAge(string $maxAge)
+    {
+        $cookie = Cookie::fromString('foo=bar; Max-Age='.$maxAge);
+
+        $this->assertTrue($cookie->isCleared());
+        $this->assertSame(0, $cookie->getMaxAge());
+        $this->assertStringContainsString('; Max-Age=0', (string) $cookie);
+    }
+
+    public static function nonPositiveMaxAges(): array
+    {
+        return [['0'], ['-1'], ['-9999999999999999999999999999999999999999']];
+    }
+
+    #[DataProvider('invalidMaxAges')]
+    public function testFromStringIgnoresInvalidMaxAge(string $maxAge)
+    {
+        $cookie = Cookie::fromString('foo=bar; Max-Age='.$maxAge);
+
+        $this->assertSame(0, $cookie->getExpiresTime());
+    }
+
+    public static function invalidMaxAges(): array
+    {
+        return [['123abc'], ['1.5'], ['+123'], ['invalid'], [''], ['--1']];
+    }
+
+    public function testSameSiteAttribute()
+    {
+        $cookie = new Cookie('foo', 'bar', 0, '/', null, false, true, false, 'Lax');
+        $this->assertEquals('lax', $cookie->getSameSite());
+
+        $cookie = new Cookie('foo', 'bar', 0, '/', null, false, true, false, '');
+        $this->assertNull($cookie->getSameSite());
+
+        $cookie = Cookie::create('foo')->withSameSite('Lax');
+        $this->assertEquals('lax', $cookie->getSameSite());
+    }
+
+    public function testSetSecureDefault()
+    {
+        $cookie = Cookie::create('foo', 'bar');
+
+        $this->assertFalse($cookie->isSecure());
+
+        $cookie->setSecureDefault(true);
+
+        $this->assertTrue($cookie->isSecure());
+
+        $cookie->setSecureDefault(false);
+
+        $this->assertFalse($cookie->isSecure());
+    }
+
+    public function testMaxAge()
+    {
+        $futureDateOneHour = gmdate('D, d M Y H:i:s T', time() + 3600);
+
+        $cookie = Cookie::fromString('foo=bar; Max-Age=3600; path=/');
+        $this->assertEquals('foo=bar; expires='.$futureDateOneHour.'; Max-Age=3600; path=/', $cookie->__toString());
+
+        $cookie = Cookie::fromString('foo=bar; expires='.$futureDateOneHour.'; Max-Age=3600; path=/');
+        $this->assertEquals('foo=bar; expires='.$futureDateOneHour.'; Max-Age=3600; path=/', $cookie->__toString());
+
+        $futureDateHalfHour = gmdate('D, d M Y H:i:s T', time() + 1800);
+
+        // Max-Age value takes precedence before expires
+        $cookie = Cookie::fromString('foo=bar; expires='.$futureDateHalfHour.'; Max-Age=3600; path=/');
+        $this->assertEquals('foo=bar; expires='.$futureDateOneHour.'; Max-Age=3600; path=/', $cookie->__toString());
+    }
+
+    public function testExpiredWithMaxAge()
+    {
+        $cookie = Cookie::fromString('foo=bar; expires=Fri, 20 May 2011 15:25:52 GMT; Max-Age=0; path=/');
+        $this->assertEquals('foo=bar; expires=Fri, 20 May 2011 15:25:52 GMT; Max-Age=0; path=/', $cookie->__toString());
+
+        $futureDate = gmdate('D, d-M-Y H:i:s T', time() + 864000);
+
+        $cookie = Cookie::fromString('foo=bar; expires='.$futureDate.'; Max-Age=0; path=/');
+        $this->assertEquals(time(), $cookie->getExpiresTime());
+        $this->assertEquals('foo=bar; expires='.gmdate('D, d M Y H:i:s T', $cookie->getExpiresTime()).'; Max-Age=0; path=/', $cookie->__toString());
+    }
+}

@@ -1533,12 +1533,6 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     generate_final_classes?: bool|Param, // Default: true
  *     generate_final_entities?: bool|Param, // Default: false
  * }
- * @psalm-type SymfonycastsResetPasswordConfig = array{
- *     request_password_repository?: scalar|Param|null, // A class that implements ResetPasswordRequestRepositoryInterface - usually your ResetPasswordRequestRepository.
- *     lifetime?: int|Param, // The length of time in seconds that a password reset request is valid for after it is created. // Default: 3600
- *     throttle_limit?: int|Param, // Another password reset cannot be made faster than this throttle time in seconds. // Default: 3600
- *     enable_garbage_collection?: bool|Param, // Enable/Disable automatic garbage collection. // Default: true
- * }
  * @psalm-type NelmioSecurityConfig = array{
  *     signed_cookie?: array{
  *         names?: list<scalar|Param|null>,
@@ -1781,7 +1775,6 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     doctrine?: DoctrineConfig,
  *     doctrine_migrations?: DoctrineMigrationsConfig,
  *     twig_extra?: TwigExtraConfig,
- *     symfonycasts_reset_password?: SymfonycastsResetPasswordConfig,
  *     nelmio_security?: NelmioSecurityConfig,
  *     ux_icons?: UxIconsConfig,
  *     mercure?: MercureConfig,
@@ -1799,7 +1792,6 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         web_profiler?: WebProfilerConfig,
  *         debug?: DebugConfig,
  *         maker?: MakerConfig,
- *         symfonycasts_reset_password?: SymfonycastsResetPasswordConfig,
  *         nelmio_security?: NelmioSecurityConfig,
  *         ux_icons?: UxIconsConfig,
  *         mercure?: MercureConfig,
@@ -1815,7 +1807,6 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         doctrine?: DoctrineConfig,
  *         doctrine_migrations?: DoctrineMigrationsConfig,
  *         twig_extra?: TwigExtraConfig,
- *         symfonycasts_reset_password?: SymfonycastsResetPasswordConfig,
  *         nelmio_security?: NelmioSecurityConfig,
  *         ux_icons?: UxIconsConfig,
  *         mercure?: MercureConfig,
@@ -1832,7 +1823,6 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         doctrine_migrations?: DoctrineMigrationsConfig,
  *         twig_extra?: TwigExtraConfig,
  *         web_profiler?: WebProfilerConfig,
- *         symfonycasts_reset_password?: SymfonycastsResetPasswordConfig,
  *         nelmio_security?: NelmioSecurityConfig,
  *         ux_icons?: UxIconsConfig,
  *         mercure?: MercureConfig,

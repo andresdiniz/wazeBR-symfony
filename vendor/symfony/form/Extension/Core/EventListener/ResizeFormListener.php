@@ -14,6 +14,7 @@ namespace Symfony\Component\Form\Extension\Core\EventListener;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Form\Event\PostSetDataEvent;
 use Symfony\Component\Form\Exception\UnexpectedTypeException;
+use Symfony\Component\Form\FormConfigBuilder;
 use Symfony\Component\Form\FormEvent;
 use Symfony\Component\Form\FormEvents;
 use Symfony\Component\Form\FormInterface;
@@ -32,6 +33,8 @@ class ResizeFormListener implements EventSubscriberInterface
     private bool $overridden = true;
     private bool $usePreSetData = false;
     private array $preSetDataChildrenStack = [];
+    /** @var \WeakMap<FormInterface, array<int|string, bool>> */
+    private \WeakMap $initialKeys;
 
     public function __construct(
         private string $type,
@@ -44,6 +47,7 @@ class ResizeFormListener implements EventSubscriberInterface
     ) {
         $this->deleteEmpty = \is_bool($deleteEmpty) ? $deleteEmpty : $deleteEmpty(...);
         $this->prototypeOptions = $prototypeOptions ?? $options;
+        $this->initialKeys = new \WeakMap();
     }
 
     public static function getSubscribedEvents(): array
@@ -141,14 +145,23 @@ class ResizeFormListener implements EventSubscriberInterface
         $form = $event->getForm();
         $data = $event->getData();
 
+        if ($this->deleteEmpty) {
+            $previousData = $form->getData() ?? [];
+            $keys = [];
+            foreach ($previousData as $key => $value) {
+                $keys[$key] = isset($previousData[$key]);
+            }
+            $this->initialKeys[$form] = $keys;
+        }
+
         if (!\is_array($data)) {
             $data = [];
         }
 
-        // Remove all empty rows
+        // Remove all rows missing from the submitted data
         if ($this->allowDelete) {
             foreach ($form as $name => $child) {
-                if (!isset($data[$name])) {
+                if (!\array_key_exists($name, $data)) {
                     $form->remove($name);
                 }
             }
@@ -157,7 +170,7 @@ class ResizeFormListener implements EventSubscriberInterface
         // Add all additional rows
         if ($this->allowAdd) {
             foreach ($data as $name => $value) {
-                if (!$form->has($name)) {
+                if (!$form->has($name) && '' !== $name && FormConfigBuilder::isValidName((string) $name)) {
                     $form->add($name, $this->type, array_replace([
                         'property_path' => '['.$name.']',
                     ], $this->prototypeOptions));
@@ -180,18 +193,16 @@ class ResizeFormListener implements EventSubscriberInterface
         }
 
         if ($this->deleteEmpty) {
-            $previousData = $form->getData();
+            $initialKeys = $this->initialKeys[$form] ?? [];
             /** @var FormInterface $child */
             foreach ($form as $name => $child) {
-                if (!$child->isValid() || !$child->isSynchronized()) {
+                if (!$child->isSubmitted() || !$child->isValid() || !$child->isSynchronized()) {
                     continue;
                 }
 
-                $isNew = !isset($previousData[$name]);
+                $isNew = !($initialKeys[$name] ?? false);
                 $isEmpty = \is_callable($this->deleteEmpty) ? ($this->deleteEmpty)($child->getData()) : $child->isEmpty();
 
-                // $isNew can only be true if allowAdd is true, so we don't
-                // need to check allowAdd again
                 if ($isEmpty && ($isNew || $this->allowDelete)) {
                     unset($data[$name]);
                     $form->remove($name);
@@ -223,15 +234,21 @@ class ResizeFormListener implements EventSubscriberInterface
             foreach ($dataKeys as $key) {
                 unset($data[$key]);
             }
-            foreach ($form as $name => $child) {
-                $formReindex[] = $child;
-                $form->remove($name);
+            $index = 0;
+            foreach ($form as $child) {
+                // only the entries from the first misplaced entry are re-added, so that the previous entries stay submitted and validated
+                if ($formReindex || $child->getName() !== (string) $index) {
+                    $formReindex[$index] = $child;
+                }
+                $data[$index++] = $child->getData();
+            }
+            foreach ($formReindex as $child) {
+                $form->remove($child->getName());
             }
             foreach ($formReindex as $index => $child) {
                 $form->add($index, $this->type, array_replace([
                     'property_path' => '['.$index.']',
                 ], $this->options, ['data' => $child->getData()]));
-                $data[$index] = $child->getData();
             }
         }
 

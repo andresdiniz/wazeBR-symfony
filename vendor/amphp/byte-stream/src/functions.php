@@ -70,7 +70,9 @@ function getInputBufferStream(): ReadableResourceStream
 
     $map ??= new \WeakMap();
 
-    return $map[EventLoop::getDriver()] ??= new ReadableResourceStream(\fopen('php://input', 'rb'));
+    return $map[EventLoop::getDriver()] ??= new ReadableResourceStream(
+        \fopen('php://input', 'rb') ?: throw new StreamException('Failed to open php://input'),
+    );
 }
 
 /**
@@ -82,7 +84,9 @@ function getOutputBufferStream(): WritableResourceStream
 
     $map ??= new \WeakMap();
 
-    return $map[EventLoop::getDriver()] ??= new WritableResourceStream(\fopen('php://output', 'wb'));
+    return $map[EventLoop::getDriver()] ??= new WritableResourceStream(
+        \fopen('php://output', 'wb') ?: throw new StreamException('Failed to open php://output'),
+    );
 }
 
 /**
@@ -138,7 +142,10 @@ function split(ReadableStream $source, string $delimiter, ?Cancellation $cancell
         $split = \explode($delimiter, $buffer);
         $buffer = \array_pop($split);
 
-        yield from $split;
+        // Don't use yield from to avoid reusing the keys from $split
+        foreach ($split as $v) {
+            yield $v;
+        }
     }
 
     if ($buffer !== '') {
