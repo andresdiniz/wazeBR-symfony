@@ -17,7 +17,6 @@ use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Security\Crypto\Hasher\PasswordHasherFactoryInterface;
 
 final class PasswordResetController extends AbstractController
 {
@@ -29,7 +28,6 @@ final class PasswordResetController extends AbstractController
         private readonly EntityManagerInterface $entityManager,
         private readonly MailerInterface $mailer,
         private readonly UserPasswordHasherInterface $passwordHasher,
-        private readonly PasswordHasherFactoryInterface $passwordHasherFactory,
     ) {
     }
 
@@ -47,9 +45,7 @@ final class PasswordResetController extends AbstractController
                 $plainToken = bin2hex(random_bytes(32));
                 $selector = bin2hex(random_bytes(8));
 
-                $hashedToken = $this->passwordHasherFactory
-                    ->getPasswordHasher(PasswordResetToken::class)
-                    ->hash($plainToken);
+                $hashedToken = password_hash($plainToken, PASSWORD_DEFAULT);
 
                 $expiresAt = new \DateTimeImmutable(
                     sprintf('+%d minutes', self::TOKEN_TTL_MINUTES),
@@ -127,9 +123,7 @@ final class PasswordResetController extends AbstractController
             return $this->redirectToRoute('app_forgot_password_request');
         }
 
-        $isValid = $this->passwordHasherFactory
-            ->getPasswordHasher(PasswordResetToken::class)
-            ->verify($plainToken, $resetToken->getHashedToken());
+        $isValid = password_verify($plainToken, $resetToken->getHashedToken());
 
         if (!$isValid) {
             $this->addFlash('error', 'Link de redefinição inválido ou expirado.');
