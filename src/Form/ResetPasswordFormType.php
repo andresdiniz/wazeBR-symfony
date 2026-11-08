@@ -1,1 +1,45 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App\Form;\n\nuse Symfony\Component\Form\AbstractType;\nuse Symfony\Component\Form\Extension\Core\Type\PasswordType;\nuse Symfony\Component\Form\Extension\Core\Type\RepeatedType;\nuse Symfony\Component\Form\FormBuilderInterface;\nuse Symfony\Component\Validator\Constraints\Length;\nuse Symfony\Component\Validator\Constraints\NotBlank;\n\nclass ResetPasswordFormType extends AbstractType\n{\n    public function buildForm(FormBuilderInterface $builder, array $options): void\n    {\n        $builder\n            ->add('plainPassword', RepeatedType::class, [\n                'type' => PasswordType::class,\n                'invalid_message' => 'As senhas não coincidem.',\n                'first_options' => [\n                    'label' => 'Nova senha',\n                    'attr' => [\n                        'autocomplete' => 'new-password',\n                        'placeholder' => 'Digite a nova senha',\n                    ],\n                ],\n                'second_options' => [\n                    'label' => 'Confirme a nova senha',\n                    'attr' => [\n                        'autocomplete' => 'new-password',\n                        'placeholder' => 'Repita a nova senha',\n                    ],\n                ],\n                'constraints' => [\n                    new NotBlank(['message' => 'Informe a nova senha.']),\n                    new Length([\n                        'min' => 8,\n                        'minMessage' => 'A senha deve ter pelo menos {{ limit }} caracteres.',\n                    ]),\n                ],\n            ]);\n    }\n}\n
+<?php
+
+declare(strict_types=1);
+
+namespace App\Form;
+
+use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\Extension\Core\Type\PasswordType;
+use Symfony\Component\Form\Extension\Core\Type\RepeatedType;
+use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Validator\Constraints\Length;
+use Symfony\Component\Validator\Constraints\NotBlank;
+
+class ResetPasswordFormType extends AbstractType
+{
+    public function buildForm(FormBuilderInterface $builder, array $options): void
+    {
+        $builder
+            ->add('plainPassword', RepeatedType::class, [
+                'type' => PasswordType::class,
+                'invalid_message' => 'As senhas não coincidem.',
+                'first_options' => [
+                    'label' => 'Nova senha',
+                    'attr' => [
+                        'autocomplete' => 'new-password',
+                        'placeholder' => 'Digite a nova senha',
+                    ],
+                ],
+                'second_options' => [
+                    'label' => 'Confirme a nova senha',
+                    'attr' => [
+                        'autocomplete' => 'new-password',
+                        'placeholder' => 'Repita a nova senha',
+                    ],
+                ],
+                'constraints' => [
+                    new NotBlank(['message' => 'Informe a nova senha.']),
+                    new Length([
+                        'min' => 8,
+                        'minMessage' => 'A senha deve ter pelo menos {{ limit }} caracteres.',
+                    ]),
+                ],
+            ]);
+    }
+}
