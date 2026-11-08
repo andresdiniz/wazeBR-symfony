@@ -1,1 +1,20 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App\Repository;\n\nuse App\Entity\ResetPasswordRequest;\nuse Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;\nuse Doctrine\Persistence\ManagerRegistry;\n\n/**\n * @extends ServiceEntityRepository<ResetPasswordRequest>\n */\nclass ResetPasswordRequestRepository extends ServiceEntityRepository\n{\n    public function __construct(ManagerRegistry $registry)\n    {\n        parent::__construct($registry, ResetPasswordRequest::class);\n    }\n}\n
+<?php
+
+declare(strict_types=1);
+
+namespace App\Repository;
+
+use App\Entity\ResetPasswordRequest;
+use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\Persistence\ManagerRegistry;
+
+/**
+ * @extends ServiceEntityRepository<ResetPasswordRequest>
+ */
+class ResetPasswordRequestRepository extends ServiceEntityRepository
+{
+    public function __construct(ManagerRegistry $registry)
+    {
+        parent::__construct($registry, ResetPasswordRequest::class);
+    }
+}
