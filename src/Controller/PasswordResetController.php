@@ -1,1 +1,173 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App\Controller;\n\nuse App\Entity\PasswordResetToken;\nuse App\Form\ForgotPasswordFormType;\nuse App\Form\ResetPasswordFormType;\nuse App\Repository\PasswordResetTokenRepository;\nuse App\Repository\UserRepository;\nuse Doctrine\ORM\EntityManagerInterface;\nuse Symfony\Bundle\FrameworkBundle\Controller\AbstractController;\nuse Symfony\Component\HttpFoundation\Request;\nuse Symfony\Component\HttpFoundation\Response;\nuse Symfony\Component\Mailer\MailerInterface;\nuse Symfony\Component\Mime\Email;\nuse Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;\nuse Symfony\Component\Routing\Annotation\Route;\nuse Symfony\Component\Security\Crypto\Hasher\PasswordHasherFactoryInterface;\n\nfinal class PasswordResetController extends AbstractController\n{\n    private const TOKEN_TTL_MINUTES = 60;\n\n    public function __construct(\n        private readonly UserRepository $userRepository,\n        private readonly PasswordResetTokenRepository $tokenRepository,\n        private readonly EntityManagerInterface $entityManager,\n        private readonly MailerInterface $mailer,\n        private readonly UserPasswordHasherInterface $passwordHasher,\n        private readonly PasswordHasherFactoryInterface $passwordHasherFactory,\n    ) {\n    }\n\n    #[Route('/forgot-password', name: 'app_forgot_password_request', methods: ['GET', 'POST'])]\n    public function request(Request $request): Response\n    {\n        $form = $this->createForm(ForgotPasswordFormType::class);\n        $form->handleRequest($request);\n\n        if ($form->isSubmitted() && $form->isValid()) {\n            $email = mb_strtolower(trim((string) $form->get('email')->getData()));\n            $user = $this->userRepository->findOneBy(['email' => $email]);\n\n            if ($user !== null) {\n                $plainToken = bin2hex(random_bytes(32));\n                $selector = bin2hex(random_bytes(8));\n\n                $hashedToken = $this->passwordHasherFactory\n                    ->getPasswordHasher(PasswordResetToken::class)\n                    ->hash($plainToken);\n\n                $expiresAt = new \DateTimeImmutable(\n                    sprintf('+%d minutes', self::TOKEN_TTL_MINUTES),\n                );\n\n                $this->tokenRepository->invalidateTokensForUser($user);\n\n                $resetToken = new PasswordResetToken(\n                    $user,\n                    $selector,\n                    $hashedToken,\n                    $expiresAt,\n                );\n\n                $this->tokenRepository->save($resetToken);\n\n                $resetUrl = $this->generateUrl(\n                    'app_reset_password',\n                    ['token' => $selector . '.' . $plainToken],\n                    0,\n                );\n\n                $emailMessage = (new Email())\n                    ->from('no-reply@acheireviews.com.br')\n                    ->to($user->getEmail() ?? '')\n                    ->subject('Redefinição de senha')\n                    ->html(\n                        $this->renderView('email/password_reset.html.twig', [\n                            'user' => $user,\n                            'resetUrl' => $resetUrl,\n                            'expiresAt' => $expiresAt,\n                        ]),\n                    );\n\n                try {\n                    $this->mailer->send($emailMessage);\n                } catch (\Throwable) {\n                    // Não revela se o envio falhou para evitar enumeração de contas.\n                }\n            }\n\n            $this->addFlash('success', 'Se o e-mail estiver cadastrado, enviaremos as instruções de redefinição.');\n\n            return $this->redirectToRoute('app_forgot_password_request');\n        }\n\n        return $this->render('password_reset/request.html.twig', [\n            'form' => $form,\n        ]);\n    }\n\n    #[Route('/reset-password/{token}', name: 'app_reset_password', methods: ['GET', 'POST'])]\n    public function reset(string $token, Request $request): Response\n    {\n        $parts = explode('.', $token, 2);\n\n        if (count($parts) !== 2) {\n            $this->addFlash('error', 'Link de redefinição inválido ou expirado.');\n\n            return $this->redirectToRoute('app_forgot_password_request');\n        }\n\n        [$selector, $plainToken] = $parts;\n\n        $resetToken = $this->tokenRepository->findOneBySelector($selector);\n        $now = new \DateTimeImmutable();\n\n        if (\n            $resetToken === null\n            || $resetToken->getUsedAt() !== null\n            || $resetToken->isExpired($now)\n        ) {\n            $this->addFlash('error', 'Link de redefinição inválido ou expirado.');\n\n            return $this->redirectToRoute('app_forgot_password_request');\n        }\n\n        $isValid = $this->passwordHasherFactory\n            ->getPasswordHasher(PasswordResetToken::class)\n            ->verify($plainToken, $resetToken->getHashedToken());\n\n        if (!$isValid) {\n            $this->addFlash('error', 'Link de redefinição inválido ou expirado.');\n\n            return $this->redirectToRoute('app_forgot_password_request');\n        }\n\n        $form = $this->createForm(ResetPasswordFormType::class);\n        $form->handleRequest($request);\n\n        if ($form->isSubmitted() && $form->isValid()) {\n            $user = $resetToken->getUser();\n\n            if ($user === null) {\n                $this->addFlash('error', 'Link de redefinição inválido ou expirado.');\n\n                return $this->redirectToRoute('app_forgot_password_request');\n            }\n\n            $plainPassword = (string) $form->get('plainPassword')->getData();\n\n            $user->setPassword(\n                $this->passwordHasher->hashPassword($user, $plainPassword),\n            );\n\n            $resetToken->markAsUsed();\n\n            $this->entityManager->persist($user);\n            $this->entityManager->persist($resetToken);\n            $this->entityManager->flush();\n\n            $this->addFlash('success', 'Senha redefinida com sucesso. Faça login com a nova senha.');\n\n            return $this->redirectToRoute('app_login');\n        }\n\n        return $this->render('password_reset/reset.html.twig', [\n            'form' => $form,\n        ]);\n    }\n}\n
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controller;
+
+use App\Entity\PasswordResetToken;
+use App\Form\ForgotPasswordFormType;
+use App\Form\ResetPasswordFormType;
+use App\Repository\PasswordResetTokenRepository;
+use App\Repository\UserRepository;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\Email;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Security\Crypto\Hasher\PasswordHasherFactoryInterface;
+
+final class PasswordResetController extends AbstractController
+{
+    private const TOKEN_TTL_MINUTES = 60;
+
+    public function __construct(
+        private readonly UserRepository $userRepository,
+        private readonly PasswordResetTokenRepository $tokenRepository,
+        private readonly EntityManagerInterface $entityManager,
+        private readonly MailerInterface $mailer,
+        private readonly UserPasswordHasherInterface $passwordHasher,
+        private readonly PasswordHasherFactoryInterface $passwordHasherFactory,
+    ) {
+    }
+
+    #[Route('/forgot-password', name: 'app_forgot_password_request', methods: ['GET', 'POST'])]
+    public function request(Request $request): Response
+    {
+        $form = $this->createForm(ForgotPasswordFormType::class);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $email = mb_strtolower(trim((string) $form->get('email')->getData()));
+            $user = $this->userRepository->findOneBy(['email' => $email]);
+
+            if ($user !== null) {
+                $plainToken = bin2hex(random_bytes(32));
+                $selector = bin2hex(random_bytes(8));
+
+                $hashedToken = $this->passwordHasherFactory
+                    ->getPasswordHasher(PasswordResetToken::class)
+                    ->hash($plainToken);
+
+                $expiresAt = new \DateTimeImmutable(
+                    sprintf('+%d minutes', self::TOKEN_TTL_MINUTES),
+                );
+
+                $this->tokenRepository->invalidateTokensForUser($user);
+
+                $resetToken = new PasswordResetToken(
+                    $user,
+                    $selector,
+                    $hashedToken,
+                    $expiresAt,
+                );
+
+                $this->tokenRepository->save($resetToken);
+
+                $resetUrl = $this->generateUrl(
+                    'app_reset_password',
+                    ['token' => $selector . '.' . $plainToken],
+                    0,
+                );
+
+                $emailMessage = (new Email())
+                    ->from('no-reply@acheireviews.com.br')
+                    ->to($user->getEmail() ?? '')
+                    ->subject('Redefinição de senha')
+                    ->html(
+                        $this->renderView('email/password_reset.html.twig', [
+                            'user' => $user,
+                            'resetUrl' => $resetUrl,
+                            'expiresAt' => $expiresAt,
+                        ]),
+                    );
+
+                try {
+                    $this->mailer->send($emailMessage);
+                } catch (\Throwable) {
+                    // Não revela se o envio falhou para evitar enumeração de contas.
+                }
+            }
+
+            $this->addFlash('success', 'Se o e-mail estiver cadastrado, enviaremos as instruções de redefinição.');
+
+            return $this->redirectToRoute('app_forgot_password_request');
+        }
+
+        return $this->render('password_reset/request.html.twig', [
+            'form' => $form,
+        ]);
+    }
+
+    #[Route('/reset-password/{token}', name: 'app_reset_password', methods: ['GET', 'POST'])]
+    public function reset(string $token, Request $request): Response
+    {
+        $parts = explode('.', $token, 2);
+
+        if (count($parts) !== 2) {
+            $this->addFlash('error', 'Link de redefinição inválido ou expirado.');
+
+            return $this->redirectToRoute('app_forgot_password_request');
+        }
+
+        [$selector, $plainToken] = $parts;
+
+        $resetToken = $this->tokenRepository->findOneBySelector($selector);
+        $now = new \DateTimeImmutable();
+
+        if (
+            $resetToken === null
+            || $resetToken->getUsedAt() !== null
+            || $resetToken->isExpired($now)
+        ) {
+            $this->addFlash('error', 'Link de redefinição inválido ou expirado.');
+
+            return $this->redirectToRoute('app_forgot_password_request');
+        }
+
+        $isValid = $this->passwordHasherFactory
+            ->getPasswordHasher(PasswordResetToken::class)
+            ->verify($plainToken, $resetToken->getHashedToken());
+
+        if (!$isValid) {
+            $this->addFlash('error', 'Link de redefinição inválido ou expirado.');
+
+            return $this->redirectToRoute('app_forgot_password_request');
+        }
+
+        $form = $this->createForm(ResetPasswordFormType::class);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $user = $resetToken->getUser();
+
+            if ($user === null) {
+                $this->addFlash('error', 'Link de redefinição inválido ou expirado.');
+
+                return $this->redirectToRoute('app_forgot_password_request');
+            }
+
+            $plainPassword = (string) $form->get('plainPassword')->getData();
+
+            $user->setPassword(
+                $this->passwordHasher->hashPassword($user, $plainPassword),
+            );
+
+            $resetToken->markAsUsed();
+
+            $this->entityManager->persist($user);
+            $this->entityManager->persist($resetToken);
+            $this->entityManager->flush();
+
+            $this->addFlash('success', 'Senha redefinida com sucesso. Faça login com a nova senha.');
+
+            return $this->redirectToRoute('app_login');
+        }
+
+        return $this->render('password_reset/reset.html.twig', [
+            'form' => $form,
+        ]);
+    }
+}
