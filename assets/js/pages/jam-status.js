@@ -45,6 +45,36 @@ const tbodySelectors = [
     '[data-jam-table]',
 ];
 
+function statusFilter() {
+    const select = document.querySelector('[data-jam-filter="status"]');
+
+    return select ? select.value : '';
+}
+
+function shouldShowRow(jam) {
+    const filter = statusFilter();
+
+    if (!filter) {
+        return true;
+    }
+
+    const status = statusFor(jam).label;
+
+    if (filter === 'active') {
+        return status === 'Ativo';
+    }
+
+    if (filter === 'resolved') {
+        return status === 'Possivelmente resolvido';
+    }
+
+    if (filter === 'stale') {
+        return status === 'Antigo';
+    }
+
+    return true;
+}
+
 function renderStatuses() {
     tbodySelectors.forEach((selector) => {
         document.querySelectorAll(`${selector} tr[data-jam-id]`).forEach((row) => {
@@ -59,6 +89,7 @@ function renderStatuses() {
             }
 
             cell.innerHTML = badgeFor(jam);
+            row.style.display = shouldShowRow(jam) ? '' : 'none';
         });
     });
 }
@@ -80,6 +111,8 @@ tbodySelectors.forEach((selector) => {
         observer.observe(tbody, { childList: true });
     }
 });
+
+document.querySelector('[data-jam-filter="status"]')?.addEventListener('change', renderStatuses);
 
 renderStatuses();
 setInterval(renderStatuses, 30000);

@@ -149,6 +149,16 @@
                     </select>
                 </label>
 
+                <label class="jam-field">
+                    <span>{{ 'Status'|trans({}, 'jams_ui') }}</span>
+                    <select name="status" data-jam-filter="status">
+                        <option value="" {{ filters.status is defined and filters.status == '' ? 'selected' }}>{{ 'Todos'|trans({}, 'jams_ui') }}</option>
+                        <option value="active" {{ filters.status is defined and filters.status == 'active' ? 'selected' }}>{{ 'Ativo'|trans({}, 'jams_ui') }}</option>
+                        <option value="resolved" {{ filters.status is defined and filters.status == 'resolved' ? 'selected' }}>{{ 'Possivelmente resolvido'|trans({}, 'jams_ui') }}</option>
+                        <option value="stale" {{ filters.status is defined and filters.status == 'stale' ? 'selected' }}>{{ 'Antigo'|trans({}, 'jams_ui') }}</option>
+                    </select>
+                </label>
+
                 <label class="jam-toggle">
                     <input type="checkbox" name="only_blocked" value="1"
                            data-jam-filter="only_blocked"
