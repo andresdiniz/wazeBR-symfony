@@ -26,11 +26,12 @@ function jamLabel(value, fallback = '—') {
  *  #5  Coluna 🔔 alertas próximos consistente em todas as tabelas
  * #13  data-show-url-template lido do DOM (Symfony gera a URL real)
  * #14  Relógio gerenciado por um único setInterval
+ * #15  Mapa: camadas separadas, cluster de alertas e destaque de interdições
  */
 
 const REFRESH_MS      = 60_000;
 const FILTER_DEBOUNCE = 350;
-const PAGE_SIZE       = 30;   // linhas visíveis por tabela (incrementa no "carregar mais")
+const PAGE_SIZE       = 30;
 
 const LEVEL_COLORS = {
     1: '#22c55e',
@@ -46,28 +47,26 @@ const ALERT_PIN_COLOR      = '#7c3aed';
 const state = {
     endpoint:        null,
     exportEndpoint:  null,
-    showUrlTemplate: '/jams/__ID__',   // sobrescrito pelo data-attribute (#13)
+    showUrlTemplate: '/jams/__ID__',
     timezone:        'America/Sao_Paulo',
     map:             null,
-    mapLayer:        null,
+    jamLayer:        null,
+    blockedLayer:    null,
     alertLayer:      null,
     filterTimer:     null,
     refreshTimer:    null,
     clockTimer:      null,
     lastData:        null,
-    // sort por tabela: { 'blocked-active': { key, dir }, ... }
     sort: {
         'blocked-active': { key: 'level', dir: -1 },
         'blocked-stale':  { key: 'level', dir: -1 },
         'top-jams':       { key: 'level', dir: -1 },
     },
-    // quantas linhas cada tabela exibe agora
     pageSize: {
         'blocked-active': PAGE_SIZE,
         'blocked-stale':  PAGE_SIZE,
         'top-jams':       PAGE_SIZE,
     },
-    // dados completos (antes da paginação)
     rows: {
         'blocked-active': [],
         'blocked-stale':  [],
@@ -139,7 +138,7 @@ function setText(selector, value) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Relógio único (#14 — substitui a duplicação anterior)
+// Relógio único (#14)
 // ─────────────────────────────────────────────────────────────────────────
 
 function installLiveClock() {
@@ -153,7 +152,6 @@ function installLiveClock() {
 
     const tick = () => { el.textContent = fmt.format(new Date()); };
     tick();
-    // #14 — um único timer; o fetchAndRender NÃO sobrescreve mais este elemento
     state.clockTimer = setInterval(tick, 1000);
 }
 
@@ -183,7 +181,7 @@ function applyFilterToUrl(filters) {
     const exportLink = $('[data-jam-export]');
     if (exportLink && state.exportEndpoint) {
         const exp = new URL(state.exportEndpoint, window.location.origin);
-    exp.searchParams.set('_locale', document.documentElement.dataset.locale || 'pt_BR');
+        exp.searchParams.set('_locale', document.documentElement.dataset.locale || 'pt_BR');
         Object.entries(filters).forEach(([k, v]) => {
             if (v !== '' && v != null) exp.searchParams.set(k, v);
         });
@@ -246,10 +244,6 @@ function installFilterHandlers() {
 // Sort (#2)
 // ─────────────────────────────────────────────────────────────────────────
 
-/**
- * Instala handlers de sort nos <th data-sortable="..."> de uma tabela.
- * O sort é client-side sobre os dados em `state.rows[tableKey]`.
- */
 function installSortHandlers(table, tableKey) {
     if (!table || table.dataset.sortBound === '1') return;
     table.dataset.sortBound = '1';
@@ -264,10 +258,9 @@ function installSortHandlers(table, tableKey) {
                 s.dir *= -1;
             } else {
                 s.key = key;
-                s.dir = -1;   // desc por padrão
+                s.dir = -1;
             }
 
-            // Atualiza ícones
             table.querySelectorAll('th[data-sortable]').forEach((h) => {
                 const icon = h.querySelector('.jam-sort-icon');
                 if (!icon) return;
@@ -280,7 +273,6 @@ function installSortHandlers(table, tableKey) {
                 }
             });
 
-            // Re-renderiza com o sort novo
             renderTable(tableKey);
         });
     });
@@ -311,7 +303,7 @@ function installLoadMore(tableKey) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Mapa
+// Mapa (#15 — camadas, clusters e destaque)
 // ─────────────────────────────────────────────────────────────────────────
 
 function initMap() {
@@ -325,7 +317,6 @@ function initMap() {
                 clearInterval(retry);
                 if (typeof L !== 'undefined') doInitMap(container);
                 else {
-                    // #12 — fallback: mostra aviso no container do mapa
                     container.innerHTML = `
                         <div style="display:flex;align-items:center;justify-content:center;
                                     height:100%;color:var(--jam-text-muted);font-size:13px;gap:8px">
@@ -352,8 +343,19 @@ function doInitMap(container) {
             attribution: '&copy; OpenStreetMap',
         }).addTo(state.map);
 
-        state.mapLayer   = L.layerGroup().addTo(state.map);
-        state.alertLayer = L.layerGroup().addTo(state.map);
+        state.jamLayer     = L.layerGroup().addTo(state.map);
+        state.blockedLayer = L.layerGroup().addTo(state.map);
+
+        state.alertLayer = (typeof L.markerClusterGroup === 'function')
+            ? L.markerClusterGroup({ disableClusteringAtZoom: 16, maxClusterRadius: 45 })
+            : L.layerGroup();
+        state.alertLayer.addTo(state.map);
+
+        L.control.layers(null, {
+            'Congestionamentos': state.jamLayer,
+            'Interdições': state.blockedLayer,
+            'Alertas': state.alertLayer,
+        }, { collapsed: false }).addTo(state.map);
 
         setTimeout(() => state.map?.invalidateSize(), 200);
         setTimeout(() => state.map?.invalidateSize(), 600);
@@ -364,9 +366,10 @@ function doInitMap(container) {
 }
 
 function renderMap(mapData) {
-    if (!state.map || !state.mapLayer || !mapData) return;
+    if (!state.map || !state.jamLayer || !mapData) return;
 
-    state.mapLayer.clearLayers();
+    state.jamLayer.clearLayers();
+    state.blockedLayer?.clearLayers();
     state.alertLayer?.clearLayers();
 
     const jams   = mapData.jams || [];
@@ -429,10 +432,10 @@ function renderMap(mapData) {
             { sticky: true, direction: 'top' }
         );
 
-        poly.addTo(state.mapLayer);
+        const targetLayer = j.isBlocked ? state.blockedLayer : state.jamLayer;
+        poly.addTo(targetLayer);
         j.path.forEach((pt) => bounds.push(pt));
 
-        // Pinos de alertas próximos
         (j.alerts || []).forEach((a) => {
             if (!Number.isFinite(a.lat) || !Number.isFinite(a.lng)) return;
             L.circleMarker([a.lat, a.lng], {
@@ -544,7 +547,7 @@ function renderHourly(byHour) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Render — tabelas (com sort #2, paginação #3, empty state #4, alertas #5)
+// Render — tabelas
 // ─────────────────────────────────────────────────────────────────────────
 
 function levelCell(j) {
@@ -567,19 +570,12 @@ function timeCell(j) {
     return `<span class="jam-table__time">${fmtClock(j.when)}</span>`;
 }
 
-// #5 — badge de alertas para todas as tabelas
 function alertsBadgeCell(j) {
     const n = Number(j.nearbyAlerts ?? 0);
     if (n <= 0) return `<span class="jam-alerts-badge jam-alerts-badge--zero">—</span>`;
     return `<span class="jam-alerts-badge"><i>🔔</i> ${n}</span>`;
 }
 
-/**
- * Renderiza (ou re-renderiza) uma tabela específica.
- * Respeita sort e pageSize do estado.
- *
- * @param {'blocked-active'|'blocked-stale'|'top-jams'} tableKey
- */
 function renderTable(tableKey) {
     const tbodyMap = {
         'blocked-active': $('[data-jam-table-blocked-active]'),
@@ -589,7 +585,7 @@ function renderTable(tableKey) {
     const emptyMsgMap = {
         'blocked-active': jt("Nenhuma interdição ativa no momento."),
         'blocked-stale':  jt("Sem interdições antigas."),
-        'top-jams':       null,   // usa empty state contextual (#4)
+        'top-jams':       null,
     };
 
     const tbody = tbodyMap[tableKey];
@@ -602,7 +598,6 @@ function renderTable(tableKey) {
 
     if (loadMore) loadMore.style.display = hasMore ? '' : 'none';
 
-    // Badge de contagem
     const countBadgeMap = {
         'blocked-active': '[data-jam-count="blocked-active"]',
         'blocked-stale':  '[data-jam-count="blocked-stale"]',
@@ -611,12 +606,10 @@ function renderTable(tableKey) {
     setText(countBadgeMap[tableKey], fmtNum(allRows.length));
 
     if (allRows.length === 0) {
-        // #4 — empty state contextual
         const staticMsg = emptyMsgMap[tableKey];
         if (staticMsg) {
             tbody.innerHTML = `<tr><td colspan="7" class="jam-empty">${escapeHtml(staticMsg)}</td></tr>`;
         } else {
-            // top-jams: mostra quais filtros estão ativos
             const filters  = readFilters();
             const active   = Object.entries(filters)
                 .filter(([, v]) => v !== '' && v !== '0' && v !== null && v !== undefined && v !== false)
@@ -660,7 +653,6 @@ function renderTable(tableKey) {
             </tr>`;
     }).join('');
 
-    // Delegação de clique (instala uma vez)
     if (tbody.dataset.clickBound !== '1') {
         tbody.dataset.clickBound = '1';
         tbody.addEventListener('click', (e) => {
@@ -675,7 +667,6 @@ function renderTable(tableKey) {
         });
     }
 
-    // Instala sort e load-more (idempotente)
     const tableEl = tbody.closest('table');
     installSortHandlers(tableEl, tableKey);
     installLoadMore(tableKey);
@@ -686,7 +677,6 @@ function renderAllTables(data) {
     state.rows['blocked-stale']  = data.blockedStale  || [];
     state.rows['top-jams']       = data.topJams       || [];
 
-    // Reseta paginação a cada fetch de dados novos
     state.pageSize['blocked-active'] = PAGE_SIZE;
     state.pageSize['blocked-stale']  = PAGE_SIZE;
     state.pageSize['top-jams']       = PAGE_SIZE;
@@ -703,45 +693,35 @@ function renderAllTables(data) {
 function rankItem(r, idx, kind) {
     const isActive = Number(r.blockedActive) > 0;
     const isStale  = !isActive && Number(r.blockedStale) > 0;
-    const cls      = isActive ? ' is-blocked' : isStale ? ' is-stale' : '';
-
-    let marks = '';
-    if (isActive)              marks += `<span class="mark-blocked">🚫 ${r.blockedActive}</span> · `;
-    if (Number(r.blockedStale) > 0) marks += `<span class="mark-stale">⚠ ${r.blockedStale}</span> · `;
-
-    const foot = marks + (kind === 'streets'
-        ? (r.maxDelay > 0 ? `${escapeHtml(jt("máx"))} ${r.maxDelay}s` : '—')
-        : (r.avgDelay > 0 ? `${escapeHtml(jt("média"))} ${r.avgDelay}s` : '—'));
-
-    const name = kind === 'streets'
-        ? `${escapeHtml(r.street)}<span class="jam-rank__city">${escapeHtml(r.city)}</span>`
-        : escapeHtml(r.city);
+    const badge = isActive
+        ? '<span class="jam-rank__badge jam-rank__badge--active">🚫</span>'
+        : isStale
+            ? '<span class="jam-rank__badge jam-rank__badge--stale">⚠</span>'
+            : '';
+    const count = Number(r.total ?? 0);
 
     return `
-        <li class="${cls}">
+        <li class="jam-rank__item">
             <span class="jam-rank__pos">${idx + 1}</span>
-            <span class="jam-rank__name">${name}</span>
-            <span class="jam-rank__stats">
-                ${r.count}
-                <small>${foot}</small>
-            </span>
+            <span class="jam-rank__name">${escapeHtml(r.name || '—')}</span>
+            ${badge}
+            <span class="jam-rank__count">${count}</span>
         </li>`;
 }
 
-function renderRankStreets(rows) {
-    const el = $('[data-jam-rank-streets]');
-    if (!el) return;
-    el.innerHTML = Array.isArray(rows) && rows.length > 0
-        ? rows.map((r, i) => rankItem(r, i, 'streets')).join('')
-        : ('<li class="jam-empty">' + escapeHtml(jt("Sem dados")) + '</li>');
-}
+function renderRankings(data) {
+    const streets = $('[data-jam-rank-streets]');
+    const cities  = $('[data-jam-rank-cities]');
 
-function renderRankCities(rows) {
-    const el = $('[data-jam-rank-cities]');
-    if (!el) return;
-    el.innerHTML = Array.isArray(rows) && rows.length > 0
-        ? rows.map((r, i) => rankItem(r, i, 'cities')).join('')
-        : ('<li class="jam-empty">' + escapeHtml(jt("Sem dados")) + '</li>');
+    if (streets) {
+        streets.innerHTML = (data.topStreets || []).map((r, i) => rankItem(r, i, 'street')).join('')
+            || '<li class="jam-empty">Sem dados</li>';
+    }
+
+    if (cities) {
+        cities.innerHTML = (data.topCities || []).map((r, i) => rankItem(r, i, 'city')).join('')
+            || '<li class="jam-empty">Sem dados</li>';
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -749,82 +729,64 @@ function renderRankCities(rows) {
 // ─────────────────────────────────────────────────────────────────────────
 
 async function fetchAndRender() {
-    if (!state.endpoint) return;
-
     const filters = readFilters();
     applyFilterToUrl(filters);
 
-    const url = new URL(state.endpoint, window.location.origin);
-    url.searchParams.set('_locale', document.documentElement.dataset.locale || 'pt_BR');
-    Object.entries(filters).forEach(([k, v]) => {
-        if (v !== '' && v != null) url.searchParams.set(k, v);
-    });
+    const params = new URLSearchParams(filters);
+    params.set('_locale', document.documentElement.dataset.locale || 'pt_BR');
 
     try {
-        const res = await fetch(url.toString(), {
-            headers: { Accept: 'application/json' },
-            credentials: 'same-origin',
-            cache: 'no-store',
+        const res = await fetch(`${state.endpoint}?${params.toString()}`, {
+            headers: { 'Accept': 'application/json' },
         });
+
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const json = await res.json();
-        if (!json?.data) throw new Error(jt("Payload inválido"));
+        const data = json?.data;
 
-        const data = json.data;
+        if (!data) throw new Error('Resposta inválida');
+
         state.lastData = data;
 
         renderKPIs(data.summary);
         renderLevels(data.summary?.byLevel);
         renderHourly(data.byHour);
         renderAllTables(data);
-        renderRankStreets(data.topStreets);
-        renderRankCities(data.topCities);
+        renderRankings(data);
         renderMap(data.map);
-        // #14 — NÃO atualiza [data-jam-live-clock] aqui; o intervalo cuida disso
     } catch (err) {
         console.error('[JAM] fetch falhou', err);
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Bootstrap
+// Boot
 // ─────────────────────────────────────────────────────────────────────────
 
-export function initJamPage(root = document) {
-    const page = root.querySelector?.('[data-jam-page]') ?? root;
-    if (!page || !page.matches?.('[data-jam-page]') || bootstrapped) return;
+function boot() {
+    if (bootstrapped) return;
     bootstrapped = true;
 
-    state.endpoint       = page.dataset.apiEndpoint;
-    state.exportEndpoint = page.dataset.exportEndpoint;
-    state.timezone       = page.dataset.timezone || 'America/Sao_Paulo';
+    const page = $('[data-jam-page]');
+    if (!page) return;
 
-    // #13 — lê o template gerado pelo Symfony (URL real, não hardcoded)
-    state.showUrlTemplate = page.dataset.showUrlTemplate || '/jams/__ID__';
-
-    if (!state.endpoint) {
-        console.warn('[JAM] sem data-api-endpoint');
-        return;
-    }
+    state.endpoint        = page.dataset.apiEndpoint;
+    state.exportEndpoint  = page.dataset.exportEndpoint;
+    state.showUrlTemplate = page.dataset.showUrlTemplate || state.showUrlTemplate;
+    state.timezone        = page.dataset.timezone || state.timezone;
 
     restoreFiltersFromUrl();
     installFilterHandlers();
-    installLiveClock();   // #14 — único relógio
-
     initMap();
+    installLiveClock();
+
     fetchAndRender();
-
     state.refreshTimer = setInterval(fetchAndRender, REFRESH_MS);
-
-    document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) fetchAndRender();
-    });
-
-    window.addEventListener('beforeunload', () => {
-        clearInterval(state.refreshTimer);
-        clearInterval(state.clockTimer);
-    });
 }
 
-export default initJamPage;
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+} else {
+    boot();
+}
