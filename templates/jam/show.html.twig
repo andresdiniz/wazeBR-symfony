@@ -80,6 +80,7 @@
                 </div>
             </div>
             <div class="jam-show-actions">
+                <a class="jam-button" href="{{ path('jam_speed_history', {id: jam.id}) }}">{{ 'Histórico de velocidade'|trans({}, 'jams_ui') }}</a>
                 <a class="jam-button" href="{{ path('jam_index') }}">← {{ 'Voltar'|trans({}, 'jams_ui') }}</a>
             </div>
         </header>
