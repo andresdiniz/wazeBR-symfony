@@ -13,6 +13,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Lock\LockFactory;
 use App\Service\JamDurationModel;
 use App\Service\JamForecastInputPolicy;
+use App\Service\JamSpeedStatistics;
 
 #[AsCommand(name: 'app:jams:forecast', description: 'Acompanha jams não interditados e estima duração observada no feed.') ]
 final class JamDurationForecastCommand extends Command
@@ -49,6 +50,7 @@ final class JamDurationForecastCommand extends Command
                 $unit=strtolower((string)$partner['fetch_frequency_unit']);
                 $seconds=max(1,(int)$partner['fetch_frequency'])*(in_array($unit,['h','hr','hrs','hour','hours','hora','horas'],true)?3600:(in_array($unit,['s','sec','secs','second','seconds','seg','segs','segundo','segundos'],true)?1:60));
                 $state=$this->model->update($state,$rows,time(),max(900,3*$seconds));
+                $state=JamSpeedStatistics::enrichState($state);
                 $state['excluded_interdictions']=$excluded;
                 if(!$input->getOption('dry-run')){
                     $temp=tempnam($directory,'jam-');if($temp===false)throw new \RuntimeException('Falha no temporário.');
