@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     <link rel="stylesheet" href="{{ asset('css/pages/jam.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/pages/jam-status.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -96,6 +97,31 @@
                     {{ 'Máximo'|trans({}, 'jams_ui') }} {{ stats.maxDelay|default(0) }}s
                 </small>
             </article>
+        </section>
+
+        {# ── Painel de status ───────────────────────────────────── #}
+        <section class="jam-status-panel" data-jam-status-panel aria-label="{{ 'Status dos congestionamentos'|trans({}, 'jams_ui') }}">
+            <article class="jam-status-card" data-status="active">
+                <div class="jam-status-head"><span class="jam-status-icon" aria-hidden="true">🟢</span><span class="jam-status-label">{{ 'Ativos'|trans({}, 'jams_ui') }}</span></div>
+                <strong class="jam-status-value" data-status-count="active">0</strong>
+                <span class="jam-status-meta">{{ 'Atualizados há menos de 10 min'|trans({}, 'jams_ui') }}</span>
+            </article>
+            <article class="jam-status-card" data-status="resolved">
+                <div class="jam-status-head"><span class="jam-status-icon" aria-hidden="true">✔</span><span class="jam-status-label">{{ 'Possivelmente resolvidos'|trans({}, 'jams_ui') }}</span></div>
+                <strong class="jam-status-value" data-status-count="resolved">0</strong>
+                <span class="jam-status-meta">{{ 'Sem atualização entre 10 min e 24 h'|trans({}, 'jams_ui') }}</span>
+            </article>
+            <article class="jam-status-card" data-status="stale">
+                <div class="jam-status-head"><span class="jam-status-icon" aria-hidden="true">🕒</span><span class="jam-status-label">{{ 'Antigos'|trans({}, 'jams_ui') }}</span></div>
+                <strong class="jam-status-value" data-status-count="stale">0</strong>
+                <span class="jam-status-meta">{{ 'Sem atualização há mais de 24 h'|trans({}, 'jams_ui') }}</span>
+            </article>
+            <article class="jam-status-card" data-status="closed">
+                <div class="jam-status-head"><span class="jam-status-icon" aria-hidden="true">⊘</span><span class="jam-status-label">{{ 'Encerrados'|trans({}, 'jams_ui') }}</span></div>
+                <strong class="jam-status-value" data-status-count="closed">0</strong>
+                <span class="jam-status-meta">{{ 'Marcados como encerrados no feed'|trans({}, 'jams_ui') }}</span>
+            </article>
+            <p class="jam-status-meta" data-status-updated>Sem atualização disponível</p>
         </section>
 
         {# ── Filtros ─────────────────────────────────────────────── #}

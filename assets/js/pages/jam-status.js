@@ -5,32 +5,36 @@ const rows = window.__jamStatusRows || new Map();
 
 function statusFor(jam) {
     if (!jam) {
-        return { label: '—', color: '#94a3b8', icon: '•' };
+        return { key: 'unknown', label: '—', color: '#94a3b8', icon: '•' };
+    }
+
+    if (jam.isActive === false) {
+        return { key: 'closed', label: 'Encerrado', color: '#64748b', icon: '⊘' };
     }
 
     const seen = jam.lastSeen || jam.when;
 
     if (!seen) {
-        return { label: 'Sem informação', color: '#94a3b8', icon: '•' };
+        return { key: 'unknown', label: 'Sem informação', color: '#94a3b8', icon: '•' };
     }
 
     const seenTime = new Date(seen).getTime();
 
     if (Number.isNaN(seenTime)) {
-        return { label: 'Sem informação', color: '#94a3b8', icon: '•' };
+        return { key: 'unknown', label: 'Sem informação', color: '#94a3b8', icon: '•' };
     }
 
     const age = Date.now() - seenTime;
 
     if (age >= STALE_AFTER_MS) {
-        return { label: 'Antigo', color: '#b45309', icon: '🕒' };
+        return { key: 'stale', label: 'Antigo', color: '#b45309', icon: '🕒' };
     }
 
     if (age >= RESOLVED_AFTER_MS) {
-        return { label: 'Possivelmente resolvido', color: '#2563eb', icon: '✔' };
+        return { key: 'resolved', label: 'Possivelmente resolvido', color: '#2563eb', icon: '✔' };
     }
 
-    return { label: 'Ativo', color: '#16a34a', icon: '🟢' };
+    return { key: 'active', label: 'Ativo', color: '#16a34a', icon: '🟢' };
 }
 
 function badgeFor(jam) {
@@ -58,21 +62,68 @@ function shouldShowRow(jam) {
         return true;
     }
 
-    const status = statusFor(jam).label;
+    return statusFor(jam).key === filter;
+}
 
-    if (filter === 'active') {
-        return status === 'Ativo';
+function formatAge(milliseconds) {
+    if (!Number.isFinite(milliseconds) || milliseconds < 0) {
+        return 'sem informação';
     }
 
-    if (filter === 'resolved') {
-        return status === 'Possivelmente resolvido';
+    const minutes = Math.floor(milliseconds / 60000);
+
+    if (minutes < 1) {
+        return 'agora';
     }
 
-    if (filter === 'stale') {
-        return status === 'Antigo';
+    if (minutes < 60) {
+        return `${minutes} min`;
     }
 
-    return true;
+    const hours = Math.floor(minutes / 60);
+
+    if (hours < 24) {
+        return `${hours} h`;
+    }
+
+    return `${Math.floor(hours / 24)} d`;
+}
+
+function renderStatusPanel() {
+    const panel = document.querySelector('[data-jam-status-panel]');
+
+    if (!panel) {
+        return;
+    }
+
+    const counts = { active: 0, resolved: 0, stale: 0, closed: 0 };
+    let latest = null;
+
+    rows.forEach((jam) => {
+        const status = statusFor(jam);
+
+        if (counts[status.key] !== undefined) {
+            counts[status.key] += 1;
+        }
+
+        const seen = jam.lastSeen || jam.when;
+        const time = seen ? new Date(seen).getTime() : NaN;
+
+        if (!Number.isNaN(time) && (latest === null || time > latest)) {
+            latest = time;
+        }
+    });
+
+    panel.querySelectorAll('[data-status-count]').forEach((element) => {
+        const key = element.dataset.statusCount;
+        element.textContent = counts[key] !== undefined ? String(counts[key]) : '0';
+    });
+
+    const updated = panel.querySelector('[data-status-updated]');
+
+    if (updated) {
+        updated.textContent = latest === null ? 'Sem atualização disponível' : `Última atualização há ${formatAge(Date.now() - latest)}`;
+    }
 }
 
 function renderStatuses() {
@@ -92,6 +143,8 @@ function renderStatuses() {
             row.style.display = shouldShowRow(jam) ? '' : 'none';
         });
     });
+
+    renderStatusPanel();
 }
 
 const observer = new MutationObserver((mutations) => {
