@@ -1,78 +1,59 @@
 {% extends 'layouts/dashboard.html.twig' %}
-
 {% block title %}Histórico de velocidade #{{ jam.id }} | WazeBR{% endblock %}
-
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/pages/jam-speed.css') }}">
+{% endblock %}
 {% block content %}
 {% set timezone = app_timezone|default('America/Sao_Paulo') %}
-<main style="max-width:1100px;margin:24px auto;padding:20px">
-    <a href="{{ path('jam_show', {id: jam.id}) }}">Voltar aos detalhes</a>
-    <h1>Histórico de velocidade</h1>
-    <p>{{ jam.street|default('Via não informada', true) }} · {{ jam.city|default('Cidade não informada', true) }} · #{{ jam.id }}</p>
+<main class="speed-page" data-speed-page data-timezone="{{ timezone|e('html_attr') }}">
+    <nav class="speed-breadcrumb" aria-label="Navegação"><a href="{{ path('jam_index') }}">Congestionamentos</a><span>/</span><a href="{{ path('jam_show', {id: jam.id}) }}">#{{ jam.id }}</a><span>/ Velocidade</span></nav>
+    <header class="speed-header">
+        <div><span class="speed-eyebrow">ANÁLISE DO TRECHO</span><h1>Histórico de velocidade</h1><p>{{ jam.street|default('Via não informada', true) }} · {{ jam.city|default('Cidade não informada', true) }}</p></div>
+        <div class="speed-actions"><a class="speed-button" href="{{ path('jam_show', {id: jam.id}) }}">← Detalhes</a><a class="speed-button speed-button--primary" href="{{ path('jam_speed_history', {id: jam.id}) }}">Atualizar dados</a></div>
+    </header>
     {% if error %}
-        <p role="alert">{{ error }}</p>
+        <section class="speed-panel speed-empty" role="alert"><h2>Histórico indisponível</h2><p>{{ error }}</p></section>
     {% elseif history is null %}
-        <p>Sem histórico disponível para este registro. O acompanhamento precisa ser executado e os dados estão sujeitos à retenção existente.</p>
+        <section class="speed-panel speed-empty"><span class="speed-eyebrow">AGUARDANDO ACOMPANHAMENTO</span><h2>Ainda não há histórico disponível</h2><p>As leituras aparecem após o processamento do acompanhamento. Dados anteriores não são reconstruídos e o histórico está sujeito à retenção existente.</p></section>
     {% else %}
         {% set s = history.statistics %}
-        <h2>Episódio mais recente disponível</h2>
-        <p>{{ history.is_open ? 'Aberto no último processamento' : 'Encerrado no acompanhamento' }}. Não representa necessariamente toda a vida do congestionamento.</p>
-        {% if history.generated_at > 0 %}
-            <p>Histórico processado em {{ history.generated_at|date('d/m/Y H:i:s', timezone) }}. Esta página não atualiza as medições automaticamente.</p>
-        {% endif %}
-        <dl style="display:flex;flex-wrap:wrap;gap:24px">
-            <div><dt>Média ponderada no período coberto</dt><dd>{{ s.mean_speed_kmh is null ? 'Sem intervalo suficiente' : s.mean_speed_kmh|number_format(1, ',', '.') ~ ' km/h' }}</dd></div>
-            <div><dt>Mínima observada</dt><dd>{{ s.min_speed_kmh is null ? 'Sem medição' : s.min_speed_kmh|number_format(1, ',', '.') ~ ' km/h' }}</dd></div>
-            <div><dt>Máxima observada</dt><dd>{{ s.max_speed_kmh is null ? 'Sem medição' : s.max_speed_kmh|number_format(1, ',', '.') ~ ' km/h' }}</dd></div>
-            <div><dt>Cobertura temporal</dt><dd>{{ s.coverage_ratio is null ? 'Não calculável' : (s.coverage_ratio * 100)|number_format(1, ',', '.') ~ '%' }}</dd></div>
-            <div><dt>Leituras válidas / total</dt><dd>{{ s.valid_sample_count }} / {{ s.sample_count }}</dd></div>
+        <section class="speed-context" aria-label="Contexto do histórico">
+            <span class="speed-badge">{{ history.is_open ? 'Aberto no último processamento' : 'Episódio encerrado' }}</span>
+            <span>Episódio mais recente disponível · desde o início do acompanhamento</span>
+            {% if history.generated_at > 0 %}<span>Processado em <time datetime="{{ history.generated_at|date('c', timezone) }}">{{ history.generated_at|date('d/m/Y H:i:s', timezone) }}</time></span>{% endif %}
+        </section>
+        <dl class="speed-kpis">
+            <div class="speed-kpi speed-kpi--accent"><dt>Média ponderada</dt><dd>{{ s.mean_speed_kmh is null ? '—' : s.mean_speed_kmh|number_format(1, ',', '.') }} <small>km/h</small></dd><p>{{ s.mean_speed_kmh is null ? 'Sem intervalo válido suficiente' : 'Somente no tempo coberto' }}</p></div>
+            <div class="speed-kpi"><dt>Última leitura</dt><dd>{{ s.last_speed_kmh is null ? '—' : s.last_speed_kmh|number_format(1, ',', '.') }} <small>km/h</small></dd><p>{{ s.last_sample_at is null ? 'Sem leitura disponível' : s.last_sample_at|date('d/m H:i:s', timezone) }}</p></div>
+            <div class="speed-kpi"><dt>Mínima observada</dt><dd>{{ s.min_speed_kmh is null ? '—' : s.min_speed_kmh|number_format(1, ',', '.') }} <small>km/h</small></dd><p>Entre as leituras válidas</p></div>
+            <div class="speed-kpi"><dt>Máxima observada</dt><dd>{{ s.max_speed_kmh is null ? '—' : s.max_speed_kmh|number_format(1, ',', '.') }} <small>km/h</small></dd><p>Entre as leituras válidas</p></div>
+            <div class="speed-kpi"><dt>Cobertura temporal</dt><dd>{{ s.coverage_ratio is null ? '—' : (s.coverage_ratio * 100)|number_format(1, ',', '.') }} <small>%</small></dd><p>{{ s.covered_seconds }} s de {{ s.span_seconds }} s considerados</p></div>
+            <div class="speed-kpi"><dt>Leituras válidas</dt><dd>{{ s.valid_sample_count }} <small>/ {{ s.sample_count }}</small></dd><p>Deduplicadas por horário</p></div>
         </dl>
-        <p>{{ s.covered_seconds }} s cobertos e {{ s.uncovered_seconds }} s não cobertos no período considerado. A média usa a leitura anterior até a seguinte, sem extrapolação e excluindo intervalos acima de {{ s.max_gap_seconds }} s ou com valores inválidos.</p>
-        {% if s.span_start_at is not null %}
-            <p>Período considerado: {{ s.span_start_at|date('d/m/Y H:i:s', timezone) }} até {{ s.span_end_at|date('d/m/Y H:i:s', timezone) }}.</p>
-        {% endif %}
-        {% if s.first_sample_at is not null %}
-            <p>Leituras disponíveis: {{ s.first_sample_at|date('d/m/Y H:i:s', timezone) }} até {{ s.last_sample_at|date('d/m/Y H:i:s', timezone) }}. Amostras antigas descartadas não são reconstruídas.</p>
-        {% endif %}
-        {% if s.valid_sample_count > 0 %}
-            <figure style="margin:24px 0">
-                <svg viewBox="0 0 720 240" role="img" aria-labelledby="speed-title speed-desc" style="width:100%;height:auto;display:block">
-                    <title id="speed-title">Velocidade observada em km/h</title>
-                    <desc id="speed-desc">Gráfico em degraus. Lacunas e leituras inválidas não são conectadas. Os valores estão na tabela de leituras abaixo.</desc>
-                    <path d="M40 20 V200 H700" fill="none" stroke="currentColor" opacity="0.5" />
-                    <text x="40" y="14" fill="currentColor" font-size="12">{{ history.chart_max|number_format(1, ',', '.') }} km/h</text>
-                    <text x="10" y="204" fill="currentColor" font-size="12">0</text>
-                    {% for p in history.samples %}
-                        {% if not loop.first %}
-                            {% set previous = history.samples[loop.index0 - 1] %}
-                            {% if p.speed is not null and previous.speed is not null and p.at - previous.at <= s.max_gap_seconds %}
-                                <path d="M{{ previous.x }} {{ previous.y }} H{{ p.x }} V{{ p.y }}" stroke="#2563eb" stroke-width="2" fill="none" />
-                            {% endif %}
-                        {% endif %}
-                        {% if p.speed is not null %}
-                            <circle cx="{{ p.x }}" cy="{{ p.y }}" r="3" fill="#2563eb"><title>{{ p.at|date('d/m/Y H:i:s', timezone) }}: {{ p.speed|number_format(1, ',', '.') }} km/h</title></circle>
-                        {% endif %}
-                    {% endfor %}
-                    <text x="40" y="225" fill="currentColor" font-size="12">{{ s.first_sample_at|date('d/m H:i:s', timezone) }}</text>
-                    <text x="700" y="225" text-anchor="end" fill="currentColor" font-size="12">{{ s.last_sample_at|date('d/m H:i:s', timezone) }}</text>
-                </svg>
-                <figcaption>Velocidade nas leituras do trecho, não a trajetória de um veículo individual. Não usa extensão dividida pela duração do evento.</figcaption>
-            </figure>
-        {% else %}
-            <p>Não há leituras válidas para desenhar o gráfico.</p>
-        {% endif %}
-        <details>
-            <summary>Tabela de leituras disponíveis</summary>
-            <table>
-                <thead><tr><th scope="col">Horário</th><th scope="col">Velocidade (km/h)</th></tr></thead>
-                <tbody>
-                    {% for p in history.samples %}
-                        <tr><td>{{ p.at|date('d/m/Y H:i:s', timezone) }}</td><td>{{ p.speed is null ? 'Sem medição válida' : p.speed|number_format(1, ',', '.') }}</td></tr>
-                    {% else %}
-                        <tr><td colspan="2">Sem leituras disponíveis.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </details>
+        <section class="speed-panel" aria-labelledby="speed-chart-title">
+            <div class="speed-panel-header"><div><span class="speed-eyebrow">EVOLUÇÃO OBSERVADA</span><h2 id="speed-chart-title">Velocidade por horário</h2><p>O filtro altera apenas o gráfico. Os indicadores representam o episódio completo disponível.</p></div>
+                <div class="speed-controls" data-enhancement hidden><label>Período<select data-speed-range><option value="0">Todas as leituras</option><option value="15">Últimos 15 minutos</option><option value="60">Última hora</option><option value="180">Últimas 3 horas</option></select></label><label class="speed-check"><input type="checkbox" data-speed-mean checked> Mostrar média do episódio</label></div>
+            </div>
+            <div class="speed-chart" data-speed-chart data-history="{{ {samples: history.samples, statistics: s}|json_encode|e('html_attr') }}"><p class="speed-chart-help">O gráfico interativo requer JavaScript. Todas as leituras estão na tabela abaixo.</p></div>
+            <p class="speed-tooltip" data-speed-tooltip aria-live="polite" aria-atomic="true">Selecione um ponto para consultar horário e velocidade.</p>
+            <div class="speed-legend"><span><i class="speed-swatch"></i>Leituras em degraus</span><span><i class="speed-swatch speed-swatch--mean"></i>Média do episódio</span><span><i class="speed-swatch speed-swatch--gap"></i>Intervalo sem cobertura</span></div>
+            <p class="speed-footnote">Janela relativa à última leitura disponível, não ao horário atual. Use as setas esquerda/direita no gráfico para navegar pelas amostras.</p>
+        </section>
+        <div class="speed-info-grid">
+            <section class="speed-panel"><h2>Qualidade e cobertura</h2><dl class="speed-facts"><div><dt>Tempo coberto</dt><dd>{{ s.covered_seconds }} s</dd></div><div><dt>Tempo não coberto</dt><dd>{{ s.uncovered_seconds }} s</dd></div><div><dt>Limite entre leituras</dt><dd>{{ s.max_gap_seconds }} s</dd></div><div><dt>Primeira leitura disponível</dt><dd>{{ s.first_sample_at is null ? '—' : s.first_sample_at|date('d/m/Y H:i:s', timezone) }}</dd></div><div><dt>Última leitura disponível</dt><dd>{{ s.last_sample_at is null ? '—' : s.last_sample_at|date('d/m/Y H:i:s', timezone) }}</dd></div></dl></section>
+            <section class="speed-panel speed-method"><h2>Como interpretar</h2><p>A média pondera cada velocidade pelo tempo até a leitura seguinte. Intervalos acima do limite ou com valores inválidos em uma das pontas não entram no cálculo.</p><p>Não há extrapolação antes da primeira leitura nem depois da última. Um ponto isolado não permite calcular a média temporal.</p><p>Este histórico descreve as leituras do trecho, não a trajetória de um veículo. Extensão dividida pela duração do congestionamento não representa velocidade.</p><p>O acompanhamento a cada minuto reutiliza a última coleta disponível. Esta página não faz coleta Waze nem atualização automática.</p></section>
+        </div>
+        <section class="speed-panel" aria-labelledby="speed-table-title">
+            <div class="speed-panel-header"><div><span class="speed-eyebrow">DADOS DO EPISÓDIO</span><h2 id="speed-table-title">Leituras disponíveis</h2><p>{{ s.sample_count }} leituras · horários em {{ timezone }}</p></div><button type="button" class="speed-button" data-speed-export data-enhancement hidden>Baixar CSV</button></div>
+            <div class="speed-table-wrap"><table class="speed-table"><caption class="speed-sr-only">Leituras de velocidade do episódio mais recente disponível</caption><thead><tr><th scope="col">Data e horário</th><th scope="col">Velocidade</th><th scope="col">Validade da leitura</th></tr></thead><tbody data-speed-rows>{% for p in history.samples %}<tr><td>{{ p.at|date('d/m/Y H:i:s', timezone) }}</td><td>{{ p.speed is null ? '—' : p.speed|number_format(1, ',', '.') ~ ' km/h' }}</td><td><span class="speed-validity">{{ p.speed is null ? 'Sem medição válida' : 'Válida' }}</span></td></tr>{% else %}<tr><td colspan="3">Sem leituras disponíveis.</td></tr>{% endfor %}</tbody></table></div>
+            <div class="speed-pagination" data-enhancement hidden><button class="speed-button" type="button" data-speed-prev>Anterior</button><span data-speed-page-label aria-live="polite"></span><button class="speed-button" type="button" data-speed-next>Próxima</button></div>
+        </section>
+        <p class="speed-footnote">Não representa necessariamente toda a vida do congestionamento. Episódios separados não são unidos e leituras antigas descartadas não são reconstruídas.</p>
     {% endif %}
 </main>
+{% endblock %}
+{% block javascripts %}
+    {{ parent() }}
+    <script type="module" src="{{ asset('js/pages/jam-speed.js') }}"></script>
 {% endblock %}
