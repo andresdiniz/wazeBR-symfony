@@ -17,6 +17,12 @@
 {% set isBlocked  = jam.isBlocked|default(false) %}
 {% set isStale    = jam.isStale|default(false) %}
 {% set alertCount = nearby_alerts|length %}
+{% set nowTs      = "now"|date('U') %}
+{% set seenTs     = jam.lastSeen ? jam.lastSeen|date('U') : null %}
+{% set ageMinutes = seenTs ? ((nowTs - seenTs) / 60) : null %}
+{% set jamStatus  = not jam.isActive ? 'Encerrado' : (ageMinutes is not null and ageMinutes >= 10 ? 'Possivelmente resolvido' : 'Ativo') %}
+{% set statusIcon = jamStatus == 'Encerrado' ? '⊘' : (jamStatus == 'Possivelmente resolvido' ? '✔' : '🟢') %}
+{% set ageLabel   = ageMinutes is null ? 'sem atualização' : (ageMinutes < 60 ? (ageMinutes|round ~ ' min') : (ageMinutes < 1440 ? ((ageMinutes / 60)|round ~ ' h') : ((ageMinutes / 1440)|round ~ ' dias'))) %}
 
 <div class="jam-show-page"
      data-jam-show
@@ -45,6 +51,9 @@
                 <div class="jam-show-badges">
                     <span class="jam-show-badge jam-show-badge--level-{{ level }}">
                         {{ 'Nível'|trans({}, 'jams_ui') }} {{ level }} · {{ jams_label('level.' ~ level) }}
+                    </span>
+                    <span class="jam-show-badge">
+                        {{ statusIcon }} {{ jamStatus }} · {{ ageLabel }}
                     </span>
                     {% if isBlocked and isStale %}
                         <span class="jam-show-badge jam-show-badge--stale">⚠ {{ 'Interdição antiga'|trans({}, 'jams_ui') }}</span>

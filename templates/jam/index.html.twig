@@ -81,7 +81,7 @@
                 <span class="kpi-icon" aria-hidden="true">⚠</span>
                 <strong class="kpi-value" data-jam-kpi="blockedStale">{{ blockedStale }}</strong>
                 <span class="kpi-label">{{ 'Interdições antigas'|trans({}, 'jams_ui') }}</span>
-                <small class="kpi-foot">{{ 'Sem atualização há mais de 15 min'|trans({}, 'jams_ui') }}</small>
+                <small class="kpi-foot">{{ 'Sem atualização há mais de 10 min'|trans({}, 'jams_ui') }}</small>
             </article>
 
             <article class="jam-kpi-card kpi-green">
@@ -238,10 +238,11 @@
                             <th class="is-num" data-sortable="length">{{ 'Ext.'|trans({}, 'jams_ui') }} <span class="jam-sort-icon"></span></th>
                             <th class="is-num" data-sortable="nearbyAlerts">🔔 <span class="jam-sort-icon"></span></th>
                             <th>{{ 'Visto'|trans({}, 'jams_ui') }}</th>
+                            <th>{{ 'Status'|trans({}, 'jams_ui') }}</th>
                         </tr>
                     </thead>
                     <tbody data-jam-table-blocked-active>
-                        <tr><td colspan="7" class="jam-empty">{{ 'Nenhuma interdição ativa no momento.'|trans({}, 'jams_ui') }}</td></tr>
+                        <tr><td colspan="8" class="jam-empty">{{ 'Nenhuma interdição ativa no momento.'|trans({}, 'jams_ui') }}</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -271,10 +272,11 @@
                             <th class="is-num" data-sortable="length">{{ 'Ext.'|trans({}, 'jams_ui') }} <span class="jam-sort-icon"></span></th>
                             <th class="is-num" data-sortable="nearbyAlerts">🔔 <span class="jam-sort-icon"></span></th>
                             <th>{{ 'Visto'|trans({}, 'jams_ui') }}</th>
+                            <th>{{ 'Status'|trans({}, 'jams_ui') }}</th>
                         </tr>
                     </thead>
                     <tbody data-jam-table-blocked-stale>
-                        <tr><td colspan="7" class="jam-empty">{{ 'Sem interdições antigas.'|trans({}, 'jams_ui') }}</td></tr>
+                        <tr><td colspan="8" class="jam-empty">{{ 'Sem interdições antigas.'|trans({}, 'jams_ui') }}</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -304,10 +306,11 @@
                                 <th class="is-num" data-sortable="length">{{ 'Ext.'|trans({}, 'jams_ui') }} <span class="jam-sort-icon"></span></th>
                                 <th class="is-num" data-sortable="nearbyAlerts">🔔 <span class="jam-sort-icon"></span></th>
                                 <th>{{ 'Quando'|trans({}, 'jams_ui') }}</th>
+                                <th>{{ 'Status'|trans({}, 'jams_ui') }}</th>
                             </tr>
                         </thead>
                         <tbody data-jam-table>
-                            <tr><td colspan="7" class="jam-empty">{{ 'Sem dados'|trans({}, 'jams_ui') }}</td></tr>
+                            <tr><td colspan="8" class="jam-empty">{{ 'Sem dados'|trans({}, 'jams_ui') }}</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -343,6 +346,41 @@
 {% block javascripts %}
     {{ parent() }}
 
+    <script>
+        (function () {
+            const originalFetch = window.fetch;
+            window.__jamStatusRows = new Map();
+
+            window.fetch = async function (...args) {
+                const response = await originalFetch.apply(this, args);
+
+                try {
+                    const contentType = response.headers.get('content-type') || '';
+
+                    if (contentType.includes('application/json')) {
+                        const clone = response.clone();
+                        const json = await clone.json();
+                        const data = json && json.data ? json.data : null;
+
+                        if (data) {
+                            ['blockedActive', 'blockedStale', 'topJams'].forEach((key) => {
+                                (data[key] || []).forEach((jam) => {
+                                    if (jam && jam.id != null) {
+                                        window.__jamStatusRows.set(String(jam.id), jam);
+                                    }
+                                });
+                            });
+                        }
+                    }
+                } catch (error) {
+                    // Ignora respostas que não são da listagem de jams.
+                }
+
+                return response;
+            };
+        })();
+    </script>
+
     <script
         src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
@@ -352,5 +390,10 @@
     <script
         type="module"
         src="{{ asset('js/pages/jam.js') }}"
+    ></script>
+
+    <script
+        type="module"
+        src="{{ asset('js/pages/jam-status.js') }}"
     ></script>
 {% endblock %}
