@@ -692,20 +692,26 @@ function renderAllTables(data) {
 
 function rankItem(r, idx, kind) {
     const isActive = Number(r.blockedActive) > 0;
-    const isStale  = !isActive && Number(r.blockedStale) > 0;
-    const badge = isActive
-        ? '<span class="jam-rank__badge jam-rank__badge--active">🚫</span>'
-        : isStale
-            ? '<span class="jam-rank__badge jam-rank__badge--stale">⚠</span>'
-            : '';
-    const count = Number(r.total ?? 0);
+    const isStale = !isActive && Number(r.blockedStale) > 0;
+    const cls = isActive ? 'is-blocked' : isStale ? 'is-stale' : '';
+
+    let marks = '';
+    if (isActive) marks += `<span class="mark-blocked">${Number(r.blockedActive)}</span>`;
+    if (Number(r.blockedStale) > 0) marks += `<span class="mark-stale">${Number(r.blockedStale)}</span>`;
+
+    const isStreet = kind === 'street';
+    const foot = marks || (isStreet
+        ? (r.maxDelay > 0 ? `${escapeHtml(jt("máx"))} ${Number(r.maxDelay)}s` : '')
+        : (r.avgDelay > 0 ? `${escapeHtml(jt("média"))} ${Number(r.avgDelay)}s` : ''));
+    const name = isStreet
+        ? `${escapeHtml(r.street || '—')}<span class="jam-rank__city">${escapeHtml(r.city || '')}</span>`
+        : escapeHtml(r.city || '—');
 
     return `
-        <li class="jam-rank__item">
+        <li class="${cls}">
             <span class="jam-rank__pos">${idx + 1}</span>
-            <span class="jam-rank__name">${escapeHtml(r.name || '—')}</span>
-            ${badge}
-            <span class="jam-rank__count">${count}</span>
+            <span class="jam-rank__name">${name}</span>
+            <span class="jam-rank__stats">${Number(r.count ?? 0)}<small>${foot}</small></span>
         </li>`;
 }
 
