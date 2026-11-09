@@ -41,7 +41,9 @@ final class JamDurationModel
                 if(!isset($open[$id]))$open[$id]=$base+['start'=>$seen,'last'=>$seen,'samples'=>[]];
                 if(!$open[$id]['samples']||$seen>$open[$id]['last']){
                     $open[$id]['samples'][]=['at'=>$seen,'speed'=>(float)$row['speed_kmh'],'length'=>(int)$row['length'],'delay'=>(int)$row['delay']];
-                    $open[$id]['samples']=array_slice($open[$id]['samples'],-30);$open[$id]['last']=$seen;
+                    // Preserva as leituras do episódio; dados já descartados não são reconstruídos.
+                    // A retenção de episódios encerrados continua limitada abaixo.
+                    $open[$id]['last']=$seen;
                 }
             }
             $episode=$open[$id]??null;
