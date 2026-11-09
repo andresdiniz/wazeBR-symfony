@@ -1,0 +1,78 @@
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}Histórico de velocidade #{{ jam.id }} | WazeBR{% endblock %}
+
+{% block content %}
+{% set timezone = app_timezone|default('America/Sao_Paulo') %}
+<main style="max-width:1100px;margin:24px auto;padding:20px">
+    <a href="{{ path('jam_show', {id: jam.id}) }}">Voltar aos detalhes</a>
+    <h1>Histórico de velocidade</h1>
+    <p>{{ jam.street|default('Via não informada', true) }} · {{ jam.city|default('Cidade não informada', true) }} · #{{ jam.id }}</p>
+    {% if error %}
+        <p role="alert">{{ error }}</p>
+    {% elseif history is null %}
+        <p>Sem histórico disponível para este registro. O acompanhamento precisa ser executado e os dados estão sujeitos à retenção existente.</p>
+    {% else %}
+        {% set s = history.statistics %}
+        <h2>Episódio mais recente disponível</h2>
+        <p>{{ history.is_open ? 'Aberto no último processamento' : 'Encerrado no acompanhamento' }}. Não representa necessariamente toda a vida do congestionamento.</p>
+        {% if history.generated_at > 0 %}
+            <p>Histórico processado em {{ history.generated_at|date('d/m/Y H:i:s', timezone) }}. Esta página não atualiza as medições automaticamente.</p>
+        {% endif %}
+        <dl style="display:flex;flex-wrap:wrap;gap:24px">
+            <div><dt>Média ponderada no período coberto</dt><dd>{{ s.mean_speed_kmh is null ? 'Sem intervalo suficiente' : s.mean_speed_kmh|number_format(1, ',', '.') ~ ' km/h' }}</dd></div>
+            <div><dt>Mínima observada</dt><dd>{{ s.min_speed_kmh is null ? 'Sem medição' : s.min_speed_kmh|number_format(1, ',', '.') ~ ' km/h' }}</dd></div>
+            <div><dt>Máxima observada</dt><dd>{{ s.max_speed_kmh is null ? 'Sem medição' : s.max_speed_kmh|number_format(1, ',', '.') ~ ' km/h' }}</dd></div>
+            <div><dt>Cobertura temporal</dt><dd>{{ s.coverage_ratio is null ? 'Não calculável' : (s.coverage_ratio * 100)|number_format(1, ',', '.') ~ '%' }}</dd></div>
+            <div><dt>Leituras válidas / total</dt><dd>{{ s.valid_sample_count }} / {{ s.sample_count }}</dd></div>
+        </dl>
+        <p>{{ s.covered_seconds }} s cobertos e {{ s.uncovered_seconds }} s não cobertos no período considerado. A média usa a leitura anterior até a seguinte, sem extrapolação e excluindo intervalos acima de {{ s.max_gap_seconds }} s ou com valores inválidos.</p>
+        {% if s.span_start_at is not null %}
+            <p>Período considerado: {{ s.span_start_at|date('d/m/Y H:i:s', timezone) }} até {{ s.span_end_at|date('d/m/Y H:i:s', timezone) }}.</p>
+        {% endif %}
+        {% if s.first_sample_at is not null %}
+            <p>Leituras disponíveis: {{ s.first_sample_at|date('d/m/Y H:i:s', timezone) }} até {{ s.last_sample_at|date('d/m/Y H:i:s', timezone) }}. Amostras antigas descartadas não são reconstruídas.</p>
+        {% endif %}
+        {% if s.valid_sample_count > 0 %}
+            <figure style="margin:24px 0">
+                <svg viewBox="0 0 720 240" role="img" aria-labelledby="speed-title speed-desc" style="width:100%;height:auto;display:block">
+                    <title id="speed-title">Velocidade observada em km/h</title>
+                    <desc id="speed-desc">Gráfico em degraus. Lacunas e leituras inválidas não são conectadas. Os valores estão na tabela de leituras abaixo.</desc>
+                    <path d="M40 20 V200 H700" fill="none" stroke="currentColor" opacity="0.5" />
+                    <text x="40" y="14" fill="currentColor" font-size="12">{{ history.chart_max|number_format(1, ',', '.') }} km/h</text>
+                    <text x="10" y="204" fill="currentColor" font-size="12">0</text>
+                    {% for p in history.samples %}
+                        {% if not loop.first %}
+                            {% set previous = history.samples[loop.index0 - 1] %}
+                            {% if p.speed is not null and previous.speed is not null and p.at - previous.at <= s.max_gap_seconds %}
+                                <path d="M{{ previous.x }} {{ previous.y }} H{{ p.x }} V{{ p.y }}" stroke="#2563eb" stroke-width="2" fill="none" />
+                            {% endif %}
+                        {% endif %}
+                        {% if p.speed is not null %}
+                            <circle cx="{{ p.x }}" cy="{{ p.y }}" r="3" fill="#2563eb"><title>{{ p.at|date('d/m/Y H:i:s', timezone) }}: {{ p.speed|number_format(1, ',', '.') }} km/h</title></circle>
+                        {% endif %}
+                    {% endfor %}
+                    <text x="40" y="225" fill="currentColor" font-size="12">{{ s.first_sample_at|date('d/m H:i:s', timezone) }}</text>
+                    <text x="700" y="225" text-anchor="end" fill="currentColor" font-size="12">{{ s.last_sample_at|date('d/m H:i:s', timezone) }}</text>
+                </svg>
+                <figcaption>Velocidade nas leituras do trecho, não a trajetória de um veículo individual. Não usa extensão dividida pela duração do evento.</figcaption>
+            </figure>
+        {% else %}
+            <p>Não há leituras válidas para desenhar o gráfico.</p>
+        {% endif %}
+        <details>
+            <summary>Tabela de leituras disponíveis</summary>
+            <table>
+                <thead><tr><th scope="col">Horário</th><th scope="col">Velocidade (km/h)</th></tr></thead>
+                <tbody>
+                    {% for p in history.samples %}
+                        <tr><td>{{ p.at|date('d/m/Y H:i:s', timezone) }}</td><td>{{ p.speed is null ? 'Sem medição válida' : p.speed|number_format(1, ',', '.') }}</td></tr>
+                    {% else %}
+                        <tr><td colspan="2">Sem leituras disponíveis.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </details>
+    {% endif %}
+</main>
+{% endblock %}
