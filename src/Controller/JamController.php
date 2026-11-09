@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\Partner;
-use Symfony\Contracts\Translation\TranslatorInterface;
 use App\Entity\User;
+use App\Repository\JamKilometerRepository;
 use App\Repository\JamRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -17,6 +17,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[Route('/jams', name: 'jam_')]
 final class JamController extends AbstractController
@@ -26,30 +27,28 @@ final class JamController extends AbstractController
     public function __construct(
         private readonly TranslatorInterface $translator,
         private readonly TagAwareCacheInterface $tvCache,
-        private readonly JamRepository $jamRepository,   // #6 — injetado, não mais via container
+        private readonly JamRepository $jamRepository,
+        private readonly JamKilometerRepository $jamKilometerRepository,
     ) {
     }
 
-    // ─────────────────────────────────────────────────────────────────
-
     #[Route('', name: 'index', methods: ['GET'])]
-    public function index(Request $request): Response   // #7 — $request real agora recebido
+    public function index(Request $request): Response
     {
         $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
 
         $partner = $this->resolvePartnerScope();
-        $filters = $this->extractFilters($request);     // #7 — usa o $request correto
+        $filters = $this->extractFilters($request);
 
         return $this->render('jam/index.html.twig', [
-            'partner'        => $partner,
-            'filters'        => $filters,
+            'partner' => $partner,
+            'filters' => $filters,
+            'kilometers' => $this->jamKilometerRepository->getSummary($partner, $filters),
             'filter_options' => [
-                'cities' => $this->jamRepository->fetchDistinctCities($partner),  // #6
+                'cities' => $this->jamRepository->fetchDistinctCities($partner),
             ],
         ]);
     }
-
-    // ─────────────────────────────────────────────────────────────────
 
     #[Route('/{id}', name: 'show', methods: ['GET'], requirements: ['id' => '\d+'])]
     public function show(int $id, JamRepository $repository): Response
@@ -57,7 +56,7 @@ final class JamController extends AbstractController
         $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
 
         $partner = $this->resolvePartnerScope();
-        $jam     = $repository->findJamById($id, $partner);
+        $jam = $repository->findJamById($id, $partner);
 
         if ($jam === null) {
             throw new NotFoundHttpException($this->translator->trans('Congestionamento não encontrado.', [], 'jams_ui'));
@@ -66,13 +65,11 @@ final class JamController extends AbstractController
         $nearbyAlerts = $repository->findNearbyAlertsForJam($jam, 30, 300);
 
         return $this->render('jam/show.html.twig', [
-            'partner'       => $partner,
-            'jam'           => $jam,
+            'partner' => $partner,
+            'jam' => $jam,
             'nearby_alerts' => $nearbyAlerts,
         ]);
     }
-
-    // ─────────────────────────────────────────────────────────────────
 
     #[Route('/api/data', name: 'api_data', methods: ['GET'])]
     public function apiData(JamRepository $repository, Request $request): JsonResponse
@@ -82,7 +79,6 @@ final class JamController extends AbstractController
         $partner = $this->resolvePartnerScope();
         $filters = $this->extractFilters($request);
 
-        // #9 — json_encode seguro: garante string mesmo em edge-cases de charset
         $filterJson = json_encode($filters, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
         $filterHash = md5($filterJson);
 
@@ -101,8 +97,8 @@ final class JamController extends AbstractController
                 $data = $repository->getDashboard($partner, $filters);
 
                 $data['blockedActive'] = $repository->attachNearbyAlerts($data['blockedActive'] ?? [], 30, 300);
-                $data['blockedStale']  = $repository->attachNearbyAlerts($data['blockedStale']  ?? [], 30, 300);
-                $data['topJams']       = $repository->attachNearbyAlerts($data['topJams']       ?? [], 30, 300);
+                $data['blockedStale'] = $repository->attachNearbyAlerts($data['blockedStale'] ?? [], 30, 300);
+                $data['topJams'] = $repository->attachNearbyAlerts($data['topJams'] ?? [], 30, 300);
 
                 if (isset($data['map']['jams']) && is_array($data['map']['jams'])) {
                     $data['map']['jams'] = $repository->attachNearbyAlerts($data['map']['jams'], 30, 300);
@@ -113,8 +109,8 @@ final class JamController extends AbstractController
         );
 
         $response = $this->json([
-            'ok'     => true,
-            'data'   => $this->normalizeDatesForJson($payload),
+            'ok' => true,
+            'data' => $this->normalizeDatesForJson($payload),
             'filter' => $filters,
         ]);
 
@@ -124,16 +120,28 @@ final class JamController extends AbstractController
         return $response;
     }
 
-    // ─────────────────────────────────────────────────────────────────
+    #[Route('/api/kilometers', name: 'api_kilometers', methods: ['GET'])]
+    public function apiKilometers(Request $request): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
+
+        $partner = $this->resolvePartnerScope();
+        $filters = $this->extractFilters($request);
+
+        return $this->json([
+            'ok' => true,
+            'data' => $this->jamKilometerRepository->getSummary($partner, $filters),
+        ]);
+    }
 
     #[Route('/export', name: 'export', methods: ['GET'])]
     public function export(JamRepository $repository, Request $request): StreamedResponse
     {
         $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
 
-        $partner  = $this->resolvePartnerScope();
-        $filters  = $this->extractFilters($request);
-        $rows     = $repository->loadExportRows($partner, $filters);
+        $partner = $this->resolvePartnerScope();
+        $filters = $this->extractFilters($request);
+        $rows = $repository->loadExportRows($partner, $filters);
 
         $filename = sprintf(
             'jams_%s_%s.csv',
@@ -144,7 +152,6 @@ final class JamController extends AbstractController
         $response = new StreamedResponse(function () use ($rows) {
             $out = fopen('php://output', 'w');
 
-            // BOM UTF-8 para Excel
             fwrite($out, "\xEF\xBB\xBF");
 
             fputcsv($out, array_map(
@@ -161,19 +168,19 @@ final class JamController extends AbstractController
             $now = time();
 
             foreach ($rows as $r) {
-                $level   = (int) $r['level'];
-                $delay   = (int) $r['delay'];
+                $level = (int) $r['level'];
+                $delay = (int) $r['delay'];
                 $isBlock = (bool) $r['is_blocked'];
                 $isStale = (bool) $r['is_stale'];
 
                 $status = match (true) {
                     $isBlock && $isStale => 'Interdição antiga',
-                    $isBlock             => 'Interdição ativa',
-                    default              => 'Congestionamento',
+                    $isBlock => 'Interdição ativa',
+                    default => 'Congestionamento',
                 };
 
                 $lastSeen = $r['last_seen_at'] ? strtotime((string) $r['last_seen_at']) : null;
-                $ageMin   = $lastSeen !== null ? round(($now - $lastSeen) / 60, 1) : null;
+                $ageMin = $lastSeen !== null ? round(($now - $lastSeen) / 60, 1) : null;
 
                 fputcsv($out, [
                     $r['id'],
@@ -189,7 +196,7 @@ final class JamController extends AbstractController
                     $r['street'],
                     $r['city'],
                     $r['country'],
-                    $r['line_points'],   // #11 — garantido no SELECT do repo
+                    $r['line_points'],
                     $r['collected_at'],
                     $r['last_seen_at'],
                     $ageMin,
@@ -206,19 +213,15 @@ final class JamController extends AbstractController
         return $response;
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // Helpers privados
-    // ─────────────────────────────────────────────────────────────────
-
     private function extractFilters(Request $request): array
     {
         return [
-            'level_min'    => max(0, min(5, (int) $request->query->get('level_min', 3))),
-            'city'         => trim((string) $request->query->get('city', '')),
-            'street'       => trim((string) $request->query->get('street', '')),
+            'level_min' => max(0, min(5, (int) $request->query->get('level_min', 3))),
+            'city' => trim((string) $request->query->get('city', '')),
+            'street' => trim((string) $request->query->get('street', '')),
             'window_hours' => max(1, min(48, (int) $request->query->get('window_hours', 2))),
             'only_blocked' => $request->query->getBoolean('only_blocked', false),
-            'hide_stale'   => $request->query->getBoolean('hide_stale', false),
+            'hide_stale' => $request->query->getBoolean('hide_stale', false),
         ];
     }
 
@@ -226,7 +229,7 @@ final class JamController extends AbstractController
     {
         return match ($level) {
             0 => 'Livre', 1 => 'Baixo', 2 => 'Moderado',
-            3 => 'Alto',  4 => 'Muito alto', 5 => 'Parado',
+            3 => 'Alto', 4 => 'Muito alto', 5 => 'Parado',
             default => 'Nível ' . $level,
         };
     }
@@ -235,9 +238,11 @@ final class JamController extends AbstractController
     {
         /** @var User|null $user */
         $user = $this->getUser();
+
         if (!$user instanceof User) {
             return null;
         }
+
         if ($user->isGlobalAdmin()) {
             return null;
         }
@@ -245,10 +250,6 @@ final class JamController extends AbstractController
         return $user->getPartner();
     }
 
-    /**
-     * #8 — substituído por array_walk_recursive para evitar recursão profunda
-     * e o custo de criar arrays intermediários a cada nível.
-     */
     private function normalizeDatesForJson(mixed $value): mixed
     {
         if (!is_array($value)) {

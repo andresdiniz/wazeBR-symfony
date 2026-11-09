@@ -5,21 +5,18 @@
 {% block stylesheets %}
     {{ parent() }}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous" />
-    {# Fallback local caso o unpkg caia (#12) — o JS verifica window.L antes de carregar #}
-    <link rel="stylesheet" href="{{ asset('vendor/leaflet/leaflet.css') }}"
-          id="leaflet-css-fallback" disabled>
+    <link rel="stylesheet" href="{{ asset('vendor/leaflet/leaflet.css') }}" id="leaflet-css-fallback" disabled>
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     <link rel="stylesheet" href="{{ asset('css/pages/jam.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/pages/jam-status.css') }}">
 {% endblock %}
 
 {% block content %}
 <div data-jams-i18n="{{ jams_i18n()|json_encode|e('html_attr') }}" hidden></div>
-{% set total         = stats.total|default(0) %}
+{% set total = stats.total|default(0) %}
 {% set blockedActive = stats.blockedActive|default(0) %}
-{% set blockedStale  = stats.blockedStale|default(0) %}
-{% set level4plus    = (stats.byLevel[4]|default(0)) + (stats.byLevel[5]|default(0)) %}
+{% set blockedStale = stats.blockedStale|default(0) %}
+{% set level4plus = (stats.byLevel[4]|default(0)) + (stats.byLevel[5]|default(0)) %}
 
 <div class="jam-page"
      data-jam-page
@@ -31,7 +28,6 @@
 
     <div class="jam-container">
 
-        {# ── Header ──────────────────────────────────────────────── #}
         <header class="jam-header">
             <div>
                 <span class="jam-eyebrow"><i></i> {{ 'Central de congestionamentos'|trans({}, 'jams_ui') }}</span>
@@ -47,7 +43,6 @@
                     <i></i> {{ 'Ao vivo'|trans({}, 'jams_ui') }} · <span data-jam-live-clock>--:--:--</span>
                 </span>
 
-                {# ─── NOVO: link para o histórico ──────────────────── #}
                 <a class="jam-button"
                    href="{{ path('jam_history_index', filters|filter(v => v is not empty and v is not same as(false))) }}"
                    title="{{ 'Ver análise histórica e correlação com alertas'|trans({}, 'jams_ui') }}">
@@ -64,7 +59,6 @@
             </div>
         </header>
 
-        {# ── KPIs ────────────────────────────────────────────────── #}
         <section class="jam-kpi-grid">
             <article class="jam-kpi-card kpi-blue">
                 <span class="kpi-icon" aria-hidden="true">≋</span>
@@ -99,32 +93,22 @@
             </article>
         </section>
 
-        {# ── Painel de status ───────────────────────────────────── #}
-        <section class="jam-status-panel" data-jam-status-panel aria-label="{{ 'Status dos congestionamentos'|trans({}, 'jams_ui') }}">
-            <article class="jam-status-card" data-status="active">
-                <div class="jam-status-head"><span class="jam-status-icon" aria-hidden="true">🟢</span><span class="jam-status-label">{{ 'Ativos'|trans({}, 'jams_ui') }}</span></div>
-                <strong class="jam-status-value" data-status-count="active">0</strong>
-                <span class="jam-status-meta">{{ 'Atualizados há menos de 10 min'|trans({}, 'jams_ui') }}</span>
+        <section class="jam-kpi-grid">
+            <article class="jam-kpi-card kpi-blue">
+                <span class="kpi-icon" aria-hidden="true">📏</span>
+                <strong class="kpi-value kpi-value--sm">{{ kilometers.last7DaysKm|default(0)|number_format(1, ',', '.') }} km</strong>
+                <span class="kpi-label">{{ 'Km acumulados — 7 dias'|trans({}, 'jams_ui') }}</span>
+                <small class="kpi-foot">{{ 'Soma dos congestionamentos registrados nos últimos 7 dias'|trans({}, 'jams_ui') }}</small>
             </article>
-            <article class="jam-status-card" data-status="resolved">
-                <div class="jam-status-head"><span class="jam-status-icon" aria-hidden="true">✔</span><span class="jam-status-label">{{ 'Possivelmente resolvidos'|trans({}, 'jams_ui') }}</span></div>
-                <strong class="jam-status-value" data-status-count="resolved">0</strong>
-                <span class="jam-status-meta">{{ 'Sem atualização entre 10 min e 24 h'|trans({}, 'jams_ui') }}</span>
+
+            <article class="jam-kpi-card kpi-green">
+                <span class="kpi-icon" aria-hidden="true">🛣</span>
+                <strong class="kpi-value kpi-value--sm">{{ kilometers.currentKm|default(0)|number_format(1, ',', '.') }} km</strong>
+                <span class="kpi-label">{{ 'Km de congestionamentos atuais'|trans({}, 'jams_ui') }}</span>
+                <small class="kpi-foot">{{ 'Soma dos congestionamentos ativos nos filtros selecionados'|trans({}, 'jams_ui') }}</small>
             </article>
-            <article class="jam-status-card" data-status="stale">
-                <div class="jam-status-head"><span class="jam-status-icon" aria-hidden="true">🕒</span><span class="jam-status-label">{{ 'Antigos'|trans({}, 'jams_ui') }}</span></div>
-                <strong class="jam-status-value" data-status-count="stale">0</strong>
-                <span class="jam-status-meta">{{ 'Sem atualização há mais de 24 h'|trans({}, 'jams_ui') }}</span>
-            </article>
-            <article class="jam-status-card" data-status="closed">
-                <div class="jam-status-head"><span class="jam-status-icon" aria-hidden="true">⊘</span><span class="jam-status-label">{{ 'Encerrados'|trans({}, 'jams_ui') }}</span></div>
-                <strong class="jam-status-value" data-status-count="closed">0</strong>
-                <span class="jam-status-meta">{{ 'Marcados como encerrados no feed'|trans({}, 'jams_ui') }}</span>
-            </article>
-            <p class="jam-status-meta" data-status-updated>Sem atualização disponível</p>
         </section>
 
-        {# ── Filtros ─────────────────────────────────────────────── #}
         <section class="jam-filter-panel">
             <header class="jam-filter-head">
                 <div>
@@ -169,9 +153,9 @@
                 <label class="jam-field">
                     <span>{{ 'Janela'|trans({}, 'jams_ui') }}</span>
                     <select name="window_hours" data-jam-filter="window_hours">
-                        <option value="1"  {{ filters.window_hours == 1  ? 'selected' }}>1h</option>
-                        <option value="2"  {{ filters.window_hours == 2  ? 'selected' }}>2h</option>
-                        <option value="6"  {{ filters.window_hours == 6  ? 'selected' }}>6h</option>
+                        <option value="1" {{ filters.window_hours == 1 ? 'selected' }}>1h</option>
+                        <option value="2" {{ filters.window_hours == 2 ? 'selected' }}>2h</option>
+                        <option value="6" {{ filters.window_hours == 6 ? 'selected' }}>6h</option>
                         <option value="12" {{ filters.window_hours == 12 ? 'selected' }}>12h</option>
                         <option value="24" {{ filters.window_hours == 24 ? 'selected' }}>24h</option>
                     </select>
@@ -208,7 +192,6 @@
             </form>
         </section>
 
-        {# ── Mapa + distribuição ─────────────────────────────────── #}
         <div class="jam-main-grid">
             <section class="jam-panel jam-panel--map">
                 <header class="jam-panel-head">
@@ -255,7 +238,6 @@
             </aside>
         </div>
 
-        {# ── Interdições ativas ──────────────────────────────────── #}
         <section class="jam-panel jam-panel--blocked" data-jam-blocked-active-panel>
             <header class="jam-panel-head">
                 <div>
@@ -289,7 +271,6 @@
             </div>
         </section>
 
-        {# ── Interdições antigas ────────────────────────────────── #}
         <section class="jam-panel jam-panel--stale" data-jam-blocked-stale-panel>
             <header class="jam-panel-head">
                 <div>
@@ -323,7 +304,6 @@
             </div>
         </section>
 
-        {# ── Demais congestionamentos + rankings ────────────────── #}
         <div class="jam-main-grid">
             <section class="jam-panel jam-panel--table">
                 <header class="jam-panel-head">
@@ -411,7 +391,6 @@
                         }
                     }
                 } catch (error) {
-                    // Ignora respostas que não são da listagem de jams.
                 }
 
                 return response;
