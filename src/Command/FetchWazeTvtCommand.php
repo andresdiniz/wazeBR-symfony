@@ -564,12 +564,44 @@ final class FetchWazeTvtCommand extends Command
                         );
             }
 
-            $io->writeln(sprintf(
-                'Rota %s — subRoutes: %d, irregularidades: %d',
-                $wazeRouteId,
-                count($routeData['subRoutes'] ?? []),
-                count($routeData['irregularities'] ?? []),
-            ));
+            $routeIrregularities = is_array($routeData['irregularities'] ?? null)
+    ? $routeData['irregularities']
+    : [];
+
+$subRouteIrregularities = 0;
+
+foreach (($routeData['subRoutes'] ?? []) as $subRouteData) {
+    if (!is_array($subRouteData)) {
+        continue;
+    }
+
+    $subRouteIrregularities += count(
+        is_array($subRouteData['irregularities'] ?? null)
+            ? $subRouteData['irregularities']
+            : []
+    );
+}
+
+$totalIrregularities = count($routeIrregularities) + $subRouteIrregularities;
+
+$io->writeln(sprintf(
+    'Rota %s — subRoutes: %d, irregularidades: %d (rota: %d, subrotas: %d)',
+    $wazeRouteId,
+    count($routeData['subRoutes'] ?? []),
+    $totalIrregularities,
+    count($routeIrregularities),
+    $subRouteIrregularities,
+));
+
+if ($totalIrregularities > 0) {
+    $this->logger->info('[TVT] Irregularidades encontradas na rota.', [
+        'partner_id' => $partner->getId(),
+        'waze_route_id' => $wazeRouteId,
+        'route_irregularities' => count($routeIrregularities),
+        'subroute_irregularities' => $subRouteIrregularities,
+        'total' => $totalIrregularities,
+    ]);
+}
         }
 
         if (
