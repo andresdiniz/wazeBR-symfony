@@ -389,6 +389,10 @@ final class FetchWazeTvtCommand extends Command
 
             $route = $routeResult['entity'];
 
+            if (!$dryRun && $route->getId() === null) {
+                $this->entityManager->flush();
+            }
+
             $result['routesCreated'] += $routeResult['created'];
             $result['routesReactivated'] += $routeResult['reactivated'];
 
