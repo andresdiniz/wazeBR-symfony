@@ -1,1 +1,92 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App\Controller;\n\nuse App\Entity\Partner;\nuse App\Entity\User;\nuse App\Repository\JamRepository;\nuse App\Service\JamShareLinkGenerator;\nuse Symfony\Bundle\FrameworkBundle\Controller\AbstractController;\nuse Symfony\Component\HttpFoundation\JsonResponse;\nuse Symfony\Component\HttpFoundation\Request;\nuse Symfony\Component\HttpFoundation\Response;\nuse Symfony\Component\HttpKernel\Exception\NotFoundHttpException;\nuse Symfony\Component\Routing\Attribute\Route;\n\n#[Route('/jams', name: 'jam_share_')]\nfinal class JamShareController extends AbstractController\n{\n    public function __construct(\n        private readonly JamShareLinkGenerator $generator,\n        private readonly JamRepository $jamRepository,\n    ) {\n    }\n\n    #[Route('/{id}/share', name: 'create', methods: ['POST'], requirements: ['id' => '\\d+'])]\n    public function create(int $id, Request $request): JsonResponse\n    {\n        $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');\n\n        $partner = $this->resolvePartnerScope();\n        $jam = $this->jamRepository->findJamById($id, $partner);\n\n        if ($jam === null) {\n            throw new NotFoundHttpException('Congestionamento n\u00e3o encontrado.');\n        }\n\n        $duration = (int) $request->getPayload()->get('durationHours', 24);\n\n        try {\n            $link = $this->generator->create($id, $duration);\n        } catch (\InvalidArgumentException $exception) {\n            return $this->json([\n                'ok' => false,\n                'error' => 'Dura\u00e7\u00e3o inv\u00e1lida.',\n            ], 400);\n        }\n\n        return $this->json([\n            'ok' => true,\n            'url' => $link['url'],\n            'expiresAt' => $link['expiresAt']->format(DATE_ATOM),\n        ]);\n    }\n\n    #[Route('/share/{payload}/{signature}', name: 'public', methods: ['GET'])]\n    public function public(string $payload, string $signature): Response\n    {\n        $data = $this->generator->verify($payload, $signature);\n\n        if ($data === null) {\n            throw new NotFoundHttpException('Link inv\u00e1lido ou expirado.');\n        }\n\n        $jam = $this->jamRepository->findJamById((int) $data['id'], null);\n\n        if ($jam === null) {\n            throw new NotFoundHttpException('Congestionamento n\u00e3o encontrado.');\n        }\n\n        return $this->render('jam/share.html.twig', [\n            'jam' => $jam,\n        ]);\n    }\n\n    private function resolvePartnerScope(): ?Partner\n    {\n        /** @var User|null $user */\n        $user = $this->getUser();\n\n        if (!$user instanceof User) {\n            return null;\n        }\n\n        if ($user->isGlobalAdmin()) {\n            return null;\n        }\n\n        return $user->getPartner();\n    }\n}\n
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controller;
+
+use App\Entity\Partner;
+use App\Entity\User;
+use App\Repository\JamRepository;
+use App\Service\JamShareLinkGenerator;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Routing\Attribute\Route;
+
+#[Route('/jams', name: 'jam_share_')]
+final class JamShareController extends AbstractController
+{
+    public function __construct(
+        private readonly JamShareLinkGenerator $generator,
+        private readonly JamRepository $jamRepository,
+    ) {
+    }
+
+    #[Route('/{id}/share', name: 'create', methods: ['POST'], requirements: ['id' => '\\d+'])]
+    public function create(int $id, Request $request): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
+
+        $partner = $this->resolvePartnerScope();
+        $jam = $this->jamRepository->findJamById($id, $partner);
+
+        if ($jam === null) {
+            throw new NotFoundHttpException('Congestionamento não encontrado.');
+        }
+
+        $duration = (int) $request->getPayload()->get('durationHours', 24);
+
+        try {
+            $link = $this->generator->create($id, $duration);
+        } catch (\InvalidArgumentException $exception) {
+            return $this->json([
+                'ok' => false,
+                'error' => 'Duração inválida.',
+            ], 400);
+        }
+
+        return $this->json([
+            'ok' => true,
+            'url' => $link['url'],
+            'expiresAt' => $link['expiresAt']->format(DATE_ATOM),
+        ]);
+    }
+
+    #[Route('/share/{payload}/{signature}', name: 'public', methods: ['GET'])]
+    public function public(string $payload, string $signature): Response
+    {
+        $data = $this->generator->verify($payload, $signature);
+
+        if ($data === null) {
+            throw new NotFoundHttpException('Link inválido ou expirado.');
+        }
+
+        $jam = $this->jamRepository->findJamById((int) $data['id'], null);
+
+        if ($jam === null) {
+            throw new NotFoundHttpException('Congestionamento não encontrado.');
+        }
+
+        return $this->render('jam/share.html.twig', [
+            'jam' => $jam,
+        ]);
+    }
+
+    private function resolvePartnerScope(): ?Partner
+    {
+        /** @var User|null $user */
+        $user = $this->getUser();
+
+        if (!$user instanceof User) {
+            return null;
+        }
+
+        if ($user->isGlobalAdmin()) {
+            return null;
+        }
+
+        return $user->getPartner();
+    }
+}
