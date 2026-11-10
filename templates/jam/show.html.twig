@@ -1,1 +1,289 @@
-REAL_SHOW_TWIG_CONTENT
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}{{ jam.street|default(('Jam'|trans({}, 'jams_ui'))) }} — {{ 'Detalhes'|trans({}, 'jams_ui') }} | WazeBR{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous" />
+    {# Fallback local (#12) #}
+    <link rel="stylesheet" href="{{ asset('vendor/leaflet/leaflet.css') }}"
+          id="leaflet-css-fallback" disabled>
+    <link rel="stylesheet" href="{{ asset('css/pages/jam-show.css') }}">
+{% endblock %}
+
+{% block content %}
+<div data-jams-i18n="{{ jams_i18n()|json_encode|e('html_attr') }}" hidden></div>
+{% set level      = jam.level|default(0) %}
+{% set isBlocked  = jam.isBlocked|default(false) %}
+{% set isStale    = jam.isStale|default(false) %}
+{% set alertCount = nearby_alerts|length %}
+{% set nowTs      = "now"|date('U') %}
+{% set seenTs     = jam.lastSeen ? jam.lastSeen|date('U') : null %}
+{% set ageMinutes = seenTs ? ((nowTs - seenTs) / 60) : null %}
+{% set jamStatus  = not jam.isActive ? 'Encerrado' : (ageMinutes is not null and ageMinutes >= 10 ? 'Possivelmente resolvido' : 'Ativo') %}
+{% set statusIcon = jamStatus == 'Encerrado' ? '⊘' : (jamStatus == 'Possivelmente resolvido' ? '✔' : '🟢') %}
+{% set ageLabel   = ageMinutes is null ? 'sem atualização' : (ageMinutes < 60 ? (ageMinutes|round ~ ' min') : (ageMinutes < 1440 ? ((ageMinutes / 60)|round ~ ' h') : ((ageMinutes / 1440)|round ~ ' dias'))) %}
+
+<div class="jam-show-page"
+     data-jam-show
+     data-jam='{{ jam|json_encode|e('html_attr') }}'
+     data-nearby-alerts='{{ nearby_alerts|json_encode|e('html_attr') }}'>
+
+    <div class="jam-show-container">
+
+        {# ── Breadcrumb ──────────────────────────────────────── #}
+        <nav class="jam-show-breadcrumb" aria-label="{{ 'Trilha'|trans({}, 'jams_ui') }}">
+            <a href="{{ path('jam_index') }}">← {{ 'Jams'|trans({}, 'jams_ui') }}</a>
+            <span>/</span>
+            <span aria-current="page">#{{ jam.id }}</span>
+        </nav>
+
+        {# ── Header ──────────────────────────────────────────── #}
+        <header class="jam-show-header">
+            <div>
+                <span class="jam-show-panel__kicker">{{ 'Detalhes do congestionamento'|trans({}, 'jams_ui') }}</span>
+                <h1>{{ jam.street|default(('Via não informada'|trans({}, 'jams_ui'))) }}</h1>
+                <div class="jam-show-header__path">
+                    {% if jam.city %}<strong>{{ jam.city }}</strong>{% endif %}
+                    {% if jam.country %}· {{ jam.country }}{% endif %}
+                    {% if jam.lengthKm %}· {{ jam.lengthKm }} km{% endif %}
+                </div>
+                <div class="jam-show-badges">
+                    <span class="jam-show-badge jam-show-badge--level-{{ level }}">
+                        {{ 'Nível'|trans({}, 'jams_ui') }} {{ level }} · {{ jams_label('level.' ~ level) }}
+                    </span>
+                    <span class="jam-show-badge">
+                        {{ statusIcon }} {{ jamStatus }} · {{ ageLabel }}
+                    </span>
+                    {% if isBlocked and isStale %}
+                        <span class="jam-show-badge jam-show-badge--stale">⚠ {{ 'Interdição antiga'|trans({}, 'jams_ui') }}</span>
+                    {% elseif isBlocked %}
+                        <span class="jam-show-badge jam-show-badge--blocked">🚫 {{ 'Interdição ativa'|trans({}, 'jams_ui') }}</span>
+                    {% endif %}
+                    {% if jam.isActive is defined and not jam.isActive %}
+    <span class="jam-show-badge" style="
+        background: var(--js-surface-strong);
+        color: var(--js-text-muted);
+        border-color: var(--js-border-strong);
+    ">
+        ⊘ Encerrado
+        {% if jam.deactivatedAt %}
+            · {{ jams_date(jam.deactivatedAt) }}
+        {% endif %}
+    </span>
+{% endif %}
+                    {% if alertCount > 0 %}
+                        <span class="jam-show-badge jam-show-badge--level-3">
+                            🔔 {{ alertCount }} alerta{{ alertCount > 1 ? 's' : '' }} próximo{{ alertCount > 1 ? 's' : '' }}
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="jam-show-actions">
+                <a class="jam-button" href="{{ path('jam_speed_history', {id: jam.id}) }}">{{ 'Histórico de velocidade'|trans({}, 'jams_ui') }}</a>
+                <a class="jam-button" href="{{ path('jam_index') }}">← {{ 'Voltar'|trans({}, 'jams_ui') }}</a>
+                <div class="jam-share">
+                    <select id="jam-share-duration" class="jam-share-select">
+                        <option value="24">24 horas</option>
+                        <option value="72">3 dias</option>
+                        <option value="168">7 dias</option>
+                        <option value="720">30 dias</option>
+                    </select>
+                    <button type="button" class="jam-button" id="jam-share-button">🔗 {{ 'Compartilhar'|trans({}, 'jams_ui') }}</button>
+                </div>
+                <div id="jam-share-result" class="jam-share-result" hidden>
+                    <input type="text" id="jam-share-url" readonly>
+                    <button type="button" class="jam-button" id="jam-share-copy">{{ 'Copiar'|trans({}, 'jams_ui') }}</button>
+                </div>
+            </div>
+        </header>
+
+        {# ── KPIs ────────────────────────────────────────────── #}
+        <section class="jam-show-kpis">
+            <article class="jam-show-kpi jam-show-kpi--warning">
+                <span class="jam-show-kpi__label">{{ 'Atraso'|trans({}, 'jams_ui') }}</span>
+                <span class="jam-show-kpi__value">
+                    {{ jam.delayMin is not null ? jam.delayMin : '—' }}<small>min</small>
+                </span>
+                <span class="jam-show-kpi__hint">{{ jam.delay }}s {{ 'no total'|trans({}, 'jams_ui') }}</span>
+            </article>
+
+            <article class="jam-show-kpi">
+                <span class="jam-show-kpi__label">{{ 'Velocidade'|trans({}, 'jams_ui') }}</span>
+                <span class="jam-show-kpi__value">{{ jam.speed|number_format(0, app.request.locale == 'en' ? '.' : ',', app.request.locale == 'en' ? ',' : '.') }}<small>km/h</small></span>
+                <span class="jam-show-kpi__hint">{{ 'Média no trecho'|trans({}, 'jams_ui') }}</span>
+            </article>
+
+            <article class="jam-show-kpi">
+                <span class="jam-show-kpi__label">{{ 'Extensão'|trans({}, 'jams_ui') }}</span>
+                <span class="jam-show-kpi__value">{{ jam.lengthKm }}<small>km</small></span>
+                <span class="jam-show-kpi__hint">{{ jam.points }} {{ 'pontos'|trans({}, 'jams_ui') }}</span>
+            </article>
+
+            <article class="jam-show-kpi jam-show-kpi--accent">
+                <span class="jam-show-kpi__label">{{ 'Alertas próximos'|trans({}, 'jams_ui') }}</span>
+                <span class="jam-show-kpi__value">{{ alertCount }}</span>
+                <span class="jam-show-kpi__hint">± 30 min · 300 m</span>
+            </article>
+        </section>
+
+        {# ── Mapa + impacto ─────────────────────────────────── #}
+        <div class="jam-show-grid">
+            <section class="jam-show-panel jam-show-panel--map">
+                <header class="jam-show-panel__header">
+                    <div>
+                        <span class="jam-show-panel__kicker">{{ 'Geolocalização'|trans({}, 'jams_ui') }}</span>
+                        <h2>{{ 'Traçado e alertas no entorno'|trans({}, 'jams_ui') }}</h2>
+                    </div>
+                    <span class="jam-show-panel__count">{{ alertCount }} {{ 'pinos'|trans({}, 'jams_ui') }}</span>
+                </header>
+                <div class="jam-show-map" data-jam-show-map></div>
+            </section>
+
+            <section class="jam-show-panel">
+                <header class="jam-show-panel__header">
+                    <div>
+                        <span class="jam-show-panel__kicker">{{ 'Impacto'|trans({}, 'jams_ui') }}</span>
+                        <h2>{{ 'Alertas que podem explicar'|trans({}, 'jams_ui') }}</h2>
+                    </div>
+                    <span class="jam-show-panel__count">{{ alertCount }}</span>
+                </header>
+
+                {% if nearby_alerts is empty %}
+                    <div class="jam-show-empty">
+                        <span>✓</span>
+                        <strong>{{ 'Nenhum alerta próximo'|trans({}, 'jams_ui') }}</strong>
+                        <small>{{ 'Não há ocorrências Waze no entorno imediato.'|trans({}, 'jams_ui') }}</small>
+                    </div>
+                {% else %}
+                    <div class="jam-show-alerts">
+                        {% for a in nearby_alerts %}
+                            <div class="jam-show-alert">
+                                <span class="jam-show-alert__icon">
+                                    {{ a.type == 'ACCIDENT' ? '⚠' : a.type == 'ROAD_CLOSED' ? '⊘' : '▲' }}
+                                </span>
+                                <div class="jam-show-alert__body">
+                                    <strong>{{ jams_label(a.type) }}</strong>
+                                    <em>{{ jams_label(a.subtype) }}{% if a.street %} · {{ a.street }}{% endif %}</em>
+                                    <small>
+                                        {{ a.city|default('—') }}
+                                        {% if a.confidence %}· {{ 'Confiança'|trans({}, 'jams_ui') }} {{ a.confidence }}%{% endif %}
+                                    </small>
+                                </div>
+                                <div class="jam-show-alert__meta">
+                                    <span class="jam-show-alert__dist">{{ a.distanceMeters }} m</span>
+                                    <span class="jam-show-alert__time jam-show-alert__time--{{ a.timeOffsetMinutes < 0 ? 'before' : 'after' }}">
+                                        {{ a.timeOffsetMinutes > 0 ? '+' : '' }}{{ a.timeOffsetMinutes }} min
+                                    </span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </section>
+        </div>
+
+        {# ── Detalhes + tipos ───────────────────────────────── #}
+        <div class="jam-show-grid">
+            <section class="jam-show-panel">
+                <header class="jam-show-panel__header">
+                    <div>
+                        <span class="jam-show-panel__kicker">{{ 'Composição'|trans({}, 'jams_ui') }}</span>
+                        <h2>{{ 'Distribuição por tipo de alerta'|trans({}, 'jams_ui') }}</h2>
+                    </div>
+                </header>
+                <div class="jam-show-types" data-jam-show-types></div>
+            </section>
+
+            <section class="jam-show-panel">
+                <header class="jam-show-panel__header">
+                    <div>
+                        <span class="jam-show-panel__kicker">{{ 'Metadados'|trans({}, 'jams_ui') }}</span>
+                        <h2>{{ 'Informações do registro'|trans({}, 'jams_ui') }}</h2>
+                    </div>
+                </header>
+                <dl class="jam-show-info">
+                    <div><dt>{{ 'ID'|trans({}, 'jams_ui') }}</dt><dd>#{{ jam.id }}</dd></div>
+                    {% if jam.uuid %}
+                        <div>
+                            <dt>{{ 'UUID'|trans({}, 'jams_ui') }}</dt>
+                            <dd><small style="font-family:monospace">{{ jam.uuid }}</small></dd>
+                        </div>
+                    {% endif %}
+                    <div><dt>{{ 'Coletado em'|trans({}, 'jams_ui') }}</dt><dd>{{ jams_date(jam.when, true) }}</dd></div>
+                    {% if jam.lastSeen %}
+                        <div><dt>{{ 'Visto por último'|trans({}, 'jams_ui') }}</dt><dd>{{ jams_date(jam.lastSeen, true) }}</dd></div>
+                    {% endif %}
+                    <div><dt>{{ 'País'|trans({}, 'jams_ui') }}</dt><dd>{{ jam.country|default('—') }}</dd></div>
+                    <div><dt>{{ 'Pontos da polyline'|trans({}, 'jams_ui') }}</dt><dd>{{ jam.points }}</dd></div>
+                    {% if jam.deactivatedAt %}
+    <div>
+        <dt>{{ 'Encerrado em'|trans({}, 'jams_ui') }}</dt>
+        <dd>{{ jams_date(jam.deactivatedAt, true) }}</dd>
+    </div>
+{% endif %}
+                </dl>
+            </section>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {# Leaflet com fallback local (#12) #}
+    <script>
+        (function () {
+            var s = document.createElement('script');
+            s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+            s.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
+            s.crossOrigin = 'anonymous';
+            s.onerror = function () {
+                document.getElementById('leaflet-css-fallback').disabled = false;
+                var fb = document.createElement('script');
+                fb.src = '{{ asset('vendor/leaflet/leaflet.js') }}';
+                document.head.appendChild(fb);
+            };
+            document.head.appendChild(s);
+        })();
+    </script>
+    <script type="module" src="{{ asset('js/pages/jam-show.js') }}"></script>
+    <script>
+        document.getElementById('jam-share-button')?.addEventListener('click', async () => {
+            const duration = document.getElementById('jam-share-duration').value;
+            const result = document.getElementById('jam-share-result');
+            const urlInput = document.getElementById('jam-share-url');
+
+            try {
+                const response = await fetch('{{ path('jam_share_create', {id: jam.id}) }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({ durationHours: Number(duration) }),
+                });
+
+                const json = await response.json();
+
+                if (json.ok && json.url) {
+                    urlInput.value = json.url;
+                    result.hidden = false;
+                }
+            } catch (error) {
+                // falha silenciosa; usuário pode tentar novamente
+            }
+        });
+
+        document.getElementById('jam-share-copy')?.addEventListener('click', async () => {
+            const urlInput = document.getElementById('jam-share-url');
+
+            try {
+                await navigator.clipboard.writeText(urlInput.value);
+            } catch (error) {
+                urlInput.select();
+            }
+        });
+    </script>
+{% endblock %}
