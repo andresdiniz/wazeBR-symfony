@@ -11,6 +11,7 @@ use App\Repository\RouteFavoriteRepository;
 use App\Repository\RoutesRepository;
 use App\Service\PartnerScopeResolver;
 use App\Service\RouteCsvExporter;
+use App\Service\RouteOverviewPresenter;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Contracts\Cache\CacheInterface;
@@ -31,6 +32,7 @@ final class RoutesController extends AbstractController
 {
     public function __construct(
         private readonly PartnerScopeResolver $scope,
+        private readonly RouteOverviewPresenter $overviewPresenter,
         #[Autowire(service: 'routes.structure.cache')]
         private readonly CacheInterface $routesStructureCache,
     ) {
@@ -42,11 +44,13 @@ final class RoutesController extends AbstractController
         $partner = $this->resolvePartnerScope();
         $filters = $this->extractFilters($request);
         $payload = $this->loadDashboardPayload($repository, $partner, $filters);
+        $overview = $this->overviewPresenter->present($payload);
 
         $response = $this->render('routes/index.html.twig', [
-            'routes'  => $payload['routes'],
-            'stats'   => $payload['stats'],
-            'map'     => $payload['map'],
+            'routes' => $payload['routes'],
+            'stats' => $payload['stats'],
+            'map' => $payload['map'],
+            'overview' => $overview,
             'filters' => $filters,
             'partner' => $partner,
         ]);
@@ -62,157 +66,82 @@ final class RoutesController extends AbstractController
         $payload = $this->loadDashboardPayload($repository, $partner, $filters);
 
         $response = $this->json([
-            'ok'           => true,
+            'ok' => true,
             'generated_at' => (new \DateTimeImmutable())->format(DATE_ATOM),
-            'filters'      => $filters,
-            'data'         => $this->normalizeDatesForJson($payload),
+            'filters' => $filters,
+            'data' => $this->normalizeDatesForJson($payload),
+            'overview' => $this->normalizeDatesForJson($this->overviewPresenter->present($payload)),
         ]);
         $response->headers->set('Cache-Control', 'private, no-store');
         return $response;
     }
 
-    // ─── Detalhe da rota ──────────────────────────────────────────────────────
-
     #[Route('/{id}', name: 'show', requirements: ['id' => '\\d+'], methods: ['GET'])]
-    public function show(
-        int $id,
-        RouteDetailRepository $repository,
-        RouteFavoriteRepository $favorites,
-    ): Response {
+    public function show(int $id, RouteDetailRepository $repository, RouteFavoriteRepository $favorites): Response
+    {
         $partner = $this->resolvePartnerScope();
-        $detail  = $repository->getRouteDetail($partner, $id)
-            ?? throw $this->createNotFoundException('Rota não encontrada.');
-
+        $detail = $repository->getRouteDetail($partner, $id) ?? throw $this->createNotFoundException('Rota não encontrada.');
         $userId = (int) $this->scope->user()->getId();
-
-        return $this->render('routes/show.html.twig', $detail + [
-            'partner'        => $partner,
-            'isFavorite'     => $favorites->isFavorite($userId, $id),
-        ]);
+        return $this->render('routes/show.html.twig', $detail + ['partner' => $partner, 'isFavorite' => $favorites->isFavorite($userId, $id)]);
     }
 
-    // ─── Exportações CSV ──────────────────────────────────────────────────────
-
-    /**
-     * Exporta os dados da rota em CSV.
-     *
-     * Tipos suportados via `?type=` (ver RouteCsvExporter::TYPES):
-     *   timeline      — evolução do atraso (últimos 7 dias)  [padrão]
-     *   by_hour       — média por hora do dia (30 dias)
-     *   by_dow        — média por dia da semana (30 dias)
-     *   occurrences   — alertas Waze + irregularidades TVT próximos
-     *   subroutes     — trechos problemáticos com métricas
-     *
-     * Tipo desconhecido → 400.
-     */
     #[Route('/{id}/export.csv', name: 'export_csv', requirements: ['id' => '\\d+'], methods: ['GET'])]
-    public function exportCsv(
-        int $id,
-        Request $request,
-        RouteDetailRepository $repository,
-        RouteCsvExporter $exporter,
-    ): StreamedResponse {
+    public function exportCsv(int $id, Request $request, RouteDetailRepository $repository, RouteCsvExporter $exporter): StreamedResponse
+    {
         $type = (string) $request->query->get('type', 'timeline');
         if (!RouteCsvExporter::isValidType($type)) {
             throw new BadRequestHttpException('Tipo de exportação inválido.');
         }
-
         $partner = $this->resolvePartnerScope();
-        $detail  = $repository->getRouteDetail($partner, $id)
-            ?? throw $this->createNotFoundException('Rota não encontrada.');
-
+        $detail = $repository->getRouteDetail($partner, $id) ?? throw $this->createNotFoundException('Rota não encontrada.');
         $response = new StreamedResponse(function () use ($exporter, $type, $detail): void {
             $out = fopen('php://output', 'w');
             $exporter->write($out, $type, $detail);
             fclose($out);
         });
-
         return $this->csvHeaders($response, $exporter->filename((string) $detail['route']['name'], $id, $type));
     }
 
-    /**
-     * Histórico bruto (snapshot a snapshot), em streaming.
-     *
-     *   ?days=30   janela (1–365, padrão 30)
-     *   ?sep=,     separador: `;` (padrão, Excel pt-BR) ou `,` (pandas / tidyverse)
-     */
     #[Route('/{id}/export/historico.csv', name: 'export_historico_csv', requirements: ['id' => '\\d+'], methods: ['GET'])]
-    public function exportHistoricoCsv(
-        int $id,
-        Request $request,
-        RouteDetailRepository $repository,
-        RouteCsvExporter $exporter,
-    ): StreamedResponse {
+    public function exportHistoricoCsv(int $id, Request $request, RouteDetailRepository $repository, RouteCsvExporter $exporter): StreamedResponse
+    {
         $days = $this->validateDays($request->query->get('days', '30'));
-        $sep  = $this->validateSep($request->query->get('sep', ';'));
-
-        $historico = $repository->getHistorico($this->resolvePartnerScope(), $id, $days)
-            ?? throw $this->createNotFoundException('Rota não encontrada.');
-
+        $sep = $this->validateSep($request->query->get('sep', ';'));
+        $historico = $repository->getHistorico($this->resolvePartnerScope(), $id, $days) ?? throw $this->createNotFoundException('Rota não encontrada.');
         $response = new StreamedResponse(function () use ($exporter, $historico, $sep): void {
             $out = fopen('php://output', 'w');
             $exporter->writeHistorico($out, $historico, $sep);
             fclose($out);
         });
-
-        return $this->csvHeaders(
-            $response,
-            $exporter->filename((string) $historico['route']['name'], $id, "historico_{$days}d")
-        );
+        return $this->csvHeaders($response, $exporter->filename((string) $historico['route']['name'], $id, "historico_{$days}d"));
     }
 
     private function csvHeaders(StreamedResponse $response, string $filename): StreamedResponse
     {
         $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
-        $response->headers->set(
-            'Content-Disposition',
-            $response->headers->makeDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $filename)
-        );
+        $response->headers->set('Content-Disposition', $response->headers->makeDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $filename));
         $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate');
         $response->headers->set('X-Content-Type-Options', 'nosniff');
-
         return $response;
     }
 
-    // ─── Comparação ───────────────────────────────────────────────────────────
-
     #[Route('/compare', name: 'compare', methods: ['GET'])]
-    public function compare(
-        Request $request,
-        RouteCompareRepository $repository,
-        Connection $connection,
-    ): Response {
+    public function compare(Request $request, RouteCompareRepository $repository, Connection $connection): Response
+    {
         $partner = $this->resolvePartnerScope();
         $aId = $this->validateRouteId($request->query->get('a', '0'));
         $bId = $this->validateRouteId($request->query->get('b', '0'));
-
         if ($aId <= 0 || $bId <= 0 || $aId === $bId) {
-            return $this->render('routes/compare.html.twig', [
-                'routes'    => $this->getRoutesList($connection, $partner),
-                'compare'   => null,
-                'aId'       => $aId,
-                'bId'       => $bId,
-                'partner'   => $partner,
-            ]);
+            return $this->render('routes/compare.html.twig', ['routes' => $this->getRoutesList($connection, $partner), 'compare' => null, 'aId' => $aId, 'bId' => $bId, 'partner' => $partner]);
         }
-
         $allRoutes = $this->getRoutesList($connection, $partner);
-
         $compare = $repository->compare($partner, $aId, $bId);
         if ($compare === null) {
             throw $this->createNotFoundException('Rota não encontrada.');
         }
-
-        return $this->render('routes/compare.html.twig', [
-            'routes'  => $allRoutes,
-            'compare' => $compare,
-            'aId'     => $aId,
-            'bId'     => $bId,
-            'partner' => $partner,
-        ]);
+        return $this->render('routes/compare.html.twig', ['routes' => $allRoutes, 'compare' => $compare, 'aId' => $aId, 'bId' => $bId, 'partner' => $partner]);
     }
 
-    /** @return list<array{id:int,name:string,from:?string,to:?string}> */
     private function getRoutesList(Connection $connection, ?Partner $partner): array
     {
         $params = [];
@@ -221,52 +150,19 @@ final class RoutesController extends AbstractController
             $pf = ' AND partner_id = :pid';
             $params['pid'] = $partner->getId();
         }
-
-        $rows = $connection->executeQuery(
-            "SELECT id, name, from_name, to_name
-             FROM waze_tvt_route
-             WHERE is_active = 1 {$pf}
-             ORDER BY name ASC",
-            $params
-        )->fetchAllAssociative();
-
-        return array_map(static fn ($r) => [
-            'id'   => (int) $r['id'],
-            'name' => (string) ($r['name'] ?: 'Rota #'.$r['id']),
-            'from' => $r['from_name'],
-            'to'   => $r['to_name'],
-        ], $rows);
+        $rows = $connection->executeQuery("SELECT id, name, from_name, to_name FROM waze_tvt_route WHERE is_active = 1 {$pf} ORDER BY name ASC", $params)->fetchAllAssociative();
+        return array_map(static fn ($r) => ['id' => (int) $r['id'], 'name' => (string) ($r['name'] ?: 'Rota #'.$r['id']), 'from' => $r['from_name'], 'to' => $r['to_name']], $rows);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-
-    private function loadDashboardPayload(
-        RoutesRepository $repository,
-        ?Partner $partner,
-        array $filters,
-    ): array {
-        // Scope resolution is performed for every request before cache lookup.
-        $scopeKey = $partner !== null
-            ? 'partner_' . $partner->getId()
-            : 'authorized_global';
-        $entry = $this->routesStructureCache->get(
-            'routes_structure_v1_' . $scopeKey,
-            function (ItemInterface $item) use ($repository, $partner): array {
-                $item->expiresAfter(600);
-                return [
-                    'loadedAt' => (new \DateTimeImmutable())->format(DATE_ATOM),
-                    'data' => $repository->getRoutesStructure($partner),
-                ];
-            },
-            0.0,
-        );
-
-        // Never cache current times, percentages or active-route eligibility.
+    private function loadDashboardPayload(RoutesRepository $repository, ?Partner $partner, array $filters): array
+    {
+        $scopeKey = $partner !== null ? 'partner_' . $partner->getId() : 'authorized_global';
+        $entry = $this->routesStructureCache->get('routes_structure_v1_' . $scopeKey, function (ItemInterface $item) use ($repository, $partner): array {
+            $item->expiresAfter(600);
+            return ['loadedAt' => (new \DateTimeImmutable())->format(DATE_ATOM), 'data' => $repository->getRoutesStructure($partner)];
+        }, 0.0);
         $metrics = $repository->getLatestMetrics($partner);
-        return $repository->assembleDashboard($entry['data'], $metrics, $filters) + [
-            'structureLoadedAt' => $entry['loadedAt'],
-            'metricsLoadedAt' => (new \DateTimeImmutable())->format(DATE_ATOM),
-        ];
+        return $repository->assembleDashboard($entry['data'], $metrics, $filters) + ['structureLoadedAt' => $entry['loadedAt'], 'metricsLoadedAt' => (new \DateTimeImmutable())->format(DATE_ATOM)];
     }
 
     private function resolvePartnerScope(): ?Partner
@@ -274,56 +170,40 @@ final class RoutesController extends AbstractController
         return $this->scope->resolve();
     }
 
-    /** @return array{query:string,level:string} */
     private function extractFilters(Request $request): array
     {
-        return [
-            'query' => trim((string) $request->query->get('q', '')),
-            'level' => (string) $request->query->get('level', 'all'),
-        ];
+        return ['query' => trim((string) $request->query->get('q', '')), 'level' => (string) $request->query->get('level', 'all')];
     }
 
     private function normalizeDatesForJson(mixed $value): mixed
     {
-        if ($value instanceof \DateTimeInterface) {
-            return $value->format(DATE_ATOM);
-        }
+        if ($value instanceof \DateTimeInterface) { return $value->format(DATE_ATOM); }
         if (is_array($value)) {
             $out = [];
-            foreach ($value as $k => $v) {
-                $out[$k] = $this->normalizeDatesForJson($v);
-            }
+            foreach ($value as $k => $v) { $out[$k] = $this->normalizeDatesForJson($v); }
             return $out;
         }
         return $value;
     }
 
-    // ─── Validação de parâmetros ──────────────────────────────────────────────
-
     private function validateDays(mixed $value): int
     {
         $days = (int) $value;
-        if ($days < 1 || $days > 365) {
-            throw new BadRequestHttpException('Parâmetro days deve estar entre 1 e 365.');
-        }
+        if ($days < 1 || $days > 365) { throw new BadRequestHttpException('Parâmetro days deve estar entre 1 e 365.'); }
         return $days;
     }
 
     private function validateSep(mixed $value): string
     {
         $sep = (string) $value;
-        if ($sep !== ',' && $sep !== ';') {
-            throw new BadRequestHttpException('Parâmetro sep deve ser "," ou ";".');
-        }
+        if ($sep !== ',' && $sep !== ';') { throw new BadRequestHttpException('Parâmetro sep deve ser "," ou ";".'); }
         return $sep;
     }
 
     private function validateRouteId(mixed $value): int
     {
         $id = (int) $value;
-        if ($id < 0) {
-            throw new BadRequestHttpException('IDs de rota devem ser inteiros não negativos.');
-        }
+        if ($id < 0) { throw new BadRequestHttpException('IDs de rota devem ser inteiros não negativos.'); }
         return $id;
     }
 }
