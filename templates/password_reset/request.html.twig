@@ -1,1 +1,89 @@
-{% extends 'base.html.twig' %}\n\n{% block title %}Esqueci minha senha{% endblock %}\n\n{% block body %}\n<div class="auth-page">\n    <div class="auth-card">\n        <h1 class="auth-title">Esqueci minha senha</h1>\n        <p class="auth-subtitle">Informe seu e-mail para receber o link de redefinição.</p>\n\n        {% for message in app.flashes('success') %}\n            <div class="alert alert-success">{{ message }}</div>\n        {% endfor %}\n\n        {% for message in app.flashes('error') %}\n            <div class="alert alert-danger">{{ message }}</div>\n        {% endfor %}\n\n        {{ form_start(form) }}\n            {{ form_row(form.email) }}\n\n            <button type="submit" class="btn btn-primary w-100 mt-3">\n                Enviar instruções\n            </button>\n        {{ form_end(form) }}\n\n        <div class="text-center mt-3">\n            <a href="{{ path('app_login') }}">Voltar para o login</a>\n        </div>\n    </div>\n</div>\n{% endblock %}\n
+{% extends 'base.html.twig' %}
+
+{% block title %}Recuperar acesso | WazeBR{% endblock %}
+
+{% block meta_description %}
+    Solicite as instruções para redefinir sua senha de acesso ao WazeBR.
+{% endblock %}
+
+{% block meta_robots %}noindex, nofollow{% endblock %}
+
+{# As mensagens serão exibidas dentro do card, sem consumo duplicado. #}
+{% block flash_messages %}{% endblock %}
+
+{% block body %}
+    <main class="auth-page" aria-labelledby="password-request-title">
+        <section class="auth-card">
+            <header class="mb-6">
+                <p class="text-sm mb-2">WazeBR · Recuperação de acesso</p>
+
+                <h1 id="password-request-title" class="auth-title">
+                    Esqueci minha senha
+                </h1>
+
+                <p id="password-request-description" class="auth-subtitle">
+                    Informe o e-mail utilizado na sua conta.
+                    Se ele estiver cadastrado, enviaremos as instruções
+                    para redefinir a senha.
+                </p>
+            </header>
+
+            {% for message in app.flashes('success') %}
+                <div class="alert alert-success" role="status">
+                    {{ message }}
+                </div>
+            {% endfor %}
+
+            {% for message in app.flashes('error') %}
+                <div class="alert alert-danger" role="alert">
+                    {{ message }}
+                </div>
+            {% endfor %}
+
+            {{ form_start(form, {
+                attr: {
+                    'aria-describedby': 'password-request-description'
+                }
+            }) }}
+
+                {{ form_errors(form) }}
+
+                <div class="mb-4">
+                    {{ form_row(form.email, {
+                        label: 'E-mail da sua conta',
+                        attr: {
+                            autocomplete: 'email',
+                            inputmode: 'email',
+                            autocapitalize: 'none',
+                            spellcheck: 'false',
+                            placeholder: 'voce@exemplo.com',
+                            required: true
+                        }
+                    }) }}
+                </div>
+
+                <button
+                    type="submit"
+                    class="btn btn-primary w-100 mt-3"
+                >
+                    Enviar instruções de recuperação
+                </button>
+
+            {{ form_end(form) }}
+
+            <aside class="mt-4" aria-label="Ajuda para recuperar o acesso">
+                <p class="text-sm">
+                    Após solicitar, confira também as pastas de spam e
+                    lixo eletrônico. Se receber mais de uma mensagem,
+                    utilize o link mais recente.
+                </p>
+            </aside>
+
+            <footer class="text-center mt-4">
+                <a href="{{ path('app_login') }}">
+                    Voltar para o login
+                </a>
+            </footer>
+        </section>
+    </main>
+{% endblock %}

@@ -86,6 +86,7 @@ return array(
     'Symfony\\Bridge\\PhpUnit\\' => array($vendorDir . '/symfony/phpunit-bridge'),
     'Symfony\\Bridge\\Monolog\\' => array($vendorDir . '/symfony/monolog-bridge'),
     'Symfony\\Bridge\\Doctrine\\' => array($vendorDir . '/symfony/doctrine-bridge'),
+    'SymfonyCasts\\Bundle\\ResetPassword\\' => array($vendorDir . '/symfonycasts/reset-password-bundle/src'),
     'StellaMaris\\Clock\\' => array($vendorDir . '/stella-maris/clock/src'),
     'Revolt\\' => array($vendorDir . '/revolt/event-loop/src'),
     'Psr\\Log\\' => array($vendorDir . '/psr/log/src'),

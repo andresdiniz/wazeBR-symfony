@@ -272,12 +272,12 @@
         }
 
         .field { margin-bottom: 12px; }
-        
-        .field-error .input { 
+
+        .field-error .input {
             border-color: var(--danger-border);
             background: rgba(188, 77, 77, 0.08);
         }
-        
+
         .field-error .error-message {
             margin-top: 4px;
             font-size: 11px;
@@ -376,7 +376,7 @@
             font-size: 0;
         }
 
-        .toggle-password:hover { 
+        .toggle-password:hover {
             color: var(--accent);
         }
 
@@ -445,9 +445,9 @@
             gap: 8px;
         }
 
-        .submit:hover:not(:disabled) { 
-            transform: translateY(-1px); 
-            filter: brightness(1.03); 
+        .submit:hover:not(:disabled) {
+            transform: translateY(-1px);
+            filter: brightness(1.03);
         }
 
         .submit:active:not(:disabled) {
@@ -524,8 +524,8 @@
             transition: text-decoration 0.2s ease;
         }
 
-        .login-footer a:hover { 
-            text-decoration: underline; 
+        .login-footer a:hover {
+            text-decoration: underline;
         }
 
         .login-footer a:focus {
@@ -708,11 +708,11 @@
     </div>
 </div>
 
-<script nonce="{{ csp_nonce() }}">
+<script nonce="{{ csp_nonce('script') }}">
     // Password visibility toggle
     const toggleBtn = document.getElementById('toggle-password');
     const passwordInput = document.getElementById('password');
-    
+
     if (toggleBtn && passwordInput) {
         toggleBtn.addEventListener('click', () => {
             const isPassword = passwordInput.type === 'password';

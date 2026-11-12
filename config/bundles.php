@@ -15,4 +15,5 @@ return [
     Nelmio\SecurityBundle\NelmioSecurityBundle::class => ['all' => true],
     Symfony\UX\Icons\UXIconsBundle::class => ['all' => true],
     Symfony\Bundle\MercureBundle\MercureBundle::class => ['all' => true],
+    SymfonyCasts\Bundle\ResetPassword\SymfonyCastsResetPasswordBundle::class => ['all' => true],
 ];
