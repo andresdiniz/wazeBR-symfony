@@ -1,1 +1,96 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App\Entity;\n\nuse App\Repository\PasswordResetTokenRepository;\nuse Doctrine\ORM\Mapping as ORM;\n\n#[ORM\Entity(repositoryClass: PasswordResetTokenRepository::class)]\n#[ORM\Table(name: 'password_reset_token')]\n#[ORM\Index(columns: ['selector'], name: 'idx_password_reset_token_selector')]\nclass PasswordResetToken\n{\n    #[ORM\Id]\n    #[ORM\GeneratedValue]\n    #[ORM\Column]\n    private ?int $id = null;\n\n    #[ORM\ManyToOne(targetEntity: User::class)]\n    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]\n    private ?User $user = null;\n\n    #[ORM\Column(length: 32, unique: true)]\n    private string $selector = '';\n\n    #[ORM\Column(length: 255)]\n    private string $hashedToken = '';\n\n    #[ORM\Column(type: 'datetime_immutable')]\n    private \DateTimeImmutable $expiresAt;\n\n    #[ORM\Column(type: 'datetime_immutable')]\n    private \DateTimeImmutable $requestedAt;\n\n    #[ORM\Column(type: 'datetime_immutable', nullable: true)]\n    private ?\DateTimeImmutable $usedAt = null;\n\n    public function __construct(\n        User $user,\n        string $selector,\n        string $hashedToken,\n        \DateTimeImmutable $expiresAt,\n    ) {\n        $this->user = $user;\n        $this->selector = $selector;\n        $this->hashedToken = $hashedToken;\n        $this->expiresAt = $expiresAt;\n        $this->requestedAt = new \DateTimeImmutable();\n    }\n\n    public function getId(): ?int\n    {\n        return $this->id;\n    }\n\n    public function getUser(): ?User\n    {\n        return $this->user;\n    }\n\n    public function getSelector(): string\n    {\n        return $this->selector;\n    }\n\n    public function getHashedToken(): string\n    {\n        return $this->hashedToken;\n    }\n\n    public function getExpiresAt(): \DateTimeImmutable\n    {\n        return $this->expiresAt;\n    }\n\n    public function getRequestedAt(): \DateTimeImmutable\n    {\n        return $this->requestedAt;\n    }\n\n    public function getUsedAt(): ?\DateTimeImmutable\n    {\n        return $this->usedAt;\n    }\n\n    public function markAsUsed(): void\n    {\n        $this->usedAt = new \DateTimeImmutable();\n    }\n\n    public function isExpired(\DateTimeImmutable $now): bool\n    {\n        return $now > $this->expiresAt;\n    }\n}\n
+<?php
+
+declare(strict_types=1);
+
+namespace App\Entity;
+
+use App\Repository\PasswordResetTokenRepository;
+use Doctrine\ORM\Mapping as ORM;
+
+#[ORM\Entity(repositoryClass: PasswordResetTokenRepository::class)]
+#[ORM\Table(name: 'password_reset_token')]
+#[ORM\Index(columns: ['selector'], name: 'idx_password_reset_token_selector')]
+class PasswordResetToken
+{
+    #[ORM\Id]
+    #[ORM\GeneratedValue]
+    #[ORM\Column]
+    private ?int $id = null;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
+    private ?User $user = null;
+
+    #[ORM\Column(length: 32, unique: true)]
+    private string $selector = '';
+
+    #[ORM\Column(length: 255)]
+    private string $hashedToken = '';
+
+    #[ORM\Column(type: 'datetime_immutable')]
+    private \DateTimeImmutable $expiresAt;
+
+    #[ORM\Column(type: 'datetime_immutable')]
+    private \DateTimeImmutable $requestedAt;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $usedAt = null;
+
+    public function __construct(
+        User $user,
+        string $selector,
+        string $hashedToken,
+        \DateTimeImmutable $expiresAt,
+    ) {
+        $this->user = $user;
+        $this->selector = $selector;
+        $this->hashedToken = $hashedToken;
+        $this->expiresAt = $expiresAt;
+        $this->requestedAt = new \DateTimeImmutable();
+    }
+
+    public function getId(): ?int
+    {
+        return $this->id;
+    }
+
+    public function getUser(): ?User
+    {
+        return $this->user;
+    }
+
+    public function getSelector(): string
+    {
+        return $this->selector;
+    }
+
+    public function getHashedToken(): string
+    {
+        return $this->hashedToken;
+    }
+
+    public function getExpiresAt(): \DateTimeImmutable
+    {
+        return $this->expiresAt;
+    }
+
+    public function getRequestedAt(): \DateTimeImmutable
+    {
+        return $this->requestedAt;
+    }
+
+    public function getUsedAt(): ?\DateTimeImmutable
+    {
+        return $this->usedAt;
+    }
+
+    public function markAsUsed(): void
+    {
+        $this->usedAt = new \DateTimeImmutable();
+    }
+
+    public function isExpired(\DateTimeImmutable $now): bool
+    {
+        return $now > $this->expiresAt;
+    }
+}
