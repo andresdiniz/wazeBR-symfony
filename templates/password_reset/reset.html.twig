@@ -1,115 +1,46 @@
 {% extends 'base.html.twig' %}
-
 {% block title %}Redefinir senha | WazeBR{% endblock %}
-
-{% block meta_description %}
-    Defina uma nova senha para sua conta no WazeBR.
-{% endblock %}
-
+{% block meta_description %}Defina uma nova senha para sua conta no WazeBR.{% endblock %}
 {% block meta_robots %}noindex, nofollow{% endblock %}
-
 {% block flash_messages %}{% endblock %}
-
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/pages/password-recovery.css') }}">
+{% endblock %}
 {% block body %}
-    <main class="auth-page" aria-labelledby="password-reset-title">
-        <section class="auth-card">
-            <header class="mb-6">
-                <p class="text-sm mb-2">WazeBR · Segurança da conta</p>
-
-                <h1 id="password-reset-title" class="auth-title">
-                    Redefinir senha
-                </h1>
-
-                <p id="password-reset-description" class="auth-subtitle">
-                    Escolha uma nova senha e repita-a no campo de confirmação.
-                </p>
+<main class="pr-page" aria-labelledby="password-reset-title">
+    <div class="pr-shell">
+        <div class="pr-brand"><span class="pr-brand__mark" aria-hidden="true">W</span><span>WazeBR<small>Monitoramento e mobilidade</small></span></div>
+        <section class="pr-card">
+            <header class="pr-header">
+                <span class="pr-eyebrow">Segurança da conta</span>
+                <h1 id="password-reset-title">Crie sua nova senha</h1>
+                <p id="password-reset-description">Escolha uma senha exclusiva e repita-a para confirmar.</p>
             </header>
-
-            {% for message in app.flashes('success') %}
-                <div class="alert alert-success" role="status">
-                    {{ message }}
+            {% for message in app.flashes('success') %}<div class="pr-notice pr-notice--success" role="status">{{ message }}</div>{% endfor %}
+            {% for message in app.flashes('error') %}<div class="pr-notice pr-notice--error" role="alert">{{ message }}</div>{% endfor %}
+            {{ form_start(form, {attr: {class: 'pr-form', 'aria-describedby': 'password-reset-description'}}) }}
+                <div class="pr-errors">{{ form_errors(form) }}{{ form_errors(form.plainPassword) }}</div>
+                <div class="pr-field">
+                    {{ form_label(form.plainPassword.first, 'Nova senha') }}
+                    {{ form_widget(form.plainPassword.first, {attr: {class: 'pr-input', autocomplete: 'new-password', placeholder: 'Digite a nova senha', minlength: 8, required: true, 'aria-describedby': 'password-requirements'}}) }}
+                    <div class="pr-errors">{{ form_errors(form.plainPassword.first) }}</div>
+                    <p id="password-requirements" class="pr-privacy">Use pelo menos 8 caracteres. Prefira uma senha exclusiva para esta conta.</p>
                 </div>
-            {% endfor %}
-
-            {% for message in app.flashes('error') %}
-                <div class="alert alert-danger" role="alert">
-                    {{ message }}
+                <div class="pr-field">
+                    {{ form_label(form.plainPassword.second, 'Confirme a nova senha') }}
+                    {{ form_widget(form.plainPassword.second, {attr: {class: 'pr-input', autocomplete: 'new-password', placeholder: 'Repita a nova senha', minlength: 8, required: true}}) }}
+                    <div class="pr-errors">{{ form_errors(form.plainPassword.second) }}</div>
                 </div>
-            {% endfor %}
-
-            {{ form_start(form, {
-                attr: {
-                    'aria-describedby': 'password-reset-description'
-                }
-            }) }}
-
-                {{ form_errors(form) }}
-
-                <fieldset class="mb-4">
-                    <legend class="text-sm mb-3">
-                        Nova senha de acesso
-                    </legend>
-
-                    {{ form_errors(form.plainPassword) }}
-
-                    <p id="password-requirements" class="text-sm mb-3">
-                        Use pelo menos 8 caracteres.
-                        Prefira uma senha exclusiva para esta conta.
-                    </p>
-
-                    <div class="mb-4">
-                        {{ form_row(form.plainPassword.first, {
-                            label: 'Nova senha',
-                            attr: {
-                                autocomplete: 'new-password',
-                                placeholder: 'Digite a nova senha',
-                                minlength: 8,
-                                required: true,
-                                'aria-describedby': 'password-requirements'
-                            }
-                        }) }}
-                    </div>
-
-                    <div class="mb-4">
-                        {{ form_row(form.plainPassword.second, {
-                            label: 'Confirme a nova senha',
-                            attr: {
-                                autocomplete: 'new-password',
-                                placeholder: 'Repita a nova senha',
-                                minlength: 8,
-                                required: true,
-                                'aria-describedby': 'password-requirements'
-                            }
-                        }) }}
-                    </div>
-                </fieldset>
-
-                <button
-                    type="submit"
-                    class="btn btn-primary w-100 mt-3"
-                >
-                    Salvar nova senha
-                </button>
-
+                <button type="submit" class="pr-submit">Salvar nova senha</button>
             {{ form_end(form) }}
-
-            <p class="text-sm mt-4">
-                Após redefinir a senha, entre no sistema com a nova senha.
-            </p>
-
-            <footer class="text-center mt-4">
-                <p>
-                    <a href="{{ path('app_forgot_password_request') }}">
-                        Solicitar outro link de recuperação
-                    </a>
-                </p>
-
-                <p class="mt-3">
-                    <a href="{{ path('app_login') }}">
-                        Voltar para o login
-                    </a>
-                </p>
+            <aside class="pr-help" aria-label="Próximo passo"><strong>Seu acesso, renovado</strong><p>Depois de salvar, entre no sistema com sua nova senha. Este link não poderá ser reutilizado.</p></aside>
+            <footer class="pr-footer">
+                <p style="margin: 0 0 12px"><a href="{{ path('app_forgot_password_request') }}">Solicitar outro link de recuperação</a></p>
+                <a href="{{ path('app_login') }}"><span aria-hidden="true">← </span>Voltar para o login</a>
             </footer>
         </section>
-    </main>
+        <p class="pr-caption">Acesso à plataforma WazeBR</p>
+    </div>
+</main>
 {% endblock %}
