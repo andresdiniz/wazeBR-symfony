@@ -1,1 +1,28 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace DoctrineMigrations;\n\nuse Doctrine\\DBAL\\Schema\\Schema;\nuse Doctrine\\Migrations\\AbstractMigration;\n\nfinal class Version20261112233000 extends AbstractMigration\n{\n    public function getDescription(): string\n    {\n        return 'Adiciona snapshot historico por coleta nas irregularidades TVT.';\n    }\n\n    public function up(Schema $schema): void\n    {\n        $this->addSql('ALTER TABLE waze_tvt_irregularity_sample\n            ADD COLUMN snapshot JSON NULL AFTER jam_level');\n    }\n\n    public function down(Schema $schema): void\n    {\n        $this->addSql('ALTER TABLE waze_tvt_irregularity_sample\n            DROP COLUMN snapshot');\n    }\n}\n
+<?php
+
+declare(strict_types=1);
+
+namespace DoctrineMigrations;
+
+use Doctrine\DBAL\Schema\Schema;
+use Doctrine\Migrations\AbstractMigration;
+
+final class Version20261112233000 extends AbstractMigration
+{
+    public function getDescription(): string
+    {
+        return 'Adiciona snapshot historico por coleta nas irregularidades TVT.';
+    }
+
+    public function up(Schema $schema): void
+    {
+        $this->addSql('ALTER TABLE waze_tvt_irregularity_sample
+            ADD COLUMN snapshot JSON NULL AFTER jam_level');
+    }
+
+    public function down(Schema $schema): void
+    {
+        $this->addSql('ALTER TABLE waze_tvt_irregularity_sample
+            DROP COLUMN snapshot');
+    }
+}

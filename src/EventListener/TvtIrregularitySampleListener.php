@@ -1,1 +1,127 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App\\EventListener;\n\nuse App\\Entity\\WazeTvtIrregularity;\nuse Doctrine\\Bundle\\DoctrineBundle\\Attribute\\AsDoctrineListener;\nuse Doctrine\\ORM\\EntityManagerInterface;\nuse Doctrine\\ORM\\Event\\PostPersistEventArgs;\nuse Doctrine\\ORM\\Event\\PostUpdateEventArgs;\nuse Doctrine\\ORM\\Events;\nuse Psr\\Log\\LoggerInterface;\n\n#[AsDoctrineListener(event: Events::postPersist)]\n#[AsDoctrineListener(event: Events::postUpdate)]\nfinal class TvtIrregularitySampleListener\n{\n    private float $checkedAt = 0;\n    private bool $available = false;\n\n    public function __construct(private readonly LoggerInterface $logger)\n    {\n    }\n\n    public function postPersist(PostPersistEventArgs $event): void\n    {\n        $this->record($event);\n    }\n\n    public function postUpdate(PostUpdateEventArgs $event): void\n    {\n        $this->record($event);\n    }\n\n    public function record(PostPersistEventArgs|PostUpdateEventArgs $event): void\n    {\n        $entity = $event->getObject();\n        $em = $event->getObjectManager();\n\n        if (!$entity instanceof WazeTvtIrregularity\n            || !$em instanceof EntityManagerInterface\n            || !$entity->isActive()\n            || $entity->getId() === null\n            || $entity->getPartner()?->getId() === null\n            || $entity->getLastSeenAt() === null\n        ) {\n            return;\n        }\n\n        $db = $em->getConnection();\n\n        if (microtime(true) - $this->checkedAt >= 120) {\n            $this->available = $db->createSchemaManager()->tablesExist(['waze_tvt_irregularity_sample']);\n            $this->checkedAt = microtime(true);\n\n            if (!$this->available) {\n                $this->logger->warning('tvt.irregularity.history_schema_missing', [\n                    'migration' => 'Version20261112223000',\n                ]);\n            }\n        }\n\n        if (!$this->available) {\n            return;\n        }\n\n        $data = $entity->getPayload() ?? [];\n        $observed = $this->positive($data['time'] ?? null);\n        $historic = $this->positive($data['historicTime'] ?? null);\n        $delay = $observed !== null && $historic !== null ? max(0, $observed - $historic) : null;\n        $level = isset($data['jamLevel']) && in_array((string) $data['jamLevel'], ['0', '1', '2', '3', '4', '5'], true)\n            ? (int) $data['jamLevel']\n            : null;\n\n        $snapshot = json_encode([\n            'time' => $data['time'] ?? null,\n            'historicTime' => $data['historicTime'] ?? null,\n            'jamLevel' => $data['jamLevel'] ?? null,\n            'length' => $data['length'] ?? null,\n            'type' => $data['type'] ?? null,\n            'name' => $data['name'] ?? null,\n            'fromName' => $data['fromName'] ?? null,\n            'toName' => $data['toName'] ?? null,\n            'street' => $data['street'] ?? null,\n            'city' => $data['city'] ?? null,\n            'state' => $data['state'] ?? null,\n            'leadAlert' => $data['leadAlert'] ?? null,\n            'bbox' => $data['bbox'] ?? null,\n            'line' => $data['line'] ?? null,\n        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);\n\n        $db->executeStatement(\n            'INSERT INTO waze_tvt_irregularity_sample\n                (irregularity_id, partner_id, observed_at, observed_seconds,\n                 historic_seconds, delay_seconds, jam_level, snapshot)\n             VALUES (:id, :partner, :at, :observed, :historic, :delay, :level, :snapshot)\n             ON DUPLICATE KEY UPDATE\n                observed_seconds = VALUES(observed_seconds),\n                historic_seconds = VALUES(historic_seconds),\n                delay_seconds = VALUES(delay_seconds),\n                jam_level = VALUES(jam_level),\n                snapshot = VALUES(snapshot)',\n            [\n                'id' => $entity->getId(),\n                'partner' => $entity->getPartner()->getId(),\n                'at' => $entity->getLastSeenAt()->setTimezone(new \\DateTimeZone('UTC'))->format('Y-m-d H:i:s'),\n                'observed' => $observed,\n                'historic' => $historic,\n                'delay' => $delay,\n                'level' => $level,\n                'snapshot' => $snapshot,\n            ],\n        );\n    }\n\n    private function positive(mixed $value): ?float\n    {\n        if (!is_numeric($value)) {\n            return null;\n        }\n\n        $number = (float) $value;\n\n        return is_finite($number) && $number > 0 ? $number : null;\n    }\n}\n
+<?php
+
+declare(strict_types=1);
+
+namespace App\EventListener;
+
+use App\Entity\WazeTvtIrregularity;
+use Doctrine\Bundle\DoctrineBundle\Attribute\AsDoctrineListener;
+use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Event\PostPersistEventArgs;
+use Doctrine\ORM\Event\PostUpdateEventArgs;
+use Doctrine\ORM\Events;
+use Psr\Log\LoggerInterface;
+
+#[AsDoctrineListener(event: Events::postPersist)]
+#[AsDoctrineListener(event: Events::postUpdate)]
+final class TvtIrregularitySampleListener
+{
+    private float $checkedAt = 0;
+    private bool $available = false;
+
+    public function __construct(private readonly LoggerInterface $logger)
+    {
+    }
+
+    public function postPersist(PostPersistEventArgs $event): void
+    {
+        $this->record($event);
+    }
+
+    public function postUpdate(PostUpdateEventArgs $event): void
+    {
+        $this->record($event);
+    }
+
+    public function record(PostPersistEventArgs|PostUpdateEventArgs $event): void
+    {
+        $entity = $event->getObject();
+        $em = $event->getObjectManager();
+
+        if (!$entity instanceof WazeTvtIrregularity
+            || !$em instanceof EntityManagerInterface
+            || !$entity->isActive()
+            || $entity->getId() === null
+            || $entity->getPartner()?->getId() === null
+            || $entity->getLastSeenAt() === null
+        ) {
+            return;
+        }
+
+        $db = $em->getConnection();
+
+        if (microtime(true) - $this->checkedAt >= 120) {
+            $this->available = $db->createSchemaManager()->tablesExist(['waze_tvt_irregularity_sample']);
+            $this->checkedAt = microtime(true);
+
+            if (!$this->available) {
+                $this->logger->warning('tvt.irregularity.history_schema_missing', [
+                    'migration' => 'Version20261112223000',
+                ]);
+            }
+        }
+
+        if (!$this->available) {
+            return;
+        }
+
+        $data = $entity->getPayload() ?? [];
+        $observed = $this->positive($data['time'] ?? null);
+        $historic = $this->positive($data['historicTime'] ?? null);
+        $delay = $observed !== null && $historic !== null ? max(0, $observed - $historic) : null;
+        $level = isset($data['jamLevel']) && in_array((string) $data['jamLevel'], ['0', '1', '2', '3', '4', '5'], true)
+            ? (int) $data['jamLevel']
+            : null;
+
+        $snapshot = json_encode([
+            'time' => $data['time'] ?? null,
+            'historicTime' => $data['historicTime'] ?? null,
+            'jamLevel' => $data['jamLevel'] ?? null,
+            'length' => $data['length'] ?? null,
+            'type' => $data['type'] ?? null,
+            'name' => $data['name'] ?? null,
+            'fromName' => $data['fromName'] ?? null,
+            'toName' => $data['toName'] ?? null,
+            'street' => $data['street'] ?? null,
+            'city' => $data['city'] ?? null,
+            'state' => $data['state'] ?? null,
+            'leadAlert' => $data['leadAlert'] ?? null,
+            'bbox' => $data['bbox'] ?? null,
+            'line' => $data['line'] ?? null,
+        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+
+        $db->executeStatement(
+            'INSERT INTO waze_tvt_irregularity_sample
+                (irregularity_id, partner_id, observed_at, observed_seconds,
+                 historic_seconds, delay_seconds, jam_level, snapshot)
+             VALUES (:id, :partner, :at, :observed, :historic, :delay, :level, :snapshot)
+             ON DUPLICATE KEY UPDATE
+                observed_seconds = VALUES(observed_seconds),
+                historic_seconds = VALUES(historic_seconds),
+                delay_seconds = VALUES(delay_seconds),
+                jam_level = VALUES(jam_level),
+                snapshot = VALUES(snapshot)',
+            [
+                'id' => $entity->getId(),
+                'partner' => $entity->getPartner()->getId(),
+                'at' => $entity->getLastSeenAt()->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'),
+                'observed' => $observed,
+                'historic' => $historic,
+                'delay' => $delay,
+                'level' => $level,
+                'snapshot' => $snapshot,
+            ],
+        );
+    }
+
+    private function positive(mixed $value): ?float
+    {
+        if (!is_numeric($value)) {
+            return null;
+        }
+
+        $number = (float) $value;
+
+        return is_finite($number) && $number > 0 ? $number : null;
+    }
+}

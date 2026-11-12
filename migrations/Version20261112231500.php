@@ -1,1 +1,70 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace DoctrineMigrations;\n\nuse Doctrine\\DBAL\\Schema\\Schema;\nuse Doctrine\\Migrations\\AbstractMigration;\n\nfinal class Version20261112231500 extends AbstractMigration\n{\n    public function getDescription(): string\n    {\n        return 'Preenche colunas de busca das irregularidades TVT e cria indices de filtro.';\n    }\n\n    public function up(Schema $schema): void\n    {\n        $this->addSql('ALTER TABLE waze_tvt_irregularity\n            ADD INDEX idx_tvt_irregularity_partner_reported (partner_id, reported_time),\n            ADD INDEX idx_tvt_irregularity_partner_type (partner_id, type),\n            ADD INDEX idx_tvt_irregularity_partner_severity (partner_id, severity),\n            ADD INDEX idx_tvt_irregularity_partner_city (partner_id, city)');\n\n        $this->addSql("UPDATE waze_tvt_irregularity\n            SET street = COALESCE(\n                JSON_UNQUOTE(JSON_EXTRACT(payload, '$.street')),\n                JSON_UNQUOTE(JSON_EXTRACT(payload, '$.leadAlert.street'))\n            ),\n            city = COALESCE(\n                JSON_UNQUOTE(JSON_EXTRACT(payload, '$.city')),\n                JSON_UNQUOTE(JSON_EXTRACT(payload, '$.leadAlert.city'))\n            ),\n            reported_time = CASE\n                WHEN JSON_TYPE(JSON_EXTRACT(payload, '$.updateTime')) IN ('INTEGER', 'DOUBLE')\n                    AND CAST(JSON_EXTRACT(payload, '$.updateTime') AS DOUBLE) > 0\n                THEN FROM_UNIXTIME(CAST(JSON_EXTRACT(payload, '$.updateTime') AS DOUBLE) / 1000)\n                ELSE NULL\n            END,\n            severity = CASE CAST(JSON_EXTRACT(payload, '$.jamLevel') AS CHAR)\n                WHEN '0' THEN 'Normal'\n                WHEN '1' THEN 'Leve'\n                WHEN '2' THEN 'Moderado'\n                WHEN '3' THEN 'Alto'\n                WHEN '4' THEN 'Muito alto'\n                WHEN '5' THEN 'Parado'\n                ELSE NULL\n            END,\n            latitude = CASE\n                WHEN JSON_TYPE(JSON_EXTRACT(payload, '$.line[0].y')) IN ('INTEGER', 'DOUBLE')\n                THEN CAST(JSON_EXTRACT(payload, '$.line[0].y') AS DOUBLE)\n                ELSE NULL\n            END,\n            longitude = CASE\n                WHEN JSON_TYPE(JSON_EXTRACT(payload, '$.line[0].x')) IN ('INTEGER', 'DOUBLE')\n                THEN CAST(JSON_EXTRACT(payload, '$.line[0].x') AS DOUBLE)\n                ELSE NULL\n            END\n            WHERE content_hash LIKE 'rootv1:%'");\n    }\n\n    public function down(Schema $schema): void\n    {\n        $this->addSql('ALTER TABLE waze_tvt_irregularity\n            DROP INDEX idx_tvt_irregularity_partner_reported,\n            DROP INDEX idx_tvt_irregularity_partner_type,\n            DROP INDEX idx_tvt_irregularity_partner_severity,\n            DROP INDEX idx_tvt_irregularity_partner_city');\n    }\n}\n
+<?php
+
+declare(strict_types=1);
+
+namespace DoctrineMigrations;
+
+use Doctrine\DBAL\Schema\Schema;
+use Doctrine\Migrations\AbstractMigration;
+
+final class Version20261112231500 extends AbstractMigration
+{
+    public function getDescription(): string
+    {
+        return 'Preenche colunas de busca das irregularidades TVT e cria indices de filtro.';
+    }
+
+    public function up(Schema $schema): void
+    {
+        $this->addSql('ALTER TABLE waze_tvt_irregularity
+            ADD INDEX idx_tvt_irregularity_partner_reported (partner_id, reported_time),
+            ADD INDEX idx_tvt_irregularity_partner_type (partner_id, type),
+            ADD INDEX idx_tvt_irregularity_partner_severity (partner_id, severity),
+            ADD INDEX idx_tvt_irregularity_partner_city (partner_id, city)');
+
+        $this->addSql("UPDATE waze_tvt_irregularity
+            SET street = COALESCE(
+                JSON_UNQUOTE(JSON_EXTRACT(payload, '$.street')),
+                JSON_UNQUOTE(JSON_EXTRACT(payload, '$.leadAlert.street'))
+            ),
+            city = COALESCE(
+                JSON_UNQUOTE(JSON_EXTRACT(payload, '$.city')),
+                JSON_UNQUOTE(JSON_EXTRACT(payload, '$.leadAlert.city'))
+            ),
+            reported_time = CASE
+                WHEN JSON_TYPE(JSON_EXTRACT(payload, '$.updateTime')) IN ('INTEGER', 'DOUBLE')
+                    AND CAST(JSON_EXTRACT(payload, '$.updateTime') AS DOUBLE) > 0
+                THEN FROM_UNIXTIME(CAST(JSON_EXTRACT(payload, '$.updateTime') AS DOUBLE) / 1000)
+                ELSE NULL
+            END,
+            severity = CASE CAST(JSON_EXTRACT(payload, '$.jamLevel') AS CHAR)
+                WHEN '0' THEN 'Normal'
+                WHEN '1' THEN 'Leve'
+                WHEN '2' THEN 'Moderado'
+                WHEN '3' THEN 'Alto'
+                WHEN '4' THEN 'Muito alto'
+                WHEN '5' THEN 'Parado'
+                ELSE NULL
+            END,
+            latitude = CASE
+                WHEN JSON_TYPE(JSON_EXTRACT(payload, '$.line[0].y')) IN ('INTEGER', 'DOUBLE')
+                THEN CAST(JSON_EXTRACT(payload, '$.line[0].y') AS DOUBLE)
+                ELSE NULL
+            END,
+            longitude = CASE
+                WHEN JSON_TYPE(JSON_EXTRACT(payload, '$.line[0].x')) IN ('INTEGER', 'DOUBLE')
+                THEN CAST(JSON_EXTRACT(payload, '$.line[0].x') AS DOUBLE)
+                ELSE NULL
+            END
+            WHERE content_hash LIKE 'rootv1:%'");
+    }
+
+    public function down(Schema $schema): void
+    {
+        $this->addSql('ALTER TABLE waze_tvt_irregularity
+            DROP INDEX idx_tvt_irregularity_partner_reported,
+            DROP INDEX idx_tvt_irregularity_partner_type,
+            DROP INDEX idx_tvt_irregularity_partner_severity,
+            DROP INDEX idx_tvt_irregularity_partner_city');
+    }
+}
