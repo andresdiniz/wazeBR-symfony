@@ -3,6 +3,7 @@
 declare(strict_types=1);
 namespace App\Controller;
 
+use App\Service\OptionalIntegerFilter;
 use App\Service\PartnerScopeResolver;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -19,19 +20,21 @@ final class TvtIrregularityController extends AbstractController
     {
         $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
         $partner = $scope->resolve();
+        $query = $request->query->all();
         $filters = [
             'q' => mb_substr(trim((string) $request->query->get('q', '')), 0, 120),
             'status' => (string) $request->query->get('status', 'active'),
             'period' => (string) $request->query->get('period', '7d'),
             'level' => (string) $request->query->get('level', 'all'),
-            'partner' => $partner?->getId() ?? max(0, $request->query->getInt('partner', 0)),
-            'per_page' => $request->query->getInt('per_page', 25),
+            // Apenas o administrador global pode selecionar outro parceiro ou todos.
+            'partner' => $partner !== null ? $partner->getId() : OptionalIntegerFilter::parse($query['partner'] ?? null, 0, 0, 'partner'),
+            'per_page' => OptionalIntegerFilter::parse($query['per_page'] ?? null, 25, 1, 'per_page'),
         ];
         if (!in_array($filters['status'], ['active', 'inactive', 'all'], true)) $filters['status'] = 'active';
         if (!in_array($filters['period'], ['24h', '7d', '30d', 'all'], true)) $filters['period'] = '7d';
         if (!in_array($filters['level'], ['all', '0', '1', '2', '3', '4', '5'], true)) $filters['level'] = 'all';
         if (!in_array($filters['per_page'], [10,25,50,100], true)) $filters['per_page'] = 25;
-        $requestedPage = min(1000000, max(1, $request->query->getInt('page', 1)));
+        $requestedPage = min(1000000, OptionalIntegerFilter::parse($query['page'] ?? null, 1, 1, 'page'));
         $anchor = intdiv(time(), 120) * 120;
         $compute = function () use ($db, $filters, $requestedPage, $anchor): array {
             $where = ['1=1']; $params = [];
