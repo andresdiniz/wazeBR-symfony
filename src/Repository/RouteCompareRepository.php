@@ -112,7 +112,9 @@ final class RouteCompareRepository
             'avgRatio24h' => $this->mean($rec, 'r', 'rn'),
             'avgDelay7d' => $this->mean($stl, 'd', 'n'),
             'avgRatio7d' => $this->mean($stl, 'r', 'rn'),
-            'worstHour' => $wh, 'worstDow' => $wd, 'current' => $cur,
+            'worstHour' => $wh ? $wh + ['avgRatio' => $wh['r']] : null,
+            'worstDow' => $wd ? $wd + ['avgRatio' => $wd['r']] : null,
+            'current' => $cur,
         ];
         return [
             'id' => (int)$r['id'], 'wazeRouteId' => $r['route_id'], 'name' => $r['name'],
