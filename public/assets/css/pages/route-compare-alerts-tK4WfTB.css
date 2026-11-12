@@ -1,0 +1,12 @@
+.rc-alerts-col { min-width: 0; }
+.rc-alert-list { max-height: 420px; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-gutter: stable; padding: 4px 8px 4px 4px; border-radius: 8px; }
+.rc-alert-list:focus-visible { outline: 3px solid var(--rc-primary); outline-offset: 2px; }
+.rc-alert-link { display: grid; gap: 6px; padding: 12px; margin-bottom: 8px; border: 1px solid var(--rc-line); border-radius: 10px; background: var(--rc-soft); color: var(--rc-text); text-decoration: none; overflow-wrap: anywhere; }
+.rc-alert-link:hover { border-color: var(--rc-primary); background: var(--rc-surface); }
+.rc-alert-link:focus-visible { outline: 3px solid var(--rc-primary); outline-offset: 1px; }
+.rc-alert-link strong { font-size: 13px; line-height: 1.4; }
+.rc-alert-link small, .rc-alert-link time { display: block; font-size: 11px; line-height: 1.5; color: var(--rc-muted); }
+.rc-alert-link__action { font-size: 11px; color: var(--rc-primary); font-weight: 700; }
+.rc-alerts-col h3 { justify-content: space-between; white-space: normal; }
+.rc-alerts-col h3 small { font-size: 11px; color: var(--rc-muted); }
+@media (max-width: 900px) { .rc-alert-list { max-height: 320px; } }
