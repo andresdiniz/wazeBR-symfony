@@ -11,13 +11,24 @@ use Doctrine\ORM\Event\PostUpdateEventArgs;
 use Doctrine\ORM\Events;
 use Psr\Log\LoggerInterface;
 
-#[AsDoctrineListener(event: Events::postPersist, method: 'record')]
-#[AsDoctrineListener(event: Events::postUpdate, method: 'record')]
+#[AsDoctrineListener(event: Events::postPersist)]
+#[AsDoctrineListener(event: Events::postUpdate)]
 final class TvtIrregularitySampleListener
 {
     private float $checkedAt = 0;
     private bool $available = false;
     public function __construct(private readonly LoggerInterface $logger) {}
+
+    public function postPersist(PostPersistEventArgs $event): void
+    {
+        $this->record($event);
+    }
+
+    public function postUpdate(PostUpdateEventArgs $event): void
+    {
+        $this->record($event);
+    }
+
     public function record(PostPersistEventArgs|PostUpdateEventArgs $event): void
     {
         $entity = $event->getObject();
