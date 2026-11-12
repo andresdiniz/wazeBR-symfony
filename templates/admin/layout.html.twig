@@ -1,34 +1,35 @@
 {% extends 'base.html.twig' %}
-
 {% block stylesheets %}
     {{ parent() }}
     <link rel="stylesheet" href="{{ asset('css/pages/admin.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/pages/admin-workspace.css') }}">
 {% endblock %}
-
-{% block body_class %}
-    app-body dashboard-layout
-{% endblock %}
-
+{% block body_class %}app-body dashboard-layout{% endblock %}
 {% block body %}
+    {% set admin_route = app.request.attributes.get('_route')|default('') %}
+    {% set global_admin = app.user and app.user.isGlobalAdmin %}
+    {% set user_admin = is_granted('ROLE_ACCOUNT_ADMIN') or is_granted('ROLE_PARTNER_ADMIN') %}
     <div class="app-shell" data-layout="dashboard">
-
         {% include 'partials/header.html.twig' %}
-
         <div class="app-layout">
-
             {% include 'partials/sidebar.html.twig' %}
-
-            <main
-                id="main-content"
-                class="app-content"
-                data-main-content
-            >
-                {% block content %}{% endblock %}
+            <main id="main-content" class="app-content" data-main-content>
+                <div class="admin-workspace">
+                    <nav class="admin-workspace-nav" aria-label="Administração de contas e parceiros">
+                        <div class="admin-workspace-nav__links">
+                            <span class="admin-workspace-nav__label">Administração</span>
+                            {% if global_admin %}<a href="{{ path('admin_partner_index') }}" {% if admin_route starts with 'admin_partner_' and not (admin_route starts with 'admin_partner_data_') %}aria-current="page"{% endif %}>Parceiros</a>{% endif %}
+                            {% if user_admin %}<a href="{{ path('admin_users_index') }}" {% if admin_route starts with 'admin_users_' %}aria-current="page"{% endif %}>Usuários</a>{% endif %}
+                        </div>
+                        <div class="admin-workspace-nav__actions">
+                            {% if global_admin %}<a href="{{ path('admin_partner_new') }}">+ Novo parceiro</a>{% endif %}
+                            {% if user_admin %}<a href="{{ path('admin_users_new') }}">+ Novo usuário</a>{% endif %}
+                        </div>
+                    </nav>
+                    {% block content %}{% endblock %}
+                </div>
             </main>
-
         </div>
-
         {% include 'partials/footer.html.twig' %}
-
     </div>
 {% endblock %}
