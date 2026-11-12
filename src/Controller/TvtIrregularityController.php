@@ -21,13 +21,14 @@ final class TvtIrregularityController extends AbstractController
         $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
         $partner = $scope->resolve();
         $query = $request->query->all();
+        $partnerValue = $query['partner'] ?? null;
+        if (is_string($partnerValue) && trim($partnerValue) === '') $partnerValue = null;
         $filters = [
             'q' => mb_substr(trim((string) $request->query->get('q', '')), 0, 120),
             'status' => (string) $request->query->get('status', 'active'),
             'period' => (string) $request->query->get('period', '7d'),
             'level' => (string) $request->query->get('level', 'all'),
-            // Apenas o administrador global pode selecionar outro parceiro ou todos.
-            'partner' => $partner !== null ? $partner->getId() : OptionalIntegerFilter::parse($query['partner'] ?? null, 0, 0, 'partner'),
+            'partner' => $partner !== null ? $partner->getId() : OptionalIntegerFilter::parse($partnerValue, 0, 0, 'partner'),
             'per_page' => OptionalIntegerFilter::parse($query['per_page'] ?? null, 25, 1, 'per_page'),
         ];
         if (!in_array($filters['status'], ['active', 'inactive', 'all'], true)) $filters['status'] = 'active';
@@ -58,8 +59,7 @@ final class TvtIrregularityController extends AbstractController
                 JSON_UNQUOTE(JSON_EXTRACT(i.payload, '$.historicTime')) AS historic_seconds,
                 JSON_UNQUOTE(JSON_EXTRACT(i.payload, '$.jamLevel')) AS jam_level,
                 JSON_UNQUOTE(JSON_EXTRACT(i.payload, '$.length')) AS length_meters,
-                JSON_UNQUOTE(JSON_EXTRACT(i.payload, '$.line[0].y')) AS first_lat,
-                JSON_UNQUOTE(JSON_EXTRACT(i.payload, '$.line[0].x')) AS first_lng
+                JSON_EXTRACT(i.payload, '$.line') AS geometry_json
                 FROM waze_tvt_irregularity i LEFT JOIN partner p ON p.id = i.partner_id
                 WHERE $condition ORDER BY i.last_seen_at DESC, i.id DESC LIMIT " . $filters['per_page'] . ' OFFSET ' . $offset;
             $rows = $db->fetchAllAssociative($sql, $params);
@@ -68,18 +68,31 @@ final class TvtIrregularityController extends AbstractController
                 $row['observed'] = is_numeric($row['observed_seconds']) && (float) $row['observed_seconds'] > 0 ? (float) $row['observed_seconds'] : null;
                 $row['historic'] = is_numeric($row['historic_seconds']) && (float) $row['historic_seconds'] > 0 ? (float) $row['historic_seconds'] : null;
                 $row['delay'] = $row['observed'] !== null && $row['historic'] !== null ? max(0, $row['observed'] - $row['historic']) : null;
-                $row['level'] = is_numeric($row['jam_level']) && in_array((string) $row['jam_level'], ['0','1','2','3','4','5'], true) ? (int) $row['jam_level'] : null;
-                $row['waze_url'] = null;
-                if (is_numeric($row['first_lat']) && is_numeric($row['first_lng'])) {
-                    $lat = (float) $row['first_lat']; $lng = (float) $row['first_lng'];
-                    if (is_finite($lat) && is_finite($lng) && abs($lat) <= 90 && abs($lng) <= 180) $row['waze_url'] = 'https://www.waze.com/ul?' . http_build_query(['ll' => number_format($lat,7,'.','') . ',' . number_format($lng,7,'.',''), 'z' => 16], '', '&', PHP_QUERY_RFC3986);
+                $row['level'] = in_array((string) $row['jam_level'], ['0','1','2','3','4','5'], true) ? (int) $row['jam_level'] : null;
+                $line = is_string($row['geometry_json']) ? json_decode($row['geometry_json'], true) : null;
+                unset($row['geometry_json']);
+                $row['segments'] = []; $segment = []; $firstPoint = null;
+                if (is_array($line) && array_is_list($line)) foreach ($line as $point) {
+                    $valid = is_array($point) && is_numeric($point['x'] ?? null) && is_numeric($point['y'] ?? null);
+                    if ($valid) {
+                        $lng = (float) $point['x']; $lat = (float) $point['y'];
+                        $valid = is_finite($lng) && is_finite($lat) && abs($lng) <= 180 && abs($lat) <= 90;
+                    }
+                    if (!$valid) {
+                        if ($segment !== []) $row['segments'][] = $segment;
+                        $segment = [];
+                        continue;
+                    }
+                    $segment[] = [$lat, $lng];
+                    $firstPoint ??= [$lat, $lng];
                 }
+                if ($segment !== []) $row['segments'][] = $segment;
+                $row['waze_url'] = $firstPoint === null ? null : 'https://www.waze.com/ul?' . http_build_query(['ll' => number_format($firstPoint[0],7,'.','') . ',' . number_format($firstPoint[1],7,'.',''), 'z' => 16], '', '&', PHP_QUERY_RFC3986);
             }
             unset($row);
             return ['rows' => $rows, 'total' => $total, 'page' => $page, 'pages' => $pages, 'first' => $total ? $offset + 1 : 0, 'last' => min($offset + $filters['per_page'], $total), 'loaded_at' => gmdate('Y-m-d H:i:s')];
         };
-        // Não persiste uma chave para cada busca livre digitada.
-        $data = $filters['q'] !== '' ? $compute() : $cache->get('tvt_irregularities_list_v1_' . hash('sha256', json_encode([$filters, $requestedPage, $anchor], JSON_THROW_ON_ERROR)), function (ItemInterface $item) use ($compute): array { $item->expiresAfter(120); return $compute(); });
+        $data = $filters['q'] !== '' ? $compute() : $cache->get('tvt_irregularities_list_map_v3_' . hash('sha256', json_encode([$filters, $requestedPage, $anchor], JSON_THROW_ON_ERROR)), function (ItemInterface $item) use ($compute): array { $item->expiresAfter(120); return $compute(); });
         $response = $this->render('tvt_irregularities/index.html.twig', $data + ['filters' => $filters, 'partner_locked' => $partner !== null]);
         $response->headers->set('Cache-Control', 'private, no-store');
         return $response;
