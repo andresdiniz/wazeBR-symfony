@@ -17,10 +17,6 @@ function routeLabel(value, fallback = '—') {
     return text;
 }
 
-/**
- * pages/routes.js — Página /routes
- */
-
 const LEVEL_COLORS = {
     none:     '#16a34a',
     light:    '#3b82f6',
@@ -64,10 +60,6 @@ let segmentsLayer = null;
 let irregularitiesLayer = null;
 const polylinesByRoute = new Map();
 let activeRouteId = null;
-
-// ─────────────────────────────────────────────────────────────────────────
-// Mapa
-// ─────────────────────────────────────────────────────────────────────────
 
 function initMap(root, payload) {
     const container = root.querySelector('[data-routes-map]');
@@ -175,13 +167,6 @@ function drawIrregularities(items) {
     });
 }
 
-/**
- * Popup com duplo contexto:
- *  - "Este trecho"  → dados da sub-rota clicada
- *  - "Rota completa" → dados do snapshot da rota inteira
- *
- * Se for o mesmo (segmento == rota), mostra só uma vez.
- */
 function buildSegmentPopup(seg) {
     const isSubRoute = seg.source === 'subroute';
 
@@ -208,7 +193,6 @@ function buildSegmentPopup(seg) {
         ? `${escapeHtml(seg.routeFrom)} → ${escapeHtml(seg.routeTo)}`
         : '';
 
-    // Se for rota inteira, não duplica
     if (!isSubRoute) {
         return `
             <div class="routes-popup">
@@ -223,7 +207,6 @@ function buildSegmentPopup(seg) {
         `;
     }
 
-    // Rota com sub-rotas: mostra trecho + rota completa
     return `
         <div class="routes-popup">
             <strong>${escapeHtml(seg.routeName || rt("Rota"))}</strong>
@@ -251,10 +234,6 @@ function buildSegmentPopup(seg) {
         </div>
     `;
 }
-
-// ─────────────────────────────────────────────────────────────────────────
-// Highlight / Dim
-// ─────────────────────────────────────────────────────────────────────────
 
 function applyHighlightStyles() {
     polylinesByRoute.forEach((items, routeId) => {
@@ -300,10 +279,6 @@ function setActiveRoute(routeId, root) {
 function clearHighlight(root) {
     setActiveRoute(null, root);
 }
-
-// ─────────────────────────────────────────────────────────────────────────
-// Filtros
-// ─────────────────────────────────────────────────────────────────────────
 
 function initFilters(root) {
     const form = root.querySelector('[data-routes-filter-form]');
@@ -377,17 +352,13 @@ function initFilters(root) {
     form.addEventListener('submit', (e) => e.preventDefault());
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Click na lista → foca + destaca
-// ─────────────────────────────────────────────────────────────────────────
-
 function initListInteraction(root) {
     const list = root.querySelector('[data-routes-list]');
     if (!list || list.dataset.routesClickInit === '1') return;
     list.dataset.routesClickInit = '1';
 
     list.addEventListener('click', (e) => {
-        if (e.target.closest('[data-route-detail]')) return; // deixa o link navegar
+        if (e.target.closest('[data-route-detail]')) return;
         const item = e.target.closest('[data-route-id]');
         if (!item) return;
 
@@ -421,10 +392,6 @@ function initListInteraction(root) {
     });
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Relógio + refresh
-// ─────────────────────────────────────────────────────────────────────────
-
 function initClock(root) {
     const clock = root.querySelector('[data-routes-clock]');
     if (!clock || clock.dataset.routesClockInit === '1') return;
@@ -448,10 +415,6 @@ function initRefresh(root) {
     });
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Bootstrap
-// ─────────────────────────────────────────────────────────────────────────
-
 export function initRoutesPage(root = document) {
     const page = root.querySelector('[data-routes-page]');
     if (!page || page.dataset.routesInit === '1') return;
@@ -465,6 +428,24 @@ export function initRoutesPage(root = document) {
     initListInteraction(page);
     initClock(page);
     initRefresh(page);
+
+    document.addEventListener('routes:highlight', (event) => {
+        const routeId = Number(event.detail?.routeId);
+        if (!Number.isFinite(routeId)) return;
+        if (activeRouteId === routeId) return;
+
+        setActiveRoute(routeId, page);
+
+        const bucket = polylinesByRoute.get(routeId) || [];
+        if (bucket.length === 0 || !map) return;
+
+        const bounds = L.latLngBounds([]);
+        bucket.forEach(({ line }) => bounds.extend(line.getBounds()));
+
+        if (bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
+        }
+    });
 }
 
 export default initRoutesPage;

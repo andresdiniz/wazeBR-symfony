@@ -176,6 +176,7 @@
                             <svg class="route-card-map"
                                  data-route-mini-map
                                  data-route-path="{{ route.miniMapPath|json_encode|e('html_attr') }}"
+                                 data-route-incidents="{{ route.incidents|json_encode|e('html_attr') }}"
                                  viewBox="0 0 240 110"
                                  role="img"
                                  aria-label="{{ 'Mini-mapa da rota'|trans({}, 'routes_ui') }}">
