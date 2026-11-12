@@ -1,0 +1,86 @@
+{% extends 'layouts/base.html.twig' %}
+
+{% block title %}Comparação de rotas | WazeBR{% endblock %}
+
+{% block stylesheets %}
+    <style>
+        body { font-family: Arial, sans-serif; color: #111; margin: 24px; }
+        h1 { font-size: 20px; margin: 0 0 4px; }
+        h2 { font-size: 15px; margin: 18px 0 6px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th, td { border: 1px solid #ddd; padding: 4px 6px; text-align: left; }
+        th { background: #f3f4f6; }
+        .meta { color: #555; font-size: 12px; margin-bottom: 16px; }
+        .insight { margin: 6px 0; font-size: 13px; }
+        .win-a { color: #166534; font-weight: bold; }
+        .win-b { color: #9a3412; font-weight: bold; }
+        @media print {
+            .no-print { display: none; }
+            body { margin: 12px; }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="no-print" style="margin-bottom:12px;">
+    <button onclick="window.print()">Imprimir / Salvar como PDF</button>
+</div>
+
+<h1>Comparação de rotas</h1>
+<p class="meta">
+    {{ compare.a.name }} vs {{ compare.b.name }} ·
+    granularidade {{ bucket }} min · janela {{ hours }}h ·
+    gerado em {{ "now"|date('d/m/Y H:i') }}
+</p>
+
+<h2>Resumo</h2>
+<p class="insight"><strong>Recomendação:</strong> {{ compare.insights.recommendation }}</p>
+<p class="insight">
+    <strong>Melhor na média (7d):</strong>
+    {% if compare.insights.betterOverall == 'a' %}
+        <span class="win-a">{{ compare.a.name }}</span>
+    {% elseif compare.insights.betterOverall == 'b' %}
+        <span class="win-b">{{ compare.b.name }}</span>
+    {% else %}Empate técnico{% endif %}
+</p>
+
+<h2>Métricas comparadas</h2>
+<table>
+    <tr><th>Métrica</th><th>{{ compare.a.name }}</th><th>{{ compare.b.name }}</th></tr>
+    <tr><td>Atraso atual</td>
+        <td>{{ compare.a.current ? '+' ~ compare.a.current.delaySeconds ~ 's' : '—' }}</td>
+        <td>{{ compare.b.current ? '+' ~ compare.b.current.delaySeconds ~ 's' : '—' }}</td></tr>
+    <tr><td>Média 24h</td>
+        <td>{{ compare.a.stats.avgDelay24h ? '+' ~ compare.a.stats.avgDelay24h ~ 's' : '—' }}</td>
+        <td>{{ compare.b.stats.avgDelay24h ? '+' ~ compare.b.stats.avgDelay24h ~ 's' : '—' }}</td></tr>
+    <tr><td>Média 7 dias</td>
+        <td>{{ compare.a.stats.avgDelay7d ? '+' ~ compare.a.stats.avgDelay7d ~ 's' : '—' }}</td>
+        <td>{{ compare.b.stats.avgDelay7d ? '+' ~ compare.b.stats.avgDelay7d ~ 's' : '—' }}</td></tr>
+    <tr><td>% vs histórico 7d</td>
+        <td>{{ compare.a.stats.avgRatio7d ? (compare.a.stats.avgRatio7d * 100)|round(0) ~ '%' : '—' }}</td>
+        <td>{{ compare.b.stats.avgRatio7d ? (compare.b.stats.avgRatio7d * 100)|round(0) ~ '%' : '—' }}</td></tr>
+</table>
+
+<h2>Evolução comparada ({{ bucket }} min)</h2>
+<table>
+    <tr><th>Data/hora</th><th>{{ compare.a.name }}</th><th>{{ compare.b.name }}</th></tr>
+    {% for p in compare.timeline %}
+        <tr>
+            <td>{{ p.time }}</td>
+            <td>{{ p.aDelay is not null ? '+' ~ p.aDelay ~ 's' : '—' }}</td>
+            <td>{{ p.bDelay is not null ? '+' ~ p.bDelay ~ 's' : '—' }}</td>
+        </tr>
+    {% endfor %}
+</table>
+
+<h2>Alertas Waze cruzados (7 dias)</h2>
+<p class="insight">
+    Em ambas: {{ compare.alerts.shared|length }} ·
+    Só em {{ compare.a.name }}: {{ compare.alerts.onlyA|length }} ·
+    Só em {{ compare.b.name }}: {{ compare.alerts.onlyB|length }}
+</p>
+
+<script>
+    window.addEventListener('load', () => setTimeout(() => window.print(), 300));
+</script>
+{% endblock %}
