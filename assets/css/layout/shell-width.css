@@ -1,0 +1,104 @@
+/* A camada utilities prevalece sobre width:100% dos componentes. */
+@layer utilities {
+  .app-shell {
+    --shell-sidebar-offset: var(--sidebar-w, 0px);
+    width: 100%;
+    min-width: 0;
+  }
+
+  .app-shell.sidebar-collapsed {
+    --shell-sidebar-offset: var(--sidebar-w-collapsed, 0px);
+  }
+
+  .app-shell > .app-header,
+  .app-shell.sidebar-collapsed > .app-header,
+  .app-shell > .app-footer,
+  .app-shell > .footer,
+  .app-shell.sidebar-collapsed > .app-footer,
+  .app-shell.sidebar-collapsed > .footer {
+    box-sizing: border-box;
+    min-width: 0;
+    width: calc(100% - var(--shell-sidebar-offset));
+    max-width: calc(100% - var(--shell-sidebar-offset));
+    margin-inline-start: var(--shell-sidebar-offset);
+    margin-inline-end: 0;
+  }
+
+  .app-shell > .app-header {
+    container-type: inline-size;
+    container-name: shell-header;
+  }
+
+  .app-shell .app-header__inner,
+  .app-shell .app-header__right,
+  .app-shell .app-header__action-group,
+  .app-shell .footer-inner > * {
+    min-width: 0;
+  }
+
+  .app-shell .app-header__inner {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .app-shell .app-header__right,
+  .app-shell .app-header__action-group {
+    flex-wrap: wrap;
+  }
+
+  .app-shell .app-header__search {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .app-shell > .app-footer .footer-inner,
+  .app-shell > .footer .footer-inner {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: clamp(16px, 2vw, 32px);
+  }
+
+  .app-shell .footer-description,
+  .app-shell .footer-copyright,
+  .app-shell .footer-version,
+  .app-shell .footer-bottom-text {
+    overflow-wrap: anywhere;
+  }
+
+  .app-shell .footer-bottom-inner,
+  .app-shell .footer-system-status {
+    min-width: 0;
+  }
+
+  .app-shell .footer-system-status { flex-wrap: wrap; }
+
+  @container shell-header (max-width: 1000px) {
+    .app-header__inner {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 12px;
+      padding-block: 10px;
+    }
+    .app-header__right { grid-column: 2; grid-row: 1; }
+    .app-header__navigation {
+      grid-column: 1 / -1;
+      grid-row: 2;
+      flex-wrap: wrap;
+    }
+    .app-header__context,
+    .app-header__divider { display: none; }
+  }
+
+  @container shell-header (max-width: 600px) {
+    .app-header__inner {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+    }
+    .app-header__left { flex: 0 1 auto; }
+    .app-header__right { flex: 1 1 auto; }
+  }
+
+  @media (max-width: 1180px) {
+    .app-shell,
+    .app-shell.sidebar-collapsed { --shell-sidebar-offset: 0px; }
+  }
+}

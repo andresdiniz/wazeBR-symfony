@@ -8,6 +8,7 @@
 @import url('./layout/header.css');
 @import url('./layout/sidebar.css');
 @import url('./layout/footer.css');
+@import url('./layout/shell-width.css');
 
 @import url('./components/typography.css');
 @import './components/animations.css';
