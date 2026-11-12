@@ -54,6 +54,14 @@
                 {% if current_route starts with 'app_routes' %}<span class="sidebar-active-indicator" aria-hidden="true"></span>{% endif %}
             </a>
 
+            <a href="{{ path('tvt_irregularities_index') }}" class="sidebar-link{% if current_route starts with 'tvt_irregularities_' %} is-active{% endif %}" data-sidebar-link title="Irregularidades TVT" aria-label="Irregularidades TVT" {% if current_route starts with 'tvt_irregularities_' %}aria-current="page"{% endif %}>
+                <span class="sidebar-link-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false"><path d="M12 3 2 21h20L12 3Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 9v5m0 3v1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </span>
+                <span class="sidebar-link-label">Irregularidades TVT</span>
+                {% if current_route starts with 'tvt_irregularities_' %}<span class="sidebar-active-indicator" aria-hidden="true"></span>{% endif %}
+            </a>
+
             <a href="{{ path('partner_feed_index') }}" class="sidebar-link{% if current_route starts with 'partner_feed' or current_route starts with 'partner_event' or current_route starts with 'app_cifs_feed' %} is-active{% endif %}" data-sidebar-link title="{{ 'sidebar.cifs_feed_title'|trans }}" {% if current_route starts with 'partner_feed' or current_route starts with 'partner_event' or current_route starts with 'app_cifs_feed' %}aria-current="page"{% endif %}>
                 <span class="sidebar-link-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" focusable="false"><path d="M12 3 2 8l10 5 10-5-10-5Zm-8 9 8 4 8-4M4 15l8 4 8-4"/></svg>
