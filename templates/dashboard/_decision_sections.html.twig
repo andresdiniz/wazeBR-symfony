@@ -1,0 +1,22 @@
+<div class="decision-board" data-decision-board>
+    <nav class="decision-nav" aria-label="Perguntas operacionais">
+        <a href="#decision-now">Agora</a>
+        <a href="#decision-change">O que piorou?</a>
+        <a href="#decision-action">O que exige ação?</a>
+    </nav>
+    <section id="decision-now" class="decision-section" aria-labelledby="decision-now-title">
+        <header class="decision-heading"><span class="decision-number">01</span><div><h2 id="decision-now-title">O que está acontecendo agora?</h2><p>Indicadores do recorte selecionado, mapa e ocorrências recentes. Os totais do período não são necessariamente ocorrências ativas.</p></div></header>
+        <div class="decision-slot" data-decision-slot="now"></div>
+    </section>
+    <section id="decision-change" class="decision-section" aria-labelledby="decision-change-title">
+        <header class="decision-heading"><span class="decision-number">02</span><div><h2 id="decision-change-title">O que piorou?</h2><p>Consulte os tempos atuais e históricos das rotas para identificar desvios em relação à referência.</p></div></header>
+        <p class="decision-notice">Comparação temporal indisponível nesta etapa: a diferença entre tempo atual e histórico não representa a variação entre duas janelas recentes.</p>
+        <div class="decision-slot" data-decision-slot="change"></div>
+    </section>
+    <section id="decision-action" class="decision-section" aria-labelledby="decision-action-title">
+        <header class="decision-heading"><span class="decision-number">03</span><div><h2 id="decision-action-title">O que exige ação?</h2><p>Revise os riscos observados e os horários de coleta. Ausência de coleta não confirma falha de integração nem situação normal.</p></div></header>
+        <div class="decision-slot decision-action-grid" data-decision-slot="action"></div>
+        <p class="decision-notice">Atendimento pendente: indicador indisponível até existir uma fonte de acompanhamento validada. Não é equivalente à quantidade de alertas ativos.</p>
+    </section>
+    <noscript><p class="decision-notice">Ative o JavaScript para agrupar os blocos nas três seções. Os dados completos permanecem disponíveis abaixo.</p></noscript>
+</div>

@@ -1,64 +1,26 @@
 {% extends 'base.html.twig' %}
-
 {% block stylesheets %}
     {{ parent() }}
+    {% if app.request.attributes.get('_route') == 'dashboard' %}
+        <link rel="stylesheet" href="{{ asset('css/pages/dashboard-decisions.css') }}">
+    {% endif %}
 {% endblock %}
-
-{% block body_class %}
-    app-body dashboard-layout
-{% endblock %}
-
-
+{% block body_class %}app-body dashboard-layout{% endblock %}
 {% block body %}
-    <div
-        class="app-shell"
-        data-layout="dashboard"
-    >
-
-        {# ========================================================
-           HEADER
-           ======================================================== #}
-
+    <div class="app-shell" data-layout="dashboard">
         {% include 'partials/header.html.twig' %}
-
-
-        {# ========================================================
-           ÁREA PRINCIPAL
-           ======================================================== #}
-
         <div class="app-layout">
-
-            {# ----------------------------------------------------
-               SIDEBAR
-               ---------------------------------------------------- #}
-
             {% include 'partials/sidebar.html.twig' %}
-
-
-            {# ----------------------------------------------------
-               CONTEÚDO
-               ---------------------------------------------------- #}
-
-            <main
-                id="main-content"
-                class="app-content"
-                data-main-content
-            >
-
-                {% block content %}
-                {% endblock %}
-
+            <main id="main-content" class="app-content" data-main-content>
+                {% if app.request.attributes.get('_route') == 'dashboard' %}
+                    {% include 'dashboard/_decision_sections.html.twig' %}
+                {% endif %}
+                {% block content %}{% endblock %}
             </main>
-
         </div>
-
-
-        {# ========================================================
-           FOOTER
-           ======================================================== #}
-
         {% include 'partials/footer.html.twig' %}
-
     </div>
-
+    {% if app.request.attributes.get('_route') == 'dashboard' %}
+        <script src="{{ asset('js/pages/dashboard-decisions.js') }}" defer></script>
+    {% endif %}
 {% endblock %}
