@@ -1,30 +1,38 @@
 # Irregularidades independentes de rota
 
-A importação usa a tabela waze_tvt_irregularity com parceiro obrigatório e rota/subrota nulas. O coletor app:fetch:waze:tvt não foi modificado: execute o comando complementar após ele ou agende-o separadamente, por parceiro, sem worker.
+A tabela waze_tvt_irregularity aceita ocorrências com parceiro obrigatório e rota/subrota nulas após aplicar Version20261112210000. Não há nova migration nesta integração ao agendador.
 
-## Implantação
-Faça backup e confira o banco/ambiente. Simule somente esta migration:
+## Agendamento automático
+MainSchedule contém exatamente uma tarefa a cada 2 minutos:
+
+```text
+app:fetch:waze:tvt-irregularities --no-interaction
+```
+
+Sem --partner, o comando agrupa os links TVT por parceiro e processa somente parceiros ativos com links retornados por findAllByType('TVT'). A opção --partner=ID continua disponível para execução manual filtrada. Não é necessário um cron separado para cada parceiro quando o Scheduler estiver executando esta tarefa.
+
+Cada parceiro tem sua própria trava e transação. A trava é a mesma da coleta TVT de rotas; a posição no Schedule não garante execução sequencial. Se estiver ocupada, aquele parceiro é ignorado e poderá ser processado no ciclo seguinte. Falhas independentes não impedem os demais parceiros, exceto quando o EntityManager é fechado por erro de persistência; nesse caso a execução termina com falha para evitar uso de estado inválido. A seleção de links ocorre uma vez por execução. O intervalo é o do Scheduler; não se usa lastTvtFetchAt para não conflitar com a frequência da coleta de rotas.
+
+## Implantação e validação
+Confira destino, backup e status antes de aplicar a migration anterior. Simule somente ela e revise o SQL:
 
 ```sh
 php bin/console doctrine:migrations:execute 'DoctrineMigrations\Version20261112210000' --up --dry-run --env=dev
 ```
 
-Após revisar o SQL, execute sem --dry-run. Não execute todas as migrations indiscriminadamente. Use o ambiente correto na hospedagem.
+Se ainda não aplicada, execute sem --dry-run após revisar. Use o ambiente correto na hospedagem.
 
-## Importação
-Substitua ID pelo ID interno do parceiro:
+Valide todos os parceiros sem gravar:
 
 ```sh
-php bin/console app:fetch:waze:tvt-irregularities --partner=ID --dry-run --env=dev
-php bin/console app:fetch:waze:tvt-irregularities --partner=ID --env=dev
+php bin/console app:fetch:waze:tvt-irregularities --dry-run --no-interaction --env=dev
 ```
 
-Para o JSON salvo, acrescente --file=caminho/feed-tvt.json. Arquivos locais nunca desativam registros ausentes, evitando que uma amostra antiga substitua o estado atual.
+Para arquivo local, --partner é obrigatório; acrescente --file=caminho/feed-tvt.json. Arquivo nunca desativa registros ausentes. O modo sem --partner nunca reutiliza um arquivo para vários parceiros.
 
-Lista vazia válida de todos os feeds consultados pode desativar irregularidades rootv1 ausentes; campo ausente impede essa desativação. Falha HTTP, JSON inválido ou geometria inválida interrompe o lote. O comando não respeita a frequência da coleta de rotas: configure explicitamente o intervalo no cron. A trava é compartilhada com a coleta TVT do mesmo parceiro.
+Depois do deploy, o processo do Scheduler já existente precisa ser reiniciado pelo procedimento habitual para carregar o código. Não inicie outro processo concorrente nem remova tarefas das outras fontes. Envio direto de e-mail não elimina o consumidor responsável pelo Scheduler. Esta alteração não modifica serviços ou processos no servidor.
 
-A identidade usa tipo, nome, origem, destino e geometria arredondada a 5 casas, ignorando tempos, jamLevel e id=0. Mudanças de geometria podem gerar nova identidade; não há garantia de identidade perfeita sem ID estável da fonte. Não foi criada uma constraint UNIQUE para escopos nulos; os comandos deste importador são serializados pela trava compartilhada. Outros gravadores também devem respeitar essa trava.
+## Persistência e limites
+JSON completo preservado em payload. A identidade rootv1 usa tipo, nome, origem, destino e geometria arredondada a 5 casas, sem tempos, jamLevel ou id=0. Mudanças de geometria podem criar nova identidade. Travas serializam os comandos; não existe constraint UNIQUE para escopos nulos, e outros gravadores devem respeitar essa trava.
 
-Horário do feed não é horário da ocorrência. reported_time, severity e ponto representativo não são inventados; os campos originais e a linha completa ficam no payload. Atualizações variáveis de tempo/jamLevel atualizam o mesmo registro quando a identidade é igual. Esta entrega não adapta telas que exigem JOIN com rota, nem corrige usersOnJams. Não inclui benchmark ou teste executado contra o banco da hospedagem.
-
-O rollback da migration aborta se houver registros sem rota: não apaga dados para forçar NOT NULL. Após aplicar, valide a tabela por partner_id e route_id IS NULL. Não use doctrine:schema:update --force.
+Lista vazia válida de todos os feeds pode desativar rootv1 ausentes. Campo ausente impede desativação. Resposta inválida interrompe o lote do parceiro. reported_time, severity e ponto representativo não são inventados. Telas que exigem JOIN com rota e usersOnJams não foram adaptados. Não foram executados benchmark nem testes contra a hospedagem. O rollback da migration anterior aborta se houver registros sem rota; não apaga dados para forçar NOT NULL.

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 namespace App\Command;
 
+use App\Entity\Partner;
 use App\Entity\WazeTvtIrregularity;
 use App\Repository\PartnerRepository;
 use App\Repository\PartnerApiLinkRepository;
@@ -16,34 +17,82 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Lock\LockFactory;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-#[AsCommand(name: 'app:fetch:waze:tvt-irregularities', description: 'Importa irregularities da raiz do feed TVT, sem criar rotas fictícias.')]
+#[AsCommand(name: 'app:fetch:waze:tvt-irregularities', description: 'Importa irregularities da raiz dos feeds TVT dos parceiros ativos.')]
 final class ImportTvtRootIrregularitiesCommand extends Command
 {
     public function __construct(private readonly PartnerRepository $partners, private readonly PartnerApiLinkRepository $links, private readonly EntityManagerInterface $em, private readonly HttpClientInterface $http, private readonly LockFactory $locks) { parent::__construct(); }
     protected function configure(): void
     {
-        $this->addOption('partner', null, InputOption::VALUE_REQUIRED, 'ID interno obrigatório do parceiro.')
-            ->addOption('file', null, InputOption::VALUE_REQUIRED, 'Arquivo JSON local; modo de importação sem desativação de registros ausentes.')
+        $this->addOption('partner', null, InputOption::VALUE_REQUIRED, 'ID interno opcional; omitido processa parceiros ativos com links TVT.')
+            ->addOption('file', null, InputOption::VALUE_REQUIRED, 'JSON local; exige --partner e não desativa ausentes.')
             ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Valida e conta sem gravar no banco.');
     }
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        $id = filter_var($input->getOption('partner'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-        if ($id === false || $id === null || !($partner = $this->partners->find($id))) { $io->error('Informe --partner com um ID interno existente.'); return Command::INVALID; }
-        if (!$partner->isActive()) { $io->error('O parceiro está inativo.'); return Command::INVALID; }
+        $rawId = $input->getOption('partner');
+        $file = $input->getOption('file');
+        $id = null;
+        if ($rawId !== null) {
+            $id = filter_var($rawId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            if ($id === false) { $io->error('--partner deve ser um ID interno positivo.'); return Command::INVALID; }
+        }
+        if ($file !== null && $id === null) { $io->error('--file exige --partner para definir o vínculo do arquivo.'); return Command::INVALID; }
+        $groups = [];
+        try {
+            if ($file !== null) {
+                $groups[$id] = [];
+            } else {
+                foreach ($this->links->findAllByType('TVT') as $link) {
+                    $partner = $link->getPartner();
+                    if ($partner === null || $partner->getId() === null || !$partner->isActive()) continue;
+                    if ($id !== null && $partner->getId() !== $id) continue;
+                    $groups[$partner->getId()][] = $link;
+                }
+                if ($id !== null) {
+                    $partner = $this->partners->find($id);
+                    if ($partner === null || !$partner->isActive()) { $io->error('Parceiro inexistente ou inativo.'); return Command::INVALID; }
+                }
+            }
+        } catch (\Throwable $exception) {
+            $io->error('Não foi possível carregar parceiros e links TVT: ' . $exception::class);
+            return Command::FAILURE;
+        }
+        if ($groups === []) { $io->note('Nenhum parceiro ativo com link TVT para processar.'); return Command::SUCCESS; }
+        $io->title('Importação de irregularidades TVT');
+        $io->note(sprintf('%d parceiro(s) selecionado(s).', count($groups)));
+        $failures = 0;
+        foreach ($groups as $partnerId => $links) {
+            if (!$this->em->isOpen()) { $io->error('EntityManager fechado após falha; execução interrompida para não processar outros parceiros em estado inválido.'); return Command::FAILURE; }
+            try {
+                $partner = $this->partners->find($partnerId);
+                if ($partner === null || !$partner->isActive()) { $io->note(sprintf('Parceiro %d indisponível ou inativo; ignorado.', $partnerId)); continue; }
+                $io->section(sprintf('Parceiro %d — %s', $partnerId, $partner->getName()));
+                $result = $this->importPartner($partner, $links, $file, (bool) $input->getOption('dry-run'), $io);
+                if ($result !== Command::SUCCESS) ++$failures;
+            } catch (\Throwable $exception) {
+                ++$failures;
+                $io->error(sprintf('Parceiro %d não processado: %s.', $partnerId, $exception::class));
+                if ($this->em->isOpen()) $this->em->clear();
+            }
+        }
+        if ($failures > 0) { $io->error(sprintf('%d parceiro(s) com falha. Os demais lotes confirmados foram preservados.', $failures)); return Command::FAILURE; }
+        $io->success('Execução concluída. Parceiros com trava ocupada foram ignorados e poderão ser processados no próximo ciclo.');
+        return Command::SUCCESS;
+    }
+    private function importPartner(Partner $partner, array $links, ?string $file, bool $dryRun, SymfonyStyle $io): int
+    {
+        $id = $partner->getId();
         $lock = $this->locks->createLock('waze:tvt:partner:' . $id, 600.0);
-        if (!$lock->acquire()) { $io->warning('Outra coleta TVT está executando para este parceiro.'); return Command::FAILURE; }
+        if (!$lock->acquire()) { $io->note('Outra coleta TVT detém a trava deste parceiro; ignorado neste ciclo.'); return Command::SUCCESS; }
         $transaction = false;
         try {
             $payloads = [];
-            $file = $input->getOption('file');
             if ($file !== null) {
                 if (!is_file($file) || !is_readable($file) || filesize($file) > 20000000) throw new \RuntimeException('Arquivo inválido, inacessível ou maior que 20 MB.');
                 $payloads[] = json_decode((string) file_get_contents($file), true, 512, JSON_THROW_ON_ERROR);
             } else {
-                foreach ($this->links->findAllByType('TVT') as $link) {
-                    if ($link->getPartner()?->getId() !== $partner->getId()) continue;
+                foreach ($links as $link) {
                     $url = (string) $link->getUrl();
                     if (!in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'], true)) throw new \RuntimeException('Protocolo do link TVT inválido.');
                     $payloads[] = $this->http->request('GET', $url, ['timeout' => 30, 'max_duration' => 60, 'headers' => ['Accept' => 'application/json']])->toArray();
@@ -66,7 +115,7 @@ final class ImportTvtRootIrregularitiesCommand extends Command
                 }
             }
             $io->table(['Parceiro', 'Recebidas', 'Identidades distintas', 'Pode desativar ausentes'], [[$id, $received, count($items), $authoritative ? 'sim' : 'não']]);
-            if ($input->getOption('dry-run')) { $io->success('Simulação concluída; nenhum registro foi gravado ou desativado.'); return Command::SUCCESS; }
+            if ($dryRun) { $io->note('Simulação: nenhum registro gravado ou desativado.'); return Command::SUCCESS; }
             $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
             $repository = $this->em->getRepository(WazeTvtIrregularity::class);
             $existing = $repository->createQueryBuilder('i')->where('i.partner = :partner')->andWhere('i.route IS NULL')->andWhere('i.subRoute IS NULL')->andWhere('i.contentHash LIKE :prefix')->setParameter('partner', $partner)->setParameter('prefix', 'rootv1:%')->getQuery()->getResult();
@@ -91,11 +140,11 @@ final class ImportTvtRootIrregularitiesCommand extends Command
             $lock->refresh();
             $this->em->flush(); $this->em->getConnection()->commit(); $transaction = false;
             $io->table(['Novas', 'Atualizadas', 'Reativadas', 'Desativadas'], [[$created, $updated, $reactivated, $deactivated]]);
-            $io->success('Irregularidades da raiz importadas. Geometria, tempos, jamLevel e ID da fonte preservados no payload.');
             return Command::SUCCESS;
         } catch (\Throwable $exception) {
             if ($transaction && $this->em->getConnection()->isTransactionActive()) $this->em->getConnection()->rollBack();
-            $io->error('Importação não concluída: ' . $exception::class . '. Nenhum lote pendente foi confirmado. Confira schema, conectividade e JSON; simule antes de executar.');
+            if ($this->em->isOpen()) $this->em->clear();
+            $io->error(sprintf('Importação do parceiro %d não concluída: %s. Nenhum lote pendente foi confirmado.', $id, $exception::class));
             return Command::FAILURE;
         } finally { $lock->release(); }
     }
