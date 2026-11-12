@@ -1,16 +1,19 @@
 <div class="decision-board" data-decision-board>
     <nav class="decision-nav" aria-label="Perguntas operacionais">
-        <a href="#decision-now">Agora</a>
-        <a href="#decision-change">O que piorou?</a>
-        <a href="#decision-action">O que exige ação?</a>
+        <a href="#decision-now">Agora</a><a href="#decision-change">O que piorou?</a><a href="#decision-action">O que exige ação?</a>
     </nav>
     <section id="decision-now" class="decision-section" aria-labelledby="decision-now-title">
         <header class="decision-heading"><span class="decision-number">01</span><div><h2 id="decision-now-title">O que está acontecendo agora?</h2><p>Indicadores do recorte selecionado, mapa e ocorrências recentes. Os totais do período não são necessariamente ocorrências ativas.</p></div></header>
         <div class="decision-slot" data-decision-slot="now"></div>
     </section>
     <section id="decision-change" class="decision-section" aria-labelledby="decision-change-title">
-        <header class="decision-heading"><span class="decision-number">02</span><div><h2 id="decision-change-title">O que piorou?</h2><p>Consulte os tempos atuais e históricos das rotas para identificar desvios em relação à referência.</p></div></header>
-        <p class="decision-notice">Comparação temporal indisponível nesta etapa: a diferença entre tempo atual e histórico não representa a variação entre duas janelas recentes.</p>
+        <header class="decision-heading"><span class="decision-number">02</span><div><h2 id="decision-change-title">O que piorou?</h2><p>Atraso médio das mesmas rotas em duas janelas consecutivas de igual duração. A janela recente termina no último marco de dois minutos, em UTC.</p></div></header>
+        <div data-period-comparison data-endpoint="{{ path('dashboard_api_change') }}">
+            <label>Comparar janelas de <select data-comparison-minutes aria-label="Duração de cada janela"><option value="30">30 minutos</option><option value="60">60 minutos</option><option value="180">180 minutos</option></select></label>
+            <button type="button" class="dashboard-button" data-comparison-refresh>Atualizar comparação</button>
+            <div class="decision-notice" data-comparison-output role="status" aria-live="polite">Carregando comparação entre períodos…</div>
+            <p class="decision-notice">Atraso = máximo entre tempo observado menos histórico e zero. Cada rota tem o mesmo peso. Exige observações em dois intervalos distintos de 10 minutos por janela; isso não garante cobertura contínua. Variações de até 1 segundo são estáveis. Base anterior zero não gera percentual. O seletor de período geral não altera estas janelas recentes. Novos bloqueios ainda não são comparados.</p>
+        </div>
         <div class="decision-slot" data-decision-slot="change"></div>
     </section>
     <section id="decision-action" class="decision-section" aria-labelledby="decision-action-title">
@@ -18,5 +21,6 @@
         <div class="decision-slot decision-action-grid" data-decision-slot="action"></div>
         <p class="decision-notice">Atendimento pendente: indicador indisponível até existir uma fonte de acompanhamento validada. Não é equivalente à quantidade de alertas ativos.</p>
     </section>
-    <noscript><p class="decision-notice">Ative o JavaScript para agrupar os blocos nas três seções. Os dados completos permanecem disponíveis abaixo.</p></noscript>
+    <noscript><p class="decision-notice">Ative o JavaScript para agrupar os blocos e carregar a comparação. Os dados completos permanecem disponíveis abaixo.</p></noscript>
 </div>
+<script src="{{ asset('js/pages/dashboard-period-comparison.js') }}" defer></script>
