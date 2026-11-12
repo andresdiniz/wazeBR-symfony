@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous" />
     <link rel="stylesheet" href="{{ asset('css/pages/routes.css') }}">
     <link rel="stylesheet" href="{{ asset('css/pages/routes-enhancements.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/pages/routes-overview.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -22,7 +23,6 @@
 
     <div class="routes-container">
 
-        {# ── Cabeçalho ──────────────────────────────────────────── #}
         <header class="routes-page-header">
             <div>
                 <span class="routes-eyebrow"><i></i> {{ 'Monitoramento de rotas'|trans({}, 'routes_ui') }}</span>
@@ -46,7 +46,6 @@
             </div>
         </header>
 
-        {# ── KPIs ──────────────────────────────────────────────── #}
         <section class="routes-stats-grid" aria-label="{{ 'Indicadores de rotas'|trans({}, 'routes_ui') }}">
             <article class="routes-stat">
                 <span class="routes-stat-icon">⇉</span>
@@ -74,7 +73,6 @@
             </article>
         </section>
 
-        {# ── Filtros ──────────────────────────────────────────── #}
         <section class="routes-filter-panel" aria-label="{{ 'Filtros de rotas'|trans({}, 'routes_ui') }}">
             <form class="routes-filter-form" data-routes-filter-form>
                 <label class="routes-filter-field routes-filter-field--grow">
@@ -107,10 +105,103 @@
             <p class="routes-filter-feedback" data-routes-feedback role="status" aria-live="polite"></p>
         </section>
 
-        {# ── Layout principal ─────────────────────────────────── #}
+        <section class="routes-overview" data-routes-overview
+                 data-overview-url="{{ path('routes_api_data') }}">
+            <header class="routes-overview-header">
+                <div>
+                    <span class="routes-overview-kicker">{{ 'Central de rotas'|trans({}, 'routes_ui') }}</span>
+                    <h2>{{ 'Situação agora'|trans({}, 'routes_ui') }}</h2>
+                </div>
+                <span class="routes-overview-updated">
+                    <i></i>
+                    {{ 'Atualizado em'|trans({}, 'routes_ui') }}
+                    <time data-overview-clock>{{ "now"|date('H:i') }}</time>
+                </span>
+            </header>
+
+            <div class="routes-overview-grid" data-overview-grid>
+                {% for route in overview.routes %}
+                    {% set incidentCount = route.incidentCount|default(0) %}
+                    <article class="route-card route-card--{{ route.statusClass }}"
+                             data-route-card
+                             data-route-id="{{ route.id }}"
+                             data-route-status="{{ route.statusClass }}">
+                        <header class="route-card-header">
+                            <div class="route-card-title">
+                                <strong>{{ route.name }}</strong>
+                                <small>
+                                    {% if route.from and route.to %}
+                                        {{ route.from }} → {{ route.to }}
+                                    {% elseif route.city %}
+                                        {{ route.city }}
+                                    {% endif %}
+                                </small>
+                            </div>
+                            <span class="route-card-badge route-card-badge--{{ route.statusClass }}">
+                                {{ route.statusLabel }}
+                            </span>
+                        </header>
+
+                        <div class="route-card-metrics">
+                            <div class="route-card-metric">
+                                <span>{{ 'Tempo estimado'|trans({}, 'routes_ui') }}</span>
+                                <strong data-route-time-value>{{ route.timeLabel|default('—') }}</strong>
+                            </div>
+                            <div class="route-card-metric">
+                                <span>{{ 'vs. habitual'|trans({}, 'routes_ui') }}</span>
+                                <strong data-route-delay-value>{{ route.delayLabel|default('—') }}</strong>
+                                {% if route.delayPercent %}
+                                    <small data-route-delay-percent-value>{{ route.delayPercent }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="route-card-incidents">
+                            {% if route.incidents|length > 0 %}
+                                <span class="route-card-incidents-title">{{ 'Últimos incidentes'|trans({}, 'routes_ui') }}</span>
+                                <ul>
+                                    {% for incident in route.incidents %}
+                                        <li>
+                                            <strong>{{ incident.type|default('Incidente') }}</strong>
+                                            <span>{{ incident.street|default(incident.city|default('Local não informado')) }}</span>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <span class="route-card-incidents-empty">{{ 'Sem incidentes recentes'|trans({}, 'routes_ui') }}</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="route-card-map-wrapper">
+                            <svg class="route-card-map"
+                                 data-route-mini-map
+                                 data-route-path="{{ route.miniMapPath|json_encode|e('html_attr') }}"
+                                 viewBox="0 0 240 110"
+                                 role="img"
+                                 aria-label="{{ 'Mini-mapa da rota'|trans({}, 'routes_ui') }}">
+                            </svg>
+                        </div>
+
+                        <footer class="route-card-footer">
+                            <a href="{{ path('routes_show', { id: route.id }) }}" class="route-card-action">
+                                {{ 'Ver detalhes'|trans({}, 'routes_ui') }}
+                            </a>
+                            <span class="route-card-incidents-count">
+                                {{ incidentCount }} {{ 'incidente'|trans({}, 'routes_ui') }}{{ incidentCount != 1 ? 's' : '' }}
+                            </span>
+                        </footer>
+                    </article>
+                {% else %}
+                    <div class="routes-overview-empty">
+                        <strong>{{ 'Nenhuma rota monitorada'|trans({}, 'routes_ui') }}</strong>
+                        <small>{{ 'Cadastre ou ative rotas para acompanhar a situação em tempo real.'|trans({}, 'routes_ui') }}</small>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+
         <div class="routes-layout">
 
-            {# ── Lista ──────────────────────────────────────────── #}
             <section class="routes-panel routes-list-panel">
                 <header class="routes-panel-header">
                     <div>
@@ -182,7 +273,6 @@
                 </div>
             </section>
 
-            {# ── Mapa ──────────────────────────────────────────── #}
             <section class="routes-panel routes-map-panel">
                 <header class="routes-panel-header">
                     <div>
@@ -206,7 +296,6 @@
 
     </div>
 
-    {# Payload JSON pro JS — escapado pra não quebrar com </script> #}
     <script type="application/json" data-routes-payload>
         {{ map|json_encode(constant('JSON_HEX_TAG') b-or constant('JSON_HEX_AMP') b-or constant('JSON_HEX_APOS') b-or constant('JSON_HEX_QUOT'))|raw }}
     </script>
@@ -218,4 +307,5 @@
     {{ parent() }}
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="{{ asset('js/routes-overview.js') }}" defer></script>
 {% endblock %}
