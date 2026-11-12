@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ title }} | WazeBR</title></head>
+<body style="margin:0;padding:0;background-color:#edf2f6;color:#173344;font-family:Arial,Helvetica,sans-serif;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">{{ title }} — {{ street ?: 'Via não informada' }} · {{ city ?: 'Cidade não informada' }}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#edf2f6;"><tr><td align="center" style="padding:28px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;background-color:#ffffff;border:1px solid #d7e1e8;border-radius:16px;">
+<tr><td style="padding:25px 28px;background-color:#103e50;color:#ffffff;border-radius:16px 16px 0 0;">
+<p style="margin:0;font-size:24px;font-weight:bold;">WazeBR</p><p style="margin:7px 0 0;color:#d3e7ec;font-size:12px;line-height:1.5;">Central de monitoramento · {{ partner_name }}</p>
+</td></tr>
+<tr><td style="padding:28px;">
+<p style="margin:0 0 12px;color:#9f2d20;font-size:11px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">Alerta operacional</p>
+<h1 style="margin:0 0 14px;font-size:25px;line-height:1.3;color:#173344;">{{ title }}</h1>
+<p style="margin:0 0 24px;font-size:13px;line-height:1.7;color:#526575;">{{ when_label }}: <strong>{{ when_text }}</strong> · Horário de Brasília</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f3f7fa;border:1px solid #d7e1e8;border-radius:10px;"><tr><td style="padding:20px;">
+<h2 style="margin:0 0 16px;font-size:16px;color:#173344;">Localização da ocorrência</h2>
+<p style="margin:0 0 4px;color:#526575;font-size:11px;">VIA</p><p style="margin:0 0 15px;font-size:16px;font-weight:bold;line-height:1.5;color:#173344;">{{ street ?: 'Via não informada' }}</p>
+<p style="margin:0 0 4px;color:#526575;font-size:11px;">CIDADE</p><p style="margin:0 0 15px;font-size:14px;line-height:1.5;color:#173344;">{{ city ?: 'Cidade não informada' }}</p>
+<p style="margin:0 0 4px;color:#526575;font-size:11px;">LATITUDE, LONGITUDE</p><p style="margin:0;font-size:13px;line-height:1.6;font-family:Consolas,monospace;color:#173344;">{{ coordinates ?: 'Coordenadas não disponíveis' }}</p>
+</td></tr></table>
+{% if waze_url %}
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;"><tr><td bgcolor="#087b8f" style="border-radius:8px;"><a href="{{ waze_url }}" style="display:inline-block;padding:15px 24px;border:1px solid #087b8f;border-radius:8px;color:#ffffff;font-size:14px;font-weight:bold;text-decoration:none;">Abrir localização no Waze</a></td></tr></table>
+<p style="margin:14px 0 6px;font-size:12px;line-height:1.6;color:#526575;">Se o botão não funcionar, copie o endereço abaixo:</p>
+<p style="margin:0;font-size:12px;line-height:1.7;word-break:break-all;overflow-wrap:anywhere;"><a href="{{ waze_url }}" style="color:#086c80;">{{ waze_url }}</a></p>
+{% else %}
+<p style="margin:18px 0 0;padding:14px;border:1px solid #d7e1e8;border-radius:8px;font-size:13px;line-height:1.6;color:#526575;">Link de mapa indisponível: a fonte não forneceu coordenadas válidas.</p>
+{% endif %}
+<h2 style="margin:26px 0 10px;font-size:16px;color:#173344;">Descrição recebida</h2>
+<p style="margin:0;font-size:14px;line-height:1.8;color:#334f60;">{{ description|nl2br }}</p>
+<p style="margin:24px 0 0;padding:14px 16px;background-color:#fff6e6;border:1px solid #eed3a1;border-radius:8px;color:#74501a;font-size:12px;line-height:1.7;">Ocorrência reportada pela fonte Waze. Valide com a operação antes de acionar recursos. O mapa mostra a situação disponível quando aberto; não é uma captura do momento do alerta.</p>
+<p style="margin:20px 0 0;padding-top:16px;border-top:1px solid #e1e8ee;color:#526575;font-size:11px;line-height:1.7;overflow-wrap:anywhere;">Parceiro: {{ partner_name }}<br>Identificador da ocorrência: {{ alert_uuid }}</p>
+</td></tr></table>
+<p style="margin:18px 0 0;font-size:11px;color:#526575;line-height:1.6;">Mensagem automática do WazeBR · Notificação de ocorrência</p>
+</td></tr></table>
+</body>
+</html>
