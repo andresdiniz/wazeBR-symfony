@@ -22,6 +22,7 @@
         {% include 'partials/footer.html.twig' %}
     </div>
     {% if app.request.attributes.get('_route') == 'dashboard' %}
+        <script src="{{ asset('js/pages/dashboard-chart-semantics.js') }}" defer></script>
         <script src="{{ asset('js/pages/dashboard-decisions.js') }}" defer></script>
     {% endif %}
 {% endblock %}
