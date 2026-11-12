@@ -1,0 +1,19 @@
+{
+    "incidents": [
+        {
+            "id": "9b4904ab-f207-48f7-828e-7ca64d631922",
+            "creationtime": "2026-11-10T22:04:54+00:00",
+            "updatetime": "2026-11-10T22:04:54+00:00",
+            "type": "HAZARD",
+            "subtype": "HAZARD_ON_SHOULDER_CAR_STOPPED",
+            "street": "CNL-430",
+            "description": null,
+            "city": null,
+            "polyline": "-20.634744 -43.821619",
+            "direction": "BOTH_DIRECTIONS",
+            "starttime": "2026-11-10T22:04:54+00:00",
+            "endtime": null,
+            "reference": "Conselheiro Lafaiete"
+        }
+    ]
+}
