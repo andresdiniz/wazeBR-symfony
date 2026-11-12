@@ -1,0 +1,59 @@
+{% extends 'admin/layout.html.twig' %}
+{% block title %}{{ partners_table ? 'Parceiros' : 'Usuários' }} — Administração{% endblock %}
+{% block stylesheets %}{{ parent() }}<link rel="stylesheet" href="{{ asset('css/pages/admin-paged-table.css') }}">{% endblock %}
+{% block content %}
+<div class="admin-page admin-paged-table">
+    <header class="admin-page__header">
+        <div><h1 class="admin-page__title">{{ partners_table ? 'Parceiros' : 'Usuários' }}</h1><p class="admin-page__subtitle">{{ total }} resultado(s) dentro do seu escopo de acesso. Use os filtros para refinar a listagem.</p></div>
+        <a class="admin-btn admin-btn--primary" href="{{ path(new_route, not partners_table and filters.partner > 0 ? {partner: filters.partner} : {}) }}">{{ partners_table ? '+ Novo parceiro' : '+ Novo usuário' }}</a>
+    </header>
+    <form method="get" action="{{ path(list_route) }}" class="admin-table-filters">
+        <label>Buscar<input type="search" name="q" value="{{ filters.q }}" maxlength="200" placeholder="{{ partners_table ? 'Nome, código, cidade ou UF' : 'Nome, e-mail, telefone ou parceiro' }}"></label>
+        <label>Status<select name="status">{% for value, label in {'all':'Todos','active':'Ativos','inactive':'Inativos'} %}<option value="{{ value }}" {{ filters.status == value ? 'selected' }}>{{ label }}</option>{% endfor %}</select></label>
+        <label>Cidade<input name="city" value="{{ filters.city }}" maxlength="200" placeholder="Nome exato da cidade"></label>
+        {% if not partners_table %}
+            <label>Perfil<select name="role"><option value="">Todos os perfis permitidos</option>{% for value, label in role_labels %}<option value="{{ value }}" {{ filters.role == value ? 'selected' }}>{{ label }}</option>{% endfor %}</select></label>
+            {% if partner_locked %}<input type="hidden" name="partner" value="{{ filters.partner }}"><p class="admin-table-scope">Parceiro restrito ao seu vínculo.</p>{% else %}<label>ID do parceiro<input type="number" name="partner" min="0" value="{{ filters.partner ?: '' }}" placeholder="Todos"></label>{% endif %}
+        {% endif %}
+        <label>Ordenar por<select name="sort">{% for value in sorts %}<option value="{{ value }}" {{ filters.sort == value ? 'selected' }}>{{ {'name':'Nome','code':'Código','city':'Cidade','status':'Status','email':'E-mail','created':'Cadastro'}[value] }}</option>{% endfor %}</select></label>
+        <label>Ordem<select name="dir"><option value="ASC" {{ filters.dir == 'ASC' ? 'selected' }}>Crescente</option><option value="DESC" {{ filters.dir == 'DESC' ? 'selected' }}>Decrescente</option></select></label>
+        <label>Por página<select name="per_page">{% for size in [10,25,50,100] %}<option value="{{ size }}" {{ filters.per_page == size ? 'selected' }}>{{ size }}</option>{% endfor %}</select></label>
+        <div class="admin-table-filter-actions"><button class="admin-btn admin-btn--primary" type="submit">Aplicar filtros</button><a class="admin-btn admin-btn--ghost" href="{{ path(list_route, partner_locked ? {partner: filters.partner} : {}) }}">Limpar</a></div>
+    </form>
+    {% if rows is empty %}
+        <div class="admin-empty"><h2>Nenhum resultado encontrado</h2><p>Não há registros acessíveis com estes filtros. Limpe ou ajuste os critérios.</p></div>
+    {% else %}
+        <div class="admin-card admin-card--table"><div class="admin-table-wrap" tabindex="0" role="region" aria-label="Tabela de resultados; role horizontalmente em telas pequenas">
+            <table class="admin-table"><caption class="admin-table-caption">Mostrando {{ first }}–{{ last }} de {{ total }}</caption><thead><tr>
+                <th scope="col">{{ partners_table ? 'Parceiro' : 'Usuário' }}</th><th scope="col">Status</th>
+                {% if partners_table %}<th scope="col">Local</th><th scope="col">Coleta</th><th scope="col">Usuários</th>{% else %}<th scope="col">Perfil</th><th scope="col">Parceiro</th><th scope="col">Contato</th>{% endif %}
+                <th scope="col">Ações</th>
+            </tr></thead><tbody>
+            {% for row in rows %}<tr>
+                <td><strong>{{ row.name ?: 'Sem nome' }}</strong><small>{{ partners_table ? row.code : row.email }}</small></td>
+                <td><span class="admin-status-badge {{ row.is_active ? 'is-active' : 'is-inactive' }}">{{ row.is_active ? 'Ativo' : 'Inativo' }}</span></td>
+                {% if partners_table %}
+                    <td>{{ row.city ?: 'Não informada' }}{% if row.state %}/{{ row.state }}{% endif %}</td>
+                    <td>{{ row.fetch_frequency }} {{ {'seconds':'segundos','minutes':'minutos','hours':'horas'}[row.fetch_frequency_unit]|default(row.fetch_frequency_unit) }}</td>
+                    <td><a href="{{ path('admin_users_index', {partner: row.id}) }}">{{ row.users_count }}</a></td>
+                    <td><div class="admin-actions"><a class="admin-btn admin-btn--ghost" href="{{ path('admin_partner_edit', {id: row.id}) }}">Editar</a><a class="admin-btn admin-btn--ghost" href="{{ path('admin_partner_data_index', {id: row.id}) }}">Dados e integrações</a></div></td>
+                {% else %}
+                    <td>{% for role in row.roles %}<span class="admin-badge">{{ role_labels[role]|default(role) }}</span>{% endfor %}</td>
+                    <td>{{ row.partner_name ?: 'Sem parceiro' }}</td><td>{{ row.phone ?: 'Não informado' }}</td>
+                    <td>{% if row.can_edit %}<a class="admin-btn admin-btn--ghost" href="{{ path('admin_users_edit', {id: row.id}|merge(filters.partner > 0 ? {partner: filters.partner} : {})) }}">Editar</a>{% else %}<span>Somente leitura</span>{% endif %}</td>
+                {% endif %}
+            </tr>{% endfor %}
+            </tbody></table>
+        </div></div>
+    {% endif %}
+    <nav class="admin-table-pagination" aria-label="Paginação">
+        <span>{{ first }}–{{ last }} de {{ total }} · Página {{ page }} de {{ pages }}</span>
+        <div>
+            {% if page > 1 %}<a href="{{ path(list_route, filters|merge({page:1})) }}">Primeira</a><a rel="prev" href="{{ path(list_route, filters|merge({page:page-1})) }}">Anterior</a>{% endif %}
+            {% for number in max(1,page-2)..min(pages,page+2) %}{% if number == page %}<span aria-current="page">{{ number }}</span>{% else %}<a href="{{ path(list_route, filters|merge({page:number})) }}">{{ number }}</a>{% endif %}{% endfor %}
+            {% if page < pages %}<a rel="next" href="{{ path(list_route, filters|merge({page:page+1})) }}">Próxima</a><a href="{{ path(list_route, filters|merge({page:pages})) }}">Última</a>{% endif %}
+        </div>
+    </nav>
+    <p class="admin-table-scope">Criação e edição usam os formulários existentes. Ativação, desativação e demais ações permanecem nas telas de edição; a listagem não envia alterações automaticamente.</p>
+</div>
+{% endblock %}
