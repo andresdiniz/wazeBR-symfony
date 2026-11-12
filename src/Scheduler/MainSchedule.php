@@ -29,6 +29,7 @@ final class MainSchedule implements ScheduleProviderInterface
             // O comando tem lock por parceiro e não duplica snapshots com o mesmo last_seen_at.
             ->add(RecurringMessage::every('1 minute', new RunCommandMessage('app:jams:forecast --no-interaction')))
             ->add(RecurringMessage::every('2 minutes', new RunCommandMessage('app:fetch:waze:tvt --no-interaction')))
+            ->add(RecurringMessage::every('2 minutes', new RunCommandMessage('app:fetch:waze:tvt-irregularities')))
             ->add(RecurringMessage::every('10 minutes', new RunCommandMessage('app:fetch:cemaden:hidro --no-interaction')))
             ->add(RecurringMessage::every('10 minutes', new RunCommandMessage('app:fetch:cemaden:pluviometric --no-interaction')))
             ->add(RecurringMessage::every('5 minutes', new RunCommandMessage('app:weather:fetch-observations --no-interaction')))
