@@ -1,1 +1,42 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace Doctrine\Migrations;\n\nuse Doctrine\DBAL\Schema\Schema;\nuse Doctrine\Migrations\AbstractMigration;\n\nfinal class Version20261107120000 extends AbstractMigration\n{\n    public function getDescription(): string\n    {\n        return 'Create password reset token table';\n    }\n\n    public function up(Schema $schema): void\n    {\n        $table = $schema->createTable('password_reset_token');\n\n        $table->addColumn('id', 'integer', [\n            'autoincrement' => true,\n        ]);\n\n        $table->addColumn('user_id', 'integer');\n        $table->addColumn('selector', 'string', [\n            'length' => 32,\n        ]);\n        $table->addColumn('hashed_token', 'string', [\n            'length' => 255,\n        ]);\n        $table->addColumn('expires_at', 'datetime_immutable');\n        $table->addColumn('used_at', 'datetime_immutable', [\n            'notnull' => false,\n        ]);\n        $table->addColumn('created_at', 'datetime_immutable');\n\n        $table->setPrimaryKey(['id']);\n        $table->addUniqueIndex(['selector'], 'uniq_password_reset_token_selector');\n        $table->addIndex(['user_id'], 'idx_password_reset_token_user_id');\n        $table->addIndex(['expires_at'], 'idx_password_reset_token_expires_at');\n\n        $table->addForeignKeyConstraint(\n            'users',\n            ['user_id'],\n            ['id'],\n            ['onDelete' => 'CASCADE'],\n            'fk_password_reset_token_user_id',\n        );\n    }\n\n    public function down(Schema $schema): void\n    {\n        $schema->dropTable('password_reset_token');\n    }\n}\n
+<?php
+
+declare(strict_types=1);
+
+namespace DoctrineMigrations;
+
+use Doctrine\DBAL\Schema\Schema;
+use Doctrine\Migrations\AbstractMigration;
+
+final class Version20261107120000CreatePasswordResetToken extends AbstractMigration
+{
+    public function getDescription(): string
+    {
+        return 'Create password_reset_token matching the PasswordResetToken entity';
+    }
+
+    public function up(Schema $schema): void
+    {
+        $this->abortIf($schema->hasTable('password_reset_token'), 'password_reset_token already exists; inspect its schema and migration history before proceeding.');
+        $this->abortIf(!$schema->hasTable('user'), 'The user table must exist before creating password_reset_token.');
+
+        $table = $schema->createTable('password_reset_token');
+        $table->addColumn('id', 'integer', ['autoincrement' => true]);
+        $table->addColumn('user_id', 'integer');
+        $table->addColumn('selector', 'string', ['length' => 32]);
+        $table->addColumn('hashed_token', 'string', ['length' => 255]);
+        $table->addColumn('expires_at', 'datetime_immutable');
+        $table->addColumn('requested_at', 'datetime_immutable');
+        $table->addColumn('used_at', 'datetime_immutable', ['notnull' => false]);
+        $table->setPrimaryKey(['id']);
+        $table->addUniqueIndex(['selector'], 'uniq_password_reset_token_selector');
+        $table->addIndex(['selector'], 'idx_password_reset_token_selector');
+        $table->addIndex(['user_id'], 'idx_password_reset_token_user_id');
+        $table->addIndex(['expires_at'], 'idx_password_reset_token_expires_at');
+        $table->addForeignKeyConstraint('user', ['user_id'], ['id'], ['onDelete' => 'CASCADE'], 'fk_password_reset_token_user_id');
+    }
+
+    public function down(Schema $schema): void
+    {
+        $schema->dropTable('password_reset_token');
+    }
+}
