@@ -5,706 +5,276 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Partner;
-use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 
-/**
- * Comparação entre duas rotas TVT.
- *
- * Retorna o payload necessário pra tela /routes/compare, incluindo:
- *  - dados básicos + último snapshot das duas rotas
- *  - timeline sobreposta (7 dias)
- *  - heatmap diferencial dia×hora (ratioA - ratioB)
- *  - por hora do dia e por dia da semana (lado a lado)
- *  - trechos comuns (sub-rotas com mesmo from/to ou bbox próximo)
- *  - alertas cruzados: em ambas, só em A, só em B
- */
 final class RouteCompareRepository
 {
-    private const WINDOW_DAYS     = 30;
-    private const TIMELINE_DAYS   = 7;
-    private const ALERT_BUFFER_M  = 60.0;
-    private const ALERT_DAYS      = 7;
+    public function __construct(private readonly Connection $db) {}
 
-    public function __construct(private readonly Connection $connection)
-    {
-    }
-
-    /**
-     * @return array{
-     *   a:array, b:array,
-     *   timeline:list<array>,
-     *   heatmapDiff:list<array>,
-     *   byHour:list<array>,
-     *   byDow:list<array>,
-     *   commonSubRoutes:list<array>,
-     *   alerts:array{shared:list,onlyA:list,onlyB:list},
-     *   stats:array,
-     *   map:array
-     * }|null
-     */
-    public function compare(?Partner $partner, int $aId, int $bId): ?array
+    public function compare(?Partner $p, int $aId, int $bId, array $o = []): ?array
     {
         if ($aId === $bId) return null;
-
-        $a = $this->loadRoute($partner, $aId);
-        $b = $this->loadRoute($partner, $bId);
-        if ($a === null || $b === null) return null;
-
-        $aCurrent = $this->loadCurrentSnapshot($partner, $aId);
-        $bCurrent = $this->loadCurrentSnapshot($partner, $bId);
-
-        $aTimeline = $this->loadTimeline($partner, $aId, self::TIMELINE_DAYS);
-        $bTimeline = $this->loadTimeline($partner, $bId, self::TIMELINE_DAYS);
-        $timeline = $this->mergeTimelines($aTimeline, $bTimeline);
-
-        $aHeat = $this->loadHeatmap($partner, $aId, self::WINDOW_DAYS);
-        $bHeat = $this->loadHeatmap($partner, $bId, self::WINDOW_DAYS);
-        $heatmapDiff = $this->computeHeatmapDiff($aHeat, $bHeat);
-
-        $aByHour = $this->loadByHour($partner, $aId, self::WINDOW_DAYS);
-        $bByHour = $this->loadByHour($partner, $bId, self::WINDOW_DAYS);
-        $byHour  = $this->mergeByHour($aByHour, $bByHour);
-
-        $aByDow  = $this->loadByDow($partner, $aId, self::WINDOW_DAYS);
-        $bByDow  = $this->loadByDow($partner, $bId, self::WINDOW_DAYS);
-        $byDow   = $this->mergeByDow($aByDow, $bByDow);
-
-        $aSubs = $this->loadSubRoutes($partner, $aId);
-        $bSubs = $this->loadSubRoutes($partner, $bId);
-        $commonSubRoutes = $this->findCommonSubRoutes($aSubs, $bSubs);
-
-        $aPolyline = $this->buildPolyline($partner, $aId, $a['geometry']);
-        $bPolyline = $this->buildPolyline($partner, $bId, $b['geometry']);
-        $alerts = $this->loadAlertsCross($partner, $aPolyline, $bPolyline);
-
-        $aStats = $this->computeStats($aTimeline, $aByHour, $aByDow, $aCurrent);
-        $bStats = $this->computeStats($bTimeline, $bByHour, $bByDow, $bCurrent);
-
+        $b = (int)($o['bucketMinutes'] ?? 15);
+        if (!in_array($b, [2,5,10,15,30,60], true)) $b = 15;
+        $h = max(1, min(168, (int)($o['hours'] ?? ($b <= 15 ? 24 : 168))));
+        $A = $this->route($p, $aId, $b, $h);
+        $B = $this->route($p, $bId, $b, $h);
+        if (!$A || !$B) return null;
+        $tl = $this->merge($A['tl'], $B['tl'], 'time');
+        $bh = $this->merge($A['bh'], $B['bh'], 'hour');
+        $bd = $this->merge($A['bd'], $B['bd'], 'dow');
+        $heat = [];
+        for ($d = 0; $d < 7; $d++) for ($x = 0; $x < 24; $x++) {
+            $ca = $A['heat']["$d:$x"] ?? null;
+            $cb = $B['heat']["$d:$x"] ?? null;
+            $ra = $ca && $ca['n'] >= 2 ? $ca['r'] : null;
+            $rb = $cb && $cb['n'] >= 2 ? $cb['r'] : null;
+            $heat[] = ['dow' => $d, 'hour' => $x, 'aRatio' => $ra, 'bRatio' => $rb, 'diff' => $ra !== null && $rb !== null ? round($ra - $rb, 4) : null, 'aDelay' => $ca['d'] ?? null, 'bDelay' => $cb['d'] ?? null];
+        }
+        $common = $this->common($A['subs'], $B['subs']);
+        $bestA = $bestB = null;
+        foreach ($heat as $c) {
+            if ($c['diff'] === null) continue;
+            if ($c['diff'] < 0 && ($bestA === null || $c['diff'] < $bestA['diff'])) $bestA = $c;
+            if ($c['diff'] > 0 && ($bestB === null || $c['diff'] > $bestB['diff'])) $bestB = $c;
+        }
+        $ra = $A['stats']['avgRatio7d'];
+        $rb = $B['stats']['avgRatio7d'];
+        $diff = $ra !== null && $rb !== null ? round($ra - $rb, 4) : null;
+        $win = $this->win($ra, $rb);
+        $sa = $this->dev($A['stl']);
+        $sb = $this->dev($B['stl']);
+        $ins = [
+            'betterOverall' => $win,
+            'avgDiffRatio' => $diff,
+            'bestWindowForA' => $bestA,
+            'bestWindowForB' => $bestB,
+            'consistencyA' => $sa,
+            'consistencyB' => $sb,
+            'moreConsistent' => $this->win($sa, $sb, 0.000001),
+            'recommendation' => $win === null ? 'Sem dados suficientes para recomendar uma rota.' : ($win === 'tie' ? 'As rotas têm desempenho equivalente na média.' : sprintf('A rota %s apresenta %.1f p.p. menos atraso relativo médio em 7 dias.', strtoupper($win), abs((float)$diff) * 100)),
+        ];
+        $pa = $pb = 0;
+        foreach (['avgDelay24h', 'avgDelay7d', 'avgRatio24h', 'avgRatio7d'] as $k) {
+            $x = $A['stats'][$k];
+            $y = $B['stats'][$k];
+            if ($x === null || $y === null) continue;
+            if ($x < $y) $pa++;
+            elseif ($y < $x) $pb++;
+        }
+        $alerts = $this->alerts($p, $A['segs'], $B['segs']);
+        unset($A['tl'], $A['bh'], $A['bd'], $A['heat'], $A['subs'], $A['stl']);
+        unset($B['tl'], $B['bh'], $B['bd'], $B['heat'], $B['subs'], $B['stl']);
         return [
-            'a' => [
-                'id'             => $a['id'],
-                'wazeRouteId'    => $a['waze_route_id'],
-                'name'           => $a['name'],
-                'from'           => $a['from_name'],
-                'to'             => $a['to_name'],
-                'lengthMeters'   => $a['length'] !== null ? (int) $a['length'] : null,
-                'current'        => $aCurrent,
-                'stats'          => $aStats,
-                'geometry'       => $aPolyline,
-            ],
-            'b' => [
-                'id'             => $b['id'],
-                'wazeRouteId'    => $b['waze_route_id'],
-                'name'           => $b['name'],
-                'from'           => $b['from_name'],
-                'to'             => $b['to_name'],
-                'lengthMeters'   => $b['length'] !== null ? (int) $b['length'] : null,
-                'current'        => $bCurrent,
-                'stats'          => $bStats,
-                'geometry'       => $bPolyline,
-            ],
-            'timeline'        => $timeline,
-            'heatmapDiff'     => $heatmapDiff,
-            'byHour'          => $byHour,
-            'byDow'           => $byDow,
-            'commonSubRoutes' => $commonSubRoutes,
-            'alerts'          => $alerts,
-            'stats'           => [
-                'winnerNow'   => $this->pickWinner($aCurrent, $bCurrent),
-                'winner7d'    => $aStats['avgRatio7d'] !== null && $bStats['avgRatio7d'] !== null
-                    ? ($aStats['avgRatio7d'] < $bStats['avgRatio7d'] ? 'a' : 'b')
-                    : null,
-                'pointsA'     => $this->comparePoints($aStats, $bStats, 'a'),
-                'pointsB'     => $this->comparePoints($aStats, $bStats, 'b'),
+            'a' => $A, 'b' => $B, 'timeline' => $tl, 'timelineBucketMinutes' => $b, 'timelineHours' => $h,
+            'heatmapDiff' => $heat, 'byHour' => $bh, 'byDow' => $bd, 'commonSubRoutes' => $common,
+            'alerts' => $alerts, 'insights' => $ins,
+            'stats' => [
+                'winnerNow' => $this->win($A['current']['delayRatio'] ?? null, $B['current']['delayRatio'] ?? null),
+                'winner7d' => $win, 'pointsA' => $pa, 'pointsB' => $pb,
             ],
         ];
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-
-    private function loadRoute(?Partner $partner, int $id): ?array
+    private function q(string $sql, ?Partner $p, array $par = []): array
     {
-        $params = ['id' => $id];
-        $pf = '';
-        if ($partner !== null) {
-            $pf = ' AND partner_id = :pid';
-            $params['pid'] = $partner->getId();
-        }
-        $row = $this->connection->executeQuery(
-            "SELECT id, route_id AS waze_route_id, name, from_name, to_name, length, geometry
-             FROM waze_tvt_route WHERE id = :id {$pf} LIMIT 1",
-            $params
-        )->fetchAssociative();
-        return $row ?: null;
+        $f = '';
+        if ($p !== null) { $f = ' AND partner_id = :pid'; $par['pid'] = $p->getId(); }
+        return $this->db->executeQuery(str_replace('{p}', $f, $sql), $par)->fetchAllAssociative();
     }
 
-    private function loadCurrentSnapshot(?Partner $partner, int $routeId): ?array
+    private function route(?Partner $p, int $id, int $b, int $h): ?array
     {
-        $params = ['id' => $routeId];
-        $pf = '';
-        if ($partner !== null) {
-            $pf = ' AND partner_id = :pid';
-            $params['pid'] = $partner->getId();
+        $r = $this->q('SELECT id,route_id,name,from_name,to_name,length,geometry FROM waze_tvt_route WHERE id=:id {p} LIMIT 1', $p, ['id' => $id])[0] ?? null;
+        if (!$r) return null;
+        $cur = $this->q('SELECT time,historic_time,jam_level,recorded_at FROM waze_tvt_route_snapshot WHERE route_id=:id {p} ORDER BY recorded_at DESC,id DESC LIMIT 1', $p, ['id' => $id])[0] ?? null;
+        if ($cur) $cur = $this->snap($cur) + ['recordedAt' => $cur['recorded_at']];
+        $subs = $this->q('SELECT id,name,from_name,to_name,time,historic_time,jam_level,bbox,line FROM waze_tvt_sub_route WHERE route_id=:id AND is_active=1 {p} ORDER BY id', $p, ['id' => $id]);
+        $segs = [];
+        foreach ($subs as &$s) {
+            $ln = $this->line($s['line']);
+            if (count($ln) > 1) $segs[] = $ln;
+            $s = $this->snap($s) + ['id' => (int)$s['id'], 'name' => $s['name'], 'from' => $s['from_name'], 'to' => $s['to_name'], 'bbox' => $s['bbox']];
         }
-        $row = $this->connection->executeQuery(
-            "SELECT time, historic_time, jam_level, recorded_at
-             FROM waze_tvt_route_snapshot
-             WHERE route_id = :id {$pf}
-             ORDER BY recorded_at DESC, id DESC
-             LIMIT 1",
-            $params
-        )->fetchAssociative();
-        if (!$row) return null;
-
-        $time     = $row['time'] !== null ? (float) $row['time'] : null;
-        $historic = $row['historic_time'] !== null ? (float) $row['historic_time'] : null;
-        $delay    = ($time !== null && $historic !== null) ? max(0, (int) round($time - $historic)) : null;
-        $ratio    = ($delay !== null && $historic > 0) ? $delay / $historic : null;
-
+        unset($s);
+        if (!$segs) { $ln = $this->line($r['geometry']); if (count($ln) > 1) $segs[] = $ln; }
+        $tl = $this->series($p, $id, $h, $b);
+        $stl = $this->series($p, $id, 168, 60);
+        $heat = $this->agg($p, $id, 'heat');
+        $bh = $this->agg($p, $id, 'hour');
+        $bd = $this->agg($p, $id, 'dow');
+        $wh = $wd = null;
+        foreach ($bh as $c) if ($c['n'] >= 2 && $c['r'] !== null && ($wh === null || $c['r'] > $wh['r'])) $wh = $c;
+        foreach ($bd as $c) if ($c['n'] >= 2 && $c['r'] !== null && ($wd === null || $c['r'] > $wd['r'])) $wd = $c;
+        $rec = array_values(array_filter($stl, static fn($c) => strtotime($c['time']) >= time() - 86400));
+        $stats = [
+            'avgDelay24h' => $this->mean($rec, 'd', 'n'),
+            'avgRatio24h' => $this->mean($rec, 'r', 'rn'),
+            'avgDelay7d' => $this->mean($stl, 'd', 'n'),
+            'avgRatio7d' => $this->mean($stl, 'r', 'rn'),
+            'worstHour' => $wh, 'worstDow' => $wd, 'current' => $cur,
+        ];
         return [
-            'time'         => $time,
-            'historicTime' => $historic,
-            'delaySeconds' => $delay,
-            'delayRatio'   => $ratio,
-            'jamLevel'     => $row['jam_level'] !== null ? (int) $row['jam_level'] : null,
-            'recordedAt'   => $row['recorded_at'],
+            'id' => (int)$r['id'], 'wazeRouteId' => $r['route_id'], 'name' => $r['name'],
+            'from' => $r['from_name'], 'to' => $r['to_name'],
+            'lengthMeters' => $r['length'] !== null ? (int)$r['length'] : null,
+            'current' => $cur, 'stats' => $stats,
+            'geometry' => $segs ? array_merge(...$segs) : [],
+            'geometrySegments' => $segs, 'tl' => $tl, 'stl' => $stl,
+            'heat' => $heat, 'bh' => $bh, 'bd' => $bd, 'subs' => $subs,
         ];
     }
 
-    /** @return list<array{time:string,avgDelay:float,avgRatio:?float,count:int}> */
-    private function loadTimeline(?Partner $partner, int $routeId, int $days): array
+    private function snap(array $r): array
     {
-        $since = (new \DateTimeImmutable("-{$days} days", new \DateTimeZone('UTC')))->format('Y-m-d H:i:s');
-        $params = ['id' => $routeId, 'since' => $since];
-        $pf = '';
-        if ($partner !== null) { $pf = ' AND partner_id = :pid'; $params['pid'] = $partner->getId(); }
-
-        $sql = "SELECT
-                    DATE_FORMAT(DATE_ADD(recorded_at, INTERVAL -3 HOUR), '%Y-%m-%d %H:00:00') AS bucket,
-                    AVG(time - historic_time) AS avg_delay,
-                    AVG(CASE WHEN historic_time > 0 THEN (time - historic_time) / historic_time ELSE NULL END) AS avg_ratio,
-                    COUNT(*) AS total
-                FROM waze_tvt_route_snapshot
-                WHERE route_id = :id
-                  AND recorded_at >= :since
-                  AND time IS NOT NULL AND historic_time IS NOT NULL
-                  {$pf}
-                GROUP BY bucket ORDER BY bucket ASC LIMIT 500";
-
-        return array_map(static fn ($r) => [
-            'time'     => (string) $r['bucket'],
-            'avgDelay' => $r['avg_delay'] !== null ? round((float) $r['avg_delay'], 1) : 0.0,
-            'avgRatio' => $r['avg_ratio'] !== null ? round((float) $r['avg_ratio'], 4) : null,
-            'count'    => (int) $r['total'],
-        ], $this->connection->executeQuery($sql, $params)->fetchAllAssociative());
+        $t = $r['time'] !== null ? (float)$r['time'] : null;
+        $h = $r['historic_time'] !== null ? (float)$r['historic_time'] : null;
+        $d = $t !== null && $h !== null ? max(0, $t - $h) : null;
+        return ['time' => $t, 'historicTime' => $h, 'delaySeconds' => $d !== null ? (int)round($d) : null, 'delayRatio' => $d !== null && $h > 0 ? $d / $h : null, 'jamLevel' => $r['jam_level'] !== null ? (int)$r['jam_level'] : null];
     }
 
-    /** @return list<array{dow:int,hour:int,avgRatio:?float,avgDelay:?float,count:int}> */
-    private function loadHeatmap(?Partner $partner, int $routeId, int $days): array
+    private function series(?Partner $p, int $id, int $h, int $b): array
     {
-        $since = (new \DateTimeImmutable("-{$days} days", new \DateTimeZone('UTC')))->format('Y-m-d H:i:s');
-        $params = ['id' => $routeId, 'since' => $since];
-        $pf = '';
-        if ($partner !== null) { $pf = ' AND partner_id = :pid'; $params['pid'] = $partner->getId(); }
-
-        $sql = "SELECT
-                    WEEKDAY(DATE_ADD(recorded_at, INTERVAL -3 HOUR)) AS dow,
-                    HOUR(DATE_ADD(recorded_at, INTERVAL -3 HOUR))    AS hour,
-                    AVG(CASE WHEN historic_time > 0 THEN (time - historic_time) / historic_time ELSE NULL END) AS avg_ratio,
-                    AVG(time - historic_time) AS avg_delay,
-                    COUNT(*) AS total
-                FROM waze_tvt_route_snapshot
-                WHERE route_id = :id
-                  AND recorded_at >= :since
-                  AND time IS NOT NULL AND historic_time IS NOT NULL
-                  {$pf}
-                GROUP BY dow, hour";
-
-        return array_map(static fn ($r) => [
-            'dow'      => (int) $r['dow'],
-            'hour'     => (int) $r['hour'],
-            'avgRatio' => $r['avg_ratio'] !== null ? round((float) $r['avg_ratio'], 4) : null,
-            'avgDelay' => $r['avg_delay'] !== null ? round((float) $r['avg_delay'], 1) : null,
-            'count'    => (int) $r['total'],
-        ], $this->connection->executeQuery($sql, $params)->fetchAllAssociative());
+        $s = $b * 60;
+        $since = gmdate('Y-m-d H:i:s', time() - $h * 3600);
+        $sql = "SELECT TIMESTAMPADD(SECOND,FLOOR(TIMESTAMPDIFF(SECOND,'1970-01-01 00:00:00',recorded_at)/$s)*$s,'1970-01-01 00:00:00') AS bucket,AVG(GREATEST(0,time-historic_time)) AS avg_delay,AVG(CASE WHEN historic_time>0 THEN GREATEST(0,time-historic_time)/historic_time END) AS avg_ratio,COUNT(*) AS total,SUM(CASE WHEN historic_time>0 THEN 1 ELSE 0 END) AS ratio_count FROM waze_tvt_route_snapshot WHERE route_id=:id AND recorded_at>=:since AND recorded_at<=UTC_TIMESTAMP() AND time IS NOT NULL AND historic_time IS NOT NULL {p} GROUP BY bucket ORDER BY bucket";
+        return array_map(static fn($r) => ['time' => str_replace(' ', 'T', (string)$r['bucket']) . 'Z', 'd' => (float)$r['avg_delay'], 'r' => $r['avg_ratio'] !== null ? (float)$r['avg_ratio'] : null, 'n' => (int)$r['total'], 'rn' => (int)$r['ratio_count']], $this->q($sql, $p, ['id' => $id, 'since' => $since]));
     }
 
-    private function loadByHour(?Partner $partner, int $routeId, int $days): array
+    private function agg(?Partner $p, int $id, string $k): array
     {
-        $since = (new \DateTimeImmutable("-{$days} days", new \DateTimeZone('UTC')))->format('Y-m-d H:i:s');
-        $params = ['id' => $routeId, 'since' => $since];
-        $pf = '';
-        if ($partner !== null) { $pf = ' AND partner_id = :pid'; $params['pid'] = $partner->getId(); }
-
-        $sql = "SELECT
-                    HOUR(DATE_ADD(recorded_at, INTERVAL -3 HOUR)) AS hour,
-                    AVG(CASE WHEN historic_time > 0 THEN (time - historic_time) / historic_time ELSE NULL END) AS avg_ratio,
-                    AVG(time - historic_time) AS avg_delay,
-                    COUNT(*) AS total
-                FROM waze_tvt_route_snapshot
-                WHERE route_id = :id AND recorded_at >= :since
-                  AND time IS NOT NULL AND historic_time IS NOT NULL {$pf}
-                GROUP BY hour";
-        $rows = $this->connection->executeQuery($sql, $params)->fetchAllAssociative();
-        $map = [];
-        foreach ($rows as $r) $map[(int) $r['hour']] = $r;
+        $l = 'DATE_ADD(recorded_at, INTERVAL -3 HOUR)';
+        $sel = $k === 'hour' ? "HOUR($l) AS hour" : ($k === 'dow' ? "WEEKDAY($l) AS dow" : "WEEKDAY($l) AS dow,HOUR($l) AS hour");
+        $grp = $k === 'heat' ? 'dow,hour' : $k;
+        $rows = $this->q("SELECT $sel,AVG(GREATEST(0,time-historic_time)) AS avg_delay,AVG(CASE WHEN historic_time>0 THEN GREATEST(0,time-historic_time)/historic_time END) AS avg_ratio,COUNT(*) AS total FROM waze_tvt_route_snapshot WHERE route_id=:id AND recorded_at>=:since AND recorded_at<=UTC_TIMESTAMP() AND time IS NOT NULL AND historic_time IS NOT NULL {p} GROUP BY $grp", $p, ['id' => $id, 'since' => gmdate('Y-m-d H:i:s', time() - 30 * 86400)]);
         $out = [];
-        for ($h = 0; $h < 24; $h++) {
-            $r = $map[$h] ?? null;
-            $out[] = [
-                'hour'     => $h,
-                'avgRatio' => $r && $r['avg_ratio'] !== null ? round((float) $r['avg_ratio'], 4) : null,
-                'avgDelay' => $r && $r['avg_delay'] !== null ? round((float) $r['avg_delay'], 1) : null,
-                'count'    => $r ? (int) $r['total'] : 0,
-            ];
+        foreach ($rows as $r) {
+            $c = ['d' => (float)$r['avg_delay'], 'r' => $r['avg_ratio'] !== null ? (float)$r['avg_ratio'] : null, 'n' => (int)$r['total']];
+            if (isset($r['dow'])) $c['dow'] = (int)$r['dow'];
+            if (isset($r['hour'])) $c['hour'] = (int)$r['hour'];
+            $key = $k === 'heat' ? "{$c['dow']}:{$c['hour']}" : $c[$k];
+            $out[$key] = $c;
         }
+        if ($k !== 'heat') for ($i = 0; $i < ($k === 'hour' ? 24 : 7); $i++) $out[$i] ??= [$k => $i, 'd' => null, 'r' => null, 'n' => 0];
+        ksort($out);
         return $out;
     }
 
-    private function loadByDow(?Partner $partner, int $routeId, int $days): array
+    private function merge(array $a, array $b, string $k): array
     {
-        $since = (new \DateTimeImmutable("-{$days} days", new \DateTimeZone('UTC')))->format('Y-m-d H:i:s');
-        $params = ['id' => $routeId, 'since' => $since];
-        $pf = '';
-        if ($partner !== null) { $pf = ' AND partner_id = :pid'; $params['pid'] = $partner->getId(); }
-
-        $sql = "SELECT
-                    WEEKDAY(DATE_ADD(recorded_at, INTERVAL -3 HOUR)) AS dow,
-                    AVG(CASE WHEN historic_time > 0 THEN (time - historic_time) / historic_time ELSE NULL END) AS avg_ratio,
-                    AVG(time - historic_time) AS avg_delay,
-                    COUNT(*) AS total
-                FROM waze_tvt_route_snapshot
-                WHERE route_id = :id AND recorded_at >= :since
-                  AND time IS NOT NULL AND historic_time IS NOT NULL {$pf}
-                GROUP BY dow";
-        $rows = $this->connection->executeQuery($sql, $params)->fetchAllAssociative();
-        $map = [];
-        foreach ($rows as $r) $map[(int) $r['dow']] = $r;
         $out = [];
-        for ($d = 0; $d < 7; $d++) {
-            $r = $map[$d] ?? null;
-            $out[] = [
-                'dow'      => $d,
-                'avgRatio' => $r && $r['avg_ratio'] !== null ? round((float) $r['avg_ratio'], 4) : null,
-                'avgDelay' => $r && $r['avg_delay'] !== null ? round((float) $r['avg_delay'], 1) : null,
-                'count'    => $r ? (int) $r['total'] : 0,
-            ];
+        foreach (['a' => $a, 'b' => $b] as $side => $rows) foreach ($rows as $c) {
+            $key = $c[$k];
+            $out[$key] ??= [$k => $key, 'aDelay' => null, 'aRatio' => null, 'bDelay' => null, 'bRatio' => null, 'aCount' => 0, 'bCount' => 0];
+            $out[$key][$side . 'Delay'] = $c['d'];
+            $out[$key][$side . 'Ratio'] = $c['r'];
+            $out[$key][$side . 'Count'] = $c['n'];
         }
-        return $out;
+        ksort($out);
+        return array_values($out);
     }
 
-    /** @return list<array<string,mixed>> */
-    private function loadSubRoutes(?Partner $partner, int $routeId): array
-    {
-        $params = ['id' => $routeId];
-        $pf = '';
-        if ($partner !== null) { $pf = ' AND partner_id = :pid'; $params['pid'] = $partner->getId(); }
-
-        $rows = $this->connection->executeQuery(
-            "SELECT id, name, from_name, to_name, time, historic_time, jam_level, bbox
-             FROM waze_tvt_sub_route
-             WHERE route_id = :id AND is_active = 1 {$pf}
-             ORDER BY id ASC",
-            $params
-        )->fetchAllAssociative();
-
-        return array_map(function ($r) {
-            $time = $r['time'] !== null ? (float) $r['time'] : null;
-            $hist = $r['historic_time'] !== null ? (float) $r['historic_time'] : null;
-            $delay = ($time !== null && $hist !== null) ? max(0, (int) round($time - $hist)) : null;
-            $ratio = ($delay !== null && $hist > 0) ? $delay / $hist : null;
-
-            return [
-                'id'           => (int) $r['id'],
-                'name'         => $r['name'],
-                'from'         => $r['from_name'],
-                'to'           => $r['to_name'],
-                'delaySeconds' => $delay,
-                'delayRatio'   => $ratio,
-                'jamLevel'     => $r['jam_level'] !== null ? (int) $r['jam_level'] : null,
-                'bbox'         => $r['bbox'],
-            ];
-        }, $rows);
-    }
-
-    /**
-     * Trechos comuns: sub-rotas de A que "casam" com sub-rotas de B.
-     * Casamento = mesmo `from` normalizado OU mesmo `to` normalizado,
-     * com pelo menos 4 caracteres em comum.
-     *
-     * @return list<array{a:array,b:array,matched:string}>
-     */
-    private function findCommonSubRoutes(array $aSubs, array $bSubs): array
+    private function common(array $a, array $b): array
     {
         $out = [];
-        foreach ($aSubs as $a) {
-            foreach ($bSubs as $b) {
-                $match = null;
-                if ($this->similarPlace($a['from'], $b['from']))      $match = 'from';
-                elseif ($this->similarPlace($a['to'], $b['to']))      $match = 'to';
-                elseif ($this->similarPlace($a['from'], $b['to']))    $match = 'from→to';
-                elseif ($this->similarPlace($a['to'], $b['from']))    $match = 'to→from';
-
-                if ($match !== null) {
-                    $out[] = ['a' => $a, 'b' => $b, 'matched' => $match];
-                    break;
-                }
+        foreach ($a as $x) foreach ($b as $y) {
+            if ($x['from'] && $x['to'] && mb_strtolower(trim($x['from'])) === mb_strtolower(trim($y['from'] ?? '')) && mb_strtolower(trim($x['to'])) === mb_strtolower(trim($y['to'] ?? ''))) {
+                $out[] = ['a' => $x, 'b' => $y, 'matched' => 'from→to'];
+                break;
             }
         }
         return $out;
     }
 
-    private function similarPlace(?string $x, ?string $y): bool
+    private function mean(array $rows, string $k, string $w): ?float
     {
-        if ($x === null || $y === null) return false;
-        $nx = mb_strtolower(trim($x));
-        $ny = mb_strtolower(trim($y));
-        if ($nx === '' || $ny === '') return false;
-        if ($nx === $ny) return true;
-        // Compara tokens significativos (>= 5 chars)
-        $tx = preg_split('/\W+/u', $nx) ?: [];
-        $ty = preg_split('/\W+/u', $ny) ?: [];
-        $tx = array_filter($tx, fn ($t) => mb_strlen($t) >= 5);
-        $ty = array_filter($ty, fn ($t) => mb_strlen($t) >= 5);
-        return count(array_intersect($tx, $ty)) > 0;
+        $s = 0.0; $n = 0;
+        foreach ($rows as $c) if ($c[$k] !== null) { $s += $c[$k] * $c[$w]; $n += $c[$w]; }
+        return $n ? $s / $n : null;
     }
 
-    /** @return list<array{0:float,1:float}> */
-    private function buildPolyline(?Partner $partner, int $routeId, mixed $routeGeometry): array
+    private function dev(array $rows): ?float
     {
-        $poly = $this->normalizeLine($routeGeometry);
-
-        $params = ['id' => $routeId];
-        $pf = '';
-        if ($partner !== null) { $pf = ' AND partner_id = :pid'; $params['pid'] = $partner->getId(); }
-
-        $rows = $this->connection->executeQuery(
-            "SELECT line FROM waze_tvt_sub_route
-             WHERE route_id = :id AND is_active = 1 AND line IS NOT NULL {$pf}",
-            $params
-        )->fetchAllAssociative();
-
-        foreach ($rows as $r) {
-            foreach ($this->normalizeLine($r['line']) as $pt) $poly[] = $pt;
-        }
-        return $poly;
+        $v = array_values(array_filter(array_column($rows, 'r'), static fn($x) => $x !== null));
+        if (count($v) < 2) return null;
+        $m = array_sum($v) / count($v);
+        return sqrt(array_sum(array_map(static fn($x) => ($x - $m) ** 2, $v)) / count($v));
     }
 
-    /**
-     * Alertas Waze nos últimos N dias que estão perto de A, de B, ou das duas.
-     *
-     * @return array{shared:list,onlyA:list,onlyB:list}
-     */
-    private function loadAlertsCross(?Partner $partner, array $aPoly, array $bPoly): array
+    private function win(?float $a, ?float $b, float $t = 0.02): ?string
     {
-        $shared = []; $onlyA = []; $onlyB = [];
-        if ($aPoly === [] && $bPoly === []) {
-            return ['shared' => $shared, 'onlyA' => $onlyA, 'onlyB' => $onlyB];
-        }
-
-        // Bbox que cobre as duas
-        $all = array_merge($aPoly, $bPoly);
-        if ($all === []) return ['shared' => [], 'onlyA' => [], 'onlyB' => []];
-        $minLat = $maxLat = $all[0][0];
-        $minLng = $maxLng = $all[0][1];
-        foreach ($all as $p) {
-            $minLat = min($minLat, $p[0]); $maxLat = max($maxLat, $p[0]);
-            $minLng = min($minLng, $p[1]); $maxLng = max($maxLng, $p[1]);
-        }
-        $pad = 0.002;
-
-        $since = (new \DateTimeImmutable('-'.self::ALERT_DAYS.' days', new \DateTimeZone('UTC')))
-            ->format('Y-m-d H:i:s');
-
-        $params = [
-            'since'  => $since,
-            'minLat' => $minLat - $pad, 'maxLat' => $maxLat + $pad,
-            'minLng' => $minLng - $pad, 'maxLng' => $maxLng + $pad,
-        ];
-        $pf = '';
-        if ($partner !== null) { $pf = ' AND partner_id = :pid'; $params['pid'] = $partner->getId(); }
-
-        $rows = $this->connection->executeQuery(
-            "SELECT id, type, subtype, street, city, confidence, reliability,
-                    CAST(latitude AS DECIMAL(10,7)) AS lat,
-                    CAST(longitude AS DECIMAL(10,7)) AS lng,
-                    pub_millis, collected_at
-             FROM waze_alerts
-             WHERE collected_at >= :since
-               AND latitude  BETWEEN :minLat AND :maxLat
-               AND longitude BETWEEN :minLng AND :maxLng
-               {$pf}
-             ORDER BY collected_at DESC
-             LIMIT 400",
-            $params
-        )->fetchAllAssociative();
-
-        foreach ($rows as $r) {
-            $lat = (float) $r['lat'];
-            $lng = (float) $r['lng'];
-
-            $dA = $aPoly !== [] ? $this->distanceToPolyline($lat, $lng, $aPoly) : INF;
-            $dB = $bPoly !== [] ? $this->distanceToPolyline($lat, $lng, $bPoly) : INF;
-
-            $inA = $dA <= self::ALERT_BUFFER_M;
-            $inB = $dB <= self::ALERT_BUFFER_M;
-            if (!$inA && !$inB) continue;
-
-            $item = [
-                'id'             => (int) $r['id'],
-                'type'           => $r['type'],
-                'subtype'        => $r['subtype'],
-                'street'         => $r['street'],
-                'city'           => $r['city'],
-                'confidence'     => (int) $r['confidence'],
-                'reliability'    => (int) $r['reliability'],
-                'lat'            => $lat,
-                'lng'            => $lng,
-                'distanceA'      => $inA ? (int) round($dA) : null,
-                'distanceB'      => $inB ? (int) round($dB) : null,
-                'pubDateTime'    => $r['pub_millis']
-                    ? (new \DateTimeImmutable('@'.intdiv((int) $r['pub_millis'], 1000)))->format(DATE_ATOM)
-                    : null,
-                'collectedAt'    => $r['collected_at'],
-                'typeLabel'      => $this->labelAlertType((string) $r['type']),
-            ];
-
-            if ($inA && $inB)      $shared[] = $item;
-            elseif ($inA)          $onlyA[]  = $item;
-            else                   $onlyB[]  = $item;
-        }
-
-        return ['shared' => $shared, 'onlyA' => $onlyA, 'onlyB' => $onlyB];
+        if ($a === null || $b === null) return null;
+        return abs($a - $b) < $t ? 'tie' : ($a < $b ? 'a' : 'b');
     }
 
-    private function distanceToPolyline(float $lat, float $lng, array $polyline): float
+    private function line(mixed $raw): array
     {
-        $n = count($polyline);
-        if ($n === 0) return INF;
-        if ($n === 1) return $this->segDist($lat, $lng, $polyline[0][0], $polyline[0][1], $polyline[0][0], $polyline[0][1]);
+        if (is_string($raw)) $raw = json_decode($raw, true);
+        if (!is_array($raw)) return [];
+        if (($raw['type'] ?? null) === 'LineString') $raw = $raw['coordinates'] ?? [];
+        $out = [];
+        foreach ($raw as $c) {
+            if (!is_array($c)) continue;
+            if (isset($c['lat'], $c['lng'])) [$la, $ln] = [$c['lat'], $c['lng']];
+            elseif (isset($c['y'], $c['x'])) [$la, $ln] = [$c['y'], $c['x']];
+            elseif (isset($c[0], $c[1])) [$la, $ln] = [$c[1], $c[0]];
+            else continue;
+            if (!is_numeric($la) || !is_numeric($ln)) continue;
+            $la = (float)$la; $ln = (float)$ln;
+            if (is_finite($la) && is_finite($ln) && abs($la) <= 90 && abs($ln) <= 180) $out[] = [$la, $ln];
+        }
+        return $out;
+    }
+
+    private function dist(float $la, float $ln, array $segs): float
+    {
         $min = INF;
-        for ($i = 0; $i < $n - 1; $i++) {
-            $d = $this->segDist($lat, $lng,
-                $polyline[$i][0], $polyline[$i][1],
-                $polyline[$i + 1][0], $polyline[$i + 1][1]);
-            if ($d < $min) $min = $d;
+        $c = cos(deg2rad($la));
+        foreach ($segs as $line) for ($i = 1; $i < count($line); $i++) {
+            [$ay, $al] = $line[$i - 1];
+            [$by, $bl] = $line[$i];
+            $ax = $al * $c; $bx = $bl * $c; $px = $ln * $c;
+            $dx = $bx - $ax; $dy = $by - $ay; $len = $dx * $dx + $dy * $dy;
+            $t = $len > 0 ? max(0, min(1, (($px - $ax) * $dx + ($la - $ay) * $dy) / $len)) : 0;
+            $min = min($min, hypot($px - $ax - $t * $dx, $la - $ay - $t * $dy) * 111320);
         }
         return $min;
     }
 
-    private function segDist(float $lat, float $lng, float $latA, float $lngA, float $latB, float $lngB): float
+    private function alerts(?Partner $p, array $a, array $b): array
     {
-        $cosLat = cos(deg2rad($lat));
-        $px = $lng * $cosLat; $py = $lat;
-        $ax = $lngA * $cosLat; $ay = $latA;
-        $bx = $lngB * $cosLat; $by = $latB;
-        $dx = $bx - $ax; $dy = $by - $ay;
-        $lenSq = $dx * $dx + $dy * $dy;
-        $t = $lenSq <= 0.0 ? 0.0 : max(0.0, min(1.0, (($px - $ax) * $dx + ($py - $ay) * $dy) / $lenSq));
-        $cx = $ax + $t * $dx; $cy = $ay + $t * $dy;
-        $ddx = $px - $cx; $ddy = $py - $cy;
-        return sqrt($ddx * $ddx + $ddy * $ddy) * 111320.0;
-    }
-
-    /** @return list<array{0:float,1:float}> */
-    private function normalizeLine(mixed $raw): array
-    {
-        if ($raw === null || $raw === '') return [];
-        if (is_string($raw)) {
-            $decoded = json_decode($raw, true);
-            if (!is_array($decoded)) return [];
-            $raw = $decoded;
-        }
-        if (!is_array($raw) || $raw === []) return [];
-
-        if (isset($raw['type'], $raw['coordinates'])
-            && $raw['type'] === 'LineString'
-            && is_array($raw['coordinates'])) {
-            $out = [];
-            foreach ($raw['coordinates'] as $c) {
-                if (is_array($c) && count($c) >= 2) $out[] = [(float) $c[1], (float) $c[0]];
-            }
-            return $out;
-        }
-
-        $out = [];
-        foreach ($raw as $point) {
-            if (is_array($point) && isset($point['lat'], $point['lng'])) {
-                $out[] = [(float) $point['lat'], (float) $point['lng']];
-            } elseif (is_array($point) && isset($point['x'], $point['y'])) {
-                $out[] = [(float) $point['y'], (float) $point['x']];
-            } elseif (is_array($point) && count($point) >= 2) {
-                $out[] = [(float) $point[1], (float) $point[0]];
-            }
-        }
-        return $out;
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // Merges / diffs
-    // ─────────────────────────────────────────────────────────────────────
-
-    private function mergeTimelines(array $a, array $b): array
-    {
-        $map = [];
-        foreach ($a as $p) $map[$p['time']] = ['time' => $p['time'], 'aDelay' => $p['avgDelay'], 'aRatio' => $p['avgRatio'], 'bDelay' => null, 'bRatio' => null];
-        foreach ($b as $p) {
-            if (!isset($map[$p['time']])) $map[$p['time']] = ['time' => $p['time'], 'aDelay' => null, 'aRatio' => null, 'bDelay' => null, 'bRatio' => null];
-            $map[$p['time']]['bDelay'] = $p['avgDelay'];
-            $map[$p['time']]['bRatio'] = $p['avgRatio'];
-        }
-        ksort($map);
-        return array_values($map);
-    }
-
-    /** @return list<array{dow:int,hour:int,aRatio:?float,bRatio:?float,diff:?float,aDelay:?float,bDelay:?float}> */
-    private function computeHeatmapDiff(array $aHeat, array $bHeat): array
-    {
-        $aMap = [];
-        foreach ($aHeat as $c) $aMap["{$c['dow']}:{$c['hour']}"] = $c;
-        $bMap = [];
-        foreach ($bHeat as $c) $bMap["{$c['dow']}:{$c['hour']}"] = $c;
-
-        $out = [];
-        for ($d = 0; $d < 7; $d++) {
-            for ($h = 0; $h < 24; $h++) {
-                $k = "{$d}:{$h}";
-                $a = $aMap[$k] ?? null;
-                $b = $bMap[$k] ?? null;
-                $aRatio = ($a && $a['count'] >= 2) ? $a['avgRatio'] : null;
-                $bRatio = ($b && $b['count'] >= 2) ? $b['avgRatio'] : null;
-                $diff = ($aRatio !== null && $bRatio !== null) ? round($aRatio - $bRatio, 4) : null;
-
-                $out[] = [
-                    'dow'      => $d,
-                    'hour'     => $h,
-                    'aRatio'   => $aRatio,
-                    'bRatio'   => $bRatio,
-                    'diff'     => $diff,
-                    'aDelay'   => $a ? $a['avgDelay'] : null,
-                    'bDelay'   => $b ? $b['avgDelay'] : null,
-                ];
-            }
-        }
-        return $out;
-    }
-
-    private function mergeByHour(array $a, array $b): array
-    {
-        $out = [];
-        for ($h = 0; $h < 24; $h++) {
-            $out[] = [
-                'hour'   => $h,
-                'aRatio' => $a[$h]['avgRatio'] ?? null,
-                'bRatio' => $b[$h]['avgRatio'] ?? null,
-                'aDelay' => $a[$h]['avgDelay'] ?? null,
-                'bDelay' => $b[$h]['avgDelay'] ?? null,
+        $out = ['shared' => [], 'onlyA' => [], 'onlyB' => []];
+        $lines = array_merge($a, $b);
+        if (!$lines) return $out;
+        $pts = array_merge(...$lines);
+        if (!$pts) return $out;
+        $lats = array_column($pts, 0);
+        $lngs = array_column($pts, 1);
+        $rows = $this->q('SELECT id,type,subtype,street,city,confidence,reliability,latitude,longitude,pub_millis,collected_at FROM waze_alerts WHERE collected_at>=:since AND latitude BETWEEN :minLat AND :maxLat AND longitude BETWEEN :minLng AND :maxLng {p} ORDER BY collected_at DESC LIMIT 400', $p, ['since' => gmdate('Y-m-d H:i:s', time() - 7 * 86400), 'minLat' => min($lats) - 0.002, 'maxLat' => max($lats) + 0.002, 'minLng' => min($lngs) - 0.002, 'maxLng' => max($lngs) + 0.002]);
+        foreach ($rows as $r) {
+            $la = (float)$r['latitude'];
+            $ln = (float)$r['longitude'];
+            $da = $this->dist($la, $ln, $a);
+            $db = $this->dist($la, $ln, $b);
+            if ($da > 60 && $db > 60) continue;
+            $key = $da <= 60 ? ($db <= 60 ? 'shared' : 'onlyA') : 'onlyB';
+            $out[$key][] = [
+                'id' => (int)$r['id'], 'type' => $r['type'], 'subtype' => $r['subtype'],
+                'street' => $r['street'], 'city' => $r['city'],
+                'confidence' => (int)$r['confidence'], 'reliability' => (int)$r['reliability'],
+                'lat' => $la, 'lng' => $ln,
+                'distanceA' => $da <= 60 ? (int)round($da) : null,
+                'distanceB' => $db <= 60 ? (int)round($db) : null,
+                'pubDateTime' => $r['pub_millis'] ? gmdate(DATE_ATOM, (int)floor((float)$r['pub_millis'] / 1000)) : null,
+                'collectedAt' => $r['collected_at'],
+                'typeLabel' => match(strtoupper((string)$r['type'])) {
+                    'ACCIDENT' => 'Acidente', 'JAM' => 'Congestionamento',
+                    'ROAD_CLOSED', 'ROADCLOSED' => 'Via fechada', 'ROADWORKS' => 'Obra',
+                    'WEATHERHAZARD', 'WEATHERHAZARDONROAD' => 'Risco na via',
+                    default => ucfirst((string)$r['type']),
+                },
             ];
         }
         return $out;
-    }
-
-    private function mergeByDow(array $a, array $b): array
-    {
-        $out = [];
-        for ($d = 0; $d < 7; $d++) {
-            $out[] = [
-                'dow'    => $d,
-                'aRatio' => $a[$d]['avgRatio'] ?? null,
-                'bRatio' => $b[$d]['avgRatio'] ?? null,
-                'aDelay' => $a[$d]['avgDelay'] ?? null,
-                'bDelay' => $b[$d]['avgDelay'] ?? null,
-            ];
-        }
-        return $out;
-    }
-
-    private function computeStats(array $timeline, array $byHour, array $byDow, ?array $current): array
-    {
-        $avgR7d = null; $avgD7d = null; $avgR24h = null; $avgD24h = null;
-
-        if ($timeline !== []) {
-            $sumR = 0.0; $sumD = 0.0; $n = 0;
-            foreach ($timeline as $p) {
-                if ($p['avgRatio'] !== null) { $sumR += $p['avgRatio']; $n++; }
-                if ($p['avgDelay'] !== null) { $sumD += $p['avgDelay']; }
-            }
-            if ($n > 0) { $avgR7d = $sumR / $n; $avgD7d = $sumD / $n; }
-
-            $cutoff = time() - 86400;
-            $sumR = 0.0; $sumD = 0.0; $n = 0;
-            foreach ($timeline as $p) {
-                $ts = strtotime((string) $p['time'].' UTC');
-                if ($ts === false || $ts < $cutoff) continue;
-                if ($p['avgRatio'] !== null) { $sumR += $p['avgRatio']; $n++; }
-                if ($p['avgDelay'] !== null) { $sumD += $p['avgDelay']; }
-            }
-            if ($n > 0) { $avgR24h = $sumR / $n; $avgD24h = $sumD / $n; }
-        }
-
-        $worstHour = null;
-        foreach ($byHour as $p) {
-            if ($p['avgRatio'] === null || $p['count'] < 2) continue;
-            if ($worstHour === null || $p['avgRatio'] > $worstHour['avgRatio']) $worstHour = $p;
-        }
-        $worstDow = null;
-        foreach ($byDow as $p) {
-            if ($p['avgRatio'] === null || $p['count'] < 2) continue;
-            if ($worstDow === null || $p['avgRatio'] > $worstDow['avgRatio']) $worstDow = $p;
-        }
-
-        return [
-            'avgDelay24h' => $avgD24h !== null ? round($avgD24h, 1) : null,
-            'avgRatio24h' => $avgR24h,
-            'avgDelay7d'  => $avgD7d !== null ? round($avgD7d, 1) : null,
-            'avgRatio7d'  => $avgR7d,
-            'worstHour'   => $worstHour,
-            'worstDow'    => $worstDow,
-            'current'     => $current,
-        ];
-    }
-
-    private function pickWinner(?array $a, ?array $b): ?string
-    {
-        $ra = $a['delayRatio'] ?? null;
-        $rb = $b['delayRatio'] ?? null;
-        if ($ra === null && $rb === null) return null;
-        if ($ra === null) return 'b';
-        if ($rb === null) return 'a';
-        if (abs($ra - $rb) < 0.05) return 'tie';
-        return $ra < $rb ? 'a' : 'b';
-    }
-
-    private function comparePoints(array $a, array $b, string $side): int
-    {
-        $points = 0;
-        if ($a['avgRatio7d'] !== null && $b['avgRatio7d'] !== null) {
-            if ($side === 'a' ? $a['avgRatio7d'] < $b['avgRatio7d'] : $b['avgRatio7d'] < $a['avgRatio7d']) $points++;
-        }
-        if ($a['avgRatio24h'] !== null && $b['avgRatio24h'] !== null) {
-            if ($side === 'a' ? $a['avgRatio24h'] < $b['avgRatio24h'] : $b['avgRatio24h'] < $a['avgRatio24h']) $points++;
-        }
-        if ($a['worstHour'] && $b['worstHour']) {
-            if ($side === 'a' ? $a['worstHour']['avgRatio'] < $b['worstHour']['avgRatio'] : $b['worstHour']['avgRatio'] < $a['worstHour']['avgRatio']) $points++;
-        }
-        if ($a['worstDow'] && $b['worstDow']) {
-            if ($side === 'a' ? $a['worstDow']['avgRatio'] < $b['worstDow']['avgRatio'] : $b['worstDow']['avgRatio'] < $a['worstDow']['avgRatio']) $points++;
-        }
-        return $points;
-    }
-
-    private function labelAlertType(string $type): string
-    {
-        return match (strtoupper($type)) {
-            'HAZARD'        => 'Perigo',
-            'ROAD_CLOSED'   => 'Via fechada',
-            'ACCIDENT'      => 'Acidente',
-            'JAM'           => 'Congestionamento',
-            'POLICE'        => 'Polícia',
-            'WEATHERHAZARD' => 'Perigo climático',
-            'CONSTRUCTION'  => 'Obras',
-            default         => ucfirst(strtolower($type)) ?: 'Alerta',
-        };
     }
 }
