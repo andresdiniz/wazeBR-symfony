@@ -15,7 +15,7 @@ final class TvtIrregularityEvolutionController extends AbstractController
     #[Route(
         '/tvt/irregularities/{id}/evolution',
         name: 'tvt_irregularities_evolution',
-        requirements: ['id' => '\d+'],
+        requirements: ['id' => '\\d+'],
         methods: ['GET'],
     )]
     public function show(int $id, PartnerScopeResolver $scope, Connection $db): Response
@@ -41,7 +41,9 @@ final class TvtIrregularityEvolutionController extends AbstractController
                 i.deactivated_at,
                 i.street,
                 p.name AS partner_name,
-                JSON_UNQUOTE(JSON_EXTRACT(i.payload, '$.name')) AS source_name
+                JSON_UNQUOTE(JSON_EXTRACT(i.payload, '$.name')) AS source_name,
+                JSON_UNQUOTE(JSON_EXTRACT(i.payload, '$.line[0].y')) AS first_lat,
+                JSON_UNQUOTE(JSON_EXTRACT(i.payload, '$.line[0].x')) AS first_lng
             FROM waze_tvt_irregularity i
             LEFT JOIN partner p ON p.id = i.partner_id
             WHERE $where",
@@ -55,6 +57,28 @@ final class TvtIrregularityEvolutionController extends AbstractController
         $item['name'] = !empty($item['source_name']) && $item['source_name'] !== 'null'
             ? $item['source_name']
             : ($item['street'] ?: 'Irregularidade #' . $id);
+
+        $map = null;
+
+        if (is_numeric($item['first_lat']) && is_numeric($item['first_lng'])) {
+            $lat = (float) $item['first_lat'];
+            $lng = (float) $item['first_lng'];
+
+            if (is_finite($lat) && is_finite($lng) && abs($lat) <= 90 && abs($lng) <= 180) {
+                $map = [
+                    'lat' => $lat,
+                    'lng' => $lng,
+                    'bbox' => sprintf(
+                        '%.6f%%2C%.6f%%2C%.6f%%2C%.6f',
+                        $lng - 0.004,
+                        $lat - 0.0025,
+                        $lng + 0.004,
+                        $lat + 0.0025,
+                    ),
+                    'marker' => sprintf('%.6f%%2C%.6f', $lat, $lng),
+                ];
+            }
+        }
 
         $ready = $db->createSchemaManager()->tablesExist(['waze_tvt_irregularity_sample']);
         $points = [];
@@ -199,6 +223,7 @@ final class TvtIrregularityEvolutionController extends AbstractController
 
         $response = $this->render('tvt_irregularities/evolution.html.twig', [
             'item' => $item,
+            'map' => $map,
             'ready' => $ready,
             'sample_count' => $sampleCount,
             'bucket_minutes' => $bucket / 60,
