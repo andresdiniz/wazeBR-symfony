@@ -1,5 +1,5 @@
 {
-    "css\/app.css": "\/assets\/css\/app-It9zH6v.css",
+    "css\/app.css": "\/assets\/css\/app-arYh_3w.css",
     "css\/auth.css": "\/assets\/css\/auth-IicAR6P.css",
     "css\/components\/accordions.css": "\/assets\/css\/components\/accordions-x28MYlb.css",
     "css\/components\/alerts.css": "\/assets\/css\/components\/alerts-_XODWN4.css",
@@ -28,6 +28,7 @@
     "css\/layout\/base-layout.css": "\/assets\/css\/layout\/base-layout-GvqfYkY.css",
     "css\/layout\/footer.css": "\/assets\/css\/layout\/footer-O0CGvVs.css",
     "css\/layout\/header.css": "\/assets\/css\/layout\/header-U-SZw2T.css",
+    "css\/layout\/shell-width.css": "\/assets\/css\/layout\/shell-width-bPfcV9l.css",
     "css\/layout\/sidebar.css": "\/assets\/css\/layout\/sidebar-06UAzEi.css",
     "css\/layout\/theme.css": "\/assets\/css\/layout\/theme-Ak-Z6F0.css",
     "css\/pages\/admin.css": "\/assets\/css\/pages\/admin-f8Zdo2s.css",
@@ -108,6 +109,7 @@
     "js\/pages\/alerts-show.js": "\/assets\/js\/pages\/alerts-show-ZTbcPjQ.js",
     "js\/pages\/alerts.js": "\/assets\/js\/pages\/alerts-LOpXV1A.js",
     "js\/pages\/cifs.js": "\/assets\/js\/pages\/cifs-OcfcM0F.js",
+    "js\/pages\/dashboard-chart-semantics.js": "\/assets\/js\/pages\/dashboard-chart-semantics-UGxfZ66.js",
     "js\/pages\/dashboard-decisions.js": "\/assets\/js\/pages\/dashboard-decisions-UOmjU9g.js",
     "js\/pages\/dashboard-period-comparison.js": "\/assets\/js\/pages\/dashboard-period-comparison-lL5CpXD.js",
     "js\/pages\/dashboard.js": "\/assets\/js\/pages\/dashboard-N6TYqQ-.js",
