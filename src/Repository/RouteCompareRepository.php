@@ -62,7 +62,7 @@ final class RouteCompareRepository
             if ($x < $y) $pa++;
             elseif ($y < $x) $pb++;
         }
-        $alerts = $this->alerts($p, $A['segs'], $B['segs']);
+        $alerts = $this->alerts($p, $A['geometrySegments'] ?? [], $B['geometrySegments'] ?? []);
         unset($A['tl'], $A['bh'], $A['bd'], $A['heat'], $A['subs'], $A['stl']);
         unset($B['tl'], $B['bh'], $B['bd'], $B['heat'], $B['subs'], $B['stl']);
         return [
