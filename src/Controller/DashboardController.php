@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Entity\Partner;
 use App\Entity\User;
 use App\Repository\DashboardRepository;
+use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -16,10 +17,10 @@ use Symfony\Contracts\Cache\ItemInterface;
 
 final class DashboardController extends AbstractController
 {
-    // Até 90s aqui + até 30s no repositório: idade máxima aproximada de 120s.
+    // Até 90s aqui + até 30s no repositório.
     private const CACHE_TTL = 90;
 
-    public function __construct(private readonly CacheInterface $cache)
+    public function __construct(private readonly CacheInterface $cache, private readonly Connection $connection)
     {
     }
 
@@ -78,30 +79,76 @@ final class DashboardController extends AbstractController
 
     private function loadStats(DashboardRepository $repository, ?Partner $partner, array $filters): array
     {
-        // Não cria uma chave persistente para cada texto ou regex digitados.
         if ($filters['query'] !== '' || $filters['exclude_streets'] !== '') {
-            return $repository->getDashboardStats($partner, $filters);
+            return $this->buildStats($repository, $partner, $filters);
         }
-        $key = 'dashboard_v4_' . ($partner?->getId() ?? 'global') . '_' . hash('sha256', json_encode($filters, JSON_THROW_ON_ERROR));
+        $key = 'dashboard_v5_numeric_jam_levels_' . ($partner?->getId() ?? 'global') . '_' . hash('sha256', json_encode($filters, JSON_THROW_ON_ERROR));
         return $this->cache->get($key, function (ItemInterface $item) use ($repository, $partner, $filters): array {
             $item->expiresAfter(self::CACHE_TTL);
-            return $repository->getDashboardStats($partner, $filters);
+            return $this->buildStats($repository, $partner, $filters);
         });
+    }
+
+    private function buildStats(DashboardRepository $repository, ?Partner $partner, array $filters): array
+    {
+        $stats = $repository->getDashboardStats($partner, $filters);
+        // Preserva o nível do banco como dado, separado de qualquer tradução.
+        $stats['charts']['jams_by_level'] = $this->getNumericJamLevels($partner, $filters);
+        return $stats;
+    }
+
+    private function getNumericJamLevels(?Partner $partner, array $filters): array
+    {
+        $where = ['1=1'];
+        $params = [];
+        if ($partner !== null) {
+            $where[] = 't.partner_id = :partner';
+            $params['partner'] = $partner->getId();
+        }
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('America/Sao_Paulo'));
+        $from = match ($filters['period']) {
+            'today' => $now->setTime(0, 0),
+            'week' => $now->modify('-7 days'),
+            'month' => $now->modify('-30 days'),
+            'year' => $now->modify('-365 days'),
+            default => null,
+        };
+        if ($from !== null) {
+            $where[] = 't.collected_at >= :date_from';
+            $params['date_from'] = $from->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s');
+        }
+        if ($filters['city'] !== null) {
+            $where[] = 't.city = :city';
+            $params['city'] = $filters['city'];
+        }
+        if ($filters['query'] !== '') {
+            $where[] = '(t.street LIKE :query OR t.city LIKE :query)';
+            $params['query'] = '%' . $filters['query'] . '%';
+        }
+        $patterns = [];
+        foreach (preg_split('/\r\n|\r|\n/', $filters['exclude_streets']) ?: [] as $line) {
+            $line = trim($line);
+            if ($line !== '') $patterns[] = mb_substr($line, 0, 200);
+        }
+        if ($patterns !== []) {
+            $where[] = "(t.street IS NULL OR t.street = '' OR t.street NOT REGEXP :excluded)";
+            $params['excluded'] = implode('|', array_slice($patterns, 0, 30));
+        }
+        $sql = 'SELECT t.level AS level, COUNT(*) AS total FROM waze_jams t WHERE ' . implode(' AND ', $where) . ' GROUP BY t.level ORDER BY t.level';
+        $rows = $this->connection->executeQuery($sql, $params)->fetchAllAssociative();
+        return array_map(static function (array $row): array {
+            $level = $row['level'] !== null ? (int) $row['level'] : null;
+            return ['level' => $level, 'label' => $level, 'total' => (int) $row['total']];
+        }, $rows);
     }
 
     private function resolvePartnerScope(): ?Partner
     {
         $user = $this->getUser();
-        if (!$user instanceof User) {
-            throw $this->createAccessDeniedException();
-        }
-        if ($user->isGlobalAdmin()) {
-            return null;
-        }
+        if (!$user instanceof User) throw $this->createAccessDeniedException();
+        if ($user->isGlobalAdmin()) return null;
         $partner = $user->getPartner();
-        if ($partner === null) {
-            throw $this->createAccessDeniedException('Usuário sem parceiro associado.');
-        }
+        if ($partner === null) throw $this->createAccessDeniedException('Usuário sem parceiro associado.');
         return $partner;
     }
 
@@ -121,13 +168,9 @@ final class DashboardController extends AbstractController
 
     private function normalizeDatesForJson(mixed $value): mixed
     {
-        if ($value instanceof \DateTimeInterface) {
-            return $value->format(DATE_ATOM);
-        }
+        if ($value instanceof \DateTimeInterface) return $value->format(DATE_ATOM);
         if (is_array($value)) {
-            foreach ($value as $key => $item) {
-                $value[$key] = $this->normalizeDatesForJson($item);
-            }
+            foreach ($value as $key => $item) $value[$key] = $this->normalizeDatesForJson($item);
         }
         return $value;
     }
