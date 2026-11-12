@@ -1,305 +1,161 @@
-/** Route comparison: standalone ES module; optional Chart.js and Leaflet globals. */
-const FALLBACK_MESSAGES = {"pt_BR":{"Comparando…":"Comparando…","Diferença (p.p.)":"Diferença (p.p.)","Dom":"Dom","Empate técnico":"Empate técnico","Gráfico indisponível":"Gráfico indisponível","Mapa de calor da comparação de rotas":"Mapa de calor da comparação de rotas","Mapa indisponível":"Mapa indisponível","Não foi possível carregar o gráfico.":"Não foi possível carregar o gráfico.","Não foi possível carregar o mapa. Os demais dados continuam disponíveis.":"Não foi possível carregar o mapa. Os demais dados continuam disponíveis.","Qua":"Qua","Qui":"Qui","Rota A":"Rota A","Rota A melhor":"Rota A melhor","Rota B":"Rota B","Rota B melhor":"Rota B melhor","Seg":"Seg","Selecione duas rotas diferentes.":"Selecione duas rotas diferentes.","Sem amostras":"Sem amostras","Sem dados":"Sem dados","Sem traçado geográfico":"Sem traçado geográfico","Sex":"Sex","Sáb":"Sáb","Ter":"Ter","Uma ou ambas as rotas não têm geometria cadastrada.":"Uma ou ambas as rotas não têm geometria cadastrada.","segundos":"segundos"},"en":{"Comparando…":"Comparing…","Diferença (p.p.)":"Difference (pp)","Dom":"Sun","Empate técnico":"Technical tie","Gráfico indisponível":"Chart unavailable","Mapa de calor da comparação de rotas":"Route comparison heatmap","Mapa indisponível":"Map unavailable","Não foi possível carregar o gráfico.":"Could not load the chart.","Não foi possível carregar o mapa. Os demais dados continuam disponíveis.":"Could not load the map. Other data remains available.","Qua":"Wed","Qui":"Thu","Rota A":"Route A","Rota A melhor":"Route A is better","Rota B":"Route B","Rota B melhor":"Route B is better","Seg":"Mon","Selecione duas rotas diferentes.":"Select two different routes.","Sem amostras":"No samples","Sem dados":"No data","Sem traçado geográfico":"No geographical route","Sex":"Fri","Sáb":"Sat","Ter":"Tue","Uma ou ambas as rotas não têm geometria cadastrada.":"One or both routes have no registered geometry.","segundos":"seconds"},"es":{"Comparando…":"Comparando…","Diferença (p.p.)":"Diferencia (p.p.)","Dom":"Dom","Empate técnico":"Empate técnico","Gráfico indisponível":"Gráfico no disponible","Mapa de calor da comparação de rotas":"Mapa de calor de comparación de rutas","Mapa indisponível":"Mapa no disponible","Não foi possível carregar o gráfico.":"No se pudo cargar el gráfico.","Não foi possível carregar o mapa. Os demais dados continuam disponíveis.":"No se pudo cargar el mapa. Los demás datos siguen disponibles.","Qua":"Mié","Qui":"Jue","Rota A":"Ruta A","Rota A melhor":"Ruta A es mejor","Rota B":"Ruta B","Rota B melhor":"Ruta B es mejor","Seg":"Lun","Selecione duas rotas diferentes.":"Seleccione dos rutas diferentes.","Sem amostras":"Sin muestras","Sem dados":"Sin datos","Sem traçado geográfico":"Sin trazado geográfico","Sex":"Vie","Sáb":"Sáb","Ter":"Mar","Uma ou ambas as rotas não têm geometria cadastrada.":"Una o ambas rutas no tienen geometría registrada.","segundos":"segundos"}};
 const states = new WeakMap();
-const activeStates = new Set();
-const DOW_KEYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
-
+const DAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 export function finiteNumber(value) {
-    if (value === null || value === undefined || typeof value === 'boolean' || String(value).trim() === '') return null;
+    if (value == null || typeof value === 'boolean' || String(value).trim() === '') return null;
     const number = Number(value);
     return Number.isFinite(number) ? number : null;
 }
+const json = (raw, fallback = []) => { try { return JSON.parse(raw); } catch { return fallback; } };
+export function chartSeries(points, key) { return points.map(point => finiteNumber(point?.[key])); }
 export function diffToColor(value) {
-    const diff = finiteNumber(value);
-    if (diff === null) return null;
-    const d = Math.max(-0.5, Math.min(0.5, diff));
-    if (Math.abs(d) < 0.03) return 'var(--rc-soft, #e2e8f0)';
-    if (d > 0) return `hsl(0, ${50 + d / .5 * 25}%, ${58 - d / .5 * 12}%)`;
-    return `hsl(140, ${55 + -d / .5 * 20}%, ${44 - -d / .5 * 4}%)`;
+    const n = finiteNumber(value);
+    if (n === null) return null;
+    if (Math.abs(n) < .02) return '#e2e8f0';
+    return n < 0 ? '#16a34a' : '#dc2626';
 }
-export function chartSeries(points, key) {
-    return points.map(point => finiteNumber(point?.[key]));
-}
-function safeJson(value, fallback) {
-    try { return JSON.parse(value); } catch { return fallback; }
-}
-function context(page) {
-    const locale = (page.dataset.rcLocale || document.documentElement.lang || 'pt-BR').replace('_', '-');
-    const code = locale.startsWith('en') ? 'en' : locale.startsWith('es') ? 'es' : 'pt_BR';
-    const messages = { ...FALLBACK_MESSAGES[code], ...safeJson(page.dataset.rcMessages || '{}', {}) };
-    return {
-        locale,
-        t(key, values = {}) {
-            let text = Object.hasOwn(messages, key) ? String(messages[key]) : key;
-            for (const [name, value] of Object.entries(values)) text = text.replaceAll(name, String(value));
-            return text;
-        },
-        number: new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }),
-    };
-}
-function pct(ctx, value) {
-    const number = finiteNumber(value);
-    return number === null ? '—' : `${ctx.number.format(number * 100)}%`;
-}
-function theme(page) {
-    const css = getComputedStyle(page);
-    return {
-        text: css.getPropertyValue('--rc-text').trim() || '#475569',
-        grid: css.getPropertyValue('--rc-line').trim() || 'rgba(148,163,184,.25)',
-        a: css.getPropertyValue('--rc-a').trim() || '#2563eb',
-        b: css.getPropertyValue('--rc-b').trim() || '#ea580c',
-    };
-}
-function routeNames(page, ctx) {
-    const names = [...page.querySelectorAll('.rc-vs__name')].map(node => node.textContent.trim());
-    return [names[0] || ctx.t('Rota A'), names[1] || ctx.t('Rota B')];
-}
-function messageAfter(node, title, detail = '') {
-    let status = node.nextElementSibling;
-    if (!status?.matches('[data-rc-component-status]')) {
-        status = document.createElement('div');
-        status.dataset.rcComponentStatus = '';
-        status.className = 'rc-component-status';
-        status.setAttribute('role', 'status');
-        node.after(status);
+function segments(raw) {
+    if (!Array.isArray(raw)) return [];
+    const out = [];
+    for (const line of raw) {
+        if (!Array.isArray(line)) continue;
+        let run = [];
+        const flush = () => { if (run.length > 1) out.push(run); run = []; };
+        for (const point of line) {
+            const lat = Array.isArray(point) ? finiteNumber(point[0]) : null;
+            const lng = Array.isArray(point) ? finiteNumber(point[1]) : null;
+            if (lat === null || lng === null || Math.abs(lat) > 90 || Math.abs(lng) > 180) flush();
+            else run.push([lat, lng]);
+        }
+        flush();
     }
-    status.replaceChildren();
-    if (title) {
-        const strong = document.createElement('strong'); strong.textContent = title; status.append(strong);
-        if (detail) { const small = document.createElement('small'); small.textContent = detail; status.append(small); }
-    }
-    status.hidden = !title;
-    return status;
+    return out;
 }
-function readPoints(canvas) {
-    const result = safeJson(canvas.dataset.chartData, []);
-    return Array.isArray(result) ? result.filter(point => point && typeof point === 'object') : [];
+function routeSegments(box, side) {
+    const raw = box.getAttribute(`data-rc-segments-${side}`);
+    const parsed = raw == null ? null : json(raw, null);
+    if (Array.isArray(parsed) && parsed.length) return segments(parsed);
+    return segments([json(box.getAttribute(`data-rc-${side}`))]);
 }
-export function renderHeatmap(page, ctx = context(page)) {
+function status(node, message) {
+    let box = node.parentElement.querySelector('[data-rc-status]');
+    if (!box) { box = document.createElement('p'); box.dataset.rcStatus = ''; box.setAttribute('role', 'status'); node.after(box); }
+    box.textContent = message;
+}
+export function renderHeatmap(page) {
     const box = page.querySelector('[data-rc-heatmap]');
     if (!box) return;
-    const rows = safeJson(box.dataset.rcHeatmapData, []);
-    const lookup = new Map();
-    if (Array.isArray(rows)) for (const row of rows) {
-        if (!row) continue;
-        const dow = finiteNumber(row.dow), hour = finiteNumber(row.hour);
-        if (!Number.isInteger(dow) || !Number.isInteger(hour)) continue;
-        if (dow >= 0 && dow < 7 && hour >= 0 && hour < 24) lookup.set(`${dow}:${hour}`, row);
-    }
+    const rows = json(box.dataset.rcHeatmapData);
+    const lookup = new Map((Array.isArray(rows) ? rows : []).filter(Boolean).map(row => [`${row.dow}:${row.hour}`, row]));
     const fragment = document.createDocumentFragment();
-    const div = (cls, text = '') => {
-        const node = document.createElement('div'); node.className = cls; node.textContent = text; fragment.append(node); return node;
-    };
-    div('rc-heatmap__corner');
-    for (let hour = 0; hour < 24; hour++) div('rc-heatmap__hour-label', String(hour).padStart(2, '0'));
-    for (let dow = 0; dow < 7; dow++) {
-        const day = ctx.t(DOW_KEYS[dow]);
-        div('rc-heatmap__dow-label', day);
+    const label = (cls, text) => { const node = document.createElement('div'); node.className = cls; node.textContent = text; fragment.append(node); };
+    label('rc-heatmap__corner', '');
+    for (let hour = 0; hour < 24; hour++) label('rc-heatmap__hour-label', String(hour).padStart(2, '0'));
+    for (let day = 0; day < 7; day++) {
+        label('rc-heatmap__dow-label', DAYS[day]);
         for (let hour = 0; hour < 24; hour++) {
-            const row = lookup.get(`${dow}:${hour}`);
-            const diff = finiteNumber(row?.diff);
-            const hasData = diff !== null;
-            const cell = document.createElement('button');
-            cell.type = 'button'; cell.className = 'rc-heatmap__cell' + (hasData ? '' : ' rc-heatmap__cell--empty');
-            const winner = !hasData ? ctx.t('Sem amostras') : Math.abs(diff) < .03
-                ? ctx.t('Empate técnico') : ctx.t(diff < 0 ? 'Rota A melhor' : 'Rota B melhor');
-            const lines = [`${day} ${String(hour).padStart(2, '0')}h`, winner];
-            if (hasData) {
-                cell.style.background = diffToColor(diff);
-                lines.push(`A: ${pct(ctx, row.aRatio)} · B: ${pct(ctx, row.bRatio)}`,
-                    `${ctx.t('Diferença (p.p.)')}: ${ctx.number.format(diff * 100)}`);
-            }
-            cell.title = lines.join(' · '); cell.setAttribute('aria-label', cell.title);
-            cell.dataset.rcDow = String(dow); cell.dataset.rcHour = String(hour);
-            cell.tabIndex = dow === 0 && hour === 0 ? 0 : -1;
+            const row = lookup.get(`${day}:${hour}`), diff = finiteNumber(row?.diff);
+            const cell = document.createElement('button'); cell.type = 'button';
+            cell.className = 'rc-heatmap__cell' + (diff === null ? ' rc-heatmap__cell--empty' : '');
+            const text = diff === null ? 'Sem amostras' : Math.abs(diff) < .02 ? 'Empate técnico' : diff < 0 ? 'A com menor atraso relativo' : 'B com menor atraso relativo';
+            cell.title = `${DAYS[day]} ${hour}h · ${text}`;
+            if (diff !== null) { cell.style.background = diffToColor(diff); cell.title += ` · diferença ${(diff * 100).toFixed(1)} p.p.`; }
+            cell.setAttribute('aria-label', cell.title); cell.tabIndex = day === 0 && hour === 0 ? 0 : -1;
             fragment.append(cell);
         }
     }
     box.replaceChildren(fragment);
-    box.setAttribute('role', 'group'); box.setAttribute('aria-label', ctx.t('Mapa de calor da comparação de rotas'));
-}
-function heatmapKeyboard(page, signal) {
-    const box = page.querySelector('[data-rc-heatmap]');
-    box?.addEventListener('keydown', event => {
-        const current = event.target.closest('[data-rc-hour]');
-        if (!current) return;
-        const cells = [...box.querySelectorAll('[data-rc-hour]')];
-        const index = cells.indexOf(current);
-        let next = index;
-        if (event.key === 'ArrowRight') next = Math.min(167, index + 1);
-        else if (event.key === 'ArrowLeft') next = Math.max(0, index - 1);
-        else if (event.key === 'ArrowDown') next = Math.min(167, index + 24);
-        else if (event.key === 'ArrowUp') next = Math.max(0, index - 24);
-        else if (event.key === 'Home') next = Math.floor(index / 24) * 24;
-        else if (event.key === 'End') next = Math.floor(index / 24) * 24 + 23;
-        else return;
-        event.preventDefault(); current.tabIndex = -1; cells[next].tabIndex = 0; cells[next].focus();
-    }, { signal });
-}
-function timelineLabel(value, locale) {
-    const text = String(value ?? '');
-    if (/Z$|[+-]\d{2}:\d{2}$/.test(text)) {
-        const date = new Date(text);
-        if (Number.isFinite(date.getTime())) return new Intl.DateTimeFormat(locale, {
-            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
-        }).format(date);
-    }
-    const match = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}:\d{2})/.exec(text);
-    if (!match) return text;
-    return locale.startsWith('en') ? `${match[2]}/${match[3]} ${match[4]}` : `${match[3]}/${match[2]} ${match[4]}`;
-}
-function initCharts(page, state) {
-    if (!page.querySelector('[data-chart^="rc-"]')) return true;
-    if (typeof window.Chart !== 'function') return false;
-    const ctx = state.ctx, colors = theme(page), names = routeNames(page, ctx);
-    for (const canvas of page.querySelectorAll('[data-chart^="rc-"]')) {
-        const kind = canvas.dataset.chart;
-        if (!['rc-timeline', 'rc-by-hour', 'rc-by-dow'].includes(kind)) continue;
-        const points = readPoints(canvas);
-        const a = chartSeries(points, 'aDelay'), b = chartSeries(points, 'bDelay');
-        if (!a.some(value => value !== null) && !b.some(value => value !== null)) {
-            state.charts.get(canvas)?.destroy(); state.charts.delete(canvas);
-            canvas.hidden = true; messageAfter(canvas, ctx.t('Sem dados')); continue;
-        }
-        canvas.hidden = false; messageAfter(canvas, '');
-        const labels = points.map(point => kind === 'rc-timeline' ? timelineLabel(point.time, ctx.locale)
-            : kind === 'rc-by-hour' ? `${String(point.hour).padStart(2, '0')}h` : ctx.t(DOW_KEYS[Number(point.dow)] || '?'));
-        const datasets = [a, b].map((values, index) => ({
-            label: names[index], routeKey: index === 0 ? 'a' : 'b', data: values,
-            borderColor: index === 0 ? colors.a : colors.b,
-            backgroundColor: index === 0 ? colors.a : colors.b,
-            borderWidth: 2, borderRadius: 4, fill: false, tension: .2,
-            pointRadius: 0, spanGaps: false,
-        }));
-        const config = {
-            type: kind === 'rc-timeline' ? 'line' : 'bar', data: { labels, datasets },
-            options: {
-                responsive: true, maintainAspectRatio: false, animation: false,
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: { callbacks: { label(item) {
-                        const value = finiteNumber(item.parsed.y);
-                        if (value === null) return `${item.dataset.label}: ${ctx.t('Sem dados')}`;
-                        const sign = value > 0 ? '+' : '';
-                        const point = points[item.dataIndex];
-                        const ratio = item.dataset.routeKey === 'a' ? point.aRatio : point.bRatio;
-                        const suffix = kind === 'rc-timeline' ? '' : ` · ${pct(ctx, ratio)}`;
-                        return `${item.dataset.label}: ${sign}${ctx.number.format(value)} s${suffix}`;
-                    } } },
-                },
-                scales: {
-                    x: { grid: { display: false }, ticks: { color: colors.text, maxTicksLimit: 10, maxRotation: 0 } },
-                    y: { grid: { color: colors.grid }, ticks: { color: colors.text }, beginAtZero: true,
-                        title: { display: true, text: ctx.t('segundos'), color: colors.text } },
-                },
-            },
-        };
-        try {
-            state.charts.get(canvas)?.destroy(); state.charts.delete(canvas);
-            state.charts.set(canvas, new window.Chart(canvas.getContext('2d'), config));
-        } catch (error) {
-            canvas.hidden = true; messageAfter(canvas, ctx.t('Gráfico indisponível'), ctx.t('Não foi possível carregar o gráfico.'));
-            console.error('[route-compare] Chart error', error);
-        }
-    }
-    return true;
-}
-function validLine(raw) {
-    const values = safeJson(raw, []);
-    if (!Array.isArray(values)) return [];
-    return values.filter(point => Array.isArray(point) && point.length >= 2)
-        .map(point => [finiteNumber(point[0]), finiteNumber(point[1])])
-        .filter(([lat, lng]) => lat !== null && lng !== null && Math.abs(lat) <= 90 && Math.abs(lng) <= 180);
-}
-function mapFallback(box, ctx, libraryError = false) {
-    let fallback = box.querySelector('[data-rc-map-fallback]');
-    if (!fallback) { fallback = document.createElement('div'); fallback.dataset.rcMapFallback = ''; fallback.className = 'rc-map__fallback'; box.append(fallback); }
-    const title = document.createElement('strong'); title.textContent = ctx.t(libraryError ? 'Mapa indisponível' : 'Sem traçado geográfico');
-    const detail = document.createElement('small'); detail.textContent = ctx.t(libraryError
-        ? 'Não foi possível carregar o mapa. Os demais dados continuam disponíveis.' : 'Uma ou ambas as rotas não têm geometria cadastrada.');
-    fallback.replaceChildren(title, detail); fallback.hidden = false; fallback.setAttribute('role', 'status');
 }
 function initMap(page, state) {
     const box = page.querySelector('[data-rc-map]');
-    if (!box || state.map) return true;
+    if (!box || state.mapDone) return true;
     if (typeof window.L?.map !== 'function') return false;
-    const lines = [validLine(box.dataset.rcA), validLine(box.dataset.rcB)];
-    if (!lines.some(line => line.length > 1)) { mapFallback(box, state.ctx); return true; }
+    const routes = [routeSegments(box, 'a'), routeSegments(box, 'b')];
+    if (!routes.some(lines => lines.length)) { status(box, 'Sem traçado geográfico disponível.'); state.mapDone = true; return true; }
     try {
-        box.querySelector('[data-rc-map-fallback]')?.setAttribute('hidden', '');
-        const map = window.L.map(box, { zoomControl: true, preferCanvas: true }); state.map = map;
-        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19, attribution: '&copy; OpenStreetMap contributors',
-        }).addTo(map);
-        const names = routeNames(page, state.ctx);
-        lines.forEach((line, index) => {
-            if (line.length < 2) return;
-            const popup = document.createElement('strong'); popup.textContent = names[index];
-            window.L.polyline(line, { color: index === 0 ? '#2563eb' : '#ea580c', weight: index === 0 ? 6 : 5,
-                opacity: .9, dashArray: index === 0 ? null : '8 6', lineCap: 'round', lineJoin: 'round',
-            }).bindPopup(popup).addTo(map);
-        });
-        map.fitBounds(lines.filter(line => line.length > 1).flat(), { padding: [24, 24], maxZoom: 15 });
-        if (typeof ResizeObserver === 'function') { state.resize = new ResizeObserver(() => map.invalidateSize()); state.resize.observe(box); }
-        else window.addEventListener('resize', () => map.invalidateSize(), { signal: state.abort.signal });
-        requestAnimationFrame(() => map.invalidateSize());
-    } catch (error) {
-        state.map?.remove(); state.map = null; mapFallback(box, state.ctx, true);
-        console.error('[route-compare] Leaflet error', error);
-    }
+        state.map = window.L.map(box, { preferCanvas: true });
+        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(state.map);
+        const names = [...page.querySelectorAll('.rc-vs__name')].map(node => node.textContent);
+        const bounds = window.L.latLngBounds([]);
+        routes.forEach((lines, index) => lines.forEach(line => {
+            const popup = document.createElement('strong'); popup.textContent = names[index] || `Rota ${index ? 'B' : 'A'}`;
+            const layer = window.L.polyline(line, { color: index ? '#ea580c' : '#2563eb', weight: index ? 5 : 6, opacity: .9, dashArray: index ? '8 6' : null, lineCap: 'round', lineJoin: 'round' }).bindPopup(popup).addTo(state.map);
+            bounds.extend(layer.getBounds());
+        }));
+        if (bounds.isValid()) state.map.fitBounds(bounds, { padding: [24, 24], maxZoom: 15 });
+        if (routes.some(lines => !lines.length)) status(box, 'Uma das rotas não tem traçado disponível.');
+        if (typeof ResizeObserver === 'function') { state.resize = new ResizeObserver(() => state.map?.invalidateSize()); state.resize.observe(box); }
+        requestAnimationFrame(() => state.map?.invalidateSize());
+        state.mapDone = true;
+    } catch (error) { state.map?.remove(); state.map = null; state.mapDone = true; status(box, 'Não foi possível carregar o mapa.'); console.error('[route-compare]', error); }
     return true;
 }
-function initPicker(page, state) {
-    const form = page.querySelector('[data-rc-form]');
-    const a = page.querySelector('[data-rc-select-a]'), b = page.querySelector('[data-rc-select-b]');
-    if (!form || !a || !b) return;
-    let status = form.querySelector('[data-rc-picker-status]');
-    if (!status) { status = document.createElement('p'); status.dataset.rcPickerStatus = ''; status.className = 'rc-picker-status'; status.setAttribute('role', 'status'); form.append(status); }
-    const validate = () => {
-        b.setCustomValidity(a.value && a.value === b.value ? state.ctx.t('Selecione duas rotas diferentes.') : '');
-        return form.reportValidity();
-    };
-    form.addEventListener('submit', event => {
-        if (!validate()) { event.preventDefault(); return; }
-        status.textContent = state.ctx.t('Comparando…');
-    }, { signal: state.abort.signal });
-    for (const select of [a, b]) select.addEventListener('change', () => {
-        b.setCustomValidity(a.value && a.value === b.value ? state.ctx.t('Selecione duas rotas diferentes.') : '');
-        status.textContent = '';
-    }, { signal: state.abort.signal });
-    page.querySelector('[data-rc-swap]')?.addEventListener('click', event => {
-        event.preventDefault(); [a.value, b.value] = [b.value, a.value];
-        b.setCustomValidity(a.value && a.value === b.value ? state.ctx.t('Selecione duas rotas diferentes.') : '');
-        status.textContent = '';
-        // Swapping alone does not navigate or steal focus; Compare submits the form.
-    }, { signal: state.abort.signal });
-}
-function cleanup(page, state) {
-    state.abort.abort(); state.timers.forEach(clearTimeout); state.resize?.disconnect();
-    state.charts.forEach(chart => chart.destroy()); state.charts.clear(); state.map?.remove();
-    states.delete(page); activeStates.delete(state);
+function initCharts(page, state) {
+    const canvases = [...page.querySelectorAll('[data-chart^="rc-"]')];
+    if (!canvases.length) return true;
+    if (typeof window.Chart !== 'function') return false;
+    const names = [...page.querySelectorAll('.rc-vs__name')].map(node => node.textContent);
+    for (const canvas of canvases) {
+        const rows = json(canvas.dataset.chartData), points = Array.isArray(rows) ? rows : [];
+        const a = chartSeries(points, 'aDelay'), b = chartSeries(points, 'bDelay');
+        state.charts.get(canvas)?.destroy(); state.charts.delete(canvas);
+        if (![...a, ...b].some(n => n !== null)) { canvas.hidden = true; status(canvas, 'Sem dados para este gráfico.'); continue; }
+        canvas.hidden = false;
+        const kind = canvas.dataset.chart;
+        const labels = points.map(point => {
+            if (kind === 'rc-by-hour') return `${point.hour}h`;
+            if (kind === 'rc-by-dow') return DAYS[point.dow] || '—';
+            const date = new Date(point.time);
+            return Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat(state.locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }).format(date) : String(point.time);
+        });
+        const colors = ['#2563eb', '#ea580c'];
+        const css = getComputedStyle(page), text = css.getPropertyValue('--rc-text').trim() || '#475569', grid = css.getPropertyValue('--rc-line').trim() || '#e2e8f0';
+        try {
+            const chart = new window.Chart(canvas, { type: kind === 'rc-timeline' ? 'line' : 'bar', data: { labels, datasets: [a, b].map((data, i) => ({ label: names[i] || `Rota ${i ? 'B' : 'A'}`, data, borderColor: colors[i], backgroundColor: colors[i], borderWidth: 2, pointRadius: 0, spanGaps: false })) }, options: { responsive: true, maintainAspectRatio: false, animation: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { labels: { color: text } } }, scales: { x: { ticks: { color: text, maxTicksLimit: 10, maxRotation: 0 }, grid: { display: false } }, y: { beginAtZero: true, ticks: { color: text }, grid: { color: grid }, title: { display: true, text: 'Atraso (segundos)', color: text } } } } });
+            state.charts.set(canvas, chart);
+        } catch (error) { canvas.hidden = true; status(canvas, 'Gráfico indisponível.'); console.error('[route-compare]', error); }
+    }
+    return true;
 }
 export function initRouteCompare(root = document) {
     const page = root.matches?.('[data-route-compare]') ? root : root.querySelector('[data-route-compare]');
     if (!page || states.has(page)) return;
-    const state = { ctx: context(page), charts: new Map(), map: null, abort: new AbortController(), timers: [], resize: null };
-    states.set(page, state); activeStates.add(state);
-    initPicker(page, state); renderHeatmap(page, state.ctx); heatmapKeyboard(page, state.abort.signal);
+    const state = { abort: new AbortController(), charts: new Map(), map: null, mapDone: false, resize: null, timer: null, locale: (page.dataset.rcLocale || 'pt-BR').replace('_', '-') };
+    states.set(page, state);
+    const signal = state.abort.signal;
+    const form = page.querySelector('[data-rc-form]'), a = page.querySelector('[data-rc-select-a]'), b = page.querySelector('[data-rc-select-b]');
+    if (form && a && b) {
+        const validate = () => b.setCustomValidity(a.value && a.value === b.value ? 'Selecione duas rotas diferentes.' : '');
+        for (const select of [a, b]) select.addEventListener('change', validate, { signal });
+        form.addEventListener('submit', event => { validate(); if (!form.reportValidity()) event.preventDefault(); }, { signal });
+        page.querySelector('[data-rc-swap]')?.addEventListener('click', () => { [a.value, b.value] = [b.value, a.value]; validate(); }, { signal });
+    }
+    renderHeatmap(page);
+    const heat = page.querySelector('[data-rc-heatmap]');
+    heat?.addEventListener('keydown', event => {
+        const cells = [...heat.querySelectorAll('button')], index = cells.indexOf(event.target);
+        if (index < 0) return;
+        const moves = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 24, ArrowUp: -24 };
+        let next;
+        if (Object.hasOwn(moves, event.key)) next = Math.max(0, Math.min(cells.length - 1, index + moves[event.key]));
+        else if (event.key === 'Home') next = Math.floor(index / 24) * 24;
+        else if (event.key === 'End') next = Math.floor(index / 24) * 24 + 23;
+        else return;
+        event.preventDefault(); cells[index].tabIndex = -1; cells[next].tabIndex = 0; cells[next].focus();
+    }, { signal });
     const hydrate = attempt => {
-        if (state.abort.signal.aborted || !page.isConnected) return;
-        const chartsReady = state.chartsReady || initCharts(page, state), mapReady = initMap(page, state);
-        state.chartsReady = chartsReady;
-        if (chartsReady && mapReady) return;
-        if (attempt < 30) { state.timers.push(setTimeout(() => hydrate(attempt + 1), 150)); return; }
-        if (!chartsReady) for (const canvas of page.querySelectorAll('[data-chart^="rc-"]')) {
-            canvas.hidden = true; messageAfter(canvas, state.ctx.t('Gráfico indisponível'), state.ctx.t('Não foi possível carregar o gráfico.'));
+        if (signal.aborted || !page.isConnected) return;
+        if (!state.chartsDone) state.chartsDone = initCharts(page, state);
+        const ready = initMap(page, state);
+        if (state.chartsDone && ready) return;
+        if (attempt < 30) state.timer = setTimeout(() => hydrate(attempt + 1), 150);
+        else {
+            if (!state.chartsDone) for (const canvas of page.querySelectorAll('canvas')) { canvas.hidden = true; status(canvas, 'Biblioteca de gráficos indisponível.'); }
+            if (!ready) { const box = page.querySelector('[data-rc-map]'); if (box) status(box, 'Biblioteca do mapa indisponível.'); }
         }
-        if (!mapReady) { const box = page.querySelector('[data-rc-map]'); if (box) mapFallback(box, state.ctx, true); }
     };
     hydrate(0);
-    window.addEventListener('wazebr:themechange', () => initCharts(page, state), { signal: state.abort.signal });
-    window.addEventListener('pagehide', () => cleanup(page, state), { once: true, signal: state.abort.signal });
+    window.addEventListener('wazebr:themechange', () => initCharts(page, state), { signal });
+    window.addEventListener('pagehide', () => { state.abort.abort(); clearTimeout(state.timer); state.resize?.disconnect(); state.charts.forEach(chart => chart.destroy()); state.map?.remove(); states.delete(page); }, { once: true, signal });
 }
 export default initRouteCompare;
 if (typeof document !== 'undefined') {
