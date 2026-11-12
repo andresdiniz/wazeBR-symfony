@@ -1,0 +1,20 @@
+/* ============================================================
+   pages/route-compare-extras.css — Insights, controles e impressão
+   ============================================================ */
+
+.rc-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 12px; }
+.rc-control { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--rc-muted, #64748b); }
+.rc-control select { min-height: 40px; padding: 8px 10px; border: 1px solid var(--rc-line, #e2e8f0); border-radius: 8px; background: var(--rc-surface, #fff); color: var(--rc-text, #0f172a); font: inherit; font-size: 13px; }
+.rc-button--ghost { background: transparent; }
+
+.rc-insights { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.rc-insight { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border: 1px solid var(--rc-line, #e2e8f0); border-radius: 12px; background: var(--rc-surface, #fff); box-shadow: 0 4px 14px rgba(15,23,42,.04); min-width: 0; }
+.rc-insight__kicker { font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--rc-muted, #64748b); }
+.rc-insight strong { font-size: 15px; line-height: 1.3; color: var(--rc-text, #0f172a); overflow-wrap: anywhere; }
+.rc-insight small { font-size: 11.5px; color: var(--rc-muted, #64748b); }
+.rc-insight--wide { grid-column: 1 / -1; }
+
+@media (max-width: 640px) {
+  .rc-controls { align-items: stretch; }
+  .rc-control { flex: 1 1 100%; }
+}
