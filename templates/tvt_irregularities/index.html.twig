@@ -1,1 +1,145 @@
-REAL_TWIG_TEMPLATE_CONTENT
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}Irregularidades TVT | WazeBR{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/pages/tvt-irregularities.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="tvi-page">
+    <header class="tvi-heading">
+        <div>
+            <span class="tvi-eyebrow">Tráfego em tempo real</span>
+            <h1>Irregularidades TVT</h1>
+            <p>Ocorrências ativas e recentes, com tempo observado, referência histórica e atraso.</p>
+        </div>
+        <span class="tvi-meta">Atualizado em {{ loaded_at|date('d/m/Y H:i', 'America/Sao_Paulo') }}</span>
+    </header>
+
+    <form method="get" class="tvi-filters" autocomplete="off">
+        <label>
+            Busca
+            <input type="search" name="q" value="{{ filters.q }}" placeholder="Rua, cidade ou nome">
+        </label>
+
+        <label>
+            Situação
+            <select name="status">
+                <option value="active" {{ filters.status == 'active' ? 'selected' : '' }}>Ativas</option>
+                <option value="inactive" {{ filters.status == 'inactive' ? 'selected' : '' }}>Inativas</option>
+                <option value="all" {{ filters.status == 'all' ? 'selected' : '' }}>Todas</option>
+            </select>
+        </label>
+
+        <label>
+            Período
+            <select name="period">
+                <option value="24h" {{ filters.period == '24h' ? 'selected' : '' }}>Últimas 24 horas</option>
+                <option value="7d" {{ filters.period == '7d' ? 'selected' : '' }}>Últimos 7 dias</option>
+                <option value="30d" {{ filters.period == '30d' ? 'selected' : '' }}>Últimos 30 dias</option>
+                <option value="all" {{ filters.period == 'all' ? 'selected' : '' }}>Todo o período</option>
+            </select>
+        </label>
+
+        <label>
+            Nível
+            <select name="level">
+                <option value="all" {{ filters.level == 'all' ? 'selected' : '' }}>Todos</option>
+                {% for value in ['0', '1', '2', '3', '4', '5'] %}
+                    <option value="{{ value }}" {{ filters.level == value ? 'selected' : '' }}>Nível {{ value }}</option>
+                {% endfor %}
+            </select>
+        </label>
+
+        {% if not partner_locked %}
+            <label>
+                Parceiro
+                <input type="number" name="partner" value="{{ filters.partner ?: '' }}" min="0" placeholder="Todos">
+            </label>
+        {% endif %}
+
+        <label>
+            Por página
+            <select name="per_page">
+                {% for value in [10, 25, 50, 100] %}
+                    <option value="{{ value }}" {{ filters.per_page == value ? 'selected' : '' }}>{{ value }}</option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <button type="submit">Filtrar</button>
+        <a class="tvi-button-secondary" href="{{ path('tvt_irregularities_index') }}">Limpar</a>
+    </form>
+
+    {% if rows is empty %}
+        <section class="tvi-empty">
+            <h2>Nenhuma irregularidade encontrada</h2>
+            <p>Ajuste os filtros ou aguarde a próxima coleta do Waze.</p>
+        </section>
+    {% else %}
+        <div class="tvi-table-wrap" tabindex="0" role="region" aria-label="Lista de irregularidades TVT">
+            <table class="tvi-table">
+                <caption>{{ total }} irregularidade(s) encontrada(s)</caption>
+                <thead>
+                    <tr>
+                        <th>Local</th>
+                        <th>Parceiro</th>
+                        <th>Situação</th>
+                        <th>Nível</th>
+                        <th>Observado</th>
+                        <th>Histórico</th>
+                        <th>Atraso</th>
+                        <th>Última detecção</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                        <tr>
+                            <td>
+                                <strong>{{ row.name }}</strong>
+                                {% if row.street or row.city %}
+                                    <br><small>{{ row.street }}{% if row.street and row.city %} · {% endif %}{{ row.city }}</small>
+                                {% endif %}
+                            </td>
+                            <td>{{ row.partner_name ?: '—' }}</td>
+                            <td>
+                                {% if row.is_active %}
+                                    <span class="tvi-badge tvi-badge-active">Ativa</span>
+                                {% else %}
+                                    <span class="tvi-badge">Inativa</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ row.level is not null ? row.level : '—' }}</td>
+                            <td>{{ row.observed is not null ? row.observed|number_format(1, ',', '.') ~ ' min' : '—' }}</td>
+                            <td>{{ row.historic is not null ? row.historic|number_format(1, ',', '.') ~ ' min' : '—' }}</td>
+                            <td>{{ row.delay is not null ? row.delay|number_format(1, ',', '.') ~ ' min' : '—' }}</td>
+                            <td>{{ row.last_seen_at|date('d/m/Y H:i', 'America/Sao_Paulo') }}</td>
+                            <td>
+                                <a href="{{ path('tvt_irregularities_evolution', { id: row.id }) }}">Ver evolução</a>
+                                {% if row.waze_url %}
+                                    <a href="{{ row.waze_url }}" target="_blank" rel="noopener noreferrer">Waze</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <nav class="tvi-pagination" aria-label="Paginação">
+            <span>Página {{ page }} de {{ pages }} · Exibindo {{ first }}–{{ last }} de {{ total }}</span>
+
+            {% if page > 1 %}
+                <a href="{{ path('tvt_irregularities_index', filters|merge({ page: page - 1 })) }}">Anterior</a>
+            {% endif %}
+
+            {% if page < pages %}
+                <a href="{{ path('tvt_irregularities_index', filters|merge({ page: page + 1 })) }}">Próxima</a>
+            {% endif %}
+        </nav>
+    {% endif %}
+</div>
+{% endblock %}
