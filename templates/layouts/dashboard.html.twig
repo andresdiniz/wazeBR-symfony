@@ -3,6 +3,7 @@
     {{ parent() }}
     {% if app.request.attributes.get('_route') == 'dashboard' %}
         <link rel="stylesheet" href="{{ asset('css/pages/dashboard-decisions.css') }}">
+        <link rel="stylesheet" href="{{ asset('css/pages/dashboard-period-comparison.css') }}">
     {% endif %}
 {% endblock %}
 {% block body_class %}app-body dashboard-layout{% endblock %}
