@@ -1,217 +1,67 @@
 {% extends 'layouts/dashboard.html.twig' %}
-
+{% macro duration(seconds) %}{% if seconds is null %}—{% else %}{{ (seconds / 60)|number_format(1, ',', '.') }} min{% endif %}{% endmacro %}
+{% import _self as ui %}
 {% block title %}Irregularidades TVT | WazeBR{% endblock %}
-
 {% block stylesheets %}
-    {{ parent() }}
-    <link rel="stylesheet" href="{{ asset('css/pages/tvt-irregularities.css') }}">
-{% endblock %}
-
-{% block content %}
-<div class="tvi-page">
-    <header class="tvi-heading">
-        <div>
-            <span class="tvi-eyebrow">Tráfego em tempo real</span>
-            <h1>Irregularidades TVT</h1>
-<<<<<<< Updated upstream
-            <p>Monitoramento de ocorrências, tempo observado, referência histórica e atraso.</p>
-=======
-            <p>Ocorrências ativas e recentes, com tempo observado, referência histórica e atraso.</p>
->>>>>>> Stashed changes
-        </div>
-        <span class="tvi-meta">Atualizado em {{ loaded_at|date('d/m/Y H:i', 'America/Sao_Paulo') }}</span>
-    </header>
-
-<<<<<<< Updated upstream
-    <section class="tvi-summary">
-        <article class="tvi-card">
-            <span>Total</span>
-            <strong>{{ total }}</strong>
-        </article>
-        <article class="tvi-card">
-            <span>Ativas</span>
-            <strong>{{ rows|filter(r => r.is_active)|length }}</strong>
-        </article>
-        <article class="tvi-card">
-            <span>Inativas</span>
-            <strong>{{ rows|filter(r => not r.is_active)|length }}</strong>
-        </article>
-        <article class="tvi-card">
-            <span>Maior atraso</span>
-            <strong>
-                {% set max_delay = 0 %}
-                {% for row in rows %}
-                    {% if row.delay is not null and row.delay > max_delay %}
-                        {% set max_delay = row.delay %}
-                    {% endif %}
-                {% endfor %}
-                {{ max_delay|number_format(1, ',', '.') }} min
-            </strong>
-        </article>
-    </section>
-
-=======
->>>>>>> Stashed changes
-    <form method="get" class="tvi-filters" autocomplete="off">
-        <label>
-            Busca
-            <input type="search" name="q" value="{{ filters.q }}" placeholder="Rua, cidade ou nome">
-        </label>
-
-        <label>
-            Situação
-            <select name="status">
-                <option value="active" {{ filters.status == 'active' ? 'selected' : '' }}>Ativas</option>
-                <option value="inactive" {{ filters.status == 'inactive' ? 'selected' : '' }}>Inativas</option>
-                <option value="all" {{ filters.status == 'all' ? 'selected' : '' }}>Todas</option>
-            </select>
-        </label>
-
-        <label>
-            Período
-            <select name="period">
-                <option value="24h" {{ filters.period == '24h' ? 'selected' : '' }}>Últimas 24 horas</option>
-                <option value="7d" {{ filters.period == '7d' ? 'selected' : '' }}>Últimos 7 dias</option>
-                <option value="30d" {{ filters.period == '30d' ? 'selected' : '' }}>Últimos 30 dias</option>
-                <option value="all" {{ filters.period == 'all' ? 'selected' : '' }}>Todo o período</option>
-            </select>
-        </label>
-
-        <label>
-            Nível
-            <select name="level">
-                <option value="all" {{ filters.level == 'all' ? 'selected' : '' }}>Todos</option>
-                {% for value in ['0', '1', '2', '3', '4', '5'] %}
-                    <option value="{{ value }}" {{ filters.level == value ? 'selected' : '' }}>Nível {{ value }}</option>
-                {% endfor %}
-            </select>
-        </label>
-
-        {% if not partner_locked %}
-            <label>
-                Parceiro
-                <input type="number" name="partner" value="{{ filters.partner ?: '' }}" min="0" placeholder="Todos">
-            </label>
-        {% endif %}
-
-        <label>
-            Por página
-            <select name="per_page">
-                {% for value in [10, 25, 50, 100] %}
-                    <option value="{{ value }}" {{ filters.per_page == value ? 'selected' : '' }}>{{ value }}</option>
-                {% endfor %}
-            </select>
-        </label>
-
-        <button type="submit">Filtrar</button>
-        <a class="tvi-button-secondary" href="{{ path('tvt_irregularities_index') }}">Limpar</a>
-    </form>
-
-    {% if rows is empty %}
-        <section class="tvi-empty">
-            <h2>Nenhuma irregularidade encontrada</h2>
-            <p>Ajuste os filtros ou aguarde a próxima coleta do Waze.</p>
-        </section>
-    {% else %}
-        <div class="tvi-table-wrap" tabindex="0" role="region" aria-label="Lista de irregularidades TVT">
-            <table class="tvi-table">
-                <caption>{{ total }} irregularidade(s) encontrada(s)</caption>
-                <thead>
-                    <tr>
-                        <th>Local</th>
-                        <th>Parceiro</th>
-                        <th>Situação</th>
-                        <th>Nível</th>
-                        <th>Observado</th>
-                        <th>Histórico</th>
-                        <th>Atraso</th>
-                        <th>Última detecção</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in rows %}
-                        <tr>
-                            <td>
-                                <strong>{{ row.name }}</strong>
-                                {% if row.street or row.city %}
-                                    <br><small>{{ row.street }}{% if row.street and row.city %} · {% endif %}{{ row.city }}</small>
-                                {% endif %}
-                            </td>
-                            <td>{{ row.partner_name ?: '—' }}</td>
-                            <td>
-                                {% if row.is_active %}
-                                    <span class="tvi-badge tvi-badge-active">Ativa</span>
-                                {% else %}
-                                    <span class="tvi-badge">Inativa</span>
-                                {% endif %}
-                            </td>
-<<<<<<< Updated upstream
-                            <td>
-                                {% if row.level is not null %}
-                                    <span class="tvi-badge tvi-badge-level-{{ row.level }}">Nível {{ row.level }}</span>
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </td>
-                            <td>{{ row.observed is not null ? row.observed|number_format(1, ',', '.') ~ ' min' : '—' }}</td>
-                            <td>{{ row.historic is not null ? row.historic|number_format(1, ',', '.') ~ ' min' : '—' }}</td>
-                            <td>
-                                {% if row.delay is not null %}
-                                    <span class="tvi-delay {{ row.delay > 0 ? 'tvi-delay-positive' : '' }}">
-                                        {{ row.delay|number_format(1, ',', '.') }} min
-                                    </span>
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </td>
-=======
-                            <td>{{ row.level is not null ? row.level : '—' }}</td>
-                            <td>{{ row.observed is not null ? row.observed|number_format(1, ',', '.') ~ ' min' : '—' }}</td>
-                            <td>{{ row.historic is not null ? row.historic|number_format(1, ',', '.') ~ ' min' : '—' }}</td>
-                            <td>{{ row.delay is not null ? row.delay|number_format(1, ',', '.') ~ ' min' : '—' }}</td>
->>>>>>> Stashed changes
-                            <td>{{ row.last_seen_at|date('d/m/Y H:i', 'America/Sao_Paulo') }}</td>
-                            <td>
-                                <a href="{{ path('tvt_irregularities_evolution', { id: row.id }) }}">Ver evolução</a>
-                                {% if row.waze_url %}
-<<<<<<< Updated upstream
-                                    <a href="{{ row.waze_url }}" target="_blank" rel="noopener noreferrer" title="Abrir no Waze">Mapa</a>
-=======
-                                    <a href="{{ row.waze_url }}" target="_blank" rel="noopener noreferrer">Waze</a>
->>>>>>> Stashed changes
-                                {% endif %}
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <nav class="tvi-pagination" aria-label="Paginação">
-            <span>Página {{ page }} de {{ pages }} · Exibindo {{ first }}–{{ last }} de {{ total }}</span>
-
-            {% if page > 1 %}
-                <a href="{{ path('tvt_irregularities_index', filters|merge({ page: page - 1 })) }}">Anterior</a>
-            {% endif %}
-
-            {% if page < pages %}
-                <a href="{{ path('tvt_irregularities_index', filters|merge({ page: page + 1 })) }}">Próxima</a>
-            {% endif %}
-        </nav>
-    {% endif %}
-</div>
-<<<<<<< Updated upstream
-
+{{ parent() }}
+<link rel="stylesheet" href="{{ asset('css/pages/tvt-irregularities.css') }}">
 <style>
-.tvi-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin:18px 0}
-.tvi-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px}
-.tvi-card span{display:block;font-size:.8rem;color:#64748b}
-.tvi-card strong{font-size:1.4rem;color:#0f172a}
-.tvi-badge-level-3,.tvi-badge-level-4,.tvi-badge-level-5{background:#fee2e2;color:#b91c1c}
-.tvi-badge-level-1,.tvi-badge-level-2{background:#fef3c7;color:#92400e}
-.tvi-delay-positive{color:#b91c1c;font-weight:600}
+#tvt-index{min-width:0;max-width:100%;color:var(--bs-body-color,inherit)}
+#tvt-index .ix-heading{display:flex;justify-content:space-between;align-items:start;gap:20px;flex-wrap:wrap;margin-bottom:24px}
+#tvt-index h1{margin:5px 0 8px;font-size:clamp(1.6rem,3vw,2.2rem)}
+#tvt-index .ix-muted{opacity:.72;font-size:.88rem}
+#tvt-index .ix-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:20px 0}
+#tvt-index .ix-card,#tvt-index .ix-filters,#tvt-index .ix-results{background:var(--bs-body-bg,#fff);border:1px solid var(--bs-border-color,#dce3ec);border-radius:16px}
+#tvt-index .ix-card{padding:20px;min-width:0}#tvt-index .ix-card span,#tvt-index .ix-card small{display:block;opacity:.72}#tvt-index .ix-card strong{display:block;font-size:1.7rem;margin:8px 0;overflow-wrap:anywhere}
+#tvt-index .ix-filters{padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:16px;align-items:end;margin-bottom:22px}
+#tvt-index label{display:flex;flex-direction:column;gap:8px;font-size:.85rem;font-weight:600;min-width:0}
+#tvt-index input,#tvt-index select{box-sizing:border-box;width:100%;min-width:0;height:44px;padding:0 12px;border:1px solid var(--bs-border-color,#cbd5e1);border-radius:9px;background:var(--bs-body-bg,#fff);color:inherit;font:inherit}
+#tvt-index .ix-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#tvt-index .ix-button{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 14px;border:1px solid var(--bs-border-color,#cbd5e1);border-radius:9px;background:transparent;color:inherit;text-decoration:none;font:inherit;cursor:pointer}
+#tvt-index .ix-primary{background:#1d4ed8;color:#fff;border-color:#1d4ed8}
+#tvt-index :focus-visible{outline:3px solid #60a5fa;outline-offset:3px}
+#tvt-index .ix-scroll{max-width:100%;overflow-x:auto}
+#tvt-index table{width:100%;border-collapse:collapse;font-size:.88rem;min-width:1050px}
+#tvt-index caption{text-align:left;padding:18px;font-weight:600}
+#tvt-index th{text-align:left;background:rgba(100,116,139,.09);font-size:.78rem;white-space:nowrap}
+#tvt-index td,#tvt-index th{padding:16px;border-bottom:1px solid var(--bs-border-color,#e2e8f0);vertical-align:middle}
+#tvt-index td:first-child{min-width:220px;max-width:330px;overflow-wrap:anywhere}#tvt-index td small{display:block;margin-top:5px;opacity:.7}
+#tvt-index .ix-number{white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right}
+#tvt-index .ix-badge{display:inline-block;padding:5px 9px;border-radius:7px;background:#e2e8f0;color:#334155;white-space:nowrap;font-size:.78rem;font-weight:600}
+#tvt-index .ix-active{background:#dcfce7;color:#166534}#tvt-index .ix-level-1,#tvt-index .ix-level-2{background:#fef3c7;color:#92400e}#tvt-index .ix-level-3,#tvt-index .ix-level-4,#tvt-index .ix-level-5{background:#fee2e2;color:#991b1b}
+#tvt-index .ix-delay{color:#dc2626;font-weight:700}
+#tvt-index .ix-pagination{padding:18px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+#tvt-index .ix-empty{text-align:center;padding:40px 20px}
+@media(max-width:800px){#tvt-index .ix-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:420px){#tvt-index .ix-summary{grid-template-columns:1fr}}
 </style>
-=======
->>>>>>> Stashed changes
+{% endblock %}
+{% block content %}
+{% set active_count = 0 %}{% set max_delay = null %}
+{% for row in rows %}{% if row.is_active %}{% set active_count = active_count + 1 %}{% endif %}{% if row.delay is not null and (max_delay is null or row.delay > max_delay) %}{% set max_delay = row.delay %}{% endif %}{% endfor %}
+<div id="tvt-index">
+<header class="ix-heading"><div><span class="ix-muted">MONITORAMENTO DE TRÁFEGO</span><h1>Irregularidades TVT</h1><p class="ix-muted">Compare o tempo observado com a referência histórica e acompanhe cada ocorrência.</p></div><div class="ix-muted">Dados carregados em<br>{{ loaded_at|date('d/m/Y H:i', 'America/Sao_Paulo') }} · Brasília</div></header>
+<section class="ix-summary" aria-label="Resumo dos resultados">
+<article class="ix-card"><span>Resultados filtrados</span><strong>{{ total }}</strong><small>Total em todas as páginas</small></article>
+<article class="ix-card"><span>Ativas nesta página</span><strong>{{ active_count }}</strong><small>Entre {{ rows|length }} registros exibidos</small></article>
+<article class="ix-card"><span>Inativas nesta página</span><strong>{{ rows|length - active_count }}</strong><small>Conforme a última coleta registrada</small></article>
+<article class="ix-card"><span>Maior atraso nesta página</span><strong>{{ ui.duration(max_delay) }}</strong><small>Diferença de tempo de percurso, não duração da ocorrência</small></article>
+</section>
+<form method="get" action="{{ path('tvt_irregularities_index') }}" class="ix-filters">
+<label>Busca<input type="search" name="q" value="{{ filters.q }}" maxlength="120" placeholder="Rua, cidade ou nome"></label>
+<label>Situação<select name="status">{% for value,label in {'active':'Ativas','inactive':'Inativas','all':'Todas'} %}<option value="{{ value }}" {{ filters.status == value ? 'selected' : '' }}>{{ label }}</option>{% endfor %}</select></label>
+<label>Última detecção<select name="period">{% for value,label in {'24h':'Últimas 24 horas','7d':'Últimos 7 dias','30d':'Últimos 30 dias','all':'Todo o período'} %}<option value="{{ value }}" {{ filters.period == value ? 'selected' : '' }}>{{ label }}</option>{% endfor %}</select></label>
+<label>Nível<select name="level"><option value="all">Todos</option>{% for value in 0..5 %}<option value="{{ value }}" {{ filters.level == value and filters.level != 'all' ? 'selected' : '' }}>Nível {{ value }}</option>{% endfor %}</select></label>
+{% if not partner_locked %}<label>ID do parceiro<input type="number" name="partner" value="{{ filters.partner ?: '' }}" min="0" step="1" placeholder="Todos"></label>{% endif %}
+<label>Por página<select name="per_page">{% for value in [10,25,50,100] %}<option value="{{ value }}" {{ filters.per_page == value ? 'selected' : '' }}>{{ value }}</option>{% endfor %}</select></label>
+<div class="ix-actions"><button class="ix-button ix-primary" type="submit">Aplicar filtros</button><a class="ix-button" href="{{ path('tvt_irregularities_index') }}">Limpar</a></div>
+</form>
+<section class="ix-results">
+{% if rows is empty %}<div class="ix-empty"><h2>Nenhuma ocorrência para estes filtros</h2><p>Isso não comprova ausência de irregularidades na via. Amplie o período ou revise os filtros.</p></div>{% else %}
+<div class="ix-scroll" tabindex="0" role="region" aria-label="Tabela de irregularidades, com rolagem horizontal"><table><caption>{{ total }} resultado(s) · tempos em minutos</caption><thead><tr><th scope="col">Local</th><th scope="col">Parceiro</th><th scope="col">Situação</th><th scope="col">Nível</th><th scope="col" class="ix-number">Observado</th><th scope="col" class="ix-number">Referência</th><th scope="col" class="ix-number">Atraso</th><th scope="col">Última detecção</th><th scope="col">Ações</th></tr></thead><tbody>
+{% for row in rows %}<tr><td><strong>{{ row.name }}</strong>{% if row.street or row.city %}<small>{{ row.street }}{% if row.street and row.city %} · {% endif %}{{ row.city }}</small>{% endif %}<small>#{{ row.id }}</small></td><td>{{ row.partner_name ?: 'Não informado' }}</td><td><span class="ix-badge {{ row.is_active ? 'ix-active' : '' }}">{{ row.is_active ? 'Ativa' : 'Inativa' }}</span></td><td>{% if row.level is not null %}<span class="ix-badge ix-level-{{ row.level }}">Nível {{ row.level }}</span>{% else %}—{% endif %}</td><td class="ix-number">{{ ui.duration(row.observed) }}</td><td class="ix-number">{{ ui.duration(row.historic) }}</td><td class="ix-number {{ row.delay is not null and row.delay > 0 ? 'ix-delay' : '' }}">{{ ui.duration(row.delay) }}</td><td>{{ row.last_seen_at ? row.last_seen_at|date('d/m/Y H:i', 'America/Sao_Paulo') : '—' }}</td><td><div class="ix-actions"><a class="ix-button ix-primary" href="{{ path('tvt_irregularities_evolution', {id:row.id}) }}" aria-label="Ver evolução da irregularidade {{ row.id }}">Evolução</a>{% if row.waze_url %}<a class="ix-button" href="{{ row.waze_url }}" target="_blank" rel="noopener noreferrer" aria-label="Abrir irregularidade {{ row.id }} no Waze em nova aba">Waze</a>{% endif %}</div></td></tr>{% endfor %}
+</tbody></table></div>
+<nav class="ix-pagination" aria-label="Paginação"><span class="ix-muted">{{ first }}–{{ last }} de {{ total }} · Página {{ page }} de {{ pages }}</span><div class="ix-actions">{% if page > 1 %}<a class="ix-button" href="{{ path('tvt_irregularities_index', filters|merge({page:page-1})) }}">Anterior</a>{% endif %}{% if page < pages %}<a class="ix-button" href="{{ path('tvt_irregularities_index', filters|merge({page:page+1})) }}">Próxima</a>{% endif %}</div></nav>
+{% endif %}
+</section>
+</div>
 {% endblock %}
