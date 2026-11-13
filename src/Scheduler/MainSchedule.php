@@ -30,7 +30,7 @@ final class MainSchedule implements ScheduleProviderInterface
             ->add(RecurringMessage::every('1 minute', new RunCommandMessage('app:jams:forecast --no-interaction')))
             ->add(RecurringMessage::every('2 minutes', new RunCommandMessage('app:fetch:waze:tvt --no-interaction')))
             // Sem --partner: percorre parceiros ativos com links TVT. A trava é compartilhada com a coleta acima.
-            ->add(RecurringMessage::every('2 minutes', new RunCommandMessage('app:fetch:waze:tvt-irregularities --no-interaction')))
+            ->add(RecurringMessage::every('1 minutes', new RunCommandMessage('app:fetch:waze:tvt-irregularities --no-interaction')))
             ->add(RecurringMessage::every('10 minutes', new RunCommandMessage('app:fetch:cemaden:hidro --no-interaction')))
             ->add(RecurringMessage::every('10 minutes', new RunCommandMessage('app:fetch:cemaden:pluviometric --no-interaction')))
             ->add(RecurringMessage::every('5 minutes', new RunCommandMessage('app:weather:fetch-observations --no-interaction')))
