@@ -32,7 +32,17 @@
 #tvt-index .ix-delay{color:#dc2626;font-weight:700}
 #tvt-index .ix-pagination{padding:18px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 #tvt-index .ix-empty{text-align:center;padding:40px 20px}
-@media(max-width:800px){#tvt-index .ix-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:420px){#tvt-index .ix-summary{grid-template-columns:1fr}}
+@media (max-width: 800px) {
+    #tvt-index .ix-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 420px) {
+    #tvt-index .ix-summary {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
 {% endblock %}
 {% block content %}
