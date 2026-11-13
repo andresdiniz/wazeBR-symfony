@@ -13,10 +13,37 @@
         <div>
             <span class="tvi-eyebrow">Tráfego em tempo real</span>
             <h1>Irregularidades TVT</h1>
-            <p>Ocorrências ativas e recentes, com tempo observado, referência histórica e atraso.</p>
+            <p>Monitoramento de ocorrências, tempo observado, referência histórica e atraso.</p>
         </div>
         <span class="tvi-meta">Atualizado em {{ loaded_at|date('d/m/Y H:i', 'America/Sao_Paulo') }}</span>
     </header>
+
+    <section class="tvi-summary">
+        <article class="tvi-card">
+            <span>Total</span>
+            <strong>{{ total }}</strong>
+        </article>
+        <article class="tvi-card">
+            <span>Ativas</span>
+            <strong>{{ rows|filter(r => r.is_active)|length }}</strong>
+        </article>
+        <article class="tvi-card">
+            <span>Inativas</span>
+            <strong>{{ rows|filter(r => not r.is_active)|length }}</strong>
+        </article>
+        <article class="tvi-card">
+            <span>Maior atraso</span>
+            <strong>
+                {% set max_delay = 0 %}
+                {% for row in rows %}
+                    {% if row.delay is not null and row.delay > max_delay %}
+                        {% set max_delay = row.delay %}
+                    {% endif %}
+                {% endfor %}
+                {{ max_delay|number_format(1, ',', '.') }} min
+            </strong>
+        </article>
+    </section>
 
     <form method="get" class="tvi-filters" autocomplete="off">
         <label>
@@ -112,15 +139,29 @@
                                     <span class="tvi-badge">Inativa</span>
                                 {% endif %}
                             </td>
-                            <td>{{ row.level is not null ? row.level : '—' }}</td>
+                            <td>
+                                {% if row.level is not null %}
+                                    <span class="tvi-badge tvi-badge-level-{{ row.level }}">Nível {{ row.level }}</span>
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
                             <td>{{ row.observed is not null ? row.observed|number_format(1, ',', '.') ~ ' min' : '—' }}</td>
                             <td>{{ row.historic is not null ? row.historic|number_format(1, ',', '.') ~ ' min' : '—' }}</td>
-                            <td>{{ row.delay is not null ? row.delay|number_format(1, ',', '.') ~ ' min' : '—' }}</td>
+                            <td>
+                                {% if row.delay is not null %}
+                                    <span class="tvi-delay {{ row.delay > 0 ? 'tvi-delay-positive' : '' }}">
+                                        {{ row.delay|number_format(1, ',', '.') }} min
+                                    </span>
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
                             <td>{{ row.last_seen_at|date('d/m/Y H:i', 'America/Sao_Paulo') }}</td>
                             <td>
                                 <a href="{{ path('tvt_irregularities_evolution', { id: row.id }) }}">Ver evolução</a>
                                 {% if row.waze_url %}
-                                    <a href="{{ row.waze_url }}" target="_blank" rel="noopener noreferrer">Waze</a>
+                                    <a href="{{ row.waze_url }}" target="_blank" rel="noopener noreferrer" title="Abrir no Waze">Mapa</a>
                                 {% endif %}
                             </td>
                         </tr>
@@ -142,4 +183,14 @@
         </nav>
     {% endif %}
 </div>
+
+<style>
+.tvi-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin:18px 0}
+.tvi-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px}
+.tvi-card span{display:block;font-size:.8rem;color:#64748b}
+.tvi-card strong{font-size:1.4rem;color:#0f172a}
+.tvi-badge-level-3,.tvi-badge-level-4,.tvi-badge-level-5{background:#fee2e2;color:#b91c1c}
+.tvi-badge-level-1,.tvi-badge-level-2{background:#fef3c7;color:#92400e}
+.tvi-delay-positive{color:#b91c1c;font-weight:600}
+</style>
 {% endblock %}
