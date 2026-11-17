@@ -6,7 +6,7 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
 
     <!-- SEO & Metadados -->
-    <title>{% block title %}WazeBR Monitor - Inteligência para Mobilidade Urbana{% endblock %}</title>
+    <title>{% block title %}trafik Monitor - Inteligência para Mobilidade Urbana{% endblock %}</title>
     <meta name="description" content="{% block meta_description %}Monitore trânsito, alertas, rotas e ocorrências em uma plataforma completa para mobilidade urbana.{% endblock %}">
     <meta name="theme-color" content="#159bb2">
     <meta name="color-scheme" content="light dark">
@@ -20,7 +20,7 @@
     <meta property="og:description" content="{% block og_description %}{{ block('meta_description') }}{% endblock %}">
     <meta property="og:url" content="{% block og_url %}{{ app.request.uri }}{% endblock %}">
     <meta property="og:image" content="{% block og_image %}{{ absolute_url(asset('images/og-image.png')) }}{% endblock %}">
-    <meta property="og:site_name" content="WazeBR Monitor">
+    <meta property="og:site_name" content="trafik Monitor">
     <meta property="og:locale" content="pt_BR">
 
     <!-- Twitter Card -->
@@ -56,7 +56,7 @@
     {
         "@context": "https://schema.org",
         "@type": "Organization",
-        "name": "WazeBR Monitor",
+        "name": "trafik Monitor",
         "description": "Plataforma de inteligência para mobilidade urbana",
         "url": "{{ absolute_url('/') }}",
         "logo": "{{ absolute_url(asset('images/logo.png')) }}",
