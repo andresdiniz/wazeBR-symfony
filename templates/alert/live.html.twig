@@ -1,1 +1,183 @@
-SUBSTITUICAO_PENDENTE: trocar apenas 'wazeBR' por 'trafik' no bloco title. Conteudo completo sera enviado no proximo lote apos leitura do arquivo.
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}{{ 'Alertas ao vivo'|trans({}, 'alerts_ui') }} | trafik{% endblock %}
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/pages/alerts.css') }}">
+{% endblock %}
+
+{% block page_body_class %}alerts-live-page{% endblock %}
+
+{% block dashboard_page_title %}{{ 'Alertas ao vivo'|trans({}, 'alerts_ui') }}{% endblock %}
+
+{% block page_content %}
+<div data-alerts-i18n="{{ alerts_i18n()|json_encode|e('html_attr') }}" hidden></div>
+    <div class="dashboard-content alerts-live-content">
+        {# ── Hero ────────────────────────────────────────────── #}
+        <section class="dashboard-hero">
+            <div>
+                <a
+                    href="{{ path('alert_index') }}"
+                    class="dashboard-back-link"
+                >
+                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                    {{ 'Voltar para alertas'|trans({}, 'alerts_ui') }}
+                </a>
+
+                <p class="dashboard-hero-kicker">{{ 'Monitoramento em tempo real'|trans({}, 'alerts_ui') }}</p>
+                <h2>{{ 'Alertas ao vivo'|trans({}, 'alerts_ui') }}</h2>
+                <p>
+                    {{ 'Últimos alertas coletados do feed do Waze para o parceiro'|trans({}, 'alerts_ui') }}
+                    <strong>{{ partner.name|default(('Parceiro'|trans({}, 'alerts_ui'))) }}</strong>.
+                </p>
+            </div>
+
+            <div class="dashboard-hero-actions">
+                <span class="badge badge-primary">
+                    <i class="fa-solid fa-broadcast-tower" aria-hidden="true"></i>
+                    {{ total }} {{ 'alerta(s)'|trans({}, 'alerts_ui') }}
+                </span>
+
+                <a
+                    href="{{ path('alert_index') }}"
+                    class="btn btn-ghost"
+                >
+                    <i class="fa-solid fa-list" aria-hidden="true"></i>
+                    {{ 'Ver todos'|trans({}, 'alerts_ui') }}
+                </a>
+            </div>
+        </section>
+
+        {# ── Lista de alertas ───────────────────────────────── #}
+        <section class="card dashboard-card">
+            <header class="card-header">
+                <div>
+                    <h3>{{ 'Últimos alertas'|trans({}, 'alerts_ui') }}</h3>
+                    <p>
+                        {{ 'Exibindo os'|trans({}, 'alerts_ui') }} {{ total }} {{ 'alertas mais recentes.'|trans({}, 'alerts_ui') }}
+                    </p>
+                </div>
+            </header>
+
+            <div class="card-body">
+                {% if alerts is not empty %}
+                    <div class="alerts-live-list">
+                        {% for alert in alerts %}
+                            <article class="alert-live-item">
+                                <div class="alert-live-header">
+                                    <div class="alert-live-type">
+                                        <span class="badge badge-primary">
+                                            <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                                            {{ alerts_label(alert.type) }}
+                                        </span>
+
+                                        {% if alert.subtype %}
+                                            <small class="text-muted">
+                                                {{ alerts_label(alert.subtype) }}
+                                            </small>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="alert-live-meta">
+                                        <span class="alert-live-time">
+                                            <i class="fa-regular fa-clock" aria-hidden="true"></i>
+                                            {{ alerts_date(alert.pubDate, true) }}
+                                        </span>
+
+                                        {% if alert.confidence is not null %}
+                                            <span class="badge
+                                                {% if alert.confidence >= 4 %}
+                                                    badge-success
+                                                {% elseif alert.confidence >= 3 %}
+                                                    badge-warning
+                                                {% else %}
+                                                    badge-danger
+                                                {% endif %}
+                                            ">
+                                                {{ 'Confiança'|trans({}, 'alerts_ui') }} {{ alert.confidence }}/5
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="alert-live-body">
+                                    <div class="alert-live-location">
+                                        <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                                        <strong>
+                                            {{ alert.street|default(('Localização não informada'|trans({}, 'alerts_ui'))) }}
+                                        </strong>
+                                        <small>
+                                            {{ alert.city|default(('Cidade não informada'|trans({}, 'alerts_ui'))) }}
+                                            {% if alert.country %}
+                                                · {{ alert.country }}
+                                            {% endif %}
+                                        </small>
+                                    </div>
+
+                                    {% if alert.reportDescription %}
+                                        <div class="alert-live-description">
+                                            <i class="fa-solid fa-comment-dots" aria-hidden="true"></i>
+                                            <p>{{ alert.reportDescription }}</p>
+                                        </div>
+                                    {% endif %}
+
+                                    <div class="alert-live-metrics">
+                                        {% if alert.nThumbsUp is not null and alert.nThumbsUp > 0 %}
+                                            <span class="metric">
+                                                <i class="fa-solid fa-thumbs-up" aria-hidden="true"></i>
+                                                {{ alert.nThumbsUp }}
+                                            </span>
+                                        {% endif %}
+
+                                        {% if alert.nComments is not null and alert.nComments > 0 %}
+                                            <span class="metric">
+                                                <i class="fa-solid fa-comments" aria-hidden="true"></i>
+                                                {{ alert.nComments }}
+                                            </span>
+                                        {% endif %}
+
+                                        {% if alert.reliability is not null %}
+                                            <span class="metric">
+                                                <i class="fa-solid fa-scale-balanced" aria-hidden="true"></i>
+                                                {{ alert.reliability }}
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="alert-live-actions">
+                                    <a
+                                        href="{{ path('alert_show', { id: alert.id }) }}"
+                                        class="btn btn-primary btn-sm"
+                                    >
+                                        <i class="fa-solid fa-eye" aria-hidden="true"></i>
+                                        {{ 'Ver detalhes'|trans({}, 'alerts_ui') }}
+                                    </a>
+                                </div>
+                            </article>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <span class="empty-state-icon">
+                            <i class="fa-solid fa-broadcast-tower" aria-hidden="true"></i>
+                        </span>
+
+                        <h3>{{ 'Nenhum alerta ao vivo'|trans({}, 'alerts_ui') }}</h3>
+                        <p>
+                            {{ 'Não há alertas recentes para este parceiro no momento.'|trans({}, 'alerts_ui') }}
+                        </p>
+
+                        <a
+                            href="{{ path('alert_index') }}"
+                            class="btn btn-primary"
+                        >
+                            <i class="fa-solid fa-list" aria-hidden="true"></i>
+                            {{ 'Ver lista completa'|trans({}, 'alerts_ui') }}
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+{% endblock %}
