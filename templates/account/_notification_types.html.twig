@@ -1,0 +1,31 @@
+{# Lista de tipos (com subtipos) de uma categoria de notificação.
+   Chamada como ui.typeGroups('ALERT'|'EVENT', groups). #}
+{% macro typeGroups(category, groups) %}
+    {% for group in groups %}
+        <div class="notif-type" data-notif-type>
+            <div class="notif-type__row">
+                <label class="notif-check notif-check--type">
+                    <input type="checkbox" name="rules[{{ category }}][]" value="{{ group.code }}|*" data-notif-type-all {{ group.all ? 'checked' }}>
+                    <span>{{ group.label }}</span>
+                </label>
+                {% if group.subtypes|length > 0 %}
+                    <button type="button" class="notif-type__toggle" data-notif-expand aria-expanded="true">
+                        <span data-notif-count></span>
+                        <span class="notif-type__chevron" aria-hidden="true">▾</span>
+                        <span class="notif-sr">Mostrar ou ocultar subtipos de {{ group.label }}</span>
+                    </button>
+                {% endif %}
+            </div>
+            {% if group.subtypes|length > 0 %}
+                <div class="notif-type__subtypes" data-notif-subtypes>
+                    {% for sub in group.subtypes %}
+                        <label class="notif-check">
+                            <input type="checkbox" name="rules[{{ category }}][]" value="{{ group.code }}|{{ sub.code }}" data-notif-subtype {{ sub.checked ? 'checked' }}>
+                            <span>{{ sub.label }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    {% endfor %}
+{% endmacro %}

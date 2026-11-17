@@ -1,0 +1,49 @@
+/* Preferências de notificação por e-mail */
+.notif-page{max-width:860px;margin:0 auto;padding:1.5rem 1rem 3rem;color:var(--theme-text,#0f172a)}
+.notif-eyebrow{margin:0 0 .2rem;font-size:.75rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--theme-primary,#2563eb)}
+.notif-title{margin:0 0 .4rem;font-size:1.75rem;font-weight:800;letter-spacing:-.02em}
+.notif-lead{margin:0 0 1.5rem;color:var(--theme-text-muted,#64748b);line-height:1.6}
+.notif-card{background:var(--theme-surface,#fff);border:1px solid var(--theme-border,#e5e7eb);border-radius:14px;margin-bottom:1rem;overflow:hidden}
+.notif-card--master{padding:1.1rem 1.25rem;border-color:var(--theme-border-strong,#cbd5e1)}
+.notif-card__head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;padding:1.1rem 1.25rem}
+.notif-card__body{padding:0 1.25rem 1.1rem;border-top:1px solid var(--theme-border-soft,#f1f5f9)}
+.notif-bulk{display:flex;gap:.9rem}
+.notif-link{background:none;border:0;padding:0;font:inherit;font-size:.85rem;font-weight:600;color:var(--theme-primary,#2563eb);cursor:pointer}
+.notif-link:hover{text-decoration:underline}
+
+/* Interruptor */
+.notif-switch{display:flex;align-items:flex-start;gap:.85rem;cursor:pointer;flex:1;min-width:240px}
+.notif-switch input{position:absolute;opacity:0;pointer-events:none}
+.notif-switch__track{flex:none;position:relative;width:42px;height:24px;margin-top:2px;border-radius:999px;background:var(--theme-border-strong,#cbd5e1);transition:background .15s}
+.notif-switch__track::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+.notif-switch input:checked + .notif-switch__track{background:var(--theme-primary,#2563eb)}
+.notif-switch input:checked + .notif-switch__track::after{transform:translateX(18px)}
+.notif-switch input:focus-visible + .notif-switch__track{outline:3px solid var(--theme-primary-ring,rgba(37,99,235,.18));outline-offset:2px}
+.notif-switch__text{display:flex;flex-direction:column;gap:.15rem}
+.notif-switch__text strong{font-size:1rem}
+.notif-switch__text small{color:var(--theme-text-muted,#64748b);line-height:1.5}
+
+/* Tipos e subtipos */
+.notif-type{border-bottom:1px solid var(--theme-border-soft,#f1f5f9)}
+.notif-type:last-child{border-bottom:0}
+.notif-type__row{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:.8rem 0}
+.notif-type__toggle{display:inline-flex;align-items:center;gap:.5rem;background:none;border:0;padding:.2rem .3rem;font:inherit;font-size:.8rem;color:var(--theme-text-muted,#64748b);cursor:pointer;white-space:nowrap}
+.notif-type__toggle:focus-visible{outline:3px solid var(--theme-primary-ring,rgba(37,99,235,.18));border-radius:6px}
+.notif-type__chevron{color:var(--theme-text-soft,#94a3b8);transition:transform .15s}
+.notif-type__toggle[aria-expanded="false"] .notif-type__chevron{transform:rotate(-90deg)}
+.notif-type__subtypes{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:.35rem .75rem;padding:0 0 1rem 1.7rem}
+.notif-type__subtypes[hidden]{display:none}
+.notif-check{display:flex;align-items:center;gap:.55rem;font-size:.92rem;cursor:pointer}
+.notif-check--type{font-weight:700;font-size:1rem}
+.notif-check input{width:1.05rem;height:1.05rem;accent-color:var(--theme-primary,#2563eb)}
+.notif-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* Seção desligada */
+.notif-card.is-off .notif-card__body{opacity:.45;pointer-events:none}
+.notif-sections.is-off{opacity:.5;pointer-events:none}
+
+.notif-actions{display:flex;justify-content:flex-end;margin-top:1.25rem}
+.notif-btn{border:0;border-radius:10px;padding:.7rem 1.4rem;font:inherit;font-weight:700;cursor:pointer}
+.notif-btn--primary{background:var(--theme-primary,#2563eb);color:var(--theme-text-inverse,#fff)}
+.notif-btn--primary:hover{background:var(--theme-primary-hover,#1d4ed8)}
+@media (max-width:560px){.notif-title{font-size:1.4rem}.notif-type__subtypes{padding-left:.4rem}}

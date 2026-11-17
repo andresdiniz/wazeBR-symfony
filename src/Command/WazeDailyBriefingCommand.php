@@ -10,6 +10,7 @@ use App\Repository\UserRepository;
 use App\Service\AiNarrativeService;
 use App\Service\BriefingDataService;
 use App\Service\BriefingSchedulerService;
+use App\Service\Notification\NotificationPreferenceService;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -39,6 +40,7 @@ final class WazeDailyBriefingCommand extends Command
         private readonly MailerInterface $mailer,
         private readonly Twig $twig,
         private readonly LoggerInterface $logger,
+        private readonly NotificationPreferenceService $notificationPreferences,
         private readonly string $dashboardBaseUrl = 'https://trafikhub.waze.com.br',
     ) {
         parent::__construct();
@@ -249,22 +251,23 @@ final class WazeDailyBriefingCommand extends Command
     }
 
     /**
+     * E-mails dos usuários ativos do parceiro que querem receber o briefing.
+     *
      * @return list<string>
      */
     private function getActiveEmails(Partner $partner): array
     {
-        $users = $this->userRepository->findBy([
-            'partner' => $partner,
-            'isActive' => true,
-        ]);
+        $users = array_values(array_filter(
+            $this->userRepository->findBy([
+                'partner' => $partner,
+                'isActive' => true,
+            ]),
+            static fn (mixed $user): bool => $user instanceof User && $user->isActive(),
+        ));
 
         $emails = [];
 
-        foreach ($users as $user) {
-            if (!$user instanceof User || !$user->isActive()) {
-                continue;
-            }
-
+        foreach ($this->notificationPreferences->briefingRecipients($users) as $user) {
             $email = trim((string) $user->getEmail());
 
             if (filter_var($email, FILTER_VALIDATE_EMAIL) !== false) {

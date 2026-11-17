@@ -1,0 +1,104 @@
+{% extends 'layouts/dashboard.html.twig' %}
+{% import 'account/_notification_types.html.twig' as ui %}
+
+{% block title %}Notificações por e-mail | WazeBR{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/pages/notifications.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="notif-page" data-notif-page>
+    <header class="notif-header">
+        <p class="notif-eyebrow">Minha conta</p>
+        <h1 class="notif-title">Notificações por e-mail</h1>
+        <p class="notif-lead">
+            Escolha quais e-mails o WazeBR pode enviar para <strong>{{ email }}</strong>.
+            As escolhas valem só para a sua conta.
+        </p>
+    </header>
+
+    <form method="post" action="{{ path('account_notifications') }}" class="notif-form" data-notif-form>
+        <input type="hidden" name="_token" value="{{ csrf_token(csrf_id) }}">
+
+        <section class="notif-card notif-card--master">
+            <label class="notif-switch">
+                <input type="checkbox" name="email_enabled" value="1" data-notif-master {{ preference.emailEnabled ? 'checked' }}>
+                <span class="notif-switch__track" aria-hidden="true"></span>
+                <span class="notif-switch__text">
+                    <strong>Receber e-mails do WazeBR</strong>
+                    <small>Desligando aqui você deixa de receber todos os e-mails abaixo, sem perder suas escolhas.</small>
+                </span>
+            </label>
+        </section>
+
+        <div class="notif-sections" data-notif-sections>
+            {# ───── Alertas ───── #}
+            <section class="notif-card" data-notif-section>
+                <div class="notif-card__head">
+                    <label class="notif-switch">
+                        <input type="checkbox" name="alerts_enabled" value="1" data-notif-section-toggle {{ preference.alertsEnabled ? 'checked' }}>
+                        <span class="notif-switch__track" aria-hidden="true"></span>
+                        <span class="notif-switch__text">
+                            <strong>Alertas do Waze</strong>
+                            <small>Um e-mail por ocorrência nova na área do seu parceiro, só dos tipos marcados.</small>
+                        </span>
+                    </label>
+                    <div class="notif-bulk">
+                        <button type="button" class="notif-link" data-notif-bulk="all">Marcar tudo</button>
+                        <button type="button" class="notif-link" data-notif-bulk="none">Limpar</button>
+                    </div>
+                </div>
+                <div class="notif-card__body" data-notif-body>
+                    {{ ui.typeGroups('ALERT', groups.ALERT) }}
+                </div>
+            </section>
+
+            {# ───── Eventos ───── #}
+            <section class="notif-card" data-notif-section>
+                <div class="notif-card__head">
+                    <label class="notif-switch">
+                        <input type="checkbox" name="events_enabled" value="1" data-notif-section-toggle {{ preference.eventsEnabled ? 'checked' }}>
+                        <span class="notif-switch__track" aria-hidden="true"></span>
+                        <span class="notif-switch__text">
+                            <strong>Eventos do feed CIFS</strong>
+                            <small>Um e-mail quando um evento (obra, bloqueio programado etc.) é criado no feed do seu parceiro.</small>
+                        </span>
+                    </label>
+                    <div class="notif-bulk">
+                        <button type="button" class="notif-link" data-notif-bulk="all">Marcar tudo</button>
+                        <button type="button" class="notif-link" data-notif-bulk="none">Limpar</button>
+                    </div>
+                </div>
+                <div class="notif-card__body" data-notif-body>
+                    {{ ui.typeGroups('EVENT', groups.EVENT) }}
+                </div>
+            </section>
+
+            {# ───── Briefing ───── #}
+            <section class="notif-card" data-notif-section>
+                <div class="notif-card__head">
+                    <label class="notif-switch">
+                        <input type="checkbox" name="briefing_enabled" value="1" data-notif-section-toggle {{ preference.briefingEnabled ? 'checked' }}>
+                        <span class="notif-switch__track" aria-hidden="true"></span>
+                        <span class="notif-switch__text">
+                            <strong>Briefing diário</strong>
+                            <small>Resumo da operação enviado todas as manhãs.</small>
+                        </span>
+                    </label>
+                </div>
+            </section>
+        </div>
+
+        <div class="notif-actions">
+            <button type="submit" class="notif-btn notif-btn--primary">Salvar preferências</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="{{ asset('js/pages/notification-preferences.js') }}" defer></script>
+{% endblock %}

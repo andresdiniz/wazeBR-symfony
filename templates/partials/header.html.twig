@@ -224,7 +224,7 @@
                                <a href="{{ path('dashboard') }}" role="menuitem">
                                    <span aria-hidden="true">▣</span>{{ 'header.my_panel'|trans }}
                                </a>
-                               <a href="#" role="menuitem">
+                               <a href="{{ path('account_notifications') }}" role="menuitem"{% if _route == 'account_notifications' %} aria-current="page"{% endif %}>
                                    <span aria-hidden="true">⚙</span>{{ 'header.preferences'|trans }}
                                </a>
                            </div>

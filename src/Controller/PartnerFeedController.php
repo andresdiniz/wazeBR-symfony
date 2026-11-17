@@ -8,6 +8,7 @@ use App\Entity\Partner;
 use App\Entity\PartnerFeedEvent;
 use App\Repository\PartnerFeedEventRepository;
 use App\Repository\PartnerRepository;
+use App\Service\EventNotificationService;
 use App\Service\PartnerFeedService;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\DBAL\Connection;
@@ -29,6 +30,7 @@ final class PartnerFeedController extends AbstractController
         private readonly PartnerFeedService $feedService,
         private readonly EntityManagerInterface $em,
         private readonly Connection $connection,
+        private readonly EventNotificationService $eventNotifications,
         #[Autowire(service: 'monolog.logger.audit')]
         private readonly LoggerInterface $auditLogger,
     ) {}
@@ -114,6 +116,12 @@ final class PartnerFeedController extends AbstractController
         $this->em->persist($event);
         $this->em->flush();
         $this->logEventAction('created', $partner, (int) $event->getId());
+        try {
+            $this->eventNotifications->notifyEventCreated($event);
+        } catch (\Throwable $exception) {
+            // E-mail nunca pode impedir a criação do evento.
+            $this->auditLogger->error('partner_feed.event.notify_failed', ['event_id' => $event->getId(), 'error' => $exception->getMessage()]);
+        }
         $this->addFlash('success', sprintf('Evento #%s criado.', $event->getUuid() ?? $event->getId()));
         return $this->redirectToRoute('partner_feed_event_list', ['code' => $code]);
     }

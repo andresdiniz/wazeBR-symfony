@@ -31,6 +31,9 @@
 <p style="margin:20px 0 0;padding-top:16px;border-top:1px solid #e1e8ee;color:#526575;font-size:11px;line-height:1.7;overflow-wrap:anywhere;">Parceiro: {{ partner_name }}<br>Identificador da ocorrência: {{ alert_uuid }}</p>
 </td></tr></table>
 <p style="margin:18px 0 0;font-size:11px;color:#526575;line-height:1.6;">Mensagem automática do WazeBR · Notificação de ocorrência</p>
+{% if settings_url|default(null) %}
+<p style="margin:8px 0 0;font-size:11px;color:#526575;line-height:1.6;">Você recebe este e-mail conforme suas preferências. <a href="{{ settings_url }}" style="color:#086c80;">Escolher quais alertas receber ou parar de receber</a>.</p>
+{% endif %}
 </td></tr></table>
 </body>
 </html>

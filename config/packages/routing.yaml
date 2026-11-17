@@ -1,6 +1,12 @@
+parameters:
+    # URL pública usada para montar links absolutos fora de uma requisição HTTP
+    # (e-mails enviados pelo scheduler/CLI). Usa APP_URL quando definido; senão, este valor.
+    app.default_uri: 'https://trafik.acheireviews.com.br'
+
 framework:
     router:
         utf8: true
+        default_uri: '%env(default:app.default_uri:APP_URL)%'
 
 when@prod:
     framework:
