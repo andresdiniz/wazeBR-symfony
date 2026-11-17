@@ -1,0 +1,271 @@
+{% extends 'layouts/dashboard.html.twig' %}
+
+{% block title %}Análise | Trafik{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/pages/analytics.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="analytics-page">
+    <header class="analytics-header">
+        <div>
+            <span class="analytics-eyebrow">Análise</span>
+            <h1>Panorama de mobilidade</h1>
+            <p>
+                Visão consolidada de alertas, congestionamentos, clima e hidrologia
+                nos últimos {{ stats.period.days }} dias.
+            </p>
+        </div>
+
+        <form class="analytics-filters" method="get" action="{{ path('analytics') }}">
+            <label>
+                <span>Período</span>
+                <select name="days">
+                    <option value="7" {{ filters.days == 7 ? 'selected' : '' }}>Últimos 7 dias</option>
+                    <option value="30" {{ filters.days == 30 ? 'selected' : '' }}>Últimos 30 dias</option>
+                    <option value="90" {{ filters.days == 90 ? 'selected' : '' }}>Últimos 90 dias</option>
+                </select>
+            </label>
+
+            <label>
+                <span>Cidade</span>
+                <input
+                    type="text"
+                    name="city"
+                    value="{{ filters.city ?? '' }}"
+                    placeholder="Todas as cidades"
+                >
+            </label>
+
+            <button type="submit">Aplicar</button>
+        </form>
+    </header>
+
+    <section class="analytics-kpis">
+        {% set kpis = [
+            {
+                label: 'Alertas',
+                metric: stats.kpis.alerts,
+                format: 'integer'
+            },
+            {
+                label: 'Congestionamentos',
+                metric: stats.kpis.jams,
+                format: 'integer'
+            },
+            {
+                label: 'Atraso médio',
+                metric: stats.kpis.average_delay,
+                format: 'seconds'
+            },
+            {
+                label: 'Observações climáticas',
+                metric: stats.kpis.weather_observations,
+                format: 'integer'
+            },
+            {
+                label: 'Rios em atenção',
+                metric: stats.kpis.hydro_risk,
+                format: 'integer'
+            }
+        ] %}
+
+        {% for kpi in kpis %}
+            <article class="analytics-kpi analytics-kpi--{{ loop.index }}">
+                <span class="analytics-kpi-label">{{ kpi.label }}</span>
+
+                {% if kpi.format == 'seconds' %}
+                    <strong class="analytics-kpi-value">
+                        {{ kpi.metric.value|number_format(1, ',', '.') }} min
+                    </strong>
+                {% else %}
+                    <strong class="analytics-kpi-value">
+                        {{ kpi.metric.value|number_format(0, ',', '.') }}
+                    </strong>
+                {% endif %}
+
+                <span class="analytics-kpi-change analytics-kpi-change--{{ kpi.metric.direction }}">
+                    {% if kpi.metric.change is not null %}
+                        {{ kpi.metric.change > 0 ? '+' : '' }}{{ kpi.metric.change|number_format(1, ',', '.') }}%
+                    {% else %}
+                        Sem base de comparação
+                    {% endif %}
+                </span>
+
+                <small>Comparado aos {{ stats.period.days }} dias anteriores</small>
+            </article>
+        {% endfor %}
+    </section>
+
+    <section class="analytics-grid analytics-grid--main">
+        <article class="analytics-card analytics-card--wide">
+            <header>
+                <div>
+                    <span class="analytics-card-eyebrow">Evolução</span>
+                    <h2>Alertas e congestionamentos por dia</h2>
+                </div>
+            </header>
+
+            {% if stats.daily|length %}
+                <div class="analytics-chart">
+                    {% set max_value = 1 %}
+                    {% for point in stats.daily %}
+                        {% set max_value = max(max_value, point.alerts, point.jams) %}
+                    {% endfor %}
+
+                    <div class="analytics-chart-bars">
+                        {% for point in stats.daily %}
+                            <div class="analytics-chart-column">
+                                <div class="analytics-chart-bars-wrapper">
+                                    <span
+                                        class="analytics-bar analytics-bar--alerts"
+                                        style="height: {{ (point.alerts / max_value * 100)|round }}%"
+                                        title="{{ point.alerts }} alertas"
+                                    ></span>
+                                    <span
+                                        class="analytics-bar analytics-bar--jams"
+                                        style="height: {{ (point.jams / max_value * 100)|round }}%"
+                                        title="{{ point.jams }} congestionamentos"
+                                    ></span>
+                                </div>
+                                <span class="analytics-chart-date">
+                                    {{ point.date|date('d/m') }}
+                                </span>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="analytics-legend">
+                        <span><i class="analytics-dot analytics-dot--alerts"></i> Alertas</span>
+                        <span><i class="analytics-dot analytics-dot--jams"></i> Congestionamentos</span>
+                    </div>
+                </div>
+            {% else %}
+                <p class="analytics-empty">Não há dados suficientes para este período.</p>
+            {% endif %}
+        </article>
+
+        <article class="analytics-card">
+            <header>
+                <div>
+                    <span class="analytics-card-eyebrow">Padrões</span>
+                    <h2>Top vias</h2>
+                </div>
+            </header>
+
+            {% if stats.top_streets|length %}
+                <ol class="analytics-ranking">
+                    {% for street in stats.top_streets %}
+                        <li>
+                            <span class="analytics-ranking-name">{{ street.street }}</span>
+                            <span class="analytics-ranking-bar">
+                                <span
+                                    style="width: {{ (street.total / (stats.top_streets[0].total ?: 1) * 100)|round }}%"
+                                ></span>
+                            </span>
+                            <span class="analytics-ranking-value">{{ street.total }}</span>
+                        </li>
+                    {% endfor %}
+                </ol>
+            {% else %}
+                <p class="analytics-empty">Nenhuma via com ocorrências neste período.</p>
+            {% endif %}
+        </article>
+    </section>
+
+    <section class="analytics-grid analytics-grid--secondary">
+        <article class="analytics-card">
+            <header>
+                <div>
+                    <span class="analytics-card-eyebrow">Padrões</span>
+                    <h2>Ocorrências por dia e horário</h2>
+                </div>
+            </header>
+
+            {% set weekdays = {
+                1: 'Domingo',
+                2: 'Segunda',
+                3: 'Terça',
+                4: 'Quarta',
+                5: 'Quinta',
+                6: 'Sexta',
+                7: 'Sábado'
+            } %}
+
+            {% set buckets = ['00-06', '06-09', '09-12', '12-15', '15-18', '18-21', '21-24'] %}
+
+            {% set max_heat = 1 %}
+            {% for weekday, values in stats.heatmap %}
+                {% for bucket, total in values %}
+                    {% set max_heat = max(max_heat, total) %}
+                {% endfor %}
+            {% endfor %}
+
+            <div class="analytics-heatmap">
+                <div class="analytics-heatmap-head">
+                    <span></span>
+                    {% for bucket in buckets %}
+                        <span>{{ bucket }}</span>
+                    {% endfor %}
+                </div>
+
+                {% for weekday, label in weekdays %}
+                    <div class="analytics-heatmap-row">
+                        <span class="analytics-heatmap-day">{{ label }}</span>
+
+                        {% for bucket in buckets %}
+                            {% set total = stats.heatmap[weekday][bucket] ?? 0 %}
+                            {% set intensity = (total / max_heat * 100)|round %}
+
+                            <span
+                                class="analytics-heatmap-cell"
+                                style="--intensity: {{ intensity }}"
+                                title="{{ total }} ocorrências"
+                            >
+                                {{ total > 0 ? total : '' }}
+                            </span>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+        </article>
+
+        <article class="analytics-card">
+            <header>
+                <div>
+                    <span class="analytics-card-eyebrow">Contexto</span>
+                    <h2>Clima e hidrologia</h2>
+                </div>
+            </header>
+
+            <div class="analytics-context-list">
+                <div class="analytics-context-item">
+                    <span>Observações climáticas</span>
+                    <strong>{{ stats.kpis.weather_observations.value|number_format(0, ',', '.') }}</strong>
+                </div>
+
+                <div class="analytics-context-item">
+                    <span>Estações hidrológicas</span>
+                    <strong>{{ stats.hydro.stations|number_format(0, ',', '.') }}</strong>
+                </div>
+
+                <div class="analytics-context-item {{ stats.hydro.attention > 0 ? 'is-warning' : '' }}">
+                    <span>Rios em atenção, alerta ou transbordo</span>
+                    <strong>{{ stats.hydro.attention|number_format(0, ',', '.') }}</strong>
+                </div>
+
+                <div class="analytics-context-item">
+                    <span>Período analisado</span>
+                    <strong>{{ stats.period.days }} dias</strong>
+                </div>
+            </div>
+
+            <p class="analytics-footnote">
+                Dados atualizados em {{ stats.generated_at|date('d/m/Y H:i', 'America/Sao_Paulo') }}.
+            </p>
+        </article>
+    </section>
+</div>
+{% endblock %}
