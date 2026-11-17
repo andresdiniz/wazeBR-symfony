@@ -3,7 +3,7 @@ const RISK_LABELS = { low: 'Tende a fluir', medium: 'Pode piorar', high: 'Risco 
 const state = { endpoint: null, timer: null, observer: null, items: [], busy: false };
 const $ = (selector, root = document) => root?.querySelector(selector);
 function escapeHtml(value) {
-    return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+    return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll("'", '&#039;');
 }
 function ensureStyles() {
     if ($('#wazebr-tv-forecast-styles')) return;
@@ -28,13 +28,20 @@ function buildItems(routes, forecasts) {
     return (Array.isArray(routes?.items) ? routes.items : []).flatMap(route => {
         const forecast = forecasts?.routes?.[route.id];
         return forecast ? [{ ...forecast, routeId: route.id, routeName: route.name || `Rota #${route.id}` }] : [];
-    }).sort((a,b) => Number(b.riskScore || 0) - Number(a.riskScore || 0));
+    }).sort((a, b) => {
+        const riskOrder = { critical: 4, high: 3, medium: 2, low: 1 };
+        const riskDiff = (riskOrder[b.riskLevel] || 0) - (riskOrder[a.riskLevel] || 0);
+
+        if (riskDiff !== 0) return riskDiff;
+
+        return Number(b.riskScore || 0) - Number(a.riskScore || 0);
+    });
 }
 function renderForecasts(items) {
     const card = ensureCard();
     const list = $('[data-tv-forecast-list]', card);
     if (!list) return;
-    list.innerHTML = items.length ? items.slice(0,5).map(item => {
+    list.innerHTML = items.length ? items.slice(0, 5).map(item => {
         const level = Object.hasOwn(RISK_LABELS, item.riskLevel) ? item.riskLevel : 'low';
         return `<li class="tv-forecast__item"><div><div class="tv-forecast__name">${escapeHtml(item.routeName)}</div><div class="tv-forecast__meta">+${Number(item.slotMinutes) || 30} min · índice ${Number(item.riskScore) || 0}</div></div><span class="tv-forecast__risk tv-forecast__risk--${level}">${RISK_LABELS[level]}</span></li>`;
     }).join('') : '<li class="tv-forecast__empty">Sem previsões disponíveis nos dados recebidos</li>';
@@ -57,40 +64,136 @@ function showPriority(level, label, title, meta = '', action = '') {
     const historical = $('[data-tv-last-critical]', card);
     if (historical) historical.hidden = true;
 }
+function eventScore(event) {
+    const type = event?.subtype || event?.type || '';
+    const level = Number(event?.level || 0);
+
+    const weights = {
+        ROAD_CLOSED: 100,
+        HAZARD_WEATHER_FLOOD: 95,
+        ACCIDENT: 90,
+        WEATHERHAZARD: 80,
+        JAM_LEVEL_4: 70,
+        JAM_LEVEL_3: 50
+    };
+
+    let score = weights[type] || 0;
+
+    if (event?.kind === 'jam') {
+        if (level >= 4) score = Math.max(score, 70);
+        else if (level === 3) score = Math.max(score, 50);
+    }
+
+    const when = Date.parse(event?.when || '');
+
+    if (Number.isFinite(when)) {
+        const ageMinutes = Math.max(0, (Date.now() - when) / 60000);
+        const recencyBonus = Math.max(0, 20 - ageMinutes / 6);
+        score += recencyBonus;
+    }
+
+    return score;
+}
 function renderPriority(data) {
     const feed = Array.isArray(data.feed) ? data.feed : [];
     const recent = Array.isArray(data.alerts?.recent) ? data.alerts.recent : [];
-    const weights = { ROAD_CLOSED: 100, HAZARD_WEATHER_FLOOD: 95, ACCIDENT: 90 };
     const now = Date.now();
-    const candidates = [...recent, ...feed.filter(e => e.kind === 'alert')].filter(a => {
-        const stamp = Date.parse(a.when);
-        return weights[a.subtype || a.type] && Number.isFinite(stamp) && now - stamp >= 0 && now - stamp <= 7200000;
-    }).sort((a,b) => (weights[b.subtype || b.type] - weights[a.subtype || a.type]) || Date.parse(b.when) - Date.parse(a.when));
-    const alert = candidates[0];
-    if (alert) {
-        const type = alert.subtype || alert.type;
-        const labels = { ROAD_CLOSED: 'Via fechada reportada', HAZARD_WEATHER_FLOOD: 'Alagamento reportado', ACCIDENT: 'Acidente reportado' };
-        const minutes = Math.floor((now - Date.parse(alert.when)) / 60000);
-        showPriority('critical', 'Verificar', labels[type], [alert.street, alert.city, `Reportado há ${minutes} min`].filter(Boolean).join(' · '), 'Validar a ocorrência com a operação antes de acionar recursos.');
+
+    const candidates = [
+        ...recent.map(event => ({ ...event, kind: event.kind || 'alert' })),
+        ...feed.filter(event => ['alert', 'jam'].includes(event.kind))
+    ].filter(event => {
+        const stamp = Date.parse(event.when);
+
+        return Number.isFinite(stamp)
+            && now - stamp >= 0
+            && now - stamp <= 7200000
+            && eventScore(event) > 0;
+    }).sort((a, b) => {
+        const scoreDiff = eventScore(b) - eventScore(a);
+
+        if (scoreDiff !== 0) return scoreDiff;
+
+        return Date.parse(b.when) - Date.parse(a.when);
+    });
+
+    const event = candidates[0];
+
+    if (event) {
+        const type = event.subtype || event.type || '';
+        const labels = {
+            ROAD_CLOSED: 'Via fechada reportada',
+            HAZARD_WEATHER_FLOOD: 'Alagamento reportado',
+            ACCIDENT: 'Acidente reportado',
+            WEATHERHAZARD: 'Perigo climático reportado',
+            JAM_LEVEL_4: 'Congestionamento severo',
+            JAM_LEVEL_3: 'Congestionamento relevante'
+        };
+
+        const level = event.kind === 'jam'
+            ? Number(event.level || 0)
+            : 0;
+
+        const title = event.kind === 'jam'
+            ? (labels[`JAM_LEVEL_${level}`] || 'Congestionamento ativo')
+            : (labels[type] || 'Ocorrência prioritária');
+
+        const minutes = Math.floor((now - Date.parse(event.when)) / 60000);
+        const meta = [
+            event.street || event.name,
+            event.city,
+            `Reportado há ${minutes} min`
+        ].filter(Boolean).join(' · ');
+
+        const isCritical = eventScore(event) >= 90;
+
+        showPriority(
+            isCritical ? 'critical' : 'attention',
+            isCritical ? 'Verificar' : 'Atenção',
+            title,
+            meta,
+            isCritical
+                ? 'Validar a ocorrência com a operação antes de acionar recursos.'
+                : 'Acompanhar a evolução e consultar o mapa para localizar o trecho.'
+        );
+
         return;
     }
-    const routes = (Array.isArray(data.routes?.items) ? data.routes.items : []).filter(r => Number(r.slownessPct) >= 30).sort((a,b) => Number(b.slownessPct) - Number(a.slownessPct));
+
+    const routes = (Array.isArray(data.routes?.items) ? data.routes.items : [])
+        .filter(route => Number(route.slownessPct) >= 30)
+        .sort((a, b) => Number(b.slownessPct) - Number(a.slownessPct));
+
     if (routes.length) {
         const route = routes[0];
         showPriority('attention', 'Atenção', route.name || 'Rota com lentidão', `${Math.round(Number(route.slownessPct))}% acima do tempo histórico`, 'Conferir o trecho e acompanhar a evolução da lentidão.');
         return;
     }
+
     if (Number(data.jams?.level4plus) > 0) {
         showPriority('attention', 'Atenção', 'Congestionamento elevado', `${Number(data.jams.level4plus)} trechos em nível 4 ou superior`, 'Consultar o mapa para localizar os trechos afetados.');
         return;
     }
+
     if (Number(data.hydro?.atRisk) > 0) {
         showPriority('attention', 'Atenção', 'Estações hidrológicas em atenção', `${Number(data.hydro.atRisk)} estações sinalizadas pela fonte`, 'Verificar leituras e horários no painel de rios.');
         return;
     }
+
     const sources = ['alerts', 'jams', 'hydro', 'tvt'];
-    const fresh = sources.every(key => { const time = Date.parse(data.fetch?.[key]); return Number.isFinite(time) && now - time >= 0 && now - time <= 600000; });
-    showPriority(fresh ? 'normal' : 'unavailable', fresh ? 'Sem prioridade' : 'Dados limitados', 'Nenhuma prioridade identificada nos dados recebidos', fresh ? 'Verificados alertas recentes, congestionamentos, rotas e rios.' : 'Há fontes ausentes ou sem atualização nos últimos 10 minutos.', 'Ausência de prioridade não confirma ausência de incidentes.');
+    const fresh = sources.every(key => {
+        const time = Date.parse(data.fetch?.[key]);
+
+        return Number.isFinite(time) && now - time >= 0 && now - time <= 600000;
+    });
+
+    showPriority(
+        fresh ? 'normal' : 'unavailable',
+        fresh ? 'Sem prioridade' : 'Dados limitados',
+        'Nenhuma prioridade identificada nos dados recebidos',
+        fresh ? 'Verificados alertas recentes, congestionamentos, rotas e rios.' : 'Há fontes ausentes ou sem atualização nos últimos 10 minutos.',
+        'Ausência de prioridade não confirma ausência de incidentes.'
+    );
 }
 async function loadForecast() {
     if (!state.endpoint || state.busy) return;
