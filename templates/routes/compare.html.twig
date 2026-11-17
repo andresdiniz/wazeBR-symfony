@@ -1,7 +1,7 @@
 {% extends 'layouts/dashboard.html.twig' %}
 {% macro duration(value) %}{% if value is null %}—{% else %}{% set s = value|round(0) %}+{% if s >= 60 %}{{ (s / 60)|round(0, 'floor') }} min {% endif %}{{ s % 60 }} s{% endif %}{% endmacro %}
 {% import _self as ui %}
-{% block title %}{{ 'Comparar rotas'|trans({}, 'route_compare') }} | WazeBR{% endblock %}
+{% block title %}{{ 'Comparar rotas'|trans({}, 'route_compare') }} | Trafik{% endblock %}
 {% block stylesheets %}
 {{ parent() }}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">

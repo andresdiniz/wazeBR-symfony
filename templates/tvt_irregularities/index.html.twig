@@ -1,7 +1,7 @@
 {% extends 'layouts/dashboard.html.twig' %}
 {% macro duration(seconds) %}{% if seconds is null %}—{% else %}{{ (seconds / 60)|number_format(1, ',', '.') }} min{% endif %}{% endmacro %}
 {% import _self as ui %}
-{% block title %}Irregularidades TVT | WazeBR{% endblock %}
+{% block title %}Irregularidades TVT | Trafik{% endblock %}
 {% block stylesheets %}
 {{ parent() }}
 <link rel="stylesheet" href="{{ asset('css/pages/tvt-irregularities.css') }}">
