@@ -9,6 +9,7 @@ use Doctrine\Instantiator\Exception\ExceptionInterface;
 use Doctrine\Instantiator\Exception\InvalidArgumentException;
 use Doctrine\Instantiator\Exception\UnexpectedValueException;
 use Exception;
+use Override;
 use ReflectionClass;
 use ReflectionException;
 use Serializable;
@@ -55,6 +56,7 @@ final class Instantiator implements InstantiatorInterface
      *
      * @template T of object
      */
+    #[Override]
     public function instantiate(string $className): object
     {
         if (isset(self::$cachedCloneables[$className])) {
@@ -195,11 +197,13 @@ final class Instantiator implements InstantiatorInterface
      * @throws UnexpectedValueException
      *
      * @template T of object
+     * @phpstan-ignore throws.unusedType (false positive reported in https://github.com/phpstan/phpstan/issues/15329)
      */
     private function attemptInstantiationViaUnSerialization(ReflectionClass $reflectionClass, string $serializedString): void
     {
         try {
             unserialize($serializedString);
+        /** @phpstan-ignore catch.neverThrown (false positive reported in https://github.com/phpstan/phpstan/issues/15329) */
         } catch (Exception $exception) {
             throw UnexpectedValueException::fromSerializationTriggeredException($reflectionClass, $exception);
         }

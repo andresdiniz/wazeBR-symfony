@@ -50,8 +50,6 @@ use const PREG_OFFSET_CAPTURE;
 /**
  * Provides the behavior, features and SQL dialect of the Microsoft SQL Server database platform
  * of the oldest supported version.
- *
- * @phpstan-import-type ColumnProperties from Column
  */
 class SQLServerPlatform extends AbstractPlatform
 {
@@ -210,10 +208,8 @@ class SQLServerPlatform extends AbstractPlatform
                     ' ADD' . $this->getDefaultConstraintDeclarationSQL($column);
             }
 
-            $comment = $column['comment'] ?? '';
-
-            if (! empty($comment) || is_numeric($comment)) {
-                $commentsSql[] = $this->getCreateColumnCommentSQL($name, $column['name'], $comment);
+            if (! empty($column['comment']) || is_numeric($column['comment'])) {
+                $commentsSql[] = $this->getCreateColumnCommentSQL($name, $column['name'], $column['comment']);
             }
         }
 
@@ -329,7 +325,7 @@ class SQLServerPlatform extends AbstractPlatform
      *
      * @internal The method should be only used by the {@see SQLServerPlatform} class.
      *
-     * @param ColumnProperties $column Column definition.
+     * @param mixed[] $column Column definition.
      */
     protected function getDefaultConstraintDeclarationSQL(array $column): string
     {
@@ -397,7 +393,7 @@ class SQLServerPlatform extends AbstractPlatform
         $tableName = $table->getName();
 
         foreach ($diff->getAddedColumns() as $column) {
-            $columnProperties = $column->toArray(true);
+            $columnProperties = $column->toArray();
 
             $addColumnSql = 'ADD ' . $this->getColumnDeclarationSQL($column->getQuotedName($this), $columnProperties);
 
@@ -409,13 +405,15 @@ class SQLServerPlatform extends AbstractPlatform
 
             $comment = $column->getComment();
 
-            if ($comment !== '') {
-                $commentsSql[] = $this->getCreateColumnCommentSQL(
-                    $tableName,
-                    $column->getQuotedName($this),
-                    $comment,
-                );
+            if ($comment === '') {
+                continue;
             }
+
+            $commentsSql[] = $this->getCreateColumnCommentSQL(
+                $tableName,
+                $column->getQuotedName($this),
+                $comment,
+            );
         }
 
         foreach ($diff->getDroppedColumns() as $column) {
@@ -473,8 +471,8 @@ class SQLServerPlatform extends AbstractPlatform
 
             $columnNameSQL = $newColumn->getQuotedName($this);
 
-            $newDeclarationSQL     = $this->getColumnDeclarationSQL($columnNameSQL, $newColumn->toArray(true));
-            $oldDeclarationSQL     = $this->getColumnDeclarationSQL($columnNameSQL, $oldColumn->toArray(true));
+            $newDeclarationSQL     = $this->getColumnDeclarationSQL($columnNameSQL, $newColumn->toArray());
+            $oldDeclarationSQL     = $this->getColumnDeclarationSQL($columnNameSQL, $oldColumn->toArray());
             $declarationSQLChanged = $newDeclarationSQL !== $oldDeclarationSQL;
 
             $defaultChanged = $columnDiff->hasDefaultChanged();
@@ -494,11 +492,13 @@ class SQLServerPlatform extends AbstractPlatform
             }
 
             if (
-                $newColumn->getDefault() !== null
-                && ($requireDropDefaultConstraint || $defaultChanged)
+                    $newColumn->getDefault() === null
+                    || (! $requireDropDefaultConstraint && ! $defaultChanged)
             ) {
-                $queryParts[] = $this->getAlterTableAddDefaultConstraintClause($newColumn);
+                continue;
             }
+
+            $queryParts[] = $this->getAlterTableAddDefaultConstraintClause($tableName, $newColumn);
         }
 
         foreach ($queryParts as $query) {
@@ -521,11 +521,12 @@ class SQLServerPlatform extends AbstractPlatform
     /**
      * Returns the SQL clause for adding a default constraint in an ALTER TABLE statement.
      *
-     * @param Column $column The column to generate the clause for.
+     * @param string $tableName The name of the table to generate the clause for.
+     * @param Column $column    The column to generate the clause for.
      */
-    private function getAlterTableAddDefaultConstraintClause(Column $column): string
+    private function getAlterTableAddDefaultConstraintClause(string $tableName, Column $column): string
     {
-        $columnDef         = $column->toArray(true);
+        $columnDef         = $column->toArray();
         $columnDef['name'] = $column->getQuotedName($this);
 
         return 'ADD' . $this->getDefaultConstraintDeclarationSQL($columnDef);
@@ -1247,7 +1248,7 @@ class SQLServerPlatform extends AbstractPlatform
 
             $notnull = ! empty($column['notnull']) ? ' NOT NULL' : '';
 
-            $typeDecl    = $this->getColumnType($column)->getSQLDeclaration($column, $this);
+            $typeDecl    = $column['type']->getSQLDeclaration($column, $this);
             $declaration = $typeDecl . $collation . $notnull;
         }
 
@@ -1268,8 +1269,8 @@ class SQLServerPlatform extends AbstractPlatform
             return false;
         }
 
-        return $this->getDefaultValueDeclarationSQL($column1->toArray(true))
-            === $this->getDefaultValueDeclarationSQL($column2->toArray(true));
+        return $this->getDefaultValueDeclarationSQL($column1->toArray())
+            === $this->getDefaultValueDeclarationSQL($column2->toArray());
     }
 
     /**

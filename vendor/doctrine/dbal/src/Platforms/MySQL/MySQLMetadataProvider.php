@@ -22,7 +22,6 @@ use Doctrine\DBAL\Schema\Metadata\MetadataProvider;
 use Doctrine\DBAL\Schema\Metadata\PrimaryKeyConstraintColumnRow;
 use Doctrine\DBAL\Schema\Metadata\TableColumnMetadataRow;
 use Doctrine\DBAL\Schema\Metadata\TableMetadataRow;
-use Doctrine\DBAL\Schema\Metadata\UniqueConstraintColumnMetadataRow;
 use Doctrine\DBAL\Schema\Metadata\ViewMetadataRow;
 use Doctrine\DBAL\Types\Exception\TypesException;
 
@@ -398,7 +397,6 @@ final readonly class MySQLMetadataProvider implements MetadataProvider
             WHERE %s
               AND INDEX_NAME != 'PRIMARY'
             ORDER BY TABLE_NAME,
-                INDEX_NAME,
                 SEQ_IN_INDEX
             SQL,
             implode(' AND ', $conditions),
@@ -507,35 +505,6 @@ final readonly class MySQLMetadataProvider implements MetadataProvider
                 columnName: $row[2],
             );
         }
-    }
-
-    /**
-     * MySQL and MariaDB implement unique constraints as unique indexes, so they are returned as indexes.
-     *
-     * @return iterable<UniqueConstraintColumnMetadataRow>
-     */
-    public function getUniqueConstraintColumnsForAllTables(): iterable
-    {
-        return [];
-    }
-
-    /**
-     * @see getUniqueConstraintColumnsForAllTables()
-     *
-     * @param ?non-empty-string $schemaName
-     * @param non-empty-string  $tableName
-     *
-     * @return iterable<UniqueConstraintColumnMetadataRow>
-     *
-     * @throws Exception
-     */
-    public function getUniqueConstraintColumnsForTable(?string $schemaName, string $tableName): iterable
-    {
-        if ($schemaName !== null) {
-            throw UnsupportedName::fromNonNullSchemaName($schemaName, __METHOD__);
-        }
-
-        return [];
     }
 
     /** {@inheritDoc} */
