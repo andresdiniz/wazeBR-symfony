@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}WazeBR | Trânsito inteligente{% endblock %}
+{% block title %}Trafik | Trânsito inteligente{% endblock %}
 
 {% block stylesheets %}
     <link rel="stylesheet" href="{{ asset('css/landing.css') }}">
@@ -17,14 +17,14 @@
        HEADER
     ════════════════════════════════════════ #}
     <header class="landing-header" id="landingHeader">
-        <a href="{{ path('home') }}" class="landing-brand" aria-label="WazeBR — início">
+        <a href="{{ path('home') }}" class="landing-brand" aria-label="Trafik — início">
             <div class="landing-brand-mark">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                     <polyline points="9 22 9 12 15 12 15 22"/>
                 </svg>
             </div>
-            <span class="landing-brand-name"><strong>Waze</strong><em>BR</em></span>
+            <span class="landing-brand-name"><strong>Tra</strong><em>fik</em></span>
         </a>
 
         <nav class="landing-nav" aria-label="Navegação pública">
@@ -81,7 +81,7 @@
                 </h1>
 
                 <p class="landing-hero-desc">
-                    O WazeBR transforma dados de mobilidade em decisões rápidas. Monitore ocorrências, congestionamentos e rotas em um único lugar.
+                    O Trafik transforma dados de mobilidade em decisões rápidas. Monitore ocorrências, congestionamentos e rotas em um único lugar.
                 </p>
 
                 <div class="landing-hero-actions">
@@ -174,7 +174,7 @@
 
                 <div class="lfc lfc-status" aria-hidden="true">
                     <div class="lfc-icon lfc-icon-green">
-                        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 001.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
                     </div>
                     <div class="lfc-body">
                         <strong>Operação estável</strong>
@@ -350,7 +350,7 @@
                 </div>
                 {% if not app.user %}
                     <a href="{{ path('auth_login') }}" class="landing-btn landing-btn-white landing-btn-lg">
-                        Acessar WazeBR
+                        Acessar Trafik
                         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M12 5l5 5-5 5"/></svg>
                     </a>
                 {% else %}
@@ -368,16 +368,16 @@
        FOOTER
     ════════════════════════════════════════ #}
     <footer class="landing-footer">
-        <a href="{{ path('home') }}" class="landing-brand" aria-label="WazeBR — início">
+        <a href="{{ path('home') }}" class="landing-brand" aria-label="Trafik — início">
             <div class="landing-brand-mark landing-brand-mark-sm">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                     <polyline points="9 22 9 12 15 12 15 22"/>
                 </svg>
             </div>
-            <span class="landing-brand-name"><strong>Waze</strong><em>BR</em></span>
+            <span class="landing-brand-name"><strong>Tra</strong><em>fik</em></span>
         </a>
-        <span class="landing-footer-copy">© {{ 'now'|date('Y') }} WazeBR. Monitoramento para decisões melhores.</span>
+        <span class="landing-footer-copy">© {{ 'now'|date('Y') }} Trafik. Monitoramento para decisões melhores.</span>
         <a href="{{ path('auth_login') }}" class="landing-footer-link">
             Entrar na plataforma
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
