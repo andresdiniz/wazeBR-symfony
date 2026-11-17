@@ -2,7 +2,7 @@ doctrine:
     dbal:
         url: '%env(resolve:DATABASE_URL)%'
         profiling_collect_backtrace: '%kernel.debug%'
-        server_version: 'mariadb-10.4.32'
+        server_version: 'mariadb-11.8.9-MariaDB-log'
         options:
             # MySQL: desabilita conversão implícita de timezone
             1002: "SET time_zone = '+00:00'"
