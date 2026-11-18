@@ -53,10 +53,10 @@
                    <span aria-hidden="true"></span>
                </button>
 
-               <a class="app-header__brand" href="{{ path('dashboard') }}" aria-label="WazeBR — {{ 'header.dashboard'|trans }}">
+               <a class="app-header__brand" href="{{ path('dashboard') }}" aria-label="Trafik — {{ 'header.dashboard'|trans }}">
                    <span class="app-header__brand-mark" aria-hidden="true">W</span>
                    <span class="app-header__brand-copy">
-                       <strong>WazeBR</strong>
+                       <strong>Trafik</strong>
                        <small>{{ 'header.brand_subtitle'|trans }}</small>
                    </span>
                </a>
@@ -71,7 +71,7 @@
            </div>
 
            <nav class="app-header__navigation" id="app-header-navigation" data-header-navigation aria-label="{{ 'sidebar.main_navigation'|trans }}">
-               <a href="{{ path('dashboard') }}" class="app-header__nav-link{{ _route == 'dashboard' ? ' is-active' : '' }}" {% if _route == 'dashboard' %}aria-current="page"{% endif %}>
+               <a href="{{ path('dashboard') }}" class="app-header__nav-link{{ _route == 'dashboard' ? ' is-active' : '' }}" {% if _route == 'dashboard' %} aria-current="page"{% endif %}>
                    <span class="app-header__nav-icon" aria-hidden="true">⌂</span>
                    <span>{{ 'header.overview'|trans }}</span>
                </a>
