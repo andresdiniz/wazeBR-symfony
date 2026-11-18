@@ -1,7 +1,7 @@
 {% extends 'layouts/dashboard.html.twig' %}
 {% import 'account/_notification_types.html.twig' as ui %}
 
-{% block title %}Notificações por e-mail | WazeBR{% endblock %}
+{% block title %}Notificações por e-mail | Trafik{% endblock %}
 
 {% block stylesheets %}
     {{ parent() }}
@@ -14,7 +14,7 @@
         <p class="notif-eyebrow">Minha conta</p>
         <h1 class="notif-title">Notificações por e-mail</h1>
         <p class="notif-lead">
-            Escolha quais e-mails o WazeBR pode enviar para <strong>{{ email }}</strong>.
+            Escolha quais e-mails o Trafik pode enviar para <strong>{{ email }}</strong>.
             As escolhas valem só para a sua conta.
         </p>
     </header>
@@ -27,7 +27,7 @@
                 <input type="checkbox" name="email_enabled" value="1" data-notif-master {{ preference.emailEnabled ? 'checked' }}>
                 <span class="notif-switch__track" aria-hidden="true"></span>
                 <span class="notif-switch__text">
-                    <strong>Receber e-mails do WazeBR</strong>
+                    <strong>Receber e-mails do Trafik</strong>
                     <small>Desligando aqui você deixa de receber todos os e-mails abaixo, sem perder suas escolhas.</small>
                 </span>
             </label>
