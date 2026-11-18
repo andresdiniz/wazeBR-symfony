@@ -63,6 +63,8 @@ security:
         - { path: ^/partner-feed/[^/]+$, roles: PUBLIC_ACCESS }
         - { path: ^/feeds/waze/[^/]+\.(json|xml)$, roles: PUBLIC_ACCESS }
         - { path: ^/relatorio/rota/\d+$, roles: PUBLIC_ACCESS }
+        # Link público de compartilhamento de congestionamento (assinado e com validade; ver JamShareLinkGenerator)
+        - { path: '^/jams/share/[^/]+/[^/]+$', roles: PUBLIC_ACCESS }
         - { path: ^/, roles: IS_AUTHENTICATED_FULLY }
 
     role_hierarchy:

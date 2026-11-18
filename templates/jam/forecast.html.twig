@@ -4,7 +4,7 @@
 {{ parent() }}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 <style>
-.jf{padding:24px;max-width:1600px;margin:auto}.jf header{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}.jf h1{font-size:26px}.jf-note{padding:16px;border:1px solid #64748b;border-radius:10px;margin:16px 0}.jf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}.jf-card{border:1px solid #64748b;border-left:4px solid #3b82f6;border-radius:12px;padding:18px}.jf-card h2{font-size:18px}.jf-metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}.jf-metrics span{display:block;font-size:12px;opacity:.8}.jf-estimate{font-size:20px;margin:12px 0}.jf-muted{font-size:13px;opacity:.85}.jf-map{height:350px;border-radius:12px;margin:18px 0}.jf-badge{display:inline-block;padding:4px 8px;border:1px solid #64748b;border-radius:20px;font-size:12px}
+.jf{padding:24px;max-width:1600px;margin:auto}.jf header{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}.jf h1{font-size:26px}.jf-note{padding:16px;background:var(--theme-surface-muted,transparent);border:1px solid var(--theme-border,#64748b);border-radius:10px;margin:16px 0}.jf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}.jf-card{background:var(--theme-surface,transparent);border:1px solid var(--theme-border,#64748b);border-left:4px solid var(--theme-primary,#3b82f6);border-radius:12px;padding:18px}.jf-card h2{font-size:18px}.jf-metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}.jf-metrics span{display:block;font-size:12px;opacity:.8}.jf-estimate{font-size:20px;margin:12px 0}.jf-muted{font-size:13px;opacity:.85}.jf-map{height:350px;border-radius:12px;margin:18px 0;overflow:hidden;border:1px solid var(--theme-border,#64748b)}.jf-map-message{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;height:100%;padding:16px;text-align:center;font-size:13px;opacity:.85}.jf-map-message span{font-size:26px}.jf h1{color:var(--theme-text,inherit)}.jf-badge{display:inline-block;padding:4px 8px;border:1px solid var(--theme-border,#64748b);border-radius:20px;font-size:12px}
 </style>
 {% endblock %}
 {% block content %}
@@ -14,7 +14,7 @@
 {% for error in errors %}<p role="alert">{{ error }}</p>{% endfor %}
 {% if items is empty %}<div class="jf-note">Nenhum acompanhamento disponível. Execute <code>php bin/console app:jams:forecast</code> periodicamente. A primeira execução começa a formar o histórico, sem inventar previsões.</div>{% else %}
 <p>{{ items|length }} registros acompanhados. Recarregue a página para ler a última execução do comando.</p>
-<div class="jf-map" data-jam-duration-map data-items="{{ items|json_encode|e('html_attr') }}"></div>
+<div class="jf-map" data-jam-duration-map data-show-url-template="{{ path('jam_show', {id: 0}) }}" data-items="{{ items|json_encode|e('html_attr') }}"></div>
 <div class="jf-grid">
 {% for item in items %}
 <article class="jf-card"><span class="jf-badge">{{ item.status }}</span><h2>{{ item.street ?: 'Via não informada' }}</h2><p>{{ item.city }} · nível {{ item.level }} · parceiro {{ item.partner_id }}</p>
@@ -34,6 +34,6 @@
 </section>
 {% endblock %}
 {% block javascripts %}{{ parent() }}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{# O Leaflet é carregado por jam-duration.js (core/leaflet-loader.js). #}
 <script type="module" src="{{ asset('js/pages/jam-duration.js') }}"></script>
 {% endblock %}

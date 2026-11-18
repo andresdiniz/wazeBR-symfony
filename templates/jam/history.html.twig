@@ -321,8 +321,6 @@
 
 {% block javascripts %}
     {{ parent() }}
-    <script type="module">
-        import init from '{{ asset('js/pages/jam-history.js') }}';
-        init();
-    </script>
+    {# Módulo externo: o <script type="module"> inline anterior era bloqueado pelo CSP. #}
+    <script type="module" src="{{ asset('js/pages/jam-history.js') }}"></script>
 {% endblock %}

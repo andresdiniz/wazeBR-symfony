@@ -1,3 +1,5 @@
+import { ensureLeaflet } from '../core/leaflet-loader.js';
+
 const JAM_LOCALE = document.documentElement.lang || 'pt-BR';
 const JAM_MESSAGES = (() => {
     try { return JSON.parse(document.querySelector('[data-jams-i18n]')?.dataset.jamsI18n || '{}'); }
@@ -70,104 +72,230 @@ function levelColor(level) {
     }
 }
 
+function showMapMessage(container, icon, title, hint = '') {
+    container.innerHTML = `
+        <div class="jam-show-map__message" role="status">
+            <span aria-hidden="true">${icon}</span>
+            <strong>${escapeHtml(title)}</strong>
+            ${hint ? `<small>${escapeHtml(hint)}</small>` : ''}
+        </div>`;
+}
+
+function validPoint(p) {
+    return Array.isArray(p) && Number.isFinite(Number(p[0])) && Number.isFinite(Number(p[1]))
+        && Math.abs(Number(p[0])) <= 90 && Math.abs(Number(p[1])) <= 180;
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Mapa
 // ─────────────────────────────────────────────────────────────────────────
 
-function initMap(root, attempt = 0) {
+async function initMap(root) {
     const container = root.querySelector('[data-jam-show-map]');
     if (!container) return;
 
-    // #12 — Leaflet ainda não carregou; tenta por até 4s, depois exibe aviso
-    if (typeof L === 'undefined') {
-        if (attempt < 40) {
-            setTimeout(() => initMap(root, attempt + 1), 100);
-        } else {
-            container.innerHTML = `
-                <div style="display:flex;align-items:center;justify-content:center;
-                            height:100%;flex-direction:column;gap:8px;
-                            color:var(--js-text-muted,#64748b);font-size:13px">
-                    <span style="font-size:24px">🗺️</span>
-                    ${escapeHtml(jt("Não foi possível carregar o mapa."))}
-                    <small>${escapeHtml(jt("Verifique sua conexão e recarregue a página."))}</small>
-                </div>`;
-        }
+    const jam    = safeJson(root.dataset.jam, null);
+    const alerts = (safeJson(root.dataset.nearbyAlerts, []) || [])
+        .filter((a) => Number.isFinite(a?.lat) && Number.isFinite(a?.lng));
+    const path   = Array.isArray(jam?.path) ? jam.path.filter(validPoint).map((p) => [Number(p[0]), Number(p[1])]) : [];
+    const points = [...path, ...alerts.map((a) => [a.lat, a.lng])];
+
+    if (!jam || points.length === 0) {
+        showMapMessage(
+            container, '📍',
+            jt('Sem coordenadas disponíveis para este congestionamento.'),
+            jt('O feed não enviou o traçado desta via.'),
+        );
         return;
     }
 
-    const jam    = safeJson(root.dataset.jam, null);
-    const alerts = safeJson(root.dataset.nearbyAlerts, []) || [];
+    container.innerHTML = `<div class="jam-show-map__message" role="status"><span aria-hidden="true">⏳</span><strong>${escapeHtml(jt('Carregando mapa…'))}</strong></div>`;
 
-    if (!jam || !Array.isArray(jam.path) || jam.path.length < 2) return;
+    if (!(await ensureLeaflet())) {
+        showMapMessage(
+            container, '🗺️',
+            jt('Não foi possível carregar o mapa.'),
+            jt('Verifique sua conexão e recarregue a página.'),
+        );
+        return;
+    }
 
-    const map = L.map(container, {
-        zoomControl: true,
-        preferCanvas: true,
-        center: [-20.66, -43.78],
-        zoom: 13,
-    });
+    container.innerHTML = '';
+    window.jamShowMap?.remove?.();
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    const map = L.map(container, { zoomControl: true, preferCanvas: true, center: points[0], zoom: 14 });
+    window.jamShowMap = map;
+
+    let tileErrors = 0;
+    const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; OpenStreetMap',
     }).addTo(map);
+    tiles.on('tileerror', () => {
+        // Mantém o traçado visível mesmo sem o mapa base; avisa uma única vez.
+        if (++tileErrors === 5) {
+            const note = document.createElement('div');
+            note.className = 'jam-show-map__note';
+            note.textContent = jt('Mapa base indisponível no momento; o traçado continua visível.');
+            container.appendChild(note);
+        }
+    });
 
     const color = (jam.isBlocked && jam.isStale) ? COLORS.l3
                 : jam.isBlocked                    ? COLORS.l5
                 : levelColor(jam.level);
 
-    // Polyline do jam
-    L.polyline(jam.path, {
-        color, weight: 7, opacity: 0.92,
-        dashArray: (jam.isBlocked && jam.isStale) ? '8, 6' : null,
-        lineCap: 'round', lineJoin: 'round',
-    }).addTo(map);
+    if (path.length >= 2) {
+        L.polyline(path, {
+            color, weight: 7, opacity: 0.92,
+            dashArray: (jam.isBlocked && jam.isStale) ? '8, 6' : null,
+            lineCap: 'round', lineJoin: 'round',
+        }).addTo(map);
 
-    // Marcador de início (verde) e fim (vermelho)
-    L.circleMarker(jam.path[0], {
-        radius: 6, color: '#fff', weight: 2,
-        fillColor: '#16a34a', fillOpacity: 1,
-    }).bindTooltip(jt("Início"), { direction: 'top' }).addTo(map);
+        L.circleMarker(path[0], {
+            radius: 6, color: '#fff', weight: 2, fillColor: '#16a34a', fillOpacity: 1,
+        }).bindTooltip(jt('Início'), { direction: 'top' }).addTo(map);
 
-    L.circleMarker(jam.path[jam.path.length - 1], {
-        radius: 6, color: '#fff', weight: 2,
-        fillColor: '#dc2626', fillOpacity: 1,
-    }).bindTooltip(jt("Fim"), { direction: 'top' }).addTo(map);
+        L.circleMarker(path[path.length - 1], {
+            radius: 6, color: '#fff', weight: 2, fillColor: '#dc2626', fillOpacity: 1,
+        }).bindTooltip(jt('Fim'), { direction: 'top' }).addTo(map);
+    }
 
-    // Alertas próximos
     alerts.forEach((a) => {
-        if (!Number.isFinite(a.lat) || !Number.isFinite(a.lng)) return;
         L.circleMarker([a.lat, a.lng], {
             radius: 7, color: '#fff', weight: 2,
             fillColor: alertColor(a.type), fillOpacity: 0.95,
         }).bindPopup(`
             <div style="font:inherit;font-size:12px;min-width:180px">
                 <strong style="display:block;font-size:13px">
-                    ${escapeHtml(jamLabel(a.type || a.typeLabel, jt("Alerta")))}
+                    ${escapeHtml(jamLabel(a.type || a.typeLabel, jt('Alerta')))}
                 </strong>
                 ${a.subtype ? `<small style="display:block;color:#64748b">${escapeHtml(jamLabel(a.subtype))}</small>` : ''}
                 ${a.street  ? `<div style="margin-top:4px">${escapeHtml(a.street)}</div>` : ''}
                 ${a.city    ? `<div style="color:#64748b">${escapeHtml(a.city)}</div>` : ''}
                 <div style="display:flex;justify-content:space-between;padding:2px 0;margin-top:6px">
-                    <span style="color:#64748b">${escapeHtml(jt("Distância"))}</span>
-                    <strong>${a.distanceMeters} m</strong>
+                    <span style="color:#64748b">${escapeHtml(jt('Distância'))}</span>
+                    <strong>${escapeHtml(a.distanceMeters)} m</strong>
                 </div>
                 <div style="display:flex;justify-content:space-between;padding:2px 0">
-                    <span style="color:#64748b">${escapeHtml(jt("Δ Tempo"))}</span>
-                    <strong>${a.timeOffsetMinutes > 0 ? '+' : ''}${a.timeOffsetMinutes} min</strong>
+                    <span style="color:#64748b">${escapeHtml(jt('Δ Tempo'))}</span>
+                    <strong>${a.timeOffsetMinutes > 0 ? '+' : ''}${escapeHtml(a.timeOffsetMinutes)} min</strong>
                 </div>
             </div>
         `).addTo(map);
     });
 
-    // Fit automático
-    const all = [...jam.path, ...alerts.map((a) => [a.lat, a.lng])];
-    try { map.fitBounds(all, { padding: [40, 40], maxZoom: 16 }); } catch {}
+    addLegend(map, color, path.length >= 2, alerts);
 
+    // Enquadra traçado + alertas; ponto único vira zoom fixo.
+    if (points.length === 1) {
+        map.setView(points[0], 16);
+    } else {
+        try { map.fitBounds(points, { padding: [40, 40], maxZoom: 16 }); } catch { map.setView(points[0], 14); }
+    }
+
+    // O contêiner pode mudar de tamanho depois do carregamento (fontes, layout, sidebar).
     setTimeout(() => map.invalidateSize(), 120);
-    setTimeout(() => map.invalidateSize(), 400);
-    window.addEventListener('resize', () => map.invalidateSize());
-    window.jamShowMap = map;
+    if (typeof ResizeObserver === 'function') {
+        new ResizeObserver(() => map.invalidateSize()).observe(container);
+    } else {
+        window.addEventListener('resize', () => map.invalidateSize());
+    }
+}
+
+function addLegend(map, jamColor, hasPath, alerts) {
+    const types = [...new Set(alerts.map((a) => (a.type || '').toUpperCase()).filter(Boolean))];
+    const legend = L.control({ position: 'bottomleft' });
+
+    legend.onAdd = () => {
+        const el = L.DomUtil.create('div', 'jam-show-legend');
+        const rows = [];
+        if (hasPath) {
+            rows.push(`<span><i style="background:${jamColor};border-radius:2px;height:4px;width:16px"></i>${escapeHtml(jt('Congestionamento'))}</span>`);
+            rows.push(`<span><i style="background:#16a34a"></i>${escapeHtml(jt('Início'))}</span>`);
+            rows.push(`<span><i style="background:#dc2626"></i>${escapeHtml(jt('Fim'))}</span>`);
+        }
+        types.forEach((t) => rows.push(`<span><i style="background:${alertColor(t)}"></i>${escapeHtml(jamLabel(t))}</span>`));
+        el.innerHTML = rows.join('');
+        return el;
+    };
+
+    legend.addTo(map);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Compartilhar (antes era um <script> inline, bloqueado pelo CSP)
+// ─────────────────────────────────────────────────────────────────────────
+
+function initShare(page) {
+    const button = page.querySelector('#jam-share-button');
+    if (!button) return;
+
+    const select   = page.querySelector('#jam-share-duration');
+    const result   = page.querySelector('#jam-share-result');
+    const urlInput = page.querySelector('#jam-share-url');
+    const copy     = page.querySelector('#jam-share-copy');
+    const feedback = page.querySelector('#jam-share-feedback');
+
+    const say = (message, isError = false) => {
+        if (!feedback) return;
+        feedback.textContent = message;
+        feedback.classList.toggle('is-error', isError);
+    };
+
+    button.addEventListener('click', async () => {
+        button.disabled = true;
+        say('');
+
+        try {
+            const response = await fetch(button.dataset.shareUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ durationHours: Number(select?.value || 24) }),
+            });
+            const json = await response.json().catch(() => ({}));
+
+            if (!response.ok || !json.ok || !json.url) {
+                say(json.error || jt('Não foi possível gerar o link. Tente novamente.'), true);
+                return;
+            }
+
+            urlInput.value = json.url;
+            result.hidden = false;
+            urlInput.focus();
+            urlInput.select();
+            say(jt('Link gerado. Quem tiver o link poderá ver este congestionamento até expirar.'));
+        } catch (error) {
+            say(jt('Falha de conexão ao gerar o link.'), true);
+        } finally {
+            button.disabled = false;
+        }
+    });
+
+    copy?.addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(urlInput.value);
+            say(jt('Link copiado.'));
+        } catch (error) {
+            urlInput.select();
+            say(document.execCommand?.('copy') ? jt('Link copiado.') : jt('Selecione e copie o link manualmente.'));
+        }
+    });
+}
+
+// Link "Abrir no Waze" calculado a partir do ponto médio do traçado.
+function initWazeLink(page) {
+    const link = page.querySelector('[data-jam-waze-link]');
+    const jam  = safeJson(page.dataset.jam, null);
+    if (!link || !Array.isArray(jam?.path)) return;
+
+    const path = jam.path.filter(validPoint);
+    if (path.length === 0) return;
+
+    const mid = path[Math.floor(path.length / 2)];
+    link.href = `https://www.waze.com/ul?ll=${Number(mid[0]).toFixed(6)}%2C${Number(mid[1]).toFixed(6)}&zoom=16`;
+    link.hidden = false;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -216,8 +344,18 @@ export function initJamShow(root = document) {
 
     const alerts = safeJson(page.dataset.nearbyAlerts, []) || [];
 
-    initMap(page);
     renderTypeBreakdown(page, alerts);
+    initShare(page);
+    initWazeLink(page);
+
+    // Não bloqueia o restante da página: o mapa carrega o Leaflet de forma assíncrona.
+    initMap(page).catch((error) => {
+        console.error('[JAM-SHOW] falha ao montar o mapa', error);
+        const container = page.querySelector('[data-jam-show-map]');
+        if (container) {
+            showMapMessage(container, '🗺️', jt('Não foi possível carregar o mapa.'), jt('Verifique sua conexão e recarregue a página.'));
+        }
+    });
 }
 
 export default initJamShow;

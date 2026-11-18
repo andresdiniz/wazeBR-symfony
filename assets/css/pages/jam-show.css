@@ -404,3 +404,61 @@
     .jam-show-header h1 { font-size: var(--page-title-size); }
     .jam-show-type { grid-template-columns: 100px 1fr 36px; }
 }
+
+/* ── Botões e compartilhamento (jam.css não é carregado nesta página) ── */
+.jam-show-page .jam-button {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px;
+    border: 1px solid var(--js-border-strong, var(--js-border));
+    border-radius: 10px;
+    background: var(--js-surface);
+    color: var(--js-text);
+    font: inherit; font-size: 13px; font-weight: 600;
+    text-decoration: none; cursor: pointer;
+    transition: background-color 140ms ease, border-color 140ms ease;
+}
+.jam-show-page .jam-button:hover { background: var(--js-surface-strong); border-color: var(--js-primary); }
+.jam-show-page .jam-button:focus-visible { outline: 3px solid var(--js-primary); outline-offset: 2px; }
+.jam-show-page .jam-button:disabled { opacity: .6; cursor: progress; }
+.jam-show-page .jam-button[hidden] { display: none; }
+
+.jam-share { display: inline-flex; gap: 8px; align-items: center; }
+.jam-share-select {
+    padding: 8px 10px; border: 1px solid var(--js-border-strong, var(--js-border));
+    border-radius: 10px; background: var(--js-surface); color: var(--js-text); font: inherit; font-size: 13px;
+}
+.jam-share-result { display: flex; gap: 8px; width: 100%; }
+.jam-share-result[hidden] { display: none; }
+.jam-share-result input {
+    flex: 1; min-width: 0; padding: 8px 10px;
+    border: 1px solid var(--js-border); border-radius: 10px;
+    background: var(--js-surface-soft); color: var(--js-text); font: inherit; font-size: 12px;
+}
+.jam-share-feedback { flex-basis: 100%; margin: 0; min-height: 1em; font-size: 12px; color: var(--js-text-muted); }
+.jam-share-feedback.is-error { color: var(--js-l4); }
+.jam-sr-only {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ── Mapa: mensagens, aviso e legenda ── */
+.jam-show-map__message {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px; height: 100%; padding: 16px; text-align: center;
+    color: var(--js-text-muted); font-size: 13px;
+}
+.jam-show-map__message span { font-size: 26px; }
+.jam-show-map__message strong { color: var(--js-text); }
+.jam-show-map__note {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 800;
+    padding: 6px 12px; border-radius: 999px; font-size: 12px;
+    background: var(--js-surface); color: var(--js-text-muted); border: 1px solid var(--js-border);
+}
+.jam-show-legend {
+    display: flex; flex-direction: column; gap: 4px;
+    padding: 8px 10px; border-radius: 10px; font-size: 11px; line-height: 1.2;
+    background: var(--js-map-attribution-bg); color: var(--js-map-attribution-fg);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
+}
+.jam-show-legend span { display: flex; align-items: center; gap: 6px; }
+.jam-show-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }

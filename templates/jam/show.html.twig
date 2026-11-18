@@ -5,8 +5,8 @@
 {% block stylesheets %}
     {{ parent() }}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous" />
-    {# Fallback local (#12) #}
-    <link rel="stylesheet" href="{{ asset('vendor/leaflet/leaflet.css') }}"
+    {# Fallback local do CSS do Leaflet #}
+    <link rel="stylesheet" href="{{ asset('vendor/leaflet/dist/leaflet.css') }}"
           id="leaflet-css-fallback" disabled>
     <link rel="stylesheet" href="{{ asset('css/pages/jam-show.css') }}">
 {% endblock %}
@@ -81,20 +81,23 @@
             </div>
             <div class="jam-show-actions">
                 <a class="jam-button" href="{{ path('jam_speed_history', {id: jam.id}) }}">{{ 'Histórico de velocidade'|trans({}, 'jams_ui') }}</a>
+                <a class="jam-button" href="#" data-jam-waze-link target="_blank" rel="noopener noreferrer" hidden>📍 {{ 'Abrir no Waze'|trans({}, 'jams_ui') }}</a>
                 <a class="jam-button" href="{{ path('jam_index') }}">← {{ 'Voltar'|trans({}, 'jams_ui') }}</a>
                 <div class="jam-share">
+                    <label class="jam-sr-only" for="jam-share-duration">{{ 'Validade do link'|trans({}, 'jams_ui') }}</label>
                     <select id="jam-share-duration" class="jam-share-select">
                         <option value="24">24 horas</option>
                         <option value="72">3 dias</option>
                         <option value="168">7 dias</option>
                         <option value="720">30 dias</option>
                     </select>
-                    <button type="button" class="jam-button" id="jam-share-button">🔗 {{ 'Compartilhar'|trans({}, 'jams_ui') }}</button>
+                    <button type="button" class="jam-button" id="jam-share-button" data-share-url="{{ path('jam_share_create', {id: jam.id}) }}">🔗 {{ 'Compartilhar'|trans({}, 'jams_ui') }}</button>
                 </div>
                 <div id="jam-share-result" class="jam-share-result" hidden>
-                    <input type="text" id="jam-share-url" readonly>
+                    <input type="text" id="jam-share-url" readonly aria-label="{{ 'Link de compartilhamento'|trans({}, 'jams_ui') }}">
                     <button type="button" class="jam-button" id="jam-share-copy">{{ 'Copiar'|trans({}, 'jams_ui') }}</button>
                 </div>
+                <p id="jam-share-feedback" class="jam-share-feedback" role="status" aria-live="polite"></p>
             </div>
         </header>
 
@@ -105,7 +108,7 @@
                 <span class="jam-show-kpi__value">
                     {{ jam.delayMin is not null ? jam.delayMin : '—' }}<small>min</small>
                 </span>
-                <span class="jam-show-kpi__hint">{{ jam.delay }}s {{ 'no total'|trans({}, 'jams_ui') }}</span>
+                <span class="jam-show-kpi__hint">{{ jam.delay >= 0 ? jam.delay ~ 's ' ~ ('no total'|trans({}, 'jams_ui')) : ('Sem informação de atraso'|trans({}, 'jams_ui')) }}</span>
             </article>
 
             <article class="jam-show-kpi">
@@ -167,7 +170,7 @@
                                     <em>{{ jams_label(a.subtype) }}{% if a.street %} · {{ a.street }}{% endif %}</em>
                                     <small>
                                         {{ a.city|default('—') }}
-                                        {% if a.confidence %}· {{ 'Confiança'|trans({}, 'jams_ui') }} {{ a.confidence }}%{% endif %}
+                                        {% if a.confidence %}· {{ 'Confiança'|trans({}, 'jams_ui') }} {{ a.confidence <= 10 ? a.confidence ~ '/10' : a.confidence ~ '%' }}{% endif %}
                                     </small>
                                 </div>
                                 <div class="jam-show-alert__meta">
@@ -232,58 +235,7 @@
 
 {% block javascripts %}
     {{ parent() }}
-    {# Leaflet com fallback local (#12) #}
-    <script>
-        (function () {
-            var s = document.createElement('script');
-            s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-            s.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
-            s.crossOrigin = 'anonymous';
-            s.onerror = function () {
-                document.getElementById('leaflet-css-fallback').disabled = false;
-                var fb = document.createElement('script');
-                fb.src = '{{ asset('vendor/leaflet/leaflet.js') }}';
-                document.head.appendChild(fb);
-            };
-            document.head.appendChild(s);
-        })();
-    </script>
+    {# O Leaflet, o mapa e o botão de compartilhar são tratados em jam-show.js.
+       Scripts inline são bloqueados pelo CSP (script-src sem 'unsafe-inline'). #}
     <script type="module" src="{{ asset('js/pages/jam-show.js') }}"></script>
-    <script>
-        document.getElementById('jam-share-button')?.addEventListener('click', async () => {
-            const duration = document.getElementById('jam-share-duration').value;
-            const result = document.getElementById('jam-share-result');
-            const urlInput = document.getElementById('jam-share-url');
-
-            try {
-                const response = await fetch('{{ path('jam_share_create', {id: jam.id}) }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                    body: JSON.stringify({ durationHours: Number(duration) }),
-                });
-
-                const json = await response.json();
-
-                if (json.ok && json.url) {
-                    urlInput.value = json.url;
-                    result.hidden = false;
-                }
-            } catch (error) {
-                // falha silenciosa; usuário pode tentar novamente
-            }
-        });
-
-        document.getElementById('jam-share-copy')?.addEventListener('click', async () => {
-            const urlInput = document.getElementById('jam-share-url');
-
-            try {
-                await navigator.clipboard.writeText(urlInput.value);
-            } catch (error) {
-                urlInput.select();
-            }
-        });
-    </script>
 {% endblock %}

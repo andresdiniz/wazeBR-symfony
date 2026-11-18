@@ -1,32 +1,26 @@
-# Preferências de e-mail por usuário
+# Correções e melhorias das páginas de congestionamentos (jams)
 
-Copie as pastas deste pacote para a raiz do projeto (mesmos caminhos) e rode:
+Extraia o zip na raiz do projeto (mesmos caminhos) e depois rode:
 
-    php bin/console doctrine:migrations:migrate
     php bin/console cache:clear
+    # DEV: apague public/assets (assets compilados antigos têm prioridade sobre assets/)
+    # PROD: php bin/console asset-map:compile
+    # Há arquivos JS novos (core/leaflet-loader.js, pages/jam-fetch-bridge.js, pages/jam-share.js)
 
-Página do usuário: /account/notifications (também no menu da conta → "Preferências").
+## O que estava quebrado
+1. Mapa da /jams/{id} não aparecia: o Leaflet era carregado por <script> inline, e o CSP
+   (nelmio_security, script-src sem 'unsafe-inline') bloqueia. O botão Compartilhar também era inline.
+2. /jams (index) mostrava só o texto "CONTEUDO_ORIGINAL_COM_TITULO_TROCAR_WAZE_BR_POR_TRAFIK":
+   o commit ec4fdb1 (branding) apagou o template. Restaurado do commit c3a1b6b.
+   O mesmo commit apagou templates/routes/compare_print.html.twig. Restaurado.
+3. Selos de status da lista nunca apareciam: dependiam de um fetch interceptado em <script> inline (bloqueado).
+4. Link público /jams/share/... exigia login (faltava PUBLIC_ACCESS no security.yaml).
+5. history.html.twig tinha <script type="module"> inline bloqueado.
 
-## Arquivos novos
-- migrations/Version20261117120000CreateUserNotificationPreferences.php
-- src/Entity/UserNotificationPreference.php, UserNotificationSubscription.php
-- src/Repository/UserNotificationPreferenceRepository.php
-- src/Service/Notification/NotificationCatalog.php, NotificationPreferenceService.php
-- src/Service/EventNotificationService.php
-- src/Controller/NotificationPreferenceController.php
-- templates/account/notifications.html.twig, _notification_types.html.twig
-- templates/email/partner_event.html.twig
-- public/css/pages/notifications.css, public/js/pages/notification-preferences.js
-
-## Arquivos alterados (completos)
-- src/Service/AlertNotificationService.php  (filtra destinatários pelas preferências)
-- src/Command/WazeDailyBriefingCommand.php  (briefing só para quem quer)
-- src/Controller/PartnerFeedController.php  (e-mail ao criar evento)
-- templates/email/important_alert.html.twig (rodapé com link de preferências)
-- templates/partials/header.html.twig       (menu "Preferências" aponta para a página)
-- config/packages/routing.yaml              (default_uri p/ links absolutos em e-mails do scheduler)
-
-## Regras
-- Usuário sem registro recebe o PADRÃO: exatamente o filtro antigo de alertas
-  (ACCIDENT, ROAD_CLOSED, HAZARD_ON_ROAD, HAZARD_ON_ROAD_OBJECT, HAZARD_WEATHER_FLOOD) e briefing; eventos só por escolha.
-- subtype '*' = todos os subtipos do tipo.
+## Arquivos
+templates/jam/{index,show,history,forecast,share}.html.twig
+templates/routes/compare_print.html.twig
+assets/js/core/leaflet-loader.js (novo)
+assets/js/pages/{jam-show,jam-duration,jam-status}.js, jam-fetch-bridge.js (novo), jam-share.js (novo)
+assets/css/pages/jam-show.css
+config/packages/security.yaml

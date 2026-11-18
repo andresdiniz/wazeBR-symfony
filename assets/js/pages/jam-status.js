@@ -1,7 +1,8 @@
 const RESOLVED_AFTER_MS = 10 * 60 * 1000;
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
 
-const rows = window.__jamStatusRows || new Map();
+// Compartilha o mesmo Map com jam-fetch-bridge.js (que o preenche a cada resposta de /jams/api/data).
+const rows = (window.__jamStatusRows ??= new Map());
 
 function statusFor(jam) {
     if (!jam) {
@@ -109,7 +110,7 @@ function currentShareUrl() {
 }
 
 function whatsappUrl() {
-    const text = `Veja os congestionamentos monitorados no WazeBR: ${currentShareUrl()}`;
+    const text = `Veja os congestionamentos monitorados no Trafik: ${currentShareUrl()}`;
 
     return `https://wa.me/?text=${encodeURIComponent(text)}`;
 }
