@@ -1,0 +1,193 @@
+/* ============================================================
+   pages/tv-improvements.css — melhorias operacionais da TV
+   ============================================================ */
+
+/* Mapa maior: centro recebe mais espaço */
+.tv-body {
+    grid-template-columns: minmax(0, 19fr) minmax(0, 62fr) minmax(0, 19fr);
+}
+
+/* Mapa ocupa toda a altura disponível */
+.tv-map-wrap {
+    min-height: 420px;
+}
+
+.tv-map {
+    z-index: 1;
+}
+
+/* Mapa mais legível: menos escurecimento e mais contraste nas vias */
+.tv-map .leaflet-tile {
+    filter: brightness(.82) contrast(1.12) saturate(1.2) hue-rotate(180deg) invert(.9);
+}
+
+/* Popups maiores e mais legíveis */
+.tv-map .leaflet-popup-content-wrapper {
+    min-width: 280px;
+    border-radius: 12px;
+    background: #0f172a;
+    color: #f1f5f9;
+    border: 1px solid #334155;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, .45);
+}
+
+.tv-map .leaflet-popup-content {
+    margin: 14px 16px;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.tv-map .leaflet-popup-content strong {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 15px;
+    color: #fff;
+}
+
+.tv-map .leaflet-popup-content small {
+    display: block;
+    color: #94a3b8;
+}
+
+.tv-map .leaflet-popup-tip {
+    background: #0f172a;
+}
+
+.tv-map .leaflet-popup-close-button {
+    color: #94a3b8 !important;
+}
+
+/* Marcadores e clusters mais visíveis */
+.tv-map .leaflet-marker-icon {
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .65));
+}
+
+.tv-map .leaflet-control-zoom a {
+    background: #0f172a;
+    color: #e2e8f0;
+    border-color: #334155;
+}
+
+.tv-map .leaflet-control-zoom a:hover {
+    background: #1e293b;
+    color: #fff;
+}
+
+/* Badges do mapa mais visíveis */
+.tv-map__badge {
+    top: 14px;
+    left: 14px;
+    padding: 8px 14px;
+    font-size: 13px;
+}
+
+/* Cards laterais mais compactos: menos competição com o mapa */
+.tv-card {
+    padding: 10px 14px;
+    gap: 8px;
+}
+
+.tv-card__big strong {
+    font-size: 64px;
+}
+
+.tv-card__big-sub {
+    font-size: 13px;
+}
+
+.tv-kv li {
+    font-size: 13.5px;
+}
+
+.tv-kv li strong {
+    font-size: 17px;
+}
+
+/* Prioridade: problema em destaque */
+.tv-card--priority {
+    border-color: rgba(148, 163, 184, .35);
+}
+
+.tv-card--priority[data-priority-state="attention"] {
+    border-color: rgba(234, 179, 8, .55);
+    box-shadow: 0 0 0 1px rgba(234, 179, 8, .25), 0 12px 30px rgba(234, 179, 8, .08);
+}
+
+.tv-card--priority[data-priority-state="critical"] {
+    border-color: rgba(239, 68, 68, .65);
+    box-shadow: 0 0 0 1px rgba(239, 68, 68, .3), 0 12px 30px rgba(239, 68, 68, .12);
+}
+
+.tv-priority__title {
+    font-size: 20px;
+    font-weight: 900;
+    line-height: 1.2;
+}
+
+.tv-priority__meta,
+.tv-priority__action {
+    font-size: 13px;
+    color: #cbd5e1;
+}
+
+/* Feed mais enxuto: prioriza os eventos realmente relevantes */
+.tv-feed {
+    height: 150px;
+}
+
+.tv-feed__list li {
+    font-size: 13.5px;
+}
+
+.tv-feed__body strong {
+    font-size: 13.5px;
+}
+
+/* Câmeras não devem roubar área do mapa */
+.tv-cams {
+    flex-basis: 150px;
+}
+
+/* Rodapé mais compacto */
+.tv-bottom {
+    padding: 8px 18px;
+}
+
+.tv-today__item strong {
+    font-size: 20px;
+}
+
+/* Ajuste automático em telas menores */
+@media (max-width: 1600px) {
+    .tv-body {
+        grid-template-columns: minmax(0, 21fr) minmax(0, 58fr) minmax(0, 21fr);
+    }
+}
+
+@media (max-width: 1400px) {
+    .tv-body {
+        grid-template-columns: minmax(0, 24fr) minmax(0, 52fr) minmax(0, 24fr);
+    }
+
+    .tv-card__big strong {
+        font-size: 54px;
+    }
+
+    .tv-clock {
+        font-size: 42px;
+    }
+
+    .tv-status__label {
+        font-size: 22px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .tv-map-wrap {
+        min-height: 360px;
+    }
+
+    .tv-map .leaflet-popup-content-wrapper {
+        min-width: 240px;
+    }
+}
