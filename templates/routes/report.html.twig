@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow, noarchive">
-    <title>{{ 'Relatório'|trans({}, 'routes_ui') }} · {{ route.name }} · WazeBR</title>
+    <title>{{ 'Relatório'|trans({}, 'routes_ui') }} · {{ route.name }} · Trafik</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
     <style>{% include 'routes/_report_styles.html.twig' %}</style>
 </head>
@@ -28,7 +28,7 @@
 
     <header class="rr-header">
         <div>
-            <span class="rr-eyebrow">{{ 'Relatório de trânsito · WazeBR'|trans({}, 'routes_ui') }}</span>
+            <span class="rr-eyebrow">{{ 'Relatório de trânsito · Trafik'|trans({}, 'routes_ui') }}</span>
             <h1>{{ route.name }}</h1>
             <p class="rr-sub">
                 {% if route.from and route.to %}{{ route.from }} → {{ route.to }}{% elseif route.from %}{{ route.from }}{% elseif route.to %}{{ route.to }}{% endif %}
@@ -297,7 +297,7 @@
 
     <footer class="rr-foot">
         <p><strong>{{ 'Como ler:'|trans({}, 'routes_ui') }}</strong> {{ '“% vs histórico” = (tempo medido − tempo histórico) ÷ tempo histórico. A escala de cores usa essa razão, não o atraso em segundos, para tratar igual uma rota curta e uma longa. Horas com menos de 2 amostras ficam em cinza.'|trans({}, 'routes_ui') }}</p>
-        <p>{{ 'Fonte: dados de trânsito coletados via Waze (Traffic View) e organizados pelo WazeBR. Horários no fuso'|trans({}, 'routes_ui') }} {{ app_timezone }}.</p>
+        <p>{{ 'Fonte: dados de trânsito coletados via Waze (Traffic View) e organizados pelo Trafik. Horários no fuso'|trans({}, 'routes_ui') }} {{ app_timezone }}.</p>
     </footer>
 </main>
 
