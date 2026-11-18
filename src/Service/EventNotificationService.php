@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Entity\PartnerFeedEvent;
 use App\Entity\UserNotificationSubscription;
 use App\Repository\UserRepository;
+use App\Service\Notification\AlertEmailPresenter;
 use App\Service\Notification\NotificationCatalog;
 use App\Service\Notification\NotificationPreferenceService;
 use Psr\Log\LoggerInterface;
@@ -30,6 +31,7 @@ final class EventNotificationService
         private readonly Environment $twig,
         private readonly NotificationPreferenceService $preferences,
         private readonly NotificationCatalog $catalog,
+        private readonly AlertEmailPresenter $presenter,
         private readonly UrlGeneratorInterface $urlGenerator,
         #[Autowire('%env(MAILER_FROM_EMAIL)%')]
         private readonly string $fromEmail,
@@ -71,15 +73,25 @@ final class EventNotificationService
         $subtypeLabel = $subtype !== null ? $this->catalog->label($subtype) : null;
         $street = trim((string) $event->getStreet());
         $city = trim((string) ($event->getCity() ?: $partner->getCity()));
-        $title = 'Novo evento: ' . ($subtypeLabel ?? $typeLabel);
+        $headline = $this->presenter->describe($type, $subtype)['headline'];
+        $title = 'Novo evento: ' . $headline;
         $period = $this->period($event);
+        $where = implode(', ', array_filter([$street, $city], static fn (string $value): bool => $value !== ''));
+        $summary = sprintf(
+            'Um evento do tipo "%s" foi cadastrado no feed CIFS de %s%s. Período: %s.',
+            $headline,
+            $partner->getName(),
+            $where !== '' ? ', em ' . $where : '',
+            mb_strtolower($period),
+        );
         $description = trim((string) $event->getDescription());
         $settingsUrl = $this->settingsUrl();
 
         $subject = preg_replace('/[\r\n]+/', ' ', sprintf('[WazeBR] %s — %s', $title, $street !== '' ? $street : (string) $partner->getName())) ?? '[WazeBR] Novo evento';
         $text = sprintf(
-            "%s\nParceiro: %s\nTipo: %s\nVia: %s\nCidade: %s\nPeríodo: %s%s%s",
+            "%s\n%s\n\nParceiro: %s\nTipo: %s\nVia: %s\nCidade: %s\nPeríodo: %s%s%s",
             $title,
+            $summary,
             $partner->getName(),
             $subtypeLabel !== null ? $typeLabel . ' · ' . $subtypeLabel : $typeLabel,
             $street !== '' ? $street : 'Via não informada',
@@ -92,6 +104,8 @@ final class EventNotificationService
         try {
             $html = $this->twig->render('email/partner_event.html.twig', [
                 'title' => $title,
+                'headline' => $headline,
+                'summary' => $summary,
                 'partner_name' => (string) $partner->getName(),
                 'type_label' => $typeLabel,
                 'subtype_label' => $subtypeLabel,

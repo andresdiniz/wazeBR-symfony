@@ -122,6 +122,7 @@ final class NotificationCatalog
             return $translated;
         }
 
-        return ucfirst(mb_strtolower(str_replace('_', ' ', $code)));
+        return AlertEmailPresenter::label($code)
+            ?? ucfirst(mb_strtolower(str_replace('_', ' ', $code)));
     }
 }

@@ -1,15 +1,17 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ title }} | trafik</title></head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ title }} | WazeBR</title></head>
 <body style="margin:0;padding:0;background-color:#edf2f6;color:#173344;font-family:Arial,Helvetica,sans-serif;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">{{ summary }}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#edf2f6;"><tr><td align="center" style="padding:28px 12px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;background-color:#ffffff;border:1px solid #d7e1e8;border-radius:16px;">
 <tr><td style="padding:25px 28px;background-color:#103e50;color:#ffffff;border-radius:16px 16px 0 0;">
-<p style="margin:0;font-size:24px;font-weight:bold;">trafik</p><p style="margin:7px 0 0;color:#d3e7ec;font-size:12px;line-height:1.5;">Central de monitoramento · {{ partner_name }}</p>
+<p style="margin:0;font-size:24px;font-weight:bold;">WazeBR</p><p style="margin:7px 0 0;color:#d3e7ec;font-size:12px;line-height:1.5;">Central de monitoramento · {{ partner_name }}</p>
 </td></tr>
 <tr><td style="padding:28px;">
 <p style="margin:0 0 12px;color:#087b8f;font-size:11px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">Evento no feed CIFS</p>
-<h1 style="margin:0 0 14px;font-size:25px;line-height:1.3;color:#173344;">{{ title }}</h1>
+<h1 style="margin:0 0 10px;font-size:25px;line-height:1.3;color:#173344;">{{ headline }}</h1>
+<p style="margin:0 0 22px;font-size:15px;line-height:1.65;color:#334f60;">{{ summary }}</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f3f7fa;border:1px solid #d7e1e8;border-radius:10px;"><tr><td style="padding:20px;">
 <p style="margin:0 0 4px;color:#526575;font-size:11px;">TIPO</p><p style="margin:0 0 15px;font-size:15px;font-weight:bold;color:#173344;">{{ type_label }}{% if subtype_label %} · {{ subtype_label }}{% endif %}</p>
 <p style="margin:0 0 4px;color:#526575;font-size:11px;">VIA</p><p style="margin:0 0 15px;font-size:16px;font-weight:bold;line-height:1.5;color:#173344;">{{ street ?: 'Via não informada' }}</p>
@@ -22,7 +24,7 @@
 {% endif %}
 <p style="margin:20px 0 0;padding-top:16px;border-top:1px solid #e1e8ee;color:#526575;font-size:11px;line-height:1.7;overflow-wrap:anywhere;">Parceiro: {{ partner_name }}<br>Identificador do evento: {{ event_uuid }}</p>
 </td></tr></table>
-<p style="margin:18px 0 0;font-size:11px;color:#526575;line-height:1.6;">Mensagem automática do trafik · Notificação de evento</p>
+<p style="margin:18px 0 0;font-size:11px;color:#526575;line-height:1.6;">Mensagem automática do WazeBR · Notificação de evento</p>
 {% if settings_url|default(null) %}
 <p style="margin:8px 0 0;font-size:11px;color:#526575;line-height:1.6;">Você recebe este e-mail conforme suas preferências. <a href="{{ settings_url }}" style="color:#086c80;">Escolher o que receber ou parar de receber</a>.</p>
 {% endif %}

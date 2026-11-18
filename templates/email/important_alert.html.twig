@@ -1,35 +1,69 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ title }} | Trafik</title></head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ title }} | WazeBR</title></head>
 <body style="margin:0;padding:0;background-color:#edf2f6;color:#173344;font-family:Arial,Helvetica,sans-serif;">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;">{{ title }} — {{ street ?: 'Via não informada' }} · {{ city ?: 'Cidade não informada' }}</div>
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">{{ title }} · {{ street ?: 'Via não informada' }} · {{ city ?: 'Cidade não informada' }} — {{ info.summary }}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#edf2f6;"><tr><td align="center" style="padding:28px 12px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;background-color:#ffffff;border:1px solid #d7e1e8;border-radius:16px;">
-<tr><td style="padding:25px 28px;background-color:#103e50;color:#ffffff;border-radius:16px 16px 0 0;">
-<p style="margin:0;font-size:24px;font-weight:bold;">WazeBR</p><p style="margin:7px 0 0;color:#d3e7ec;font-size:12px;line-height:1.5;">Central de monitoramento · {{ partner_name }}</p>
+
+<tr><td style="padding:22px 28px;background-color:#103e50;color:#ffffff;border-radius:16px 16px 0 0;">
+<p style="margin:0;font-size:22px;font-weight:bold;">WazeBR</p><p style="margin:6px 0 0;color:#d3e7ec;font-size:12px;line-height:1.5;">Central de monitoramento · {{ partner_name }}</p>
 </td></tr>
+<tr><td style="height:6px;line-height:6px;font-size:0;background-color:{{ info.severity.color }};">&nbsp;</td></tr>
+
 <tr><td style="padding:28px;">
-<p style="margin:0 0 12px;color:#9f2d20;font-size:11px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">Alerta operacional</p>
-<h1 style="margin:0 0 14px;font-size:25px;line-height:1.3;color:#173344;">{{ title }}</h1>
-<p style="margin:0 0 24px;font-size:13px;line-height:1.7;color:#526575;">{{ when_label }}: <strong>{{ when_text }}</strong> · Horário de Brasília</p>
+<p style="margin:0 0 14px;">
+<span style="display:inline-block;padding:4px 10px;border-radius:999px;background-color:{{ info.severity.bg }};color:{{ info.severity.color }};font-size:11px;font-weight:bold;letter-spacing:.8px;text-transform:uppercase;">Gravidade: {{ info.severity.label }}</span>
+</p>
+<h1 style="margin:0 0 10px;font-size:26px;line-height:1.25;color:#173344;">{{ title }}</h1>
+<p style="margin:0 0 22px;font-size:15px;line-height:1.65;color:#334f60;">{{ info.summary }}</p>
+
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f3f7fa;border:1px solid #d7e1e8;border-radius:10px;"><tr><td style="padding:20px;">
-<h2 style="margin:0 0 16px;font-size:16px;color:#173344;">Localização da ocorrência</h2>
-<p style="margin:0 0 4px;color:#526575;font-size:11px;">VIA</p><p style="margin:0 0 15px;font-size:16px;font-weight:bold;line-height:1.5;color:#173344;">{{ street ?: 'Via não informada' }}</p>
-<p style="margin:0 0 4px;color:#526575;font-size:11px;">CIDADE</p><p style="margin:0 0 15px;font-size:14px;line-height:1.5;color:#173344;">{{ city ?: 'Cidade não informada' }}</p>
-<p style="margin:0 0 4px;color:#526575;font-size:11px;">LATITUDE, LONGITUDE</p><p style="margin:0;font-size:13px;line-height:1.6;font-family:Consolas,monospace;color:#173344;">{{ coordinates ?: 'Coordenadas não disponíveis' }}</p>
+<p style="margin:0 0 4px;color:#526575;font-size:11px;letter-spacing:.6px;">ONDE</p>
+<p style="margin:0 0 2px;font-size:17px;font-weight:bold;line-height:1.4;color:#173344;">{{ street ?: 'Via não informada' }}</p>
+<p style="margin:0 0 14px;font-size:14px;line-height:1.5;color:#334f60;">{{ city ?: 'Cidade não informada' }}{% if facts.road_type %} · {{ facts.road_type }}{% endif %}{% if facts.heading %} · sentido aproximado {{ facts.heading }}{% endif %}</p>
+<p style="margin:0 0 4px;color:#526575;font-size:11px;letter-spacing:.6px;">QUANDO</p>
+<p style="margin:0;font-size:14px;line-height:1.5;color:#173344;"><strong>{{ when_text }}</strong> (Brasília){% if facts.age %} · <strong>{{ facts.age }}</strong>{% endif %}<br><span style="font-size:12px;color:#526575;">{{ when_label }}</span></p>
 </td></tr></table>
-{% if waze_url %}
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;"><tr><td bgcolor="#087b8f" style="border-radius:8px;"><a href="{{ waze_url }}" style="display:inline-block;padding:15px 24px;border:1px solid #087b8f;border-radius:8px;color:#ffffff;font-size:14px;font-weight:bold;text-decoration:none;">Abrir localização no Waze</a></td></tr></table>
-<p style="margin:14px 0 6px;font-size:12px;line-height:1.6;color:#526575;">Se o botão não funcionar, copie o endereço abaixo:</p>
-<p style="margin:0;font-size:12px;line-height:1.7;word-break:break-all;overflow-wrap:anywhere;"><a href="{{ waze_url }}" style="color:#086c80;">{{ waze_url }}</a></p>
-{% else %}
-<p style="margin:18px 0 0;padding:14px;border:1px solid #d7e1e8;border-radius:8px;font-size:13px;line-height:1.6;color:#526575;">Link de mapa indisponível: a fonte não forneceu coordenadas válidas.</p>
+
+{% if trust %}
+<p style="margin:22px 0 8px;color:#526575;font-size:11px;letter-spacing:.6px;">CONFIABILIDADE DO RELATO</p>
+<p style="margin:0;line-height:2.1;">
+{% for item in trust %}<span style="display:inline-block;margin:0 6px 0 0;padding:4px 10px;border:1px solid #cfdde6;border-radius:999px;background-color:#ffffff;color:#173344;font-size:12px;">{{ item }}</span>{% endfor %}
+</p>
 {% endif %}
-<h2 style="margin:26px 0 10px;font-size:16px;color:#173344;">Descrição recebida</h2>
-<p style="margin:0;font-size:14px;line-height:1.8;color:#334f60;">{{ description|nl2br }}</p>
-<p style="margin:24px 0 0;padding:14px 16px;background-color:#fff6e6;border:1px solid #eed3a1;border-radius:8px;color:#74501a;font-size:12px;line-height:1.7;">Ocorrência reportada pela fonte Waze. Valide com a operação antes de acionar recursos. O mapa mostra a situação disponível quando aberto; não é uma captura do momento do alerta.</p>
-<p style="margin:20px 0 0;padding-top:16px;border-top:1px solid #e1e8ee;color:#526575;font-size:11px;line-height:1.7;overflow-wrap:anywhere;">Parceiro: {{ partner_name }}<br>Identificador da ocorrência: {{ alert_uuid }}</p>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:22px;"><tr>
+<td style="width:4px;background-color:#087b8f;border-radius:4px;">&nbsp;</td>
+<td style="padding:4px 0 4px 14px;">
+<p style="margin:0 0 4px;color:#087b8f;font-size:11px;font-weight:bold;letter-spacing:.6px;">O QUE FAZER</p>
+<p style="margin:0;font-size:14px;line-height:1.65;color:#173344;">{{ info.action }}</p>
 </td></tr></table>
+
+{% if description %}
+<p style="margin:24px 0 6px;color:#526575;font-size:11px;letter-spacing:.6px;">RELATO DO MOTORISTA</p>
+<p style="margin:0;padding:12px 14px;background-color:#f3f7fa;border-radius:8px;font-size:14px;line-height:1.7;color:#334f60;">{{ description|nl2br }}</p>
+{% endif %}
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:26px;"><tr>
+{% if waze_url %}
+<td bgcolor="#087b8f" style="border-radius:8px;"><a href="{{ waze_url }}" style="display:inline-block;padding:14px 22px;border:1px solid #087b8f;border-radius:8px;color:#ffffff;font-size:14px;font-weight:bold;text-decoration:none;">Abrir localização no Waze</a></td>
+{% endif %}
+{% if dashboard_url %}
+<td style="width:10px;">&nbsp;</td>
+<td style="border-radius:8px;"><a href="{{ dashboard_url }}" style="display:inline-block;padding:14px 22px;border:1px solid #087b8f;border-radius:8px;color:#086c80;font-size:14px;font-weight:bold;text-decoration:none;">Abrir painel</a></td>
+{% endif %}
+</tr></table>
+{% if waze_url %}
+<p style="margin:12px 0 0;font-size:11px;line-height:1.6;color:#526575;overflow-wrap:anywhere;">Coordenadas: <span style="font-family:Consolas,monospace;">{{ coordinates }}</span><br>Se o botão não funcionar: <a href="{{ waze_url }}" style="color:#086c80;">{{ waze_url }}</a></p>
+{% else %}
+<p style="margin:14px 0 0;padding:12px;border:1px solid #d7e1e8;border-radius:8px;font-size:13px;line-height:1.6;color:#526575;">Link de mapa indisponível: a fonte não forneceu coordenadas válidas.</p>
+{% endif %}
+
+<p style="margin:24px 0 0;padding:12px 14px;background-color:#fff6e6;border:1px solid #eed3a1;border-radius:8px;color:#74501a;font-size:12px;line-height:1.7;">Relato da fonte Waze: valide com a operação antes de acionar recursos. O mapa mostra a situação no momento em que for aberto, não uma captura do horário do alerta.</p>
+<p style="margin:18px 0 0;padding-top:14px;border-top:1px solid #e1e8ee;color:#526575;font-size:11px;line-height:1.7;overflow-wrap:anywhere;">Parceiro: {{ partner_name }}<br>Identificador da ocorrência: {{ alert_uuid }}</p>
+</td></tr></table>
+
 <p style="margin:18px 0 0;font-size:11px;color:#526575;line-height:1.6;">Mensagem automática do WazeBR · Notificação de ocorrência</p>
 {% if settings_url|default(null) %}
 <p style="margin:8px 0 0;font-size:11px;color:#526575;line-height:1.6;">Você recebe este e-mail conforme suas preferências. <a href="{{ settings_url }}" style="color:#086c80;">Escolher quais alertas receber ou parar de receber</a>.</p>

@@ -9,6 +9,7 @@ use App\Entity\User;
 use App\Entity\UserNotificationSubscription;
 use App\Entity\WazeAlert;
 use App\Repository\UserRepository;
+use App\Service\Notification\AlertEmailPresenter;
 use App\Service\Notification\NotificationCatalog;
 use App\Service\Notification\NotificationPreferenceService;
 use Psr\Log\LoggerInterface;
@@ -28,6 +29,7 @@ final class AlertNotificationService
         private readonly Environment $twig,
         private readonly NotificationPreferenceService $preferences,
         private readonly NotificationCatalog $catalog,
+        private readonly AlertEmailPresenter $presenter,
         private readonly UrlGeneratorInterface $urlGenerator,
         #[Autowire('%env(MAILER_FROM_EMAIL)%')]
         private readonly string $fromEmail,
@@ -59,23 +61,25 @@ final class AlertNotificationService
         }
 
         $subtype ??= '';
-        $title = match (true) {
-            $type === 'ACCIDENT' => $subtype === 'ACCIDENT_MAJOR' ? 'Acidente grave reportado' : 'Acidente reportado',
-            $type === 'ROAD_CLOSED' => 'Via fechada reportada',
-            $subtype === 'HAZARD_WEATHER_FLOOD' => 'Alagamento reportado',
-            \in_array($subtype, ['HAZARD_ON_ROAD', 'HAZARD_ON_ROAD_OBJECT'], true) => 'Perigo na pista reportado',
-            default => $this->catalog->label($subtype !== '' ? $subtype : $type) . ' reportado',
-        };
-        $settingsUrl = $this->settingsUrl();
+        $info = $this->presenter->describe($type, $subtype !== '' ? $subtype : null);
+        $facts = $this->presenter->facts($alert);
+        $title = $info['headline'];
+        $settingsUrl = $this->routeUrl('account_notifications');
+        $dashboardUrl = $this->routeUrl('dashboard');
+
         $reported = ($alert->getPubMillis() ?? 0) > 0;
         $when = $reported
             ? new \DateTimeImmutable('@' . (int) floor($alert->getPubMillis() / 1000))
             : ($alert->getCollectedAt() ?? new \DateTimeImmutable());
         $when = $when->setTimezone(new \DateTimeZone('America/Sao_Paulo'));
+        $whenLabel = $reported ? 'Reportado pela fonte' : 'Horário de referência da coleta';
+        $whenText = $when->format('d/m/Y H:i');
+
         $street = trim((string) $alert->getStreet());
         $city = trim((string) ($alert->getCity() ?: $partner->getCity()));
         $location = implode(' · ', array_filter([$street, $city], static fn (string $value): bool => $value !== ''));
-        $description = $alert->getReportDescription() ?: 'Sem descrição adicional.';
+        $description = trim((string) $alert->getReportDescription());
+
         $latitude = $alert->getLatitude();
         $longitude = $alert->getLongitude();
         $coordinates = null;
@@ -88,15 +92,73 @@ final class AlertNotificationService
                 $wazeUrl = 'https://www.waze.com/ul?' . http_build_query(['ll' => number_format($lat, 7, '.', '') . ',' . number_format($lng, 7, '.', ''), 'z' => 16], '', '&', PHP_QUERY_RFC3986);
             }
         }
+
+        // Sinais de confiança do relato, na ordem em que ajudam a decidir.
+        $trust = [];
+        if ($facts['reliability'] !== null) {
+            $trust[] = sprintf('Confiabilidade %s (%d/10)', mb_strtolower($facts['reliability']['label']), $facts['reliability']['score']);
+        }
+        if ($facts['confirmations'] > 0) {
+            $trust[] = $facts['confirmations'] === 1 ? '1 motorista confirmou' : $facts['confirmations'] . ' motoristas confirmaram';
+        }
+        if ($facts['municipality']) {
+            $trust[] = 'Reportado por usuário de prefeitura';
+        }
+
         $subject = preg_replace('/[\r\n]+/', ' ', sprintf('[WazeBR] %s — %s', $title, $location ?: $partner->getName())) ?? '[WazeBR] Alerta';
-        $whenLabel = $reported ? 'Reportado pela fonte' : 'Horário de referência da coleta';
-        $text = sprintf("%s\nParceiro: %s\nVia: %s\nCidade: %s\n%s: %s (Brasília)\nCoordenadas: %s\n\n%s\n\n%s\n\nRelato da fonte Waze; valide a ocorrência com a operação antes de acionar recursos. O mapa aberto pelo link mostra a situação disponível no momento da consulta, não uma captura do horário do alerta.%s", $title, $partner->getName(), $street ?: 'Via não informada', $city ?: 'Cidade não informada', $whenLabel, $when->format('d/m/Y H:i'), $coordinates ?? 'Não disponíveis', $description, $wazeUrl !== null ? 'Abrir localização no Waze: ' . $wazeUrl : 'Link de mapa indisponível: coordenadas ausentes ou inválidas.', $settingsUrl !== null ? "\n\nPara escolher quais alertas receber ou parar de receber: " . $settingsUrl : '');
+
+        $lines = [
+            mb_strtoupper($title) . ' · Gravidade: ' . $info['severity']['label'],
+            $info['summary'],
+            '',
+            'ONDE',
+            'Via: ' . ($street ?: 'Via não informada'),
+            'Cidade: ' . ($city ?: 'Cidade não informada'),
+        ];
+        if ($facts['heading'] !== null) {
+            $lines[] = 'Sentido aproximado do relato: ' . $facts['heading'];
+        }
+        if ($facts['road_type'] !== null) {
+            $lines[] = 'Tipo de via: ' . $facts['road_type'];
+        }
+        $lines[] = 'Coordenadas: ' . ($coordinates ?? 'não disponíveis');
+        $lines[] = '';
+        $lines[] = 'QUANDO';
+        $lines[] = $whenLabel . ': ' . $whenText . ' (Brasília)' . ($facts['age'] !== null ? ' — ' . $facts['age'] : '');
+        if ($trust !== []) {
+            $lines[] = '';
+            $lines[] = 'CONFIABILIDADE DO RELATO';
+            $lines[] = implode(' · ', $trust);
+        }
+        $lines[] = '';
+        $lines[] = 'O QUE FAZER';
+        $lines[] = $info['action'];
+        if ($description !== '') {
+            $lines[] = '';
+            $lines[] = 'RELATO DO MOTORISTA';
+            $lines[] = $description;
+        }
+        $lines[] = '';
+        $lines[] = $wazeUrl !== null ? 'Abrir localização no Waze: ' . $wazeUrl : 'Link de mapa indisponível: coordenadas ausentes ou inválidas.';
+        if ($dashboardUrl !== null) {
+            $lines[] = 'Abrir painel: ' . $dashboardUrl;
+        }
+        $lines[] = '';
+        $lines[] = 'Relato da fonte Waze: valide com a operação antes de acionar recursos. O mapa mostra a situação no momento em que for aberto, não uma captura do horário do alerta.';
+        $lines[] = 'Parceiro: ' . $partner->getName() . ' · Ocorrência: ' . $alert->getUuid();
+        if ($settingsUrl !== null) {
+            $lines[] = '';
+            $lines[] = 'Para escolher quais alertas receber ou parar de receber: ' . $settingsUrl;
+        }
+        $text = implode("\n", $lines);
+
         try {
             $html = $this->twig->render('email/important_alert.html.twig', [
-                'title' => $title, 'partner_name' => (string) $partner->getName(),
+                'title' => $title, 'info' => $info, 'facts' => $facts, 'trust' => $trust,
+                'partner_name' => (string) $partner->getName(),
                 'street' => $street, 'city' => $city, 'description' => $description,
-                'when_label' => $whenLabel, 'when_text' => $when->format('d/m/Y H:i'),
-                'coordinates' => $coordinates, 'waze_url' => $wazeUrl,
+                'when_label' => $whenLabel, 'when_text' => $whenText,
+                'coordinates' => $coordinates, 'waze_url' => $wazeUrl, 'dashboard_url' => $dashboardUrl,
                 'alert_uuid' => (string) $alert->getUuid(), 'settings_url' => $settingsUrl,
             ]);
         } catch (\Throwable $exception) {
@@ -142,10 +204,10 @@ final class AlertNotificationService
         return $users;
     }
 
-    private function settingsUrl(): ?string
+    private function routeUrl(string $route): ?string
     {
         try {
-            return $this->urlGenerator->generate('account_notifications', [], UrlGeneratorInterface::ABSOLUTE_URL);
+            return $this->urlGenerator->generate($route, [], UrlGeneratorInterface::ABSOLUTE_URL);
         } catch (\Throwable) {
             return null;
         }
