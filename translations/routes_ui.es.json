@@ -346,5 +346,17 @@
   "code.WEATHERHAZARD": "Riesgo meteorológico",
   "code.CONSTRUCTION": "Obras",
   "a biblioteca de mapas não carregou": "la biblioteca de mapas no cargó",
-  "os tiles do OpenStreetMap não carregaram": "las teselas de OpenStreetMap no cargaron"
+  "os tiles do OpenStreetMap não carregaram": "las teselas de OpenStreetMap no cargaron",
+  "Todas": "Todas",
+  "Favoritas": "Favoritas",
+  "Filtrar rotas": "Filtrar rutas",
+  "Favoritar rota": "Marcar ruta como favorita",
+  "Nenhuma rota favorita ainda": "Aún no hay rutas favoritas",
+  "Use a estrela (★) nos cartões para fixar as rotas que você mais acompanha.": "Usa la estrella (★) en las tarjetas para fijar las rutas que más sigues.",
+  "Não foi possível atualizar. Exibindo dados de": "No se pudo actualizar. Mostrando datos de",
+  "atrás": "atrás",
+  "Não foi possível atualizar o favorito. Recarregue a página e tente de novo.": "No se pudo actualizar el favorito. Recarga la página e inténtalo de nuevo.",
+  "Rota adicionada aos favoritos.": "Ruta añadida a favoritos.",
+  "Rota removida dos favoritos.": "Ruta eliminada de favoritos.",
+  "Falha de conexão ao salvar o favorito.": "Error de conexión al guardar el favorito."
 }

@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="{{ asset('css/pages/routes.css') }}">
     <link rel="stylesheet" href="{{ asset('css/pages/routes-enhancements.css') }}">
     <link rel="stylesheet" href="{{ asset('css/pages/routes-overview.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/pages/routes-favorites.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -69,7 +70,7 @@
                     {{ avgDelay }}<small>s</small>
                 </strong>
                 <span class="routes-stat-label">{{ 'Atraso médio'|trans({}, 'routes_ui') }}</span>
-                <small>{{ (avgPct * 100)|round(0) }}{{ '% acima do histórico'|trans({}, 'routes_ui') }}</small>
+                <small><span data-stat="avg-percent">{{ (avgPct * 100)|round(0) }}</span>{{ '% acima do histórico'|trans({}, 'routes_ui') }}</small>
             </article>
         </section>
 
@@ -119,11 +120,21 @@
                 </span>
             </header>
 
+            <div class="routes-overview-filters" role="group" aria-label="{{ 'Filtrar rotas'|trans({}, 'routes_ui') }}">
+                <button type="button" class="routes-chip is-active" data-overview-filter="all" aria-pressed="true">{{ 'Todas'|trans({}, 'routes_ui') }}</button>
+                <button type="button" class="routes-chip" data-overview-filter="favorites" aria-pressed="false">
+                    ★ {{ 'Favoritas'|trans({}, 'routes_ui') }} <span data-favorite-count>{{ favoriteIds|length }}</span>
+                </button>
+                <span class="routes-overview-status" data-overview-status role="status" aria-live="polite"></span>
+            </div>
+
             <div class="routes-overview-grid" data-overview-grid>
                 {% for route in overview.routes %}
                     {% set incidentCount = route.incidentCount|default(0) %}
+                    {% set isFav = route.id in favoriteIds %}
                     <article class="route-card route-card--{{ route.statusClass }}"
                              data-route-card
+                             data-route-favorite="{{ isFav ? '1' : '0' }}"
                              data-route-id="{{ route.id }}"
                              data-route-status="{{ route.statusClass }}">
                         <header class="route-card-header">
@@ -137,9 +148,19 @@
                                     {% endif %}
                                 </small>
                             </div>
-                            <span class="route-card-badge route-card-badge--{{ route.statusClass }}">
-                                {{ route.statusLabel }}
-                            </span>
+                            <div class="route-card-side">
+                                <span class="route-card-badge route-card-badge--{{ route.statusClass }}">
+                                    {{ route.statusLabel }}
+                                </span>
+                                <button type="button"
+                                        class="route-card-fav{{ isFav ? ' is-on' : '' }}"
+                                        data-route-fav
+                                        data-fav-url="{{ path('routes_favorite_toggle', { id: route.id }) }}"
+                                        data-fav-token="{{ csrf_token('route_favorite_' ~ route.id) }}"
+                                        aria-pressed="{{ isFav ? 'true' : 'false' }}"
+                                        aria-label="{{ 'Favoritar rota'|trans({}, 'routes_ui') }}: {{ route.name }}"
+                                        title="{{ 'Favoritar rota'|trans({}, 'routes_ui') }}">★</button>
+                            </div>
                         </header>
 
                         <div class="route-card-metrics">
@@ -198,6 +219,10 @@
                         <small>{{ 'Cadastre ou ative rotas para acompanhar a situação em tempo real.'|trans({}, 'routes_ui') }}</small>
                     </div>
                 {% endfor %}
+            </div>
+            <div class="routes-overview-empty" data-overview-fav-empty hidden>
+                <strong>{{ 'Nenhuma rota favorita ainda'|trans({}, 'routes_ui') }}</strong>
+                <small>{{ 'Use a estrela (★) nos cartões para fixar as rotas que você mais acompanha.'|trans({}, 'routes_ui') }}</small>
             </div>
         </section>
 

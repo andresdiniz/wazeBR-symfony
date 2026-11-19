@@ -38,6 +38,21 @@ final class RouteFavoriteRepository
         ) !== false;
     }
 
+    /**
+     * IDs das rotas favoritas do usuário (para marcar a lista de rotas de uma vez só).
+     *
+     * @return list<int>
+     */
+    public function favoriteIds(int $userId): array
+    {
+        $ids = $this->connection->fetchFirstColumn(
+            'SELECT route_id FROM user_favorite_route WHERE user_id = :u',
+            ['u' => $userId]
+        );
+
+        return array_map('intval', $ids);
+    }
+
     /** Alterna o favorito e devolve o NOVO estado (true = favoritada). */
     public function toggle(int $userId, int $routeId): bool
     {

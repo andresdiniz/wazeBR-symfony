@@ -346,5 +346,17 @@
   "code.WEATHERHAZARD": "Weather hazard",
   "code.CONSTRUCTION": "Roadworks",
   "a biblioteca de mapas não carregou": "the map library did not load",
-  "os tiles do OpenStreetMap não carregaram": "OpenStreetMap tiles did not load"
+  "os tiles do OpenStreetMap não carregaram": "OpenStreetMap tiles did not load",
+  "Todas": "All",
+  "Favoritas": "Favorites",
+  "Filtrar rotas": "Filter routes",
+  "Favoritar rota": "Favorite route",
+  "Nenhuma rota favorita ainda": "No favorite routes yet",
+  "Use a estrela (★) nos cartões para fixar as rotas que você mais acompanha.": "Use the star (★) on the cards to pin the routes you follow most.",
+  "Não foi possível atualizar. Exibindo dados de": "Couldn't refresh. Showing data from",
+  "atrás": "ago",
+  "Não foi possível atualizar o favorito. Recarregue a página e tente de novo.": "Couldn't update the favorite. Reload the page and try again.",
+  "Rota adicionada aos favoritos.": "Route added to favorites.",
+  "Rota removida dos favoritos.": "Route removed from favorites.",
+  "Falha de conexão ao salvar o favorito.": "Connection error while saving the favorite."
 }

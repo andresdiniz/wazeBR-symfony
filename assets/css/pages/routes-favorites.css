@@ -1,0 +1,34 @@
+/* Favoritas, filtros e estado da atualização — painel "Situação agora" */
+.route-card[hidden] { display: none; }
+
+.routes-overview-filters {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    margin: -6px 0 16px;
+}
+.routes-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, .35);
+    background: transparent; color: #cbd5e1;
+    font: inherit; font-size: .8rem; font-weight: 600; cursor: pointer;
+    transition: border-color .15s ease, background-color .15s ease, color .15s ease;
+}
+.routes-chip:hover { border-color: #38bdf8; color: #f8fafc; }
+.routes-chip.is-active { background: rgba(56, 189, 248, .16); border-color: #38bdf8; color: #f8fafc; }
+.routes-chip:focus-visible, .route-card-fav:focus-visible { outline: 3px solid #38bdf8; outline-offset: 2px; }
+.routes-chip span { opacity: .8; font-weight: 700; }
+
+.routes-overview-status { margin-left: auto; font-size: .78rem; color: #94a3b8; }
+.routes-overview-status.is-error { color: #fca5a5; }
+
+.route-card-side { display: flex; align-items: center; gap: 8px; }
+.route-card-fav {
+    border: 0; background: transparent; padding: 2px 4px; line-height: 1;
+    font-size: 1.15rem; color: #64748b; cursor: pointer; border-radius: 6px;
+    transition: color .15s ease, transform .15s ease;
+}
+.route-card-fav:hover { color: #fbbf24; transform: scale(1.12); }
+.route-card-fav.is-on { color: #fbbf24; }
+.route-card-fav:disabled { opacity: .5; cursor: progress; }
+
+.route-card[data-route-favorite="1"] { border-color: rgba(251, 191, 36, .35); }

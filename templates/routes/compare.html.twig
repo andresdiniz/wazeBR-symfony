@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="{{ asset('css/pages/route-compare.css') }}">
 <link rel="stylesheet" href="{{ asset('css/pages/route-compare-kpis.css') }}">
 <link rel="stylesheet" href="{{ asset('css/pages/route-compare-alerts.css') }}">
+<link rel="stylesheet" href="{{ asset('css/pages/route-compare-actions.css') }}">
 {% endblock %}
 {% block content %}
 <div class="rc-page" data-route-compare data-rc-locale="{{ app.request.locale }}"><div class="rc-container">
@@ -18,6 +19,12 @@
 <input type="hidden" name="hours" value="{{ hours }}">
 {% for side in ['a', 'b'] %}<div class="rc-picker__field"><label for="rc-route-{{ side }}" class="rc-picker__label rc-picker__label--{{ side }}">Rota {{ side|upper }}</label><select id="rc-route-{{ side }}" name="{{ side }}" data-rc-select-{{ side }} required><option value="">— Selecione —</option>{% for r in routes %}<option value="{{ r.id }}" {{ (side == 'a' ? aId : bId) == r.id ? 'selected' : '' }}>{{ r.name }}{% if r.from and r.to %} · {{ r.from }} → {{ r.to }}{% endif %}</option>{% endfor %}</select></div>{% if side == 'a' %}<div class="rc-picker__vs">VS</div>{% endif %}{% endfor %}
 <div class="rc-picker__actions"><button type="button" class="rc-icon-btn" data-rc-swap aria-label="Inverter A e B">⇄</button><button class="rc-button rc-button--primary" type="submit">Comparar</button></div></form></header>
+{% if aId > 0 and aId == bId %}<p class="rc-notice" role="alert">Escolha duas rotas <strong>diferentes</strong> para comparar.</p>{% endif %}
+{% if compare is not null %}<nav class="rc-actions" aria-label="Imprimir e exportar a comparação">
+<a class="rc-button" href="{{ path('routes_compare_print', {a: aId, b: bId, bucket: bucket, hours: hours}) }}" target="_blank" rel="noopener">🖨 Imprimir / PDF</a>
+<span class="rc-actions__label">Exportar CSV:</span>
+{% for type, label in {timeline: 'Evolução', byHour: 'Por hora', byDow: 'Por dia da semana', heatmap: 'Mapa de calor'} %}<a class="rc-button" href="{{ path('routes_compare_export_csv', {a: aId, b: bId, type: type, bucket: bucket, hours: hours}) }}" download>⬇ {{ label }}</a>{% endfor %}
+</nav>{% endif %}
 {% if compare is null %}<section class="rc-empty"><strong>Selecione duas rotas diferentes para comparar.</strong></section>{% else %}
 {% set a = compare.a %}{% set b = compare.b %}{% set decimal = app.request.locale == 'en' ? '.' : ',' %}
 {% set ratioA = a.stats.avgRatio7d %}{% set ratioB = b.stats.avgRatio7d %}

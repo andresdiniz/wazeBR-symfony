@@ -397,10 +397,14 @@ function initClock(root) {
     if (!clock || clock.dataset.routesClockInit === '1') return;
     clock.dataset.routesClockInit = '1';
 
+    // O texto mostra QUANDO os dados foram atualizados pela última vez, não a hora atual.
+    // (Antes ele "andava" com o relógio do navegador e parecia atualizado mesmo com dados velhos.)
+    // O valor inicial vem do servidor; routes-overview.js dispara "routes:data-updated" a cada atualização.
     const fmt = new Intl.DateTimeFormat(ROUTES_LOCALE, { dateStyle: 'short', timeStyle: 'short' });
-    const tick = () => { clock.textContent = fmt.format(new Date()); };
-    tick();
-    setInterval(tick, 30_000);
+    document.addEventListener('routes:data-updated', (event) => {
+        const at = new Date(event.detail?.at ?? Date.now());
+        if (!Number.isNaN(at.getTime())) clock.textContent = fmt.format(at);
+    });
 }
 
 function initRefresh(root) {

@@ -17,6 +17,7 @@ function routeLabel(value, fallback = '—') {
     return text;
 }
 
+
 /**
  * pages/route-report.js — relatório imprimível da rota.
  *
@@ -29,6 +30,9 @@ function routeLabel(value, fallback = '—') {
  *      PDF não sair com o mapa pela metade.
  *
  * Os dados vêm de <script type="application/json" data-report-map> (sem fetch).
+ *
+ * Carregado como módulo externo (<script type="module" src=...>): o CSP do projeto bloqueia
+ * <script> inline, que era como este código ficava embutido na página do relatório.
  */
 
 const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -59,13 +63,30 @@ function readMapData() {
     }
 }
 
+function setCredit(text) {
+    const credit = document.querySelector('[data-report-map-credit]');
+    if (credit) credit.textContent = text;
+}
+
+/** Mantém o esquema SVG e diz ao leitor (e ao console) por que não há mapa com ruas. */
+function showFallback(reason) {
+    if (!reason) return;
+    console.warn(`[WazeBR relatório] mapa com ruas indisponível: ${reason}`);
+    setCredit(`Esquema do traçado, sem mapa de fundo (${reason}).`);
+}
+
 function initMap() {
     const wrap = document.querySelector('[data-report-mapwrap]');
     const container = wrap?.querySelector('[data-report-live-map]');
     const data = readMapData();
 
+    if (!wrap || !container || !data) return;
+
     // Sem Leaflet (CDN bloqueado/offline): fica o esquema em SVG.
-    if (!wrap || !container || !data || typeof L === 'undefined') return;
+    if (typeof L === 'undefined') {
+        showFallback(rt("a biblioteca de mapas não carregou"));
+        return;
+    }
 
     setPrintBusy(true);
 
@@ -75,18 +96,18 @@ function initMap() {
     let tileErrors = 0;
     let timer = null;
 
-    const finish = (success) => {
+    const finish = (success, reason = '') => {
         if (finished) return;
         finished = true;
         clearTimeout(timer);
 
         if (success) {
             wrap.classList.add('is-live');
-            const credit = document.querySelector('[data-report-map-credit]');
-            if (credit) credit.textContent = rt("Mapa: © colaboradores do OpenStreetMap.");
+            setCredit(rt("Mapa: © colaboradores do OpenStreetMap."));
         } else {
             try { map?.remove(); } catch { /* noop */ }
             container.replaceChildren();
+            showFallback(reason);
         }
 
         setPrintBusy(false);
@@ -102,7 +123,7 @@ function initMap() {
         });
         tiles.on('tileerror', () => {
             tileErrors += 1;
-            if (!loaded && tileErrors >= MAX_TILE_ERRORS) finish(false);
+            if (!loaded && tileErrors >= MAX_TILE_ERRORS) finish(false, rt("os tiles do OpenStreetMap não carregaram"));
         });
 
         const line = (pts, color, weight, opacity) =>
@@ -142,10 +163,10 @@ function initMap() {
         }
 
         window.addEventListener('beforeprint', () => map?.invalidateSize());
-        timer = setTimeout(() => finish(loaded), READY_TIMEOUT_MS);
+        timer = setTimeout(() => finish(loaded, rt("tempo esgotado ao carregar os tiles")), READY_TIMEOUT_MS);
     } catch (error) {
-        console.warn('[WazeBR route-report] mapa com ruas indisponível; mantendo o esquema', error);
-        finish(false);
+        console.warn('[WazeBR relatório] erro ao montar o mapa', error);
+        finish(false, rt("erro ao montar o mapa"));
     }
 }
 

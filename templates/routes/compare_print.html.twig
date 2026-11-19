@@ -1,29 +1,38 @@
-{% extends 'layouts/base.html.twig' %}
-
-{% block title %}Comparação de rotas | Trafik{% endblock %}
-
-{% block stylesheets %}
-    <style>
-        body { font-family: Arial, sans-serif; color: #111; margin: 24px; }
-        h1 { font-size: 20px; margin: 0 0 4px; }
-        h2 { font-size: 15px; margin: 18px 0 6px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        th, td { border: 1px solid #ddd; padding: 4px 6px; text-align: left; }
-        th { background: #f3f4f6; }
-        .meta { color: #555; font-size: 12px; margin-bottom: 16px; }
-        .insight { margin: 6px 0; font-size: 13px; }
-        .win-a { color: #166534; font-weight: bold; }
-        .win-b { color: #9a3412; font-weight: bold; }
-        @media print {
-            .no-print { display: none; }
-            body { margin: 12px; }
-        }
-    </style>
-{% endblock %}
-
-{% block content %}
-<div class="no-print" style="margin-bottom:12px;">
-    <button onclick="window.print()">Imprimir / Salvar como PDF</button>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Comparação de rotas | Trafik</title>
+<style>
+    body { font-family: Arial, sans-serif; color: #111; margin: 24px; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    h2 { font-size: 15px; margin: 18px 0 6px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border: 1px solid #ddd; padding: 4px 6px; text-align: left; }
+    th { background: #f3f4f6; }
+    tr { break-inside: avoid; }
+    thead { display: table-header-group; }
+    .meta { color: #555; font-size: 12px; margin-bottom: 16px; }
+    .insight { margin: 6px 0; font-size: 13px; }
+    .win-a { color: #166534; font-weight: bold; }
+    .win-b { color: #9a3412; font-weight: bold; }
+    .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; }
+    .toolbar button, .toolbar a { padding: 8px 14px; border: 1px solid #94a3b8; border-radius: 8px; background: #fff; color: #0f172a; font: inherit; font-size: 13px; cursor: pointer; text-decoration: none; }
+    .toolbar button:hover, .toolbar a:hover { border-color: #2563eb; color: #2563eb; }
+    @media print {
+        .no-print { display: none !important; }
+        body { margin: 12px; }
+    }
+</style>
+</head>
+<body data-autoprint>
+{# Página independente: não estende layout (o antigo "layouts/base.html.twig" não existe e gerava erro 500).
+   O JavaScript é externo porque o CSP bloqueia <script> e onclick inline. #}
+<div class="toolbar no-print">
+    <button type="button" data-print>🖨 Imprimir / Salvar como PDF</button>
+    <a href="{{ path('routes_compare', {a: compare.a.id, b: compare.b.id, bucket: bucket, hours: hours}) }}">← Voltar à comparação</a>
 </div>
 
 <h1>Comparação de rotas</h1>
@@ -80,7 +89,6 @@
     Só em {{ compare.b.name }}: {{ compare.alerts.onlyB|length }}
 </p>
 
-<script>
-    window.addEventListener('load', () => setTimeout(() => window.print(), 300));
-</script>
-{% endblock %}
+<script type="module" src="{{ asset('js/pages/route-print.js') }}"></script>
+</body>
+</html>

@@ -346,5 +346,17 @@
   "code.WEATHERHAZARD": "Risco climático",
   "code.CONSTRUCTION": "Obra",
   "a biblioteca de mapas não carregou": "a biblioteca de mapas não carregou",
-  "os tiles do OpenStreetMap não carregaram": "os tiles do OpenStreetMap não carregaram"
+  "os tiles do OpenStreetMap não carregaram": "os tiles do OpenStreetMap não carregaram",
+  "Todas": "Todas",
+  "Favoritas": "Favoritas",
+  "Filtrar rotas": "Filtrar rotas",
+  "Favoritar rota": "Favoritar rota",
+  "Nenhuma rota favorita ainda": "Nenhuma rota favorita ainda",
+  "Use a estrela (★) nos cartões para fixar as rotas que você mais acompanha.": "Use a estrela (★) nos cartões para fixar as rotas que você mais acompanha.",
+  "Não foi possível atualizar. Exibindo dados de": "Não foi possível atualizar. Exibindo dados de",
+  "atrás": "atrás",
+  "Não foi possível atualizar o favorito. Recarregue a página e tente de novo.": "Não foi possível atualizar o favorito. Recarregue a página e tente de novo.",
+  "Rota adicionada aos favoritos.": "Rota adicionada aos favoritos.",
+  "Rota removida dos favoritos.": "Rota removida dos favoritos.",
+  "Falha de conexão ao salvar o favorito.": "Falha de conexão ao salvar o favorito."
 }

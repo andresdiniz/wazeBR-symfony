@@ -40,14 +40,19 @@ final class RoutesController extends AbstractController
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
-    public function index(Request $request, RoutesRepository $repository): Response
+    public function index(Request $request, RoutesRepository $repository, RouteFavoriteRepository $favorites): Response
     {
         $partner = $this->resolvePartnerScope();
         $filters = $this->extractFilters($request);
         $payload = $this->loadDashboardPayload($repository, $partner, $filters);
         $overview = $this->overviewPresenter->present($payload);
 
+        // Favoritas do usuário: marcadas nos cartões e listadas primeiro (a ordem original é mantida em cada grupo).
+        $favoriteIds = $favorites->favoriteIds((int) $this->scope->user()->getId());
+        $overview['routes'] = $this->favoritesFirst($overview['routes'] ?? [], $favoriteIds);
+
         $response = $this->render('routes/index.html.twig', [
+            'favoriteIds' => $favoriteIds,
             'routes' => $payload['routes'],
             'stats' => $payload['stats'],
             'map' => $payload['map'],
@@ -115,6 +120,32 @@ final class RoutesController extends AbstractController
             fclose($out);
         });
         return $this->csvHeaders($response, $exporter->filename((string) $historico['route']['name'], $id, "historico_{$days}d"));
+    }
+
+    /**
+     * Partição estável: favoritas primeiro, sem alterar a ordem relativa dentro de cada grupo.
+     *
+     * @param list<array<string, mixed>> $routes
+     * @param list<int>                  $favoriteIds
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function favoritesFirst(array $routes, array $favoriteIds): array
+    {
+        if ($favoriteIds === []) {
+            return array_values($routes);
+        }
+
+        $favorites = $others = [];
+        foreach ($routes as $route) {
+            if (in_array((int) ($route['id'] ?? 0), $favoriteIds, true)) {
+                $favorites[] = $route;
+            } else {
+                $others[] = $route;
+            }
+        }
+
+        return [...$favorites, ...$others];
     }
 
     private function csvHeaders(StreamedResponse $response, string $filename): StreamedResponse
