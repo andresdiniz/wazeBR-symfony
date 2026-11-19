@@ -1,0 +1,13 @@
+/* Barra de impressão/exportação e aviso da página Comparar rotas */
+.rc-actions {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    margin: 0 0 18px;
+}
+.rc-actions .rc-button { padding: 8px 14px; text-decoration: none; }
+.rc-actions__label { font-size: 12px; font-weight: 600; color: var(--rc-muted, #64748b); margin-left: 6px; }
+.rc-notice {
+    margin: 0 0 16px; padding: 10px 14px;
+    border: 1px solid var(--rc-amber, #f59e0b); border-radius: 10px;
+    background: rgba(245, 158, 11, .10); color: var(--rc-text, #0f172a); font-size: 13px;
+}
+@media print { .rc-actions, .rc-notice { display: none; } }
