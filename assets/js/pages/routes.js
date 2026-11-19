@@ -121,7 +121,8 @@ function drawSegments(segments) {
             lineJoin: 'round',
         });
 
-        line.bindPopup(buildSegmentPopup(seg), {
+        // Função: o HTML do popup só é montado ao abrir (antes era montado para todos os trechos no carregamento).
+        line.bindPopup(() => buildSegmentPopup(seg), {
             maxWidth: 300,
             minWidth: 240,
             autoPan: true,
@@ -280,6 +281,11 @@ function clearHighlight(root) {
     setActiveRoute(null, root);
 }
 
+/** Minúsculas e sem acento: "avenida são josé" encontra "Avenida Sao Jose". */
+function normalizeText(value) {
+    return String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
 function initFilters(root) {
     const form = root.querySelector('[data-routes-filter-form]');
     if (!form || form.dataset.routesFilterInit === '1') return;
@@ -291,53 +297,76 @@ function initFilters(root) {
     const list    = root.querySelector('[data-routes-list]');
     const counter = root.querySelector('[data-routes-count]');
 
-    const items = () => Array.from(list?.querySelectorAll('.routes-list-item') || []);
+    // Índice montado UMA vez. Antes cada tecla refazia querySelector por rota (O(n²)) e adicionava/removia
+    // todas as polylines do mapa, o que travava a digitação com muitas rotas.
+    const rows = Array.from(list?.querySelectorAll('.routes-list-item') || []).map((el) => {
+        const detail = el.previousElementSibling?.matches('[data-route-detail]') ? el.previousElementSibling : null;
+        return {
+            el,
+            detail,
+            id: Number(el.dataset.routeId),
+            text: normalizeText(el.dataset.routeSearch),
+            level: el.dataset.routeLevel,
+            visible: true,
+        };
+    });
+    const mapVisible = new Map(); // routeId → camadas no mapa? (só muda quando o estado muda)
+
+    let lastQuery = null;
+    let lastLevel = null;
+    let rafId = 0;
+
+    const syncMap = (visibleIds) => {
+        if (!map || !segmentsLayer) return;
+
+        polylinesByRoute.forEach((bucket, routeId) => {
+            const show = visibleIds.has(Number(routeId));
+            if ((mapVisible.get(routeId) ?? true) === show) return;
+            mapVisible.set(routeId, show);
+
+            bucket.forEach(({ line }) => {
+                if (show) segmentsLayer.addLayer(line);
+                else segmentsLayer.removeLayer(line);
+            });
+        });
+    };
 
     const applyFilter = () => {
-        const q  = (search?.value || '').trim().toLowerCase();
+        const q  = normalizeText(search?.value);
         const lv = level?.value || 'all';
+        if (q === lastQuery && lv === lastLevel) return;
+        lastQuery = q;
+        lastLevel = lv;
 
-        let visible = 0;
-
-        items().forEach((el) => {
-            const matchesQ  = q === '' || (el.dataset.routeSearch || '').includes(q);
-            const matchesLv = lv === 'all' || el.dataset.routeLevel === lv;
-            const show = matchesQ && matchesLv;
-
-            el.classList.toggle('is-hidden', !show);
-            if (show) visible++;
+        const visibleIds = new Set();
+        rows.forEach((row) => {
+            const show = (q === '' || row.text.includes(q)) && (lv === 'all' || row.level === lv);
+            if (show !== row.visible) {
+                row.visible = show;
+                row.el.classList.toggle('is-hidden', !show);
+                row.detail?.classList.toggle('is-hidden', !show); // o link "Detalhes →" não pode ficar órfão
+            }
+            if (show) visibleIds.add(row.id);
         });
 
         if (counter) {
+            const visible = visibleIds.size;
             counter.textContent = `${visible} ${rt("rota")}${visible !== 1 ? 's' : ''}`;
         }
 
-        polylinesByRoute.forEach((bucket, routeId) => {
-            const el = list?.querySelector(`[data-route-id="${routeId}"]`);
-            const show = el && !el.classList.contains('is-hidden');
+        // Mapa: só as camadas que mudaram, agrupadas em um único quadro.
+        cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(() => syncMap(visibleIds));
 
-            bucket.forEach(({ line }) => {
-                if (!map) return;
-                if (show) {
-                    if (!map.hasLayer(line)) segmentsLayer.addLayer(line);
-                } else {
-                    if (map.hasLayer(line)) segmentsLayer.removeLayer(line);
-                }
-            });
-        });
-
-        if (activeRouteId !== null) {
-            const el = list?.querySelector(`[data-route-id="${activeRouteId}"]`);
-            if (!el || el.classList.contains('is-hidden')) {
-                clearHighlight(root);
-            }
+        if (activeRouteId !== null && !visibleIds.has(Number(activeRouteId))) {
+            clearHighlight(root);
         }
     };
 
     let debounce;
     search?.addEventListener('input', () => {
         clearTimeout(debounce);
-        debounce = setTimeout(applyFilter, 120);
+        debounce = setTimeout(applyFilter, 160);
     });
 
     level?.addEventListener('change', applyFilter);
@@ -350,6 +379,9 @@ function initFilters(root) {
     });
 
     form.addEventListener('submit', (e) => e.preventDefault());
+
+    // Filtros vindos da URL/servidor (?q=, ?level=) valem desde o primeiro quadro.
+    applyFilter();
 }
 
 function initListInteraction(root) {

@@ -259,5 +259,13 @@
   "Radar oculto": "Radar oculto",
   "Saudável": "Saludable",
   "Atenção": "Atención",
-  "Crítica": "Crítica"
+  "Crítica": "Crítica",
+  "Seções da rota": "Secciones de la ruta",
+  "Visão geral": "Visión general",
+  "Padrões e histórico": "Patrones e historial",
+  "Trechos e ocorrências": "Tramos e incidencias",
+  "Métrica do gráfico": "Métrica del gráfico",
+  "Cor da linha = gravidade (verde a vermelho) · trecho tracejado = poucas amostras · linhas laranjas = horas com alertas Waze perto do traçado.": "Color de la línea = gravedad (verde a rojo) · tramo punteado = pocas muestras · líneas naranjas = horas con alertas de Waze cerca del trazado.",
+  "Sem dados": "Sin datos",
+  "amostras": "muestras"
 }

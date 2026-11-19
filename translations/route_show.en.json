@@ -259,5 +259,13 @@
   "Radar oculto": "Hidden speed camera",
   "Saudável": "Healthy",
   "Atenção": "Watch",
-  "Crítica": "Critical"
+  "Crítica": "Critical",
+  "Seções da rota": "Route sections",
+  "Visão geral": "Overview",
+  "Padrões e histórico": "Patterns & history",
+  "Trechos e ocorrências": "Segments & incidents",
+  "Métrica do gráfico": "Chart metric",
+  "Cor da linha = gravidade (verde a vermelho) · trecho tracejado = poucas amostras · linhas laranjas = horas com alertas Waze perto do traçado.": "Line color = severity (green to red) · dashed stretch = few samples · orange lines = hours with Waze alerts near the route.",
+  "Sem dados": "No data",
+  "amostras": "samples"
 }

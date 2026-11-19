@@ -31,6 +31,10 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('IS_AUTHENTICATED_FULLY')]
 final class RoutesController extends AbstractController
 {
+    /** Cartões do painel "Situação agora": piores rotas e teto de favoritas extras. */
+    private const CARDS_WORST = 5;
+    private const CARDS_FAVORITES = 8;
+
     public function __construct(
         private readonly PartnerScopeResolver $scope,
         private readonly RouteOverviewPresenter $overviewPresenter,
@@ -47,12 +51,23 @@ final class RoutesController extends AbstractController
         $payload = $this->loadDashboardPayload($repository, $partner, $filters);
         $overview = $this->overviewPresenter->present($payload);
 
-        // Favoritas do usuário: marcadas nos cartões e listadas primeiro (a ordem original é mantida em cada grupo).
+        // Painel "Situação agora": só as piores rotas (e as favoritas), cada uma com o trajeto para o mini-mapa.
+        // A lista completa continua logo abaixo, com busca e filtro, e o mapa grande mostra todas.
         $favoriteIds = $favorites->favoriteIds((int) $this->scope->user()->getId());
-        $overview['routes'] = $this->favoritesFirst($overview['routes'] ?? [], $favoriteIds);
+        $allRoutes = $overview['routes'] ?? [];
+        $cards = $this->selectOverviewCards($allRoutes, $favoriteIds);
+        $segments = $this->overviewPresenter->segmentsByRoute($payload, array_map(static fn (array $c): int => (int) $c['id'], $cards));
+        foreach ($cards as &$card) {
+            $card['miniMapSegments'] = $segments[(int) $card['id']] ?? [];
+            unset($card['miniMapPath']);
+        }
+        unset($card);
+        $overview['routes'] = $cards;
 
         $response = $this->render('routes/index.html.twig', [
             'favoriteIds' => $favoriteIds,
+            'overviewTotal' => count($allRoutes),
+            'worstLimit' => self::CARDS_WORST,
             'routes' => $payload['routes'],
             'stats' => $payload['stats'],
             'map' => $payload['map'],
@@ -70,6 +85,28 @@ final class RoutesController extends AbstractController
         $partner = $this->resolvePartnerScope();
         $filters = $this->extractFilters($request);
         $payload = $this->loadDashboardPayload($repository, $partner, $filters);
+
+        // ?slim=1 (atualização automática da lista): só o que muda na tela — indicadores e status dos cartões.
+        // Sem geometria, sem trechos e sem alertas, o que deixava cada atualização pesada com muitas rotas.
+        if ($request->query->getBoolean('slim')) {
+            $overview = $this->overviewPresenter->present($payload);
+            $response = $this->json([
+                'ok' => true,
+                'generated_at' => (new \DateTimeImmutable())->format(DATE_ATOM),
+                'data' => ['stats' => $payload['stats'] ?? []],
+                'overview' => ['routes' => array_map(static fn (array $r): array => [
+                    'id' => $r['id'],
+                    'statusClass' => $r['statusClass'],
+                    'statusLabel' => $r['statusLabel'],
+                    'timeLabel' => $r['timeLabel'],
+                    'delayLabel' => $r['delayLabel'],
+                    'delayPercent' => $r['delayPercent'],
+                ], $overview['routes'])],
+            ]);
+            $response->headers->set('Cache-Control', 'private, no-store');
+
+            return $response;
+        }
 
         $response = $this->json([
             'ok' => true,
@@ -123,29 +160,44 @@ final class RoutesController extends AbstractController
     }
 
     /**
-     * Partição estável: favoritas primeiro, sem alterar a ordem relativa dentro de cada grupo.
+     * Escolhe os cartões do painel: as N piores rotas agora (severidade, depois % acima do histórico,
+     * depois atraso) e, além delas, as favoritas do usuário (até um teto). Cada cartão recebe `isWorst`.
      *
      * @param list<array<string, mixed>> $routes
      * @param list<int>                  $favoriteIds
      *
      * @return list<array<string, mixed>>
      */
-    private function favoritesFirst(array $routes, array $favoriteIds): array
+    private function selectOverviewCards(array $routes, array $favoriteIds): array
     {
-        if ($favoriteIds === []) {
-            return array_values($routes);
+        $rank = ['severe' => 4, 'heavy' => 3, 'moderate' => 2, 'light' => 1];
+
+        $sorted = array_values($routes);
+        usort($sorted, static function (array $a, array $b) use ($rank): int {
+            return [$rank[$b['statusClass'] ?? ''] ?? 0, (float) ($b['delayRatio'] ?? 0), (int) ($b['delaySeconds'] ?? 0), (string) ($a['name'] ?? '')]
+                <=> [$rank[$a['statusClass'] ?? ''] ?? 0, (float) ($a['delayRatio'] ?? 0), (int) ($a['delaySeconds'] ?? 0), (string) ($b['name'] ?? '')];
+        });
+
+        $cards = [];
+        $worstIds = [];
+        foreach (array_slice($sorted, 0, self::CARDS_WORST) as $route) {
+            $worstIds[(int) $route['id']] = true;
+            $cards[] = $route + ['isWorst' => true];
         }
 
-        $favorites = $others = [];
-        foreach ($routes as $route) {
-            if (in_array((int) ($route['id'] ?? 0), $favoriteIds, true)) {
-                $favorites[] = $route;
-            } else {
-                $others[] = $route;
+        $extra = 0;
+        foreach ($sorted as $route) {
+            $id = (int) ($route['id'] ?? 0);
+            if (isset($worstIds[$id]) || !in_array($id, $favoriteIds, true)) {
+                continue;
             }
+            if ($extra++ >= self::CARDS_FAVORITES) {
+                break;
+            }
+            $cards[] = $route + ['isWorst' => false];
         }
 
-        return [...$favorites, ...$others];
+        return $cards;
     }
 
     private function csvHeaders(StreamedResponse $response, string $filename): StreamedResponse

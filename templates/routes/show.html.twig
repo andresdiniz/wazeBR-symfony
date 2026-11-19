@@ -6,11 +6,12 @@
     {{ parent() }}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous" />
     <link rel="stylesheet" href="{{ asset('css/pages/route-show.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/pages/route-show-polish.css') }}">
 {% endblock %}
 
 {% block content %}
 {% set _rs_ui = {} %}
-{% for _rs_key in ['Rotas', 'Análise de rota', 'Navegação', 'Rota desativada', 'Desativada em', 'Os dados abaixo são históricos e não são mais atualizados.', 'Dados desatualizados', 'A última leitura foi há', 'Os indicadores “atuais” podem não refletir o trânsito agora.', 'Sem descrição de trajeto', 'atualizado às', 'Recebendo atualizações em tempo real', 'ao vivo', 'Adicionar aos favoritos', 'Remover dos favoritos', 'Relatório', 'Compartilhar', 'Link para enviar (sem login)', 'Validade do link', '1 dia', '7 dias', '30 dias', 'Gerar link', 'Copiar', 'Link do relatório', 'Quem tiver o link vê o relatório desta rota até a validade.', 'Exportar', 'Exportar dados desta rota', 'Exportar como CSV', 'Evolução do atraso', 'Timeline · últimos 7 dias', 'Média por hora', 'Padrão horário · 30 dias', 'Média por dia da semana', 'Padrão semanal · 30 dias', 'Ocorrências', 'Alertas Waze + irregularidades TVT', 'Trechos problemáticos', 'Sub-rotas com métricas', 'Histórico bruto para análise externa', 'Histórico 30 dias', 'Histórico 90 dias', 'Histórico 1 ano', 'Histórico 90 dias (Python/R)', 'Linha a linha · velocidade, tempos, jam', 'Máx. 50.000 linhas', 'Separador vírgula · pandas / tidyverse', 'Indicadores', 'Tempo atual', 'normal:', 'sem tempo histórico', 'Sem leitura recente', 'Atraso atual', '% acima do histórico', 'Média 24h', '% vs histórico', 'vs histórico', 'Sem dados nas últimas 24h', 'Média 7 dias', 'Sem dados nos últimos 7 dias', 'Pior hora do dia', 'Amostra insuficiente', 'Pior dia', 'Amostras', 'Últimos 30 dias', 'Traçado e ocorrências', 'Mapa da rota', 'Traçado', 'Trecho', 'Alertas Waze', 'Irregularidades TVT', 'Mapa da rota com alertas e irregularidades', 'Sem traçado geográfico', 'Esta rota não possui geometria cadastrada.', 'Últimas', 'horas · cor = % vs histórico', 'Trânsito na rota nas últimas', 'Normal', 'Muito lento', 'Sem leituras nas últimas', 'Quando houver novos snapshots, o mapa aparece aqui.', 'Mapa do trânsito nas últimas', 'horas', '▶ Reproduzir', '⏸ Pausar', 'Reproduzir', 'Momento das últimas', 'Média', 'Arraste o controle (ou use', ') para ver a evolução. Cada trecho é pintado pela', 'razão entre o tempo medido e o histórico naquele momento. Os pontos são alertas e irregularidades', 'registrados no período.', 'Os snapshots não trazem dados por trecho: a rota inteira é pintada.', 'Padrão semanal · baseado em % vs histórico', 'Mapa de calor · dia da semana × hora', 'Sem atraso', 'Muito atraso', 'Mapa de calor do atraso médio por dia da semana e hora', 'Cada célula mostra a', 'razão', 'entre tempo atual e histórico naquela hora/dia.', 'Uma rota de 180s com +2s de atraso fica verde (1.1%); uma rota de 20s com +2s fica amarela (10%).', 'Células vazias não têm amostras suficientes.', 'Últimos 7 dias', 'Atraso (s)', 'Alertas', 'Evolução horária do atraso nos últimos 7 dias', 'As linhas verticais tracejadas marcam as horas com alertas Waze registrados perto do traçado.', 'Cruze visualmente com os picos de atraso.', 'Média por hora do dia', 'Atraso médio por hora do dia', 'Atraso médio por dia da semana', 'Distribuição de congestionamento', 'Distribuição dos níveis de congestionamento', 'Estado atual · ordenados por % vs histórico', 'Trechos mais problemáticos', 'agora', 'normais', 'Jam nível', 'Mini-mapa do trecho', 'Sem sub-rotas cadastradas', 'Esta rota não tem trechos detalhados.', 'Últimos 7 dias · até 60 m do traçado', 'Ocorrências na rota', 'Irregularidades', 'Waze Alertas', 'Nenhuma ocorrência recente', 'Nada foi registrado nesta rota nos últimos 7 dias.', 'm do traçado', 'Distância', 'Quando', 'Alerta', 'Sem amostras suficientes', 'Sem congestionamento', 'Baixo', 'Moderado', 'Alto', 'Muito alto', 'Parado', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom', 'Atraso médio (s)', 'Não foi possível gerar o link. Tente novamente.', 'Válido até', 'Sem leituras nas últimas 6 horas', 'Os dados aparecerão quando novas coletas forem registradas.', 'Tempo (min)', 'resposta inválida', '1 novo alerta perto do traçado', 'gráficos', 'mapa das últimas horas', 'mapa principal', 'menu de compartilhar', 'menu de exportação', 'Previsao ao lado do real', 'Carregando previsoes…', 'Chart.js indisponivel', 'Contexto associado, nao causa comprovada. Esta lista nao representa todos os alertas Waze proximos.', 'Contexto indisponivel.', 'Dentro da tolerancia', 'Diferencas da previsao e contexto', 'Erro absoluto medio', 'Irregularidades TVT recentes na rota', 'Janelas avaliadas', 'Leitura atual ausente ou antiga: nao e possivel confirmar lentidao agora.', 'Nao foi possivel concluir a exibicao da previsao. Tente recarregar.', 'Previsao futura', 'Previsao passada: horizonte exibido no tooltip', 'Real (medido)', 'Referencia historica', 'Resposta invalida', 'Sem auditoria suficiente para medir precisao.', 'Sem lentidao confirmada na ultima leitura.', 'Tempo medido, previsoes e lacunas de coleta', 'Uma emissao por janela, com antecedencia mais proxima de 60 min. MAE nao e intervalo de previsao.', 'Vies: previsto − medido', 'Horizonte', 'janelas', 'Amostras observadas', 'Antecedencia passada', 'Emissao', 'antecedencia', 'Previsto', 'medido', 'diferenca', 'Lentidao observada ha pelo menos', 'Restante tipico estimado', 'nao e garantia de termino.', 'Nenhum desvio fora da tolerancia entre as janelas selecionadas; isso nao comprova cobertura completa.', 'ui.forecast_available', 'ui.new_alerts', 'level.none', 'Leve', 'level.light', 'level.moderate', 'level.heavy', 'Crítico', 'level.severe', 'level.good', 'code.ACCIDENT', 'Acidente', 'code.HAZARD', 'Perigo na via', 'code.JAM', 'Congestionamento', 'code.ROAD_CLOSED', 'Via fechada', 'code.POLICE', 'Polícia / Radar', 'code.WEATHERHAZARD', 'Risco climático', 'code.CONSTRUCTION', 'Obra', 'code.ACCIDENT_MAJOR', 'Acidente grave', 'code.ACCIDENT_MINOR', 'Acidente leve', 'code.HAZARD_ON_ROAD_POTHOLE', 'Buraco na pista', 'code.HAZARD_ON_ROAD_POTHOLES', 'Buracos na pista', 'code.HAZARD_ON_ROAD_OBJECT', 'Objeto na pista', 'code.HAZARD_ON_ROAD_CAR_STOPPED', 'Veículo parado na pista', 'code.HAZARD_ON_ROAD_CONSTRUCTION', 'Obra na pista', 'code.HAZARD_ON_ROAD_TRAFFIC_LIGHT_FAULT', 'Semáforo com defeito', 'code.HAZARD_WEATHER_FLOOD', 'Alagamento', 'code.HAZARD_WEATHER_FOG', 'Neblina', 'code.HAZARD_WEATHER_HEAVY_RAIN', 'Chuva intensa', 'code.JAM_HEAVY_TRAFFIC', 'Tráfego intenso', 'code.JAM_LIGHT_TRAFFIC', 'Tráfego leve', 'code.JAM_MODERATE_TRAFFIC', 'Tráfego moderado', 'code.JAM_STAND_STILL_TRAFFIC', 'Trânsito parado', 'code.ROAD_CLOSED_CONSTRUCTION', 'Fechamento por obra', 'code.ROAD_CLOSED_EVENT', 'Fechamento por evento', 'code.ROAD_CLOSED_HAZARD', 'Fechamento por perigo', 'code.POLICE_VISIBLE', 'Polícia visível', 'code.POLICE_HIDING', 'Radar oculto', 'Saudável', 'Atenção', 'Crítica'] %}
+{% for _rs_key in ['Rotas', 'Análise de rota', 'Navegação', 'Rota desativada', 'Desativada em', 'Os dados abaixo são históricos e não são mais atualizados.', 'Dados desatualizados', 'A última leitura foi há', 'Os indicadores “atuais” podem não refletir o trânsito agora.', 'Sem descrição de trajeto', 'atualizado às', 'Recebendo atualizações em tempo real', 'ao vivo', 'Adicionar aos favoritos', 'Remover dos favoritos', 'Relatório', 'Compartilhar', 'Link para enviar (sem login)', 'Validade do link', '1 dia', '7 dias', '30 dias', 'Gerar link', 'Copiar', 'Link do relatório', 'Quem tiver o link vê o relatório desta rota até a validade.', 'Exportar', 'Exportar dados desta rota', 'Exportar como CSV', 'Evolução do atraso', 'Timeline · últimos 7 dias', 'Média por hora', 'Padrão horário · 30 dias', 'Média por dia da semana', 'Padrão semanal · 30 dias', 'Ocorrências', 'Alertas Waze + irregularidades TVT', 'Trechos problemáticos', 'Sub-rotas com métricas', 'Histórico bruto para análise externa', 'Histórico 30 dias', 'Histórico 90 dias', 'Histórico 1 ano', 'Histórico 90 dias (Python/R)', 'Linha a linha · velocidade, tempos, jam', 'Máx. 50.000 linhas', 'Separador vírgula · pandas / tidyverse', 'Indicadores', 'Tempo atual', 'normal:', 'sem tempo histórico', 'Sem leitura recente', 'Atraso atual', '% acima do histórico', 'Média 24h', '% vs histórico', 'vs histórico', 'Sem dados nas últimas 24h', 'Média 7 dias', 'Sem dados nos últimos 7 dias', 'Pior hora do dia', 'Amostra insuficiente', 'Pior dia', 'Amostras', 'Últimos 30 dias', 'Traçado e ocorrências', 'Mapa da rota', 'Traçado', 'Trecho', 'Alertas Waze', 'Irregularidades TVT', 'Mapa da rota com alertas e irregularidades', 'Sem traçado geográfico', 'Esta rota não possui geometria cadastrada.', 'Últimas', 'horas · cor = % vs histórico', 'Trânsito na rota nas últimas', 'Normal', 'Muito lento', 'Sem leituras nas últimas', 'Quando houver novos snapshots, o mapa aparece aqui.', 'Mapa do trânsito nas últimas', 'horas', '▶ Reproduzir', '⏸ Pausar', 'Reproduzir', 'Momento das últimas', 'Média', 'Arraste o controle (ou use', ') para ver a evolução. Cada trecho é pintado pela', 'razão entre o tempo medido e o histórico naquele momento. Os pontos são alertas e irregularidades', 'registrados no período.', 'Os snapshots não trazem dados por trecho: a rota inteira é pintada.', 'Padrão semanal · baseado em % vs histórico', 'Mapa de calor · dia da semana × hora', 'Sem atraso', 'Muito atraso', 'Mapa de calor do atraso médio por dia da semana e hora', 'Cada célula mostra a', 'razão', 'entre tempo atual e histórico naquela hora/dia.', 'Uma rota de 180s com +2s de atraso fica verde (1.1%); uma rota de 20s com +2s fica amarela (10%).', 'Células vazias não têm amostras suficientes.', 'Últimos 7 dias', 'Atraso (s)', 'Alertas', 'Evolução horária do atraso nos últimos 7 dias', 'As linhas verticais tracejadas marcam as horas com alertas Waze registrados perto do traçado.', 'Cruze visualmente com os picos de atraso.', 'Média por hora do dia', 'Atraso médio por hora do dia', 'Atraso médio por dia da semana', 'Distribuição de congestionamento', 'Distribuição dos níveis de congestionamento', 'Estado atual · ordenados por % vs histórico', 'Trechos mais problemáticos', 'agora', 'normais', 'Jam nível', 'Mini-mapa do trecho', 'Sem sub-rotas cadastradas', 'Esta rota não tem trechos detalhados.', 'Últimos 7 dias · até 60 m do traçado', 'Ocorrências na rota', 'Irregularidades', 'Waze Alertas', 'Nenhuma ocorrência recente', 'Nada foi registrado nesta rota nos últimos 7 dias.', 'm do traçado', 'Distância', 'Quando', 'Alerta', 'Sem amostras suficientes', 'Sem congestionamento', 'Baixo', 'Moderado', 'Alto', 'Muito alto', 'Parado', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom', 'Atraso médio (s)', 'Não foi possível gerar o link. Tente novamente.', 'Válido até', 'Sem leituras nas últimas 6 horas', 'Os dados aparecerão quando novas coletas forem registradas.', 'Tempo (min)', 'resposta inválida', '1 novo alerta perto do traçado', 'gráficos', 'mapa das últimas horas', 'mapa principal', 'menu de compartilhar', 'menu de exportação', 'Previsao ao lado do real', 'Carregando previsoes…', 'Chart.js indisponivel', 'Contexto associado, nao causa comprovada. Esta lista nao representa todos os alertas Waze proximos.', 'Contexto indisponivel.', 'Dentro da tolerancia', 'Diferencas da previsao e contexto', 'Erro absoluto medio', 'Irregularidades TVT recentes na rota', 'Janelas avaliadas', 'Leitura atual ausente ou antiga: nao e possivel confirmar lentidao agora.', 'Nao foi possivel concluir a exibicao da previsao. Tente recarregar.', 'Previsao futura', 'Previsao passada: horizonte exibido no tooltip', 'Real (medido)', 'Referencia historica', 'Resposta invalida', 'Sem auditoria suficiente para medir precisao.', 'Sem lentidao confirmada na ultima leitura.', 'Tempo medido, previsoes e lacunas de coleta', 'Uma emissao por janela, com antecedencia mais proxima de 60 min. MAE nao e intervalo de previsao.', 'Vies: previsto − medido', 'Horizonte', 'janelas', 'Amostras observadas', 'Antecedencia passada', 'Emissao', 'antecedencia', 'Previsto', 'medido', 'diferenca', 'Lentidao observada ha pelo menos', 'Restante tipico estimado', 'nao e garantia de termino.', 'Nenhum desvio fora da tolerancia entre as janelas selecionadas; isso nao comprova cobertura completa.', 'ui.forecast_available', 'ui.new_alerts', 'level.none', 'Leve', 'level.light', 'level.moderate', 'level.heavy', 'Crítico', 'level.severe', 'level.good', 'code.ACCIDENT', 'Acidente', 'code.HAZARD', 'Perigo na via', 'code.JAM', 'Congestionamento', 'code.ROAD_CLOSED', 'Via fechada', 'code.POLICE', 'Polícia / Radar', 'code.WEATHERHAZARD', 'Risco climático', 'code.CONSTRUCTION', 'Obra', 'code.ACCIDENT_MAJOR', 'Acidente grave', 'code.ACCIDENT_MINOR', 'Acidente leve', 'code.HAZARD_ON_ROAD_POTHOLE', 'Buraco na pista', 'code.HAZARD_ON_ROAD_POTHOLES', 'Buracos na pista', 'code.HAZARD_ON_ROAD_OBJECT', 'Objeto na pista', 'code.HAZARD_ON_ROAD_CAR_STOPPED', 'Veículo parado na pista', 'code.HAZARD_ON_ROAD_CONSTRUCTION', 'Obra na pista', 'code.HAZARD_ON_ROAD_TRAFFIC_LIGHT_FAULT', 'Semáforo com defeito', 'code.HAZARD_WEATHER_FLOOD', 'Alagamento', 'code.HAZARD_WEATHER_FOG', 'Neblina', 'code.HAZARD_WEATHER_HEAVY_RAIN', 'Chuva intensa', 'code.JAM_HEAVY_TRAFFIC', 'Tráfego intenso', 'code.JAM_LIGHT_TRAFFIC', 'Tráfego leve', 'code.JAM_MODERATE_TRAFFIC', 'Tráfego moderado', 'code.JAM_STAND_STILL_TRAFFIC', 'Trânsito parado', 'code.ROAD_CLOSED_CONSTRUCTION', 'Fechamento por obra', 'code.ROAD_CLOSED_EVENT', 'Fechamento por evento', 'code.ROAD_CLOSED_HAZARD', 'Fechamento por perigo', 'code.POLICE_VISIBLE', 'Polícia visível', 'code.POLICE_HIDING', 'Radar oculto', 'Saudável', 'Atenção', 'Crítica', 'Sem dados', 'amostras'] %}
 {% set _rs_ui = _rs_ui|merge({(_rs_key): _rs_key|trans({}, 'route_show')}) %}
 {% endfor %}
 <script type="application/json" data-route-show-i18n>{{ _rs_ui|json_encode(constant('JSON_HEX_TAG') b-or constant('JSON_HEX_AMP') b-or constant('JSON_HEX_APOS') b-or constant('JSON_HEX_QUOT') b-or constant('JSON_UNESCAPED_UNICODE'))|raw }}</script>
@@ -330,6 +331,18 @@
             </article>
         </section>
 
+        {# ── Abas: separa o que é "agora" do histórico e dos detalhes (a página era um scroll único) ── #}
+        <nav class="rs-tabs" data-rs-tabs role="tablist" aria-label="{{ 'Seções da rota'|trans({}, 'route_show') }}" hidden>
+            <button type="button" class="rs-tabs__btn is-active" role="tab" id="rs-tabbtn-overview" data-tab-target="overview"
+                    aria-selected="true" aria-controls="rs-tab-overview">{{ 'Visão geral'|trans({}, 'route_show') }}</button>
+            <button type="button" class="rs-tabs__btn" role="tab" id="rs-tabbtn-patterns" data-tab-target="patterns"
+                    aria-selected="false" aria-controls="rs-tab-patterns" tabindex="-1">{{ 'Padrões e histórico'|trans({}, 'route_show') }}</button>
+            <button type="button" class="rs-tabs__btn" role="tab" id="rs-tabbtn-details" data-tab-target="details"
+                    aria-selected="false" aria-controls="rs-tab-details" tabindex="-1">{{ 'Trechos e ocorrências'|trans({}, 'route_show') }}</button>
+        </nav>
+
+        <div class="rs-tabpanel" id="rs-tab-overview" data-tab-panel="overview" role="tabpanel" aria-labelledby="rs-tabbtn-overview">
+
         {# ── Mapa principal ───────────────────────────────────────── #}
         <section class="rs-panel rs-map-panel" aria-labelledby="rs-map-title">
             <header class="rs-panel__header">
@@ -393,6 +406,10 @@
             {% endif %}
         </section>
 
+        </div>{# /overview #}
+
+        <div class="rs-tabpanel" id="rs-tab-patterns" data-tab-panel="patterns" role="tabpanel" aria-labelledby="rs-tabbtn-patterns">
+
         {# ── Heatmap ──────────────────────────────────────────────── #}
         <section class="rs-panel rs-heatmap-panel" aria-labelledby="rs-heatmap-title">
             <header class="rs-panel__header">
@@ -426,10 +443,9 @@
                     <span class="rs-panel__kicker">{{ 'Últimos 7 dias'|trans({}, 'route_show') }}</span>
                     <h2 id="rs-timeline-title">{{ 'Evolução do atraso'|trans({}, 'route_show') }}</h2>
                 </div>
-                <div class="rs-panel__legend">
-                    <span><i class="rs-dot rs-dot--blue"></i>{{ 'Atraso (s)'|trans({}, 'route_show') }}</span>
-                    <span><i class="rs-dot rs-dot--red"></i>{{ '% vs histórico'|trans({}, 'route_show') }}</span>
-                    <span><i class="rs-dot rs-dot--alert"></i>{{ 'Alertas'|trans({}, 'route_show') }}</span>
+                <div class="rs-segmented" role="group" aria-label="{{ 'Métrica do gráfico'|trans({}, 'route_show') }}">
+                    <button type="button" class="rs-segmented__btn is-active" data-timeline-metric="delay" aria-pressed="true">{{ 'Atraso (s)'|trans({}, 'route_show') }}</button>
+                    <button type="button" class="rs-segmented__btn" data-timeline-metric="ratio" aria-pressed="false">{{ '% acima do histórico'|trans({}, 'route_show') }}</button>
                 </div>
             </header>
             <div class="rs-chart-wrap rs-chart-wrap--tall">
@@ -437,8 +453,7 @@
                         aria-label="{{ 'Evolução horária do atraso nos últimos 7 dias'|trans({}, 'route_show') }}"></canvas>
             </div>
             <p class="rs-panel__hint">
-                {{ 'As linhas verticais tracejadas marcam as horas com alertas Waze registrados perto do traçado.'|trans({}, 'route_show') }}
-                {{ 'Cruze visualmente com os picos de atraso.'|trans({}, 'route_show') }}
+                {{ 'Cor da linha = gravidade (verde a vermelho) · trecho tracejado = poucas amostras · linhas laranjas = horas com alertas Waze perto do traçado.'|trans({}, 'route_show') }}
             </p>
         </section>
 
@@ -469,10 +484,8 @@
             </section>
         </div>
 
-        {# ── Grid: jam + sub-rotas ────────────────────────────────── #}
-        <div class="rs-two-col">
-
-            <section class="rs-panel" aria-labelledby="rs-jam-title">
+        {# ── Distribuição de congestionamento ─────────────────────── #}
+        <section class="rs-panel" aria-labelledby="rs-jam-title">
                 <header class="rs-panel__header">
                     <div>
                         <span class="rs-panel__kicker">{{ 'Últimos 30 dias'|trans({}, 'route_show') }}</span>
@@ -484,7 +497,12 @@
                 </div>
             </section>
 
-            <section class="rs-panel" aria-labelledby="rs-sub-title">
+        </div>{# /patterns #}
+
+        <div class="rs-tabpanel" id="rs-tab-details" data-tab-panel="details" role="tabpanel" aria-labelledby="rs-tabbtn-details">
+
+        {# ── Trechos mais problemáticos ───────────────────────────── #}
+        <section class="rs-panel" aria-labelledby="rs-sub-title">
                 <header class="rs-panel__header">
                     <div>
                         <span class="rs-panel__kicker">{{ 'Estado atual · ordenados por % vs histórico'|trans({}, 'route_show') }}</span>
@@ -544,8 +562,6 @@
                 </div>
             </section>
 
-        </div>
-
         {# ── Ocorrências (Waze + TVT, mais recentes primeiro) ─────── #}
         <section class="rs-panel" aria-labelledby="rs-occ-title">
             <header class="rs-panel__header">
@@ -595,6 +611,8 @@
                 </div>
             {% endif %}
         </section>
+
+        </div>{# /details #}
 
     </div>
 </div>

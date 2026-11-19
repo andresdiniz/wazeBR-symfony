@@ -1,0 +1,151 @@
+/* ==========================================================
+   Página de detalhes da rota — refinamento visual
+   Carregado DEPOIS de route-show.css: só ajusta ritmo, hierarquia
+   e densidade (a página tinha informação demais em um único scroll).
+   Usa os tokens --rs-* já definidos em .rs-page (claro/escuro).
+   ========================================================== */
+
+.rs-page {
+    --rs-radius: 14px;
+    --rs-shadow: 0 1px 2px rgb(15 23 42 / 5%), 0 6px 20px rgb(15 23 42 / 4%);
+}
+
+.rs-container { gap: 18px; }
+
+/* ── Cabeçalho: um cartão só, ações alinhadas ── */
+.rs-header {
+    align-items: center;
+    gap: 16px 28px;
+    padding: 20px 24px;
+    background: var(--rs-surface);
+    border: 1px solid var(--rs-line);
+    border-radius: var(--rs-radius);
+    box-shadow: var(--rs-shadow);
+}
+.rs-header h1 {
+    margin: 4px 0 6px;
+    font-size: clamp(1.3rem, 2.2vw, 1.75rem);
+    line-height: 1.2;
+    letter-spacing: -.01em;
+}
+.rs-header__path { margin: 0; color: var(--rs-muted); font-size: 13px; line-height: 1.55; }
+.rs-header__aside { align-items: center; gap: 8px; }
+.rs-header__aside .rs-export__btn,
+.rs-header__aside .rs-iconbtn { height: 36px; padding-block: 0; }
+.rs-header__aside .rs-iconbtn { width: 36px; }
+.rs-health { margin-left: 4px; padding: 6px 14px; min-width: 88px; }
+
+/* ── KPIs: 4 principais em destaque + 3 secundários mais discretos ── */
+.rs-kpis {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 12px;
+}
+.rs-kpi {
+    grid-column: span 3;
+    gap: 4px;
+    padding: 14px 16px;
+    border-radius: var(--rs-radius);
+    box-shadow: var(--rs-shadow);
+}
+.rs-kpi__label { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--rs-muted); }
+.rs-kpi__hint { font-size: 12px; color: var(--rs-muted); line-height: 1.4; }
+.rs-kpi:nth-child(n+5) { grid-column: span 4; padding: 10px 14px; box-shadow: none; background: var(--rs-soft); }
+.rs-kpi:nth-child(n+5) .rs-kpi__value { font-size: 18px; }
+@media (max-width: 900px) {
+    .rs-kpi { grid-column: span 6; }
+    .rs-kpi:nth-child(n+5) { grid-column: span 4; }
+}
+@media (max-width: 560px) {
+    .rs-kpi__value { font-size: 22px; }
+    .rs-kpi:nth-child(n+5) { grid-column: span 6; }
+    .rs-kpi:nth-child(7) { grid-column: span 12; }
+}
+
+/* ── Abas ── */
+.rs-tabs {
+    display: flex;
+    gap: 4px;
+    width: fit-content;
+    max-width: 100%;
+    padding: 4px;
+    overflow-x: auto;
+    background: var(--rs-soft);
+    border: 1px solid var(--rs-line);
+    border-radius: 12px;
+    scrollbar-width: none;
+}
+.rs-tabs::-webkit-scrollbar { display: none; }
+.rs-tabs__btn {
+    flex: none;
+    padding: 8px 16px;
+    color: var(--rs-muted);
+    background: transparent;
+    border: 0;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 650;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color .15s ease, color .15s ease, box-shadow .15s ease;
+}
+.rs-tabs__btn:hover { color: var(--rs-text); }
+.rs-tabs__btn.is-active { color: var(--rs-text); background: var(--rs-surface); box-shadow: 0 1px 3px rgb(15 23 42 / 12%); }
+.rs-tabs__btn:focus-visible { outline: 3px solid var(--rs-primary); outline-offset: 2px; }
+
+.rs-tabpanel { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+
+/* ── Painéis ── */
+.rs-panel { padding: 18px 20px; border-radius: var(--rs-radius); box-shadow: var(--rs-shadow); }
+.rs-panel__header { align-items: flex-start; margin-bottom: 14px; }
+.rs-panel__header h2 { margin: 2px 0 0; font-size: 1.05rem; line-height: 1.3; letter-spacing: -.005em; }
+.rs-panel__kicker { display: block; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--rs-muted); }
+.rs-panel__hint { margin: 12px 0 0; font-size: 12px; line-height: 1.55; color: var(--rs-muted); }
+
+/* ── Mapas e gráficos: alturas que acompanham a tela ── */
+.rs-map { height: clamp(320px, 52vh, 520px); border-radius: 12px; }
+.rs-map--recent { height: clamp(300px, 44vh, 420px); }
+.rs-chart-wrap { height: 250px; }
+.rs-chart-wrap--tall { height: clamp(260px, 38vh, 340px); }
+
+/* ── Seletor segmentado (métrica do gráfico) ── */
+.rs-segmented {
+    display: inline-flex;
+    padding: 3px;
+    background: var(--rs-soft);
+    border: 1px solid var(--rs-line);
+    border-radius: 10px;
+}
+.rs-segmented__btn {
+    padding: 6px 12px;
+    color: var(--rs-muted);
+    background: transparent;
+    border: 0;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 650;
+    cursor: pointer;
+    transition: background-color .15s ease, color .15s ease;
+}
+.rs-segmented__btn:hover { color: var(--rs-text); }
+.rs-segmented__btn.is-active { color: var(--rs-text); background: var(--rs-surface); box-shadow: 0 1px 2px rgb(15 23 42 / 12%); }
+.rs-segmented__btn:focus-visible { outline: 3px solid var(--rs-primary); outline-offset: 1px; }
+
+/* ── Grades e listas ── */
+.rs-two-col { gap: 18px; }
+@media (max-width: 900px) { .rs-two-col { grid-template-columns: minmax(0, 1fr); } }
+
+.rs-subroutes { gap: 8px; max-height: 560px; }
+.rs-subroute { padding: 10px 12px; border-radius: 10px; }
+@media (max-width: 720px) { .rs-subroute { grid-template-columns: minmax(0, 1fr); } }
+
+.rs-occurrences { gap: 8px; max-height: 420px; }
+.rs-occ { padding: 10px 12px; }
+
+/* ── Avisos e controles do mapa recente ── */
+.rs-notice { border-radius: 12px; }
+.rs-recent__controls { padding-top: 10px; }
+
+/* ── Respeita quem prefere menos movimento ── */
+@media (prefers-reduced-motion: reduce) {
+    .rs-tabs__btn, .rs-segmented__btn { transition: none; }
+}

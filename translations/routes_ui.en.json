@@ -358,5 +358,13 @@
   "Não foi possível atualizar o favorito. Recarregue a página e tente de novo.": "Couldn't update the favorite. Reload the page and try again.",
   "Rota adicionada aos favoritos.": "Route added to favorites.",
   "Rota removida dos favoritos.": "Route removed from favorites.",
-  "Falha de conexão ao salvar o favorito.": "Connection error while saving the favorite."
+  "Falha de conexão ao salvar o favorito.": "Connection error while saving the favorite.",
+  "Piores agora": "Worst now",
+  "Mostrando as": "Showing the",
+  "piores de": "worst of",
+  "rotas": "routes",
+  "Ver todas": "See all",
+  "Mapa indisponível": "Map unavailable",
+  "Sem traçado cadastrado": "No route geometry",
+  "Incidente": "Incident"
 }

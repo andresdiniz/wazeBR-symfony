@@ -112,6 +112,10 @@
                 <div>
                     <span class="routes-overview-kicker">{{ 'Central de rotas'|trans({}, 'routes_ui') }}</span>
                     <h2>{{ 'Situação agora'|trans({}, 'routes_ui') }}</h2>
+                    <p class="routes-overview-sub">
+                        {{ 'Mostrando as'|trans({}, 'routes_ui') }} {{ min(worstLimit, overviewTotal) }} {{ 'piores de'|trans({}, 'routes_ui') }} {{ overviewTotal }} {{ 'rotas'|trans({}, 'routes_ui') }}.
+                        <a href="#routes-list">{{ 'Ver todas'|trans({}, 'routes_ui') }} ↓</a>
+                    </p>
                 </div>
                 <span class="routes-overview-updated">
                     <i></i>
@@ -121,7 +125,7 @@
             </header>
 
             <div class="routes-overview-filters" role="group" aria-label="{{ 'Filtrar rotas'|trans({}, 'routes_ui') }}">
-                <button type="button" class="routes-chip is-active" data-overview-filter="all" aria-pressed="true">{{ 'Todas'|trans({}, 'routes_ui') }}</button>
+                <button type="button" class="routes-chip is-active" data-overview-filter="worst" aria-pressed="true">{{ 'Piores agora'|trans({}, 'routes_ui') }} <span data-worst-count>{{ min(worstLimit, overviewTotal) }}</span></button>
                 <button type="button" class="routes-chip" data-overview-filter="favorites" aria-pressed="false">
                     ★ {{ 'Favoritas'|trans({}, 'routes_ui') }} <span data-favorite-count>{{ favoriteIds|length }}</span>
                 </button>
@@ -135,6 +139,7 @@
                     <article class="route-card route-card--{{ route.statusClass }}"
                              data-route-card
                              data-route-favorite="{{ isFav ? '1' : '0' }}"
+                             data-route-worst="{{ route.isWorst ? '1' : '0' }}"
                              data-route-id="{{ route.id }}"
                              data-route-status="{{ route.statusClass }}">
                         <header class="route-card-header">
@@ -181,7 +186,7 @@
                             {% if route.incidents|length > 0 %}
                                 <span class="route-card-incidents-title">{{ 'Últimos incidentes'|trans({}, 'routes_ui') }}</span>
                                 <ul>
-                                    {% for incident in route.incidents %}
+                                    {% for incident in route.incidents|slice(0, 2) %}
                                         <li>
                                             <strong>{{ incident.type|default('Incidente') }}</strong>
                                             <span>{{ incident.street|default(incident.city|default('Local não informado')) }}</span>
@@ -194,14 +199,13 @@
                         </div>
 
                         <div class="route-card-map-wrapper">
-                            <svg class="route-card-map"
-                                 data-route-mini-map
-                                 data-route-path="{{ route.miniMapPath|json_encode|e('html_attr') }}"
+                            <div class="route-card-map"
+                                 data-route-map
+                                 data-route-segments="{{ route.miniMapSegments|default([])|json_encode|e('html_attr') }}"
                                  data-route-incidents="{{ route.incidents|json_encode|e('html_attr') }}"
-                                 viewBox="0 0 240 110"
+                                 data-route-status="{{ route.statusClass }}"
                                  role="img"
-                                 aria-label="{{ 'Mini-mapa da rota'|trans({}, 'routes_ui') }}">
-                            </svg>
+                                 aria-label="{{ 'Mapa da rota'|trans({}, 'routes_ui') }}: {{ route.name }}"></div>
                         </div>
 
                         <footer class="route-card-footer">
@@ -228,7 +232,7 @@
 
         <div class="routes-layout">
 
-            <section class="routes-panel routes-list-panel">
+            <section class="routes-panel routes-list-panel" id="routes-list">
                 <header class="routes-panel-header">
                     <div>
                         <span class="routes-panel-kicker">{{ 'Ordenadas por atraso'|trans({}, 'routes_ui') }}</span>

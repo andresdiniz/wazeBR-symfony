@@ -757,40 +757,55 @@ function barConfig(points, labelOf) {
     };
 }
 
-function timelineConfig(points, alertLineIndices) {
+/**
+ * Evolução do atraso.
+ *
+ * Mostra UMA métrica por vez (segundos OU % acima do histórico). A versão anterior sobrepunha as duas
+ * com eixos diferentes, e como uma é praticamente a outra reescalada, as linhas "andavam juntas" e só
+ * poluíam. Os dois números continuam no tooltip; a cor da linha mostra a gravidade; trechos com poucas
+ * amostras aparecem tracejados.
+ */
+function timelineConfig(points, alertLineIndices, metric = 'delay') {
+    const isRatio = metric === 'ratio';
     const labels = points.map(({ time = '' }) =>
         time.length >= 16 ? `${time.slice(8, 10)}/${time.slice(5, 7)} ${time.slice(11, 16)}` : time
     );
+    const delays = points.map((p) => (Number.isFinite(p.avgDelay) ? p.avgDelay : null));
+    const ratios = points.map((p) => (Number.isFinite(p.avgRatio) ? p.avgRatio : null));
+    const counts = points.map((p) => (Number.isFinite(p.count) ? p.count : null));
+    const values = isRatio ? ratios.map((r) => (r === null ? null : r * 100)) : delays;
+
+    const weak = (index) => counts[index] !== null && counts[index] < MIN_SAMPLES;
+    const severity = (index) => ratioToColor(ratios[index]) ?? NEUTRAL_LINE;
 
     return {
         type: 'line',
         data: {
             labels,
-            datasets: [
-                {
-                    label: rsT("Atraso (s)"),
-                    data: points.map((p) => p.avgDelay),
-                    borderColor: COLORS.blue,
-                    backgroundColor: 'rgba(37,99,235,.10)',
-                    fill: true,
-                    tension: 0.35,
-                    pointRadius: 0,
-                    borderWidth: 2,
-                    yAxisID: 'y',
+            datasets: [{
+                label: isRatio ? rsT("% acima do histórico") : rsT("Atraso (s)"),
+                data: values,
+                borderColor: COLORS.blue,
+                borderWidth: 2.5,
+                tension: 0.25,
+                pointRadius: 0,
+                pointHoverRadius: 5,
+                pointHitRadius: 14,
+                fill: true,
+                backgroundColor(context) {
+                    const { chart } = context;
+                    const area = chart.chartArea;
+                    if (!area) return 'rgba(100, 116, 139, .10)';
+                    const gradient = chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+                    gradient.addColorStop(0, 'rgba(100, 116, 139, .22)');
+                    gradient.addColorStop(1, 'rgba(100, 116, 139, 0)');
+                    return gradient;
                 },
-                {
-                    label: rsT("% vs histórico"),
-                    data: points.map((p) => (p.avgRatio !== null ? p.avgRatio * 100 : null)),
-                    borderColor: COLORS.red,
-                    backgroundColor: 'rgba(220,38,38,.08)',
-                    fill: false,
-                    tension: 0.35,
-                    pointRadius: 0,
-                    borderWidth: 2,
-                    borderDash: [4, 3],
-                    yAxisID: 'y1',
+                segment: {
+                    borderColor: (context) => severity(context.p1DataIndex),
+                    borderDash: (context) => (weak(context.p1DataIndex) ? [4, 4] : undefined),
                 },
-            ],
+            }],
         },
         options: {
             responsive: true,
@@ -800,24 +815,38 @@ function timelineConfig(points, alertLineIndices) {
             plugins: {
                 legend: { display: false },
                 tooltip: {
+                    displayColors: false,
                     callbacks: {
+                        title: (items) => labels[items[0].dataIndex] ?? '',
                         label(context) {
-                            return context.dataset.yAxisID === 'y1'
-                                ? `${context.parsed.y?.toFixed(0)}%`
-                                : fmtSignedSeconds(context.parsed.y);
+                            const index = context.dataIndex;
+                            if (values[index] === null) return rsT("Sem dados");
+
+                            const lines = [
+                                `${rsT("Atraso (s)")}: ${fmtSignedSeconds(delays[index])}`,
+                                `${rsT("% vs histórico")}: ${fmtRatio(ratios[index])}`,
+                            ];
+                            if (counts[index] !== null) lines.push(`${counts[index]} ${rsT("amostras")}`);
+                            if (weak(index)) lines.push(rsT("Sem amostras suficientes"));
+
+                            return lines;
                         },
                     },
                 },
                 rsAlertLines: { indices: alertLineIndices },
             },
             scales: {
-                x: { grid: { display: false } },
-                y: { position: 'left', grid: { color: COLORS.grid }, beginAtZero: true, title: { display: true, text: 'segundos' } },
-                y1: {
-                    position: 'right',
+                x: {
                     grid: { display: false },
+                    ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 },
+                },
+                y: {
                     beginAtZero: true,
-                    ticks: { callback: (value) => `${value}%` },
+                    grid: {
+                        // O zero (sem atraso) fica marcado: é a referência para ler o gráfico.
+                        color: (context) => (context.tick.value === 0 ? 'rgba(100, 116, 139, .55)' : COLORS.grid),
+                    },
+                    ticks: { callback: (value) => (isRatio ? `${value}%` : `${value}s`) },
                 },
             },
         },
@@ -876,10 +905,30 @@ function initCharts(page) {
     const data = readData(page);
     const canvas = (name) => page.querySelector(`[data-chart="${name}"]`);
 
-    mountChart('routeTimeline', canvas('route-timeline'), timelineConfig(
-        data.timeline,
-        alertIndices(data.nearbyAlerts, data.timeline.map((p) => p.time))
-    ));
+    const timelineCanvas = canvas('route-timeline');
+    const alertLines = alertIndices(data.nearbyAlerts, data.timeline.map((p) => p.time));
+    const metricButtons = [...page.querySelectorAll('[data-timeline-metric]')];
+
+    let metric = 'delay';
+    try { metric = localStorage.getItem('routeShow.timelineMetric') === 'ratio' ? 'ratio' : 'delay'; } catch { /* storage indisponível */ }
+
+    const drawTimeline = () => {
+        metricButtons.forEach((button) => {
+            const on = button.dataset.timelineMetric === metric;
+            button.classList.toggle('is-active', on);
+            button.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        mountChart('routeTimeline', timelineCanvas, timelineConfig(data.timeline, alertLines, metric));
+    };
+
+    metricButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            metric = button.dataset.timelineMetric === 'ratio' ? 'ratio' : 'delay';
+            try { localStorage.setItem('routeShow.timelineMetric', metric); } catch { /* storage indisponível */ }
+            drawTimeline();
+        });
+    });
+    drawTimeline();
     mountChart('routeByHour', canvas('route-by-hour'), barConfig(data.byHour, (p) => `${String(p.hour).padStart(2, '0')}h`));
     mountChart('routeByDow', canvas('route-by-dow'), barConfig(data.byDow, (p) => DOW_LABELS[p.dow] ?? '?'));
     mountChart('routeJamDist', canvas('route-jam-dist'), jamConfig(data.jamDistribution));
@@ -1080,6 +1129,55 @@ function initLive(page) {
 // Bootstrap
 // ─────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────
+// Abas (Visão geral · Padrões e histórico · Trechos e ocorrências)
+// ─────────────────────────────────────────────────────────────────────────
+
+function initTabs(page) {
+    const nav = page.querySelector('[data-rs-tabs]');
+    const panels = [...page.querySelectorAll('[data-tab-panel]')];
+    if (!nav || panels.length === 0) return;
+
+    const buttons = [...nav.querySelectorAll('[data-tab-target]')];
+
+    // Sem JavaScript todos os painéis ficam visíveis e a barra de abas fica oculta.
+    nav.hidden = false;
+    page.classList.add('rs-tabs-on');
+
+    const show = (name, { focus = false } = {}) => {
+        const target = panels.some((panel) => panel.dataset.tabPanel === name) ? name : panels[0].dataset.tabPanel;
+
+        buttons.forEach((button) => {
+            const on = button.dataset.tabTarget === target;
+            button.classList.toggle('is-active', on);
+            button.setAttribute('aria-selected', on ? 'true' : 'false');
+            button.tabIndex = on ? 0 : -1;
+            if (on && focus) button.focus();
+        });
+        panels.forEach((panel) => { panel.hidden = panel.dataset.tabPanel !== target; });
+
+        // Gráficos e mapas criados com o painel oculto recalculam o tamanho quando ele aparece.
+        requestAnimationFrame(() => {
+            window.dispatchEvent(new Event('resize'));
+            mainMap?.invalidateSize();
+            miniMaps.forEach((map) => map.invalidateSize?.());
+            charts.forEach((chart) => chart.resize());
+        });
+    };
+
+    buttons.forEach((button, index) => {
+        button.addEventListener('click', () => show(button.dataset.tabTarget));
+        button.addEventListener('keydown', (event) => {
+            const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+            if (!step) return;
+            event.preventDefault();
+            show(buttons[(index + step + buttons.length) % buttons.length].dataset.tabTarget, { focus: true });
+        });
+    });
+
+    show('overview');
+}
+
 /** Executa um passo de inicialização isolado: se um falhar, os demais continuam. */
 function step(name, fn) {
     try {
@@ -1096,6 +1194,7 @@ export function initRouteShow(root = document) {
     bootstrapped = true;
 
     // Controles de interface primeiro: nada que dependa de Leaflet/Chart.js pode impedi-los.
+    step('abas', () => initTabs(page));
     step(rsT("menu de exportação"), () => initExportMenu(page));
     step(rsT("menu de compartilhar"), () => initShareMenu(page));
     step('favoritar', () => initFavorite(page));
