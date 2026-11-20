@@ -1,0 +1,28 @@
+{% extends 'layouts/dashboard.html.twig' %}
+{% block title %}Atualidade da coleta | Trafik{% endblock %}
+{% block content %}
+<section aria-labelledby="collection-health-title">
+    <h1 id="collection-health-title">Atualidade da coleta</h1>
+    <p>Referência: {{ as_of|date('d/m/Y H:i:s', 'America/Sao_Paulo') }} (São Paulo).</p>
+    <p>Mostra os timestamps agregados registrados por parceiro, não a saúde individual de cada link. Sem registro não significa zero ocorrências. Atrasado: mais de dois intervalos configurados. O intervalo do parceiro é usado como referência para Waze e TVT.</p>
+    {% set labels = {'disabled': 'Parceiro inativo', 'no_record': 'Sem registro de coleta', 'clock_skew': 'Timestamp no futuro — verificar relógio', 'late': 'Registro atrasado', 'current': 'Registro recente'} %}
+    <div style="overflow-x:auto">
+        <table class="table">
+            <thead><tr><th>Parceiro</th><th>Fonte</th><th>Estado</th><th>Último registro (São Paulo)</th><th>Idade (s)</th><th>Intervalo de referência (s)</th></tr></thead>
+            <tbody>
+            {% for row in rows %}
+                <tr><td>{{ row.partner }}</td><td>{{ row.source }}</td><td>{{ labels[row.status] }}</td><td>{{ row.last_recorded_at ? row.last_recorded_at|date('d/m/Y H:i:s', 'America/Sao_Paulo') : '—' }}</td><td>{{ row.age_seconds is not null ? row.age_seconds : '—' }}</td><td>{{ row.expected_interval_seconds }}</td></tr>
+            {% else %}
+                <tr><td colspan="6">Nenhum parceiro disponível.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if global_scope %}
+        <nav aria-label="Páginas de parceiros">
+            {% if page > 1 %}<a href="{{ path('collection_health', {page: page - 1}) }}">Anterior</a>{% endif %}
+            {% if has_next %}<a href="{{ path('collection_health', {page: page + 1}) }}">Próxima</a>{% endif %}
+        </nav>
+    {% endif %}
+</section>
+{% endblock %}
