@@ -581,7 +581,10 @@ async function refreshHistory(root) {
         byCity.dataset.chartData = JSON.stringify(json.charts.by_city);
     }
     renderCharts(root);
-    fitToData();
+
+    if (mapState.currentView === 'history') {
+        fitToData();
+    }
 }
 
 async function refreshTable(root) {
@@ -625,16 +628,18 @@ function initFilters(root) {
         const filters = collectFilters(form);
         applyFiltersToUi(root, filters);
 
-        try {
-            await Promise.all([
-                fetchLive(root),
-                refreshHistory(root),
-                refreshTable(root),
-            ]);
-        } catch (err) {
-            console.error('[alerts] refresh after filter failed', err);
-            location.href = location.href;
-        }
+        const results = await Promise.allSettled([
+            fetchLive(root),
+            refreshHistory(root),
+            refreshTable(root),
+        ]);
+
+        results.forEach((result, index) => {
+            if (result.status === 'rejected') {
+                const label = ['live', 'history', 'table'][index];
+                console.error(`[alerts] refresh after filter failed (${label})`, result.reason);
+            }
+        });
     });
 
     form.querySelectorAll('[data-action="clear-filters"]').forEach((b) =>
