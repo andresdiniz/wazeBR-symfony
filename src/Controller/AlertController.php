@@ -62,7 +62,7 @@ final class AlertController extends AbstractController
     #[Route(
         '/alerts/{id}',
         name: 'alert_show',
-        requirements: ['id' => '\d+'],
+        requirements: ['id' => '\\d+'],
         methods: ['GET'],
     )]
     public function show(int $id, WazeAlertRepository $repository): Response
@@ -100,6 +100,7 @@ final class AlertController extends AbstractController
             ],
             'charts'  => [
                 'by_type' => $repository->getByType($partner, $filters),
+                'by_subtype' => $repository->getBySubtype($partner, $filters, 8),
                 'by_hour' => $repository->getByHour($partner, $filters),
             ],
             'generated_at' => (new \DateTimeImmutable())->format(DATE_ATOM),

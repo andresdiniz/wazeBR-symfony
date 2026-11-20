@@ -315,6 +315,10 @@ const mapState = {
     currentView: 'live',
 };
 
+const tableState = {
+    offset: 0,
+};
+
 function initMap(root) {
     const container = root.querySelector('[data-alerts-map]');
     if (!container || typeof L === 'undefined') return;
@@ -547,7 +551,61 @@ async function fetchLive(root) {
     if (byHour && json.charts?.by_hour) {
         byHour.dataset.chartData = JSON.stringify(json.charts.by_hour);
     }
+    const bySubtype = root.querySelector('[data-chart="by-subtype"]');
+    if (bySubtype && json.charts?.by_subtype) {
+        bySubtype.dataset.chartData = JSON.stringify(json.charts.by_subtype);
+    }
     renderCharts(root);
+}
+
+async function refreshHistory(root) {
+    const endpoint = root.dataset.endpointHistory;
+    const filters  = safeJson(root.dataset.currentFilters, {});
+    const precision = root.querySelector('[data-history-precision]')?.value || '2';
+    const url      = new URL(endpoint, location.origin);
+    url.search = filtersToQuery({ ...filters, precision });
+
+    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+
+    mapState.historyData = json.clusters || [];
+    renderHistoryClusters();
+
+    const byDay = root.querySelector('[data-chart="by-day"]');
+    if (byDay && json.charts?.by_day) {
+        byDay.dataset.chartData = JSON.stringify(json.charts.by_day);
+    }
+    const byCity = root.querySelector('[data-chart="by-city"]');
+    if (byCity && json.charts?.by_city) {
+        byCity.dataset.chartData = JSON.stringify(json.charts.by_city);
+    }
+    renderCharts(root);
+    fitToData();
+}
+
+async function refreshTable(root) {
+    const body = root.querySelector('[data-table-body]');
+    if (!body) return;
+
+    const endpoint = root.dataset.endpointList;
+    const filters  = safeJson(root.dataset.currentFilters, {});
+    const url      = new URL(endpoint, location.origin);
+    url.search = filtersToQuery({ ...filters, limit: 30, offset: 0 });
+
+    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    const rows = json.rows || [];
+
+    body.innerHTML = rows.length
+        ? rows.map(rowHtml).join('')
+        : `<tr><td colspan="8" class="alerts-empty">${escapeHtml(at("Nenhum alerta corresponde aos filtros."))}</td></tr>`;
+
+    tableState.offset = rows.length;
+
+    const count = root.querySelector('[data-table-count]');
+    if (count) count.textContent = `${rows.length} ${at("registros exibidos")}`;
 }
 
 function setText(root, selector, value) {
@@ -568,7 +626,11 @@ function initFilters(root) {
         applyFiltersToUi(root, filters);
 
         try {
-            await fetchLive(root);
+            await Promise.all([
+                fetchLive(root),
+                refreshHistory(root),
+                refreshTable(root),
+            ]);
         } catch (err) {
             console.error('[alerts] refresh after filter failed', err);
             location.href = location.href;
@@ -603,6 +665,8 @@ function initTable(root) {
     const count  = root.querySelector('[data-table-count]');
     const more   = root.querySelector('[data-action="load-more"]');
 
+    tableState.offset = body ? body.querySelectorAll('tr').length : 0;
+
     if (search && body) {
         search.addEventListener('input', () => {
             const q = search.value.trim().toLowerCase();
@@ -618,8 +682,6 @@ function initTable(root) {
     }
 
     if (more) {
-        let offset = body ? body.querySelectorAll('tr').length : 0;
-
         more.addEventListener('click', async () => {
             more.disabled = true;
             more.textContent = at("Carregando...");
@@ -627,7 +689,7 @@ function initTable(root) {
             const endpoint = root.dataset.endpointList;
             const filters  = safeJson(root.dataset.currentFilters, {});
             const url      = new URL(endpoint, location.origin);
-            url.search = filtersToQuery({ ...filters, limit: 30, offset });
+            url.search = filtersToQuery({ ...filters, limit: 30, offset: tableState.offset });
 
             try {
                 const res  = await fetch(url, { headers: { 'Accept': 'application/json' } });
@@ -642,9 +704,9 @@ function initTable(root) {
 
                 const html = rows.map(rowHtml).join('');
                 body.insertAdjacentHTML('beforeend', html);
-                offset += rows.length;
+                tableState.offset += rows.length;
 
-                if (count) count.textContent = `${offset} ${at("registros exibidos")}`;
+                if (count) count.textContent = `${tableState.offset} ${at("registros exibidos")}`;
                 more.disabled = false;
                 more.textContent = at("Carregar mais");
             } catch (err) {
