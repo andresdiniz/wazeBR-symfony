@@ -25,3 +25,16 @@ jobs:
           E2E_USERNAME: ${{ secrets.E2E_USERNAME }}
           E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
         run: NODE_PATH="$RUNNER_TEMP/trafik-browser/node_modules" node scripts/browser/alerts-smoke.cjs
+      - name: Test real API and exported CSV
+        env:
+          E2E_BASE_URL: ${{ secrets.E2E_BASE_URL }}
+          E2E_USERNAME: ${{ secrets.E2E_USERNAME }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+        run: NODE_PATH="$RUNNER_TEMP/trafik-browser/node_modules" node scripts/browser/alerts-api-csv.cjs
+      - name: Test empty results and partial failures
+        if: ${{ !cancelled() }}
+        env:
+          E2E_BASE_URL: ${{ secrets.E2E_BASE_URL }}
+          E2E_USERNAME: ${{ secrets.E2E_USERNAME }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+        run: NODE_PATH="$RUNNER_TEMP/trafik-browser/node_modules" node scripts/browser/alerts-resilience.cjs
