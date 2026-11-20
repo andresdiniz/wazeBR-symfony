@@ -44,7 +44,7 @@ final class MainSchedule implements ScheduleProviderInterface
                 new RunCommandMessage('app:db:maintain-snapshots --execute --keep-payload-hours=48 --keep-traffic-days=30 --batch-size=1000 --max-batches=50 --max-seconds=120 --pause-ms=100 --no-interaction'),
                 $timezone,
             ))
-            ->add(RecurringMessage::every('2 minute', new RunCommandMessage('app:jams:forecast --capture --no-interaction')));
+            ->add(RecurringMessage::every('5 minute', new RunCommandMessage('app:jams:forecast --no-interaction')));
         // A coleta de semáforos permanece desativada.
     }
 }
