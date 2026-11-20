@@ -4,16 +4,16 @@
 <section aria-labelledby="collection-health-title">
     <h1 id="collection-health-title">Atualidade da coleta</h1>
     <p>Referência: {{ as_of|date('d/m/Y H:i:s', 'America/Sao_Paulo') }} (São Paulo).</p>
-    <p>Mostra os timestamps agregados registrados por parceiro, não a saúde individual de cada link. Sem registro não significa zero ocorrências. Atrasado: mais de dois intervalos configurados. O intervalo do parceiro é usado como referência para Waze e TVT.</p>
+    <p>Mostra timestamps agregados por parceiro, não a saúde individual de cada link. Sem registro não significa zero ocorrências. O limite de atraso soma o intervalo do parceiro, a cadência do agendador (120 s) e a tolerância de execução (60 s). A frequência do parceiro é usada como referência para Waze e TVT; atraso não comprova falha.</p>
     {% set labels = {'disabled': 'Parceiro inativo', 'no_record': 'Sem registro de coleta', 'clock_skew': 'Timestamp no futuro — verificar relógio', 'late': 'Registro atrasado', 'current': 'Registro recente'} %}
     <div style="overflow-x:auto">
         <table class="table">
-            <thead><tr><th>Parceiro</th><th>Fonte</th><th>Estado</th><th>Último registro (São Paulo)</th><th>Idade (s)</th><th>Intervalo de referência (s)</th></tr></thead>
+            <thead><tr><th>Parceiro</th><th>Fonte</th><th>Estado</th><th>Último registro (São Paulo)</th><th>Idade (s)</th><th>Intervalo de referência (s)</th><th>Limite de atraso (s)</th></tr></thead>
             <tbody>
             {% for row in rows %}
-                <tr><td>{{ row.partner }}</td><td>{{ row.source }}</td><td>{{ labels[row.status] }}</td><td>{{ row.last_recorded_at ? row.last_recorded_at|date('d/m/Y H:i:s', 'America/Sao_Paulo') : '—' }}</td><td>{{ row.age_seconds is not null ? row.age_seconds : '—' }}</td><td>{{ row.expected_interval_seconds }}</td></tr>
+                <tr><td>{{ row.partner }}</td><td>{{ row.source }}</td><td>{{ labels[row.status] }}</td><td>{{ row.last_recorded_at ? row.last_recorded_at|date('d/m/Y H:i:s', 'America/Sao_Paulo') : '—' }}</td><td>{{ row.age_seconds is not null ? row.age_seconds : '—' }}</td><td>{{ row.expected_interval_seconds }}</td><td>{{ row.late_after_seconds }}</td></tr>
             {% else %}
-                <tr><td colspan="6">Nenhum parceiro disponível.</td></tr>
+                <tr><td colspan="7">Nenhum parceiro disponível.</td></tr>
             {% endfor %}
             </tbody>
         </table>

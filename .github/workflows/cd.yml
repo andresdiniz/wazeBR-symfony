@@ -1,41 +1,58 @@
 name: CD - Deploy to Production
 
 on:
-  push:
-    branches: [ main ]
+  workflow_run:
+    workflows: ['CI - Tests & Quality']
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
 
 jobs:
   deploy:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
     name: Deploy to Hostinger
     runs-on: ubuntu-latest
-    
     environment:
       name: production
       url: https://wazebr.com.br
-
     steps:
-      - name: Checkout
+      - name: Checkout tested commit
         uses: actions/checkout@v4
-
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - name: Reject superseded commit
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'
           extensions: mbstring, intl, curl, simplexml, json, mysql, pdo_mysql
           tools: composer:v2
-
       - name: Cache Composer dependencies
         uses: actions/cache@v4
         with:
           path: vendor
           key: ${{ runner.os }}-php-${{ hashFiles('composer.lock') }}
-
-      - name: Check platform requirements (PHP >= 8.5.12 e extensões)
+      - name: Check platform requirements
         run: composer check-platform-reqs --lock --no-dev
-
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress --no-dev --optimize-autoloader
-
+      - name: Validate production assets before upload
+        env:
+          APP_ENV: prod
+          APP_DEBUG: '0'
+        run: php bin/console asset-map:compile --env=prod
       - name: Check PHP version on server
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -44,7 +61,6 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             php -r 'if (version_compare(PHP_VERSION, "8.5.12", "<")) { fwrite(STDERR, "PHP " . PHP_VERSION . " < 8.5.12 no servidor\n"); exit(1); } echo "PHP " . PHP_VERSION . " OK\n";'
-
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
@@ -61,7 +77,6 @@ jobs:
             .env*
             vendor/**
           dry-run: false
-
       - name: Upload vendor separately
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
@@ -71,7 +86,6 @@ jobs:
           local-dir: vendor/
           server-dir: /public_html/vendor/
           dry-run: false
-
       - name: Run migrations on server
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -79,16 +93,15 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           script: |
+            set -e
             cd /home/u937753890/domains/wazebr.com.br/public_html
             php bin/console asset-map:compile --env=prod
             php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
             php bin/console cache:clear --env=prod
             php bin/console cache:warmup --env=prod
-
       - name: Notify success
         if: success()
-        run: echo "✅ Deploy completed successfully!"
-
+        run: echo "Deploy completed successfully"
       - name: Notify failure
         if: failure()
-        run: echo "❌ Deploy failed! Check logs for details."
+        run: echo "Deploy failed - check logs"

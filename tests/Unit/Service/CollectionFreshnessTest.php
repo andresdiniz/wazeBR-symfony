@@ -16,10 +16,27 @@ final class CollectionFreshnessTest extends TestCase
         self::assertSame('no_record', $service->evaluate(null, 60, true, $now)['status']);
         self::assertSame('disabled', $service->evaluate(null, 60, false, $now)['status']);
         self::assertSame('clock_skew', $service->evaluate($now->modify('+1 second'), 60, true, $now)['status']);
-        self::assertSame('current', $service->evaluate($now->modify('-120 seconds'), 60, true, $now)['status']);
-        $late = $service->evaluate($now->modify('-121 seconds'), 60, true, $now);
+        self::assertSame('current', $service->evaluate($now->modify('-240 seconds'), 60, true, $now)['status']);
+        $late = $service->evaluate($now->modify('-241 seconds'), 60, true, $now);
         self::assertSame('late', $late['status']);
-        self::assertSame(121, $late['age_seconds']);
+        self::assertSame(241, $late['age_seconds']);
+        self::assertSame(240, $late['late_after_seconds']);
         self::assertSame(1, $service->evaluate(null, 0, true, $now)['expected_interval_seconds']);
+    }
+
+    public function testShortIntervalDoesNotExpireBeforeSchedulerCanRun(): void
+    {
+        $service = new CollectionFreshness();
+        $now = new \DateTimeImmutable('2026-01-01T12:00:00Z');
+        self::assertSame('current', $service->evaluate($now->modify('-120 seconds'), 10, true, $now)['status']);
+        self::assertSame(190, $service->evaluate(null, 10, true, $now)['late_after_seconds']);
+    }
+
+    public function testCadenceCanBeConfigured(): void
+    {
+        $service = new CollectionFreshness(30, 10);
+        $now = new \DateTimeImmutable('2026-01-01T12:00:00Z');
+        self::assertSame('current', $service->evaluate($now->modify('-100 seconds'), 60, true, $now)['status']);
+        self::assertSame('late', $service->evaluate($now->modify('-101 seconds'), 60, true, $now)['status']);
     }
 }
