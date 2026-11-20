@@ -27,7 +27,6 @@ final class MainSchedule implements ScheduleProviderInterface
             ->add(RecurringMessage::every('2 minutes', new RunCommandMessage('app:fetch-waze-feed --no-interaction')))
             // Lê a última observação disponível; a ordem não garante coleta prévia.
             // O comando tem lock por parceiro e não duplica snapshots com o mesmo last_seen_at.
-            ->add(RecurringMessage::every('1 minute', new RunCommandMessage('app:jams:forecast --no-interaction')))
             ->add(RecurringMessage::every('2 minutes', new RunCommandMessage('app:fetch:waze:tvt --no-interaction')))
             // Sem --partner: percorre parceiros ativos com links TVT. A trava é compartilhada com a coleta acima.
             ->add(RecurringMessage::every('1 minutes', new RunCommandMessage('app:fetch:waze:tvt-irregularities --no-interaction')))
@@ -44,7 +43,8 @@ final class MainSchedule implements ScheduleProviderInterface
                 '17 3 * * *',
                 new RunCommandMessage('app:db:maintain-snapshots --execute --keep-payload-hours=48 --keep-traffic-days=30 --batch-size=1000 --max-batches=50 --max-seconds=120 --pause-ms=100 --no-interaction'),
                 $timezone,
-            ));
+            ))
+            ->add(RecurringMessage::every('2 minute', new RunCommandMessage('app:jams:forecast --capture --no-interaction')));
         // A coleta de semáforos permanece desativada.
     }
 }
