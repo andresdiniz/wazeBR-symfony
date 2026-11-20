@@ -5,6 +5,25 @@
         <link rel="stylesheet" href="{{ asset('css/pages/dashboard-decisions.css') }}">
         <link rel="stylesheet" href="{{ asset('css/pages/dashboard-period-comparison.css') }}">
     {% endif %}
+    {% if app.request.attributes.get('_route') == 'alert_index' %}
+        {# Keep Leaflet layers positioned even when external styles are unavailable or overridden. #}
+        <style>
+            [data-alerts-map] .leaflet-pane,
+            [data-alerts-map] .leaflet-tile,
+            [data-alerts-map] .leaflet-marker-icon,
+            [data-alerts-map] .leaflet-marker-shadow,
+            [data-alerts-map] .leaflet-tile-container,
+            [data-alerts-map] .leaflet-pane > svg,
+            [data-alerts-map] .leaflet-pane > canvas,
+            [data-alerts-map] .leaflet-zoom-box,
+            [data-alerts-map] .leaflet-image-layer,
+            [data-alerts-map] .leaflet-layer {
+                position: absolute !important;
+                left: 0;
+                top: 0;
+            }
+        </style>
+    {% endif %}
 {% endblock %}
 {% block body_class %}app-body dashboard-layout{% endblock %}
 {% block body %}
