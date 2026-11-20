@@ -142,7 +142,7 @@ const COMPONENTS = {
 
 // ── Infra ──────────────────────────────────────────────────────────────
 
-const LOG = '[WazeBR]';
+const LOG = '[Trafik]';
 const loaded = new Set();
 
 function once(name) {

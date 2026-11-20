@@ -105,7 +105,7 @@ final class AlertNotificationService
             $trust[] = 'Reportado por usuário de prefeitura';
         }
 
-        $subject = preg_replace('/[\r\n]+/', ' ', sprintf('[WazeBR] %s — %s', $title, $location ?: $partner->getName())) ?? '[WazeBR] Alerta';
+        $subject = preg_replace('/[\r\n]+/', ' ', sprintf('acesso ao Trafik %s — %s', $title, $location ?: $partner->getName())) ?? 'acesso ao Trafik Alerta';
 
         $lines = [
             mb_strtoupper($title) . ' · Gravidade: ' . $info['severity']['label'],

@@ -82,7 +82,7 @@ const COMPONENTS = {
         match: '[data-route-show]',
         init: () => import('./pages/route-show.js'),
     },
-    
+
     // ____ página de comparação de rotas
     routeCompare: {
         match: '[data-route-compare]',
@@ -93,7 +93,7 @@ const COMPONENTS = {
 
 // ── Infra ──────────────────────────────────────────────────────────────
 
-const LOG = '[WazeBR]';
+const LOG = '[Trafik]';
 const loaded = new Set();
 
 function once(name) {

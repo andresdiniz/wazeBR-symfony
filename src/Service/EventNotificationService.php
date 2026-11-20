@@ -87,7 +87,7 @@ final class EventNotificationService
         $description = trim((string) $event->getDescription());
         $settingsUrl = $this->settingsUrl();
 
-        $subject = preg_replace('/[\r\n]+/', ' ', sprintf('[WazeBR] %s — %s', $title, $street !== '' ? $street : (string) $partner->getName())) ?? '[WazeBR] Novo evento';
+        $subject = preg_replace('/[\r\n]+/', ' ', sprintf('[Trafik] %s — %s', $title, $street !== '' ? $street : (string) $partner->getName())) ?? '[Trafik] Novo evento';
         $text = sprintf(
             "%s\n%s\n\nParceiro: %s\nTipo: %s\nVia: %s\nCidade: %s\nPeríodo: %s%s%s",
             $title,

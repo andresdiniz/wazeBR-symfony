@@ -109,7 +109,7 @@ const COMPONENTS = {
 
 // ── 3. Infra interna ───────────────────────────────────────────────────
 
-const LOG = '[WazeBR]';
+const LOG = '[Trafik]';
 const loaded = new Set();
 
 /** Garante que o mesmo init não rode duas vezes (HMR / re-bootstrap). */
