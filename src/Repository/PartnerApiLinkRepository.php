@@ -29,8 +29,10 @@ class PartnerApiLinkRepository extends ServiceEntityRepository
             ->addSelect('partner')
             ->andWhere('UPPER(link.type) = :type')
             ->andWhere('link.active = :active')
+            ->andWhere('partner.isActive = :partnerActive')
             ->setParameter('type', mb_strtoupper(trim($type)))
             ->setParameter('active', true)
+            ->setParameter('partnerActive', true)
             ->orderBy('partner.id', 'ASC')
             ->addOrderBy('link.id', 'ASC')
             ->getQuery()
@@ -42,11 +44,18 @@ class PartnerApiLinkRepository extends ServiceEntityRepository
      */
     public function findAllActiveByPartner(Partner $partner): array
     {
+        if (!$partner->isActive()) {
+            return [];
+        }
+
         return $this->createQueryBuilder('link')
+            ->innerJoin('link.partner', 'partner')
             ->andWhere('link.partner = :partner')
             ->andWhere('link.active = :active')
+            ->andWhere('partner.isActive = :partnerActive')
             ->setParameter('partner', $partner)
             ->setParameter('active', true)
+            ->setParameter('partnerActive', true)
             ->orderBy('link.id', 'ASC')
             ->getQuery()
             ->getResult();
