@@ -70,11 +70,11 @@ final class DownloadAuditSubscriber implements EventSubscriberInterface
     }
 
     private function filename(string $disposition): ?string
-    {
-        if (preg_match('/filename\\*?=(?:UTF-8\\'\\'|\\")?([^;\\"]+)/i', $disposition, $matches) !== 1) {
-            return null;
-        }
+        {
+            if (preg_match('/filename\*?=(?:UTF-8\'|")?([^;"]+)/i', $disposition, $matches) !== 1) {
+                return null;
+            }
 
-        return mb_substr(rawurldecode(trim($matches[1], " \\t\\\"")), 0, 255);
-    }
+            return mb_substr(rawurldecode(trim($matches[1], " \t\"")), 0, 255);
+        }
 }
