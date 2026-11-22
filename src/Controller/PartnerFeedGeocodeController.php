@@ -13,7 +13,6 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Security\Core\Security;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 final class PartnerFeedGeocodeController extends AbstractController
@@ -22,10 +21,10 @@ final class PartnerFeedGeocodeController extends AbstractController
         private readonly HttpClientInterface $httpClient,
         private readonly PartnerRepository $partnerRepository,
         private readonly RemoteUrlGuard $remoteUrlGuard,
-        private readonly Security $security,
         #[Autowire(service: 'limiter.reverse_geocode')]
         private readonly RateLimiterFactory $rateLimiter,
-    ) {}
+    ) {
+    }
 
     #[Route(
         '/partner-feed/{code}/reverse-geocode',
@@ -35,7 +34,15 @@ final class PartnerFeedGeocodeController extends AbstractController
     public function reverseGeocode(string $code, Request $request): JsonResponse
     {
         $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
-        $key = (string) ($this->security->getUser()?->getUserIdentifier() ?? $request->getClientIp() ?? 'anonymous');
+
+        $user = $this->getUser();
+
+        if (!$user instanceof User) {
+            throw $this->createAccessDeniedException();
+        }
+
+        $key = (string) ($user->getUserIdentifier() ?? $request->getClientIp() ?? 'anonymous');
+
         if (!$this->rateLimiter->create($key)->consume()->isAccepted()) {
             return $this->json(['error' => 'Limite de consultas atingido.'], 429);
         }
@@ -44,12 +51,13 @@ final class PartnerFeedGeocodeController extends AbstractController
         $lon = $request->query->get('lon');
 
         if ($lat === null || $lon === null || !is_numeric($lat) || !is_numeric($lon)
-            || (float) $lat < -90 || (float) $lat > 90 || (float) $lon < -180 || (float) $lon > 180) {
+            || (float) $lat < -90 || (float) $lat > 90
+            || (float) $lon < -180 || (float) $lon > 180) {
             return $this->json(['error' => 'lat e lon são obrigatórios'], 400);
         }
 
         $partner = $this->partnerRepository->findOneBy([
-            'code'     => $code,
+            'code' => $code,
             'isActive' => true,
         ]);
 
@@ -57,17 +65,31 @@ final class PartnerFeedGeocodeController extends AbstractController
             return $this->json(['error' => 'Parceiro não encontrado'], 404);
         }
 
-        $user = $this->security->getUser();
-        if (!$user instanceof User || (!$user->isGlobalAdmin() && $user->getPartner()?->getId() !== $partner->getId())) {
+        if (!$user->isGlobalAdmin() && $user->getPartner()?->getId() !== $partner->getId()) {
             throw $this->createAccessDeniedException();
         }
 
         $token = $partner->getReverseGeocodingToken();
-        if (!$token) {
+
+        if ($token === null || $token === '') {
             return $this->json(['error' => 'Token não configurado'], 422);
         }
 
         $base = $partner->getReverseGeocodingBaseUrl();
+
+        if ($base === null || $base === '') {
+            return $this->json(['error' => 'Serviço de geocodificação não configurado'], 422);
+        }
+
+        $baseParts = parse_url($base);
+
+        if ($baseParts === false
+            || !isset($baseParts['scheme'], $baseParts['host'])
+            || isset($baseParts['query'])
+            || isset($baseParts['fragment'])) {
+            return $this->json(['error' => 'Serviço de geocodificação indisponível'], 503);
+        }
+
         if (!$this->remoteUrlGuard->isAllowedPublicHttpUrl($base)) {
             return $this->json(['error' => 'Serviço de geocodificação indisponível'], 503);
         }
@@ -75,8 +97,8 @@ final class PartnerFeedGeocodeController extends AbstractController
         try {
             $response = $this->httpClient->request('GET', $base, [
                 'query' => [
-                    'lat'   => $lat,
-                    'lon'   => $lon,
+                    'lat' => $lat,
+                    'lon' => $lon,
                     'token' => $token,
                 ],
                 'timeout' => 5,

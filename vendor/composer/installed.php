@@ -3,7 +3,7 @@
         'name' => 'andresdiniz/waze-br',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => 'df908ec3f6831de16aa8033215a8a2a5a8fffd83',
+        'reference' => '2827b96a3e824a8daca104cfe0c45bcc4c6a0d4f',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -130,7 +130,7 @@
         'andresdiniz/waze-br' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => 'df908ec3f6831de16aa8033215a8a2a5a8fffd83',
+            'reference' => '2827b96a3e824a8daca104cfe0c45bcc4c6a0d4f',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
