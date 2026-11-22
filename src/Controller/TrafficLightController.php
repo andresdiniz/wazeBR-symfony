@@ -43,10 +43,9 @@ final class TrafficLightController extends AbstractController
     public function list(): Response
     {
         $partner = $this->getPartnerFromUser();
-
         return $this->render('traffic_lights/list.html.twig', [
             'partner' => $partner,
-            'lights'  => $this->lightRepository->findByPartner($partner),
+            'lights' => $this->lightRepository->findByPartner($partner),
         ]);
     }
 
@@ -62,130 +61,133 @@ final class TrafficLightController extends AbstractController
     public function statusJson(): JsonResponse
     {
         $partner = $this->getPartnerFromUser();
-        $lights  = $this->lightRepository->findByPartner($partner);
-
+        $lights = $this->lightRepository->findByPartner($partner);
         return $this->json(array_map(static fn (TrafficLight $l): array => [
-            'id'         => $l->getId(),
-            'code'       => $l->getCode(),
-            'name'       => $l->getName(),
-            'protocol'   => $l->getProtocol(),
-            'status'     => $l->getLastReadStatus() ?? 'PENDING',
-            'error'      => $l->getLastReadError(),
+            'id' => $l->getId(),
+            'code' => $l->getCode(),
+            'name' => $l->getName(),
+            'protocol' => $l->getProtocol(),
+            'status' => $l->getLastReadStatus() ?? 'PENDING',
+            'error' => $l->getLastReadError(),
             'lastReadAt' => $l->getLastReadAt()?->format(\DateTimeInterface::ATOM),
-            'latitude'   => $l->getLatitude(),
-            'longitude'  => $l->getLongitude(),
+            'latitude' => $l->getLatitude(),
+            'longitude' => $l->getLongitude(),
         ], $lights));
     }
 
-    // ── Descoberta de controladores SensorThings (Hamburg) ──────────────
     #[Route('/discover/sensorthings', name: 'discover_sensorthings', methods: ['GET'])]
     #[IsGranted(new Expression("is_granted('ROLE_ADMIN') or is_granted('ROLE_TRAFFIC_OPERATOR')"))]
     public function discoverSensorThings(Request $request): JsonResponse
     {
-        $base      = 'https://tld.iot.hamburg.de/v1.1';
-        $service   = (string) $request->query->get('service', 'HH_STA_traffic_lights');
-        $layerName = (string) $request->query->get('layer', 'primary_signal');
-        $limit     = min(50, max(1, (int) $request->query->get('limit', 10)));
+        $base = 'https://tld.iot.hamburg.de/v1.1';
+        $query = $request->query->all();
+        $service = $query['service'] ?? 'HH_STA_traffic_lights';
+        $layerName = $query['layer'] ?? 'primary_signal';
+        $limitValue = $query['limit'] ?? '10';
+
+        if (!is_string($service) || !is_string($layerName)
+            || preg_match('/\A[A-Za-z0-9_.-]{1,100}\z/', $service) !== 1
+            || preg_match('/\A[A-Za-z0-9_.-]{1,100}\z/', $layerName) !== 1) {
+            return $this->json(['ok' => false, 'error' => 'Serviço ou camada inválidos.'], 400);
+        }
+        if (!is_string($limitValue) && !is_int($limitValue)) {
+            return $this->json(['ok' => false, 'error' => 'Limite inválido.'], 400);
+        }
+        $limit = filter_var($limitValue, FILTER_VALIDATE_INT, [
+            'options' => ['min_range' => 1, 'max_range' => 50],
+        ]);
+        if ($limit === false) {
+            return $this->json(['ok' => false, 'error' => 'O limite deve ser um inteiro entre 1 e 50.'], 400);
+        }
 
         $filter = sprintf(
             "properties/serviceName eq '%s' and properties/layerName eq '%s'",
             $service,
             $layerName,
         );
-
         $url = $base . '/Datastreams'
-             . '?$filter=' . rawurlencode($filter)
-             . '&$top='   . $limit
-             . '&$expand=Thing($expand=Locations)'
-             . '&$orderby=@iot.id%20asc';
+            . '?$filter=' . rawurlencode($filter)
+            . '&$top=' . $limit
+            . '&$expand=Thing($expand=Locations)'
+            . '&$orderby=@iot.id%20asc';
 
         try {
-            $res  = $this->httpClient->request('GET', $url, ['timeout' => 15]);
-            $data = $res->toArray(false);
-        } catch (\Throwable $e) {
-            return $this->json(['ok' => false, 'error' => $e->getMessage()], 502);
+            $res = $this->httpClient->request('GET', $url, [
+                'timeout' => 10,
+                'max_duration' => 15,
+                'max_redirects' => 0,
+                'headers' => ['Accept' => 'application/json'],
+            ]);
+            if ($res->getStatusCode() !== Response::HTTP_OK) {
+                $res->cancel();
+                return $this->json(['ok' => false, 'error' => 'Serviço de descoberta indisponível.'], 502);
+            }
+            $data = $res->toArray();
+            if (!isset($data['value']) || !is_array($data['value'])) {
+                return $this->json(['ok' => false, 'error' => 'Resposta inválida do serviço de descoberta.'], 502);
+            }
+        } catch (\Throwable) {
+            return $this->json(['ok' => false, 'error' => 'Falha ao consultar o serviço de descoberta.'], 502);
         }
 
         $items = [];
-        foreach ($data['value'] ?? [] as $ds) {
-            $thing  = $ds['Thing'] ?? [];
+        foreach ($data['value'] as $ds) {
+            if (!is_array($ds)) {
+                return $this->json(['ok' => false, 'error' => 'Resposta inválida do serviço de descoberta.'], 502);
+            }
+            $thing = $ds['Thing'] ?? [];
             $coords = $this->extractCentroid(
                 $thing['Locations'][0]['location']['geometry']['coordinates'] ?? null,
             );
-
             $items[] = [
-                'datastreamId'    => $ds['@iot.id'] ?? null,
-                'datastreamName'  => $ds['name'] ?? null,
-                'datastreamUrl'   => $ds['@iot.selfLink'] ?? null,
-                'description'     => $ds['description'] ?? null,
-                'unit'            => $ds['unitOfMeasurement']['symbol'] ?? null,
-                'unitDefinition'  => $ds['unitOfMeasurement']['definition'] ?? null,
-                'observedArea'    => $ds['observedArea'] ?? null,
-
-                'thingId'         => $thing['@iot.id'] ?? null,
-                'thingName'       => $thing['name'] ?? null,
-                'thingUrl'        => $thing['@iot.selfLink'] ?? null,
-
-                'latitude'        => $coords['lat'] ?? null,
-                'longitude'       => $coords['lng'] ?? null,
-
-                // Metadados úteis extraídos do Thing.properties
-                'signalGroupId'   => $ds['properties']['signalGroupID'] ?? null,
+                'datastreamId' => $ds['@iot.id'] ?? null,
+                'datastreamName' => $ds['name'] ?? null,
+                'datastreamUrl' => $ds['@iot.selfLink'] ?? null,
+                'description' => $ds['description'] ?? null,
+                'unit' => $ds['unitOfMeasurement']['symbol'] ?? null,
+                'unitDefinition' => $ds['unitOfMeasurement']['definition'] ?? null,
+                'observedArea' => $ds['observedArea'] ?? null,
+                'thingId' => $thing['@iot.id'] ?? null,
+                'thingName' => $thing['name'] ?? null,
+                'thingUrl' => $thing['@iot.selfLink'] ?? null,
+                'latitude' => $coords['lat'] ?? null,
+                'longitude' => $coords['lng'] ?? null,
+                'signalGroupId' => $ds['properties']['signalGroupID'] ?? null,
                 'trafficLightsId' => $thing['properties']['trafficLightsID'] ?? null,
-                'connectionId'    => $thing['properties']['connectionID'] ?? null,
-                'laneType'        => $thing['properties']['laneType'] ?? null,
-                'keywords'        => $thing['properties']['keywords'] ?? [],
-
-                'serviceName'     => $ds['properties']['serviceName'] ?? null,
-                'layerName'       => $ds['properties']['layerName'] ?? null,
+                'connectionId' => $thing['properties']['connectionID'] ?? null,
+                'laneType' => $thing['properties']['laneType'] ?? null,
+                'keywords' => $thing['properties']['keywords'] ?? [],
+                'serviceName' => $ds['properties']['serviceName'] ?? null,
+                'layerName' => $ds['properties']['layerName'] ?? null,
             ];
         }
-
         return $this->json([
-            'ok'      => true,
-            'base'    => $base,
-            'service' => $service,
-            'layer'   => $layerName,
-            'count'   => count($items),
-            'items'   => $items,
+            'ok' => true, 'base' => $base, 'service' => $service,
+            'layer' => $layerName, 'count' => count($items), 'items' => $items,
         ]);
     }
 
-    /**
-     * Extrai um ponto representativo (centroide) de uma geometria GeoJSON.
-     * Suporta Point, LineString e MultiLineString — o resultado é sempre { lat, lng }.
-     *
-     * Lembrete: em GeoJSON, a ordem é [longitude, latitude].
-     *
-     * @param mixed $coordinates
-     * @return array{lat:?float,lng:?float}
-     */
+    /** @return array{lat:?float,lng:?float} */
     private function extractCentroid(mixed $coordinates): array
     {
         $points = [];
-
         $walk = function (array $node) use (&$walk, &$points): void {
-            // Se o primeiro elemento é numérico, é um par [lng, lat]
-            if (isset($node[0]) && is_numeric($node[0]) && isset($node[1]) && is_numeric($node[1])) {
+            if (isset($node[0], $node[1]) && is_numeric($node[0]) && is_numeric($node[1])) {
                 $points[] = [(float) $node[0], (float) $node[1]];
                 return;
             }
-            // Senão, aprofunda
             foreach ($node as $child) {
                 if (is_array($child)) {
                     $walk($child);
                 }
             }
         };
-
         if (is_array($coordinates)) {
             $walk($coordinates);
         }
-
         if ($points === []) {
             return ['lat' => null, 'lng' => null];
         }
-
         $sumLng = 0.0;
         $sumLat = 0.0;
         foreach ($points as [$lng, $lat]) {
@@ -193,41 +195,30 @@ final class TrafficLightController extends AbstractController
             $sumLat += $lat;
         }
         $n = count($points);
-
-        return [
-            'lat' => round($sumLat / $n, 7),
-            'lng' => round($sumLng / $n, 7),
-        ];
+        return ['lat' => round($sumLat / $n, 7), 'lng' => round($sumLng / $n, 7)];
     }
-    
+
     #[Route('/new', name: 'new', methods: ['GET', 'POST'])]
     #[IsGranted('ROLE_ADMIN')]
     public function new(Request $request): Response
     {
         $partner = $this->getPartnerFromUser();
-
         $light = new TrafficLight();
         $light->setPartner($partner);
-
         $form = $this->createForm(TrafficLightType::class, $light);
         $form->handleRequest($request);
-
         if ($form->isSubmitted() && $form->isValid()) {
             if (!$this->applyOptionsJson($form->get('optionsJson')->getData(), $light)) {
                 $this->addFlash('error', 'JSON inválido no campo de opções.');
             } else {
                 $this->em->persist($light);
                 $this->em->flush();
-
                 $this->addFlash('success', sprintf('Controlador "%s" criado.', $light->getCode()));
                 return $this->redirectToRoute('traffic_light_list');
             }
         }
-
         return $this->render('traffic_lights/form.html.twig', [
-            'partner' => $partner,
-            'light'   => $light,
-            'form'    => $form,
+            'partner' => $partner, 'light' => $light, 'form' => $form,
         ]);
     }
 
@@ -236,16 +227,11 @@ final class TrafficLightController extends AbstractController
     public function edit(int $id, Request $request): Response
     {
         $partner = $this->getPartnerFromUser();
-        $light   = $this->getLightOr404($id, $partner);
-
+        $light = $this->getLightOr404($id, $partner);
         $form = $this->createForm(TrafficLightType::class, $light, [
-            'optionsJson' => json_encode(
-                $light->getOptions(),
-                JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
-            ) ?: '{}',
+            'optionsJson' => json_encode($light->getOptions(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '{}',
         ]);
         $form->handleRequest($request);
-
         if ($form->isSubmitted() && $form->isValid()) {
             if (!$this->applyOptionsJson($form->get('optionsJson')->getData(), $light)) {
                 $this->addFlash('error', 'JSON inválido no campo de opções.');
@@ -255,11 +241,8 @@ final class TrafficLightController extends AbstractController
                 return $this->redirectToRoute('traffic_light_list');
             }
         }
-
         return $this->render('traffic_lights/form.html.twig', [
-            'partner' => $partner,
-            'light'   => $light,
-            'form'    => $form,
+            'partner' => $partner, 'light' => $light, 'form' => $form,
         ]);
     }
 
@@ -268,14 +251,12 @@ final class TrafficLightController extends AbstractController
     public function delete(int $id, Request $request): Response
     {
         $partner = $this->getPartnerFromUser();
-        $light   = $this->getLightOr404($id, $partner);
-
+        $light = $this->getLightOr404($id, $partner);
         if ($this->isCsrfTokenValid('delete_tl_' . $id, (string) $request->request->get('_token'))) {
             $this->em->remove($light);
             $this->em->flush();
             $this->addFlash('success', 'Controlador removido.');
         }
-
         return $this->redirectToRoute('traffic_light_list');
     }
 
@@ -283,12 +264,10 @@ final class TrafficLightController extends AbstractController
     public function show(int $id): Response
     {
         $partner = $this->getPartnerFromUser();
-        $light   = $this->getLightOr404($id, $partner);
-
+        $light = $this->getLightOr404($id, $partner);
         return $this->render('traffic_lights/show.html.twig', [
-            'partner' => $partner,
-            'light'   => $light,
-            'latest'  => $this->snapshotRepository->findLatestForLight($light),
+            'partner' => $partner, 'light' => $light,
+            'latest' => $this->snapshotRepository->findLatestForLight($light),
             'history' => $this->snapshotRepository->findHistoryForLight($light, 50),
         ]);
     }
@@ -297,8 +276,7 @@ final class TrafficLightController extends AbstractController
     public function readNow(int $id): JsonResponse
     {
         $partner = $this->getPartnerFromUser();
-        $light   = $this->getLightOr404($id, $partner);
-
+        $light = $this->getLightOr404($id, $partner);
         try {
             $state = $this->manager->readNow($light);
             return $this->json(['ok' => true, 'state' => $state->toArray()]);
@@ -317,21 +295,13 @@ final class TrafficLightController extends AbstractController
         if (!$this->trafficControlLimiter->create((string) ($this->getUser()?->getUserIdentifier() ?? 'anonymous'))->consume()->isAccepted()) {
             return $this->json(['ok' => false, 'error' => 'rate_limit'], Response::HTTP_TOO_MANY_REQUESTS);
         }
-
         $partner = $this->getPartnerFromUser();
-        $light   = $this->getLightOr404($id, $partner);
-
-        $payload = json_decode((string) $request->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        $type    = (string) ($payload['type'] ?? '');
-        $data    = (array)  ($payload['payload'] ?? []);
-        $reason  = isset($payload['reason']) ? (string) $payload['reason'] : null;
-
+        $light = $this->getLightOr404($id, $partner);
         try {
-            $command = new TrafficLightCommand($type, $data, $reason);
+            $command = $this->commandFromRequest($request);
         } catch (\InvalidArgumentException $e) {
             return $this->json(['ok' => false, 'error' => $e->getMessage()], 400);
         }
-
         try {
             $user = $this->getUser();
             $userId = $user !== null && method_exists($user, 'getId') ? (int) $user->getId() : null;
@@ -347,35 +317,27 @@ final class TrafficLightController extends AbstractController
     public function control(int $id): Response
     {
         $partner = $this->getPartnerFromUser();
-        $light   = $this->getLightOr404($id, $partner);
-
+        $light = $this->getLightOr404($id, $partner);
         $latest = $this->snapshotRepository->findLatestForLight($light);
-
         $commands = [];
         foreach ($this->snapshotRepository->findHistoryForLight($light, 20) as $snap) {
             $state = $snap->getState();
             if (isset($state['command'])) {
                 $commands[] = [
-                    'at'      => $snap->getReadAt(),
-                    'success' => $snap->isSuccess(),
-                    'type'    => (string) $state['command'],
-                    'payload' => (array) ($state['payload'] ?? []),
-                    'reason'  => (string) ($state['reason'] ?? ''),
+                    'at' => $snap->getReadAt(), 'success' => $snap->isSuccess(),
+                    'type' => (string) $state['command'], 'payload' => (array) ($state['payload'] ?? []),
+                    'reason' => (string) ($state['reason'] ?? ''),
                 ];
             }
         }
-
         return $this->render('traffic_lights/control.html.twig', [
-            'partner'  => $partner,
-            'light'    => $light,
-            'latest'   => $latest,
-            'commands' => $commands,
-            'presets'  => [
-                'flash'    => ['type' => 'FLASH_YELLOW', 'label' => 'Piscante amarelo', 'icon' => '⚠'],
-                'all_red'  => ['type' => 'ALL_RED',      'label' => 'Tudo vermelho',    'icon' => '⛔'],
-                'all_dark' => ['type' => 'ALL_DARK',     'label' => 'Apagar tudo',      'icon' => '⏻'],
-                'auto'     => ['type' => 'SET_MODE',     'label' => 'Modo automático',  'icon' => '▶', 'payload' => ['mode' => 'AUTOMATIC']],
-                'manual'   => ['type' => 'SET_MODE',     'label' => 'Modo manual',      'icon' => '✋', 'payload' => ['mode' => 'MANUAL']],
+            'partner' => $partner, 'light' => $light, 'latest' => $latest, 'commands' => $commands,
+            'presets' => [
+                'flash' => ['type' => 'FLASH_YELLOW', 'label' => 'Piscante amarelo', 'icon' => '⚠'],
+                'all_red' => ['type' => 'ALL_RED', 'label' => 'Tudo vermelho', 'icon' => '⛔'],
+                'all_dark' => ['type' => 'ALL_DARK', 'label' => 'Apagar tudo', 'icon' => '⏻'],
+                'auto' => ['type' => 'SET_MODE', 'label' => 'Modo automático', 'icon' => '▶', 'payload' => ['mode' => 'AUTOMATIC']],
+                'manual' => ['type' => 'SET_MODE', 'label' => 'Modo manual', 'icon' => '✋', 'payload' => ['mode' => 'MANUAL']],
             ],
         ]);
     }
@@ -390,39 +352,60 @@ final class TrafficLightController extends AbstractController
         if (!$this->trafficControlLimiter->create((string) ($this->getUser()?->getUserIdentifier() ?? 'anonymous'))->consume()->isAccepted()) {
             return $this->json(['ok' => false, 'error' => 'rate_limit'], Response::HTTP_TOO_MANY_REQUESTS);
         }
-
         $partner = $this->getPartnerFromUser();
-        $light   = $this->getLightOr404($id, $partner);
-
-        $payload = json_decode((string) $request->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        $type    = (string) ($payload['type'] ?? '');
-        $data    = (array)  ($payload['payload'] ?? []);
-        $reason  = isset($payload['reason']) && $payload['reason'] !== ''
-            ? (string) $payload['reason']
-            : null;
-
+        $light = $this->getLightOr404($id, $partner);
         try {
-            $command = new TrafficLightCommand($type, $data, $reason);
+            $command = $this->commandFromRequest($request);
         } catch (\InvalidArgumentException $e) {
             return $this->json(['ok' => false, 'error' => $e->getMessage()], 400);
         }
-
         try {
             $user = $this->getUser();
             $userId = $user !== null && method_exists($user, 'getId') ? (int) $user->getId() : null;
             $ok = $this->manager->write($light, $command, $userId);
-
-            return $this->json([
-                'ok'      => $ok,
-                'command' => $command->type,
-                'payload' => $command->payload,
-            ]);
+            return $this->json(['ok' => $ok, 'command' => $command->type, 'payload' => $command->payload]);
         } catch (TrafficLightException $e) {
             return $this->json(['ok' => false, 'error' => $e->getMessage()], 502);
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────
+    private function commandFromRequest(Request $request): TrafficLightCommand
+    {
+        $content = $request->getContent();
+        if (strlen($content) > 8192) {
+            throw new \InvalidArgumentException('O corpo da requisição deve ter no máximo 8 KB.');
+        }
+        try {
+            $body = json_decode($content, false, 16, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            throw new \InvalidArgumentException('JSON inválido.');
+        }
+        if (!$body instanceof \stdClass) {
+            throw new \InvalidArgumentException('O corpo da requisição deve ser um objeto JSON.');
+        }
+        if (array_diff(array_keys(get_object_vars($body)), ['type', 'payload', 'reason']) !== []) {
+            throw new \InvalidArgumentException('A requisição contém campos não permitidos.');
+        }
+        if (!isset($body->type) || !is_string($body->type) || $body->type === '' || strlen($body->type) > 50) {
+            throw new \InvalidArgumentException('Informe um tipo de comando válido.');
+        }
+        $payload = [];
+        if (property_exists($body, 'payload')) {
+            if (!$body->payload instanceof \stdClass) {
+                throw new \InvalidArgumentException('O campo payload deve ser um objeto JSON.');
+            }
+            $payload = get_object_vars($body->payload);
+        }
+        $reason = null;
+        if (property_exists($body, 'reason') && $body->reason !== null) {
+            if (!is_string($body->reason)) {
+                throw new \InvalidArgumentException('O motivo deve ser um texto.');
+            }
+            $reason = trim($body->reason);
+            $reason = $reason !== '' ? $reason : null;
+        }
+        return new TrafficLightCommand($body->type, $payload, $reason);
+    }
 
     private function getPartnerFromUser(): Partner
     {
@@ -430,17 +413,13 @@ final class TrafficLightController extends AbstractController
         if ($user === null) {
             throw $this->createAccessDeniedException('Usuário não autenticado.');
         }
-
         if (!method_exists($user, 'getPartner')) {
             throw $this->createAccessDeniedException('Usuário não possui parceiro vinculado.');
         }
-
-        /** @var Partner|null $partner */
         $partner = $user->getPartner();
         if ($partner === null) {
             throw $this->createAccessDeniedException('Usuário não está vinculado a um parceiro.');
         }
-
         return $partner;
     }
 
@@ -450,7 +429,6 @@ final class TrafficLightController extends AbstractController
             $light->setOptions([]);
             return true;
         }
-
         try {
             $decoded = json_decode((string) $json, true, 512, JSON_THROW_ON_ERROR);
             if (!is_array($decoded)) {
