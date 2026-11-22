@@ -74,37 +74,6 @@
             </article>
         </section>
 
-        <section class="routes-filter-panel" aria-label="{{ 'Filtros de rotas'|trans({}, 'routes_ui') }}">
-            <form class="routes-filter-form" data-routes-filter-form>
-                <label class="routes-filter-field routes-filter-field--grow">
-                    <span>{{ 'Buscar'|trans({}, 'routes_ui') }}</span>
-                    <input type="search" name="q" data-routes-search
-                           value="{{ filters.query }}"
-                           placeholder="{{ 'Nome, origem, destino ou cidade...'|trans({}, 'routes_ui') }}"
-                           autocomplete="off">
-                </label>
-
-                <label class="routes-filter-field">
-                    <span>{{ 'Nível de atraso'|trans({}, 'routes_ui') }}</span>
-                    <select name="level" data-routes-level>
-                        <option value="all"      {{ filters.level == 'all'      ? 'selected' }}>{{ 'Todos'|trans({}, 'routes_ui') }}</option>
-                        <option value="severe"   {{ filters.level == 'severe'   ? 'selected' }}>{{ 'Crítico'|trans({}, 'routes_ui') }}</option>
-                        <option value="heavy"    {{ filters.level == 'heavy'    ? 'selected' }}>{{ 'Alto'|trans({}, 'routes_ui') }}</option>
-                        <option value="moderate" {{ filters.level == 'moderate' ? 'selected' }}>{{ 'Moderado'|trans({}, 'routes_ui') }}</option>
-                        <option value="light"    {{ filters.level == 'light'    ? 'selected' }}>{{ 'Leve'|trans({}, 'routes_ui') }}</option>
-                        <option value="none"     {{ filters.level == 'none'     ? 'selected' }}>{{ 'No prazo'|trans({}, 'routes_ui') }}</option>
-                    </select>
-                </label>
-
-                <div class="routes-filter-actions">
-                    <button type="button" class="routes-button routes-button--link" data-routes-clear>
-                        {{ 'Limpar'|trans({}, 'routes_ui') }}
-                    </button>
-                </div>
-            </form>
-
-            <p class="routes-filter-feedback" data-routes-feedback role="status" aria-live="polite"></p>
-        </section>
 
         <section class="routes-overview" data-routes-overview
                  data-overview-url="{{ path('routes_api_data') }}">
@@ -228,6 +197,40 @@
                 <strong>{{ 'Nenhuma rota favorita ainda'|trans({}, 'routes_ui') }}</strong>
                 <small>{{ 'Use a estrela (★) nos cartões para fixar as rotas que você mais acompanha.'|trans({}, 'routes_ui') }}</small>
             </div>
+        </section>
+
+        {# Filtros: ficam logo acima da lista/mapa que eles filtram. Antes ficavam no topo, e como o painel
+           é sticky, ele grudava POR CIMA dos cartões ao rolar a página. #}
+        <section class="routes-filter-panel" aria-label="{{ 'Filtros de rotas'|trans({}, 'routes_ui') }}">
+            <form class="routes-filter-form" data-routes-filter-form>
+                <label class="routes-filter-field routes-filter-field--grow">
+                    <span>{{ 'Buscar'|trans({}, 'routes_ui') }}</span>
+                    <input type="search" name="q" data-routes-search
+                           value="{{ filters.query }}"
+                           placeholder="{{ 'Nome, origem, destino ou cidade...'|trans({}, 'routes_ui') }}"
+                           autocomplete="off">
+                </label>
+
+                <label class="routes-filter-field">
+                    <span>{{ 'Nível de atraso'|trans({}, 'routes_ui') }}</span>
+                    <select name="level" data-routes-level>
+                        <option value="all"      {{ filters.level == 'all'      ? 'selected' }}>{{ 'Todos'|trans({}, 'routes_ui') }}</option>
+                        <option value="severe"   {{ filters.level == 'severe'   ? 'selected' }}>{{ 'Crítico'|trans({}, 'routes_ui') }}</option>
+                        <option value="heavy"    {{ filters.level == 'heavy'    ? 'selected' }}>{{ 'Alto'|trans({}, 'routes_ui') }}</option>
+                        <option value="moderate" {{ filters.level == 'moderate' ? 'selected' }}>{{ 'Moderado'|trans({}, 'routes_ui') }}</option>
+                        <option value="light"    {{ filters.level == 'light'    ? 'selected' }}>{{ 'Leve'|trans({}, 'routes_ui') }}</option>
+                        <option value="none"     {{ filters.level == 'none'     ? 'selected' }}>{{ 'No prazo'|trans({}, 'routes_ui') }}</option>
+                    </select>
+                </label>
+
+                <div class="routes-filter-actions">
+                    <button type="button" class="routes-button routes-button--link" data-routes-clear>
+                        {{ 'Limpar'|trans({}, 'routes_ui') }}
+                    </button>
+                </div>
+            </form>
+
+            <p class="routes-filter-feedback" data-routes-feedback role="status" aria-live="polite"></p>
         </section>
 
         <div class="routes-layout">

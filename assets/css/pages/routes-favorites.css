@@ -52,3 +52,11 @@
 
 /* Link "Detalhes →" da lista: some junto com o item filtrado (antes ficava órfão). */
 .routes-list-detail.is-hidden { display: none; }
+
+/* ── Empilhamento: os painéis internos do Leaflet usam z-index 200–1000 e, sem contexto próprio,
+   passavam POR CIMA do painel de filtros sticky (z-index 10). Cada mapa vira um bloco isolado. ── */
+.leaflet-container,
+.route-card-map,
+.route-card-map-wrapper { isolation: isolate; }
+
+.routes-filter-panel { z-index: 30; }
