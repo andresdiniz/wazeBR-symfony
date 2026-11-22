@@ -248,14 +248,17 @@ final class TableMetadataStorage implements MetadataStorage
     }
 
     private function checkInitialization(): void
-{
-    if (! $this->isInitialized()) {
-        throw MetadataStorageError::notInitialized();
-    }
+    {
+        if (! $this->isInitialized()) {
+            throw MetadataStorageError::notInitialized();
+        }
 
-    // TEMP: workaround — força metadata storage como atualizado
-    return;
-}
+        $expectedTable = $this->getExpectedTable();
+
+        if ($this->needsUpdate($expectedTable) !== null) {
+            throw MetadataStorageError::notUpToDate();
+        }
+    }
 
     private function getExpectedTable(): Table
     {
