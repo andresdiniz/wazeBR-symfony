@@ -9,6 +9,7 @@ use App\Entity\User;
 use App\Repository\PartnerRepository;
 use App\Repository\TvRepository;
 use App\Service\CongestionForecastService;
+use App\Service\RemoteUrlGuard;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -34,6 +35,7 @@ final class TvController extends AbstractController
         private readonly PartnerRepository $partnerRepository,
         private readonly TagAwareCacheInterface $tvCache,
         private readonly CongestionForecastService $congestionForecastService,
+        private readonly RemoteUrlGuard $remoteUrlGuard,
     ) {
     }
 
@@ -127,6 +129,9 @@ final class TvController extends AbstractController
         }
 
         $targetUrl = $baseUrl . $file;
+        if (!$this->remoteUrlGuard->isAllowedPublicHttpUrl($targetUrl)) {
+            return new Response('', Response::HTTP_BAD_REQUEST);
+        }
         $isManifest = str_ends_with($file, '.m3u8');
         $isSegment = str_ends_with($file, '.ts');
 

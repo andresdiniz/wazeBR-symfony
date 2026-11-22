@@ -12,14 +12,17 @@ use App\Repository\TrafficLightRepository;
 use App\Repository\TrafficLightSnapshotRepository;
 use App\Service\TrafficLight\Exception\TrafficLightException;
 use App\Service\TrafficLight\TrafficLightManager;
+use App\Service\RemoteUrlGuard;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\ExpressionLanguage\Expression;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 #[Route('/traffic-lights', name: 'traffic_light_')]
@@ -31,6 +34,9 @@ final class TrafficLightController extends AbstractController
         private readonly TrafficLightManager $manager,
         private readonly EntityManagerInterface $em,
         private readonly HttpClientInterface $httpClient,
+        private readonly RemoteUrlGuard $remoteUrlGuard,
+        #[Autowire(service: 'limiter.traffic_control')]
+        private readonly RateLimiterFactory $trafficControlLimiter,
     ) {}
 
     #[Route('', name: 'list', methods: ['GET'])]
@@ -76,7 +82,7 @@ final class TrafficLightController extends AbstractController
     #[IsGranted(new Expression("is_granted('ROLE_ADMIN') or is_granted('ROLE_TRAFFIC_OPERATOR')"))]
     public function discoverSensorThings(Request $request): JsonResponse
     {
-        $base      = rtrim((string) $request->query->get('base', 'https://tld.iot.hamburg.de/v1.1'), '/');
+        $base      = 'https://tld.iot.hamburg.de/v1.1';
         $service   = (string) $request->query->get('service', 'HH_STA_traffic_lights');
         $layerName = (string) $request->query->get('layer', 'primary_signal');
         $limit     = min(50, max(1, (int) $request->query->get('limit', 10)));
@@ -305,6 +311,13 @@ final class TrafficLightController extends AbstractController
     #[IsGranted(new Expression("is_granted('ROLE_ADMIN') or is_granted('ROLE_TRAFFIC_OPERATOR')"))]
     public function sendCommand(int $id, Request $request): JsonResponse
     {
+        if (!$this->isCsrfTokenValid('traffic_light_command_' . $id, (string) $request->headers->get('X-CSRF-Token'))) {
+            return $this->json(['ok' => false, 'error' => 'csrf'], Response::HTTP_FORBIDDEN);
+        }
+        if (!$this->trafficControlLimiter->create((string) ($this->getUser()?->getUserIdentifier() ?? 'anonymous'))->consume()->isAccepted()) {
+            return $this->json(['ok' => false, 'error' => 'rate_limit'], Response::HTTP_TOO_MANY_REQUESTS);
+        }
+
         $partner = $this->getPartnerFromUser();
         $light   = $this->getLightOr404($id, $partner);
 
@@ -371,6 +384,13 @@ final class TrafficLightController extends AbstractController
     #[IsGranted(new Expression("is_granted('ROLE_ADMIN') or is_granted('ROLE_TRAFFIC_OPERATOR')"))]
     public function controlSend(int $id, Request $request): JsonResponse
     {
+        if (!$this->isCsrfTokenValid('traffic_light_command_' . $id, (string) $request->headers->get('X-CSRF-Token'))) {
+            return $this->json(['ok' => false, 'error' => 'csrf'], Response::HTTP_FORBIDDEN);
+        }
+        if (!$this->trafficControlLimiter->create((string) ($this->getUser()?->getUserIdentifier() ?? 'anonymous'))->consume()->isAccepted()) {
+            return $this->json(['ok' => false, 'error' => 'rate_limit'], Response::HTTP_TOO_MANY_REQUESTS);
+        }
+
         $partner = $this->getPartnerFromUser();
         $light   = $this->getLightOr404($id, $partner);
 

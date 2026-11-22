@@ -22,6 +22,8 @@
 *.db
 /public/uploads/
 /public/media/
+/error_log
+/public/*.csv
 
 # --- Database Dumps & Backups ---
 *.sql

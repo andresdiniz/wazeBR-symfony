@@ -93,6 +93,7 @@ function updateFixtureFromCommand(fixture, type, payload) {
 export function init(root = document) {
     const sendUrl = document.body.dataset.tlControlUrl
         || document.querySelector('[data-tl-control-url]')?.dataset.tlControlUrl;
+    const csrf = document.querySelector('[data-tl-csrf]')?.dataset.tlCsrf;
     if (!sendUrl) return;
 
     const fixture = document.getElementById('tl-fixture');
@@ -118,7 +119,7 @@ export function init(root = document) {
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
         };
-        if (opts.csrf) headers['X-CSRF-Token'] = opts.csrf;
+        if (csrf) headers['X-CSRF-Token'] = csrf;
 
         try {
             const res = await fetch(sendUrl, {

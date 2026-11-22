@@ -4,7 +4,12 @@
 # Framework configuration
 framework:
     session:
-        cookie_secure: true
+        cookie_secure: auto
         cookie_httponly: true
         cookie_samesite: 'lax'
         gc_maxlifetime: 604800 # 7 days
+
+when@prod:
+    framework:
+        session:
+            cookie_secure: true

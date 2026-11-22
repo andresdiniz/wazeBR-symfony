@@ -11,9 +11,7 @@ require_once 'vendor/autoload.php';
 $dotenv = new \Symfony\Component\Dotenv\Dotenv();
 $dotenv->load('.env');
 
-echo "MAILER_DSN: " . getenv('MAILER_DSN') . "\n";
-echo "MAILER_FROM_EMAIL: " . getenv('MAILER_FROM_EMAIL') . "\n";
-echo "MAILER_FROM_NAME: " . getenv('MAILER_FROM_NAME') . "\n\n";
+echo "Configurando envio de e-mail de teste.\n";
 
 try {
     $transport = Transport::fromDsn(getenv('MAILER_DSN'));

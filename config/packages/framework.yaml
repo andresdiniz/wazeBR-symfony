@@ -29,12 +29,22 @@ framework:
         enabled: true   # ← se estiver true, é mais uma camada de cache
 
     rate_limiter:
-        partner_feed_api:
-            policy: token_bucket
-            limit: 1
+        reverse_geocode:
+            policy: sliding_window
+            limit: 30
             rate:
                 interval: '1 minute'
-                amount: 1
+                amount: 30
+        password_reset:
+            policy: fixed_window
+            limit: 5
+            interval: '1 hour'
+        traffic_control:
+            policy: token_bucket
+            limit: 10
+            rate:
+                interval: '1 minute'
+                amount: 10
 
 when@test:
     framework:

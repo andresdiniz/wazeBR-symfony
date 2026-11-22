@@ -24,7 +24,7 @@
     'OFF':    '⚫ Apagado',
 }[currentColor] ?? '⚪ Desconhecido' %}
 
-<div class="pf-form tl-ctl-page" data-tl-control-url="{{ path('traffic_light_control_send', {id: light.id}) }}">
+<div class="pf-form tl-ctl-page" data-tl-control-url="{{ path('traffic_light_control_send', {id: light.id}) }}" data-tl-csrf="{{ csrf_token('traffic_light_command_' ~ light.id) }}">
     <a href="{{ path('traffic_light_show', {id: light.id}) }}" class="pf-form__breadcrumb">
         ← Voltar para detalhes
     </a>

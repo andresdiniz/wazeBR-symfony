@@ -13,10 +13,12 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 final class PasswordResetController extends AbstractController
 {
@@ -28,6 +30,8 @@ final class PasswordResetController extends AbstractController
         private readonly EntityManagerInterface $entityManager,
         private readonly MailerInterface $mailer,
         private readonly UserPasswordHasherInterface $passwordHasher,
+        #[Autowire(service: 'limiter.password_reset')]
+        private readonly RateLimiterFactory $passwordResetLimiter,
     ) {
     }
 
@@ -39,6 +43,11 @@ final class PasswordResetController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             $email = mb_strtolower(trim((string) $form->get('email')->getData()));
+            if (!$this->passwordResetLimiter->create(hash('sha256', $email))->consume()->isAccepted()) {
+                $this->addFlash('success', 'Se o e-mail estiver cadastrado, enviaremos as instruções de redefinição.');
+
+                return $this->redirectToRoute('app_forgot_password_request');
+            }
             $user = $this->userRepository->findOneBy(['email' => $email]);
 
             if ($user !== null) {

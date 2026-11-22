@@ -44,6 +44,27 @@ final readonly class TrafficLightCommand
         if (!in_array($type, self::ALL, true)) {
             throw new \InvalidArgumentException(sprintf('Comando desconhecido: %s', $type));
         }
+
+        if ($reason !== null && mb_strlen($reason) > 200) {
+            throw new \InvalidArgumentException('O motivo deve ter no máximo 200 caracteres.');
+        }
+
+        $phase = $payload['phase'] ?? null;
+        if (in_array($type, [self::SET_PHASE, self::FORCE_GREEN, self::FORCE_RED, self::SET_SPLIT], true)
+            && ((!is_int($phase) && !ctype_digit((string) $phase)) || (int) $phase < 1 || (int) $phase > 32)) {
+            throw new \InvalidArgumentException('Uma fase entre 1 e 32 é obrigatória.');
+        }
+
+        if (in_array($type, [self::SET_CYCLE, self::SET_OFFSET, self::SET_SPLIT], true)) {
+            $seconds = $type === self::SET_SPLIT ? ($payload['green'] ?? null) : ($payload['seconds'] ?? null);
+            if ((!is_int($seconds) && !ctype_digit((string) $seconds)) || (int) $seconds < 1 || (int) $seconds > 600) {
+                throw new \InvalidArgumentException('O tempo deve estar entre 1 e 600 segundos.');
+            }
+        }
+
+        if ($type === self::SET_MODE && !in_array(strtoupper((string) ($payload['mode'] ?? '')), ['AUTOMATIC', 'MANUAL', 'FLASH'], true)) {
+            throw new \InvalidArgumentException('Modo inválido.');
+        }
     }
 
     /** @return array<string,mixed> */
