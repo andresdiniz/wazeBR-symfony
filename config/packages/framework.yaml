@@ -1,6 +1,6 @@
 # see https://symfony.com/doc/current/reference/configuration/framework.html
 framework:
-    secret: '%env(APP_SECRET)%'
+    secret: '%env(APP_SECRET)%%'
     #csrf_protection: true
     annotations: false
     http_method_override: false
@@ -18,15 +18,12 @@ framework:
     php_errors:
         log: true
 
-    # Em produção, não mostrar detalhes de erro no browser
-    # O Symfony já usa templates de erro genricos por padrão quando debug=false
-
     default_locale: pt_BR
 
     scheduler: true
 
     http_cache:
-        enabled: true   # ← se estiver true, é mais uma camada de cache
+        enabled: true
 
     rate_limiter:
         reverse_geocode:
@@ -35,10 +32,12 @@ framework:
             rate:
                 interval: '1 minute'
                 amount: 30
+
         password_reset:
             policy: fixed_window
             limit: 5
             interval: '1 hour'
+
         traffic_control:
             policy: token_bucket
             limit: 10
@@ -54,6 +53,5 @@ when@test:
 
 when@prod:
     framework:
-        # Garante que erros PHP sejam logados mas não exibidos
         php_errors:
             log: true
